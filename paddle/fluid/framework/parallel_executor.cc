@@ -1506,7 +1506,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
                       platform::errors::PreconditionNotMet(
-                          "graphs.size() shoule be %d, but received %d",
+                          "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
@@ -1541,7 +1541,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
                       platform::errors::PreconditionNotMet(
-                          "graphs.size() shoule be %d, but received %d",
+                          "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
@@ -1608,12 +1608,12 @@ void ParallelExecutor::CreateVariableInfos(
       var_infos->size(),
       0,
       platform::errors::PreconditionNotMet(
-          "var_infos->size() shoule be 0, but received %d", var_infos->size()));
+          "var_infos->size() should be 0, but received %d", var_infos->size()));
   PADDLE_ENFORCE_EQ(
       member_->is_persistable_.size(),
       0,
       platform::errors::PreconditionNotMet(
-          "member_->is_persistable_.size() shoule be 0, but received %d",
+          "member_->is_persistable_.size() should be 0, but received %d",
           member_->is_persistable_.size()));
   for (auto &node : graph->Nodes()) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {

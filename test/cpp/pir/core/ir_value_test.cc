@@ -20,7 +20,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 // This unittest is used to test the construction interfaces of value class and
 // operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,

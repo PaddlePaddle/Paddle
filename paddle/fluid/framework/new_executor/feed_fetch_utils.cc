@@ -130,7 +130,7 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
   PADDLE_ENFORCE_EQ(
       fetch_list.size(),
       micro_batch_num,
-      phi::errors::Unavailable("The fetch_list size (%lld) shoule be equal to "
+      phi::errors::Unavailable("The fetch_list size (%lld) should be equal to "
                                "the micro_batch_num (%lld)",
                                fetch_list.size(),
                                micro_batch_num));
