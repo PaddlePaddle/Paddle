@@ -203,8 +203,17 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
   valid = valid && (dtype != DataType::UNDEFINED);
+  if (!valid) {
+    std::cout << "DataType valid ====== " << valid;
+  }
   valid = valid && (layout != DataLayout::UNDEFINED);
+  if (!valid) {
+    std::cout << "DataLayout valid ====== " << valid;
+  }
   valid = valid && (is_scalar || product(dims) >= 0);
+  if (!valid) {
+    std::cout << "product valid ====== " << valid;
+  }
   return valid;
 }
 

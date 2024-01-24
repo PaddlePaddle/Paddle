@@ -4674,8 +4674,12 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
-                             MetaTensor* out) {
-  out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+                             MetaTensor* out,
+                             MetaConfig config) {
+  if (!config.is_runtime)
+    out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+  else
+    out->set_dims(shape.dims());
   out->set_dtype(dtype);
 }
 

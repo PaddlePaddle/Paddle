@@ -283,8 +283,10 @@ Tensor relu_decomp(const Tensor& x) {
   bool flag = is_dynamic_shape(x);
   VLOG(0) << "test is_dynamic_shape =====================  " << flag;
   if (flag) {
-    IntArray shape_ = IntArray(shape<T>(x));
+    auto shape_t = shape<T>(x);
+    IntArray shape_ = construct_int_array_form_tensor<T>(shape_t);
     VLOG(0) << "begin to call full with intarray------  " << flag;
+    VLOG(0) << "shape_.FromTensor() " << shape_.FromTensor();
     return maximum<T>(x, full<T>(shape_, 0.0, x.dtype()));
   } else {
     return maximum<T>(x, full<T>(common::vectorize(x.dims()), 0.0, x.dtype()));

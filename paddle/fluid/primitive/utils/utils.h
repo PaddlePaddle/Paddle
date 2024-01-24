@@ -19,6 +19,7 @@
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/op_result.h"
 
@@ -30,6 +31,9 @@ void set_output(const Tensor& x_tmp, Tensor* x);
 
 template <typename T>
 void by_pass(const Tensor& x_tmp, Tensor* x);
+
+template <typename T>
+phi::IntArray construct_int_array_form_tensor(const Tensor& x);
 
 // This function determine whether dtype is in [float16, bfloat16, uint16]
 static bool is_half_dtype(const DataType& dtype) {

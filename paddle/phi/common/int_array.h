@@ -68,7 +68,8 @@ class IntArrayBase {
       const std::vector<phi::TensorRef>& tensor_ref_list);
 
   template <typename OtherT>
-  IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
+  IntArrayBase(const IntArrayBase<OtherT>& other)
+      : array_(other.GetData()), is_from_tensor_(other.FromTensor()) {}
 
   size_t size() const { return array_.size(); }
 

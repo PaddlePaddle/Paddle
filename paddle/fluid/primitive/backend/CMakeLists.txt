@@ -1,5 +1,6 @@
 set(eager_backend_files
-    ${CMAKE_CURRENT_SOURCE_DIR}/generated/generated_eager_backend.cc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/generated/generated_eager_backend.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/manual/manual_eager_backend.cc)
 if(WITH_PYTHON OR NOT ON_INFER)
   cc_library(
     primitive_backend_eager_experimental

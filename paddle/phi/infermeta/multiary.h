@@ -902,6 +902,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
 
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 }  // namespace phi

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,28 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/fluid/primitive/backend/manual/manual_backend.h"
 
 namespace paddle {
 namespace primitive {
-template <>
-void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
-  x->set_impl(x_tmp.impl());
-  x->set_autograd_meta(x_tmp.mutable_autograd_meta());
-}
+namespace backend {
 
 template <>
-void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
-  set_output<Tensor>(x, out);
+Tensor full<Tensor>(const IntArray& shape,
+                    const Scalar& value,
+                    DataType dtype,
+                    Place place) {
+  VLOG(4) << "Eager Prim API full_ad_func call";
+  return ::full_ad_func(shape, value, dtype, place);
 }
 
-template <>
-phi::IntArray construct_int_array_form_tensor<Tensor>(const Tensor& x) {
-  return phi::IntArray(
-      *std::static_pointer_cast<phi::DenseTensor>(x.impl()).get());
-}
-
+}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

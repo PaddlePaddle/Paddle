@@ -60,6 +60,28 @@ Tensor embedding_grad<LazyTensor>(const Tensor& x,
   return out;
 }
 
+template <>
+Tensor full<LazyTensor>(const IntArray& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        Place place) {
+  pir::Value op_res;
+  if (!shape.FromTensor()) {
+    op_res =
+        paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
+  } else {
+    op_res = paddle::dialect::full_with_tensor(
+        paddle::dialect::full_int_array(
+            shape.GetData(), DataType::INT64, place),
+        paddle::dialect::full(
+            std::vector<int64_t>{1}, value.to<float>(), dtype, place),
+        dtype);
+  }
+  // VLOG(0)<<"===================================value"<<op_res;
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  return out;
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

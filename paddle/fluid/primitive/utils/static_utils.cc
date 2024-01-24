@@ -11,9 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
+#include "paddle/pir/core/operation.h"
 
 namespace paddle {
 namespace primitive {
@@ -28,6 +32,41 @@ void by_pass<LazyTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
   auto op_res = paddle::dialect::assign(x_res);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   set_output<LazyTensor>(out, real_out);
+}
+
+template <>
+phi::IntArray construct_int_array_form_tensor<LazyTensor>(const Tensor& x) {
+  phi::IntArray res;
+  pir::Value x_value = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  if (x_value.dyn_cast<pir::OpResult>() &&
+      x_value.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    res = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        x_value.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (x_value.type().isa<pir::VectorType>()) {
+    size_t x_size = x_value.type().dyn_cast<pir::VectorType>().size();
+    res = std::move(phi::IntArray(std::vector<int64_t>(x_size, -1)));
+    res.SetFromTensor(true);
+  } else if (x_value.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim x_dim =
+        x_value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t x_size = common::product(x_dim);
+    if (common::contain_unknown_dim(x_dim)) {
+      x_size = 1;
+    }
+    res = std::move(phi::IntArray(std::vector<int64_t>(x_size, -1)));
+    res.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  VLOG(0) << "res.FromTensor() " << res.FromTensor();
+  return res;
 }
 
 /**
