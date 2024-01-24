@@ -1275,8 +1275,12 @@ class ConcreteProgram:
         # insert fetch op for outputs and inputs. (avoid inputs been pruned)
         inputs = [inp for inp in flatten(inputs) if isinstance(inp, Value)]
         outputs = [inp for inp in flatten(outputs) if isinstance(inp, Value)]
+        parameters = [
+            inp for inp in flatten(parameters) if isinstance(inp, Value)
+        ]
         _add_pir_fetch_ops(main_program, inputs, "_fetch_inputs")
         _add_pir_fetch_ops(main_program, outputs, "_fetch_outputs")
+        _add_pir_fetch_ops(main_program, parameters, "_fetch_parameters")
         # apply dce pass
         pm.add_pass(
             'dead_code_elimination_pass'

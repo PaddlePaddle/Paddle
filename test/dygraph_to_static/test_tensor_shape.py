@@ -361,7 +361,7 @@ class TestTensorShapeBasic3(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 5
+        self.pir_expected_op_num = 4
         self.pir_expected_shape_op_num = 1
         self.pir_expected_slice_op_num = 0
 
@@ -499,7 +499,7 @@ class TestTensorShapeInIf2(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
+        self.pir_expected_op_num = 2
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -515,7 +515,7 @@ class TestTensorShapeInFor1(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 13
+        self.pir_expected_op_num = 12
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -530,7 +530,7 @@ class TestTensorShapeInFor2(TestTensorShapeInFor1):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 13
+        self.pir_expected_op_num = 12
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -545,7 +545,7 @@ class TestTensorShapeInFor3(TestTensorShapeInFor1):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 5
+        self.pir_expected_op_num = 4
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -561,7 +561,7 @@ class TestTensorShapeInWhile1(TestTensorShapeInFor1):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 7
+        self.pir_expected_op_num = 6
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -576,7 +576,7 @@ class TestTensorShapeInWhile2(TestTensorShapeInFor1):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 7
+        self.pir_expected_op_num = 6
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -591,7 +591,7 @@ class TestTensorShapeInWhile3(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
+        self.pir_expected_op_num = 2
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -606,7 +606,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 2
+        self.pir_expected_op_num = 1
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -702,9 +702,9 @@ class TestOpNumBasicWithTensorShape4(TestOpNumBasicWithTensorShape):
         self.expected_slice_op_num = 2
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 16
+        self.pir_expected_op_num = 12
         self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 2
+        self.pir_expected_slice_op_num = 1
 
 
 class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
