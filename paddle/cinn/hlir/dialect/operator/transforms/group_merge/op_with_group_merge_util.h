@@ -21,8 +21,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/operation.h"
@@ -64,7 +66,7 @@ std::vector<T> GetVectorAttr(const ::pir::Operation* op,
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op);
 
-phi::DDim GetValueShape(const ::pir::Value& value);
+const phi::DDim& GetValueShape(const ::pir::Value& value);
 
 bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
                             const std::vector<int64_t>& axes);
@@ -93,6 +95,17 @@ inline bool is_same_size(::pir::Operation* producer,
   auto master_op = consumer->master_ops.begin();
   auto producer_shape = GetValueShape(producer->result(0));
   auto consumer_shape = GetValueShape((*master_op)->result(0));
+  VLOG(0) << "##### is_same_size--- ";
+  VLOG(0) << "  ##### producer: " << producer->name()
+          << " -> producer_shape: " << producer_shape;
+  VLOG(0) << "  ##### consumer: " << (*master_op)->name()
+          << " -> consumer_shape: " << consumer_shape;
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(producer->GetParentProgram());
+  if (shape_analysis.IsShapeEqual(producer->result(0),
+                                  (*master_op)->result(0))) {
+    return true;
+  }
 
   if (producer_shape == consumer_shape) {
     return true;
@@ -176,6 +189,7 @@ inline bool reduce_fuse_reduce(::pir::Operation* producer,
 
 inline bool is_horizontal_relation(::pir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
+  VLOG(0) << "#### is_horizontal_relation ######";
   auto check_depency = [&](::pir::Operation* op) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
@@ -222,10 +236,13 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
 
 inline bool horizontal_or_vertical_reduce_relation(
     ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
+  VLOG(0) << "####### horizontal_or_vertical_reduce_relation #####";
   // check is same shape with horizontal relation.
   if (is_same_size(producer, consumer)) {
     return true;
   }
+
+  VLOG(0) << "####### reducer op in fusion op #####";
 
   // reducer op in fusion op.
   ::pir::Operation* reducer = NULL;
@@ -322,21 +339,50 @@ inline bool horizontal_with_same_size(::pir::Operation* producer,
          is_same_size(producer, consumer);
 }
 
+inline std::vector<int64_t> GetBroadcastAxes(
+    ::pir::Operation* bcast_op,
+    ::pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+  if (bcast_op->isa<cinn::dialect::BroadcastOp>()) {
+    return GetVectorAttr(bcast_op, "broadcast_axes");
+  } else if (bcast_op->isa<paddle::dialect::ExpandOp>()) {
+    const auto& input_shape =
+        shape_analysis.GetShapeOrDataForValue(bcast_op->operand_source(0))
+            .shape();
+    const auto& output_shape =
+        shape_analysis.GetShapeOrDataForValue(bcast_op->result(0)).shape();
+    std::vector<int64_t> broadcast_axes(input_shape.size(), 0);
+    size_t index_gap = output_shape.size() - input_shape.size();
+    for (size_t i = 0; i < input_shape.size(); ++i) {
+      broadcast_axes[i] = i + index_gap;
+    }
+    return broadcast_axes;
+  } else {
+    LOG(FATAL) << "Not support broadcast op: " << bcast_op->name();
+  }
+}
+
 inline bool reduce_fuse_broadcast(::pir::Operation* producer,
                                   const std::shared_ptr<Group>& consumer) {
   if (is_horizontal_relation(producer, consumer)) {
+    VLOG(0) << "######## is_horizontal_relation is true";
     if (is_same_size(producer, consumer)) {
       return true;
     }
     return false;
   }
+  VLOG(0) << "######## is_horizontal_relation is false, producer: "
+          << producer->name();
 
   // if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
   //   return true;
   // }
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(producer->GetParentProgram());
 
-  auto rinput_shape =
-      ::common::vectorize<int64_t>(GetFirstInputShape(producer));
+  const auto& rinput_shape =
+      shape_analysis.GetShapeOrDataForValue(producer->operand_source(0))
+          .shape();
+  // ::common::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "dim");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
@@ -347,21 +393,20 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
       axis += rinput_shape.size();
     }
   }
+  VLOG(0) << "######## reduce_axes: ";
 
-  int reduce_size = rinput_shape.back();
-  for (auto idx = reduce_axes.size() - 1; idx >= 1; --idx) {
-    if (reduce_axes[idx] != reduce_axes[idx - 1] + 1) {
-      return false;
-    }
-    reduce_size *= rinput_shape[idx - 1];
-  }
+  // int reduce_size = rinput_shape.back();
+  // for (auto idx = reduce_axes.size() - 1; idx >= 1; --idx) {
+  //   if (reduce_axes[idx] != reduce_axes[idx - 1] + 1) {
+  //     return false;
+  //   }
+  //   reduce_size *= rinput_shape[idx - 1];
+  // }
 
   // if (reduce_size > helper->target_.max_num_threads()) {
   //   return false;
   // }
 
-  auto routput_shape =
-      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
   auto find_reducer =
       [&](::pir::Operation* op,
           ::pir::Operation* reducer,
@@ -389,7 +434,10 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
         return false;
       };
 
+  auto routput_shape =
+      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
   for (auto op : consumer->ops_set) {
+    VLOG(0) << "######## consumer op : " << op->name();
     if (hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
         OpPatternKind::kBroadcast) {
       continue;
@@ -398,9 +446,12 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
     if (!find_reducer(op, producer, consumer->ops_set)) {
       continue;
     }
+    VLOG(0) << "######## find_reducer is true";
 
-    auto broadcast_shape = GetVectorAttr(op, "out_shape");
-    auto broadcast_axes = GetVectorAttr(op, "broadcast_axes");
+    // const auto& broadcast_shape = GetValueShape(op->result(0));
+    const auto& broadcast_shape =
+        shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+    auto broadcast_axes = GetBroadcastAxes(op, shape_analysis);
 
     for (auto& axis : broadcast_axes) {
       if (axis < 0) {

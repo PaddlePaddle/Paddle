@@ -105,35 +105,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
 
 bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
-
-  // auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
-  // auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
-
-  // if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
-  //   return false;
-
-  // if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-  //   return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
-  // }
-
-  // auto lhs_it = value_to_sym_dims_.find(lhs);
-  // auto rhs_it = value_to_sym_dims_.find(rhs);
-
-  // if (lhs_it == value_to_sym_dims_.end() ||
-  //     rhs_it == value_to_sym_dims_.end() ||
-  //     lhs_it->second.size() != rhs_it->second.size())
-  //   return false;
-
-  // std::vector<SymbolicDimOp> lhs_syms;
-  // std::vector<SymbolicDimOp> rhs_syms;
-  // for (auto sym : lhs_it->second) {
-  //   lhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
-  // }
-  // for (auto sym : rhs_it->second) {
-  //   rhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
-  // }
-  // return lhs_syms == rhs_syms;
-  return true;
+  const auto& lhs_shape = GetShapeOrDataForValue(lhs);
+  const auto& rhs_shape = GetShapeOrDataForValue(rhs);
+  if (lhs_shape.shape() == rhs_shape.shape() ||
+      lhs_shape.data() == rhs_shape.data()) {
+    return true;
+  }
+  return false;
 }
 
 bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
