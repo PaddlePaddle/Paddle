@@ -55,5 +55,6 @@ __all__ = [
     "fused_layer_norm",
     "masked_multihead_attention",
     "block_multihead_attention",
+    "speculative_decoding_multihead_attention",
     "swiglu",
 ]

@@ -4276,4 +4276,97 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void SpeculativeDecodingMultiheadAttentionInferMeta(
+    const MetaTensor& qkv,
+    const MetaTensor& key_cache,
+    const MetaTensor& value_cache,
+    const MetaTensor& seq_lens_encoder,
+    const MetaTensor& seq_lens_decoder,
+    const MetaTensor& seq_lens_this_time,
+    const MetaTensor& padding_offsets,
+    const MetaTensor& cum_offsets,
+    const MetaTensor& cu_seqlens_q,
+    const MetaTensor& cu_seqlens_k,
+    const MetaTensor& pre_key_cache,
+    const MetaTensor& pre_value_cache,
+    const MetaTensor& rope_emb,
+    const MetaTensor& mask,
+    const MetaTensor& tgt_mask,
+    const MetaTensor& qkv_bias,
+    const MetaTensor& out_shift,
+    const MetaTensor& out_smooth,
+    int max_seq_len,
+    bool use_neox_style,
+    const std::string& compute_dtype,
+    MetaTensor* fmha_out,
+    MetaTensor* qkv_out,
+    MetaTensor* key_cache_out,
+    MetaTensor* value_cache_out) {
+  auto input_dims = qkv.dims();
+  auto key_cache_dims = key_cache.dims();
+  const int num_head = key_cache_dims[1];
+  const int dim_head = key_cache_dims[3];
+  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  qkv_out->set_dims(qkv.dims());
+  key_cache_out->set_dims(key_cache_dims);
+  key_cache_out->set_dtype(key_cache.dtype());
+  value_cache_out->set_dims(key_cache_dims);
+  value_cache_out->set_dtype(value_cache.dtype());
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (qkv.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+    if (compute_dtype == "bf16") {
+      fmha_out->set_dtype(phi::DataType::BFLOAT16);
+    } else if (compute_dtype == "fp16") {
+      fmha_out->set_dtype(phi::DataType::FLOAT16);
+    } else if (compute_dtype == "fp32") {
+      fmha_out->set_dtype(phi::DataType::FLOAT32);
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "In the case of quantization enabled with Input(x) INT32, "
+          "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+          "but get compute_dtype (%s)",
+          compute_dtype));
+    }
+  } else {
+    if (compute_dtype != "default") {
+      FBADtypeCheck(qkv, "qkv", compute_dtype);
+    }
+    fmha_out->set_dtype(qkv.dtype());
+  }
+}
+
 }  // namespace phi
