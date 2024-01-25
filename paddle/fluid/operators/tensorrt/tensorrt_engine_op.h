@@ -299,7 +299,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
           if (!is_shape_tensor) {
-            runtime_input_shape.erase(name);
+            runtime_shape_tensor.erase(name);
             VLOG(4) << "trt engine runtime delete shape name(" << name
                     << "), dims(" << t.dims() << ")";
           }
