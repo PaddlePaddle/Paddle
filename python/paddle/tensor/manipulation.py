@@ -5802,7 +5802,7 @@ def take_along_axis(arr, indices, axis, broadcast=True):
                 )
 
         axis_max_size = arr.shape[axis]
-        if not (indices < axis_max_size).all():
+        if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
                 "one of element of indices is out of bounds for dimension {} with size {}".format(
                     axis, axis_max_size
@@ -5958,7 +5958,7 @@ def put_along_axis(
             if elements == 1:  # paddle.pir.Value has no attribute 'size'
                 values = paddle.broadcast_to(values, indices.shape)
         axis_max_size = arr.shape[axis]
-        if not (indices < axis_max_size).all():
+        if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
                 "one of element of indices is out of bounds for dimension {} with size {}".format(
                     axis, axis_max_size

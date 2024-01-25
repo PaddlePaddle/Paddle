@@ -15,7 +15,7 @@
 #include "paddle/pir/core/visitors.h"
 #include "paddle/pir/core/operation.h"
 
-namespace pir::detail {
+namespace pir {
 
 // Defines utilities for walking and visiting operations.
 void Walk(Operation *op,
@@ -66,4 +66,4 @@ void Walk(Operation *op,
   if (order == WalkOrder::PostOrder) callback(op);
 }
 
-}  // namespace pir::detail
+}  // namespace pir

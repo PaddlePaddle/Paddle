@@ -29,7 +29,7 @@ class ReplaceFetchWithShadowOutputPattern
       paddle::dialect::FetchOp op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
     rewriter.Build<pir::ShadowOutputOp>(
-        op->operand_source(0).dyn_cast<pir::OpResult>(),
+        op->operand_source(0),
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
     rewriter.EraseOp(op);
     return true;

@@ -130,6 +130,8 @@ class PyFileGen:
         self.new_root("\n")
         self.create_layer()
         self.new_root("\n")
+        self.create_inputs()
+        self.new_root("\n")
         self.create_test()
         self.new_root("\n")
         self.create_tail()
@@ -201,13 +203,14 @@ class PyFileGen:
             )
         )
 
-    def create_test(self):
-        test_class = self.new_root("class TestLayer(unittest.TestCase):")
+    def create_inputs(self):
+        create_paddle_inputs = self.new_root("def create_paddle_inputs():")
+        self.new_root("\n")
+        craete_numpy_inputs = self.new_root("def create_numpy_inputs():")
 
-        setup = test_class.add_sub("def setUp(self):")
-        test_inputs = [
-            "self.inputs = (",
-        ]
+        paddle_inputs = ["inputs = ("]
+        numpy_inputs = ["inputs = ("]
+
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp.name]
@@ -218,23 +221,45 @@ class PyFileGen:
                     paddle.int32,
                     paddle.int64,
                 ):
-                    test_inputs.append(
+                    paddle_inputs.append(
                         f"    paddle.randint(low=0, high=10, shape={shape_str}, dtype={meta.dtype}),"
                     )
+                    numpy_inputs.append(
+                        "    np.random.randint(low=0, high=10, size={}, dtype='{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
                 else:
-                    test_inputs.append(
+                    paddle_inputs.append(
                         f"    paddle.rand(shape={shape_str}, dtype={meta.dtype}),"
                     )
-        test_inputs.append(")")
-        setup.add_sub(*test_inputs)
+                    numpy_inputs.append(
+                        "    np.random.random(size={}).astype('{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
+
+        paddle_inputs.append(")")
+        paddle_inputs.append("return inputs")
+        numpy_inputs.append(")")
+        numpy_inputs.append("return inputs")
+
+        create_paddle_inputs.add_sub(*paddle_inputs)
+        craete_numpy_inputs.add_sub(*numpy_inputs)
+
+    def create_test(self):
+        test_class = self.new_root("class TestLayer(unittest.TestCase):")
+
+        setup = test_class.add_sub("def setUp(self):")
+        setup.add_sub("self.inputs = create_paddle_inputs()")
         setup.add_sub("self.net = LayerCase()")
 
         train = test_class.add_sub(
             "def train(self, net, to_static, with_prim=False, with_cinn=False):"
         )
         train.add_sub(
-            "paddle.set_flags({'FLAGS_prim_all': with_prim})",
             "if to_static:",
+            "    paddle.set_flags({'FLAGS_prim_all': with_prim})",
             "    if with_cinn:",
             "        build_strategy = paddle.static.BuildStrategy()",
             "        build_strategy.build_cinn_pass = True",
