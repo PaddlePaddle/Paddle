@@ -8,7 +8,7 @@ endif()
 
 if(NOT WITH_MKLDNN)
   file(GLOB_RECURSE onednn_srcs "onednn/*.cc")
-  list(REMOVE_ITEM transforms_srcs onednn_srcs)
+  list(REMOVE_ITEM transforms_srcs ${onednn_srcs})
 endif()
 
 set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir
