@@ -115,7 +115,10 @@ class OpCreatorCodeGen:
                     ops_onednn_extra_set.add(op['op'])
             with open(onednn_yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
-                op_yaml_items = op_yaml_items + ops
+                onednn_ops = []
+                for op in ops:
+                    op['name'] = op['op']
+                op_yaml_items = op_yaml_items + onednn_ops
 
             for yaml_file in op_yaml_files:
                 with open(yaml_file, "r") as f:
