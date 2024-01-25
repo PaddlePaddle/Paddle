@@ -78,6 +78,7 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "greater_than": ['X', 'Y'],
     "greater_equal": ['X', 'Y'],
     "matmul_v2": ['X', 'Y'],
+    "matmul_v2_grad": ['X', 'Y'],
 }
 
 

@@ -1604,6 +1604,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
             amp_inputs_call_list[pos] = name
+            type_promote_inputs_call_list[pos] = name
             if default_val is not None:
                 inputs_args_declaration_list[
                     pos
