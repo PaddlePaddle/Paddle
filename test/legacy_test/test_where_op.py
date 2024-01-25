@@ -798,11 +798,11 @@ class TestWhereOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            def test_OpResult():
+            def test_Value():
                 with paddle.pir_utils.IrGuard():
                     paddle.where(cond_i, x_i, y_i)
 
-            self.assertRaises(TypeError, test_OpResult)
+            self.assertRaises(TypeError, test_Value)
 
             def test_type():
                 x = paddle.static.data(name='x', shape=[-1, 4], dtype='bool')

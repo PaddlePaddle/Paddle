@@ -755,14 +755,14 @@ class PartialProgramLayer:
             with ir_static.program_guard(program, None):
                 # create outputs_grad for backward to avoid full and full_like op.
                 forward_outputs_grads = []
-                for out_op_result in targets:
-                    if out_op_result.stop_gradient is True:
+                for out_value in targets:
+                    if out_value.stop_gradient is True:
                         forward_outputs_grads.append(fake_value())
                     else:
                         value = paddle.full_like(
-                            out_op_result,
+                            out_value,
                             fill_value=1.0,
-                            dtype=out_op_result.dtype,
+                            dtype=out_value.dtype,
                         )
                         forward_outputs_grads.append(value)
                 paddle.base.libpaddle.pir.append_shadow_outputs(
@@ -926,7 +926,7 @@ class PartialProgramLayer:
         return input_vars
 
     def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_op_results(
+        return paddle.framework.core.create_empty_tensors_with_values(
             self._outputs.var_list
         )
 
