@@ -200,8 +200,8 @@ struct IsLhsBeforeRhsStruct<std::string, std::string> {
 template <>
 struct IsLhsBeforeRhsStruct<Negative<DimExpr>, Negative<DimExpr>> {
   static bool Call(const Negative<DimExpr>& lhs, const Negative<DimExpr>& rhs) {
-    const auto& [lhs_operand] = *lhs;
-    const auto& [rhs_operand] = *rhs;
+    const auto& lhs_operand = lhs->data;
+    const auto& rhs_operand = rhs->data;
     return IsLhsBeforeRhs(lhs_operand, rhs_operand);
   }
 };
@@ -210,8 +210,8 @@ template <>
 struct IsLhsBeforeRhsStruct<Reciprocal<DimExpr>, Reciprocal<DimExpr>> {
   static bool Call(const Reciprocal<DimExpr>& lhs,
                    const Reciprocal<DimExpr>& rhs) {
-    const auto& [lhs_operand] = *lhs;
-    const auto& [rhs_operand] = *rhs;
+    const auto& lhs_operand = lhs->data;
+    const auto& rhs_operand = rhs->data;
     return IsLhsBeforeRhs(lhs_operand, rhs_operand);
   }
 };
@@ -275,7 +275,7 @@ struct SortOperands {
 
 std::int64_t GetInteger(const DimExpr& expr) {
   if (expr.Has<Negative<DimExpr>>()) {
-    const auto& [integer] = *expr.Get<Negative<DimExpr>>();
+    const auto& integer = expr.Get<Negative<DimExpr>>()->data;
     CHECK(integer.Has<std::int64_t>());
     return -integer.Get<std::int64_t>();
   }
@@ -494,7 +494,7 @@ struct FoldOperandTrait<Add> {
       return true;
     }
     if (dim_expr.Has<Negative<DimExpr>>()) {
-      const auto& [operand] = *dim_expr.Get<Negative<DimExpr>>();
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
       return operand.Has<std::int64_t>();
     }
     return false;
@@ -518,7 +518,7 @@ struct FoldOperandTrait<Add> {
 
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
     if (lhs.Has<Negative<DimExpr>>()) {
-      const auto& [lhs_operand] = *lhs.Get<Negative<DimExpr>>();
+      const auto& lhs_operand = lhs.Get<Negative<DimExpr>>()->data;
       return lhs_operand == rhs;
     }
     if (rhs.Has<Negative<DimExpr>>()) {
@@ -584,7 +584,7 @@ struct FoldOperandTrait<Mul> {
       return true;
     }
     if (dim_expr.Has<Reciprocal<DimExpr>>()) {
-      const auto& [operand] = *dim_expr.Get<Reciprocal<DimExpr>>();
+      const auto& operand = dim_expr.Get<Reciprocal<DimExpr>>()->data;
       return operand.Has<std::int64_t>();
     }
     return false;
@@ -614,11 +614,11 @@ struct FoldOperandTrait<Mul> {
   }
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
     if (lhs.Has<Reciprocal<DimExpr>>()) {
-      const auto& [lhs_operand] = *lhs.Get<Reciprocal<DimExpr>>();
+      const auto& lhs_operand = lhs.Get<Reciprocal<DimExpr>>()->data;
       return lhs_operand == rhs;
     }
     if (rhs.Has<Reciprocal<DimExpr>>()) {
-      const auto& [rhs_operand] = *rhs.Get<Reciprocal<DimExpr>>();
+      const auto& rhs_operand = rhs.Get<Reciprocal<DimExpr>>()->data;
       return rhs_operand == lhs;
     }
     return false;
