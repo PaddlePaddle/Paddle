@@ -693,16 +693,22 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& axes,
                                const std::vector<int64_t>& factors,
                                bool add_check) {
+  std::cerr << "step in broadcast\n";
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::cerr << "broadcast axes " << axes[0] << std::endl;
   if (axes[0] >= all_loops.size()) {
     throw std::runtime_error("axes execeed loop size");
   }
-  auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+
+  // Get Last loop
+  // auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+  auto broadcast_loop = all_loops.back().As<ir::For>();
 
   Expr broadcast_body = ir::ir_utils::IRCopy(broadcast_loop->body);
 
-  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  std::cerr << "broadcast body  " << broadcast_body << std::endl;
+  std::cerr << "broadcast body 2 " << all_loops[3].As<ir::For>()->body
+            << std::endl;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
@@ -713,19 +719,22 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
 
   auto iter_vars = schedule_block->iter_vars;
 
-  // std::cerr << "iter vars " << std::endl;
-  // for (auto& expr : iter_vars) {
-  //   std::cerr << "11 " << expr << std::endl;
-  // }
+  std::cerr << "iter vars " << std::endl;
+  for (auto& expr : iter_vars) {
+    std::cerr << "11 " << expr << std::endl;
+  }
   auto iter_values = schedule_realize->iter_values;
 
-  // std::cerr << "iter value \n";
+  std::cerr << "iter value \n";
 
-  // for (auto& expr : iter_values) {
-  //   std::cerr << "22 " << expr << std::endl;
-  // }
+  for (auto& expr : iter_values) {
+    std::cerr << "22 " << expr << std::endl;
+  }
 
-  schedule_realize->iter_values[axes[0]] = broadcast_loop->loop_var;
+  for (auto& axis : axes) {
+    auto inner_loop_var = all_loops[axis].As<ir::For>()->loop_var;
+    schedule_realize->iter_values[axis] = inner_loop_var;
+  }
 
   auto exprs = ir::ir_utils::CollectIRNodesInOrder(
       schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });

@@ -618,11 +618,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       continue;
     }
 
-    std::cerr << "found name " << op1->name() << std::endl;
+    // std::cerr << "found name " << op1->name() << std::endl;
 
-    std::cerr << "it " << it->first->dialect() << std::endl;
-    std::cerr << "it->fisrt " << it->first->name() << std::endl;
-    std::cerr << "align name  " << ValueName(it->first->result(0)) << std::endl;
+    // std::cerr << "it " << it->first->dialect() << std::endl;
+    // std::cerr << "it->fisrt " << it->first->name() << std::endl;
+    // std::cerr << "align name  " << ValueName(it->first->result(0)) <<
+    // std::endl;
 
     std::vector<int64_t> changed_axes;
     std::vector<int64_t> changed_factor;
@@ -827,11 +828,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     }
   }
 
-  for (size_t i = 0; i < func_bodies.size(); ++i) {
-    // std::cerr << ops[i]->name() << std::endl;
-    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
-    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
-  }
+  // for (size_t i = 0; i < func_bodies.size(); ++i) {
+  //   // std::cerr << ops[i]->name() << std::endl;
+  //   // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
+  //   std::endl; std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
+  // }
 
   // 2.Do group schedule.
   std::vector<Expr> added_expr;

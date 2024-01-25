@@ -1565,7 +1565,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
 
-  pass_manager->EnableIRPrinting();
+  // pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::RemoveUnchangedReshapePass>());
@@ -1584,6 +1584,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
 
   pass_manager->EnableIRPrinting();

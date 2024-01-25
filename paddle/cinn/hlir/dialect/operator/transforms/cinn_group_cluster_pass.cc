@@ -84,6 +84,17 @@ std::unordered_set<::pir::Value> GetListOutsideInput(
   return outside_ops;
 }
 
+bool IsLastReshape(::pir::Operation* input_op) {
+  auto out = input_op->result(0);
+
+  if ((out.use_count() == 1) &&
+      (out.first_use().owner()->name() == "cf.yield")) {
+    return true;
+  }
+
+  return false;
+}
+
 struct GroupClusterNode {
   std::vector<::pir::Operation*> ops;
   cinn::hlir::framework::OpPatternKind group_kind{
@@ -178,8 +189,13 @@ struct GroupClusterNode {
       group_kind = node.group_kind;
     }
 
-    if (node.group_kind == cinn::hlir::framework::kReduction) {
+    if ((node.group_kind == cinn::hlir::framework::kReduction) ||
+        (node.group_kind == cinn::hlir::framework::kBroadcast)) {
       reduce_axis = node.reduce_axis;
+      loop_ranges = node.loop_ranges;
+    }
+
+    if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
       loop_ranges = node.loop_ranges;
     }
   }
@@ -238,10 +254,10 @@ struct GroupClusterNode {
   group_info.op_pattern_kind = node.group_kind;
   group_info.alignment_schedule_info = new_align_info;
 
-  std::cerr << "!!!!!!!!!!!!!!!!loop ranges\n";
-  for (auto d : group_info.loop_ranges) {
-    std::cerr << d << std::endl;
-  }
+  // std::cerr << "!!!!!!!!!!!!!!!!loop ranges\n";
+  // for (auto d : group_info.loop_ranges) {
+  //   std::cerr << d << std::endl;
+  // }
 
   // step 2: Replace the old op with GroupOp.
   auto new_group_op =
@@ -280,6 +296,12 @@ struct GroupClusterNode {
 bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
+  if ((second.ops.size() == 1) &&
+      (second.ops.front()->name() == "cinn_op.reshape") &&
+      (IsLastReshape(second.ops.front()))) {
+    return true;
+  }
+
   if ((first.group_kind == cinn::hlir::framework::kReduction &&
        second.group_kind == cinn::hlir::framework::kElementWise) ||
       (first.group_kind == cinn::hlir::framework::kReduction &&
@@ -294,6 +316,11 @@ bool CanFuse(const GroupClusterNode& first,
       }
 
       reduce_axis.insert(axis);
+    }
+
+    if (*(reduce_axis.begin()) !=
+        first.loop_ranges.size() - first.reduce_axis.size()) {
+      return false;
     }
     if ((first.loop_ranges.size() != second.loop_ranges.size()) &&
         (first.loop_ranges.size() !=
@@ -315,9 +342,12 @@ bool CanFuse(const GroupClusterNode& first,
       }
     }
 
-    sch_node->type = "broadcast";
-    sch_node->axis_info = first.reduce_axis;
-    sch_node->factor_info = first.loop_ranges;
+    if (first.loop_ranges != second.loop_ranges) {
+      // std::cerr << "add alingn info here\n";
+      sch_node->type = "broadcast";
+      sch_node->axis_info = first.reduce_axis;
+      sch_node->factor_info = first.loop_ranges;
+    }
     return true;
   }
 
@@ -395,6 +425,13 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
     }
   }
 
+  // std::cerr << "sort list " ;
+  // for(auto & d : out_id_list )
+  // {
+  //   std::cerr << " " << d;
+  // }
+  // std::cerr << std::endl;
+
   if (out_id_list.size() != node_list.size()) {
     throw std::runtime_error("id list not match");
   }
@@ -445,7 +482,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
     auto& op_list = cluster_node.ops;
 
     // process cluster node
-    bool is_break = false;
+    ScheduleInfoNode sch_node;
     if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
         cinn::hlir::framework::kReduction) {
       // set reduce axis and loop range
@@ -477,6 +514,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
     } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
                cinn::hlir::framework::kBroadcast) {
       // if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
+      // std::cerr << "is broadcast !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
       cluster_node.loop_ranges =
           phi::vectorize(op->result(0)
                              .type()
@@ -485,17 +523,11 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       //}
 
       // all the op in cluster node must add broadcast
-      ScheduleInfoNode sch_node;
+
       sch_node.type = "broadcast";
       sch_node.axis_info =
           cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
       sch_node.factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
-
-      for (auto op : op_list) {
-        std::cerr << "add align info " << op->name() << "\t"
-                  << sch_node.DebugStr() << std::endl;
-        cluster_node.alignment_schedule_info[op].push_back(sch_node);
-      }
 
       cluster_node.group_kind = cinn::hlir::framework::kBroadcast;
     } else {
@@ -517,7 +549,9 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       if (!op_path.count(pre_op)) {
         continue;
       }
-      if ((op_path[pre_op].loop_ranges.size() != 0) &&
+
+      if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
+           cinn::hlir::framework::kBroadcast) &&
           (cluster_node.loop_ranges != op_path[pre_op].loop_ranges)) {
         // can not merge for now
         first_stage_output.push_back(op_path[pre_op]);
@@ -535,9 +569,22 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
         }
       }
 
+      if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
+          cinn::hlir::framework::kBroadcast) {
+        for (auto op : op_list) {
+          // std::cerr << "add align info " << op->name() << "\t"
+          //           << sch_node.DebugStr() << std::endl;
+          cluster_node.alignment_schedule_info[op].push_back(sch_node);
+        }
+      }
+
       cluster_node.alignment_schedule_info.insert(
           op_path[pre_op].alignment_schedule_info.begin(),
           op_path[pre_op].alignment_schedule_info.end());
+
+      if (op_path[pre_op].group_kind > cluster_node.group_kind) {
+        cluster_node.group_kind = op_path[pre_op].group_kind;
+      }
 
       // cluster_node.loop_ranges = op_path[pre_op].loop_ranges;
     }
@@ -580,6 +627,10 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       for (auto pre_id : pre_ids) {
         // get pre id
 
+        if (fused_index.count(pre_id)) {
+          continue;
+        }
+
         // can new_node merge with pre_id node
         auto& pre_node = second_stage_output[pre_id];
 
@@ -594,6 +645,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
           new_node.MergeNode(pre_node, sch_node);
 
           fused_index.insert(pre_id);
+          fused = true;
         } else {
           temp_out.insert(temp_out.begin(), pre_node);
         }
@@ -601,6 +653,12 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       temp_out.insert(temp_out.end(), new_node);
     }
 
+    if (temp_out.size() >= second_stage_output.size()) {
+      // std::cerr << "temp out size " << temp_out.size() << std::endl;
+      // throw std::runtime_error("fuse more node here");
+
+      break;
+    }
     second_stage_output.swap(temp_out);
     if (fused == false) {
       break;
@@ -707,7 +765,7 @@ class CinnGroupClusterPass : public pir::Pass {
           std::vector<pir::Operation*> tmp_ops(node.ops.begin(),
                                                node.ops.end());
 
-          std::cerr << "node info \n" << node.DebugStr() << std::endl;
+          // std::cerr << "node info \n" << node.DebugStr() << std::endl;
           // for( auto& it1 : node.alignment_schedule_info)
           // {
           //   std::cerr << "align info " << it1.first->name() << "\n";

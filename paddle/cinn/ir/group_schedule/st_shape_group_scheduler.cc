@@ -213,8 +213,8 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
 }
 
 void StaticShapeGroupScheduler::LoopReorderAligment() {
-  std::cerr << "loop reorder func body: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "loop reorder func body: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
   std::vector<std::string> node_list;
 
   auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
@@ -228,15 +228,14 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
     // skip reduce init block
     if (group_tile_info_->broadcast_info.count(name)) {
       // broadcast loops
-      // std::cerr << "broadcast axes \n";
-      // for (auto& axis :
-      // group_tile_info_->broadcast_info[name].broadcast_axes) {
-      //   std::cerr << "axis" << axis << std::endl;
-      // }
-      // std::cerr << "out shape \n";
-      // for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
-      //   std::cerr << "dim " << s << std::endl;
-      // }
+      std::cerr << "broadcast axes \n";
+      for (auto& axis : group_tile_info_->broadcast_info[name].broadcast_axes) {
+        std::cerr << "axis" << axis << std::endl;
+      }
+      std::cerr << "out shape \n";
+      for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
+        std::cerr << "dim " << s << std::endl;
+      }
 
       ir_sch_->Broadcast(name,
                          group_tile_info_->broadcast_info[name].broadcast_axes,
@@ -393,8 +392,9 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
-            << std::endl;
+  // std::cerr << "after flatten fuse: " <<
+  // ir_sch_->GetModule().GetExprs().front()
+  //           << std::endl;
 
   if (group_tile_info_->flatten_inner_num > 1) {
     // split flatten inner here
@@ -412,8 +412,8 @@ void StaticShapeGroupScheduler::Tiling() {
 
     reduce_current_axis += 1;
   }
-  std::cerr << "split flatten inner: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  // std::cerr << "split flatten inner: "
+  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // std::cerr << "current reduce " << reduce_current_axis << std::endl;
   // split reduce inner here
@@ -448,8 +448,9 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  std::cerr << "after split reduce: " << ir_sch_->GetModule().GetExprs().front()
-            << std::endl;
+  // std::cerr << "after split reduce: " <<
+  // ir_sch_->GetModule().GetExprs().front()
+  //           << std::endl;
 
   // re-order flatten inner num with last dim
   if (group_tile_info_->flatten_inner_num > 1 &&
