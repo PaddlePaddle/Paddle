@@ -24,6 +24,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
+from paddle.pir import Value
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -2154,49 +2155,50 @@ def mm(input, mat2, name=None):
 
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.matmul(input, mat2, False, False)
-    else:
 
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val, name, ['float16', 'float32', 'float64'], 'mm'
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'mm'
+            )
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if x_shape[-1] != y_shape[-2]:
+            if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
+                raise ValueError(
+                    "After performing an optional transpose, Input X's width should be "
+                    "equal to Y's width for multiplication "
+                    "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
+                        x_shape, y_shape
+                    )
                 )
-            x_shape = list(x.shape)
-            y_shape = list(y.shape)
-            if len(x_shape) == 1:
-                x_shape = [1] + x_shape
-            if len(y_shape) == 1:
-                y_shape = y_shape + [1]
 
-            # check the inner 2 dimensions
-            if x_shape[-1] != y_shape[-2]:
-                if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
+        if len(y_shape) > 2 and len(x_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
+                if dim_x != y_shape[i]:
                     raise ValueError(
-                        "After performing an optional transpose, Input X's width should be "
-                        "equal to Y's width for multiplication "
-                        "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
-                            x_shape, y_shape
-                        )
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
                     )
 
-            if len(y_shape) > 2 and len(x_shape) > 2:
-                for i, dim_x in enumerate(x_shape[:-2]):
-                    # don't check neg shape
-                    if dim_x < 0 or y_shape[i] < 0:
-                        continue
-                    if dim_x != y_shape[i]:
-                        raise ValueError(
-                            "When the matrix is larger than 2 dimensions, the higher "
-                            "dimensional values of the two matrices need to be equal. "
-                            "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                            "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
-                        )
-
-        __check_input(input, mat2)
-
+    __check_input(input, mat2)
+    if in_pir_mode():
+        return _C_ops.matmul(input, mat2, False, False)
+    else:
         helper = LayerHelper('mm', **locals())
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
         helper.append_op(
@@ -2514,33 +2516,33 @@ def inner(x, y, name=None):
         nx = x.reshape((-1, xshape[-1]))
         ny = y.reshape((-1, yshape[-1]))
 
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'inner'
+                )
+            x_shape = list(xshape)
+            y_shape = list(yshape)
+
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-1]:
+                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                    raise ValueError(
+                        "After performing an optional transpose, Input X's last dim should be "
+                        "equal to Y's last dim for multiplication "
+                        "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
+                            x_shape, y_shape
+                        )
+                    )
+
+        __check_input(nx, ny)
+
         if in_dynamic_or_pir_mode():
             return _C_ops.matmul(
                 nx, paddle.transpose(ny, [1, 0]), False, False
             ).reshape(dstshape)
         else:
-
-            def __check_input(x, y):
-                var_names = {'x': x, 'y': y}
-                for name, val in var_names.items():
-                    check_variable_and_dtype(
-                        val, name, ['float16', 'float32', 'float64'], 'inner'
-                    )
-                x_shape = list(xshape)
-                y_shape = list(yshape)
-
-                # check the inner 2 dimensions
-                if x_shape[-1] != y_shape[-1]:
-                    if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
-                        raise ValueError(
-                            "After performing an optional transpose, Input X's last dim should be "
-                            "equal to Y's last dim for multiplication "
-                            "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
-                                x_shape, y_shape
-                            )
-                        )
-
-            __check_input(nx, ny)
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
             helper.append_op(
@@ -2584,22 +2586,23 @@ def outer(x, y, name=None):
     nx = x.reshape((-1, 1))
     ny = y.reshape((1, -1))
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.matmul(nx, ny, False, False)
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(
+                val,
+                name,
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'outer',
+            )
+
+    __check_input(nx, ny)
+    if in_pir_mode():
         return _C_ops.matmul(nx, ny, False, False)
     else:
-
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val,
-                    name,
-                    ['float16', 'float32', 'float64', 'int32', 'int64'],
-                    'outer',
-                )
-
-        __check_input(nx, ny)
-
         helper = LayerHelper('outer', **locals())
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)
         helper.append_op(
@@ -5126,11 +5129,15 @@ def gammaincc(x, y, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1.        , 0.15729916, 0.00000774, 0.        , 0.        ])
     """
-    if not paddle.all(paddle.greater_equal(x, paddle.zeros_like(x))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(x, paddle.zeros_like(x))
+    ):
         raise ValueError(
             "The input argument x must be greater than or equal to 0."
         )
-    if not paddle.all(paddle.greater_equal(y, paddle.zeros_like(y))):
+    if not isinstance(x, Value) and not paddle.all(
+        paddle.greater_equal(y, paddle.zeros_like(y))
+    ):
         raise ValueError(
             "The input argument y must be greater than or equal to 0."
         )
@@ -6545,7 +6552,12 @@ def frexp(x, name=None):
             Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 2., 3.]])
     """
-    if x.dtype not in [paddle.float32, paddle.float64]:
+    if x.dtype not in [
+        paddle.float32,
+        paddle.float64,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+    ]:
         raise TypeError(
             f"The data type of input must be one of ['float32', 'float64'], but got {x.dtype}"
         )
