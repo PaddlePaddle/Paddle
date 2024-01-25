@@ -519,8 +519,8 @@ def monkey_patch_value():
 
     def append(self, var):
         """
-        **Notes**:
-           **The type of Value must be Tensor Array.
+        Notes:
+           The type of Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
