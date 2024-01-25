@@ -218,18 +218,17 @@ class ReshapeOpPattern
     auto out_shape_attr =
         full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
 
-      std::vector<int> vec_out_shape;
-      if (out_shape_attr.size() > 0) {
-        PADDLE_ENFORCE_EQ(
-            out_shape_attr[0].isa<::pir::Int64Attribute>(),
-            true,
-            phi::errors::Unimplemented(
-                "the 0th elementwise MUST be ir::Int64Attribute"));
-        for (size_t i = 0; i < out_shape_attr.size(); ++i) {
-          vec_out_shape.push_back(
-              out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
-        }
+    std::vector<int> vec_out_shape;
+    if (out_shape_attr.size() > 0) {
+      PADDLE_ENFORCE_EQ(out_shape_attr[0].isa<::pir::Int64Attribute>(),
+                        true,
+                        phi::errors::Unimplemented(
+                            "the 0th elementwise MUST be ir::Int64Attribute"));
+      for (size_t i = 0; i < out_shape_attr.size(); ++i) {
+        vec_out_shape.push_back(
+            out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
+    }
 
     auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
         op->operand_source(0), vec_out_shape);
@@ -281,8 +280,8 @@ class Pool2dOpPattern
     attrs.erase("paddings");
     attrs.erase("pooling_type");
 
-    auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
-        op->operand_source(0), attrs);
+    auto cinn_reshape =
+        rewriter.Build<cinn::dialect::Pool2dOp>(op->operand_source(0), attrs);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
     rewriter.EraseOp(op);
   }
@@ -365,13 +364,13 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     auto decrease_axis = cinn::dialect::ir::GetVectorAttr(op, "decrease_axis");
     auto infer_flags = cinn::dialect::ir::GetVectorAttr(op, "infer_flags");
 
-    auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
-        op->operand_source(0),
-        axes,
-        start_vec,
-        end_vec,
-        infer_flags,
-        decrease_axis);
+    auto cinn_slice =
+        rewriter.Build<cinn::dialect::SliceOp>(op->operand_source(0),
+                                               axes,
+                                               start_vec,
+                                               end_vec,
+                                               infer_flags,
+                                               decrease_axis);
     // NOTE(Aurelius84): In SliceRawInferMeta, it not always share_lod, so
     // we need to update it maually.
     cinn_slice.result(0).set_type(op.result(0).type());
