@@ -513,18 +513,24 @@ class TestMathOpPatchesPir(unittest.TestCase):
 
                 sliced_item_1 = array[0]
                 poped_item_3 = array.pop()
-                (sliced_item_1_out, poped_item_3_out) = exe.run(
+                final_length = paddle.tensor.array_length(array)
+                (
+                    sliced_item_1_out,
+                    poped_item_3_out,
+                    final_length_out,
+                ) = exe.run(
                     main_program,
                     feed={
                         "item_1": item_1_np,
                         "item_2": item_2_np,
                         "item_3": item_3_np,
                     },
-                    fetch_list=[sliced_item_1, poped_item_3],
+                    fetch_list=[sliced_item_1, poped_item_3, final_length],
                 )
 
-                np.testing.assert_array_equal(item_1_np, sliced_item_1_out)
-                np.testing.assert_array_equal(item_3_np, poped_item_3_out)
+                np.testing.assert_array_equal(sliced_item_1_out, item_1_np)
+                np.testing.assert_array_equal(poped_item_3_out, item_3_np)
+                np.testing.assert_array_equal(final_length_out.item(), 2)
 
                 with self.assertRaises(TypeError):
                     item_1.append(array)
