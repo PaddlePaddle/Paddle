@@ -156,6 +156,7 @@ __global__ void masked_multihead_attention_kernel(
                           ? params.timestep
                           : params.sequence_lengths[bi];
   constexpr int steps_per_block = 128;
+  //int steps_per_block = (act_time_step + 1) / gridDim.x;
   // 最后的单独的那个q*k*v让split_index的最后的那个cuda thread block来计算！
   const int split_index = blockIdx.x;
   const int start_seq = split_index * steps_per_block;
@@ -226,7 +227,7 @@ __global__ void masked_multihead_attention_kernel(
     // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
-    if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
+    if ((Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) && is_last_block) {
       load_func.template load<Qk_vec>(k,
                                       params.num_head * Dh + qk_offset -
                                           hi * Dh +
@@ -353,27 +354,29 @@ __global__ void masked_multihead_attention_kernel(
 
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
-    int co = tid / QK_VECS_IN_16B;
-    int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
-    int offset = kv_bhi * params.max_seq_length * Dh +
-                 co * params.max_seq_length * QK_ELTS_IN_16B +
-                 act_time_step * QK_ELTS_IN_16B + ci;
-    if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
-      *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
-    }
+    if (is_last_block) {
+      int co = tid / QK_VECS_IN_16B;
+      int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
+      int offset = kv_bhi * params.max_seq_length * Dh +
+                  co * params.max_seq_length * QK_ELTS_IN_16B +
+                  act_time_step * QK_ELTS_IN_16B + ci;
+      if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
+        *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
+      }
 
-    qk = dot<Qk_vec, Qk_vec>(q, k);
-    // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
-    if (QK_VECS_PER_WARP <= WARP_SIZE) {
-#pragma unroll
-      for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
-        qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+      qk = dot<Qk_vec, Qk_vec>(q, k);
+      // QK_VECS_PER_WARP is <= WARP_SIZE, reduce it within a warp!
+      if (QK_VECS_PER_WARP <= WARP_SIZE) {
+  #pragma unroll
+        for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
+          qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
+        }
       }
     }
   }
 
   // when QK_VECS_PER_WARP > WARP_SIZE, we need to reduce the qk in smem!
-  if (QK_VECS_PER_WARP > WARP_SIZE) {
+  if (QK_VECS_PER_WARP > WARP_SIZE && is_last_block) {
     constexpr int WARPS_PER_RED =
         (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
@@ -678,8 +681,6 @@ inline size_t smem_size_in_bytes(
   }
 #endif  // NOLINT
   size_t softmax_sz = qk_sz + logits_sz;
-  
-  printf("softmax_sz %d\n", softmax_sz);
 
   int rows_per_red = threads_per_block / threads_per_value;
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
@@ -1068,8 +1069,8 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.rotary_emb_dims = rotary_emb_dims;
 
 
-  std::cout << "smcount: " << (float)(dev_ctx.GetSMCount()) / (params.batch_size * params.num_head) << std::endl;
-  
+  // std::cout << "smcount: " << (float)(dev_ctx.GetSMCount()) / (params.batch_size * params.num_head) << std::endl;
+
   params.split_seq = timestep / 128 + 1;
   int split_seq = params.split_seq;
   phi::DenseTensor qk_sum_max_split_seq;
