@@ -67,6 +67,9 @@ class Conv2dBnFusePattern
     // --- deal with filter ---
     auto bn_variance_shape = pir::GetShapeFromValue(bn_variance);
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
+    if (epsilon < 0.0f || epsilon > 0.001f) {
+      return false;
+    }
     paddle::dialect::FullOp full_op =
         rewriter.Build<paddle::dialect::FullOp>(bn_variance_shape, epsilon);
     paddle::dialect::AddOp add_op =
