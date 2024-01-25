@@ -3755,7 +3755,7 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
 }
 
 // This logic is copied from
-// `paddle/fluid/operators/slice_op.cc/Slcieop::InferShape`
+// `paddle/fluid/operators/slice_op.cc/Sliceop::InferShape`
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,
                          const IntArray& ends,
@@ -5460,6 +5460,18 @@ void LrnInferMeta(const MetaTensor& x,
   mid_out->set_dims(x.dims());
   mid_out->set_layout(x.layout());
   mid_out->share_lod(x);
+}
+
+void ArrayPopInferMeta(const MetaTensor& x,
+                       int index,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  // TODO(dev): Support get a tensor dims from TensorArray.
+  // out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

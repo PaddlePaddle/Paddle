@@ -225,5 +225,17 @@ pir::Value assign(const pir::Value& x) {
   }
 }
 
+pir::Value array_pop(pir::Value input, int index) {
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::ArrayPopOp array_pop_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayPopOp>(
+            input, index);
+    return array_pop_op.result(0);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "pop only supports DenseTensorArrayType."));
+  }
+}
+
 }  // namespace dialect
 }  // namespace paddle
