@@ -22,6 +22,10 @@ import paddle
 paddle.enable_static()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_mkldnn(),
+    "Test case only for OneDNN pass.",
+)
 class TestConv2dAddFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True

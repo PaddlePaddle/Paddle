@@ -361,6 +361,9 @@ void OneDNNPhiKernelInstruction::Run() {
     if (input == nullptr) {
       continue;
     }
+    if (!input->initialized()) {
+      continue;
+    }
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
 
