@@ -12,10 +12,10 @@ set(rev_pd_op_path
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops_backward.parsed.yaml
 )
 set(fused_op_path
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
 )
 set(fused_rev_op_path
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
