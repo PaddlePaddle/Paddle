@@ -164,7 +164,7 @@ PassType PassContorller::GetPassStatus(std::string pass_runtime_status,
 }
 
 bool PaddlePassContorller::LoadDefaultConfig() {
-  LOG(INFO) << "[PaddlePassController]Load default configuration ！";
+  LOG(INFO) << "[PaddlePassController]Load default configuration !";
   bool succeed = true;
   try {
     ctrl_passes_.assign({"preln_residual_bias_fuse_pass",
