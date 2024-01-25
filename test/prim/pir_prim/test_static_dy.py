@@ -23,11 +23,55 @@ from paddle.framework import core
 paddle.enable_static()
 
 
+class LlamaRMSNorm(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.hidden_size = 4096
+        self.weight = paddle.create_parameter(
+            shape=[self.hidden_size],
+            dtype=paddle.get_default_dtype(),
+            default_initializer=paddle.nn.initializer.Constant(1.0),
+        )
+        self.variance_epsilon = 1e-6
+
+    def forward(self, hidden_states):
+        # 1. variance = hidden_states.pow(2).mean(-1, keepdim=True)
+
+        axis_rst = 2
+        # 1.1 decomp pow -> elementwise_pow
+        pow_tensor = paddle.full([1], axis_rst, hidden_states.dtype)
+        pow_rst = paddle.pow(hidden_states, pow_tensor)
+
+        # 1.2 decomp mean -> sum & div
+        sum_rst = paddle.sum(pow_rst, [axis_rst], keepdim=True)
+        shape_rst = paddle.shape(sum_rst)
+        div_by = paddle.full(shape_rst, hidden_states.shape[axis_rst])
+        variance = paddle.divide(sum_rst, div_by)
+
+        # 2. paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
+
+        # 2.1 decomp variance + self.variance_epsilon -> full + scale
+        scale_tensor = paddle.full([1], 1.0)
+        scale_rst = paddle.scale(variance, scale_tensor, self.variance_epsilon)
+
+        # 2.2 decomp rsqrt -> pow(-0.5)
+        rsqrt_tensor = paddle.full([1], -0.5)
+        rsqrt_rst = paddle.pow(scale_rst, rsqrt_tensor)
+
+        hidden_states = rsqrt_rst * hidden_states
+
+        # hidden_states = (
+        #     paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
+        # )
+
+        return hidden_states * self.weight
+
+
 class TestPrimMode(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [2, 1024, 1024]
-        self.shape_y = [2, 1024, 1024]
+        self.shape_y = [2, 1024, 1]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
 
@@ -40,22 +84,19 @@ class TestPrimMode(unittest.TestCase):
             y = paddle.static.data('y', self.shape_y, dtype='float32')
             x.stop_gradient = False
             # x1 = paddle.nn.functional.relu(x)
-            x1 = paddle.nn.functional.softmax(x)
-            y.stop_gradient = False
-            z = paddle.divide(x1, y)
-            res = paddle.nn.functional.gelu(z)
+            # x1 = paddle.prod(x[:-1])
+            # y.stop_gradient = False
+            print(x.shape, y.shape)
+            z = paddle.maximum(x, y)
+            # res = paddle.nn.functional.gelu(z)
 
-            pm = paddle.base.libpaddle.pir.PassManager()
-            paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-                pm, main_program
-            )
-            pm.run(main_program)
+            # pm = paddle.base.libpaddle.pir.PassManager()
+            # paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main_program)
+            # pm.run(main_program)
 
-            [res2] = decomp.decompose(main_program, [res])
-            paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-                pm, main_program
-            )
-            pm.run(main_program)
+            [res2] = decomp.decompose(main_program, [z])
+            # paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main_program)
+            # pm.run(main_program)
             # gradients = grad(res2, (x, y))
             exe = paddle.static.Executor()
             outs = exe.run(
