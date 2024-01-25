@@ -26,8 +26,15 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::string& algo,
                           const int32_t arch,
+                          const int32_t group_size,
                           DenseTensor* out,
                           DenseTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      ((group_size == -1) || (group_size == 64) || (group_size == 128)),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, group_size only support -1(per-channel), 64 or 128."));
+
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
   dev_ctx.template Alloc<T>(scale);

@@ -137,7 +137,7 @@ class TrtConvertPadTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller1,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we need to add support pad not only inplement on h or w, such as paddings = [0, 0, 1, 1, 1, 1, 1, 1]",
+            "NOT Implemented: we need to add support pad not only implement on h or w, such as paddings = [0, 0, 1, 1, 1, 1, 1, 1]",
         )
 
     def test(self):

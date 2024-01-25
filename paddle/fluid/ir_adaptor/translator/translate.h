@@ -22,7 +22,7 @@
 
 namespace paddle {
 
-std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
+TEST_API std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
     const ::paddle::framework::ProgramDesc& legacy_program);
 
 }  // namespace paddle

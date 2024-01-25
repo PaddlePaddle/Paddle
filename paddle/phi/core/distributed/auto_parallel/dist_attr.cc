@@ -19,6 +19,7 @@ limitations under the License. */
 #include <iterator>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi {
 namespace distributed {
@@ -308,25 +309,24 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
   }
 }
 
-TensorDistAttrProto TensorDistAttr::to_proto() const {
-  TensorDistAttrProto proto;
-  proto.mutable_process_mesh()->CopyFrom(process_mesh_.to_proto());
+void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
+  proto->mutable_process_mesh()->CopyFrom(
+      phi::distributed::to_proto(process_mesh_));
   for (const auto& i : dims_mapping_) {
-    proto.add_dims_mapping(i);
+    proto->add_dims_mapping(i);
   }
-  proto.set_batch_dim(batch_dim_);
-  proto.set_chunk_id(chunk_id_);
+  proto->set_batch_dim(batch_dim_);
+  proto->set_chunk_id(chunk_id_);
   for (const auto& i : dynamic_dims_) {
-    proto.add_dynamic_dims(i);
+    proto->add_dynamic_dims(i);
   }
-  return proto;
 }
 
 std::string TensorDistAttr::serialize_to_string() {
   std::string data;
-  auto proto = to_proto();
+  auto proto = phi::distributed::to_proto(*this);
   proto.SerializeToString(&data);
-  PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
+  PADDLE_ENFORCE_EQ(phi::distributed::to_proto(*this).SerializeToString(&data),
                     true,
                     errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));

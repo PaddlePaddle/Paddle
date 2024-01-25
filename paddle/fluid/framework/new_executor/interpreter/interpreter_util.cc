@@ -635,7 +635,7 @@ void BuildOpFuncList(const platform::Place& place,
         hook(op, local_scope);
       }
 
-      if (op->Type() == "while") {
+      if (op->Type() == "while" || op->Type() == "conditional_block") {
         op->SetInputHooks(input_hookfuncs);
         op->SetOutputHooks(output_hookfuncs);
         auto runtime_attrs = op->RuntimeAttrs();
@@ -1300,7 +1300,7 @@ std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.InputNames();
   }
   return ret;
@@ -1313,7 +1313,7 @@ std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.OutputNames();
   }
   return ret;

@@ -5,6 +5,15 @@ if(NOT (WITH_CINN AND NOT CINN_ONLY))
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
 endif()
 
+if(NOT WITH_MKLDNN)
+  list(
+    REMOVE_ITEM
+    standalone_executor_srcs
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_legacy_instruction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_instruction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
+endif()
+
 set(standalone_executor_deps
     pir
     program_translator

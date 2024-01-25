@@ -261,11 +261,36 @@ def infer_meta_for_layer(layer, *args, **kwargs):
     ) = layer.forward.get_concrete_program(*args_, **kwargs_)
 
     out = partial_program_layer._restore_out(
-        paddle.utils.flatten(
-            convert_variable_to_meta_info(concrete_program.outputs)
-        )
+        [
+            x
+            for x in paddle.utils.flatten(
+                convert_variable_to_meta_info(concrete_program.outputs)
+            )
+            if isinstance(x, MetaInfo)
+        ]
     )
     layer.forward.rollback()
+    return out
+
+
+def ast_infer_meta(static_function, *args, **kwargs):
+    args_, kwargs_ = convert_meta_to_input_spec((args, kwargs))
+
+    (
+        concrete_program,
+        partial_program_layer,
+    ) = static_function.get_concrete_program(*args_, **kwargs_)
+
+    out = partial_program_layer._restore_out(
+        [
+            x
+            for x in paddle.utils.flatten(
+                convert_variable_to_meta_info(concrete_program.outputs)
+            )
+            if isinstance(x, MetaInfo)
+        ]
+    )
+
     return out
 
 

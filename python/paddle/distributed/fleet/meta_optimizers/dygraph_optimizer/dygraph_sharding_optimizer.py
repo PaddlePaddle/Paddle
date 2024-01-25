@@ -56,10 +56,10 @@ class DygraphShardingOptimizer:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
     def __init__(self, optimizer, hcg):
@@ -73,9 +73,9 @@ class DygraphShardingOptimizer:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
-        # the self._parameter_list holds the whole model paramters
+        # the self._parameter_list holds the whole model parameters
         self._parameter_list = optimizer._parameter_list
         self._origin_parameter_list = self._parameter_list
         self._inner_opt = optimizer
@@ -161,12 +161,12 @@ class DygraphShardingOptimizer:
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
             # Note: during the tensor fusion for parameters, the allocator will apply for
-            # some extra GPU memory for the fused big paramters. This extra GPU memory will
+            # some extra GPU memory for the fused big parameters. This extra GPU memory will
             # be useless at once the fusion has done. But the Paddle's allocator won't
             # release those memory, it will hold that part in the memory poll. So after
             # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
             # won't change. To avoid failure on some other applications (such as some nvtx
-            # operations), here we manulay let the allocator release the cached memory.
+            # operations), here we manually let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
 
     def clear_grad(self, set_to_zero=True):
@@ -224,7 +224,7 @@ class DygraphShardingOptimizer:
         """
         # TODO(JZ-LIANG) support multiple partition methods
         # method1: greedy even but unorder
-        # method2: roughly even with oreder
+        # method2: roughly even with order
 
         mapping = {}
         for rank_ in range(self._sharding_world_size):
@@ -478,10 +478,10 @@ class DygraphShardingOptimizerV2:
     """
 
     # TODO (JZ-LIANG)
-    # TO support following featrues in future:
+    # TO support following features in future:
     # 1. fused update parameter sync
     # 2. parameters_groups
-    # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
+    # 3. dynamic trainable params, which is the case between pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
     # 5. do not shard small params
 
@@ -500,7 +500,7 @@ class DygraphShardingOptimizerV2:
             optimizer._apply_optimize
         ):
             raise ValueError(
-                "the optimzier object should have _apply_optimize function"
+                "the optimizer object should have _apply_optimize function"
             )
 
         self._inner_opt = optimizer
@@ -535,9 +535,7 @@ class DygraphShardingOptimizerV2:
 
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
-
-        # TODO(liuzhenhai):support it latter
-        assert not self.comm_overlap, "not supported yet"
+        self.pp_release_grads = pp_config.release_gradients
 
         self._build_comm_buffers(acc_steps)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
@@ -562,7 +560,7 @@ class DygraphShardingOptimizerV2:
         # Determine the use of pipeline parallelism
         self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
 
-        # Ensure pipelie parallel and comm_overlap are not used together
+        # Ensure pipeline parallel and comm_overlap are not used together
         if self._use_pipeline_parallel:
             assert (
                 not self.comm_overlap
@@ -604,6 +602,7 @@ class DygraphShardingOptimizerV2:
                 comm_group,
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
+                release_grads=self.pp_release_grads,
             )
             self._comm_buffer_list.append(buffer)
 
@@ -611,7 +610,8 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        assert set_to_zero, "should not erase grad buffer"
+        if not self.pp_release_grads:
+            assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
             if hasattr(p, "main_grad") and p.main_grad is not None:
@@ -634,6 +634,10 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
+        if self.pp_release_grads and not self.pp_overlap:
+            for comm_buffer in self._comm_buffer_list:
+                comm_buffer._clear_grad_storage()
+
     def filter_parameters(self, parameter_list, hcg):
         parameter_list = [
             self._slice_params[param.name] for param in parameter_list
@@ -648,6 +652,10 @@ class DygraphShardingOptimizerV2:
         logger.debug("sharding start gradients sync")
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
+                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                    for param in comm_buffer.params:
+                        comm_buffer._copy_grad_to_buffer(param)
+
                 if not self.comm_overlap:
                     comm_buffer._comm_grads()
 
@@ -713,6 +721,9 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
+                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                    assert not slice_param.main_grad._is_initialized()
+                    del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)
 
         assert param_num == len(self._parameter_list)

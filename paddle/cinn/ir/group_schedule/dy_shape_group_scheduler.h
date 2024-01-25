@@ -37,14 +37,27 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
 
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
+  struct BucketContext {
+    SymbolicPredicate predicate;
+    std::unique_ptr<ir::IRSchedule> ir_sch;
+    std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph;
+    ScheduleContext schedule_context;
+  };
+
  private:
   void Init();
 
-  void ApplyTactics();
+  void InitBuckets();
+
+  void ApplyTactics(BucketContext* bucket_context);
+
+  ir::ScheduleBlockNode* FindGlobalMasterNode(
+      const std::unique_ptr<ir::ScheduleBlockGraph>& schedule_block_graph);
+
+  IterativeSpaceInfo ConstructIterSpaceInfo(ScheduleBlockNode* node);
 
  private:
-  std::vector<std::pair<SymbolicPredicate, std::unique_ptr<ir::IRSchedule>>>
-      ir_schs_;
+  std::vector<BucketContext> bucket_contexts_;
   std::vector<std::unique_ptr<ScheduleTactic>> tactics_;
 };
 

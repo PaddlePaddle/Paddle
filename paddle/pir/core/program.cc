@@ -27,6 +27,17 @@ Program::~Program() {
   }
 }
 
+std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  auto new_program = std::make_shared<Program>(ctx);
+  auto clone_options = CloneOptions::All();
+  for (const auto& op : *block()) {
+    auto* new_op = op.Clone(ir_mapping, clone_options);
+    new_program->block()->push_back(new_op);
+  }
+  return new_program;
+}
+
 Parameter* Program::GetParameter(const std::string& name) const {
   if (parameters_.count(name) != 0) {
     return parameters_.at(name).get();

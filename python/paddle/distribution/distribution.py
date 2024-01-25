@@ -150,7 +150,7 @@ class Distribution:
         is_variable = False
         is_number = False
         for arg in args:
-            if isinstance(arg, Variable):
+            if isinstance(arg, (Variable, paddle.pir.Value)):
                 is_variable = True
             else:
                 is_number = True
@@ -178,21 +178,14 @@ class Distribution:
         for arg in args:
             if not isinstance(
                 arg,
-                (
-                    float,
-                    list,
-                    tuple,
-                    np.ndarray,
-                    Variable,
-                    paddle.base.libpaddle.pir.Value,
-                ),
+                (float, list, tuple, np.ndarray, Variable, paddle.pir.Value),
             ):
                 raise TypeError(
                     "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)
                     )
                 )
-            if isinstance(arg, paddle.base.libpaddle.pir.Value):
+            if isinstance(arg, paddle.pir.Value):
                 # pir.Value does not need to be converted to numpy.ndarray, so we skip here
                 numpy_args.append(arg)
                 continue
@@ -212,7 +205,7 @@ class Distribution:
             numpy_args.append(arg_np)
 
         for arg in numpy_args:
-            if isinstance(arg, paddle.base.libpaddle.pir.Value):
+            if isinstance(arg, paddle.pir.Value):
                 # pir.Value does not need to be converted to numpy.ndarray, so we skip here
                 variable_args.append(arg)
                 continue
@@ -221,7 +214,7 @@ class Distribution:
             if in_pir_mode():
                 arg_variable = paddle.zeros(arg_broadcasted.shape)
             else:
-                arg_variable = paddle.tensor.create_tensor(dtype=tmp.dtype)
+                arg_variable = paddle.tensor.create_tensor(dtype=dtype)
             paddle.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 

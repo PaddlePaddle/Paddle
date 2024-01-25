@@ -16,27 +16,11 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/common/dim.h"
+#include "paddle/common/hash_funcs.h"
 #include "paddle/common/layout.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/type_base.h"
 #include "paddle/pir/core/utils.h"
-
-namespace std {
-///
-/// \brief Enable hashing std::vector<T> instances.
-///
-template <typename T>
-struct hash<std::vector<T>> {
-  std::size_t operator()(const std::vector<T>& dim) const {
-    std::size_t seed = 0;
-    for (size_t i = 0; i < dim.size(); ++i) {
-      seed ^= std::hash<T>()(dim[i]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-    return seed;
-  }
-};
-
-}  // namespace std
 
 namespace pir {
 ///

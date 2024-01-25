@@ -30,7 +30,6 @@ from .convert_operators import (  # noqa: F401
     unpack_by_structure as Unpack,
 )
 from .program_translator import convert_to_static  # noqa: F401
-from .static_analysis import NodeVarType, StaticAnalysisVisitor  # noqa: F401
 from .transformers import DygraphToStaticAst  # noqa: F401
 from .utils import UndefinedVar, ast_to_source_code, saw  # noqa: F401
 from .variable_trans_func import (  # noqa: F401

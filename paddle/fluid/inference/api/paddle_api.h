@@ -295,8 +295,9 @@ class PD_INFER_DECL PaddlePredictor {
   /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(false)
   /// and then use the `GetInputTensor` and `GetOutputTensor`
   /// to directly write or read the input/output tensors.
+  /// \param switch_stream Whether the stream is switched.
   /// \return Whether the run is successful
-  virtual bool ZeroCopyRun() { return false; }
+  virtual bool ZeroCopyRun(bool switch_stream = false) { return false; }
 
   ///
   /// \brief Clear the intermediate tensors of the predictor

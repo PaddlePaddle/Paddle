@@ -299,7 +299,7 @@ class TestSqueezeAPI(unittest.TestCase):
                 )
                 self.squeeze(x2, axis=2.1)
 
-        self.assertRaises(ValueError, test_axes_type)
+        self.assertRaises(TypeError, test_axes_type)
 
 
 class TestSqueezeInplaceAPI(TestSqueezeAPI):

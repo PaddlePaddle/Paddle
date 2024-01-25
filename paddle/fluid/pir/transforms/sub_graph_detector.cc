@@ -50,7 +50,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       if (!operand || !(operand.source())) {
         continue;
       }
-      auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
+      auto* defined_op = operand.source().defining_op();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
       } else {
@@ -76,7 +76,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       if (!operand || !(operand.source())) {
         continue;
       }
-      auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
+      auto* defined_op = operand.source().defining_op();
       --pending_count[defined_op];
       if (pending_count[defined_op] == 0) {
         queue.push(defined_op);
@@ -103,7 +103,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
     if (!producers.count(source_op)) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
@@ -129,7 +129,7 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
     producers.insert(source_op);
   }
   return producers;
@@ -496,7 +496,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   }
 
   // step 3: Replace outputs of inner ops
-  std::vector<pir::OpResult> group_outs = new_group_op->results();
+  std::vector<pir::Value> group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
   for (size_t i = 0; i < outputs.size(); ++i) {

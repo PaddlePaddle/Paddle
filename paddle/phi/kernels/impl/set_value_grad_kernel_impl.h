@@ -170,7 +170,7 @@ void SetValueGradImpl(const Context& dev_ctx,
       auto value_grad_dims = value_grad->dims();
       auto fake_value_grad_dims = out_dims;
 
-      // Create an extented shape according to the rules of broadcast.
+      // Create an extended shape according to the rules of broadcast.
       auto value_grad_dims_size = value_grad_dims.size();
 
       int num_decrease = 0;

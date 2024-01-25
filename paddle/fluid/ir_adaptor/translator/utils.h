@@ -43,6 +43,10 @@ bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
 
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNOnlyOp(std::string op_name);
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -59,7 +63,7 @@ pir::Operation* InsertSliceOperationForTarget(
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str);
 
-std::vector<std::string> CheckUnregisteredOperation(
+TEST_API std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
 
 inline DataType VarTypeToDataType(

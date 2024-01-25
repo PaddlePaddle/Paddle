@@ -24,7 +24,7 @@
 namespace cinn {
 namespace ir {
 
-// [block_name, [var_name, for_node]]
+// [block_name, [var, for_node]]
 using VarToForMap =
     std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>;
 using IntSet = common::SingleIntervalIntSet;
@@ -139,6 +139,8 @@ IntSet Evaluate(Expr expr,
       Expr var_max = var_domain.at(var).Max();
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var_min);
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var_max);
+    } else if (var->is_symbolic_constant) {
+      continue;
     } else {
       CHECK(var->lower_bound.defined());
       CHECK(var->upper_bound.defined());
@@ -167,44 +169,56 @@ std::unordered_map<ir::Var, ir::Var> GetFixedVar(
     const ir::For* for_node = var2for.second.As<ir::For>();
     if (type == CudaAxisType::kCudaBlock && for_node->is_gpu_block_binded()) {
       if (for_node->bind_info().offset == 0) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.x.Min(),
-                                            cuda_space.x.Max(),
-                                            CudaIterVarName::kCudaBlockX,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.x.Min(),
+                             cuda_space.x.Max(),
+                             CudaIterVarName::kCudaBlockX,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 1) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.y.Min(),
-                                            cuda_space.y.Max(),
-                                            CudaIterVarName::kCudaBlockY,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.y.Min(),
+                             cuda_space.y.Max(),
+                             CudaIterVarName::kCudaBlockY,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 2) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.z.Min(),
-                                            cuda_space.z.Max(),
-                                            CudaIterVarName::kCudaBlockZ,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.z.Min(),
+                             cuda_space.z.Max(),
+                             CudaIterVarName::kCudaBlockZ,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       }
     } else if (type == CudaAxisType::kCudaThread &&
                for_node->is_gpu_thread_binded()) {
       if (for_node->bind_info().offset == 0) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.x.Min(),
-                                            cuda_space.x.Max(),
-                                            CudaIterVarName::kCudaThreadX,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.x.Min(),
+                             cuda_space.x.Max(),
+                             CudaIterVarName::kCudaThreadX,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 1) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.y.Min(),
-                                            cuda_space.y.Max(),
-                                            CudaIterVarName::kCudaThreadY,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.y.Min(),
+                             cuda_space.y.Max(),
+                             CudaIterVarName::kCudaThreadY,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       } else if (for_node->bind_info().offset == 2) {
-        fix_var_map.insert({var2for.first,
-                            ir::_Var_::Make(cuda_space.z.Min(),
-                                            cuda_space.z.Max(),
-                                            CudaIterVarName::kCudaThreadZ,
-                                            var2for.first->is_reduce_axis)});
+        fix_var_map.insert(
+            {var2for.first,
+             ir::_Var_::Make(cuda_space.z.Min(),
+                             cuda_space.z.Max(),
+                             CudaIterVarName::kCudaThreadZ,
+                             var2for.first->is_reduce_axis,
+                             /* is_symbolic_constant = */ true)});
       }
     }
   }
@@ -337,20 +351,21 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
   return std::nullopt;
 }
 
-ArrangeStorageTactic::ArrangeStorageTactic(
-    const std::unordered_set<std::string>& output_names)
-    : output_names_(output_names) {}
+void ArrangeStorageTactic::Init(ScheduleContext* context) {
+  output_names_ = context->output_names;
+}
 
 void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
   ir::Expr store_block = sch->GetBlock(block_id);
-  ir::Expr root_block = sch->GetRootBlock(store_block);
-  ir::Expr store = *ir::ir_utils::CollectIRNodesWithoutTensor(
-                        store_block,
-                        [&](const ir::Expr* x) { return x->As<ir::Store>(); },
-                        true)
-                        .begin();
+  ir::Tensor store_tensor = analyzer::GetStoreTensorOfSBlock(store_block);
+  // Skip if the store tensor has already been allocated to GPU shared or local
+  // memory.
+  if (store_tensor->buffer.defined() && store_tensor->buffer->is_on_gpu())
+    return;
 
+  ir::Expr root_block = sch->GetRootBlock(store_block);
+  ir::Expr store = analyzer::GetStoreOfSBlock(store_block);
   VarToForMap var2for_map =
       analyzer::CollectVarToForMap({root_block}, sch->GetAllBlocks());
 

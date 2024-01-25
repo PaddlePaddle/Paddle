@@ -19,8 +19,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
-    test_sot_only,
 )
 
 import paddle
@@ -253,7 +251,6 @@ class TestNameVisitor(Dy2StTestBase):
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
-    @test_legacy_and_pt_and_pir
     def test_loop_vars(self):
         for i in range(len(self.loop_funcs)):
             func = self.loop_funcs[i]
@@ -269,7 +266,6 @@ class TestNameVisitor(Dy2StTestBase):
                     self.assertEqual(loop_var_names, self.loop_var_names[i])
                     self.assertEqual(create_var_names, self.create_var_names[i])
 
-    @test_legacy_and_pt_and_pir
     def test_nested_loop_vars(self):
         func = self.nested_for_loop_func
         test_func = inspect.getsource(func)
@@ -338,7 +334,6 @@ class TestTransformWhileLoop(Dy2StTestBase):
         else:
             return ret
 
-    @test_sot_only
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
@@ -412,7 +407,6 @@ class TestTransformForLoop(Dy2StTestBase):
             ret = self.dyfunc(self.len)
         return ret.numpy()
 
-    @test_sot_only
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), rtol=1e-05

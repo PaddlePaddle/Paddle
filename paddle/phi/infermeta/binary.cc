@@ -508,7 +508,7 @@ void ConvInferMeta(const MetaTensor& input,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -550,7 +550,7 @@ void ConvInferMeta(const MetaTensor& input,
         strides[i],
         0,
         phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -561,7 +561,7 @@ void ConvInferMeta(const MetaTensor& input,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv). "
+          "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
@@ -720,7 +720,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -732,7 +732,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -1097,6 +1097,49 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs) {
+  auto table_dims = w.dims();
+
+  PADDLE_ENFORCE_EQ(w.dims().size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Only 2 dimensions of the 'Embedding' is supported."));
+
+  for (auto& id : ids) {
+    PADDLE_ENFORCE_EQ(id->dims().size(),
+                      2,
+                      errors::InvalidArgument(
+                          "The dimension of the 'Ids' tensor must be 2."));
+  }
+
+  // for fluid.embedding
+  for (size_t i = 0; i < ids.size(); ++i) {
+    MetaTensor* output = outputs[i];
+    auto id_dims = ids[i]->dims();
+    if (lookup_table_version == "lookup_table") {
+      output->set_dims(common::make_ddim({id_dims[0], table_dims[1]}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    } else if (lookup_table_version == "lookup_table_v2") {
+      output->set_dims(
+          common::make_ddim({static_cast<int64_t>(id_dims[0]),
+                             static_cast<int64_t>(id_dims[1]),
+                             static_cast<int64_t>(table_dims[1])}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    }
+  }
+}
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -1266,6 +1309,13 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
+}
+
+void BitwiseShiftInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           bool is_arithmetic,
+                           MetaTensor* out) {
   return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
@@ -2607,6 +2657,37 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out) {
+  auto x_dim = x.dims();
+  auto scales_dim = scales.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(x) must be 2, but received %d.", x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(scales_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(scales) must be 1, but received %d.",
+                        scales_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[1],
+      scales_dim[0],
+      phi::errors::InvalidArgument(
+          "The second dim of Input(x) must be equal to the first dim of scales,"
+          "but received %d and %d.",
+          x_dim[2],
+          scales_dim[1]));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x_dim);
+  out->set_layout(x.layout());
+}
+
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>* output_aspect_ratior) {
@@ -2832,10 +2913,25 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void ShuffleBatchInferMeta(const MetaTensor& x,
+                           const MetaTensor& seed,
+                           int startup_seed,
+                           MetaTensor* out,
+                           MetaTensor* shuffle_idx,
+                           MetaTensor* seed_out
+
+) {
+  out->share_dims(x);
+  out->share_lod(x);
+  seed_out->share_dims(seed);
+  seed_out->share_lod(seed);
+  shuffle_idx->set_dims(phi::make_ddim({-1}));
+}
+
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2846,8 +2942,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
@@ -3381,6 +3476,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
                                DataType out_dtype,
+                               const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
                     2UL,
@@ -3388,18 +3484,44 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                         "The x tensor of dequantize op must be 2D, but got[%d]",
                         x.dims().size()));
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
-      1UL,
-      phi::errors::InvalidArgument(
-          "The scale tensor of dequantize op must be 1D, but got[%d]",
-          scale.dims().size()));
-  PADDLE_ENFORCE_EQ(scale.dims()[0],
-                    x.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The scale tensor's shape must be equal to the x "
-                        "tensor's shape, but got [%d] not equal to [%d]",
-                        scale.dims()[0],
-                        x.dims()[0]));
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      true,
+      phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
+
+  auto dim_scale = scale.dims();
+
+  // per-channel dequantization
+  if (group_size == -1) {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        1UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 1D in per-channel mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(dim_scale[0],
+                      x.dims()[0],
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the x "
+                          "tensor's shape, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          x.dims()[0]));
+  } else /* groupwise dequantization */ {
+    PADDLE_ENFORCE_EQ(
+        dim_scale.size(),
+        2UL,
+        phi::errors::InvalidArgument("The scale tensor of dequantize op must "
+                                     "be 2D in group-wise mode, but got[%d]",
+                                     scale.dims().size()));
+    PADDLE_ENFORCE_EQ(
+        dim_scale[0],
+        (x.dims()[1] + (group_size - 1)) / group_size,
+        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
+                                "to (Input(weight).dim[1] + (group_size -1))"
+                                " / group_size"
+                                "But receive %d and %d",
+                                dim_scale[0],
+                                (x.dims()[1] + (group_size - 1)) / group_size));
+  }
   int n = x.dims()[1];
   int k = x.dims()[0];
   out->set_dims(common::make_ddim({n, k}));

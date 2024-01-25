@@ -283,7 +283,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 
-    def _break_graph_in_jump(self, result, instr: Instruction):
+    def _break_graph_when_if(self, result, instr: Instruction):
         """
         Helper method to raise a BreakGraphError when breaking the graph in a jump operation.
 
@@ -292,7 +292,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             instr (Instruction): The jump instruction.
         """
         raise BreakGraphError(
-            "OpcodeInlineExecutor want call _break_graph_in_jump."
+            "OpcodeInlineExecutor want break graph when simulate `if`."
         )
 
     def _create_resume_fn(self, index: int, stack_size: int = 0):

@@ -108,7 +108,7 @@ class GRUOneDNNHandler
 
       // Create memory descriptors
       auto input_md = OneDNNMemDesc(
-          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ntc);
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
       auto weight_x_md =
           OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
@@ -116,7 +116,7 @@ class GRUOneDNNHandler
       auto bias_md = OneDNNMemDesc(
           {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
       auto hidden_md = OneDNNMemDesc(
-          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::ntc);
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::any);
       auto h0_md = OneDNNMemDesc(
           {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ldnc);
 

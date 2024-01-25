@@ -27,7 +27,7 @@ CPP_FILE_TEMPLATE = """
 {op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
-namespace pir {{
+namespace paddle {{
 namespace drr {{
 
 void OperationFactory::Register{dialect}GeneratedOpCreator() {{
@@ -35,14 +35,14 @@ void OperationFactory::Register{dialect}GeneratedOpCreator() {{
 }}
 
 }}  // namespace drr
-}}  // namespace pir
+}}  // namespace paddle
 
 """
 
 NORMAL_FUNCTION_TEMPLATE = """
   RegisterOperationCreator(
       "{op_name}",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
         return rewriter.Build<{namespace}::{op_class_name}>(
@@ -53,7 +53,7 @@ NORMAL_FUNCTION_TEMPLATE = """
 MUTABLE_ATTR_FUNCTION_TEMPLATE = """
   RegisterOperationCreator(
       "{op_name}",
-      [](const std::vector<Value>& inputs,
+      [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
         // mutable_attr is tensor
@@ -109,9 +109,7 @@ class OpCreatorCodeGen:
                 ir_op_name = self.dialect_name + "." + phi_op_name
                 params_no_mutable_attr = []
                 for i in range(len(op_info_item.input_name_list)):
-                    params_no_mutable_attr.append(
-                        f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                    )
+                    params_no_mutable_attr.append(f"inputs[{i}]")
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
@@ -131,9 +129,7 @@ class OpCreatorCodeGen:
                         len(op_info_item.input_name_list)
                         + len(op_info_item.mutable_attribute_name_list)
                     ):
-                        params_with_mutable_attr.append(
-                            f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                        )
+                        params_with_mutable_attr.append(f"inputs[{i}]")
                     if len(op_info_item.attribute_name_list) > len(
                         op_info_item.mutable_attribute_name_list
                     ):
