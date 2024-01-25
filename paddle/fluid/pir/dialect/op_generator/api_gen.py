@@ -138,16 +138,16 @@ OPTIONAL_VALUE_INPUT_TEMPLATE = """
     }}"""
 
 OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
-    paddle::optional<pir::OpResult> optional_{name};
+    paddle::optional<pir::Value> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
-        optional_{name} = paddle::make_optional<pir::OpResult>({op_name}_op.result({index}));
+        optional_{name} = paddle::make_optional<pir::Value>({op_name}_op.result({index}));
     }}"""
 
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
-    paddle::optional<std::vector<pir::OpResult>> optional_{name};
+    paddle::optional<std::vector<pir::Value>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
         auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
-        optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
+        optional_{name} = paddle::make_optional<std::vector<pir::Value>>(optional_{name}_slice_op.outputs());
     }}"""
 
 SET_NULL_TYPE_TEMPLATE = """
@@ -171,25 +171,15 @@ DATA_TYPE = "paddle::dialect::DataTypeAttribute"
 VECTOR_TYPE = 'pir::VectorType'
 INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
-INPUT_TYPE_MAP = {
+VALUE_TYPE_MAP = {
     'paddle::dialect::DenseTensorType': 'pir::Value',
     'paddle::dialect::SelectedRowsType': 'pir::Value',
     'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::Value>',
 }
-OPTIONAL_INPUT_TYPE_MAP = {
+OPTIONAL_VALUE_TYPE_MAP = {
     'paddle::dialect::DenseTensorType': 'paddle::optional<pir::Value>',
     'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::Value>',
     'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::Value>>',
-}
-OUTPUT_TYPE_MAP = {
-    'paddle::dialect::DenseTensorType': 'pir::OpResult',
-    'paddle::dialect::SelectedRowsType': 'pir::OpResult',
-    'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
-}
-OPTIONAL_OUTPUT_TYPE_MAP = {
-    'paddle::dialect::DenseTensorType': 'paddle::optional<pir::OpResult>',
-    'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::OpResult>',
-    'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::OpResult>>',
 }
 
 
@@ -282,9 +272,9 @@ class CodeGen:
         ret = []
         for name, type, optional in zip(name_list, type_list, optional_list):
             if optional == 'true':
-                ret.append(f'const {OPTIONAL_INPUT_TYPE_MAP[type]}& {name}')
+                ret.append(f'const {OPTIONAL_VALUE_TYPE_MAP[type]}& {name}')
             else:
-                ret.append(f'const {INPUT_TYPE_MAP[type]}& {name}')
+                ret.append(f'const {VALUE_TYPE_MAP[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(
@@ -347,17 +337,17 @@ class CodeGen:
                 if intermediate == 'true':
                     continue
                 if self._is_optional_output(op_info, name):
-                    ret.append(OPTIONAL_OUTPUT_TYPE_MAP[type])
+                    ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
-                    ret.append(OUTPUT_TYPE_MAP[type])
+                    ret.append(VALUE_TYPE_MAP[type])
             return 'std::tuple<{}>'.format(', '.join(ret))
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
             if self._is_optional_output(op_info, name):
-                return OPTIONAL_OUTPUT_TYPE_MAP[type_list[index]]
+                return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
-                return OUTPUT_TYPE_MAP[type_list[index]]
+                return VALUE_TYPE_MAP[type_list[index]]
         elif output_num == 0:
             return 'void'
 

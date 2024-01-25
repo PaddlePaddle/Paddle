@@ -85,7 +85,7 @@ def get_worker_info():
 
     :attr:`num_workers`: total worker process number, see `paddle.io.DataLoader`
 
-    :attr:`id`: the worker processs id, count from 0 to :attr:`num_workers - 1`
+    :attr:`id`: the worker process id, count from 0 to :attr:`num_workers - 1`
 
     :attr:`dataset`: the dataset object in this worker process
 

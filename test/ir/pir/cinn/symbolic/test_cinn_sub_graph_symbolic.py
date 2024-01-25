@@ -43,7 +43,6 @@ def reshape(x):
     i = paddle.shape(x)[0]
     j = paddle.shape(y)[1]
     out = paddle.reshape(z, shape=[i, j])
-    # out = paddle.reshape(z, shape=[128, 4, 2])
     return out
 
 
@@ -115,7 +114,6 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnDyShapeBase(TestCinnSubGraphBase):
     def prepare_data(self):
         self.shape = [4, 256]
-        self.axis = -1
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
@@ -129,17 +127,12 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         return out
 
     def test_eval_symbolic(self):
-        import os
-
-        is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
-        if is_debug:
-            cinn_out = self.eval_symbolic(use_cinn=True)
-
+        cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
-        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnDyShapeBC(TestCinnDyShapeBase):
+class TestCinnDyShapeBC(TestCinnSubGraphBase):
     def prepare_data(self):
         self.x_shape = [2, 4, 1]
         self.x = paddle.randn(self.x_shape, dtype="float32")
