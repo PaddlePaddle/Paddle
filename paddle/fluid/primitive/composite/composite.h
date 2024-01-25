@@ -51,12 +51,20 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
 
-  int64_t value = 1;
-  for (size_t i = 0; i < axis_.size(); i++) {
-    value *= x_dim[axis_[i]];
+  Tensor res;
+  if (find_value(axis_, 1)) {
+    auto axis_dims = gather_nd<T>(shape<T>(x), axis_);
+    auto value = prod<T>(dims);
+    res = sum_x / value;
+  } else {
+    int64_t value = 1;
+    for (size_t i = 0; i < axis_.size(); i++) {
+      value *= x_dim[axis_[i]];
+    }
+    auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
+    res = sum_x / full<T>(empty_shape, value, sum_x.dtype());
   }
-  auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
-  auto res = sum_x / full<T>(empty_shape, value, sum_x.dtype());
+
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
