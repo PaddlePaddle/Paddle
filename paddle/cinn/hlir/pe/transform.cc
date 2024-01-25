@@ -1014,7 +1014,7 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const std::string& output_name) {
   std::vector<int> input_shape;
   for (const auto& shape : A->shape) {
-    input_shape.emplace_back(shape.as_int64());
+    input_shape.emplace_back(shape.as_int32());
   }
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
@@ -1069,17 +1069,21 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape);
   }
-  // hard case for symbolic
+
   std::vector<int> new_starts(starts);
-  // for (int i = 0; i < axes.size(); i++) {
-  //   if (new_starts[i] < -input_shape[axes[i]]) {
-  //     new_starts[i] = 0;
-  //   } else if (new_starts[i] < 0) {
-  //     new_starts[i] = input_shape[axes[i]] + new_starts[i];
-  //   } else if (new_starts[i] > input_shape[axes[i]]) {
-  //     new_starts[i] = input_shape[axes[i]] - 1;
-  //   }
-  // }
+  for (int i = 0; i < axes.size(); i++) {
+    CHECK(input_shape[axes[i]].is_constant())
+        << "Not supported Slice in dynamic dimensions, because the "
+           "relationship between slice range and symbol size cannot be "
+           "determined at compile time";
+    if (new_starts[i] < -input_shape[axes[i]].as_int64()) {
+      new_starts[i] = 0;
+    } else if (new_starts[i] < 0) {
+      new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
+    } else if (new_starts[i] > input_shape[axes[i]].as_int64()) {
+      new_starts[i] = input_shape[axes[i]].as_int64() - 1;
+    }
+  }
 
   // output = input[starts:ends:strides]
   // Note that when strides < 0, the output reverse:
