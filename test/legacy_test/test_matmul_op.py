@@ -248,7 +248,7 @@ class API_TestMmError(unittest.TestCase):
                 )
                 paddle.mm(data3, data4)
 
-            test_error2()
+            self.assertRaises(ValueError, test_error2)
 
             def test_error3():
                 data5 = paddle.static.data(
