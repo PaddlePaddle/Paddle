@@ -160,17 +160,16 @@ __global__ void masked_multihead_attention_kernel(
   const int split_index = blockIdx.x;
   const int start_seq = split_index * steps_per_block;
   if (act_time_step == 0) {
-    if (tid == 0 && hi == 0)
     params.real_split_each_batch[bi] = 1;
-    if (start_seq > 0) return;  
+    // 
+    if (split_index > 0) return;  
   } else {
     if (start_seq >= act_time_step) return;
   }
 
-  int end_seq = (split_index + 1) * steps_per_block;
+  int end_seq = start_seq + steps_per_block;
   bool is_last_block = false;
   if (end_seq >= act_time_step) {
-    if (tid == 0 && hi == 0)
     params.real_split_each_batch[bi] = split_index + 1;
     end_seq = act_time_step;
     is_last_block = true;
@@ -643,7 +642,7 @@ __global__ void masked_multihead_attention_kernel(
   return;
 
   // write the [1, head_dim] result back to global memory.
-  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh)) {
+  if (vo == start_seq && (Dh == Dh_MAX || vi < Dh) && (split_index == 0)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     // convert_from_float(*reinterpret_cast<V_vec *>(&params.out[bhi * Dh +
     // vi]),
@@ -679,6 +678,8 @@ inline size_t smem_size_in_bytes(
   }
 #endif  // NOLINT
   size_t softmax_sz = qk_sz + logits_sz;
+  
+  printf("softmax_sz %d\n", softmax_sz);
 
   int rows_per_red = threads_per_block / threads_per_value;
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
@@ -1000,26 +1001,6 @@ void DispatchWithDtype(const Context &dev_ctx,
 
   Masked_multihead_attention_params<T> params;
   
-  params.split_seq = (max_seq_len + 127) / 128;
-  int split_seq = params.split_seq;
-  phi::DenseTensor qk_sum_max_split_seq;
-  // 2 means sum and max.
-  qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
-  dev_ctx.template Alloc<float>(&qk_sum_max_split_seq, qk_sum_max_split_seq.numel() * sizeof(float));
-  params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
-  cudaMemset(params.qk_sum_max_split_seq, 0, sizeof(float) * qk_sum_max_split_seq.numel());
-
-  phi::DenseTensor real_split_each_batch;
-  real_split_each_batch.Resize({{bsz}});
-  dev_ctx.template Alloc<int>(&real_split_each_batch, real_split_each_batch.numel() * sizeof(int));
-  params.real_split_each_batch = real_split_each_batch.data<int>();
-
-  phi::DenseTensor split_out;
-  split_out.Resize({{bsz , num_head, split_seq, dim_head}});
-  dev_ctx.template Alloc<float>(&split_out, split_out.numel() * sizeof(float));
-  params.split_out = split_out.data<float>();
-
-
   bool mask_broadcast_num_heads = true;
 
   params.add_qkv_bias = false;
@@ -1045,7 +1026,7 @@ void DispatchWithDtype(const Context &dev_ctx,
     params.mask_length = src_mask->dims()[3];
     timestep = src_mask->dims()[3] - 1;
   }
-
+  
   if (out_scale > 0) {
     dev_ctx.template Alloc<int8_t>(out);
   } else {
@@ -1085,6 +1066,29 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.max_seq_length = max_seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
+
+
+  std::cout << "smcount: " << (float)(dev_ctx.GetSMCount()) / (params.batch_size * params.num_head) << std::endl;
+  
+  params.split_seq = timestep / 128 + 1;
+  int split_seq = params.split_seq;
+  phi::DenseTensor qk_sum_max_split_seq;
+  // 2 means sum and max.
+  qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
+  dev_ctx.template Alloc<float>(&qk_sum_max_split_seq, qk_sum_max_split_seq.numel() * sizeof(float));
+  params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
+  cudaMemset(params.qk_sum_max_split_seq, 0, sizeof(float) * qk_sum_max_split_seq.numel());
+
+  phi::DenseTensor real_split_each_batch;
+  real_split_each_batch.Resize({{bsz}});
+  dev_ctx.template Alloc<int>(&real_split_each_batch, real_split_each_batch.numel() * sizeof(int));
+  params.real_split_each_batch = real_split_each_batch.data<int>();
+
+  phi::DenseTensor split_out;
+  split_out.Resize({{bsz , num_head, split_seq, dim_head}});
+  dev_ctx.template Alloc<float>(&split_out, split_out.numel() * sizeof(float));
+  params.split_out = split_out.data<float>();
+
 
   if (out_shift) {
     DispatchFMHA<T>(dev_ctx,
