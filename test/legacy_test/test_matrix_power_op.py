@@ -297,6 +297,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -316,13 +317,6 @@ class TestMatrixPowerAPIError(unittest.TestCase):
                 name="input_" + dtype, shape=[4, 4], dtype=dtype
             )
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2)
-
-        # When out is set, the data type must be the same as input.
-        input = paddle.static.data(
-            name="input_1", shape=[4, 4], dtype="float32"
-        )
-        out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
-        self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
 
         # The number of dimensions of input must be >= 2.
         input = paddle.static.data(name="input_2", shape=[4], dtype="float32")
@@ -347,6 +341,14 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         self.assertRaises(
             ValueError, paddle.linalg.matrix_power, input, -956301312
         )
+
+    def test_old_ir_errors(self):
+        # When out is set, the data type must be the same as input.
+        input = paddle.static.data(
+            name="input_1", shape=[4, 4], dtype="float32"
+        )
+        out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
+        self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
 
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):

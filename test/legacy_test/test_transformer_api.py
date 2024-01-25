@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -1038,6 +1039,30 @@ class TestTransformer(unittest.TestCase):
             d_model, n_head, dim_feedforward=dim_feedforward
         )
         mask = transformer.generate_square_subsequent_mask(length)
+
+
+class TestPirMultiHeadAttention(unittest.TestCase):
+    def run_program(self):
+        with static_guard():
+            paddle.seed(1)
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                query = paddle.rand((2, 4, 128))
+                attn_mask = paddle.rand((2, 2, 4, 4))
+                multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
+                output = multi_head_attn(query, None, None, attn_mask=attn_mask)
+
+                exe = paddle.static.Executor()
+                exe.run(startup)
+                out = exe.run(feed={}, fetch_list=[output])
+                return out
+
+    def test_pir(self):
+        out1 = self.run_program()
+        with paddle.pir_utils.IrGuard():
+            out2 = self.run_program()
+        np.testing.assert_allclose(out1, out2)
 
 
 if __name__ == "__main__":
