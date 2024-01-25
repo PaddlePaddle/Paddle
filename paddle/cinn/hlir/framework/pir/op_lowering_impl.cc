@@ -720,6 +720,26 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
+  auto dtype = type_info.dtype();
+  std::string input_id = ValueName(value);
+  if (!group->value_to_shape_or_data_exprs.empty()) {
+    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+    std::vector<ir::Dim> sym_shape;
+    for (auto& sym : sym_vec) {
+      sym_shape.emplace_back(input_id, sym);
+    }
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    return lang::CreatePlaceHolder(
+        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  }
+}
+
+ir::Tensor OpLowererImpl::GetTensorSymbolic(const GroupPtr& group,
+                                            const ::pir::Value& value) {
+  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   auto ForEachDimExpr = [&](const auto& DoEach) {
@@ -750,7 +770,12 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << ValueName(in_value);
-    ir::Tensor tensor = GetTensor(group, in_value);
+    ir::Tensor tensor;
+    if (FLAGS_cinn_bucket_compile) {
+      tensor = GetTensorSymbolic(group, in_value);
+    } else {
+      tensor = GetTensor(group, in_value);
+    }
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
