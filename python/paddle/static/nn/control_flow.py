@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import warnings
-from functools import partial, reduce
+from functools import cached_property, partial, reduce
 
 import paddle
 from paddle import _C_ops
@@ -39,6 +39,7 @@ from paddle.common_ops_import import (
     convert_dtype,
     in_dygraph_mode,
 )
+from paddle.framework import use_pir_api
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1169,6 +1170,167 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     return final_fn()
 
 
+class OutputSelector:
+    def __init__(
+        self, if_op, flattened_true_output, flattened_false_output, names
+    ):
+        self.if_op = if_op
+        self.true_output = flattened_true_output
+        self.false_output = flattened_false_output
+        self.names = names
+        self.num_output = len(flattened_true_output)
+        assert len(flattened_false_output) == self.num_output
+        assert len(names) == self.num_output
+
+    @cached_property
+    def unified_output(self):
+        unified_true_output = []
+        unified_false_output = []
+        variable_indices = []
+        for true_out, false_out, name in zip(
+            self.true_output, self.false_output, self.names
+        ):
+            (
+                true_out,
+                false_out,
+            ) = OutputSelector.constant_to_variable_promotion(
+                [
+                    (true_out, self.if_op.true_block),
+                    (false_out, self.if_op.false_block),
+                ],
+                name,
+            )
+            if isinstance(true_out, paddle.pir.Value):
+                assert isinstance(
+                    false_out, paddle.pir.Value
+                ), "true_out and false_out should be both paddle.pir.Value"
+                variable_indices.append(len(unified_true_output))
+            unified_true_output.append(true_out)
+            unified_false_output.append(false_out)
+        return unified_true_output, unified_false_output, variable_indices
+
+    @property
+    def unified_true_output(self):
+        return self.unified_output[0]
+
+    @property
+    def unified_false_output(self):
+        return self.unified_output[1]
+
+    @property
+    def variable_indices(self):
+        return self.unified_output[2]
+
+    @property
+    def constant_indices(self):
+        return [
+            i
+            for i in range(len(self.true_output))
+            if i not in self.variable_indices
+        ]
+
+    def get_variable_outputs(self):
+        variable_true_output = self.select_by_indices(
+            self.unified_true_output,
+            self.variable_indices,
+        )
+        variable_false_output = self.select_by_indices(
+            self.unified_false_output,
+            self.variable_indices,
+        )
+        return variable_true_output, variable_false_output
+
+    def restore_outputs_by_variable_results(self, variable_results):
+        constant_output = self.select_by_indices(
+            self.unified_true_output,
+            self.constant_indices,
+        )
+        restored_output = [None for _ in range(self.num_output)]
+        self.fill_to_indices(
+            restored_output,
+            variable_results,
+            self.variable_indices,
+        )
+        self.fill_to_indices(
+            restored_output,
+            constant_output,
+            self.constant_indices,
+        )
+        return restored_output
+
+    @staticmethod
+    def select_by_indices(unified_args, indices):
+        return [unified_args[i] for i in indices]
+
+    @staticmethod
+    def fill_to_indices(outputs, partial_outputs, partial_indices):
+        for i, out in zip(partial_indices, partial_outputs):
+            outputs[i] = out
+        return outputs
+
+    @staticmethod
+    def constant_to_variable_promotion(out_with_blocks, name):
+        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+
+        promotion_builtin_types = (bool, int, float)
+        outs, _ = zip(*out_with_blocks)
+
+        def all_has_same_value(outs):
+            if len(outs) <= 1:
+                return True
+            return all(out == outs[0] for out in outs[1:])
+
+        def all_has_same_type(outs):
+            if len(outs) <= 1:
+                return True
+            return all(type(out) is type(outs[0]) for out in outs[1:])
+
+        def constant_to_variable_with_block(constant, block_context_manager):
+            with block_context_manager():
+                return to_static_variable(constant)
+
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(arg is None for arg in outs):
+            return outs
+
+        if all(
+            isinstance(out, promotion_builtin_types) for out in outs
+        ) and all_has_same_type(outs):
+            if all_has_same_value(outs):
+                return outs
+            else:
+                warnings.warn(
+                    f"Return results from different branches in cond has same type: {type(outs[0])}, "
+                    f"but has different value: true value is '{outs[0]}' and false value is '{outs[1]}', "
+                    "so we will promote the constant to variable."
+                )
+                return [
+                    constant_to_variable_with_block(out, block)
+                    for out, block in out_with_blocks
+                ]
+
+        if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
+            isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
+            for out in outs
+        ):
+            warnings.warn(
+                "Return results from different branches in cond are not same type: "
+                f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
+                f"'{type(outs[0])}'"
+            )
+            return [
+                constant_to_variable_with_block(out, block)
+                for out, block in out_with_blocks
+            ]
+
+        raise TypeError(
+            "Unsupported return type of true_fn and false_fn in cond: false_var "
+            f"returned `{name}` by false_fn is `{outs[0]}` and true_var of true_fn is `{outs[1]}`"
+        )
+
+
 def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
@@ -1440,18 +1602,46 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(return_names),
     )
 
-    if is_dy2static:
+    if is_dy2static and not use_pir_api():
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
 
     if in_pir_mode():
+        flattened_true_output, flattened_false_output = flatten(
+            true_output
+        ), flatten(false_output)
+        flattened_return_names = [
+            name
+            for seq_out, name in zip(
+                _to_sequence_except_dict(true_output),
+                _to_sequence_except_dict(return_names),
+            )
+            for _ in flatten(seq_out)
+        ]
+        output_selector = OutputSelector(
+            if_op,
+            flattened_true_output,
+            flattened_false_output,
+            names=flattened_return_names,
+        )
+        (
+            variable_true_output,
+            variable_false_output,
+        ) = output_selector.get_variable_outputs()
+
         with if_op.true_block():
-            cf_yield(flatten(true_output))
+            cf_yield(variable_true_output)
         with if_op.false_block():
-            cf_yield(flatten(false_output))
+            cf_yield(variable_false_output)
+
         if_op.update_output()
-        return pack_sequence_as(true_output, flatten(if_op.results()))
+        variable_results = flatten(if_op.results())
+
+        restored_output = output_selector.restore_outputs_by_variable_results(
+            variable_results
+        )
+        return pack_sequence_as(true_output, restored_output)
 
     mask = paddle.cast(pred, dtype='int32')
     merge_func = (

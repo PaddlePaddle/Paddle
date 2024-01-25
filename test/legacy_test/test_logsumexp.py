@@ -228,6 +228,7 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)

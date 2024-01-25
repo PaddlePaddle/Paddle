@@ -70,7 +70,7 @@ class CustomOpDialect : public pir::Dialect {
   }
 
  private:
-  std::vector<std::string> op_names_;
+  std::vector<const char*> op_names_;
 };
 
 }  // namespace dialect
