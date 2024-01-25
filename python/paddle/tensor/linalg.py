@@ -746,7 +746,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         return out
 
-
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
