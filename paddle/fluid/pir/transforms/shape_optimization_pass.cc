@@ -90,8 +90,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                          "InferSymbolicShape for %s failed.",
                          op.name());
         } else {
-          VLOG(3) << op.name()
-                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
+          VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+          PADDLE_THROW(phi::errors::Unimplemented(
+              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }

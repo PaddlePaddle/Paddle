@@ -2810,13 +2810,10 @@ void SliceArrayOp::VerifySig() {
 
 phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
   phi::IntArray starts_or_ends_list;
-  if (starts_or_ends.dyn_cast<pir::OpResult>()
-          .owner()
-          ->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (starts_or_ends.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     starts_or_ends_list =
         std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-            starts_or_ends.dyn_cast<pir::OpResult>()
-                .owner()
+            starts_or_ends.defining_op()
                 ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                 .attribute("value"))));
   } else if (starts_or_ends.type().isa<pir::VectorType>()) {
@@ -3467,8 +3464,10 @@ bool ExpandOp::InferSymbolicShape(
              "Value shape comes from ShapeOp, it must have data");
   const auto &data = data_shape.data().value();
 
-  shape_analysis->SetShapeOrDataForValue(out(),
-                                         symbol::ShapeOrDataDimExprs(data));
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(data)};
+
+  shape_analysis->SetShapeOrDataForValue(out(), shape_data);
   return true;
 }
 
@@ -4136,7 +4135,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value res = result(0);
   // TODO(HongyuJia): use op->result(0) to infer the shape
   std::vector<symbol::DimExpr> shape(std::int64_t(output_data.size()));
-  symbol::ShapeOrDataDimExprs output_data_shape{shape, output_data};
+
+  symbol::ShapeOrDataDimExprs output_data_shape{
+      symbol::TensorShapeOrDataDimExprs(shape, output_data)};
   shape_analysis->SetShapeOrDataForValue(res, output_data_shape);
   return true;
 }
