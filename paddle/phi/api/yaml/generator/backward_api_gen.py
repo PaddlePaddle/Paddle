@@ -290,7 +290,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 

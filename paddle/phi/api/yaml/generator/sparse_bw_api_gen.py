@@ -135,7 +135,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/backward.h"
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 

@@ -62,7 +62,7 @@ def source_include(header_file_path):
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
