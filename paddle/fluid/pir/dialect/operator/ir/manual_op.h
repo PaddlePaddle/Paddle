@@ -738,11 +738,11 @@ class IR_API ShapeBroadcastOp
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
-class ArrayPopOp
-    : public pir::Op<ArrayPopOp,
-                     paddle::dialect::OpYamlInfoInterface,
-                     paddle::dialect::InferMetaInterface,
-                     paddle::dialect::GetKernelTypeForVarInterface> {
+class ArrayPopOp : public pir::Op<ArrayPopOp,
+                                  paddle::dialect::OpYamlInfoInterface,
+                                  paddle::dialect::InferMetaInterface,
+                                  paddle::dialect::GetKernelTypeForVarInterface,
+                                  pir::SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_pop"; }
