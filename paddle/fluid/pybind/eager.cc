@@ -1082,6 +1082,12 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         paddle::framework::proto::VarType::Type var_type =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
         bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+        PADDLE_ENFORCE_NOT_NULL(egr::Controller::Instance().GetCurrentTracer(),
+                                paddle::platform::errors::Fatal(
+                                    "Calling __init__ of Eager Tensor with "
+                                    "NULL tracer is forbidden. Please check "
+                                    "your code and make sure you new a tracer "
+                                    "before calling this constructor."));
         EmptyTensorInitializer(py_tensor_ptr,
                                act_name,
                                egr::Controller::Instance().GetExpectedPlace(),
