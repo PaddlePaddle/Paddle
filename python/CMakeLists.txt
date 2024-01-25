@@ -181,8 +181,10 @@ else()
   endif()
 endif()
 
-add_custom_target(paddle_python ALL
-                  DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+if(BUILD_WHL_PACKAGE)
+  add_custom_target(paddle_python ALL
+                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
