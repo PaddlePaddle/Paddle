@@ -283,8 +283,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
-    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
-    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
+    Returns the vector norm (the 1-norm, the Euclidean or 2-norm, and in general the p-norm)
+    of a given tensor.
     Args:
         x (Tensor): Tensor, data type float32, float64.
         p (int|float, optional): None for porder=2.0. Default None.
@@ -292,11 +292,6 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    Note:
-        This norm API is different from `numpy.linalg.norm`.
-        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
-        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
-        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
     Returns:
         Tensor: results of vector_norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
@@ -312,19 +307,19 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
              [[ 0. ,  1. ,  2. ,  3. ],
               [ 4. ,  5. ,  6. ,  7. ],
               [ 8. ,  9. ,  10.,  11.]]])
-            >>> out_vector_norm = paddle.vector_norm(x=x,p=2,axis=None,keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=2,axis=None,keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             34.)
-            >>> out_vector_norm = paddle.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [5, 6, 6, 6])
-            >>> out_vector_norm = paddle.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [12., 11.])
-            >>> out_vector_norm = paddle.vector_norm(x=x,p=1,axis=1,keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=1,axis=1,keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[24., 21., 18., 15.],
@@ -751,55 +746,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         return out
 
-    def vector_norm(
-        input, porder=None, axis=None, keepdim=False, asvector=False, name=None
-    ):
-        """
-        Calculate the p-order vector norm for certain  dimension of Tensor `input`.
-        Args:
-          input (Variable): Tensor, data type float32, float64.
-          porder (float, optional): None for porder=2.0. Default None.
-          axis (int, optional): None for last dimension. Default None.
-          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          asvector (bool, optional): Whether keep the result as a vector, Default False.
-          name (str, optional): The default value is None. Normally there is no need for
-              user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-        """
-        if in_dynamic_or_pir_mode():
-            if axis is None:
-                axis = -1
-            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
-        else:
-            if porder is not None:
-                check_type(porder, 'porder', (float, int), 'p_norm')
-            if axis is not None:
-                check_type(axis, 'axis', (int), 'p_norm')
-            check_variable_and_dtype(
-                input,
-                'input',
-                ['float16', 'uint16', 'float32', 'float64'],
-                'p_norm',
-            )
-
-            attrs = {
-                'axis': axis if axis is not None else -1,
-                'porder': float(porder) if porder is not None else 2.0,
-                'keepdim': keepdim,
-                'asvector': asvector,
-                'epsilon': 1e-12,
-            }
-            helper = LayerHelper('p_norm', **locals())
-            out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
-            )
-
-            helper.append_op(
-                type='p_norm',
-                inputs={'X': input},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            return out
 
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
@@ -903,10 +849,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         elif isinstance(p, (int, float)):
             return vector_norm(
                 x,
-                porder=p,
+                p=p,
                 axis=axis,
                 keepdim=keepdim,
-                asvector=True,
                 name=name,
             )
         else:
@@ -925,10 +870,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if p == "fro":
                 return vector_norm(
                     x,
-                    porder=2,
+                    p=2,
                     axis=axis,
                     keepdim=keepdim,
-                    asvector=False,
                     name=name,
                 )
 
@@ -940,9 +884,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return vector_norm(
                 x,
                 axis=axis,
-                porder=p,
+                p=p,
                 keepdim=keepdim,
-                asvector=False,
                 name=name,
             )
         else:

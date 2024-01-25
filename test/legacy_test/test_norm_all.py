@@ -1048,6 +1048,7 @@ class API_NormTest(unittest.TestCase):
         paddle.enable_static()
 
     def test_name(self):
+        paddle.enable_static()
         with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
@@ -1058,6 +1059,7 @@ class API_NormTest(unittest.TestCase):
             self.assertEqual(('nuclear_name' in y_3.name), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):
