@@ -562,6 +562,8 @@ class Engine:
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
+        print("After build the program is")
+        print(self.program_helper.main_program)
         # Do the planning process
         self._plan(mode)
         # Do the parallel process

@@ -2821,6 +2821,7 @@ class Resharder:
                 "read_from_array",
                 "nop",
                 "depend",
+                # "py_func",
             ]
             global _g_special_ops
             skip_ops += _g_special_ops

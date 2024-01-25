@@ -58,7 +58,8 @@ class RegisterHookTransformer(BaseTransformer):
                         and node.attr == 'register_hook'
                     ):
                         # parameter name for register_hook
-                        param_name = node.value.id
+                        param_name = "_eager_base_5"
+                        # param_name = node.value.id
                         register_hook_pos_map[param_name].append(i)
             elif isinstance(body, gast.Assign):
                 for target in body.targets:

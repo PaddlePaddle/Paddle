@@ -1847,6 +1847,7 @@ class Variable(metaclass=VariableMetaClass):
             """do nothing but return a new variable."""
             return x
 
+        print("======in register hook function========")
         paddle.static.py_func(
             func=forward_hook_wrapper,
             x=self,
