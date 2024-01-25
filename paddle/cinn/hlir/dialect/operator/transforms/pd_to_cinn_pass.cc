@@ -256,8 +256,6 @@ class Pool2dOpPattern
     auto full_op =
         kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
 
-    auto full_op =
-        kernel_size_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
     auto kernel_size_attr =
         full_op.attribute("value").dyn_cast<pir::ArrayAttribute>().AsVector();
 
