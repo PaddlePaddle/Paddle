@@ -24,7 +24,6 @@ import shutil
 import subprocess
 import sys
 import time
-import warnings
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 
@@ -39,7 +38,7 @@ from setuptools.dist import Distribution
 python_version = platform.python_version()
 version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
-env_version = str(os.getenv("PY_VERSION"))
+env_version = os.getenv("PY_VERSION", None)
 
 if version_detail < (3, 8):
     raise RuntimeError(
@@ -47,21 +46,15 @@ if version_detail < (3, 8):
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"Export PY_VERSION = { python_version }")
+    print(f"export PY_VERSION = { version }")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
-    warnings.warn(
-        f"You set PY_VERSION={env_version}, but "
-        f"your current python environment is {version} "
-        f"we will attempt to use the python version you set to execute."
+    raise ValueError(
+        f"You have set the PY_VERSION environment variable to {env_version}, but "
+        f"your current Python version is {version}, "
+        f"Please keep them consistent."
     )
-    cmd = 'which python' + env_version
-    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-    if res.returncode == 0:
-        os.environ["PYTHON_EXECUTABLE"] = res
-    else:
-        raise RuntimeError("We can't find the version you set in your machine")
 
 
 # check cmake
@@ -1282,7 +1275,7 @@ def get_package_data_and_package_dir():
                     )
             else:
                 commands = [
-                    "patchelf --set-rpath '$ORIGIN/../libs/:$ORIGIN/../../nvidia/cuda_runtime/lib' "
+                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
@@ -1290,14 +1283,14 @@ def get_package_data_and_package_dir():
                 ]
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs:$ORIGIN/../../nvidia/cuda_runtime/lib' "
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs:$ORIGIN/../../nvidia/cuda_runtime/lib' "
+                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("IR_NAME")
