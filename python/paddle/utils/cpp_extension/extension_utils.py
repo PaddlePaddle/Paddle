@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import subprocess
+import shlex
 import sys
 import sysconfig
 import textwrap
@@ -1382,6 +1383,7 @@ def run_cmd(command, verbose=False):
     """
     # logging
     log_v(f"execute command: {command}", verbose)
+    command = shlex.quote(command)
 
     # execute command
     try:
