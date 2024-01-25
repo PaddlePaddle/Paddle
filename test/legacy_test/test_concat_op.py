@@ -559,20 +559,23 @@ class TestConcatOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            # The item in input must be Variable.
-            x2 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
-            self.assertRaises(TypeError, paddle.concat, [x2, x2])
-            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
 
+            def test_type_error():
+                # The item in input must be Variable.
+                x2 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                paddle.concat([x2])
+
+            self.assertRaises(TypeError, test_type_error)
+
+            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
             x4 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x4')
             x5 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, paddle.concat, [x4, x5])
             x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
             x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
             x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
-            paddle.concat([x6, x7])
 
             # The type of axis in concat_op should be int or Variable.
             def test_axis_type():
@@ -692,18 +695,26 @@ class TestConcatAPI(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            # The item in input must be Variable.
-            x2 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
-            x3 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
-            self.assertRaises(TypeError, paddle.concat, [x2, x2])
-            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = paddle.static.data(shape=[4], dtype='uint8', name='x4')
-            x5 = paddle.static.data(shape=[4], dtype='uint8', name='x5')
-            self.assertRaises(TypeError, paddle.concat, [x4, x5])
+
+            def test_type_error():
+                # The item in input must be Variable.
+                x2 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                x3 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                paddle.concat([x2])
+
+            self.assertRaises(TypeError, test_type_error)
+
+            def testy_type_error2():
+                # The input dtype of concat_op must be float16, float32, float64, int32, int64.
+                x4 = paddle.static.data(shape=[4], dtype='uint8', name='x4')
+                x5 = paddle.static.data(shape=[4], dtype='uint8', name='x5')
+                paddle.concat([x4, x5])
+
+            self.assertRaises(TypeError, testy_type_error2)
 
             # The type of axis in concat_op should be int or Variable.
             x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
