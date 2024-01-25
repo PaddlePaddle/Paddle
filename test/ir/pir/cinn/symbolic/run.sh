@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GLOG_v=4 FLAGS_cinn_convert_dynamic_to_static_dim=S0:2048 FLAGS_enable_pir_api=1 python test_repeat_kv_symbolic.py > output.log 2>&1
+GLOG_v=4 FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:2048 FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True python test_repeat_kv_symbolic.py > output.log 2>&1
