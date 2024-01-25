@@ -216,10 +216,14 @@ std::vector<std::vector<pir::Value>> AssignOut_Op::Vjp(
 
   VLOG(6) << "Vjp prepare stop gradient of assign_out__grad";
 
-  std::vector<std::vector<pir::Value>> res(1);
+  std::vector<std::vector<pir::Value>> res(2);
   res[0].resize(1);
   if (!stop_gradients[0][0]) {
     res[0][0] = out_grads[0][0];
+  }
+  res[1].resize(1);
+  if (!stop_gradients[1][0]) {
+    res[1][0] = paddle::dialect::zeros_like(inputs_[1][0]);
   }
   return res;
 }

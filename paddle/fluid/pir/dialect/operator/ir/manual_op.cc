@@ -3986,7 +3986,7 @@ OpInfoTuple AssignOut_Op::GetOpInfo() {
                                    false,
                                    false,
                                    false,
-                                   false)};
+                                   true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
