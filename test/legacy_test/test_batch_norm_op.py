@@ -466,14 +466,12 @@ class TestBatchNormOpInference(unittest.TestCase):
                     data_format,
                     self.dtype,
                     [2, 3, 4, 5],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
                 self.check_with_place(
                     place,
                     data_format,
                     self.dtype,
                     [2, 3],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
                 self.check_with_place_without_scale_and_bias(
                     place, data_format, self.dtype, [2, 3, 4, 5]
