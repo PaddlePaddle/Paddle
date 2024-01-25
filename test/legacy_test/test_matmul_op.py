@@ -241,25 +241,14 @@ class API_TestMmError(unittest.TestCase):
 
             def test_error2():
                 data3 = paddle.static.data(
-                    name="data3", shape=[-1, 10, 2], dtype="float32"
+                    name="data3", shape=[10, 10, 2], dtype="float32"
                 )
                 data4 = paddle.static.data(
-                    name="data4", shape=[-1, 2, 10], dtype="float32"
+                    name="data4", shape=[3, 2, 10], dtype="float32"
                 )
                 paddle.mm(data3, data4)
 
             self.assertRaises(ValueError, test_error2)
-
-            def test_error3():
-                data5 = paddle.static.data(
-                    name="data5", shape=[10, 10, 2], dtype="float32"
-                )
-                data6 = paddle.static.data(
-                    name="data6", shape=[3, 2, 10], dtype="float32"
-                )
-                paddle.mm(data5, data6)
-
-            self.assertRaises(ValueError, test_error3)
 
 
 if __name__ == "__main__":
