@@ -107,7 +107,9 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 "num_attention_heads", None
             )
             seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
-            use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
+            use_sequence_parallel = tuner_cfg.get(
+                "use_sequence_parallel", False
+            )
 
             if hidden_size and hidden_size % mp_degree != 0:
                 prune_flag = True
@@ -121,7 +123,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
             if (
                 seq_length
                 and seq_length % mp_degree != 0
-                and use_sequence_paralel
+                and use_sequence_parallel
             ):
                 prune_flag = True
 

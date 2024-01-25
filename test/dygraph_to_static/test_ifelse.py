@@ -321,7 +321,7 @@ class TestDygraphIfTensor(Dy2StTestBase):
             return ret.numpy()
 
     # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -523,8 +523,8 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
         return out
 
     # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.setUp()
         self.assertIsInstance(self.out[0], paddle.Tensor)
@@ -533,13 +533,13 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
     def setUp(self):
-        self.x = np.random.random([5]).astype('float32')
+        self.x = np.random.random([5]).astype('int64')
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
     # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.setUp()
         self.assertIsInstance(self.out, paddle.Tensor)
@@ -551,6 +551,7 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int4)
 
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         with enable_to_static_guard(True):
             with self.assertRaises(Dygraph2StaticException):

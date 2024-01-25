@@ -606,7 +606,7 @@ void FCKernel(const Context& dev_ctx,
                 std::end(mkldnn_data_type_list),
                 mkldnn_data_type) != std::end(mkldnn_data_type_list),
       true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+      phi::errors::InvalidArgument("The mkldnn_data_type should be [float32, "
                                    "int8, bfloat16], but found %s.",
                                    mkldnn_data_type.c_str()));
   auto in_dims = input.dims();
