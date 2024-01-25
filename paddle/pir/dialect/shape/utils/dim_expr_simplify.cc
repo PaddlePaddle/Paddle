@@ -264,7 +264,7 @@ struct SortOperands {
 
   bool IsSorted(const List<DimExpr>& operands) {
     CHECK(!operands->empty());
-    for (int i = 0; i < operands->size() - 1; ++i) {
+    for (std::size_t i = 0; i < operands->size() - 1; ++i) {
       if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
       }
@@ -537,22 +537,28 @@ ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
 }
 
 template <typename T>
-ConstRational GetConstRationalImpl(const T& expr) {
+std::optional<ConstRational> GetConstRationalImpl(const T& expr) {
   LOG(FATAL) << "not supported.";
+  return std::nullopt;
 }
 
-ConstRational GetConstRationalImpl(std::int64_t value) {
+std::optional<ConstRational> GetConstRationalImpl(std::int64_t value) {
   return ConstRational{value, 1};
 }
 
-ConstRational GetConstRationalImpl(const Reciprocal<DimExpr>& value) {
+std::optional<ConstRational> GetConstRationalImpl(
+    const Reciprocal<DimExpr>& value) {
   const auto& [denominator] = *value;
   return ConstRational{1, denominator.Get<std::int64_t>()};
 }
 
 ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
-      [&](const auto& impl) { return GetConstRationalImpl(impl); },
+      [&](const auto& impl) {
+        std::optional<ConstRational> opt_ret = GetConstRationalImpl(impl);
+        CHECK(opt_ret.has_value());
+        return opt_ret.value();
+      },
       expr.variant());
 }
 
@@ -702,8 +708,8 @@ struct FoldInversedPairToUnit {
 
   std::optional<SearchResult> SearchInversedPair(
       const List<DimExpr>& operands) {
-    for (int i = 0; i < operands->size(); ++i) {
-      for (int j = 0; j < operands->size(); ++j) {
+    for (std::size_t i = 0; i < operands->size(); ++i) {
+      for (std::size_t j = 0; j < operands->size(); ++j) {
         if (i == j) {
           continue;
         }
@@ -756,7 +762,8 @@ struct FoldRedundantSymbolicBroadcast {
 
   std::optional<MaxInt64> SearchMaxInt64(const List<DimExpr>& operands) {
     std::optional<MaxInt64> ret;
-    for (int i = 0; i < operands->size(); ++i) {
+    int operands_size = static_cast<int>(operands->size());
+    for (int i = 0; i < operands_size; ++i) {
       const auto& expr = operands->at(i);
       if (!expr.Has<std::int64_t>()) {
         continue;
@@ -786,8 +793,8 @@ struct FoldRedundantBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
   struct SearchResult {
-    int value_pos;
-    int same_value_pos;
+    std::size_t value_pos;
+    std::size_t same_value_pos;
   };
 
   DimExpr Rewrite(const DimExpr& expr) {
@@ -814,8 +821,8 @@ struct FoldRedundantBroadcast {
 
   std::optional<SearchResult> SearchInversedPair(
       const List<DimExpr>& operands) {
-    for (int i = 0; i < operands->size(); ++i) {
-      for (int j = 0; j < operands->size(); ++j) {
+    for (std::size_t i = 0; i < operands->size(); ++i) {
+      for (std::size_t j = 0; j < operands->size(); ++j) {
         if (i == j) {
           continue;
         }
