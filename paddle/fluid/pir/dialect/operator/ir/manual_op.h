@@ -474,6 +474,55 @@ class SliceArrayDenseOp
       const pir::AttributeMap &attributes);
 };
 
+class StridedSliceArrayOp
+    : public pir::Op<StridedSliceArrayOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.strided_slice_array"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    const std::vector<int> &axes,
+                    const std::vector<int64_t> &starts,
+                    const std::vector<int64_t> &ends,
+                    const std::vector<int64_t> &strides);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::Value starts_,
+                    pir::Value ends_,
+                    pir::Value strides_,
+                    const std::vector<int> &axes);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x_,
+                    pir::AttributeMap attributes);
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::Value starts() { return operand_source(1); }
+  pir::Value ends() { return operand_source(2); }
+  pir::Value strides() { return operand_source(3); }
+  pir::Value out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
 class AssignArrayOp
     : public pir::Op<AssignArrayOp,
                      paddle::dialect::OpYamlInfoInterface,
@@ -755,6 +804,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::StridedSliceArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)

@@ -21,10 +21,11 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::CreateArrayLikeOp, paddle::dialect::ArrayLengthOp,
     paddle::dialect::ArrayReadOp, paddle::dialect::ArrayWrite_Op,
     paddle::dialect::SliceArrayOp, paddle::dialect::SliceArrayDenseOp,
-    paddle::dialect::AssignArrayOp, paddle::dialect::AssignArray_Op,
-    paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
-    paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
-    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp
+    paddle::dialect::StridedSliceArrayOp, paddle::dialect::AssignArrayOp,
+    paddle::dialect::AssignArray_Op, paddle::dialect::ArrayToTensorOp,
+    paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
+    paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
+    paddle::dialect::MemcpyD2hMultiIoOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -3103,6 +3104,513 @@ phi::DataType SliceArrayDenseOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+const char *StridedSliceArrayOp::attributes_name[1] = {"axes"};
+
+OpInfoTuple StridedSliceArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("x",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   true),
+      paddle::dialect::OpInputInfo("starts",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
+                                   false),
+      paddle::dialect::OpInputInfo("ends",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
+                                   false),
+      paddle::dialect::OpInputInfo("strides",
+                                   "paddle::dialect::IntArrayAttribute",
+                                   false,
+                                   false,
+                                   true,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "axes", "pir::ArrayAttribute<pir::Int32Attribute>", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("StridedSliceInferMeta",
+                                     {"x", "axes", "starts", "ends", "strides"},
+                                     "strided_slice_array",
+                                     {"x", "axes", "starts", "ends", "strides"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "strided_slice_array");
+}
+
+void StridedSliceArrayOp::Build(pir::Builder &builder,
+                                pir::OperationArgument &argument,
+                                pir::Value x_,
+                                const std::vector<int> &axes,
+                                const std::vector<int64_t> &starts,
+                                const std::vector<int64_t> &ends,
+                                const std::vector<int64_t> &strides) {
+  VLOG(4) << "Start build StridedSliceArrayOp";
+
+  // Generate int_array mutable attribute: starts
+  paddle::dialect::FullIntArrayOp full_starts_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          starts, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value starts_ = full_starts_op->result(0);
+  // Generate int_array mutable attribute: ends
+  paddle::dialect::FullIntArrayOp full_ends_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          ends, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value ends_ = full_ends_op->result(0);
+  // Generate int_array mutable attribute: strides
+  paddle::dialect::FullIntArrayOp full_strides_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          strides, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value strides_ = full_strides_op->result(0);
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_, starts_, ends_, strides_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  std::vector<pir::Attribute> vec_axes;
+  for (size_t i = 0; i < static_cast<size_t>(axes.size()); i++) {
+    pir::Attribute attr_axes =
+        pir::Int32Attribute::get(pir::IrContext::Instance(), axes[i]);
+
+    vec_axes.push_back(attr_axes);
+  }
+  pir::Attribute attr_axes =
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_axes);
+  argument.AddAttribute("axes", attr_axes);
+  argument_attributes.insert({"axes", attr_axes});
+
+  std::vector<pir::Type> argument_outputs =
+      StridedSliceArrayOp::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void StridedSliceArrayOp::Build(pir::Builder &builder,
+                                pir::OperationArgument &argument,
+                                pir::Value x_,
+                                pir::AttributeMap attributes) {
+  VLOG(4) << "Start build StridedSliceArrayOp";
+
+  IR_ENFORCE(attributes.find("axes") != attributes.end(),
+             "'axes' Attribute is expected for StridedSliceArrayOp. ");
+  std::vector<int> axes;
+  for (size_t i = 0;
+       i < attributes.at("axes").dyn_cast<pir::ArrayAttribute>().size();
+       i++) {
+    axes.push_back(attributes.at("axes")
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .at(i)
+                       .dyn_cast<pir::Int32Attribute>()
+                       .data());
+  }
+
+  IR_ENFORCE(attributes.find("starts") != attributes.end(),
+             "'starts' Attribute is expected for StridedSliceArrayOp. ");
+  std::vector<int64_t> starts =
+      attributes.at("starts")
+          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data()
+          .GetData();
+
+  IR_ENFORCE(attributes.find("ends") != attributes.end(),
+             "'ends' Attribute is expected for StridedSliceArrayOp. ");
+  std::vector<int64_t> ends =
+      attributes.at("ends")
+          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data()
+          .GetData();
+
+  IR_ENFORCE(attributes.find("strides") != attributes.end(),
+             "'strides' Attribute is expected for StridedSliceArrayOp. ");
+  std::vector<int64_t> strides =
+      attributes.at("strides")
+          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+          .data()
+          .GetData();
+
+  // Generate int_array mutable attribute: starts
+  paddle::dialect::FullIntArrayOp full_starts_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          starts, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value starts_ = full_starts_op->result(0);
+  // Generate int_array mutable attribute: ends
+  paddle::dialect::FullIntArrayOp full_ends_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          ends, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value ends_ = full_ends_op->result(0);
+  // Generate int_array mutable attribute: strides
+  paddle::dialect::FullIntArrayOp full_strides_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          strides, phi::DataType::INT64, phi::CPUPlace());
+  pir::Value strides_ = full_strides_op->result(0);
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_, starts_, ends_, strides_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  std::vector<pir::Attribute> vec_axes;
+  for (size_t i = 0; i < static_cast<size_t>(axes.size()); i++) {
+    pir::Attribute attr_axes =
+        pir::Int32Attribute::get(pir::IrContext::Instance(), axes[i]);
+
+    vec_axes.push_back(attr_axes);
+  }
+  pir::Attribute attr_axes =
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_axes);
+  argument.AddAttribute("axes", attr_axes);
+  argument_attributes.insert({"axes", attr_axes});
+
+  std::vector<pir::Type> argument_outputs =
+      StridedSliceArrayOp::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void StridedSliceArrayOp::Build(pir::Builder &builder,
+                                pir::OperationArgument &argument,
+                                pir::Value x_,
+                                pir::Value starts_,
+                                pir::Value ends_,
+                                pir::Value strides_,
+                                const std::vector<int> &axes) {
+  VLOG(4) << "Start build StridedSliceArrayOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {x_, starts_, ends_, strides_};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  std::vector<pir::Attribute> vec_axes;
+  for (size_t i = 0; i < static_cast<size_t>(axes.size()); i++) {
+    pir::Attribute attr_axes =
+        pir::Int32Attribute::get(pir::IrContext::Instance(), axes[i]);
+
+    vec_axes.push_back(attr_axes);
+  }
+  pir::Attribute attr_axes =
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_axes);
+  argument.AddAttribute("axes", attr_axes);
+  argument_attributes.insert({"axes", attr_axes});
+
+  std::vector<pir::Type> argument_outputs =
+      StridedSliceArrayOp::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void StridedSliceArrayOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "StridedSliceArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 4u,
+               "The size %d of inputs must be equal to 4.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+    if (auto vec_type =
+            (*this)->operand_source(1).type().dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); ++i) {
+        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+                   "Type validation failed for the 1th input, got %s.",
+                   (*this)->operand_source(1).type());
+      }
+    } else {
+      IR_ENFORCE((*this)
+                     ->operand_source(1)
+                     .type()
+                     .isa<paddle::dialect::DenseTensorType>(),
+                 "Type validation failed for the 1th input, got %s.",
+                 (*this)->operand_source(1).type());
+    }
+    if (auto vec_type =
+            (*this)->operand_source(2).type().dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); ++i) {
+        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+                   "Type validation failed for the 2th input, got %s.",
+                   (*this)->operand_source(2).type());
+      }
+    } else {
+      IR_ENFORCE((*this)
+                     ->operand_source(2)
+                     .type()
+                     .isa<paddle::dialect::DenseTensorType>(),
+                 "Type validation failed for the 2th input, got %s.",
+                 (*this)->operand_source(2).type());
+    }
+    if (auto vec_type =
+            (*this)->operand_source(3).type().dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); ++i) {
+        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+                   "Type validation failed for the 3th input, got %s.",
+                   (*this)->operand_source(3).type());
+      }
+    } else {
+      IR_ENFORCE((*this)
+                     ->operand_source(3)
+                     .type()
+                     .isa<paddle::dialect::DenseTensorType>(),
+                 "Type validation failed for the 3th input, got %s.",
+                 (*this)->operand_source(3).type());
+    }
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("axes") > 0, "axes does not exist.");
+    IR_ENFORCE(attributes.at("axes").isa<pir::ArrayAttribute>(),
+               "Type of attribute: axes is not pir::ArrayAttribute.");
+    for (size_t i = 0;
+         i < attributes.at("axes").dyn_cast<pir::ArrayAttribute>().size();
+         i++) {
+      IR_ENFORCE(attributes.at("axes")
+                     .dyn_cast<pir::ArrayAttribute>()
+                     .at(i)
+                     .isa<pir::Int32Attribute>(),
+                 "Type of attribute: axes is not right.");
+    }
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: StridedSliceArrayOp.";
+}
+
+void StridedSliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::StridedSliceInferMeta);
+  fn(infer_meta);
+}
+
+std::vector<pir::Type> StridedSliceArrayOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  IR_ENFORCE(input_values.size() == 4,
+             "Num of inputs is expected to be 4 but got %d.",
+             input_values.size());
+
+  pir::Value x_ = input_values[0];
+  (void)x_;
+  pir::Value starts_ = input_values[1];
+  (void)starts_;
+  pir::Value ends_ = input_values[2];
+  (void)ends_;
+  pir::Value strides_ = input_values[3];
+  (void)strides_;
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::DenseTensorArrayType x;
+  if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    x = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    (void)x;
+  } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_x =
+        x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    x = paddle::dialect::DenseTensorArrayType::get(pir::IrContext::Instance(),
+                                                   allocated_x.dtype(),
+                                                   allocated_x.data_layout());
+    (void)x;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+
+  IR_ENFORCE(attributes.find("axes") != attributes.end(),
+             "'axes' Attribute is expected for StridedSliceArrayOp. ");
+  std::vector<int> axes;
+  for (size_t i = 0;
+       i < attributes.at("axes").dyn_cast<pir::ArrayAttribute>().size();
+       i++) {
+    axes.push_back(attributes.at("axes")
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .at(i)
+                       .dyn_cast<pir::Int32Attribute>()
+                       .data());
+  }
+
+  phi::IntArray starts;
+  if (starts_.dyn_cast<pir::OpResult>() &&
+      starts_.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    starts = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        starts_.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (starts_.type().isa<pir::VectorType>()) {
+    size_t starts_size = starts_.type().dyn_cast<pir::VectorType>().size();
+    starts = std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts.SetFromTensor(true);
+  } else if (starts_.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim starts_dim =
+        starts_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t starts_size = common::product(starts_dim);
+    if (common::contain_unknown_dim(starts_dim)) {
+      starts_size = 1;
+    }
+    starts = std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts.SetFromTensor(true);
+  } else if (starts_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim starts_dim =
+        starts_.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t starts_size = common::product(starts_dim);
+    if (common::contain_unknown_dim(starts_dim)) {
+      starts_size = 1;
+    }
+    starts = std::move(phi::IntArray(std::vector<int64_t>(starts_size, -1)));
+    starts.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  phi::IntArray ends;
+  if (ends_.dyn_cast<pir::OpResult>() &&
+      ends_.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    ends = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        ends_.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (ends_.type().isa<pir::VectorType>()) {
+    size_t ends_size = ends_.type().dyn_cast<pir::VectorType>().size();
+    ends = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
+    ends.SetFromTensor(true);
+  } else if (ends_.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim ends_dim =
+        ends_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t ends_size = common::product(ends_dim);
+    if (common::contain_unknown_dim(ends_dim)) {
+      ends_size = 1;
+    }
+    ends = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
+    ends.SetFromTensor(true);
+  } else if (ends_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim ends_dim =
+        ends_.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t ends_size = common::product(ends_dim);
+    if (common::contain_unknown_dim(ends_dim)) {
+      ends_size = 1;
+    }
+    ends = std::move(phi::IntArray(std::vector<int64_t>(ends_size, -1)));
+    ends.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  phi::IntArray strides;
+  if (strides_.dyn_cast<pir::OpResult>() &&
+      strides_.dyn_cast<pir::OpResult>()
+          .owner()
+          ->isa<paddle::dialect::FullIntArrayOp>()) {
+    strides = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+        strides_.dyn_cast<pir::OpResult>()
+            .owner()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"))));
+  } else if (strides_.type().isa<pir::VectorType>()) {
+    size_t strides_size = strides_.type().dyn_cast<pir::VectorType>().size();
+    strides = std::move(phi::IntArray(std::vector<int64_t>(strides_size, -1)));
+    strides.SetFromTensor(true);
+  } else if (strides_.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim strides_dim =
+        strides_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t strides_size = common::product(strides_dim);
+    if (common::contain_unknown_dim(strides_dim)) {
+      strides_size = 1;
+    }
+    strides = std::move(phi::IntArray(std::vector<int64_t>(strides_size, -1)));
+    strides.SetFromTensor(true);
+  } else if (strides_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim strides_dim =
+        strides_.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t strides_size = common::product(strides_dim);
+    if (common::contain_unknown_dim(strides_dim)) {
+      strides_size = 1;
+    }
+    strides = std::move(phi::IntArray(std::vector<int64_t>(strides_size, -1)));
+    strides.SetFromTensor(true);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+
+  VLOG(4) << "Builder construction  dense_x";
+  paddle::dialect::IrTensor ir_tensor_x(
+      paddle::dialect::TransToPhiDataType(x.dtype()), {}, x.data_layout(), {});
+  VLOG(4) << "Builder construction  meta_x";
+  paddle::dialect::IrMetaTensor meta_x(&ir_tensor_x);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::StridedSliceInferMeta(meta_x,
+                             axes,
+                             starts,
+                             ends,
+                             strides,
+                             &meta_out,
+                             phi::MetaConfig(false, false));
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_type);
+
+  return argument_outputs;
+}
+
+phi::DataType StridedSliceArrayOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: StridedSliceArrayOp";
+
+  return expected_kernel_dtype;
+}
+
 OpInfoTuple AssignArrayOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo("x",
@@ -4291,6 +4799,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::StridedSliceArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
