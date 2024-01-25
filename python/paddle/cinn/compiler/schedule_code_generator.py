@@ -14,7 +14,7 @@
 
 import ast
 
-from cinn.schedule import IRSchedule
+from paddle.cinn.schedule import IRSchedule
 
 from .expr_executor import ExprExecutor, exec_assign
 from .utils import (

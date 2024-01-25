@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.backends import (  # noqa: F401
-    Compiler,
-    ExecutionEngine,
-    ExecutionOptions,
-)
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.backends):
+    globals()[name] = getattr(core.cinn.backends, name)
+    __all__.append(name)

@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import cinn
-from cinn import framework
-from cinn.backends import Compiler
+from paddle import cinn
+from paddle.cinn import framework
+from paddle.cinn.backends import Compiler
 
 
 class Module:

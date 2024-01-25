@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.poly import (  # noqa: F401
-    Condition,
-    Iterator,
-    SharedStage,
-    SharedStageMap,
-    Stage,
-    StageMap,
-    create_stages,
-)
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.poly):
+    globals()[name] = getattr(core.cinn.poly, name)
+    __all__.append(name)

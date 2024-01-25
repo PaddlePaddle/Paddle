@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn import ir
-
-from .. import core_api
+from paddle.base import core
+from paddle.cinn import ir
 
 
 # Encapsulated cinn::pybind::IRBuilder in C++
 class IRBuilder:
     def __init__(self):
-        self.ir_builder = core_api.ir.IRBuilder()
+        self.ir_builder = core.cinn.ir.IRBuilder()
 
     def __enter__(self):
         self.ir_builder.EnterWithContext()
@@ -50,13 +49,13 @@ class IRContext:
 # Encapsulated cinn::pybind::ScheduleBlockContext in C++
 class ScheduleBlockContext(IRContext):
     def __init__(self, name):
-        self.ir_ctx = core_api.ir.IRContext.MakeScheduleBlockContext(name)
+        self.ir_ctx = core.cinn.ir.IRContext.MakeScheduleBlockContext(name)
 
 
 # Encapsulated cinn::pybind::LowerFuncContext in C++
 class LowerFuncContext(IRContext):
     def __init__(self, name):
-        self.ir_ctx = core_api.ir.IRContext.MakeLowerFunctionContext(name)
+        self.ir_ctx = core.cinn.ir.IRContext.MakeLowerFunctionContext(name)
 
 
 # Encapsulated cinn::pybind::ForContext in C++
@@ -72,16 +71,16 @@ class ForContext(IRContext):
 # Encapsulated cinn::pybind::IfContext in C++
 class IfContext(IRContext):
     def __init__(self, expr):
-        self.ir_ctx = core_api.ir.IRContext.MakeIfContext(expr)
+        self.ir_ctx = core.cinn.ir.IRContext.MakeIfContext(expr)
 
 
 # Encapsulated cinn::pybind::ThenContext in C++
 class ThenContext(IRContext):
     def __init__(self):
-        self.ir_ctx = core_api.ir.IRContext.MakeThenContext()
+        self.ir_ctx = core.cinn.ir.IRContext.MakeThenContext()
 
 
 # Encapsulated cinn::pybind::ElseContext in C++
 class ElseContext(IRContext):
     def __init__(self):
-        self.ir_ctx = core_api.ir.IRContext.MakeElseContext()
+        self.ir_ctx = core.cinn.ir.IRContext.MakeElseContext()

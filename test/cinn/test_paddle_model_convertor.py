@@ -21,12 +21,12 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
-from cinn.frontend import PaddleModelConvertor
-from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
 
 import paddle
+from paddle.cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from paddle.cinn.frontend import PaddleModelConvertor
+from paddle.cinn.runtime import seed as cinn_seed
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="paddle_model_convertor")

@@ -16,7 +16,7 @@ import logging
 import os
 from test.cinn.ops.op_test import OpTest
 
-from cinn.frontend import NetBuilder, Variable
+from paddle.cinn.frontend import NetBuilder, Variable
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")

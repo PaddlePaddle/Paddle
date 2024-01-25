@@ -18,11 +18,11 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
-from cinn.frontend import Program, Variable
 
 import paddle
 from paddle import static
+from paddle.cinn.common import DefaultHostTarget, DefaultNVGPUTarget, Float
+from paddle.cinn.frontend import Program, Variable
 
 assert len(sys.argv) == 2
 enable_gpu = sys.argv.pop()

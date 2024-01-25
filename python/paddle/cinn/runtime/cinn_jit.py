@@ -48,9 +48,9 @@ class CinnLowerLevelIrJit(Generic[T]):
         # Gets information about runtime input parameters
         jit_input_args = ', '.join(arg_name for arg_name in self.arg_names)
         lazy_compile = f"""
-import cinn
+import paddle.cinn as cinn
 def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget()):
-    from cinn.compiler import compile
+    from paddle.cinn.compiler import compile
     jit_inputs = {', '.join([f'{arg}' for arg in self.arg_names])}
     jit_inputs_signature = {{ i: self._convert_arg_type(arg) \
                              for i, arg in enumerate(jit_inputs)}}
@@ -67,7 +67,7 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
         return scope[self.fn.__name__]
 
     def convert_to_llir(self):
-        from cinn.compiler import compile
+        from paddle.cinn.compiler import compile
 
         return compile(self, just_convert=True)
 

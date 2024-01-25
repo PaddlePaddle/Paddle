@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 CINN Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.frontend import (  # noqa: F401
-    Computation,
-    Instruction,
-    Interpreter,
-    NetBuilder,
-    PaddleModelConvertor,
-    Placeholder,
-    Program,
-    Variable,
-    get_default_graph_pass,
-    get_default_opfusion_pass,
-    get_default_program_pass,
-)
+
+from .cinn_jit import CinnLowerLevelIrJit
+from .module import Module
+from paddle.base import core
+
+__all__ = ["CinnLowerLevelIrJit", "Module"]
+
+for name in dir(core.cinn.runtime):
+    globals()[name] = getattr(core.cinn.runtime, name)
+    __all__.append(name)

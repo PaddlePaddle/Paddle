@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 CINN Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,30 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.common import (  # noqa: F401
-    BFloat16,
-    Bool,
-    CINNValue,
-    CINNValuePack,
-    DefaultHostTarget,
-    DefaultNVGPUTarget,
-    DefaultTarget,
-    Float,
-    Float16,
-    Int,
-    RefCount,
-    Shared_CINNValuePack_,
-    String,
-    Target,
-    Type,
-    UInt,
-    Void,
-    _CINNValuePack_,
-    get_target,
-    is_compiled_with_cuda,
-    is_compiled_with_cudnn,
-    make_const,
-    reset_name_id,
-    set_target,
-    type_of,
-)
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.schedule):
+    globals()[name] = getattr(core.cinn.schedule, name)
+    __all__.append(name)

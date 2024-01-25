@@ -15,7 +15,7 @@
 import ast
 import contextlib
 
-from cinn import ir
+from paddle.cinn import ir
 
 from .expr_executor import ExprExecutor, exec_assign
 from .utils import VariableTable, is_node_parsed_in_schedule

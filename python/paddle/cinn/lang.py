@@ -1,4 +1,4 @@
-# Copyright (c) 2023 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.schedule import IRSchedule  # noqa: F401
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.lang):
+    globals()[name] = getattr(core.cinn.lang, name)
+    __all__.append(name)

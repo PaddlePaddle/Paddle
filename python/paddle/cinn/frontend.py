@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.framework import (  # noqa: F401
-    Instruction,
-    NodeAttr,
-    Operator,
-    OpValueType,
-    OpValueType1,
-    Scope,
-    SharedTensor,
-    Tensor,
-)
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.frontend):
+    globals()[name] = getattr(core.cinn.frontend, name)
+    __all__.append(name)

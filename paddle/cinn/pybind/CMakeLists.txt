@@ -15,6 +15,8 @@ set(srcs
     utils.cc
     schedule.cc)
 
+gather_srcs(cinnapi_src SRCS ${srcs})
+
 if(WITH_CUDA)
   message(STATUS "Compile core_api with CUDA support")
   cinn_nv_library(
