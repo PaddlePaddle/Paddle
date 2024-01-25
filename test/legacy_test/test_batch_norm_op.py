@@ -505,14 +505,12 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
                     data_format,
                     self.dtype,
                     [2, 3, 4, 5],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
                 self.check_with_place(
                     place,
                     data_format,
                     self.dtype,
                     [2, 3],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
 
 
@@ -538,14 +536,12 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
                     data_format,
                     self.dtype,
                     [2, 3, 4, 5],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
                 self.check_with_place(
                     place,
                     data_format,
                     self.dtype,
                     [2, 3],
-                    check_pir_onednn=self.check_pir_onednn,
                 )
 
 

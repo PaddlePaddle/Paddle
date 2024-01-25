@@ -33,7 +33,6 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NCHW"]
-        self.check_pir_onednn = True
 
     def ref_forward_backward(
         self,
@@ -78,14 +77,12 @@ class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NHWC"]
-        self.check_pir_onednn = True
 
 
 class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
     def init_test_case(self):
         TestMKLDNNBatchNormOpTraining.init_test_case(self)
         self.fetch_list = ['y', 'x@GRAD']
-        self.check_pir_onednn = True
 
     def test_forward_backward(self):
         place = core.CPUPlace()
