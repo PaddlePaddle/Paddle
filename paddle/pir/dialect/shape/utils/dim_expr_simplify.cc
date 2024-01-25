@@ -673,8 +673,8 @@ struct FoldInversedPairToUnit {
   using dim_expr_type = Op<DimExpr>;
 
   struct SearchResult {
-    int value_pos;
-    int inverse_value_pos;
+    std::size_t value_pos;
+    std::size_t inverse_value_pos;
   };
 
   DimExpr Rewrite(const DimExpr& expr) {
