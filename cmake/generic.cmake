@@ -596,8 +596,8 @@ function(paddle_test_build TARGET_NAME)
     get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
     target_link_libraries(
       ${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}> ${paddle_test_DEPS}
-      memory common paddle_gtest_main_new)
-    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} memory
+      allocator common paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} allocator
                      common paddle_gtest_main_new)
     if(WITH_MKLDNN)
       target_link_libraries(${TARGET_NAME} mkldnn)
