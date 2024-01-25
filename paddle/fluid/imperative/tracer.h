@@ -33,7 +33,7 @@
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/utils/test_macros.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 

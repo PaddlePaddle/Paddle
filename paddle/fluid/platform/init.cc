@@ -63,8 +63,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
-PHI_DECLARE_int32(paddle_num_threads);
-PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
+COMMON_DECLARE_int32(paddle_num_threads);
+COMMON_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {

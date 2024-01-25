@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
-PHI_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace paddle {
 namespace operators {

@@ -26,8 +26,8 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
-PHI_DECLARE_bool(enable_auto_rdma_trans);
+COMMON_DECLARE_bool(enable_auto_detect_gpu_topo);
+COMMON_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {

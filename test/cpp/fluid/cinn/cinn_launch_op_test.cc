@@ -34,10 +34,10 @@ limitations under the License. */
 USE_OP_ITSELF(cinn_launch);
 USE_OP_ITSELF(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
-PHI_DECLARE_double(eager_delete_tensor_gb);
-PHI_DECLARE_bool(enable_pe_launch_cinn);
-PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
-PHI_DECLARE_bool(enable_cinn_auto_tune);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_bool(enable_pe_launch_cinn);
+COMMON_DECLARE_bool(enable_interpretercore_launch_cinn);
+COMMON_DECLARE_bool(enable_cinn_auto_tune);
 
 PD_DECLARE_KERNEL(cinn_launch, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);

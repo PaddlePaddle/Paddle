@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {

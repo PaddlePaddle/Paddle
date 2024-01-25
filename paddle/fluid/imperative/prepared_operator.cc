@@ -35,9 +35,9 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(run_kp_kernel);
+COMMON_DECLARE_bool(run_kp_kernel);
 
 namespace paddle {
 namespace imperative {

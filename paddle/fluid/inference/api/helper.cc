@@ -22,7 +22,7 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/pir/core/ir_context.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace inference {

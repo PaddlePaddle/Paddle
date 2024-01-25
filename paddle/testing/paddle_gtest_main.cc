@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(enable_gpu_memory_usage_log);
+COMMON_DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
 int main(int argc, char** argv) {  // NOLINT

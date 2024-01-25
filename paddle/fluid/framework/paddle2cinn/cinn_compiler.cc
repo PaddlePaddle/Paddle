@@ -53,9 +53,9 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
-PHI_DECLARE_bool(enable_pe_launch_cinn);
-PHI_DECLARE_bool(enable_cinn_auto_tune);
-PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
+COMMON_DECLARE_bool(enable_pe_launch_cinn);
+COMMON_DECLARE_bool(enable_cinn_auto_tune);
+COMMON_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {

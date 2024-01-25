@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/stream.h"
 
-PHI_DECLARE_bool(trt_ibuilder_cache);
+COMMON_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace inference {

@@ -52,7 +52,7 @@
   }
 #endif
 
-PHI_DECLARE_bool(gpugraph_enable_hbm_table_collision_stat);
+COMMON_DECLARE_bool(gpugraph_enable_hbm_table_collision_stat);
 
 // TODO: can we do this more efficiently?
 __inline__ __device__ int8_t atomicCAS(int8_t* address,

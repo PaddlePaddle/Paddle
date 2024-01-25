@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace framework {

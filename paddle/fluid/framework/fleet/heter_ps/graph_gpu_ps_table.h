@@ -26,8 +26,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_HETERPS
 
-PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
-PHI_DECLARE_bool(multi_node_sample_use_gpu_table);
+COMMON_DECLARE_double(gpugraph_hbm_table_load_factor);
+COMMON_DECLARE_bool(multi_node_sample_use_gpu_table);
 
 namespace paddle {
 namespace framework {

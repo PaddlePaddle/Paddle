@@ -38,8 +38,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-PHI_DECLARE_string(allow_cinn_ops);
-PHI_DECLARE_string(deny_cinn_ops);
+COMMON_DECLARE_string(allow_cinn_ops);
+COMMON_DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {

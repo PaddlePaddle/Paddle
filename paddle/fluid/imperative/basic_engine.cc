@@ -34,7 +34,7 @@
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {

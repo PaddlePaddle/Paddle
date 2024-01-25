@@ -27,7 +27,7 @@
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
 
-PHI_DECLARE_string(jit_engine_type);
+COMMON_DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {

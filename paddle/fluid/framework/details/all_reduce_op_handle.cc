@@ -21,7 +21,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 namespace paddle {

@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/platform/flags.h"
 PD_DECLARE_bool(convert_all_blocks);

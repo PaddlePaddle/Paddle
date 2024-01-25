@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 bool gpu_place_used(const paddle::PaddlePlace& place) {

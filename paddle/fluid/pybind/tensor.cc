@@ -176,8 +176,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(use_shm_cache);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);

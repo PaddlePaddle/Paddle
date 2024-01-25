@@ -71,7 +71,7 @@ class Version;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_bool(check_kernel_launch);
+COMMON_DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {

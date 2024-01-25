@@ -30,7 +30,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {

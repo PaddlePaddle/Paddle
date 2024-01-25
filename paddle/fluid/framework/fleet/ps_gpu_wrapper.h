@@ -68,7 +68,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
-PHI_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {

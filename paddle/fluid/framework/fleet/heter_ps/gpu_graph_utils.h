@@ -24,7 +24,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 
-PHI_DECLARE_bool(gpugraph_debug_gpu_memory);
+COMMON_DECLARE_bool(gpugraph_debug_gpu_memory);
 
 namespace paddle {
 namespace framework {

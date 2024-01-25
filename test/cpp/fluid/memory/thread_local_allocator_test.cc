@@ -21,8 +21,8 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/memory/malloc.h"
 
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {

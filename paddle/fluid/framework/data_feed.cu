@@ -36,13 +36,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
-PHI_DECLARE_bool(enable_opt_get_features);
-PHI_DECLARE_bool(graph_metapath_split_opt);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
-PHI_DECLARE_bool(enable_graph_multi_node_sampling);
-PHI_DECLARE_bool(query_dest_rank_by_multi_node);
-PHI_DECLARE_string(graph_edges_split_mode);
+COMMON_DECLARE_bool(enable_opt_get_features);
+COMMON_DECLARE_bool(graph_metapath_split_opt);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_double(gpugraph_hbm_table_load_factor);
+COMMON_DECLARE_bool(enable_graph_multi_node_sampling);
+COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
+COMMON_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {

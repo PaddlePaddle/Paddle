@@ -52,7 +52,7 @@ struct CommContext;
 }  // namespace distributed
 }  // namespace paddle
 
-PHI_DECLARE_bool(communicator_is_sgd_optimizer);
+COMMON_DECLARE_bool(communicator_is_sgd_optimizer);
 
 namespace paddle {
 namespace distributed {

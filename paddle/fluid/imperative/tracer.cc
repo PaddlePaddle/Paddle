@@ -35,10 +35,10 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_string(tracer_mkldnn_ops_on);
-PHI_DECLARE_string(tracer_mkldnn_ops_off);
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_string(tracer_mkldnn_ops_on);
+COMMON_DECLARE_string(tracer_mkldnn_ops_off);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {

@@ -75,11 +75,11 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \

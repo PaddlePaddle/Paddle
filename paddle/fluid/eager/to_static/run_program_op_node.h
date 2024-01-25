@@ -32,9 +32,9 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
-PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(print_ir);
 
 namespace details {
 using Tensor = paddle::Tensor;

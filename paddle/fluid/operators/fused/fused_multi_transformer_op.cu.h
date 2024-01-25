@@ -44,10 +44,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
+COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace paddle {
 namespace operators {

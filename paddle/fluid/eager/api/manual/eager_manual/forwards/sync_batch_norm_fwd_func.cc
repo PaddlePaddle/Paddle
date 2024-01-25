@@ -24,8 +24,8 @@
 #include "paddle/phi/api/include/sparse_api.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,

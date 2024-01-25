@@ -19,7 +19,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/string/printf.h"
 
-PHI_DECLARE_double(fraction_of_cpu_memory_to_use);
+COMMON_DECLARE_double(fraction_of_cpu_memory_to_use);
 
 TEST(CpuMemoryUsage, Print) {
   std::stringstream ss;

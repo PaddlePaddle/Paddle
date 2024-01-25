@@ -43,13 +43,13 @@ PD_DECLARE_bool(new_executor_static_build);
 PD_DECLARE_bool(new_executor_use_inplace);
 PD_DECLARE_bool(new_executor_use_local_scope);
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
-PHI_DECLARE_bool(new_executor_use_cuda_graph);
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_uint64(executor_log_deps_every_microseconds);
+COMMON_DECLARE_bool(new_executor_use_cuda_graph);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";

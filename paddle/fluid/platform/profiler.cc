@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
-PHI_DECLARE_bool(enable_record_memory);
+COMMON_DECLARE_bool(enable_record_memory);
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;

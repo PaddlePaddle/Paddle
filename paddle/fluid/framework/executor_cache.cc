@@ -28,8 +28,8 @@
 
 DECLARE_FILE_SYMBOLS(print_statistics);
 
-PHI_DECLARE_bool(pir_apply_inplace_pass);
-PHI_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {

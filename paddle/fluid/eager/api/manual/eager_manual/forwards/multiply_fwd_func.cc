@@ -26,7 +26,7 @@
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/type_promotion.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {

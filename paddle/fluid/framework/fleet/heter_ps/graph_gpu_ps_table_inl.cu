@@ -30,8 +30,8 @@
 #define HBMPS_MAX_BUFF 1024 * 1024
 #define SAMPLE_SIZE_THRESHOLD 1024
 
-PHI_DECLARE_bool(enable_neighbor_list_use_uva);
-PHI_DECLARE_bool(enable_graph_multi_node_sampling);
+COMMON_DECLARE_bool(enable_neighbor_list_use_uva);
+COMMON_DECLARE_bool(enable_graph_multi_node_sampling);
 
 namespace paddle {
 namespace framework {

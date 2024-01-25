@@ -30,7 +30,7 @@ USE_OP_ITSELF(elementwise_add_grad);
 
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace framework {

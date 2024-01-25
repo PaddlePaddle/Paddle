@@ -49,7 +49,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/pir/core/attribute.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace pybind {

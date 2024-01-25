@@ -134,8 +134,8 @@ USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
-PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {

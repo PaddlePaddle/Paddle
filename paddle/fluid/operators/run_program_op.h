@@ -39,7 +39,7 @@ limitations under the License. */
 #endif
 #include "paddle/common/flags.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {

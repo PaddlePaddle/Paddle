@@ -49,8 +49,8 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 

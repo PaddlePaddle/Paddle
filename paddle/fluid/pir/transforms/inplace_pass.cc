@@ -35,7 +35,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 
-PHI_DECLARE_string(ir_inplace_kernel_blacklist);
+COMMON_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace {
 

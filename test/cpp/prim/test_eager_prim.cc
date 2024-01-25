@@ -27,7 +27,7 @@
 #include "test/cpp/eager/test_utils.h"
 #include "test/cpp/prim/init_env_utils.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {

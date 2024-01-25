@@ -122,8 +122,8 @@
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace {

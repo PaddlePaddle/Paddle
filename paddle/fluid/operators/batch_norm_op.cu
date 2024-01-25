@@ -30,7 +30,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {

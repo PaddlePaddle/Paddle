@@ -29,7 +29,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_bool(prim_enabled);
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {

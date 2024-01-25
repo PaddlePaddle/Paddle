@@ -55,8 +55,8 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 
-PHI_DECLARE_bool(print_ir);
-// PHI_DECLARE_string(pir_onednn_kernel_blacklist);
+COMMON_DECLARE_bool(print_ir);
+// COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
 
 namespace paddle {
 namespace dialect {

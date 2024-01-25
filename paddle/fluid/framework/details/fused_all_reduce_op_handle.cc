@@ -22,7 +22,7 @@
 #include "paddle/phi/backends/device_memory_aligment.h"
 
 PD_DEFINE_bool(skip_fused_all_reduce_check, false, "");  // NOLINT
-PHI_DECLARE_bool(allreduce_record_one_event);
+COMMON_DECLARE_bool(allreduce_record_one_event);
 
 namespace paddle {
 namespace framework {

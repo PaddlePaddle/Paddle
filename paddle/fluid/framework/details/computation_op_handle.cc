@@ -16,7 +16,7 @@
 #include <string>
 #include "paddle/common/flags.h"
 
-PHI_DECLARE_bool(allreduce_record_one_event);
+COMMON_DECLARE_bool(allreduce_record_one_event);
 
 namespace paddle {
 namespace framework {

@@ -213,7 +213,7 @@ limitations under the License. */
 #include "paddle/pir/core/program.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);

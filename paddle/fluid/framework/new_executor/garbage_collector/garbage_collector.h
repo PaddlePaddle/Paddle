@@ -22,8 +22,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
-PHI_DECLARE_bool(fast_eager_deletion_mode);
-PHI_DECLARE_bool(new_executor_use_cuda_graph);
+COMMON_DECLARE_bool(fast_eager_deletion_mode);
+COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
 namespace framework {

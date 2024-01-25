@@ -40,10 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 
-PHI_DECLARE_bool(use_pinned_memory);
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_bool(use_pinned_memory);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
 namespace paddle {
 namespace memory {

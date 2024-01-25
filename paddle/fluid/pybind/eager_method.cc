@@ -70,8 +70,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-PHI_DECLARE_bool(set_to_1d);
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(set_to_1d);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {

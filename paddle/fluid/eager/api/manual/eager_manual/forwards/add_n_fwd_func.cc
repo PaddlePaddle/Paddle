@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   // Dygraph Record Event

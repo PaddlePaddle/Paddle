@@ -30,7 +30,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 
 namespace paddle {
 namespace framework {

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
-PHI_DECLARE_bool(use_pinned_memory);
+COMMON_DECLARE_bool(use_pinned_memory);
 
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;

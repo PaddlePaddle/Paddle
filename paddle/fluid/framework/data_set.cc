@@ -38,10 +38,10 @@
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 USE_INT_STAT(STAT_epoch_finish);
-PHI_DECLARE_bool(graph_get_neighbor_id);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_string(graph_edges_split_mode);
-PHI_DECLARE_bool(query_dest_rank_by_multi_node);
+COMMON_DECLARE_bool(graph_get_neighbor_id);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_string(graph_edges_split_mode);
+COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
 
 namespace paddle {
 namespace framework {

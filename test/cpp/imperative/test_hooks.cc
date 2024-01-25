@@ -36,7 +36,7 @@ namespace platform = paddle::platform;
 namespace framework = paddle::framework;
 namespace memory = paddle::memory;
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {

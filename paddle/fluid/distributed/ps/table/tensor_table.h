@@ -38,7 +38,7 @@ struct ExecutorPrepareContext;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace distributed {

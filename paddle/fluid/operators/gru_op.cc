@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
-PHI_DECLARE_int32(paddle_num_threads);
+COMMON_DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {

@@ -23,7 +23,7 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(local_exe_sub_scope_limit);
+COMMON_DECLARE_double(local_exe_sub_scope_limit);
 
 namespace paddle {
 namespace framework {

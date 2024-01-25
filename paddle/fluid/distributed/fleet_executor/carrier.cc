@@ -35,7 +35,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "
     "after all fleet executor cases are modified to run ops with standalone "
     "executor.");
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace distributed {

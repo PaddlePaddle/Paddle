@@ -22,7 +22,7 @@
 #else
 #define _LINUX
 #endif
-PHI_DECLARE_bool(enable_exit_when_partial_worker);
+COMMON_DECLARE_bool(enable_exit_when_partial_worker);
 
 namespace paddle {
 namespace framework {

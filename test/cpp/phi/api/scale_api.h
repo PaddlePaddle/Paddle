@@ -26,7 +26,7 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
-PHI_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 

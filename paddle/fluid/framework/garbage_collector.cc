@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
-PHI_DECLARE_double(memory_fraction_of_eager_deletion);
-PHI_DECLARE_bool(fast_eager_deletion_mode);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
+COMMON_DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {

@@ -62,10 +62,10 @@ class DenseTensor;
 #endif
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(enable_unused_var_check);
-PHI_DECLARE_bool(run_kp_kernel);
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(run_kp_kernel);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {

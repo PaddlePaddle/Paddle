@@ -61,7 +61,7 @@ namespace phi {
 class KernelContext;
 }
 
-PHI_DECLARE_int32(inner_op_parallelism);
+COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {

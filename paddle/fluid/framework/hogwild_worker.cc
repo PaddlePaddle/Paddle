@@ -30,7 +30,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined PADDLE_WITH_PSCORE
@@ -47,12 +47,12 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/fluid/framework/program_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_exit_when_partial_worker);
-PHI_DECLARE_int32(enable_adjust_op_order);
+COMMON_DECLARE_bool(enable_exit_when_partial_worker);
+COMMON_DECLARE_int32(enable_adjust_op_order);
 PHI_DEFINE_EXPORTED_bool(gpugraph_force_device_batch_num_equal,
                          false,
                          "enable force_device_batch_num_equal, default false");
-PHI_DECLARE_bool(enable_dump_main_program);
+COMMON_DECLARE_bool(enable_dump_main_program);
 PHI_DEFINE_EXPORTED_int32(gpugraph_offload_param_stat,
                           0,
                           "enable offload param stat, default 0");

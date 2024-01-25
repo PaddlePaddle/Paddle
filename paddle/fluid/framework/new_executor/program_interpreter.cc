@@ -38,13 +38,13 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 PD_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 

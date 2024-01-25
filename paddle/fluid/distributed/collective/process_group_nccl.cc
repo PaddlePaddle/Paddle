@@ -31,11 +31,11 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-PHI_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(benchmark_nccl);
-PHI_DECLARE_bool(nccl_blocking_wait);
-PHI_DECLARE_bool(use_stream_safe_cuda_allocator);
-PHI_DECLARE_bool(enable_async_trace);
+COMMON_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark_nccl);
+COMMON_DECLARE_bool(nccl_blocking_wait);
+COMMON_DECLARE_bool(use_stream_safe_cuda_allocator);
+COMMON_DECLARE_bool(enable_async_trace);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;

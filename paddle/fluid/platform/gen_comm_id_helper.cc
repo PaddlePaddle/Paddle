@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
-PHI_DECLARE_int32(get_host_by_name_time);
+COMMON_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {

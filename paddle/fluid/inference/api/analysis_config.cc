@@ -33,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {

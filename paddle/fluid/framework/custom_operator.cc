@@ -51,8 +51,8 @@ limitations under the License. */
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {
