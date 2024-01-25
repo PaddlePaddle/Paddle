@@ -355,6 +355,8 @@ class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_dyfun_with_conflict_var
 
+    # This test raises an error about UndefinedVar in pir mode,
+    # it can be removed after the bug is fixed.
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
@@ -444,6 +446,8 @@ class TestClassVarInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_class_var
 
+    # This test raises an error about UndefinedVar in pir mode,
+    # it can be removed after the bug is fixed.
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), rtol=1e-05
