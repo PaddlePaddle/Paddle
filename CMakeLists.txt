@@ -321,6 +321,7 @@ option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
+option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
