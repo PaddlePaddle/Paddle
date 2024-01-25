@@ -82,7 +82,7 @@ inline static DataType promoteTypes(DataType x, DataType y) {
   return _promoteTypesLookup[DataTypeToNum(x)][DataTypeToNum(y)];
 }
 
-static inline bool is_support_float(DataType dtype) {
+inline bool is_support_float(DataType dtype) {
   if (dtype == DataType::FLOAT16 || dtype == DataType::FLOAT32 ||
       dtype == DataType::FLOAT64 || dtype == DataType::BFLOAT16) {
     return true;
@@ -91,22 +91,54 @@ static inline bool is_support_float(DataType dtype) {
   }
 }
 
+inline bool is_support_complex(DataType dtype) {
+  if (dtype == DataType::COMPLEX64 || dtype == DataType::COMPLEX128) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline DataType ComplexToFloat(DataType dtype) {
+  if (dtype == DataType::COMPLEX64) {
+    return DataType::FLOAT32;
+  } else if (dtype == DataType::COMPLEX128) {
+    return DataType::FLOAT64;
+  } else {
+    return dtype;
+  }
+}
+
 inline phi::DataType GetPromoteDtype(const std::string& op_name,
                                      const DataType x,
                                      const DataType y) {
-  // future will deal this by different rule
-  if (op_name == "greater_than") {
-    // bool logic
-    return DataType::BOOL;
+  // complex will be cast to float
+  if (op_name == "l1_loss" || op_name == "smooth_l1_loss" ||
+      op_name == "mse_loss") {
+    return phi::promoteTypes(ComplexToFloat(x), ComplexToFloat(y));
   } else {
+    // use default rule
     return phi::promoteTypes(x, y);
   }
 }
 
 inline bool NeedTypePromotion(const DataType x, const DataType y) {
-  // Tensor + Tensor only support type promotion for float type
-  if ((x != y) && is_support_float(x) && is_support_float(y)) {
-    return true;
+  // Tensor + Tensor type promotion only support calculations between
+  // floating-point numbers and between complex and real numbers.
+  if (x != y) {
+    if ((is_support_float(x) && is_support_float(y)) ||
+        (is_support_complex(x) || is_support_complex(y))) {
+      return true;
+    } else {
+      PD_THROW(
+          "Type promotion only support calculations between floating-point "
+          "numbers and between complex and real numbers. But got different "
+          "data type x: `",
+          x,
+          "` y: `",
+          y,
+          "`.");
+    }
   } else {
     return false;
   }
