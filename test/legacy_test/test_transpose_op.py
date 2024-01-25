@@ -522,7 +522,7 @@ class TestTransposeOpError(unittest.TestCase):
                 )
                 paddle.transpose(x1, perm=[1, 0, 2])
 
-            self.assertRaises(TypeError, test_x_dtype_check)
+            self.assertRaises(RuntimeError, test_x_dtype_check)
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
