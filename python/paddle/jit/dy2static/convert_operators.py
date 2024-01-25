@@ -726,7 +726,7 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval(f'{dtype}(var)')
+        return eval(dtype)(var)
 
 
 def convert_assert(cond, message=""):
