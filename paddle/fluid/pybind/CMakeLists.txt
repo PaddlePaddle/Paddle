@@ -152,6 +152,7 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     eval_frame_tools.cc
+    cpython_internals.c
     eval_frame.c)
 
 if(NOT WITH_SHARED_IR)

@@ -77,13 +77,15 @@ void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
             << value_to_shape_or_data_.size();
   LOG(INFO) << "----------- ShapeOrData for Values ------------";
   for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
-    LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+    if (value) {
+      LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+    }
   }
 }
 
 // Currently, we only support TensorShapeOrDataDimExprs but not
 // TensorListShapeOrDataDimExprs to compare the shape.
-bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
+bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
 
   if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
@@ -180,7 +182,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   return IsProductEqual(lhs, lhs_dim_idxs, rhs, rhs_dim_idxs);
 }
 
-bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) {
+bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
   auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();

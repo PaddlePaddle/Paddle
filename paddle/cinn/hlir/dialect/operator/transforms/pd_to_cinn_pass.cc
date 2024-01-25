@@ -155,7 +155,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
           full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
 
       auto cinn_scale = rewriter.Build<cinn::dialect::ScaleOp>(
-          op->operand_source(0).dyn_cast<pir::OpResult>(),
+          op->operand_source(0),
           scale_value,
           op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data(),
           op->attributes()
@@ -220,7 +220,7 @@ class ReshapeOpPattern
       }
 
       auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-          op->operand_source(0).dyn_cast<pir::OpResult>(), vec_out_shape);
+          op->operand_source(0), vec_out_shape);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
 
@@ -264,8 +264,8 @@ class Pool2dOpPattern
       attrs.erase("paddings");
       attrs.erase("pooling_type");
 
-      auto cinn_reshape = rewriter.Build<cinn::dialect::Pool2dOp>(
-          op->operand_source(0).dyn_cast<pir::OpResult>(), attrs);
+      auto cinn_reshape =
+          rewriter.Build<cinn::dialect::Pool2dOp>(op->operand_source(0), attrs);
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
 
@@ -337,13 +337,13 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
           cinn::dialect::ir::GetVectorAttr(op, "decrease_axis");
       auto infer_flags = cinn::dialect::ir::GetVectorAttr(op, "infer_flags");
 
-      auto cinn_slice = rewriter.Build<cinn::dialect::SliceOp>(
-          op->operand_source(0).dyn_cast<pir::OpResult>(),
-          axes,
-          start_vec,
-          end_vec,
-          infer_flags,
-          decrease_axis);
+      auto cinn_slice =
+          rewriter.Build<cinn::dialect::SliceOp>(op->operand_source(0),
+                                                 axes,
+                                                 start_vec,
+                                                 end_vec,
+                                                 infer_flags,
+                                                 decrease_axis);
       // NOTE(Aurelius84): In SliceRawInferMeta, it not always share_lod, so
       // we need to update it maually.
       cinn_slice.result(0).set_type(op.result(0).type());

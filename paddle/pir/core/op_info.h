@@ -21,7 +21,6 @@
 namespace pir {
 class OpInfoImpl;
 class IrContext;
-class OpResult;
 class Type;
 class Attribute;
 class Dialect;

@@ -39,7 +39,7 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_static_dim_to_dynamic=64:S0
+      FLAGS_cinn_convert_static_dim_to_dynamic_dim=64:S0
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1
       FLAGS_pir_apply_shape_optimization_pass=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_sub_graph_for_backend.py
@@ -52,7 +52,7 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_dynamic_to_static_dim=S0:64
+      FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:64
       FLAGS_cinn_bucket_compile=False FLAGS_enable_pir_api=1
       ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_sub_graph_for_frontend.py
