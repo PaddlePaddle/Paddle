@@ -384,7 +384,7 @@ class TestSplitOpErrorStatic(unittest.TestCase):
                 )
                 paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
-            self.assertRaises(IndexError, test_num_or_sections_type)
+            self.assertRaises(TypeError, test_num_or_sections_type)
 
             def test_num_or_sections_type_tensor():
                 x7 = paddle.static.data(
