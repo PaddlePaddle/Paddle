@@ -522,6 +522,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(sym_shape)};
+  shape_data.SetData(sym_data);
 
   op->set_attribute(
       "symbolic_shape",
