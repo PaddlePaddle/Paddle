@@ -547,7 +547,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         if core.is_compiled_with_rocm():
             out = self.softmax(x, dtype=np.float32)
             out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float32)
@@ -569,11 +569,6 @@ class TestSoftmaxAPI(unittest.TestCase):
                 name='x_int32', shape=[2, 3], dtype='int32'
             )
             self.assertRaises(TypeError, self.softmax, x_int32)
-            # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            self.assertRaises(TypeError, self.softmax, x_fp16)
 
 
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
