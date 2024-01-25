@@ -19,6 +19,8 @@
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/op_result.h"
 
 namespace paddle {
 namespace primitive {
@@ -178,6 +180,15 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   } else {
     return false;
   }
+}
+
+static bool is_dynamic_shape(const Tensor& x) {
+  pir::OpResult res = std::static_pointer_cast<primitive::LazyTensor>(x.impl())
+                          ->value()
+                          .dyn_cast<pir::OpResult>();
+  auto shape_type = res.type().dyn_cast<pir::ShapedTypeInterface>();
+  PADDLE_ENFORCE(shape_type, "dy should be a tensor");
+  return shape_type.IsDynamicShape();
 }
 
 }  // namespace primitive

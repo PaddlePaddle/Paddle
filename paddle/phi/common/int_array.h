@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/tensor_ref.h"
+// #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
 namespace common {
 class DDim;

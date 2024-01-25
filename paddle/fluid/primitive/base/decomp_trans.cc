@@ -297,6 +297,7 @@ void DecompProgram::decomp_program() {
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
+    VLOG(0) << "[Prim] origin op name === " << op->name();
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
