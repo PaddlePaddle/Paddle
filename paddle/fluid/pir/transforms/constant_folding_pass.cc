@@ -346,8 +346,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                                           prev_op->name()));
         }
       } else {
-        op_inputs.push_back(
-            op->operand_source(i).dyn_cast<pir::OpResult>() /*nullptr*/);
+        op_inputs.push_back(nullptr);
       }
     }
 
