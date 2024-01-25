@@ -19,9 +19,9 @@ limitations under the License. */
 #include <cmath>
 #include <type_traits>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
 namespace funcs {

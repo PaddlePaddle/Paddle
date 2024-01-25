@@ -47,6 +47,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    int8_teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
     int8_teller_set.insert("flatten_contiguous_range");
     teller_set.insert("rnn");
@@ -376,7 +377,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       const std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
-        VLOG(3) << "The size of paddings shoule be 2, but got "
+        VLOG(3) << "The size of paddings should be 2, but got "
                 << paddings.size();
         return false;
       }
@@ -1661,14 +1662,10 @@ struct SimpleOpTypeSetTeller : public Teller {
           fill_constant_inputs.end()) {
         if (!desc.Input("ValueTensor").empty()) return false;
       }
-      if (fill_constant_inputs.find("ShapeTensor") !=
-          fill_constant_inputs.end()) {
-        if (!desc.Input("ShapeTensor").empty()) return false;
+      if (desc.HasInput("ShapeTensor")) {
+        if (desc.Input("ShapeTensor").size() > 1) return false;
       }
-      if (fill_constant_inputs.find("ShapeTensorList") !=
-          fill_constant_inputs.end()) {
-        if (!desc.Input("ShapeTensorList").empty()) return false;
-      }
+
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : 5;
@@ -2468,6 +2465,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << " does not have attr (axes or "
                    "starts or steps)";
         return false;
+      }
+      if (desc.HasAttr("axes")) {
+        auto axes =
+            PADDLE_GET_CONST(std::vector<int64_t>, desc.GetAttr("axes"));
+        if (axes.size() != 1UL) {
+          VLOG(3) << "the set_value op"
+                  << "has more than one element in attribute axes, it can not "
+                     "enter into trt.";
+          return false;
+        }
       }
     }
 

@@ -47,9 +47,12 @@ static const std::unordered_set<std::string>
 
         GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
 #undef GEN_FUNC_NAME
+#undef GEN_FUNC_NAME_WITH_TYPE
+#undef CINN_NVGPU_FUNC_TYPE
+#undef CINN_NVGPU_FUNC2STRING
 };
 
-bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
   CHECK_NOTNULL(sch_block_realize);
@@ -203,15 +206,6 @@ ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
   CHECK(master) << "Cannot find global master node";
   VLOG(6) << "Find the global master node: " << master->id();
   return master;
-}
-
-std::unordered_set<std::string> StaticShapeGroupScheduler::OutputTensorNames()
-    const {
-  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
-  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
-    output_tensor_names.insert(node->id());
-  }
-  return output_tensor_names;
 }
 
 void StaticShapeGroupScheduler::DoLoopAlignment() {

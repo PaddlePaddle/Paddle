@@ -19,6 +19,7 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 #include "test/cpp/pir/tools/test_interface.h"
 #include "test/cpp/pir/tools/test_trait.h"
 
@@ -320,21 +321,21 @@ class SameOperandsAndResultTypeTraitOp3
 
 }  // namespace test
 
-IR_DECLARE_EXPLICIT_TYPE_ID(test::RegionOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::BranchOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::Operation2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::TraitExampleOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsShapeTraitOp2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultShapeTraitOp3)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsElementTypeTraitOp2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp3)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp1)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp2)
-IR_DECLARE_EXPLICIT_TYPE_ID(test::SameOperandsAndResultTypeTraitOp3)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::RegionOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::BranchOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::Operation1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::Operation2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::TraitExampleOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsShapeTraitOp1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsShapeTraitOp2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultShapeTraitOp1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultShapeTraitOp2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultShapeTraitOp3)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsElementTypeTraitOp1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsElementTypeTraitOp2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultElementTypeTraitOp3)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::SameOperandsAndResultTypeTraitOp3)

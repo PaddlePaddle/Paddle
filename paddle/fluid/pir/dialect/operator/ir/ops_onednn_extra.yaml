@@ -1,0 +1,52 @@
+
+- op : add
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_double_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : add_triple_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
+
+- op : conv2d
+  extra_args : bool is_test=false
+  data_format_tensors : input
+
+- op : conv2d_grad
+  extra_args : bool is_test=false
+  data_format_tensors : input, out_grad
+
+- op : fused_conv2d
+  extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
+  data_format_tensors : input
+
+- op : lrn
+  extra_args : bool is_test=false
+  data_format_tensors : x
+
+- op : lrn_grad
+  extra_args : bool is_test=false
+  data_format_tensors : x, out, mid_out, out_grad
+
+- op : pad3d
+  extra_args :
+  data_format_tensors : x
+  dynamic_fallback : True
+
+# - op : matmul
+#   extra_args : str mkldnn_data_type="float32"
+#   layout_transform :
+#     arg_name: cur_paddle_data_layout
+#     tensors: x, y
+
+# - op : batch_norm
+#   extra_args : bool fuse_with_relu=false
+#   layout_transform :
+#     arg_name: data_layout
+#     tensors: x
+
+# - op : prelu
+#   extra_args : bool is_test=false, str mkldnn_data_type="float32"

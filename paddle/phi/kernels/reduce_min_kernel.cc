@@ -67,5 +67,11 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(min, XPU, ALL_LAYOUT, phi::MinKernel, float) {}
+PD_REGISTER_KERNEL(min,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MinKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

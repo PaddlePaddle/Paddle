@@ -281,6 +281,9 @@ def monkey_patch_value():
     def _scalar_div_(var, value):
         return paddle.scale(var, 1.0 / value, 0.0)
 
+    def _scalar_neg_(var):
+        return paddle.scale(var, -1.0, 0.0)
+
     def _binary_creator_(
         method_name,
         python_api,
@@ -402,6 +405,56 @@ def monkey_patch_value():
         """
         return paddle.numel(self)
 
+    @property
+    def _T_(self):
+        """
+
+        Permute current Value with its dimensions reversed.
+
+        If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_T = x.T
+
+                >>> exe = paddle.static.Executor()
+                >>> x_T_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_T])[0]
+                >>> print(x_T_np.shape)
+                (5, 3, 2)
+
+        """
+        if len(self.shape) == 1:
+            return self
+        perm = list(reversed(range(len(self.shape))))
+
+        return _C_ops.transpose(self, perm)
+
+    def _int_(self):
+        raise TypeError(
+            "int(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.int32), and do not use int(Value)."
+        )
+
+    def _float_(self):
+        raise TypeError(
+            "float(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value directly, and do not use float(Value)."
+        )
+
+    def _bool_(self):
+        raise TypeError(
+            "bool(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.bool), and do not use bool(Value)."
+        )
+
     def clone(self):
         """
         Returns a new static Value, which is the clone of the original static
@@ -467,7 +520,7 @@ def monkey_patch_value():
     def append(self, var):
         """
         **Notes**:
-           **The type Value must be LoD Tensor Array.
+           **The type Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
@@ -508,11 +561,13 @@ def monkey_patch_value():
         ('ndim', _ndim),
         ('astype', astype),
         ('size', _size_),
+        ('T', _T_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
+        # For basic operators
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
@@ -591,7 +646,8 @@ def monkey_patch_value():
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
-        # for logical compare
+        ('__neg__', _scalar_neg_),
+        # For compare opeartors
         (
             '__eq__',
             _binary_creator_('__eq__', paddle.tensor.equal, False, None),
@@ -618,6 +674,9 @@ def monkey_patch_value():
                 '__ge__', paddle.tensor.greater_equal, False, None
             ),
         ),
+        ('__float__', _float_),
+        ('__int__', _int_),
+        ('__bool__', _bool_),
     ]
 
     global _already_patch_value

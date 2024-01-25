@@ -32,4 +32,4 @@ class ControlFlowDialect : public Dialect {
 };
 
 }  // namespace pir
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)

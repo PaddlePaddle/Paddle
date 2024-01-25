@@ -18,14 +18,11 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestMatmulScaleFusePattern(PassTest):
     r"""
     x_var   f_var
@@ -44,10 +41,12 @@ class TestMatmulScaleFusePattern(PassTest):
                 for scale_bias in [1e-7]:
                     for scale_value in [2.0]:
                         for bias_after_scale in [True]:
-                            pir_program = None
                             with paddle.pir_utils.IrGuard():
-                                pir_program = paddle.static.Program()
-                                with paddle.pir.core.program_guard(pir_program):
+                                main_prog = paddle.static.Program()
+                                start_prog = paddle.static.Program()
+                                with paddle.static.program_guard(
+                                    main_prog, start_prog
+                                ):
                                     x = paddle.static.data(
                                         name='x', shape=x_shape, dtype='float32'
                                     )
@@ -60,33 +59,30 @@ class TestMatmulScaleFusePattern(PassTest):
                                         bias=scale_bias,
                                         bias_after_scale=bias_after_scale,
                                     )
-
-                            self.pass_list = ['matmul_scale_fuse_pass']
-                            self.feeds = {
-                                "x": np.random.random(x_shape).astype(
-                                    "float32"
-                                ),
-                                "w": np.random.random(w_shape).astype(
-                                    "float32"
-                                ),
-                            }
-                            self.fetch_list = [out]
-                            self.valid_op_map = {
-                                "pd_op.scale": 1,
-                                "pd_op.matmul": 1,
-                            }
-                            yield pir_program, False
+                                    out = paddle.assign(out)
+                                    self.pass_list = ['matmul_scale_fuse_pass']
+                                    self.feeds = {
+                                        "x": np.random.random(x_shape).astype(
+                                            "float32"
+                                        ),
+                                        "w": np.random.random(w_shape).astype(
+                                            "float32"
+                                        ),
+                                    }
+                                    self.fetch_list = [out]
+                                    self.valid_op_map = {
+                                        "pd_op.scale": 1,
+                                        "pd_op.matmul": 1,
+                                    }
+                                    yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.place_runtime = "gpu"
+        self.places.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
         self.check_pass_correct()
-
-
-class TestMatmulScaleFusePatternWtihCpu(TestMatmulScaleFusePattern):
-    def setUp(self):
-        self.place_runtime = "cpu"
 
 
 if __name__ == "__main__":

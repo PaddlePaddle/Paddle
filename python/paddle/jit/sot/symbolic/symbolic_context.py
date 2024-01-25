@@ -18,6 +18,7 @@ from ..utils import log
 from .compile_cache import CompileSIRCache
 from .statement_ir import (
     ApiStatement,
+    ASTStatement,
     CallStatement,
     LayerStatement,
     MethodStatement,
@@ -69,7 +70,6 @@ class SymbolicTraceContext:
         """
         Call a paddle api.
         """
-
         assert callable(api), "call_API must receive a paddle api."
         stmt = ApiStatement(api, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
@@ -92,6 +92,10 @@ class SymbolicTraceContext:
         Call a layer of a api.
         """
         stmt = LayerStatement(layer, inputs, outputs, stacks)
+        self.TOS.add_statement(stmt)
+
+    def call_AST(self, static_function, inputs, outputs, stacks):
+        stmt = ASTStatement(static_function, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
     def get_sir(self, name: str):
@@ -130,14 +134,18 @@ class SymbolicTraceContext:
             ret_vals (list[Symbol]): the return values of the function.
         """
 
-        def dummy_func(*args, **kwargs):
-            return []
+        class DummyFunc:
+            def __call__(*args, **kwargs):
+                return []
+
+            def graph_size(self):
+                return 0
 
         # return None function
         dummy_stmt_ir = StatementIR("dummy_func")
         dummy_stmt_ir.outputs = []
         dummy_stmt_ir.inputs = []
-        return dummy_func, dummy_stmt_ir
+        return DummyFunc(), dummy_stmt_ir
 
     def compile_fn(self, ret_vals, **kwargs):
         """

@@ -29,7 +29,6 @@ void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& repeat_times_arr,
                 DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
   auto rank = x.dims().size();
   std::vector<int64_t> repeat_times = repeat_times_arr.GetData();
   int repeat_times_size = repeat_times.size();
@@ -122,24 +121,6 @@ void TileKernel(const Context& dev_ctx,
                                  reinterpret_cast<int8_t*>(out->data<T>()),
                                  vec_in_dims,
                                  vec_out_dims);
-
-  } else if (std::is_same<T, double>::value) {
-    float* x_t = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
-    float* y_t = RAII_GUARD.alloc_l3_or_gm<float>(out->numel());
-    int r =
-        xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                  reinterpret_cast<const XPUType*>(x.data<T>()),
-                                  x_t,
-                                  x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    ret = xpu::broadcast<float>(
-        dev_ctx.x_context(), x_t, y_t, vec_in_dims, vec_out_dims);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
-    r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
-                                  y_t,
-                                  reinterpret_cast<XPUType*>(out->data<T>()),
-                                  out->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
   } else {
     ret = xpu::broadcast<T>(dev_ctx.x_context(),

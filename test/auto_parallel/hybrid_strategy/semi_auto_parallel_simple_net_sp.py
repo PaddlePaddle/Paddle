@@ -209,7 +209,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         for param, param_base in zip(
             self.dp_mp_sp_parameters, self.base_parameters
         ):
-            if param.grad is not None:
+            if param.grad._is_initialized():
                 self.check_tensor_eq(param, param_base)
                 self.check_tensor_eq(param.grad, param_base.grad)
 

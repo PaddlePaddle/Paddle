@@ -333,7 +333,8 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     // cast arg to cinn_pod_value_t*
 
     // something like `_args[0]`
-    Expr load_expr = Load::Make(pod_value_ptr, {cinn::common::make_const(i)});
+    Expr load_expr = Load::Make(
+        pod_value_ptr, {cinn::common::make_const(static_cast<int32_t>(i))});
     CHECK_EQ(load_expr.type(), type_of<cinn_pod_value_t>());
     load_expr = ir::intrinsics::GetAddr::Make(load_expr);
 
@@ -398,11 +399,24 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     } else if (arg.type() == type_of<void*>()) {
       pod_cast_expr =
           ir::intrinsics::PodValueToX::Make(load_expr, type_of<void*>());
+    } else if (arg.type() == type_of<int32_t*>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t*>());
+    } else if (arg.type() == type_of<int32_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t**>());
+    } else if (arg.type() == type_of<int64_t**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int64_t**>());
+    } else if (arg.type() == type_of<void**>()) {
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<void**>());
     } else {
       LOG(ERROR) << "Not supported type [" << arg.type() << "]";
       CINN_NOT_IMPLEMENTED
     }
 
+    VLOG(6) << "args " << i << "convert";
     Expr let_expr = Let::Make(_arg, pod_cast_expr);
     CHECK(let_expr.type().valid());
     argument_prepare_exprs.push_back(let_expr);

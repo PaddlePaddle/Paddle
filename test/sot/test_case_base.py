@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import inspect
-import os
 import types
 import unittest
+from functools import wraps
 
 import numpy as np
 
@@ -38,39 +37,7 @@ def test_instruction_translator_cache_context():
     cache.clear()
 
 
-def github_action_error_msg(msg: str):
-    if 'GITHUB_ACTIONS' in os.environ:
-        frame = inspect.currentframe()
-        if frame is not None:
-            # find the first frame that is in the test folder
-            while frame.f_back is not None:
-                filename = frame.f_code.co_filename
-                if filename.startswith("./"):
-                    filename = f"tests/{filename[2:]}"
-                    lineno = frame.f_lineno
-                    output = f"\n::error file={filename},line={lineno}::{msg}"
-                    return output
-                frame = frame.f_back
-    return None
-
-
 class TestCaseBase(unittest.TestCase):
-    def assertIs(self, x, y, msg=None):
-        super().assertIs(x, y, msg=msg)
-        if msg is None:
-            msg = f"Assert Is, x is {x}, y is {y}"
-        msg = github_action_error_msg(msg)
-        if msg is not None:
-            print(msg)
-
-    def assertEqual(self, x, y, msg=None):
-        super().assertEqual(x, y, msg=msg)
-        if msg is None:
-            msg = f"Assert Equal, x is {x}, y is {y}"
-        msg = github_action_error_msg(msg)
-        if msg is not None:
-            print(msg)
-
     def assert_nest_match(self, x, y):
         cls_x = type(x)
         cls_y = type(y)
@@ -136,3 +103,43 @@ class TestCaseBase(unittest.TestCase):
                 sym_copied_fn.__globals__[key], paddle_fn.__globals__[key]
             )
         self.assert_nest_match(sym_output, paddle_output)
+
+
+# Some decorators for PIR test
+def to_pir_test(fn):
+    # NOTE(SigureMo): This function should sync with test/dygraph_to_static/dygraph_to_static_utils.py
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        in_dygraph_mode = paddle.in_dynamic_mode()
+        with paddle.pir_utils.IrGuard():
+            if in_dygraph_mode:
+                paddle.disable_static()
+            ir_outs = fn(*args, **kwargs)
+        return ir_outs
+
+    return impl
+
+
+def run_in_pir_mode(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        OpcodeExecutorCache().clear()
+        pir_fn = to_pir_test(fn)
+        return pir_fn(*args, **kwargs)
+
+    return impl
+
+
+def run_in_both_default_and_pir(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        OpcodeExecutorCache().clear()
+        default_fn = fn
+        pir_fn = to_pir_test(fn)
+        default_outs = default_fn(*args, **kwargs)
+        OpcodeExecutorCache().clear()
+        # The out of test case should be None, which is not used.
+        _pir_outs = pir_fn(*args, **kwargs)
+        return default_outs
+
+    return impl

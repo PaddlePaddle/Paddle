@@ -32,6 +32,7 @@ np.random.seed(123)
 
 class TestCondInputOutput(unittest.TestCase):
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_return_single_var(self):
         """
         pseudocode:
@@ -73,7 +74,11 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        if paddle.framework.in_pir_mode():
+            (ret,) = exe.run(main_program, fetch_list=[out])
+        else:
+            (ret,) = exe.run(main_program, fetch_list=[out.name])
+
         np.testing.assert_allclose(
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
         )
@@ -696,78 +701,94 @@ class TestCondBackward(unittest.TestCase):
         Helper function that compares calculated backward value is close to dy/dx
         """
         paddle.enable_static()
-        if not paddle.framework.in_pir_mode():
-            pass
         main_program = paddle.static.Program()
         main_program.random_seed = 123
         startup_program = paddle.static.Program()
         startup_program.random_seed = 123
-        with paddle.static.program_guard(main_program, startup_program):
-            img = paddle.static.data(
-                name='image', shape=[-1, 9], dtype='float32'
-            )
-            img.stop_gradient = False
-            img.persistable = True
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            i = paddle.static.data(name="i", shape=[1], dtype='int32')
-            loss = cond_func(i, img, label)
-            grad_list = append_backward(loss)
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(startup_program)
-
-        num_devices = 1
-
-        delta = 0.005
-        for feed_i in range(0, 10):
-            feed_img = np.random.random(size=[1, 9]).astype(np.float32)
-            feed_label = np.random.randint(
-                low=0, high=10, size=[1, 1], dtype=np.int64
-            )
-            if paddle.framework.in_pir_mode():
-                for p, g in grad_list:
-                    if p.is_same(img):
-                        dimg = g
-                img_grad, loss_value = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[dimg, loss],
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            with paddle.static.program_guard(main_program, startup_program):
+                img = paddle.static.data(
+                    name='image', shape=[-1, 9], dtype='float32'
                 )
-            else:
-                img_grad, loss_value = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[img.grad_name, loss.name],
+                img.stop_gradient = False
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
                 )
+                i = paddle.static.data(name="i", shape=[1], dtype='int32')
+                loss = cond_func(i, img, label)
+                grad_list = append_backward(loss)
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(startup_program)
 
-            numerical_grad = np.zeros(shape=[num_devices, 9], dtype=np.float32)
-            feed_img_delta = np.copy(feed_img)
-            for j in range(9):
-                feed_img_delta[0][j] = feed_img[0][j] + delta
-                loss_delta = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img_delta,
-                        'label': feed_label,
-                    },
-                    fetch_list=[loss],
+            num_devices = 1
+
+            delta = 0.005
+            for feed_i in range(0, 10):
+                feed_img = np.random.random(size=[1, 9]).astype(np.float32)
+                feed_label = np.random.randint(
+                    low=0, high=10, size=[1, 1], dtype=np.int64
                 )
-                numerical_grad[0][j] = (loss_delta - loss_value) / delta
-                feed_img_delta[0][j] = feed_img[0][j]
-            np.testing.assert_allclose(
-                img_grad, numerical_grad, rtol=0.05, atol=0.05
-            )
+                if paddle.framework.in_pir_mode():
+                    for p, g in grad_list:
+                        if p.is_same(img):
+                            dimg = g
+                    img_grad, loss_value = exe.run(
+                        main_program,
+                        feed={
+                            'i': np.full((1), feed_i, np.int32),
+                            'image': feed_img,
+                            'label': feed_label,
+                        },
+                        fetch_list=[dimg, loss],
+                    )
+                else:
+                    img_grad, loss_value = exe.run(
+                        main_program,
+                        feed={
+                            'i': np.full((1), feed_i, np.int32),
+                            'image': feed_img,
+                            'label': feed_label,
+                        },
+                        fetch_list=[img.grad_name, loss.name],
+                    )
+
+                numerical_grad = np.zeros(
+                    shape=[num_devices, 9], dtype=np.float32
+                )
+                feed_img_delta = np.copy(feed_img)
+                for j in range(9):
+                    feed_img_delta[0][j] = feed_img[0][j] + delta
+                    if paddle.framework.in_pir_mode():
+                        for p, g in grad_list:
+                            if p.is_same(img):
+                                dimg = g
+                        _, loss_delta = exe.run(
+                            main_program,
+                            feed={
+                                'i': np.full((1), feed_i, np.int32),
+                                'image': feed_img_delta,
+                                'label': feed_label,
+                            },
+                            fetch_list=[dimg, loss],
+                        )
+                    else:
+                        loss_delta = exe.run(
+                            main_program,
+                            feed={
+                                'i': np.full((1), feed_i, np.int32),
+                                'image': feed_img_delta,
+                                'label': feed_label,
+                            },
+                            fetch_list=[loss],
+                        )
+                    numerical_grad[0][j] = (loss_delta - loss_value) / delta
+                    feed_img_delta[0][j] = feed_img[0][j]
+                np.testing.assert_allclose(
+                    img_grad, numerical_grad, rtol=0.05, atol=0.05
+                )
 
     def add_optimizer_helper(self, cond_func, use_cuda):
         """
@@ -775,38 +796,42 @@ class TestCondBackward(unittest.TestCase):
         """
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            img = paddle.static.data(
-                name='image', shape=[-1, 784], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            i = paddle.static.data(name="i", shape=[1], dtype='int32')
-            loss = cond_func(i, img, label)
-            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-            optimizer.minimize(loss)
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            with paddle.static.program_guard(main_program, startup_program):
+                img = paddle.static.data(
+                    name='image', shape=[16, 784], dtype='float32'
+                )
+                img.stop_gradient = False
+                if paddle.framework.in_pir_mode():
+                    img.persistable = True
+                label = paddle.static.data(
+                    name='label', shape=[16, 1], dtype='int64'
+                )
+                i = paddle.static.data(name="i", shape=[1], dtype='int32')
+                loss = cond_func(i, img, label)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+                optimizer.minimize(loss)
 
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(startup_program)
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(startup_program)
 
-        for feed_i in range(0, 10):
-            feed_img = np.random.random(size=[16, 784]).astype(np.float32)
-            feed_label = np.random.randint(
-                low=0, high=10, size=[16, 1], dtype=np.int64
-            )
-            exe.run(
-                main_program,
-                feed={
-                    'i': np.full((1), feed_i, np.int32),
-                    'image': feed_img,
-                    'label': feed_label,
-                },
-                fetch_list=[loss],
-            )
+            for feed_i in range(0, 10):
+                feed_img = np.random.random(size=[16, 784]).astype(np.float32)
+                feed_label = np.random.randint(
+                    low=0, high=10, size=[16, 1], dtype=np.int64
+                )
+                exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img,
+                        'label': feed_label,
+                    },
+                    fetch_list=[loss],
+                )
 
-    # @test_with_pir_api
+    @compare_legacy_with_pt
     def test_cond_backward(self):
         paddle.enable_static()
 
@@ -821,9 +846,11 @@ class TestCondBackward(unittest.TestCase):
         self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
         self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
+        np.random.seed(2023)
+        paddle.seed(2023)
 
         def branch(i, img, label):
             return paddle.static.nn.cond(
@@ -846,12 +873,13 @@ class TestCondBackward(unittest.TestCase):
             cond_func_simple_net_at_true,
             core.is_compiled_with_cuda(),
         )
-        self.add_optimizer_helper(
-            cond_func_simple_net_at_true,
-            core.is_compiled_with_cuda(),
-        )
+
         self.backward_value_helper(
             cond_func_simple_net_at_false,
+            core.is_compiled_with_cuda(),
+        )
+        self.add_optimizer_helper(
+            cond_func_simple_net_at_true,
             core.is_compiled_with_cuda(),
         )
         self.add_optimizer_helper(
@@ -859,9 +887,11 @@ class TestCondBackward(unittest.TestCase):
             core.is_compiled_with_cuda(),
         )
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_nested_cond_backward(self):
         paddle.enable_static()
+        np.random.seed(2023)
+        paddle.seed(2023)
 
         def branch(i, img, label, mod_two):
             if mod_two:
@@ -912,6 +942,7 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
+    @test_with_pir_api
     @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()
@@ -937,16 +968,29 @@ class TestCondWithDict(unittest.TestCase):
             y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             pred = paddle.less_than(x=x, y=y, name=None)
             ret = paddle.static.nn.cond(pred, true_func, false_func)
-            self.assertEqual(
-                ret['1'].shape,
-                (3, -1),
-                f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
-            )
-            self.assertEqual(
-                ret['2'].shape,
-                (-1, -1),
-                f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
-            )
+
+            if paddle.framework.in_pir_mode():
+                self.assertEqual(
+                    ret['1'].shape,
+                    [3, -1],
+                    f"The shape is not correct, expects [3, -1] but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    [-1, -1],
+                    f"The shape is not correct, expects [-1, -1] but gets {ret['2'].shape}.",
+                )
+            else:
+                self.assertEqual(
+                    ret['1'].shape,
+                    (3, -1),
+                    f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+                )
+                self.assertEqual(
+                    ret['2'].shape,
+                    (-1, -1),
+                    f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+                )
 
 
 if __name__ == '__main__':

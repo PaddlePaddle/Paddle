@@ -57,12 +57,14 @@ class PirInterpreter : public InterpreterBaseImpl {
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) override;
+      bool enable_job_schedule_profiler = false,
+      bool switch_stream = false) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
                                    bool enable_job_schedule_profiler = false,
-                                   bool enable_op_profiling = false) override;
+                                   bool enable_op_profiling = false,
+                                   bool switch_stream = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -107,10 +109,22 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Only for debug
   Variable* DebugVar(const std::string& name) const override;
 
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+  GetForceEventsToWaitInfo() {
+    return force_evnets_to_wait_;
+  }
+
+  void SetForceEventsToWaitInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          force_evnets_to_wait) {
+    force_evnets_to_wait_ = force_evnets_to_wait;
+  }
+
  private:
   // build graph
   void UpdateSyncOpNum();
   void UpdateNcclOpNum();
+  void UpdateOneDNNOpNum();
   void AnalyseExecuteOrderForTrace(
       std::map<size_t, std::set<size_t>> op_downstream_map,
       InstructionSchedulingPriorityLess compare);
@@ -153,6 +167,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   ExecutionConfig execution_config_;
 
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      force_evnets_to_wait_;
+
   VariableScope var_scope_;
   Scope* scope_{nullptr};
   Scope* local_scope_{nullptr};  // not owned
@@ -180,6 +197,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // used for Trace
   int64_t sync_op_num_{-1};
   int64_t nccl_op_num_{-1};
+  int64_t onednn_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
   std::vector<HookFunc> output_hookfuncs_;

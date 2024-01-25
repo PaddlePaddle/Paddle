@@ -42,7 +42,6 @@ def get_ir_program():
 class TestPybind(unittest.TestCase):
     def test_program(self):
         pir_program = get_ir_program()
-        print(pir_program)
 
         block = pir_program.global_block()
         program = block.program
@@ -145,14 +144,13 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.pir.OpResult()
+        uninit_op_result = paddle.pir.Value()
         self.assertEqual(uninit_op_result.initialized(), False)
 
     def test_type(self):
         pir_program = get_ir_program()
         matmul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
-        print(matmul_op.result(0).type())
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
@@ -184,7 +182,6 @@ class TestPybind(unittest.TestCase):
             )
 
         pir_program = pir.translate_to_pir(main_program.desc)
-        print(pir_program)
         conv_attr = pir_program.global_block().ops[3].attrs()
         full_attr = pir_program.global_block().ops[8].attrs()
         self.assertEqual(conv_attr["stop_gradient"], [False])

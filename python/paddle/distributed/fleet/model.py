@@ -162,17 +162,16 @@ def distributed_model(model):
             accumulate_steps = strategy.pipeline_configs['accumulate_steps']
             pp_degree = fleet_env._hcg.get_pipe_parallel_world_size()
             if (
-                accumulate_steps >= pp_degree
-                and accumulate_steps < pp_degree * 2
+                accumulate_steps > pp_degree
+                and accumulate_steps % pp_degree == 0
             ):
-                # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
-                # Currently, we only support pp_degree <= accumulate_steps < 2 * pp_degree
-                model = PipelineParallelWithInterleaveFthenB(
+                # interleave pipeline
+                model = PipelineParallelWithInterleave(
                     model, fleet_env._hcg, strategy=strategy
                 )
             else:
-                # interleave pipeline
-                model = PipelineParallelWithInterleave(
+                # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
+                model = PipelineParallelWithInterleaveFthenB(
                     model, fleet_env._hcg, strategy=strategy
                 )
 

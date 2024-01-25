@@ -84,13 +84,6 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         core._set_prim_forward_blacklist("pd_op.gelu")
         self.in_blacklist()
 
-    def test_prim_forward_blacklist_sink(self):
-        with decomp.sink_decomp_guard():
-            core._reset_prim_forward_blacklist()
-            self.not_in_blacklist()
-            core._set_prim_forward_blacklist("pd_op.gelu")
-            self.in_blacklist()
-
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):

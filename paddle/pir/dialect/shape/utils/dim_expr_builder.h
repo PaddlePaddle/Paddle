@@ -14,11 +14,12 @@
 
 #pragma once
 
+#include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
 namespace symbol {
 
-class DimExprBuilder {
+class IR_API DimExprBuilder {
  public:
   explicit DimExprBuilder(std::vector<DimExprConstraint>* constraints)
       : constraints_(constraints) {}
@@ -45,7 +46,7 @@ class DimExprBuilder {
   std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
       const std::vector<DimExpr>, int index);
 
-  const std::vector<DimExprConstraint>& constaints() const;
+  const std::vector<DimExprConstraint>& constraints() const;
 
  private:
   std::vector<DimExprConstraint>* constraints_;

@@ -91,6 +91,9 @@ class MSRAInitializer(Initializer):
         Returns:
             The initialization op.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, kaiming initializer not support lazy init for dist param."
         block = self._check_block(block)
         assert isinstance(
             var, (framework.Variable, paddle.pir.core.ParameterMeta)

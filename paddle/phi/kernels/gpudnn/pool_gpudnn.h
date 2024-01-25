@@ -29,6 +29,21 @@ template <typename T>
 using ScalingParamType =
     typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
+template <typename T>
+class CudnnIndexType;
+
+template <>
+class CudnnIndexType<int> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_INT32;
+};
+
+template <>
+class CudnnIndexType<int8_t> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_INT8;
+};
+
 inline GPUDNNDataLayout GetLayoutFromStr(std::string data_format) {
   if (data_format == "NHWC") {
     return GPUDNNDataLayout::kNHWC;

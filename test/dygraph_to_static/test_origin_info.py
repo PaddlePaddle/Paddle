@@ -23,7 +23,6 @@ from paddle.jit.dy2static.origin_info import (
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
-    unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
@@ -56,7 +55,7 @@ def decorated_func2(x):
 class TestOriginInfo(unittest.TestCase):
     def setUp(self):
         self.set_test_func()
-        self.dygraph_func = unwrap(self.func)
+        self.dygraph_func = inspect.unwrap(self.func)
         self.dygraph_filepath = inspect.getfile(self.dygraph_func)
         self.source_code = inspect.getsource(self.dygraph_func)
         lines, self.start_lineno = inspect.getsourcelines(self.dygraph_func)
@@ -71,7 +70,7 @@ class TestOriginInfo(unittest.TestCase):
         self.func = simple_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11, 12]
+        self.static_abs_lineno_list = [9, 12, 13]
 
     def set_dygraph_info(self):
         self.line_num = 3
@@ -159,7 +158,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.func = nested_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 12, 14, 16, 17]
+        self.static_abs_lineno_list = [9, 13, 16, 18, 19]
 
     def set_dygraph_info(self):
         self.line_num = 5
@@ -188,7 +187,7 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
         self.func = decorated_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11]
+        self.static_abs_lineno_list = [9, 12]
 
     def set_dygraph_info(self):
         self.line_num = 2
@@ -210,7 +209,7 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
         self.func = decorated_func2
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11]
+        self.static_abs_lineno_list = [9, 12]
 
     def set_dygraph_info(self):
         self.line_num = 2

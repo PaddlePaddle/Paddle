@@ -297,7 +297,8 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   // update input dims mapping with merged shardings.
   t0_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(t0_axes, axis_to_dim_map));
-  auto out_grad_dst_dist_attr = out_grad_dst.dist_attr();
+  auto out_grad_dst_dist_attr =
+      CopyTensorDistAttrForOutput(out_grad_dst.dist_attr());
   out_grad_dst_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(out_grad_dst_axes, axis_to_dim_map));
 

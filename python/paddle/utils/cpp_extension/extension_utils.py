@@ -585,7 +585,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # See _reset_so_rpath for details.
             extra_link_args.append(f'-Wl,-rpath,{_get_base_path()}')
             # On MacOS, ld don't support `-l:xx`, so we create a
-            # liblibpaddle.dylib symbol link.
+            # libpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append(f'-l{lib_core_name}')
         # -----------------------   -- END --    ----------------------- #
@@ -1164,15 +1164,15 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.base.core as core
-        from paddle.framework import in_dynamic_mode
+        from paddle import _C_ops
+        from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dynamic_mode():
-                outs = core.eager._run_custom_op("{op_name}", {params_list})
+            if in_dynamic_or_pir_mode():
+                outs = _C_ops._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}

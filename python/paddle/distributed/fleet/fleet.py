@@ -584,7 +584,6 @@ class Fleet:
 
         Examples:
             .. code-block:: python
-                :name: code-init-example1
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init(is_collective=True)

@@ -21,7 +21,7 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-// TODO(zhouwei25): implement " COO @ COO -> COO"
+/* COO @ COO -> COO */
 template <typename T, typename Context>
 void MatmulCooCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
@@ -35,7 +35,7 @@ void MatmulCooDenseKernel(const Context& dev_ctx,
                           const DenseTensor& y,
                           DenseTensor* out);
 
-// TODO(zhouwei25): implement " CSR @ CSR -> CSR"
+/* CSR @ CSR -> CSR */
 template <typename T, typename Context>
 void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,

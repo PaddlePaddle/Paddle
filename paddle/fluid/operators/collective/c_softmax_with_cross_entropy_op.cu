@@ -295,10 +295,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     sum_exp_logits.mutable_data<T>(place);
 
-    auto eigen_sum_exp_logits =
-        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
-    eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
-        eigen_softmax.sum(along_axis);
+    phi::SumKernel<T, phi::GPUContext>(
+        dev_ctx, softmax_2d, {-1}, softmax_2d.dtype(), true, &sum_exp_logits);
 
     if (comm_ctx) {
       comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
@@ -333,6 +331,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                                                      N);
     }
 
+    auto eigen_sum_exp_logits =
+        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));

@@ -71,7 +71,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Tensor Input variable to be sent").AsDuplicable();
-    AddOutput("Out", "Tensor Output varibale to be recv").AsDuplicable();
+    AddOutput("Out", "Tensor Output variable to be recv").AsDuplicable();
     AddAttr<std::string>("message_name", "");
     AddAttr<std::string>("mode", "forward or backward").SetDefault("forward");
     AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");

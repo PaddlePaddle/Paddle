@@ -22,9 +22,10 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 class AttributeA {};
-IR_DECLARE_EXPLICIT_TYPE_ID(AttributeA)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(AttributeA)
 IR_DEFINE_EXPLICIT_TYPE_ID(AttributeA)
 
 struct FakeDialect : pir::Dialect {
@@ -32,7 +33,7 @@ struct FakeDialect : pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
   static const char *name() { return "fake"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
 
 TEST(attribute_test, attribute_base) {

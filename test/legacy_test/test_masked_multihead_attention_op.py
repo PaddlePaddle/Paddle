@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle.framework import core
 from paddle.incubate.nn.functional import masked_multihead_attention
+from paddle.pir_utils import test_with_pir_api
 
 
 @unittest.skipIf(
@@ -213,6 +214,7 @@ class TestMMHAOp(unittest.TestCase):
         paddle.enable_static()
         return paddle_naive_mmha_out, paddle_mmha_out
 
+    @test_with_pir_api
     def test_mmha_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -234,6 +236,7 @@ class TestMMHAOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_mmha_qkv_out_scale(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -255,6 +258,7 @@ class TestMMHAOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_mmha_outlinear_in_scale(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -463,11 +467,12 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                     "bias_static": bias.astype(dtype),
                     "src_mask_static": src_mask.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[outs[0], outs[1]],
             )
 
         return paddle_naive_mmha_out, out_s
 
+    @test_with_pir_api
     def test_mmha_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return

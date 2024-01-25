@@ -243,7 +243,7 @@ class Lamb(Optimizer):
         else:
             master_weight = None
 
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_or_pir_mode():
             _C_ops.lamb_(
                 param_and_grad[0],
                 param_and_grad[1],

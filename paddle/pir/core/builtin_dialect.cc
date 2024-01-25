@@ -50,7 +50,9 @@ void BuiltinDialect::initialize() {
                      Int64Attribute,
                      ArrayAttribute,
                      TypeAttribute,
-                     TensorNameAttribute>();
+                     TensorNameAttribute,
+                     Complex64Attribute,
+                     Complex128Attribute>();
 
   RegisterOps<ModuleOp,
               ParameterOp,

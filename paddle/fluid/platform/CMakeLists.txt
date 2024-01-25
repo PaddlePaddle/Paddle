@@ -269,36 +269,23 @@ if(WITH_GPU)
          gpu_info
          enforce
          dynload_cuda
-         new_profiler
          op_proto_maker
          shape_inference)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS phi
-         common
-         gpu_info
-         enforce
-         new_profiler
-         op_proto_maker
-         shape_inference)
+    DEPS phi common gpu_info enforce op_proto_maker shape_inference)
 elseif(WITH_XPU)
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi
-         common
-         enforce
-         dynload_xpti
-         new_profiler
-         op_proto_maker
-         shape_inference)
+    DEPS phi common enforce dynload_xpti op_proto_maker shape_inference)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi common enforce new_profiler op_proto_maker shape_inference)
+    DEPS phi common enforce op_proto_maker shape_inference)
 endif()
 
 cc_test(

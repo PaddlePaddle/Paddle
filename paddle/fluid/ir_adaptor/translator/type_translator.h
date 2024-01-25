@@ -35,7 +35,7 @@ class TypeTranslator {
   using VarType = paddle::framework::proto::VarType;
 
  private:
-  TypeTranslator();  // Disallow instantiation outside of the class.
+  TEST_API TypeTranslator();  // Disallow instantiation outside of the class.
   std::unordered_map<VarType::Type, TypeTranslateFn> handlers;
 
  public:

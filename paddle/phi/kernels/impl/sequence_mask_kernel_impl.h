@@ -31,7 +31,7 @@ template <typename T, typename Context>
 void SequenceMaskScalarKernel(const Context& ctx,
                               const DenseTensor& x,
                               const Scalar& max_len,
-                              int out_dtype,
+                              DataType out_dtype,
                               DenseTensor* y) {
   int maxlen = max_len.to<int>();
   auto* x_data = x.data<T>();
@@ -58,7 +58,7 @@ void SequenceMaskScalarKernel(const Context& ctx,
     y->Resize(common::make_ddim(y_dim));
   }
 
-  phi::VisitDataType(phi::TransToPhiDataType(out_dtype),
+  phi::VisitDataType(out_dtype,
                      phi::funcs::SequenceMaskFunctor<Context, T>(
                          ctx, x_data, y, x_numel * maxlen, maxlen));
 }
@@ -68,7 +68,7 @@ void SequenceMaskKernel(const Context& ctx,
                         const DenseTensor& x,
                         const paddle::optional<DenseTensor>& max_len_tensor,
                         int maxlen,
-                        int out_dtype,
+                        DataType out_dtype,
                         DenseTensor* y) {
   if (max_len_tensor) {
     bool is_gpu_place = ctx.GetPlace().GetType() == phi::AllocationType::GPU;

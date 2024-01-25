@@ -174,6 +174,8 @@ static double GetDenseTensorEleSum(const Scope& scope,
         const phi::dtype::float16* data =
             cpu_tensor.data<phi::dtype::float16>();
         sum += static_cast<double>(data[0]);
+      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+        sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
       } else {
         return std::numeric_limits<double>::quiet_NaN();
       }
@@ -237,7 +239,17 @@ const std::vector<size_t>& InstructionBase::GCCheckVars() const {
 }
 
 void InstructionBase::AddEagerGCVar(Variable* var) {
-  eager_gc_vars_.push_back(var);
+  if (var->IsType<VariableRefArray>()) {
+    auto array = var->Get<VariableRefArray>();
+    for (size_t i = 0; i < array.size(); ++i) {
+      AddEagerGCVar(const_cast<Variable*>(array.at(i)));
+    }
+  } else {
+    if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
+        eager_gc_vars_.end()) {
+      eager_gc_vars_.push_back(var);
+    }
+  }
 }
 
 const std::vector<Variable*>& InstructionBase::EagerGCVars() const {

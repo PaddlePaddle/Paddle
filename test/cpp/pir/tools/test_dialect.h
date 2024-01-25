@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pir/core/dialect.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {
 class TestDialect : public pir::Dialect {
@@ -29,4 +30,4 @@ class TestDialect : public pir::Dialect {
 };
 
 }  // namespace test
-IR_DECLARE_EXPLICIT_TYPE_ID(test::TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(test::TestDialect)

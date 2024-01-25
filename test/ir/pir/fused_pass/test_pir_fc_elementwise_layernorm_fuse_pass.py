@@ -18,21 +18,18 @@ import numpy as np
 from pass_test import PassTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
 class TestFcElementwiseLayerNormFusePattern(PassTest):
     r"""
     fc     Y1
      \     /
        Add
         |
-      LayerNrom
+      LayerNorm
     """
 
     def is_program_valid(self, program=None):
@@ -41,12 +38,15 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
     def sample_program(self):
         for x_shape in [[3, 2]]:
             for w_shape in [[2, 3]]:
-                for y_shape in [[1, 3]]:
+                for y_shape in [[1, 3], [3]]:
                     for bias_shape in [[3, 3]]:
                         for with_relu in [True, False]:
                             with paddle.pir_utils.IrGuard():
-                                pir_program = paddle.static.Program()
-                                with paddle.pir.core.program_guard(pir_program):
+                                start_prog = paddle.static.Program()
+                                main_prog = paddle.static.Program()
+                                with paddle.pir.core.program_guard(
+                                    main_prog, start_prog
+                                ):
                                     x = paddle.static.data(
                                         name='x', shape=x_shape, dtype='float32'
                                     )
@@ -104,13 +104,14 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
                                         "pd_op.fused_fc_elementwise_layernorm": 1,
                                     }
 
-                                    yield pir_program, False
+                                    yield [main_prog, start_prog], False
 
     def setUp(self):
-        self.place_runtime = "gpu"
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct()
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
 if __name__ == "__main__":

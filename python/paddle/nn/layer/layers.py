@@ -43,6 +43,7 @@ from paddle.base.framework import (
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
+    name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -411,7 +412,7 @@ class Layer:
         self._forward_post_hooks = collections.OrderedDict()
 
         # only used in AMP Training
-        self._cast_to_low_precison = True
+        self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
         # Records orignal functions after @to_static to support to rollback
@@ -1405,7 +1406,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
