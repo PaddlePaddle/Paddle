@@ -385,7 +385,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 128, 8, 16)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -396,7 +396,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 256, 8, 16)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -407,7 +407,7 @@ class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 512, 8, 16)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
@@ -418,7 +418,7 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -429,7 +429,7 @@ class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 256)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -440,7 +440,7 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -455,7 +455,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
@@ -470,7 +470,7 @@ class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
-        self.dtype = paddle.float16
+        self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
 
@@ -554,7 +554,7 @@ class TestFlashAttentionGQA(unittest.TestCase):
         self.seq_len = 8192
         self.head_dim = 128
         self.num_group = 2
-        self.dtype = paddle.bfloat16
+        self.dtype = 'bfloat16'
 
     def gen_unpadded_data(self, dtype):
         seq_len_q = np.random.randint(
