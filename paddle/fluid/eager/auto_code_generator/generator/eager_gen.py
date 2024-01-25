@@ -2099,9 +2099,15 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if is_composite_grad_api:
             if next_grad_node_creation_str != '':
                 if self.backward_api_name not in self.keep_native_op:
+                    next_grad_node_creation_str = "\n".join(
+                        [
+                            (f"  {line}" if len(line) else line)
+                            for line in next_grad_node_creation_str.split("\n")
+                        ]
+                    )
                     next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
-     {next_grad_node_creation_str}
+{next_grad_node_creation_str}
   }}
 """
                 else:
