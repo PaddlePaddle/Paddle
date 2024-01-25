@@ -20,7 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
-PHI_DECLARE_bool(set_to_1d);
+COMMON_DECLARE_bool(set_to_1d);
 
 namespace phi {
 
