@@ -19,7 +19,7 @@
 namespace {
 
 void VerifySameOperandsShapeTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameOperandsShapeTrait for : " << op->name();
+  VLOG(10) << "Verify SameOperandsShapeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
              "Op %s with SameOperandsShapeTrait requires at least 1 operands, "
@@ -40,7 +40,7 @@ void VerifySameOperandsShapeTrait(pir::Operation *op) {
 }
 
 void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
+  VLOG(10) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
              "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
@@ -55,7 +55,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
              op->num_results());
 
   std::vector<pir::OpOperand> operands = op->operands();
-  std::vector<pir::OpResult> results = op->results();
+  std::vector<pir::Value> results = op->results();
 
   std::vector<pir::Type> types;
 
@@ -63,7 +63,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
     types.push_back(op.type());
   });
 
-  std::for_each(results.begin(), results.end(), [&types](pir::OpResult op) {
+  std::for_each(results.begin(), results.end(), [&types](pir::Value op) {
     types.push_back(op.type());
   });
 
@@ -74,7 +74,7 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
 }
 
 void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameOperandsElementTypeTrait for : " << op->name();
+  VLOG(10) << "Verify SameOperandsElementTypeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
              "Op %s with SameOperandsElementTypeTrait requires at least 1 "
@@ -92,8 +92,8 @@ void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
 }
 
 void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameOperandsAndResultElementTypeTrait for : "
-          << op->name();
+  VLOG(10) << "Verify SameOperandsAndResultElementTypeTrait for : "
+           << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
              "Op %s with SameOperandsAndResultElementTypeTrait requires at "
@@ -127,7 +127,7 @@ void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
 }
 
 void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
+  VLOG(10) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
 
   IR_ENFORCE(op->num_operands() > 0,
              "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
@@ -170,7 +170,7 @@ void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
 }
 
 void VerifySameTypeOperandsTrait(pir::Operation *op) {
-  VLOG(4) << "Verify SameTypeOperandsTrait for : " << op->name();
+  VLOG(10) << "Verify SameTypeOperandsTrait for : " << op->name();
 
   // For zero or only one operand.
   unsigned operand_nums = op->num_operands();

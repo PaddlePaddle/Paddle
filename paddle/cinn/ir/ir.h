@@ -381,6 +381,7 @@ struct _Var_ : public ExprNode<_Var_> {
   std::string name;
 
   bool is_reduce_axis{false};
+  bool is_symbolic_constant{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -399,7 +400,8 @@ struct _Var_ : public ExprNode<_Var_> {
   static Expr Make(Expr lower_bound,
                    Expr upper_bound,
                    const std::string& name,
-                   bool is_reduce);
+                   bool is_reduce,
+                   bool is_symbolic_constant = false);
 
   void Verify() const override;
 
@@ -1018,6 +1020,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
   std::vector<Expr> predicates;
+  Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);
 

@@ -135,7 +135,7 @@ class ApiStatement(Statement):
         stacks: list[str],
     ):
         super().__init__(
-            "api", "paddle." + api.__name__, inputs, outputs, stacks
+            "api", api.__module__ + "." + api.__name__, inputs, outputs, stacks
         )
         self.api = api
 
@@ -216,6 +216,8 @@ class StatementIR:
         self.statements = []  # list of Statement
 
         self.symbol_meta_map = {}
+        self.param_symbol = set()
+        self.non_param_symbol = set()
 
     def __len__(self):
         return len(self.statements)
@@ -226,7 +228,13 @@ class StatementIR:
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
         new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
+        new_sir.param_symbol = set(self.param_symbol)
+        new_sir.non_param_symbol = set(self.non_param_symbol)
         return new_sir
+
+    def set_parameter_info(self, params, non_params):
+        self.param_symbol.update(params)
+        self.non_param_symbol.update(non_params)
 
     def set_symbol_meta_map(self, meta_map):
         # if the meta of a input symbol inplace changed, we should get the origin meta as input of SIR

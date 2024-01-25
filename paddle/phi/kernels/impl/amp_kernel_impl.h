@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/amp_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 

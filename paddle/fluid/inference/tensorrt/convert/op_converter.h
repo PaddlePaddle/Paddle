@@ -651,6 +651,23 @@ class OpConverter {
             ->getOutput(0);
     return tensor;
   }
+
+  // Create an constant layer with shape_tensor and value
+  template <typename T>
+  nvinfer1::ITensor* FillConstantLayer(nvinfer1::ITensor* shape_tensor,
+                                       int tensor_rank,
+                                       T value) {
+    auto fill_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
+    fill_layer->setInput(0, *shape_tensor);
+    std::vector<T> beta_vec(tensor_rank);
+    std::vector<T> value_vec(1, value);
+    fill_layer->setInput(1, *Add1DConstantLayer(value_vec, "value_vec", true));
+    fill_layer->setInput(2, *Add1DConstantLayer(beta_vec, "beta_vec", false));
+    auto tensor = fill_layer->getOutput(0);
+    return tensor;
+  }
+
   template <typename T>
   // Create and add Multi-D constant float/int32 layer
   nvinfer1::ITensor* AddConstantLayer(const T* data,

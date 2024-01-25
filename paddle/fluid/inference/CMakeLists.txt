@@ -64,8 +64,9 @@ set(KERNEL_LIST
 
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
-#windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
-if(WIN32 AND WITH_GPU)
+# windows static library（both CPU and GPU）over the limit, so no longer create_static_lib,
+# and cc_library is dummy
+if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
@@ -107,7 +108,7 @@ set(SHARED_INFERENCE_SRCS
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
-list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+# list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
 set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
                           ${utils_modules})

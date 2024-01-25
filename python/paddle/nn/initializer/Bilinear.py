@@ -89,6 +89,9 @@ class Bilinear(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, Bilinear initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         if not isinstance(var, (framework.Variable, pir.core.ParameterMeta)):
@@ -145,7 +148,7 @@ class Bilinear(Initializer):
             out_var = var
 
         if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
-            value_name = "fp32_values"
+            value_name = "values"
             values = [float(v) for v in weight.flat]
         else:
             raise TypeError("Unsupported dtype %s", var.dtype)

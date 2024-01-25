@@ -43,16 +43,16 @@ class DistributedConcat(DistributedOperatorImplContainer):
         input_specs = []
         for name in input_arg_names:
             input_specs.append(get_dist_tensor_spec(dist_op, name))
-        output_sepc = get_dist_tensor_spec(dist_op, output_arg_names[0], False)
+        output_spec = get_dist_tensor_spec(dist_op, output_arg_names[0], False)
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("concat")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(input_specs, axis)
-        bw_results = rule.infer_backward(input_specs, output_sepc, axis)
+        bw_results = rule.infer_backward(input_specs, output_spec, axis)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op,
             input_arg_names,

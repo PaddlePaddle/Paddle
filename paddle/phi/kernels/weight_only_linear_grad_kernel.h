@@ -27,6 +27,7 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 const std::string& weight_dtype,
                                 const int32_t arch,
+                                const int32_t group_size,
                                 DenseTensor* x_grad);
 
 }  // namespace phi

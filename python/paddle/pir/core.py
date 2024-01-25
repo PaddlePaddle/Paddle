@@ -20,6 +20,7 @@ from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import (
     Program,
     get_current_insertion_point,
+    reset_insertion_point_to_start,
     set_insertion_point,
     set_insertion_point_to_block_end,
 )
@@ -273,16 +274,22 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
+    regularizer = None
+    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
+    if 'regularizer' in kwargs:
+        regularizer = kwargs['regularizer']
+    if 'need_clip' in kwargs:
+        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = name
-    if not op_result_name:
-        op_result_name = unique_name.generate('parameter')
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
@@ -293,21 +300,24 @@ def create_parameter(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
-        set_parameter(init_result, op_result_name)
+        set_parameter(init_result, value_name)
 
     main_program.move_parameters_from(startup_program)
     with program_guard(default_main_program()):
-        param = parameter(op_result_name, dtype, shape)
+        reset_insertion_point_to_start()
+        param = parameter(value_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
         param.persistable = True
 
+    param.regularizer = regularizer
+    param.need_clip = need_clip
     return param
 
 
 def _convert_into_value(tensor):
     """
-    Convert Tensor into OpResult.
+    Convert Tensor into Value.
     """
     import paddle
     from paddle.jit.pir_dy2static.parameter_recorder import (

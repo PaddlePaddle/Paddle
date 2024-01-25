@@ -244,9 +244,18 @@ void InitDistTensorWithTensor(TensorObject* self,
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(
-            src.copy_to(place, true).impl());
+    std::shared_ptr<phi::DenseTensor> tensor;
+    if (src.initialized()) {
+      tensor = std::static_pointer_cast<phi::DenseTensor>(
+          src.copy_to(place, true).impl());
+    } else {
+      // lazy init branch. The src tensor is on undefined place.
+      PADDLE_ENFORCE(
+          src.place().GetType() == phi::AllocationType::UNDEFINED,
+          phi::errors::InvalidArgument("Only undefined place is support for "
+                                       "uninitialized input tensor."));
+      tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    }
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";

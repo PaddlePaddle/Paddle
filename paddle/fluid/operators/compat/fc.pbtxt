@@ -27,7 +27,7 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@"
+    name: "ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE"
     type: BOOLEAN
   }
   attrs {

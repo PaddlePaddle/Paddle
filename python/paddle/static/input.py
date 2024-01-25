@@ -134,6 +134,7 @@ def data(name, shape, dtype=None, lod_level=0):
             ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
+        out.lod_level = lod_level
         paddle.pir.reset_insertion_point_to_end()
         return out
 
@@ -206,7 +207,7 @@ class InputSpec:
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
-        # convert dtype into united represention
+        # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)

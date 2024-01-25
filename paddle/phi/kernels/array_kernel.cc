@@ -28,6 +28,20 @@ void CreateArrayKernel(const Context& dev_ctx,
                        TensorArray* out) {}
 
 template <typename T, typename Context>
+void CreateArrayLikeKernel(const Context& dev_ctx,
+                           const TensorArray& input,
+                           float val,
+                           TensorArray* out) {
+  out->resize(input.size());
+  for (size_t i = 0; i < input.size(); i++) {
+    DenseTensor input_i = input[i];
+    out->at(i).Resize(input_i.dims());
+    FullLikeKernel<T, Context>(
+        dev_ctx, input_i, val, input_i.dtype(), &out->at(i));
+  }
+}
+
+template <typename T, typename Context>
 void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out) {
@@ -83,18 +97,6 @@ void ArrayToTensorKernel(const Context& dev_ctx,
                                    "but the received is %d",
                                    n));
 
-  auto out_dims = x[0].dims();
-  size_t in_zero_dims_size = out_dims.size();
-  for (size_t i = 1; i < n; i++) {
-    for (size_t j = 0; j < in_zero_dims_size; j++) {
-      if (j == static_cast<size_t>(axis)) {
-        out_dims[axis] += x[i].dims()[static_cast<int>(j)];
-      }
-    }
-  }
-  auto vec = common::vectorize<int>(out_dims);
-  vec.insert(vec.begin() + axis, x.size());  // NOLINT
-  out->Resize(common::make_ddim(vec));
   std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
 
@@ -110,8 +112,22 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
 
   if (use_stack) {
+    auto vec = common::vectorize<int>(x[0].dims());
+    vec.insert(vec.begin() + axis, x.size());  // NOLINT
+    out->Resize(common::make_ddim(vec));
     StackKernel<T, Context>(dev_ctx, inputs, axis, out);
   } else {
+    auto out_dims = x[0].dims();
+    size_t in_zero_dims_size = out_dims.size();
+    for (size_t i = 1; i < n; i++) {
+      for (size_t j = 0; j < in_zero_dims_size; j++) {
+        if (j == static_cast<size_t>(axis)) {
+          out_dims[axis] += x[i].dims()[static_cast<int>(j)];
+        }
+      }
+    }
+    auto vec = common::vectorize<int>(out_dims);
+    out->Resize(common::make_ddim(vec));
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 
@@ -139,6 +155,36 @@ PD_REGISTER_KERNEL(create_array,
                    GPU,
                    ALL_LAYOUT,
                    phi::CreateArrayKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+PD_REGISTER_KERNEL(create_array_like,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(create_array_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayLikeKernel,
                    bool,
                    int,
                    int64_t,

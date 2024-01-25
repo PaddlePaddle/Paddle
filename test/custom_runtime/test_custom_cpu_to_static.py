@@ -164,9 +164,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         # convert to static model
         build_strategy = paddle.static.BuildStrategy()
-        mnist = paddle.jit.to_static(
-            model, build_strategy=build_strategy, full_graph=True
-        )
+        mnist = paddle.jit.to_static(model, build_strategy=build_strategy)
 
         # data loader
         transform = paddle.vision.transforms.Compose(

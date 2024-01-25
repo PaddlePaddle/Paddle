@@ -725,6 +725,79 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MatchMatrixTensorInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& w,
+                                int dim_t,
+                                MetaTensor* out,
+                                MetaTensor* tmp,
+                                MetaConfig config) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(X) should be equal to 2, "
+                        "but received %d.",
+                        x_dims.size()));
+
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Y) should be equal to 2, "
+                        "but received %d.",
+                        y_dims.size()));
+
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(W) should be equal to 3, "
+                        "but received %d.",
+                        w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims[0],
+      x_dims[1],
+      phi::errors::InvalidArgument(
+          "The first dimension of Input(W) should be equal to the second "
+          "dimension of Input(X). But received the first dimension of Input(W) "
+          "is %d, the second dimension of Input(X) is %d.",
+          w_dims[0],
+          x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1],
+      dim_t,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(W) should be equal to 'dim_t', but "
+          "received the second dimension of Input(W) is %d, 'dim_t' is %d.",
+          w_dims[1],
+          dim_t));
+  PADDLE_ENFORCE_EQ(
+      w_dims[2],
+      y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of Input(W) should be equal to "
+          "the second dimension of Input(Y). But received the last dimension "
+          "of Input(W) is %d, the second dimension of Input(Y) is %d.",
+          w_dims[2],
+          y_dims[1]));
+
+  int64_t out_dim_0 = -1;
+  int64_t tmp_dim_0 = -1;
+  if (!config.is_runtime) {
+    out->share_lod(x);
+    std::vector<int64_t> out_dims_vec{out_dim_0};
+    out_dims_vec.push_back(1);
+    std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
+    tmp_dims_vec.push_back(1);
+    out->set_dims(common::make_ddim(out_dims_vec));
+    out->set_dtype(x.dtype());
+    tmp->set_dims(common::make_ddim(tmp_dims_vec));
+    tmp->set_dtype(x.dtype());
+  }
+}
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
@@ -1525,5 +1598,46 @@ void QuantLinearInferMeta(const MetaTensor& x,
   y->share_lod(x);
   y->set_dtype(x.dtype());
 }
+void TdmSamplerInferMeta(const MetaTensor& x,
+                         const MetaTensor& travel,
+                         const MetaTensor& layer,
+                         bool output_positive,
+                         const std::vector<int>& neg_samples_num_list,
+                         const std::vector<int>& layer_offset_lod,
+                         int seed,
+                         int dtype,
+                         MetaTensor* out,
+                         MetaTensor* labels,
+                         MetaTensor* mask,
+                         MetaConfig config) {
+  auto neg_samples_num_vec = neg_samples_num_list;
+  auto output_positive_flag = output_positive;
 
+  int64_t sample_res_length = 0;
+  for (auto sample_nums : neg_samples_num_vec) {
+    sample_res_length += sample_nums + (int64_t)output_positive_flag;
+  }
+  auto ddim = phi::make_ddim({-1, sample_res_length});
+  auto input_dims = x.dims();
+  if (config.is_runtime) {
+    auto output_dims = phi::vectorize(input_dims);
+    auto batch_size = output_dims[0];
+    out->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    mask->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    if (labels) {
+      labels->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    }
+  } else {
+    out->set_dims(ddim);
+    mask->set_dims(ddim);
+    if (labels) {
+      labels->set_dims(ddim);
+    }
+  }
+  out->set_dtype(x.dtype());
+  mask->set_dtype(x.dtype());
+  if (labels) {
+    labels->set_dtype(x.dtype());
+  }
+}
 }  // namespace phi

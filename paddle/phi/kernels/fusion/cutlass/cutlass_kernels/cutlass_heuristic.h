@@ -56,6 +56,8 @@ static TileShape get_cta_shape_for_config(CutlassTileConfig tile_config) {
     // {256, 128} have better performance than 128, 128
     case CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64:
       return TileShape{128, 256};
+    case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
+      return TileShape{256, 128};
     default:
       throw std::runtime_error(
           "[fpA_intB_gemm Error][get_grid_shape_for_config] Invalid config");
@@ -106,7 +108,8 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
     const bool is_weight_only,
     const bool is_weight_only_encoder,
     const bool simt_configs_only,
-    const int sm) {
+    const int sm,
+    const int group_size) {
   VLOG(3) << "get_candidate_tiles sm: " << sm;
   std::vector<CutlassTileConfig> simt_configs{
       CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8};
@@ -124,13 +127,23 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64,
       CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64,
-      CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64};
+      CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64,
+  };
+  std::vector<CutlassTileConfig> quant_B_configs_sm80_finegrained{
+      CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64,
+      CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
+      CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64,
+      CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64,
+      CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64,
+  };
   std::vector<CutlassTileConfig> quant_B_configs;
   switch (sm) {
     case 86:
-    case 80:
-      quant_B_configs = quant_B_configs_sm80;
+    case 80: {
+      quant_B_configs = group_size > 0 ? quant_B_configs_sm80_finegrained
+                                       : quant_B_configs_sm80;
       break;
+    }
     case 75:
     case 70:
       quant_B_configs = quant_B_configs_sm70;
@@ -147,12 +160,17 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
 }
 
 static std::vector<CutlassGemmConfig> get_candidate_configs(
-    int sm,
+    const int sm,
+    const int group_size,
     const bool is_weight_only,
     const bool is_weight_only_encoder,
     const bool simt_configs_only) {
-  std::vector<CutlassTileConfig> tiles = get_candidate_tiles(
-      is_weight_only, is_weight_only_encoder, simt_configs_only, sm);
+  std::vector<CutlassTileConfig> tiles =
+      get_candidate_tiles(is_weight_only,
+                          is_weight_only_encoder,
+                          simt_configs_only,
+                          sm,
+                          group_size);
 
   std::vector<CutlassGemmConfig> candidate_configs;
   const int min_stages = 2;
@@ -174,11 +192,13 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
     const int64_t m,
     const int64_t n,
     const int64_t k,
+    const int group_size,
     const int64_t num_experts,
     const int split_k_limit,
     const size_t workspace_bytes,
     const int multi_processor_count,
-    const int is_weight_only) {
+    const int is_weight_only,
+    const int sm) {
   if (occupancies.size() != candidate_configs.size()) {
     throw std::runtime_error(
         "[fpA_intB_gemm Error][estimate_best_config_from_occupancies] "
@@ -187,14 +207,41 @@ static CutlassGemmConfig estimate_best_config_from_occupancies(
   }
 
   CutlassGemmConfig best_config;
-  if (m >= 256 &&
+
+  if (m >= 256 && sm == 86 && group_size > 0 &&
       std::find_if(
           candidate_configs.begin(),
           candidate_configs.end(),
           [](const CutlassGemmConfig& gemm_config) {
             return gemm_config.tile_config ==
-                   CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64;
+                   CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64;
           }) != candidate_configs.end()) {
+    best_config = CutlassGemmConfig{
+        CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64,
+        SplitKStyle::NO_SPLIT_K,
+        1,
+        2};
+  } else if (m >= 256 && sm == 80 && group_size > 0 &&
+             std::find_if(candidate_configs.begin(),
+                          candidate_configs.end(),
+                          [](const CutlassGemmConfig& gemm_config) {
+                            return gemm_config.tile_config ==
+                                   CutlassTileConfig::
+                                       CtaShape256x128x64_WarpShape64x64x64;
+                          }) != candidate_configs.end()) {
+    best_config = CutlassGemmConfig{
+        CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64,
+        SplitKStyle::NO_SPLIT_K,
+        1,
+        4};
+  } else if (m >= 256 && sm == 80 && group_size <= 0 &&
+             std::find_if(candidate_configs.begin(),
+                          candidate_configs.end(),
+                          [](const CutlassGemmConfig& gemm_config) {
+                            return gemm_config.tile_config ==
+                                   CutlassTileConfig::
+                                       CtaShape128x256x64_WarpShape64x64x64;
+                          }) != candidate_configs.end()) {
     best_config = CutlassGemmConfig{
         CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64,
         SplitKStyle::NO_SPLIT_K,

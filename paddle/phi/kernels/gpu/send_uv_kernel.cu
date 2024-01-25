@@ -16,8 +16,8 @@
 
 #include <thrust/device_vector.h>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
@@ -75,7 +75,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
       index_size,
       0,
       errors::InvalidArgument("The first dimension of src_index or dst_index "
-                              "shoule be greater than 0, but received %d.",
+                              "should be greater than 0, but received %d.",
                               index_size));
 
   auto out_dims = out->dims();
