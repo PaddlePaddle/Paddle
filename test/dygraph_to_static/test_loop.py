@@ -360,7 +360,6 @@ class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
-        print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
 
 
