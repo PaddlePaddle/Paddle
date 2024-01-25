@@ -400,13 +400,13 @@ def inverse_sort_op(ops):
 
 def inplace_net(op_list):
     for op in op_list:
-        string = op.name()
-        if string[-1] == '_':
+        if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
             return True
         if op.name() in ["pd_op.if", "pd_op.while"]:
             for block in op.blocks():
                 if inplace_net(block.ops):
                     return True
+
     return False
 
 
@@ -643,8 +643,6 @@ def append_backward_ops(
                         )
                     ]
                     inputs.append(tmp_input)
-                    if op.name() == "pd_op.if":
-                        input_grad_stopgradients.append([True])
                 continue
 
             if (
@@ -866,13 +864,15 @@ def append_backward_ops(
                             op.blocks(), grad_op.blocks()
                         ):
                             sub_state = state.copy(sub_fwd_block)
-                            for op in sub_fwd_block.ops:
-                                if op.name() == "pd_op.assign_out_":
-                                    inplace_input.append(op.operand_source(1))
+                            for inside_op in sub_fwd_block.ops:
+                                if inside_op.name() == "pd_op.assign_out_":
+                                    inplace_input.append(
+                                        inside_op.operand_source(1)
+                                    )
                             sub_backward_ops = []
                             append_backward_ops(
                                 op,
-                                [input[0] for input in inputs],
+                                [input[0] for input in inputs[1:]],
                                 [input_grad[0] for input_grad in input_grads],
                                 sub_fwd_block,
                                 sub_bwd_block,
@@ -1145,6 +1145,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         state,
         ValueDict(),
     )
+
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
