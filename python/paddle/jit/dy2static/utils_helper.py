@@ -66,7 +66,8 @@ def is_api_in_module(node, module_prefix):
         import paddle.jit.dy2static as _jst  # noqa: F401
         from paddle import to_tensor  # noqa: F401
 
-        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
+        fn = eval(func_str)
+        return _is_api_in_module_helper(fn, module_prefix)
     except Exception:
         return False
 
