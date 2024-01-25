@@ -204,6 +204,7 @@ class Distribution:
             tmp = tmp + arg_np
             numpy_args.append(arg_np)
 
+        dtype = tmp.dtype
         for arg in numpy_args:
             if isinstance(arg, paddle.pir.Value):
                 # pir.Value does not need to be converted to numpy.ndarray, so we skip here
