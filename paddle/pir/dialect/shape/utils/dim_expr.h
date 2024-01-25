@@ -279,7 +279,7 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   }
 
   bool operator==(const ShapeOrDataDimExprs& other) const {
-    this->variant() == other.variant();
+    return this->variant() == other.variant();
   }
 
   bool operator!=(const ShapeOrDataDimExprs& other) const {

@@ -101,10 +101,8 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(std::holds_alternative<symbol::TensorShapeOrDataDimExprs>(
-                 lhs_shape_data) ||
-                 std::holds_alternative<symbol::TensorShapeOrDataDimExprs>(
-                     lhs_shape_data),
+  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
              "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
              "but not TensorListShapeOrDataDimExprs.");
 
@@ -137,10 +135,8 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(std::holds_alternative<symbol::TensorShapeOrDataDimExprs>(
-                 lhs_shape_data) ||
-                 std::holds_alternative<symbol::TensorShapeOrDataDimExprs>(
-                     lhs_shape_data),
+  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
              "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
              "but not TensorListShapeOrDataDimExprs.");
 
