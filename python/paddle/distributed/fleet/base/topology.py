@@ -291,7 +291,7 @@ class HybridCommunicateGroup:
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParalel
+        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic

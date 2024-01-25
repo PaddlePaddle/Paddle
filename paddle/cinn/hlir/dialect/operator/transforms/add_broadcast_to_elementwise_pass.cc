@@ -92,13 +92,23 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dims();
 
+  if (op->operand_source(0)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape() ||
+      op->operand_source(1)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape()) {
+    return false;
+  }
+
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       if (auto full_op = op->operand_source(0)
-                             .dyn_cast<pir::OpResult>()
-                             .owner()
+                             .defining_op()
                              ->dyn_cast<paddle::dialect::FullOp>()) {
         auto new_full = rewriter->Build<paddle::dialect::FullOp>(
             output_shape,
@@ -122,8 +132,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
     if (!IsSameDim(y_dims, output_shape)) {
       if (auto full_op = op->operand_source(1)
-                             .dyn_cast<pir::OpResult>()
-                             .owner()
+                             .defining_op()
                              ->dyn_cast<paddle::dialect::FullOp>()) {
         auto new_full = rewriter->Build<paddle::dialect::FullOp>(
             output_shape,

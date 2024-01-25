@@ -377,7 +377,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       const std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
-        VLOG(3) << "The size of paddings shoule be 2, but got "
+        VLOG(3) << "The size of paddings should be 2, but got "
                 << paddings.size();
         return false;
       }

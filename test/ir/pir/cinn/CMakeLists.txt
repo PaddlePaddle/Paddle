@@ -38,7 +38,7 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_cinn_convert_static_dim_to_dynamic=2048:S0
+      FLAGS_cinn_convert_static_dim_to_dynamic_dim=2048:S0
       FLAGS_cinn_bucket_compile=True FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_rms_norm.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
