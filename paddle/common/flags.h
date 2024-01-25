@@ -72,13 +72,13 @@
 #define PD_DECLARE_double(name) PD_DECLARE_VARIABLE(double, name)
 #define PD_DECLARE_string(name) PD_DECLARE_VARIABLE(std::string, name)
 
-#define PHI_DECLARE_bool(name) PHI_DECLARE_VARIABLE(bool, name)
-#define PHI_DECLARE_int32(name) PHI_DECLARE_VARIABLE(int32_t, name)
-#define PHI_DECLARE_uint32(name) PHI_DECLARE_VARIABLE(uint32_t, name)
-#define PHI_DECLARE_int64(name) PHI_DECLARE_VARIABLE(int64_t, name)
-#define PHI_DECLARE_uint64(name) PHI_DECLARE_VARIABLE(uint64_t, name)
-#define PHI_DECLARE_double(name) PHI_DECLARE_VARIABLE(double, name)
-#define PHI_DECLARE_string(name) PHI_DECLARE_VARIABLE(std::string, name)
+#define COMMON_DECLARE_bool(name) COMMON_DECLARE_VARIABLE(bool, name)
+#define COMMON_DECLARE_int32(name) COMMON_DECLARE_VARIABLE(int32_t, name)
+#define COMMON_DECLARE_uint32(name) COMMON_DECLARE_VARIABLE(uint32_t, name)
+#define COMMON_DECLARE_int64(name) COMMON_DECLARE_VARIABLE(int64_t, name)
+#define COMMON_DECLARE_uint64(name) COMMON_DECLARE_VARIABLE(uint64_t, name)
+#define COMMON_DECLARE_double(name) COMMON_DECLARE_VARIABLE(double, name)
+#define COMMON_DECLARE_string(name) COMMON_DECLARE_VARIABLE(std::string, name)
 // ----------------------------DEFINE FLAGS----------------------------
 #define PD_DEFINE_VARIABLE(type, name, default_value, description)           \
   namespace paddle_flags {                                                   \
@@ -286,12 +286,12 @@ DEFINE_FROM_ENV_FUNC(std::string, String);
 #endif
 
 // ----------------------------DECLARE FLAGS----------------------------
-#define COMMON_DECLARE_bool(name) COMMON_DECLARE_VARIABLE(bool, B, name)
-#define COMMON_DECLARE_int32(name) COMMON_DECLARE_VARIABLE(int32_t, I, name)
-#define COMMON_DECLARE_uint32(name) COMMON_DECLARE_VARIABLE(uint32_t, U, name)
-#define COMMON_DECLARE_int64(name) COMMON_DECLARE_VARIABLE(int64_t, I64, name)
-#define COMMON_DECLARE_uint64(name) COMMON_DECLARE_VARIABLE(uint64_t, U64, name)
-#define COMMON_DECLARE_double(name) COMMON_DECLARE_VARIABLE(double, D, name)
+#define PHI_DECLARE_bool(name) PHI_DECLARE_VARIABLE(bool, B, name)
+#define PHI_DECLARE_int32(name) PHI_DECLARE_VARIABLE(int32_t, I, name)
+#define PHI_DECLARE_uint32(name) PHI_DECLARE_VARIABLE(uint32_t, U, name)
+#define PHI_DECLARE_int64(name) PHI_DECLARE_VARIABLE(int64_t, I64, name)
+#define PHI_DECLARE_uint64(name) PHI_DECLARE_VARIABLE(uint64_t, U64, name)
+#define PHI_DECLARE_double(name) PHI_DECLARE_VARIABLE(double, D, name)
 
 // ----------------------------DEFINE FLAGS-----------------------------
 #define PHI_DEFINE_bool(name, val, txt) \
