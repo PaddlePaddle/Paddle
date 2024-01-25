@@ -99,6 +99,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
+             -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
              -DBUILD_SHARED=ON
              -DBUILD_TESTS=OFF
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
