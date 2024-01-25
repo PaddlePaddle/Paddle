@@ -1483,3 +1483,16 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           -1,
                           "Whether to fill fixed value after allocation. "
                           "This is usefull for debugging.");
+
+/**
+ * Apply shape optimization pass to new IR FLAG
+ * Name: pir_apply_shape_optimization_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, will apply shape_optimization pass to new IR.
+ */
+PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
+                         false,
+                         "Whether to apply shape_optimization pass "
+                         "to infer symbolic shape");
