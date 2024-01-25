@@ -769,7 +769,7 @@ class PaddleLayerClassVariable(ClassVariable):
         assert self.check_no_weight_and_buffers(
             new_layer
         ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
-        return PaddleLayerVariable(
+        return VariableFactory.from_value(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
 

@@ -194,5 +194,119 @@ class TestGeluSink(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
+class TestHardSwishSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float16")
+        self.prog = None
+
+    def base_net(self, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        elif flag == "backward":
+            core._set_prim_backward_enabled(True)
+        elif flag == "all":
+            core._set_prim_all_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float16')
+            x.stop_gradient = False
+            sum_out = F.hardswish(x)
+            [new_out] = decompose(main_program, [sum_out])
+            print("======================")
+            print(main_program)
+            print("======================")
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.hardswish' not in whole_ops
+        elif flag == "backward":
+            core._set_prim_backward_enabled(False)
+            assert (
+                'pd_op.hardswish' in whole_ops
+                and 'pd_op.hardswish_grad' not in whole_ops
+            )
+        elif flag == "all":
+            core._set_prim_all_enabled(False)
+            assert (
+                'pd_op.hardswish' not in whole_ops
+                and 'pd_op.hardswish_grad' not in whole_ops
+            )
+        else:
+            assert (
+                'pd_op.hardswish' in whole_ops
+                and 'pd_op.hardswish_grad' in whole_ops
+            )
+        return fwd, dx
+
+    def test_prim_forward(self):
+        # res_ref = self.base_net()
+        res = self.base_net("forward")
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+    def test_prim_backward(self):
+        # res_ref = self.base_net()
+        res = self.base_net("backward")
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+    def test_prim_all(self):
+        # res_ref = self.base_net()
+        res = self.base_net("all")
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+
+class TestDivideSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.shape_y = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.y = np.random.random(self.shape_y).astype("float32")
+        self.prog = None
+
+    def base_net(self, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        elif flag == "backward":
+            core._set_prim_backward_enabled(True)
+        elif flag == "all":
+            core._set_prim_all_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            divide_out = paddle.multiply(x, y)
+            sum_out = paddle.divide(divide_out, y)
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, (x, y))
+
+            exe = paddle.static.Executor()
+            [fwd, dx, dy] = exe.run(
+                feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        return fwd, dx
+
+    def test_prim_backward(self):
+        # res_ref = self.base_net()
+        res = self.base_net("all")
+
+
 if __name__ == "__main__":
     unittest.main()

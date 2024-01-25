@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 // Type inference is currently modelled executionally for operation creation
 // using the `InferMetaInterface`. While `InferSymbolicShapeInterface` is used
@@ -177,6 +177,11 @@ bool ElementwisePowOpInferSymbolicShape(
 
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ReluOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool Relu_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {

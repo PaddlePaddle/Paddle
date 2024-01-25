@@ -27,6 +27,7 @@ from paddle.base.framework import (
     default_main_program,
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -191,10 +192,17 @@ def fc(
         name=None,
     ):
         helper = LayerHelper("fc", **locals())
-        check_type(input, 'input', (list, tuple, Variable), 'fc')
+        check_type(
+            input, 'input', (list, tuple, Variable, paddle.pir.Value), 'fc'
+        )
         if isinstance(input, (list, tuple)):
             for i, input_x in enumerate(input):
-                check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    (Variable, paddle.pir.Value),
+                    'fc',
+                )
         dtype = helper.input_dtype()
         check_dtype(
             dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'fc'
@@ -210,17 +218,25 @@ def fc(
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
-            tmp = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var, "Y": w},
-                outputs={"Out": tmp},
-                attrs={"x_num_col_dims": num_flatten_dims, "y_num_col_dims": 1},
-            )
+            if in_pir_mode():
+                tmp = paddle.matmul(input_var, w)
+            else:
+                tmp = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type="mul",
+                    inputs={"X": input_var, "Y": w},
+                    outputs={"Out": tmp},
+                    attrs={
+                        "x_num_col_dims": num_flatten_dims,
+                        "y_num_col_dims": 1,
+                    },
+                )
             mul_results.append(tmp)
 
         if len(mul_results) == 1:
             pre_bias = mul_results[0]
+        elif in_pir_mode():
+            pre_bias = paddle.add_n(mul_results)
         else:
             pre_bias = helper.create_variable_for_type_inference(dtype)
             helper.append_op(

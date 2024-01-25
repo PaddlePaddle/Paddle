@@ -15,13 +15,14 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 std::unique_ptr<::pir::Pass> CreateLowerCinnFusionOpPass();
+
+std::unique_ptr<::pir::Pass> CreateLowerCinnDyShapeFusionOpPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

@@ -74,10 +74,13 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     // TODO(zhangbopd): use op->result(0) to infer the shape
-    symbol::ShapeOrDataDimExprs shape_data{out_dims};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+
     if (operand_source_1st_data.has_value()) {
       std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
-      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
+      symbol::ShapeOrDataDimExprs temp_shape_data{
+          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims)};
       shape_data = temp_shape_data;
     }
 
@@ -93,6 +96,64 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct ParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Value res0 = op->result(0);
+
+    std::vector<int64_t> dims =
+        common::vectorize(res0.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    // TODO(zhangbopd): check whether it's right for other cases
+    std::vector<symbol::DimExpr> sym_shape;
+    for (int64_t dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == -1) {
+        symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = res_dim_expr;
+      } else {
+        symbol::DimExpr res_dim_expr(dim);
+        dim_expr = res_dim_expr;
+      }
+      sym_shape.push_back(dim_expr);
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape)};
+
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
+
+    shape_analysis->SetShapeOrDataForValue(res0, shape_data);
+
+    return true;
+  }
+
+  ParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct ShadowOutputOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Value operand_source = op->operand_source(0);
+    auto input_shapeordata =
+        shape_analysis->GetShapeOrDataForValue(operand_source);
+
+    symbol::ShapeOrDataDimExprs shape_data = input_shapeordata;
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
+    return true;
+  }
+
+  ShadowOutputOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
@@ -105,6 +166,17 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(std::move(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               ParameterOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+  info.AttachInterface(
+      std::move(pir::InterfaceValue::Get<
+                InferSymbolicShapeInterface,
+                ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
@@ -452,7 +524,9 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
     op_name += "_";
     traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
   }
-  op_names_.push_back(op_name);
+  char* op_name_c = new char[op_name.size() + 1];
+  snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
+  op_names_.push_back(op_name_c);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
   std::vector<std::string> attr_names;
@@ -475,7 +549,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
   pir::VerifyPtr verify_func = [](pir::Operation* op) {};
   ir_context()->RegisterOpInfo(this,
                                id,
-                               op_names_.back().c_str(),
+                               op_names_.back(),
                                std::move(interface_values),
                                traits,
                                attr_num,

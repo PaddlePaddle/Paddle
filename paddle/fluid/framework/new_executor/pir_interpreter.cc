@@ -53,6 +53,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/select_output_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/while_instruction.h"
@@ -725,6 +726,8 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(AssertInstruction);
       } else if (op.isa<paddle::dialect::SelectInputOp>()) {
         CREATE_INSTR(SelectInputInstruction);
+      } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
+        CREATE_INSTR(SelectOutputInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -1319,8 +1322,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        onednn_op_num_ || execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1340,8 +1343,8 @@ paddle::framework::FetchList PirInterpreter::Run(
       VLOG(4) << "Done BuildInstruction";
     }
 #endif
-    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        onednn_op_num_ || execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1409,8 +1412,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        onednn_op_num_ || execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1430,8 +1433,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
       VLOG(4) << "Done BuildInstruction";
     }
 #endif
-    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
-        onednn_op_num_ || execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();

@@ -1,3 +1,4 @@
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
+#pragma once
 
-namespace pir {
+#include "paddle/phi/core/dense_tensor.h"
 
-const std::string SymbolTable::insert(Operation* symbol) {
-  std::string name;
-  if (symbol->isa<shape::SymbolicDimOp>()) {
-    name = symbol->dyn_cast<SymbolicDimOp>().GetSymName();
-    symbol_table_map_.insert({name, symbol});
-  }
+namespace phi {
 
-  // TODO(zhangbopd): add more constraint_func name branch.
-  if (symbol->isa<shape::TieProductEqualOp>()) {
-    name = "tie_product_equal";
-    symbol_func_map_[name].emplace_back(symbol);
-  }
-
-  return name;
-}
-}  // namespace pir
+template <typename T, typename Context>
+void GammainccGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& d_out,
+                         DenseTensor* d_y);
+}  // namespace phi
