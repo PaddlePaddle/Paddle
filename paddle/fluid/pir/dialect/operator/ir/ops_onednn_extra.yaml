@@ -19,6 +19,10 @@
   extra_args : bool is_test=false
   data_format_tensors : input, out_grad
 
+- op : conv2d_transpose
+  extra_args : bool is_test=false
+  data_format_tensors : x
+
 - op : conv3d
   extra_args : bool is_test=false
   data_format_tensors : input
