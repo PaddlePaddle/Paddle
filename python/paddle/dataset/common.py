@@ -18,6 +18,7 @@ import hashlib
 import importlib
 import os
 import pickle
+import re
 import shutil
 import sys
 import tempfile
@@ -71,6 +72,7 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum, save_name=None):
+    module_name = re.match("^[a-zA-Z0-9_-]+$", module_name)
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
