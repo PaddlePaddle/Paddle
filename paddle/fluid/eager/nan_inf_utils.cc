@@ -23,7 +23,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_int32(check_nan_inf_level);
 namespace egr {
 
 static std::unordered_set<std::string>& nan_inf_check_op_list() {

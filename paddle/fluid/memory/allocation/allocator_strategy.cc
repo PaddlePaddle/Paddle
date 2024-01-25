@@ -17,7 +17,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
 
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {

@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {

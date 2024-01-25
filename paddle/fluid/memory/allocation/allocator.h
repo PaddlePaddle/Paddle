@@ -31,9 +31,9 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
-PHI_DECLARE_string(allocator_strategy);
-PHI_DECLARE_bool(sync_after_alloc);
-PHI_DECLARE_int64(alloc_fill_value);
+COMMON_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_bool(sync_after_alloc);
+COMMON_DECLARE_int64(alloc_fill_value);
 
 namespace paddle {
 namespace memory {

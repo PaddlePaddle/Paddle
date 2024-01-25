@@ -50,7 +50,7 @@ limitations under the License. */
 #include "paddle/pir/core/attribute.h"
 
 PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace pybind {
 
