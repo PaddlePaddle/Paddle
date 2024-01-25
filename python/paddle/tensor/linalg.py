@@ -280,6 +280,236 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         return out
 
 
+def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
+    """
+    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
+    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
+    Args:
+        x (Tensor): Tensor, data type float32, float64.
+        p (int|float, optional): None for porder=2.0. Default None.
+        axis (int|list, optional): None for last dimension. Default None.
+        keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Note:
+        This norm API is different from `numpy.linalg.norm`.
+        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
+        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
+        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
+    Returns:
+        Tensor: results of vector_norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=2,axis=None,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            34.)
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [5, 6, 6, 6])
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [12., 11.])
+            >>> out_vector_norm = paddle.vector_norm(x=x,p=1,axis=1,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[24., 21., 18., 15.],
+             [12., 15., 18., 21.]])
+    """
+
+    def zero_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        return paddle.count_nonzero(
+            input, axis=axis, keepdim=keepdim, name=name
+        )
+
+    def inf_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        if in_dynamic_mode():
+            out = _C_ops.abs(input)
+            if porder == np.float64('inf'):
+                return _C_ops.max(out, axis, keepdim)
+            else:
+                return _C_ops.min(out, axis, keepdim)
+        else:
+            helper = LayerHelper('inf_norm', **locals())
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            helper.append_op(
+                type='abs', inputs={'X': input}, outputs={'Out': out}
+            )
+            reduce_out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            reduce_all, axis = _get_reduce_axis(axis, x)
+            reduce_type = (
+                'reduce_max' if porder == np.float64('inf') else 'reduce_min'
+            )
+            helper.append_op(
+                type=reduce_type,
+                inputs={'X': out},
+                outputs={'Out': reduce_out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+
+            return reduce_out
+
+    def vector_norm_axis_tuple(
+        input, porder=2, axis=None, keepdim=False, asvector=False, name=None
+    ):
+        """
+        NOTE:
+            This function calculates the vector norm for dim >= 2.
+        """
+        if in_dynamic_or_pir_mode():
+            abs_out = _C_ops.abs(input)
+            pow_out = _C_ops.pow(abs_out, porder)
+            sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
+            out = _C_ops.pow(sum_out, float(1.0 / porder))
+            return out
+
+        block = LayerHelper('norm', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        abs_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='abs', inputs={'X': input}, outputs={'Out': abs_out}
+        )
+        pow_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        block.append_op(
+            type='pow',
+            inputs={'X': abs_out},
+            outputs={'Out': pow_out},
+            attrs={'factor': porder},
+        )
+        sum_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': pow_out},
+            outputs={'Out': sum_out},
+            attrs={
+                'dim': axis,
+                'keep_dim': keepdim,
+                'reduce_all': reduce_all,
+            },
+        )
+        block.append_op(
+            type='pow',
+            inputs={'X': sum_out},
+            outputs={'Out': out},
+            attrs={'factor': float(1.0 / porder)},
+        )
+        return out
+
+    def vector_norm_axis_int(
+        input, porder=2, axis=None, keepdim=False, asvector=False, name=None
+    ):
+        """
+        NOTE:
+            This function calculates the vector norm for len(axis) == 1.
+        """
+        if in_dynamic_or_pir_mode():
+            if axis is None:
+                axis = -1
+            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
+        else:
+            if porder is not None:
+                check_type(porder, 'porder', (float, int), 'p_norm')
+            if axis is not None:
+                check_type(axis, 'axis', (int), 'p_norm')
+            check_variable_and_dtype(
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
+            )
+
+            attrs = {
+                'axis': axis if axis is not None else -1,
+                'porder': float(porder) if porder is not None else 2.0,
+                'keepdim': keepdim,
+                'asvector': asvector,
+                'epsilon': 1e-12,
+            }
+            helper = LayerHelper('p_norm', **locals())
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+
+            helper.append_op(
+                type='p_norm',
+                inputs={'X': input},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            return out
+
+    if not isinstance(p, (int, float)):
+        raise ValueError(f"only valid p type is int and float, found {type(p)}")
+
+    asvector = False
+    if axis is None:
+        axis = -1
+        asvector = True
+
+    if isinstance(axis, tuple):
+        axis = list(axis)
+    if isinstance(axis, list) and len(axis) == 1:
+        axis = axis[0]
+
+    # when len(axis) == 1, use the original op to calculate
+    if isinstance(axis, int):
+        return vector_norm_axis_int(
+            x,
+            axis=axis,
+            porder=p,
+            keepdim=keepdim,
+            asvector=asvector,
+            name=name,
+        )
+
+    # when len(axis) >= 1, calculate by combining other Python apis
+    elif isinstance(axis, list):
+        if p == np.inf or p == -np.inf:
+            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+        elif p == 0:
+            return zero_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+        else:
+            return vector_norm_axis_tuple(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
+
+
 def norm(x, p='fro', axis=None, keepdim=False, name=None):
     """
 
