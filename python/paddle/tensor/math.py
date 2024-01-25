@@ -1667,7 +1667,7 @@ def nan_to_num_(x, nan=0.0, posinf=None, neginf=None, name=None):
     Please refer to :ref:`api_paddle_nan_to_num`.
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -2715,7 +2715,7 @@ def inverse(x, name=None):
             if len(x.shape) < 2:
                 raise ValueError(
                     "The input of inverse is expected to be a Tensor whose number "
-                    "of dimensions is no less than 2. But reviced: %d, "
+                    "of dimensions is no less than 2. But received: %d, "
                     "x's shape: %s." % (len(x.shape), x.shape)
                 )
 
@@ -6414,7 +6414,7 @@ def take(x, index, mode='raise', name=None):
     Args:
         x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
-        mode (str, optional): Specifies how out-of-bounds index will behave. the candicates are ``'raise'``, ``'wrap'`` and ``'clip'``.
+        mode (str, optional): Specifies how out-of-bounds index will behave. the candidates are ``'raise'``, ``'wrap'`` and ``'clip'``.
 
             - ``'raise'``: raise an error (default);
             - ``'wrap'``: wrap around;
@@ -6547,7 +6547,12 @@ def frexp(x, name=None):
             Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 2., 3.]])
     """
-    if x.dtype not in [paddle.float32, paddle.float64]:
+    if x.dtype not in [
+        paddle.float32,
+        paddle.float64,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+    ]:
         raise TypeError(
             f"The data type of input must be one of ['float32', 'float64'], but got {x.dtype}"
         )
