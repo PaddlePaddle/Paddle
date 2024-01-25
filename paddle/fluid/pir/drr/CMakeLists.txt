@@ -91,8 +91,7 @@ endif()
 if(WITH_MKLDNN)
   set(onednn_dialect_name onednn_op)
   set(pir_op_onednn_yaml
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml
-  )
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/onednn.yaml)
   set(pd_ops_onednn_extra_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
   )
