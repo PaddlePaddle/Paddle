@@ -531,7 +531,7 @@ def monkey_patch_value():
             )
         from paddle.tensor.array import array_length, array_write
 
-        array_write(x=var, i=array_length(self), array=self)
+        return array_write(x=var, i=array_length(self), array=self)
 
     def set_shape(self, shape):
         assert (

@@ -23,6 +23,9 @@ from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
+from paddle.jit.pir_dy2static.parameter_recorder import (
+    _global_inplace_map,
+)
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
 
@@ -64,11 +67,6 @@ def convert_load(x):
         # get the new output of the var
         if isinstance(x, Value):
             cur_block = default_main_program().current_block()
-
-            from paddle.jit.pir_dy2static.parameter_recorder import (
-                _global_inplace_map,
-            )
-
             new_var = _global_inplace_map.get(cur_block.program, x)
             if new_var is not None:
                 return new_var
@@ -85,6 +83,21 @@ def convert_load(x):
             )
             if new_var is not None:
                 return new_var
+
+        if (
+            hasattr(x, "__code__")
+            and x.__code__ is paddle.pir.Value.append.__code__
+        ):
+            # tensor array append is a inplace op, we should change the inplace map.
+            self_tensor_array = x.__self__
+
+            def proxy_append(var):
+                output = self_tensor_array.append(var)
+                _global_inplace_map.add(
+                    default_main_program(), self_tensor_array, output
+                )
+
+            return proxy_append
 
         if x is paddle.amp.auto_cast:
             return convert_auto_cast

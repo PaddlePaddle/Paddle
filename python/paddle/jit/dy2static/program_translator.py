@@ -1258,6 +1258,7 @@ class ConcreteProgram:
         main_program = ConcreteProgram.apply_pir_dce_pass(
             main_program, static_inputs, outputs, all_parameters_and_buffers
         )
+
         concrete_program = ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,

@@ -29,6 +29,7 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
 
 namespace paddle {
@@ -324,7 +325,8 @@ class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
                                      paddle::dialect::VjpInterface,
                                      InferMetaInterface,
-                                     InplaceTrait> {
+                                     InplaceTrait,
+                                     pir::SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_write_"; }
