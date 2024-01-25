@@ -62,13 +62,17 @@ class IR_API ShapeConstraintIRAnalysis {
   bool IsProductEqual(Value lhs,
                       const std::vector<int>& lhs_dim_idxs,
                       Value rhs,
-                      const std::vector<int>& rhs_dim_idxs);
+                      const std::vector<int>& rhs_dim_idxs) const;
 
   // Returns true if:
   //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
   //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
-  bool IsProductEqual(
-      Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to);
+  bool IsProductEqual(Value lhs,
+                      int lhs_from,
+                      int lhs_to,
+                      Value rhs,
+                      int rhs_from,
+                      int rhs_to) const;
 
   // Returns true if the two value have the same number elements.
   bool IsSameNumElements(Value lhs, Value rhs) const;

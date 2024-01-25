@@ -121,7 +121,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
     Value lhs,
     const std::vector<int>& lhs_dim_idxs,
     Value rhs,
-    const std::vector<int>& rhs_dim_idxs) {
+    const std::vector<int>& rhs_dim_idxs) const {
   if (lhs == rhs) return true;
 
   if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
@@ -169,8 +169,12 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   return lhs_product == rhs_product;
 }
 
-bool ShapeConstraintIRAnalysis::IsProductEqual(
-    Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to) {
+bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
+                                               int lhs_from,
+                                               int lhs_to,
+                                               Value rhs,
+                                               int rhs_from,
+                                               int rhs_to) const {
   std::vector<int> lhs_dim_idxs, rhs_dim_idxs;
 
   lhs_dim_idxs.reserve(lhs_to - lhs_from);
