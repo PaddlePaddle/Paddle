@@ -561,6 +561,7 @@ void FusionGRUKernel(const Context& dev_ctx,
                      const bool is_reverse,
                      const bool use_seq,
                      const bool origin_mode,
+                     const bool force_fp32_output,
                      DenseTensor* reordered_h0,
                      DenseTensor* xx,
                      DenseTensor* batched_input,
@@ -580,10 +581,6 @@ void FusionGRUKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
                                    "int8, bfloat16], but found %s.",
                                    mkldnn_data_type.c_str()));
-  const bool force_fp32_output =
-      dev_ctx.HasDnnAttr("force_fp32_output")
-          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
-          : false;
   const float scale_data =
       dev_ctx.HasDnnAttr("Scale_data")
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_data"))
