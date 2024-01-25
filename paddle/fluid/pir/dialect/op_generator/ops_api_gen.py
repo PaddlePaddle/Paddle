@@ -106,6 +106,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'share_data',
     'onednn_to_paddle_layout',
     'lrn',
+    'uniform_random_batch_size_like',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -148,7 +149,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'tdm_sampler',
     'soft_relu',
-    'uniform_random_batch_size_like',
     'match_matrix_tensor',
     'c_reduce_min',
     'c_reduce_min_',

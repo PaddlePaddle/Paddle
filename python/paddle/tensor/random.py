@@ -411,6 +411,24 @@ def uniform_random_batch_size_like(
             >>> print(out_2.shape)
             [2, 3]
     """
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_pir_mode():
+        return _C_ops.uniform_random_batch_size_like(
+            input,
+            shape,
+            input_dim_idx,
+            output_dim_idx,
+            min,
+            max,
+            seed,
+            0,
+            0,
+            1.0,
+            dtype,
+        )
+
     check_variable_and_dtype(
         input,
         'Input',
@@ -427,7 +445,7 @@ def uniform_random_batch_size_like(
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
     out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+
     helper.append_op(
         type='uniform_random_batch_size_like',
         inputs={'Input': input},
@@ -439,7 +457,7 @@ def uniform_random_batch_size_like(
             'min': min,
             'max': max,
             'seed': seed,
-            'dtype': c_dtype,
+            'dtype': dtype,
         },
     )
 
