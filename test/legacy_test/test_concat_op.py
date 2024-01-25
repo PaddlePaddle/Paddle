@@ -560,14 +560,14 @@ class TestConcatOpError(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
 
-            def test_value_error():
+            def test_type_error():
                 # The item in input must be Variable.
                 x2 = base.create_lod_tensor(
                     np.array([[-1]]), [[1]], base.CPUPlace()
                 )
                 paddle.concat(x2)
 
-            self.assertRaises(ValueError, test_value_error)
+            self.assertRaises(TypeError, test_type_error)
 
             x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
             x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
@@ -577,12 +577,12 @@ class TestConcatOpError(unittest.TestCase):
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
 
-            self.assertRaises(ValueError, test_axis_type)
+            self.assertRaises(TypeError, test_axis_type)
 
             def test_input_same_dtype():
                 paddle.concat([x7, x8])
 
-            self.assertRaises(ValueError, test_input_same_dtype)
+            self.assertRaises(TypeError, test_input_same_dtype)
         paddle.disable_static()
 
 
@@ -692,14 +692,14 @@ class TestConcatAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
 
-            def test_value_error():
+            def test_type_error():
                 # The item in input must be Variable.
                 x2 = base.create_lod_tensor(
                     np.array([[-1]]), [[1]], base.CPUPlace()
                 )
                 paddle.concat(x2)
 
-            self.assertRaises(ValueError, test_value_error)
+            self.assertRaises(TypeError, test_type_error)
 
             # The type of axis in concat_op should be int or Variable.
             x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
@@ -709,12 +709,12 @@ class TestConcatAPI(unittest.TestCase):
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
 
-            self.assertRaises(ValueError, test_axis_type)
+            self.assertRaises(TypeError, test_axis_type)
 
             def test_input_same_dtype():
                 paddle.concat([x7, x8])
 
-            self.assertRaises(ValueError, test_input_same_dtype)
+            self.assertRaises(TypeError, test_input_same_dtype)
 
 
 class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
