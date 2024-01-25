@@ -1437,9 +1437,7 @@ class InplaceMap:
     def save_checkpoint(self):
         ckp = {}
         for program_id, params in self.params_dict.items():
-            new_params = {}
-            for k, v in params.items():
-                new_params[k] = v
+            new_params = dict(params.items())
             ckp[program_id] = new_params
         return ckp
 
