@@ -103,7 +103,7 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
 
   IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
                  rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
+             "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
              "but not TensorListShapeOrDataDimExprs.");
 
   // For static shape, directly compare the shapes.
@@ -184,11 +184,22 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
 
 bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
+
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
   auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
 
   if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
     return false;
+
+  // For static shape
+  if (lhs_type.IsStaticShape() && rhs_type.IsStaticShape()) {
+    auto lhs_shape = lhs_type.GetShape();
+    auto rhs_shape = rhs_type.GetShape();
+    if (lhs_shape == rhs_shape) {
+      return true;
+    }
+    return common::product(lhs_shape) == common::product(rhs_shape);
+  }
 
   return IsProductEqual(lhs,
                         0,
