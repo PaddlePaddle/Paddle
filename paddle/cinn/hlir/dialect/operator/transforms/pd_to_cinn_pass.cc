@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/core/builtin_dialect.h"
@@ -596,6 +597,52 @@ class ExpandOpPattern
   }
 };
 
+class TileOpPattern : public pir::OpRewritePattern<paddle::dialect::TileOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::TileOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::TileOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto out_shape_gen_op = op->operand_source(1)
+                                .defining_op()
+                                ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    if (out_shape_gen_op) {
+      auto section_attr = out_shape_gen_op.attribute("value")
+                              .dyn_cast<pir::ArrayAttribute>()
+                              .AsVector();
+
+      auto in_dim = op.operand_source(0)
+                        .type()
+                        .dyn_cast<paddle::dialect::DenseTensorType>()
+                        .dims();
+      std::vector<int64_t> input_shape = ::common::vectorize(in_dim);
+
+      std::vector<int64_t> output_shape;
+      CHECK_EQ(section_attr.size(), input_shape.size());
+      for (size_t i = 0; i < section_attr.size(); ++i) {
+        output_shape.push_back(
+            section_attr[i].dyn_cast<::pir::Int64Attribute>().data() *
+            input_shape.at(i));
+      }
+
+      auto broadcast_axis =
+          cinn::hlir::framework::pir::GetBroadcastAxis(in_dim, output_shape);
+
+      auto out = rewriter
+                     .Build<cinn::dialect::BroadcastOp>(
+                         op.operand_source(0), broadcast_axis, output_shape)
+                     .result(0);
+
+      rewriter.ReplaceAllUsesWith(op.result(0), out);
+      rewriter.EraseOp(op);
+      return true;
+    }
+
+    return false;
+  }
+};
+
 class UniformOpPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -667,6 +714,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
+  ps.Add<TileOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
