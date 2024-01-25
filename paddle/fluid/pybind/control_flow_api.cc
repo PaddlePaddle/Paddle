@@ -29,9 +29,9 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;

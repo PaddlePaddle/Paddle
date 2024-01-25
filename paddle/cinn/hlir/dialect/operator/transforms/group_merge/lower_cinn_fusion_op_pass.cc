@@ -131,8 +131,8 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
-      group->value_to_shape_or_data_exprs[broadcast_out] =
-          group->GetShapeOrDataExprs(expand_out);
+      group->value_to_shape_or_data_exprs.emplace(
+          broadcast_out, group->GetShapeOrDataExprs(expand_out));
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
@@ -243,13 +243,16 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
-      new_group->value_to_shape_or_data_exprs[new_val] =
-          symbol::ShapeOrDataDimExprs(
+      new_group->value_to_shape_or_data_exprs.emplace(
+          new_val,
+          symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
               std::vector<symbol::DimExpr>{shape_dim_expr.size()},
-              shape_dim_expr);
+              shape_dim_expr)});
     } else {
-      new_group->value_to_shape_or_data_exprs[new_val] =
-          symbol::ShapeOrDataDimExprs(shape_dim_expr);
+      new_group->value_to_shape_or_data_exprs.emplace(
+          new_val,
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(shape_dim_expr)});
     }
   }
 }
