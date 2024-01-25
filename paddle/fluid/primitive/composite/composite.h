@@ -23,7 +23,7 @@ namespace primitive {
 namespace details {
 
 // empty_shape means x.shape=[]
-static std::vector<int> empty_shape;
+static std::vector<int64_t> empty_shape;
 
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
@@ -55,7 +55,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   for (size_t i = 0; i < axis_.size(); i++) {
     value *= x_dim[axis_[i]];
   }
-  auto sum_x = sum<T>(x_tmp, IntArray(axis_), x_tmp.dtype(), keepdim);
+  auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
   auto res = sum_x / full<T>(empty_shape, value, sum_x.dtype());
   if (need_cast) {
     return cast<T>(res, org_dtype);
@@ -166,8 +166,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor run_mean_;
   Tensor run_var_;
   if (!use_run_stat) {
-    batch_mean = mean_decomp<T>(x_cast, IntArray(reduce_axes), false);
-    auto temp = mean_decomp<T>(x_cast * x_cast, IntArray(reduce_axes), false);
+    batch_mean = mean_decomp<T>(x_cast, reduce_axes, false);
+    auto temp = mean_decomp<T>(x_cast * x_cast, reduce_axes, false);
     auto batch_var = temp - batch_mean * batch_mean;
     inv_std = elementwise_pow<T>((batch_var + epsilon), half);
     if (data_layout_ == DataLayout::kNHWC) {
@@ -225,16 +225,15 @@ template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
-  auto axis_tmp = IntArray({axis});
 
   bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_tmp = cast<T>(x, phi::DataType::FLOAT32);
   }
 
-  auto max_tmp = max<T>(x_tmp, axis_tmp, true);
+  auto max_tmp = max<T>(x_tmp, {axis}, true);
   auto molecular = exp<T>(x_tmp - max_tmp);
-  auto res = molecular / sum<T>(molecular, axis_tmp, molecular.dtype(), true);
+  auto res = molecular / sum<T>(molecular, {axis}, molecular.dtype(), true);
 
   if (need_cast) {
     return cast<T>(res, org_dtype);
@@ -350,10 +349,10 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   for (size_t i = begin_norm_axis; i < x_dim.size(); i++) {
     axis.push_back(static_cast<int64_t>(i));
   }
-  auto mean_ = mean_decomp<T>(x_cast, IntArray(axis), true);
+  auto mean_ = mean_decomp<T>(x_cast, axis, true);
   auto difference = x_cast - mean_;
   auto var_tmp1 = difference * difference;
-  auto variance = mean_decomp<T>(var_tmp1, IntArray(axis), true);
+  auto variance = mean_decomp<T>(var_tmp1, axis, true);
   auto var_tmp3 = variance + epsilon;
   auto rsqrt_var = elementwise_pow<T>(
       var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
@@ -572,14 +571,13 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 
   // out = (x - mean(x)) / sqrt(var + epsilon))
   // var = mean((x-mean(x))^2)
-  auto mean_ = mean_decomp<T>(x_cast, IntArray(axis), true);
+  auto mean_ = mean_decomp<T>(x_cast, axis, true);
   auto difference = x_cast - mean_;
   auto var_tmp1 = difference * difference;
-  auto variance = mean_decomp<T>(var_tmp1, IntArray(axis), true);
+  auto variance = mean_decomp<T>(var_tmp1, axis, true);
   auto var_tmp3 = variance + epsilon;
-  auto rsqrt_var = elementwise_pow<T>(
-      var_tmp3,
-      full<T>(common::vectorize(var_tmp3.dims()), 0.5, var_tmp3.dtype()));
+  auto rsqrt_var =
+      elementwise_pow<T>(var_tmp3, full<T>(empty_shape, 0.5, var_tmp3.dtype()));
   auto out = difference / rsqrt_var;
 
   auto scale_ptr = scale.get_ptr();
