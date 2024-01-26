@@ -725,7 +725,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(
         T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream, load_func, store_func);
-  } else if (params.timestep < 2048) {
+  } else if (params.timestep < 204800) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
     MMHA_LAUNCH_KERNEL(T,
@@ -1072,6 +1072,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   // std::cout << "smcount: " << (float)(dev_ctx.GetSMCount()) / (params.batch_size * params.num_head) << std::endl;
 
   params.split_seq = timestep / 128 + 1;
+  std::cout << "split_seq: " << timestep << std::endl;
   int split_seq = params.split_seq;
   phi::DenseTensor qk_sum_max_split_seq;
   // 2 means sum and max.
@@ -1120,7 +1121,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   }
   params.out = out->data<T>();
   dim3 grid(params.num_head, params.batch_size);
-  post_process_kernel<T><<<grid, 128>>>(params);
+  post_process_kernel<T><<<grid, 128, 0, dev_ctx.stream()>>>(params);
 }
 
 template <typename T, typename Context>
