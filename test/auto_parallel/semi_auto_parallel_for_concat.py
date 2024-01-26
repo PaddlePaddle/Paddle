@@ -77,7 +77,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             axis=-1,
         )
-        self.check_placements(outputs, [dist.Replicate()])
+        self.check_placements(outputs, [dist.Shard(3)])
 
     def test_stack_forward_0d(self):
         shapes = []
