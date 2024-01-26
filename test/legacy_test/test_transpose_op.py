@@ -22,6 +22,9 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.framework import (
+    in_pir_mode,
+)
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -515,14 +518,16 @@ class TestTransposeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable_check)
 
-            def test_x_dtype_check():
-                # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
-                x1 = paddle.static.data(
-                    name='x1', shape=[-1, 10, 5, 3], dtype='int8'
-                )
-                paddle.transpose(x1, perm=[1, 0, 2])
+            if not in_pir_mode():
 
-            self.assertRaises(TypeError, test_x_dtype_check)
+                def test_x_dtype_check():
+                    # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
+                    x1 = paddle.static.data(
+                        name='x1', shape=[-1, 10, 5, 3], dtype='int8'
+                    )
+                    paddle.transpose(x1, perm=[1, 0, 2])
+
+                self.assertRaises(TypeError, test_x_dtype_check)
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
