@@ -142,13 +142,6 @@ if(WITH_AVX
   set_source_files_properties(
     kernels/fusion/cpu/self_dp_attention_kernel.cc
     PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
-  set_source_files_properties(
-    kernels/cpu/log_softmax_kernel.cc
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
-  set_source_files_properties(
-    kernels/fusion/cpu/xft_rms_norm_kernel.cc
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
-
 endif()
 
 if(WITH_GPU)
