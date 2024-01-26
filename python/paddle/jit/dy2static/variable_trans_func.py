@@ -23,11 +23,6 @@ from .utils import UndefinedVar, create_undefined_variable
 __all__ = []
 
 
-def create_undefined_var(name):
-    func_code = f"{name} = _jst.UndefinedVar('{name}')"
-    return gast.parse(func_code).body[0]
-
-
 def to_static_variable(x):
     '''
     Translate a Python Tensor to PaddlePaddle static graph Tensor
