@@ -1,5 +1,5 @@
---- CMakeLists.txt	2024-01-25 12:08:16.612652061 +0000
-+++ new.txt	2024-01-25 12:08:42.485690712 +0000
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
 @@ -4,6 +4,10 @@
      cmake_minimum_required(VERSION 2.8)
  ENDIF()
