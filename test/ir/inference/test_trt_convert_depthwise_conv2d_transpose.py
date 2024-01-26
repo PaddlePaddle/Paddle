@@ -14,7 +14,8 @@
 
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -65,66 +66,72 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
                 np.float32
             )
 
-        for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2], [1, 2]]:
-                for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [1, 2, 3]:
-                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2], [1, 2]]:
-                                for data_format in ['NCHW']:
-                                    dics = [
-                                        {
-                                            "data_fromat": data_format,
-                                            "dilations": dilations,
-                                            "padding_algorithm": padding_algorithm,
-                                            "groups": groups,
-                                            "paddings": paddings,
-                                            "strides": strides,
-                                            "data_format": data_format,
-                                            "output_size": [],
-                                            "output_padding": [],
-                                        }
-                                    ]
+        for (
+            batch,
+            strides,
+            paddings,
+            groups,
+            padding_algorithm,
+            dilations,
+            data_format,
+        ) in product(
+            [1, 2, 4],
+            [[1, 1], [2, 2], [1, 2]],
+            [[0, 3], [1, 2, 3, 4]],
+            [1, 2, 3],
+            ['EXPLICIT', 'SAME', 'VALID'],
+            [[1, 1], [2, 2], [1, 2]],
+            ['NCHW'],
+        ):
+            dics = [
+                {
+                    "data_fromat": data_format,
+                    "dilations": dilations,
+                    "padding_algorithm": padding_algorithm,
+                    "groups": groups,
+                    "paddings": paddings,
+                    "strides": strides,
+                    "data_format": data_format,
+                    "output_size": [],
+                    "output_padding": [],
+                }
+            ]
 
-                                    ops_config = [
-                                        {
-                                            "op_type": "conv2d_transpose",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"],
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["output_data"]
-                                            },
-                                            "op_attrs": dics[0],
-                                        }
-                                    ]
-                                    ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "conv2d_transpose",
+                    "op_inputs": {
+                        "Input": ["input_data"],
+                        "Filter": ["conv2d_weight"],
+                    },
+                    "op_outputs": {"Output": ["output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights={
-                                            "conv2d_weight": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_weight1, dics
-                                                )
-                                            )
-                                        },
-                                        inputs={
-                                            "input_data": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, batch, dics
-                                                )
-                                            )
-                                        },
-                                        outputs=["output_data"],
-                                    )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv2d_weight": TensorConfig(
+                        data_gen=partial(generate_weight1, dics)
+                    )
+                },
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, batch, dics)
+                    )
+                },
+                outputs=["output_data"],
+            )
 
-                                    yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, attrs[0]['groups'], 32, 32],
