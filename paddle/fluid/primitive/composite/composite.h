@@ -54,14 +54,11 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 
   Tensor res;
   if (find_value(x_dim, -1)) {
-    // std::vector<Tensor> tmp;
-    // for (size_t i = 0; i < axis_.size(); i++) {
-    //   tmp.push_back(full<T>({1, 1}, axis_[i], DataType::INT64));
-    // }
-    // Tensor idx = concat<T>(tmp, 0);
-    // std::cout<<"idx.shape ====== "<<idx.dims()<<std::endl;
+    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
     auto axis_dims = cast<T>(
-        gather_nd<T>(shape<T>(x), full_int_array<T>(axis_, DataType::INT64)),
+        gather_nd<T>(
+            shape<T>(x),
+            reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx)),
         sum_x.dtype());
     auto value = prod<T>(axis_dims, {0}, false, false);
     res = sum_x / value;
