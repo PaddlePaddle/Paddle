@@ -34,7 +34,7 @@ namespace backends {
 #define TENSOR_SHAPE_ARGS "tensor_shape_args"
 
 /**
- * Split a CINN Module into two separate modules, one cantains the host
+ * Split a CINN Module into two separate modules, one contains the host
  * functions, the other contains the device kernels.
  *
  * This contains some process:

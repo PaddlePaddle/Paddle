@@ -84,7 +84,7 @@ def _prepare_python_api_arguments(op):
     inputs = []
     for x in op.operands():
         input = x.source()
-        if input and input.initialized():
+        if input.initialized():
             prev_op = input.get_defining_op()
             if (
                 isinstance(prev_op, Operation)
@@ -111,7 +111,7 @@ def _check_prim_dynamic(op):
     inputs = []
     for x in op.operands():
         input = x.source()
-        if input and input.initialized():
+        if input.initialized():
             prev_op = input.get_defining_op()
             if (
                 isinstance(prev_op, Operation)

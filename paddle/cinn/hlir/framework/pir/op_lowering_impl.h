@@ -242,6 +242,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
 
   ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
+  ir::Tensor GetTensorSymbolic(const GroupPtr& group,
+                               const ::pir::Value& value);
 
   void CollectOutputInfo(::pir::Operation* op,
                          std::vector<Type>* out_types,

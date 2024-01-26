@@ -344,6 +344,11 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     }
   }
   TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
+
+  // Step4: Mark is_run_mkldnn_kernel=true
+  phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
+  new_config.is_run_mkldnn_kernel = true;
+  infer_meta_context_.SetMetaConfig(new_config);
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
