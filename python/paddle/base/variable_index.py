@@ -765,6 +765,8 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
+                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
@@ -777,7 +779,16 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st), False
+                        if len(decrease_axes) > 0:
+                            return (
+                                paddle._pir_ops.slice_array_dense(x, st),
+                                False,
+                            )
+                        else:
+                            return (
+                                paddle._pir_ops.slice_array(x, st, end),
+                                False,
+                            )
                 out = paddle._C_ops.slice(
                     x,
                     axes,

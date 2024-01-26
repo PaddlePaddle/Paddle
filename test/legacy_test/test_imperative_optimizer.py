@@ -50,13 +50,13 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         raise NotImplementedError()
 
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 784)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
-        return _reader_imple
+        return _reader_simple
 
     def _check_exception(self, exception_message, place=None):
         seed = 90

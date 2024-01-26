@@ -299,7 +299,8 @@ void BindProgram(py::module *m) {
           },
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
-          });
+          })
+      .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -361,6 +362,7 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
+      .def("num_ops", [](Block &self) { return self.num_ops(); })
       .def(
           "__enter__",
           [](Block &self) -> Block & {
