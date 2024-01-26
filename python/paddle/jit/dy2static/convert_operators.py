@@ -637,7 +637,7 @@ class VariableTuple:
         self.var = var
         self.len = convert_len(var)
         if isinstance(self.len, (Variable, Value)):
-            self.rag = paddle.arange(start, start + self.len, 1, paddle.int64)
+            self.rag = paddle.arange(start, start + self.len, 1, "int64")
         else:
             self.rag = range(start, start + self.len)
 

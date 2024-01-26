@@ -103,7 +103,14 @@ void BindWhileOp(py::module* m) {
       .def("block_arguments",
            &WhileOp::block_args,
            return_value_policy::reference)
-      .def("optimize_update", &PyWhileOp::OptimizeUpdate);
+      .def("optimize_update", &PyWhileOp::OptimizeUpdate)
+      .def("results", [](PyWhileOp& self) -> py::list {
+        py::list op_list;
+        for (uint32_t i = 0; i < self.num_results(); i++) {
+          op_list.append(static_cast<pir::Value>(self.result(i)));
+        }
+        return op_list;
+      });
 }
 
 void BindAssertOp(py::module* m) {
