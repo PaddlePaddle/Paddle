@@ -39,13 +39,13 @@ void FusedRopeKernel(const Context& dev_ctx,
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
 
+  phi::Array<int64_t, 3> inputs_num_heads;
+
   // q.shape: [batch_size, seq_len, num_heads, head_dim]
   auto batch_size = q.dims()[0];
   auto seq_len = q.dims()[1];
-  auto num_heads = q.dims()[2];
+  inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
-  phi::Array<int64_t, 3> inputs_num_heads;
-  inputs_num_heads[0] = num_heads;
 
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
@@ -70,19 +70,19 @@ void FusedRopeKernel(const Context& dev_ctx,
   outs_data[0] = out_q->data<T>();
   int num_inputs = 1;
 
-  if (k.get_ptr()) {
+  if (k) {
     dev_ctx.template Alloc<T>(out_k);
-    ins_data[1] = k->data<T>();
-    outs_data[1] = out_k->data<T>();
-    inputs_num_heads[1] = k->dims()[2];
+    ins_data[num_inputs] = k->data<T>();
+    outs_data[num_inputs] = out_k->data<T>();
+    inputs_num_heads[num_inputs] = k->dims()[2];
     num_inputs++;
   }
 
-  if (v.get_ptr()) {
+  if (v) {
     dev_ctx.template Alloc<T>(out_v);
-    ins_data[2] = v->data<T>();
-    outs_data[2] = out_v->data<T>();
-    inputs_num_heads[2] = v->dims()[2];
+    ins_data[num_inputs] = v->data<T>();
+    outs_data[num_inputs] = out_v->data<T>();
+    inputs_num_heads[num_inputs] = v->dims()[2];
     num_inputs++;
   }
 
@@ -118,7 +118,7 @@ void FusedRopeKernel(const Context& dev_ctx,
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
 
-    if (position_ids.get_ptr()) {
+    if (position_ids) {
       PADDLE_ENFORCE_EQ(
           (sin_dims[dims_size - 1] == head_dim &&
            sin_dims[sin_seq_len_dim] >= seq_len),
@@ -197,7 +197,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                                 sign,
                                                 batch_size,
                                                 seq_len,
-                                                num_heads,
+                                                inputs_num_heads[0],
                                                 head_dim,
                                                 outs_data,
                                                 num_inputs,
@@ -205,26 +205,28 @@ void FusedRopeKernel(const Context& dev_ctx,
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
-        (inputs_num_heads[0] != inputs_num_heads[1]) &&
-            (inputs_num_heads[0] % inputs_num_heads[1] == 0),
+        (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
+            (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
         true,
         phi::errors::InvalidArgument(
             "The MQA or GQA mode is entered, when the number of heads of qkv "
             "is not exactly the same two by two. This mode requires "
             "num_heads of q to be divisible by k,v."
-            "But recieved num_heads of q is %d, num_heads of k is %d",
+            "But recieved num_heads of q is %d, num_heads of k,v is %d",
             inputs_num_heads[0],
-            inputs_num_heads[1]));
+            inputs_num_heads[num_inputs - 1]));
 
-    PADDLE_ENFORCE_EQ(
-        (!v.get_ptr()) || (inputs_num_heads[1] == inputs_num_heads[2]),
-        true,
-        phi::errors::InvalidArgument(
-            "The num_heads of k must be equal to the num_heads of v when v "
-            "is not none."
-            "But recieved num_heads of k is %d, num_heads of v is %d",
-            inputs_num_heads[1],
-            inputs_num_heads[2]));
+    if (k.get_ptr() && v.get_ptr()) {
+      PADDLE_ENFORCE_EQ(
+          inputs_num_heads[1] == inputs_num_heads[2],
+          true,
+          phi::errors::InvalidArgument(
+              "The num_heads of k must be equal to the num_heads of v when v "
+              "is not none."
+              "But recieved num_heads of k is %d, num_heads of v is %d",
+              inputs_num_heads[1],
+              inputs_num_heads[2]));
+    }
 
     VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
         use_neox_rotary_style

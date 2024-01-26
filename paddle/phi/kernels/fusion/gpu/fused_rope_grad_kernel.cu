@@ -38,9 +38,11 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   int64_t numel = dout_q.numel();
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(dq);
+
+  phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
   auto batch_size = dout_q.dims()[0];
-  auto num_heads = dout_q.dims()[2];
+  inputs_num_heads[0] = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
   auto seq_len = dout_q.dims()[1];
   PADDLE_ENFORCE_NE(head_dim % 2,
@@ -61,26 +63,24 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
   const int64_t* position_ids_data = NULL;
-  phi::Array<int64_t, 3> inputs_num_heads;
-  inputs_num_heads[0] = num_heads;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
   int num_inputs = 1;
 
-  if (dout_k.get_ptr()) {
+  if (dout_k) {
     dev_ctx.template Alloc<T>(dk);
-    outs_data[1] = dk->data<T>();
-    ins_data[1] = dout_k->data<T>();
-    inputs_num_heads[1] = dk->dims()[2];
+    outs_data[num_inputs] = dk->data<T>();
+    ins_data[num_inputs] = dout_k->data<T>();
+    inputs_num_heads[num_inputs] = dk->dims()[2];
     num_inputs++;
   }
 
-  if (dout_v.get_ptr()) {
+  if (dout_v) {
     dev_ctx.template Alloc<T>(dv);
-    outs_data[2] = dv->data<T>();
-    ins_data[2] = dout_v->data<T>();
-    inputs_num_heads[2] = dv->dims()[2];
+    outs_data[num_inputs] = dv->data<T>();
+    ins_data[num_inputs] = dout_v->data<T>();
+    inputs_num_heads[num_inputs] = dv->dims()[2];
     num_inputs++;
   }
 
@@ -94,7 +94,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
     flag_sin_cos = true;
 
-    if (position_ids.get_ptr()) {
+    if (position_ids) {
       position_ids_data = position_ids->data<int64_t>();
     }
   }
@@ -125,7 +125,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                                 sign,
                                                 batch_size,
                                                 seq_len,
-                                                num_heads,
+                                                inputs_num_heads[0],
                                                 head_dim,
                                                 outs_data,
                                                 num_inputs,
