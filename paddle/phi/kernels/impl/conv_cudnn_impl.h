@@ -30,7 +30,7 @@
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 PD_DECLARE_int64(conv_workspace_size_limit);
 PD_DECLARE_bool(cudnn_exhaustive_search);
 

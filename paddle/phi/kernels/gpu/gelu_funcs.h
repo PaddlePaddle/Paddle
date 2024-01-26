@@ -22,7 +22,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-PHI_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
