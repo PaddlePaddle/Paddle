@@ -226,6 +226,7 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
   // broadcast
   for (auto& name : node_list) {
     // skip reduce init block
+
     if (group_tile_info_->broadcast_info.count(name)) {
       // broadcast loops
       std::cerr << "broadcast axes \n";
@@ -243,10 +244,13 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
                          group_tile_info_->broadcast_info[name].with_constrain);
     }
 
+    std::cerr << "fin broadcast " << name << std::endl;
     if (group_tile_info_->broadcast_to_elementwise.count(name)) {
+      std::cerr << "begin to broadcat to elementwise\n";
       ir_sch_->BroadcastToElementwise(
           name,
           group_tile_info_->broadcast_to_elementwise[name].broadcast_axes);
+      std::cerr << "fin to broadcat to elementwise\n";
     }
   }
 
@@ -366,6 +370,9 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
+  std::cerr << "before flatten fuse: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+
   if (vec_flatten_axis.size() >= 2) {
     for (auto& name : node_list) {
       // skip reduce init block
@@ -392,9 +399,8 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after flatten fuse: " <<
-  // ir_sch_->GetModule().GetExprs().front()
-  //           << std::endl;
+  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 
   if (group_tile_info_->flatten_inner_num > 1) {
     // split flatten inner here

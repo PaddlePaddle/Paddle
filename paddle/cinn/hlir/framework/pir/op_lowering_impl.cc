@@ -819,6 +819,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       // std::cerr << "broadcast is a output " << tensor->name << std::endl;
       if (opresult.use_count() > 1) {
         copyed_var_names.insert(tensor->name);
+
+        if (broadcast_info.count(tensor->name)) {
+          auto base_info = broadcast_info[tensor->name];
+          base_info.with_constrain = true;
+          broadcast_info[tensor->name + "_out"] = base_info;
+        }
       } else {
         direct_output_var_names.insert(tensor->name);
       }
@@ -828,11 +834,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     }
   }
 
-  // for (size_t i = 0; i < func_bodies.size(); ++i) {
-  //   // std::cerr << ops[i]->name() << std::endl;
-  //   // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
-  //   std::endl; std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
-  // }
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    // std::cerr << ops[i]->name() << std::endl;
+    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
+    std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
+  }
 
   // 2.Do group schedule.
   std::vector<Expr> added_expr;

@@ -36,7 +36,9 @@ class ProgramInfo:
     def random_feeds(self):
         feed_dict = {}
         for name, info in self.feeds.items():
-            data = np.random.random(info[0]).astype(convert_dtype(info[1]))
+            data = np.random.uniform(low=-0.5, high=0.5, size=info[0]).astype(
+                convert_dtype(info[1])
+            )
             feed_dict[name] = data
 
         return feed_dict
@@ -121,7 +123,13 @@ class TestTask(unittest.TestCase):
         print(len(cinn_out))
         print(len(base_out))
 
-        for cinn_res, base_res in zip(cinn_out, base_out):
+        for cinn_res, base_res, fetch_name in zip(
+            cinn_out, base_out, fetch_list
+        ):
+            # if fetch_name.find( "pt_intermediate") != -1:
+            #     continue
+            print(cinn_res, base_res)
+            print(fetch_name)
             # print( np.allclose( cinn_res, base_res ) )
             np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
 

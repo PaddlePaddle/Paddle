@@ -643,72 +643,11 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
                                             const std::vector<int64_t>& axes) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
 
-  auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+  auto broadcast_loop = all_loops.back().As<ir::For>();
 
   Expr broadcast_body = broadcast_loop->body;
 
-  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
-
-  auto schedule_realize = broadcast_body.As<ir::Block>()
-                              ->expr_fields()[0]
-                              ->As<ir::ScheduleBlockRealize>();
-
-  auto schedule_block =
-      schedule_realize->schedule_block.As<ir::ScheduleBlock>();
-
-  auto iter_vars = schedule_block->iter_vars;
-
-  // std::cerr << "iter vars " << std::endl;
-  // for (auto& expr : iter_vars) {
-  //   std::cerr << "11 " << expr << std::endl;
-  // }
-  auto iter_values = schedule_realize->iter_values;
-
-  // std::cerr << "iter value \n";
-
-  // for (auto& expr : iter_values) {
-  //   std::cerr << "22 " << expr << std::endl;
-  // }
-
-  auto exprs = ir::ir_utils::CollectIRNodesInOrder(
-      schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
-
-  for (auto expr : exprs) {
-    auto load = expr.As<ir::Load>();
-
-    // std::cerr << "loop var " <<broadcast_loop->loop_var << std::endl;
-    load->indices[axes[0]] = broadcast_loop->loop_var;
-
-    // auto update_indice = load->indices[ axes[0]];
-    //  ReplaceExpr(&update_indice, { load->indices[ ] },
-    //  {broadcast_loop->loop_var});
-
-    // std::cerr << "after load " << expr << std::endl;
-
-    // this->Replace( expr, new_load);
-  }
-}
-
-void StScheduleImpl::Broadcast(const std::string& block_name,
-                               const std::vector<int64_t>& axes,
-                               const std::vector<int64_t>& factors,
-                               bool add_check) {
-  std::cerr << "step in broadcast\n";
-  std::vector<Expr> all_loops = this->GetLoops(block_name);
-  std::cerr << "broadcast axes " << axes[0] << std::endl;
-  if (axes[0] >= all_loops.size()) {
-    throw std::runtime_error("axes execeed loop size");
-  }
-
-  // Get Last loop
-  // auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
-  auto broadcast_loop = all_loops.back().As<ir::For>();
-
-  Expr broadcast_body = ir::ir_utils::IRCopy(broadcast_loop->body);
-
   std::cerr << "broadcast body  " << broadcast_body << std::endl;
-  std::cerr << "broadcast body 2 " << all_loops[3].As<ir::For>()->body
-            << std::endl;
 
   auto schedule_realize = broadcast_body.As<ir::Block>()
                               ->expr_fields()[0]
@@ -731,31 +670,99 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
     std::cerr << "22 " << expr << std::endl;
   }
 
-  for (auto& axis : axes) {
-    auto inner_loop_var = all_loops[axis].As<ir::For>()->loop_var;
-    schedule_realize->iter_values[axis] = inner_loop_var;
-  }
-
   auto exprs = ir::ir_utils::CollectIRNodesInOrder(
       schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
 
   for (auto expr : exprs) {
-    ReplaceExpr(&expr, {schedule_block->iter_vars[axes[0]]}, {Expr(0)});
+    auto load = expr.As<ir::Load>();
+
+    // std::cerr << "loop var " <<broadcast_loop->loop_var << std::endl;
+    load->indices[axes[0]] = broadcast_loop->loop_var;
+
+    // auto update_indice = load->indices[ axes[0]];
+    //  ReplaceExpr(&update_indice, { load->indices[ ] },
+    //  {broadcast_loop->loop_var});
+
+    for (size_t i = 0; i < axes.size(); ++i) {
+      auto loop_temp = all_loops[axes[i]].As<ir::For>();
+
+      load->indices[axes[i]] = schedule_block->iter_vars[axes[i]];
+    }
+
+    std::cerr << "after load " << expr << std::endl;
+
+    // this->Replace( expr, new_load);
   }
 
-  int factor = factors[0];
-  Expr new_extent(factor);
+  // std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
+}
 
-  if (!broadcast_body.As<ir::Block>())
-    broadcast_body = Block::Make({broadcast_body});
-  Expr new_stmt = For::Make(broadcast_loop->loop_var,
-                            Expr(0),
-                            new_extent,
-                            broadcast_loop->for_type(),
-                            broadcast_loop->device_api,
-                            broadcast_body);
+void StScheduleImpl::Broadcast(const std::string& block_name,
+                               const std::vector<int64_t>& axes,
+                               const std::vector<int64_t>& factors,
+                               bool add_check) {
+  std::cerr << "step in broadcast\n";
+  std::vector<Expr> all_loops = this->GetLoops(block_name);
+  std::cerr << "broadcast axes " << axes[0] << std::endl;
+  if (axes[0] >= all_loops.size()) {
+    throw std::runtime_error("axes execeed loop size");
+  }
 
-  this->Replace(broadcast_loop, new_stmt);
+  // Get Last loop
+  // auto broadcast_loop = all_loops[axes[0]].As<ir::For>();
+  auto broadcast_loop = all_loops.back().As<ir::For>();
+
+  Expr broadcast_body = broadcast_loop->body;
+
+  // std::cerr << "broadcast body  " << broadcast_body << std::endl;
+
+  auto schedule_realize = broadcast_body.As<ir::Block>()
+                              ->expr_fields()[0]
+                              ->As<ir::ScheduleBlockRealize>();
+
+  auto schedule_block =
+      schedule_realize->schedule_block.As<ir::ScheduleBlock>();
+
+  auto iter_vars = schedule_block->iter_vars;
+
+  std::cerr << "iter vars " << std::endl;
+  for (auto& expr : iter_vars) {
+    std::cerr << "11 " << expr << std::endl;
+  }
+  auto iter_values = schedule_realize->iter_values;
+
+  std::cerr << "iter value \n";
+
+  for (auto& expr : iter_values) {
+    std::cerr << "22 " << expr << std::endl;
+  }
+
+  for (size_t i = 0; i < axes.size(); ++i) {
+    // new_extent
+    auto axis = axes[i];
+    auto loop_temp = all_loops[axis].As<ir::For>();
+    int extent = factors[i];
+    loop_temp->extent = Expr(extent);
+
+    std::cerr << "loop temp  loop var " << loop_temp->loop_var << std::endl;
+    schedule_realize->iter_values[axis] = loop_temp->loop_var;
+  }
+
+  // auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+  //     schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>();
+  //     });
+
+  // for (auto expr : exprs) {
+  //   //ReplaceExpr(&expr, {schedule_block->iter_vars[axes[0]]}, {Expr(0)});
+  //   std::cerr << "load " << expr << std::endl;
+  //   auto load = expr.As<ir::Load>();
+
+  //   std::cerr << "load " << load->indices[2] << std::endl;
+  // }
+
+  // std::cerr << "broadcast loop\n" << broadcast_loop->body << std::endl;
+
+  // std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
 }
 
 std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
