@@ -877,3 +877,13 @@ def _run_python_pop(target, *args):
     else:
         idx = args[0] if args else -1
         return target.pop(idx)
+
+
+def create_bool_as_type(x, value=True):
+    '''
+    Create a bool variable, which type is the same as x.
+    '''
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
+    else:
+        return value
