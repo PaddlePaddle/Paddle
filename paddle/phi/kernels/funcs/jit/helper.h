@@ -107,7 +107,7 @@ inline typename KernelTuple::func_type GetReferFunc() {
   PADDLE_ENFORCE_NOT_NULL(
       p,
       phi::errors::InvalidArgument("Get the reference code of kernel in CPU "
-                                   "failed. The Refer kernel should exsit."));
+                                   "failed. The Refer kernel should exist."));
   return p->GetFunc();
 }
 
@@ -115,7 +115,7 @@ inline typename KernelTuple::func_type GetReferFunc() {
 template <typename KernelTuple, typename PlaceType>
 std::vector<const Kernel*> GetAllCandidateKernels(
     const typename KernelTuple::attr_type& attr) {
-  // the search order shoudl be jitcode > more > refer
+  // the search order should be jitcode > more > refer
   std::vector<const Kernel*> res;
   auto jitker = GetJitCode<KernelTuple, PlaceType>(attr);
   if (jitker) {
