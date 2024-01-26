@@ -40,15 +40,15 @@ class DecompProgram {
   void decomp_program();
   bool check_decomp_dynamic_shape(pir::Operation* op);
   void check_decomp_outputs(const std::string& op_name,
-                            const std::vector<pir::OpResult>& orig_outs,
+                            const std::vector<pir::Value>& orig_outs,
                             const std::vector<pir::Value>& decomp_outs);
   std::vector<pir::Value> format_decomp_res(
       const std::string& op_name,
-      const std::vector<pir::OpResult>& orig_outs,
+      const std::vector<pir::Value>& orig_outs,
       const std::vector<std::vector<pir::Value>>& decomp_outs);
   std::vector<pir::Value> construct_dst_vars(
       const std::string& op_name,
-      const std::vector<pir::OpResult>& orig_outs,
+      const std::vector<pir::Value>& orig_outs,
       const std::vector<pir::Value>& decomp_outs,
       std::unordered_map<pir::Value, int> orig_vars_dict);
   bool enable_decomp_by_filter(const std::string& op_name);

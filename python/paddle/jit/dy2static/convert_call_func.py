@@ -69,7 +69,7 @@ class ConversionOptions:
             setattr(func, CONVERSION_OPTIONS, self)
         else:
             translator_logger.warn(
-                "Only support @not_to_static to type(function) or type(method), but recevied {}".format(
+                "Only support @not_to_static to type(function) or type(method), but received {}".format(
                     type(func)
                 )
             )

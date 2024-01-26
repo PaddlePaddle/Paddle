@@ -25,7 +25,7 @@ __all__ = []
 def _npu_identity(x, format=-1):
     """
 
-    This OP takes in the Tensor :attr:`x` and change it to ouptut with
+    This OP takes in the Tensor :attr:`x` and change it to output with
     aclFormat with int value. This API is only used for Ascend NPU.
 
     Args:

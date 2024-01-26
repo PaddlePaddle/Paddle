@@ -315,7 +315,7 @@ class TestElementwiseMinFP16Op_broadcast_4(TestElementwiseFP16Op):
         core.cudnn_version() < 8100
         or paddle.device.cuda.get_device_capability()[0] < 8
     ),
-    "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
+    "run test when gpu is available and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
 )
 class TestElementwiseBF16Op(OpTest):
     def init_data(self):
