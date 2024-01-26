@@ -512,7 +512,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
     sym_shape.push_back(dim_expr);
   }
 
-  // DimExpr only keep shape info, which always be int type
+  // DimExpr only keep shape info, which is always int type
   int64_t value = attributes.at("value")
                       .dyn_cast<paddle::dialect::ScalarAttribute>()
                       .data()
@@ -522,6 +522,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(sym_shape)};
+  shape_data.SetData(sym_data);
 
   op->set_attribute(
       "symbolic_shape",
@@ -551,25 +552,35 @@ bool MultiplySr_OpInferSymbolicShape(
 
 bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 
 bool GatherNdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 
 bool PowOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 bool Pow_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return PowOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool RsqrtOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 bool Rsqrt_OpInferSymbolicShape(
@@ -596,6 +607,8 @@ bool ScaleSr_OpInferSymbolicShape(
 
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 bool Squeeze_OpInferSymbolicShape(
@@ -605,6 +618,8 @@ bool Squeeze_OpInferSymbolicShape(
 
 bool UnsqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 bool Unsqueeze_OpInferSymbolicShape(
@@ -668,6 +683,8 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
 
 bool TransposeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 bool Transpose_OpInferSymbolicShape(
@@ -741,6 +758,8 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 

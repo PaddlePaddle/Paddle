@@ -71,7 +71,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
           true,
           platform::errors::InvalidArgument(
-              "Invlid `ref_level`, which should be either equal to -1 "
+              "Invalid `ref_level`, which should be either equal to -1 "
               "or in [0, %d), but received `ref_level` = %u.",
               y_lod.size(),
               ref_level));

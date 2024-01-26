@@ -26,13 +26,13 @@
 #include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 #include "paddle/utils/flags.h"
 
-PD_DECLARE_string(cinn_convert_dynamic_to_static_dim);
+PD_DECLARE_string(cinn_convert_dynamic_dim_to_static_dim);
 
 namespace {
 
 template <typename DoEachT>
 void ForEachRawDyanmicToStaticDimPair(const DoEachT& DoEach) {
-  const std::string& env_var = FLAGS_cinn_convert_dynamic_to_static_dim;
+  const std::string& env_var = FLAGS_cinn_convert_dynamic_dim_to_static_dim;
   size_t start = 0;
   while (true) {
     size_t end = env_var.find(",", start);
@@ -258,5 +258,3 @@ CreateConvertDynamicToStaticDimPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
-
-// REGISTER_IR_PASS(cinn_group_lowering, DivideGroupOpToFusionOpPass);

@@ -135,6 +135,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -298,7 +299,8 @@ void BindProgram(py::module *m) {
           },
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
-          });
+          })
+      .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -360,6 +362,7 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
+      .def("num_ops", [](Block &self) { return self.num_ops(); })
       .def(
           "__enter__",
           [](Block &self) -> Block & {
@@ -1552,9 +1555,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   bool has_dynamic_shape = HasDynamicShape(program);
   pass_manager->EnableIRPrinting();
 
-  auto shape_analysis =
-      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
-                        : nullptr;
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
@@ -1562,7 +1562,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
-
   pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   if (has_dynamic_shape) {
@@ -1603,7 +1602,7 @@ void InferSymbolicShapePass(
     Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program)) {
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
