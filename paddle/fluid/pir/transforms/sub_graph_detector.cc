@@ -482,8 +482,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 #ifdef PADDLE_WITH_DNNL
-  ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
-  ctx->GetOrRegisterDialect<dialect::OneDNNKernelDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OneDNNKernelDialect>();
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
