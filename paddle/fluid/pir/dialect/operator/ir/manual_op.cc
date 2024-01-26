@@ -4302,7 +4302,7 @@ OpInfoTuple ArrayPopOp::GetOpInfo() {
                                      {"array", "index"},
                                      {"array"},
                                      {"array"},
-                                     {{"array", "array_out"}},
+                                     {{"array_out", "array"}},
                                      {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "array_pop");
