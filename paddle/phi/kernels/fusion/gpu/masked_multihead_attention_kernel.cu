@@ -20,6 +20,8 @@
 namespace phi {
 namespace fusion {
 
+constexpr int steps_per_block = 128;
+
 #ifndef PADDLE_WITH_HIP
 
 constexpr unsigned int str2int(const char *str, int h = 0) {
@@ -155,7 +157,7 @@ __global__ void masked_multihead_attention_kernel(
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-  constexpr int steps_per_block = 128;
+
   //int steps_per_block = (act_time_step + 1) / gridDim.x;
   // 最后的单独的那个q*k*v让split_index的最后的那个cuda thread block来计算！
   const int split_index = blockIdx.x;
@@ -672,7 +674,7 @@ inline size_t smem_size_in_bytes(
     int dim_head,
     int threads_per_value,
     int threads_per_block) {
-  size_t qk_sz = div_up(params.timestep + 1, 4) * 16;
+  size_t qk_sz = div_up(steps_per_block + 1, 4) * 16;
   size_t logits_sz = 0;
 
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS  // NOLINT
@@ -1071,7 +1073,7 @@ void DispatchWithDtype(const Context &dev_ctx,
 
   // std::cout << "smcount: " << (float)(dev_ctx.GetSMCount()) / (params.batch_size * params.num_head) << std::endl;
 
-  params.split_seq = timestep / 128 + 1;
+  params.split_seq = timestep / steps_per_block + 1;
   std::cout << "split_seq: " << timestep << std::endl;
   int split_seq = params.split_seq;
   phi::DenseTensor qk_sum_max_split_seq;
