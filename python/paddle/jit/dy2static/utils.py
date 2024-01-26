@@ -39,7 +39,11 @@ from paddle.framework import CUDAPinnedPlace
 from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
-from .utils_helper import PADDLE_MODULE_PREFIX
+from .utils_helper import (  # noqa: F401
+    PADDLE_MODULE_PREFIX,
+    _is_api_in_module_helper,
+    is_paddle_api,
+)
 
 __all__ = []
 
