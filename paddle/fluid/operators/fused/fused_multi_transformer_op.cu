@@ -607,7 +607,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         phi::DenseTensor *tmp_padding_offset_tensor =
             encoder_remove_padding ? &padding_offset_tensor : nullptr;
 
-        if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
+        if (FLAGS_fmha_mode == "flash_attention_v2") {
+          if (!encoder_remove_padding) {
+            PADDLE_THROW(paddle::platform::errors::Unimplemented("encoder_remove_padding must be true when fmha_mode is flash_attention_v2"));
+          }
           TransposeSplit<T>(dev_ctx,
                             unpadding_q.data<T>(),
                             unpadding_k.data<T>(),
@@ -621,11 +624,26 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                             num_head,
                             seq_len,
                             dim_head);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+      VLOG(2) << "TransposeSplit";
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
+      VLOG(2) << "unpadding_q:" << unpadding_q;
+      VLOG(2) << "unpadding_k:" << unpadding_k;
+      VLOG(2) << "unpadding_v:" << unpadding_v;
+#endif
+#endif                   
           phi::Copy(dev_ctx,
                     cu_seqlens_q,
                     cu_seqlens_k.place(),
                     false,
                     &cu_seqlens_k);
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+      VLOG(2) << "Copy";
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
+      VLOG(2) << "cu_seqlens_q:" << cu_seqlens_q;
+      VLOG(2) << "cu_seqlens_k:" << cu_seqlens_k;
+#endif
+#endif  
 
           // fmha_out[token_num, num_head, dim_head]
           phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
@@ -721,7 +739,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         phi::DenseTensor *tmp_padding_offset_tensor =
             encoder_remove_padding ? &padding_offset_tensor : nullptr;
 
-        if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
+        if (FLAGS_fmha_mode == "flash_attention_v2") {
+          if (!encoder_remove_padding) {
+            PADDLE_THROW(paddle::platform::errors::Unimplemented("encoder_remove_padding must be true when fmha_mode is flash_attention_v2"));
+          }
           TransposeSplit<T>(dev_ctx,
                             unpadding_q.data<T>(),
                             unpadding_k.data<T>(),

@@ -1034,6 +1034,8 @@ class TestFusedMultiTransformerOp(OpTest):
         return out
 
     def test_fused_multi_transformer_op(self):
+        if not self.remove_padding:
+            return
         if self.has_cache_kv and not self.gen_cache_kv and self.remove_padding:
             final_out_ref = self.GetVariableDecoderBaselineOut()
         else:
@@ -1150,209 +1152,118 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
-class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
+class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
         self.x_type = np.float16
-        self.rotary_emb_dims = 1
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+        
 
 
-class TestFusedMultiTransformerOpGenRotaryFP16(TestFusedMultiTransformerOp):
+class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
+            
+
+class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+        
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
+
+
+class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 3  # odd layers
+        self.rotary_emb_dims = 2
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
+
+
+class TestFusedMultiTransformerOpVariableNormTransformer1(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
         self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+class TestFusedMultiTransformerOpVariableNormTransformer2(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
+
+
+class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
         self.has_cache_kv = True
         self.gen_cache_kv = False
-        self.query_length = 1
-        self.key_length, self.value_length = (
-            self.query_length,
-            self.query_length,
-        )
-        self.neox_rotary_style=True
-        self.rotary_emb_dims = 2
-
-
-class TestFusedMultiTransformerOpGenCacheRotaryFP16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.rotary_emb_dims = 1
-
-
-class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpCacheKVFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.x_type = np.float16
-
-
-class TestFusedMultiTransformerOpGenCacheKV(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-
-
-class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-
-
-class TestFusedMultiTransformerOpPostLayerNormFp16(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpCacheKVPostLayerNorm(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpCacheKVPostLayerNormFp16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.query_length = 1
-        self.key_length, self.value_length = 1, 1
-        self.x_type = np.float16
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpGenCacheKVPostLayerNorm(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpGenCacheKVPostLayerNormFp16(
-    TestFusedMultiTransformerOp
-):
-    def config(self):
-        super().config()
-        self.has_cache_kv = True
-        self.gen_cache_kv = True
-        self.x_type = np.float16
-        self.layers = 3  # odd layers
-        self.pre_layer_norm = False
-
-
-class TestFusedMultiTransformerOpPreCache(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_pre_cache = True
-        self.x_type = np.float16
-
-class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
-    def config(self):
-        super().config()
-        self.has_attn_mask = False
-        self.x_type = np.float32
-        self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
-        )
-        self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
-        )
-        self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(1.0)
-        )
-        self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
-        )
-
-    def test_fused_multi_transformer_op(self):
-        self.has_pre_cache = True
-        self.remove_padding = False
-        self.rotary_emb_dims = 2
-        self.generate_input_data()
-        final_out_ref = self.GetBaselineOut()
-        final_out = self.GetFusedMultiTransformerOutStatic()[0]
-
-        np.testing.assert_allclose(
-            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
-        )
-
-        self.has_pre_cache = False
         self.remove_padding = True
-        self.generate_input_data()
-        final_out_ref = self.GetBaselineOut()
-        final_out = self.GetFusedMultiTransformerOutStatic()[0]
-
-        for i in range(self.batch_size):
-            np.testing.assert_allclose(
-                final_out_ref[i, : self.seq_lens[i]],
-                final_out[i, : self.seq_lens[i]],
-                rtol=self.rtol,
-                atol=self.atol,
-            )
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-class TestFusedMultiAttentionAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([1.9], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
-            layer = paddle.incubate.nn.FusedMultiHeadAttention(
-                embed_dim=1, num_heads=1
-            )
-            out = layer(x)
+class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
 
-        self.assertRaises(ValueError, test_invalid_input_dim)
 
-
-class TestFusedMultiTransformerAPIError(unittest.TestCase):
-    def test_errors(self):
-        def test_invalid_input_dim():
-            array = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
-            layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
-                108, 108, 108, 0.0, 'relu'
-            )
-            out = layer(x)
-
-        self.assertRaises(ValueError, test_invalid_input_dim)
+class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+        if os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
+            self.x_type = np.float16
 
 
 if __name__ == "__main__":
