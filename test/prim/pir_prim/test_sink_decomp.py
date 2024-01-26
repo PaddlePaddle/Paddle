@@ -214,10 +214,10 @@ class TestHardSwishSink(unittest.TestCase):
             x.stop_gradient = False
             sum_out = F.hardswish(x)
             [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
             print("======================")
             print(main_program)
             print("======================")
-            gradients = grad(new_out, x)
 
             exe = paddle.static.Executor()
             [fwd, dx] = exe.run(
@@ -272,8 +272,8 @@ class TestDivideSink(unittest.TestCase):
         np.random.seed(2023)
         self.shape_x = [8, 16, 32, 64]
         self.shape_y = [8, 16, 32, 64]
-        self.x = np.random.random(self.shape_x).astype("float32")
-        self.y = np.random.random(self.shape_y).astype("float32")
+        self.x = np.random.random(self.shape_x).astype("float16")
+        self.y = np.random.random(self.shape_y).astype("float16")
         self.prog = None
 
     def base_net(self, flag=None):
@@ -285,14 +285,17 @@ class TestDivideSink(unittest.TestCase):
             core._set_prim_all_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', self.shape_x, dtype='float32')
-            y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x = paddle.static.data('x', self.shape_x, dtype='float16')
+            y = paddle.static.data('y', self.shape_y, dtype='float16')
             x.stop_gradient = False
             y.stop_gradient = False
-            divide_out = paddle.multiply(x, y)
-            sum_out = paddle.divide(divide_out, y)
+            # divide_out = paddle.multiply(x, y)
+            sum_out = paddle.divide(x, y)
             [new_out] = decompose(main_program, [sum_out])
             gradients = grad(new_out, (x, y))
+            print("======================")
+            print(main_program)
+            print("======================")
 
             exe = paddle.static.Executor()
             [fwd, dx, dy] = exe.run(
