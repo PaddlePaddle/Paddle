@@ -609,13 +609,17 @@ class OpFusionPassHelper {
             hlir::framework::pir::CompatibleInfo::OpKind(*consumer))) {
       auto& consumer_group = fusion_groups_[consumer];
       // second step: check producer can be fused into consumer group
-      VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
+      VLOG(3) << "Call ConditionFunction, Producer Op: [" << producer->name()
+              << "] Pattern : "
               << hlir::framework::pir::CompatibleInfo::OpKind(*producer)
-              << " , Consumer Group Pattern : "
-              << consumer_group->op_pattern_kind;
+              << " , Consumer Group [" << consumer->name()
+              << "] Pattern : " << consumer_group->op_pattern_kind;
 
-      return relation.fusion_op_kind[consumer_group->op_pattern_kind](
+      bool result = relation.fusion_op_kind[consumer_group->op_pattern_kind](
           producer, fusion_groups_[consumer], shape_analysis);
+      VLOG(3) << " CanFuse: " << result;
+
+      return result;
     }
 
     return false;
