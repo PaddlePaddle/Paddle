@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ..utils import FunctionNameLivenessAnalysis
-from ..variable_trans_func import create_undefined_var
 from .base import BaseTransformer
+from .utils import create_undefined_var
 
 __all__ = []
 

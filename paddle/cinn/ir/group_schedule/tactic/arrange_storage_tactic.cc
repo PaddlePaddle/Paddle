@@ -388,6 +388,8 @@ void ArrangeStorageTactic::Apply(ir::IRSchedule* sch,
       LOG(FATAL) << "Fusion requires synchronization across blocks, but "
                     "currently we do not support it.";
       break;
+    } else {
+      LOG(FATAL) << "dead code";
     }
   }
 
