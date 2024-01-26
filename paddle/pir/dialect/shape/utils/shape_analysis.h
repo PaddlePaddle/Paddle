@@ -75,7 +75,7 @@ class IR_API ShapeConstraintIRAnalysis {
                       int rhs_to) const;
 
   // Returns true if the two value have the same number elements.
-  bool IsSameNumElements(Value lhs, Value rhs) const;
+  bool IsSameNumel(Value lhs, Value rhs) const;
 
  private:
   ModuleOp m_;

@@ -76,11 +76,11 @@ TEST(shape_optimization, shape_optimization_pass) {
   // data_op_z_res    [128,   32,  2,  2   ]
   // data_op_w_res    [ 64,   32,  2,  2, 2]
   EXPECT_TRUE(shape_analysis.IsShapeEqual(data_op_x_res, abs_op_res));
-  EXPECT_TRUE(shape_analysis.IsSameNumElements(data_op_x_res, abs_op_res));
+  EXPECT_TRUE(shape_analysis.IsSameNumel(data_op_x_res, abs_op_res));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(data_op_x_res, data_op_y_res));
-  EXPECT_FALSE(shape_analysis.IsSameNumElements(data_op_x_res, data_op_y_res));
+  EXPECT_FALSE(shape_analysis.IsSameNumel(data_op_x_res, data_op_y_res));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(data_op_z_res, data_op_w_res));
-  EXPECT_TRUE(shape_analysis.IsSameNumElements(data_op_z_res, data_op_w_res));
+  EXPECT_TRUE(shape_analysis.IsSameNumel(data_op_z_res, data_op_w_res));
   EXPECT_TRUE(shape_analysis.IsProductEqual(
       data_op_x_res, {0, 2, 4}, abs_op_res, {0, 2, 4}));
   EXPECT_TRUE(

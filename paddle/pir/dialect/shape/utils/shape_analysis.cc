@@ -182,7 +182,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return IsProductEqual(lhs, lhs_dim_idxs, rhs, rhs_dim_idxs);
 }
 
-bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) const {
+bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
 
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
