@@ -711,7 +711,7 @@ bool SqueezeOpInferSymbolicShape(
                                         : squeeze_dims[i];
 
       if (!should_squeeze[current]) {
-        // At compile time, dim of -1 or 1 is allowed to squeeze
+        // At compile time, dim of SYMBOL is allowed to squeeze?
         if (in_dims_sym[current] == 1) {
           should_squeeze[current] = true;
         } else if (!in_dims_sym[current].Has<std::int64_t>()) {
