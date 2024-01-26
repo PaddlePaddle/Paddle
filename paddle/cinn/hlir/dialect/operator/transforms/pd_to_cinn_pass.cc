@@ -385,6 +385,7 @@ class ConcatOpPattern
   bool Match(paddle::dialect::ConcatOp op) const override {
     bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
     auto axis_gen_op = op->operand_source(1).defining_op();
+    return true;
     return flag && axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
   }
 
