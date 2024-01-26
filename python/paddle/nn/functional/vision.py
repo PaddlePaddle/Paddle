@@ -380,7 +380,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
             f"But receive Attr(data_format): {data_format} "
         )
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
     else:
         helper = LayerHelper("pixel_shuffle", **locals())

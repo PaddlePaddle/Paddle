@@ -18,9 +18,6 @@ import inspect
 import numpy as np  # noqa: F401
 
 import paddle
-from paddle import base  # noqa: F401
-from paddle.base import dygraph, layers  # noqa: F401
-from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -37,19 +34,6 @@ def index_in_list(array_list, item):
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'
-DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.jit.dy2static'
-DYGRAPH_MODULE_PREFIX = 'paddle.base.dygraph'
-
-
-def is_dygraph_api(node):
-    # TODO(SigureMo): Cleanup this function after we remove the BasicApiTransformer
-    # Note: A api in module dygraph_to_static is not a real dygraph api.
-    if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
-        return False
-
-    # TODO(liym27): A better way to determine whether it is a dygraph api.
-    #  Consider the decorator @dygraph_only
-    return is_api_in_module(node, DYGRAPH_MODULE_PREFIX)
 
 
 def is_api_in_module(node, module_prefix):
@@ -66,7 +50,8 @@ def is_api_in_module(node, module_prefix):
         import paddle.jit.dy2static as _jst  # noqa: F401
         from paddle import to_tensor  # noqa: F401
 
-        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
+        fn = eval(func_str)
+        return _is_api_in_module_helper(fn, module_prefix)
     except Exception:
         return False
 

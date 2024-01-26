@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def python_matrix_nms(
@@ -310,6 +311,7 @@ class TestMatrixNMSOpGaussian(TestMatrixNMSOp):
 
 
 class TestMatrixNMSError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         M = 1200
         N = 7

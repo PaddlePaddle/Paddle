@@ -984,7 +984,7 @@ class TestDropout2DFAPIError(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
-                # dimentions of x should be 4
+                # dimensions of x should be 4
                 x = paddle.static.data(
                     name='x1', shape=[2, 3, 4, 5, 6], dtype="int32"
                 )
@@ -1116,7 +1116,7 @@ class TestDropout3DFAPIError(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
-                # dimentions of x should be 5
+                # dimensions of x should be 5
                 x = paddle.static.data(
                     name='x1', shape=[2, 3, 4, 5], dtype="int32"
                 )

@@ -73,8 +73,8 @@ class AddOp : public pir::Op<AddOp> {
   void VerifySig();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult l_operand,
-                    pir::OpResult r_operand,
+                    pir::Value l_operand,
+                    pir::Value r_operand,
                     pir::Type sum_type);
 };
 void AddOp::VerifySig() {
@@ -87,8 +87,8 @@ void AddOp::VerifySig() {
 }
 void AddOp::Build(pir::Builder &,
                   pir::OperationArgument &argument,
-                  pir::OpResult l_operand,
-                  pir::OpResult r_operand,
+                  pir::Value l_operand,
+                  pir::Value r_operand,
                   pir::Type sum_type) {
   argument.AddInput(l_operand);
   argument.AddInput(r_operand);
