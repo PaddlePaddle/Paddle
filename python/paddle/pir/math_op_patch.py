@@ -231,7 +231,7 @@ def monkey_patch_value():
 
     def astype(self, dtype):
         """
-        **Notes**:
+        Note:
 
         Cast a Value to a specified data type.
 
@@ -483,7 +483,7 @@ def monkey_patch_value():
     @fake_interface_only
     def clear_gradient(self):
         """
-        **Notes**:
+        Note:
             **1. This API is ONLY available in Dygraph mode**
 
             **2. Use it only Value has gradient, normally we use this for Parameters since other temporal Value will be deleted by Python's GC**
@@ -519,7 +519,7 @@ def monkey_patch_value():
 
     def append(self, var):
         """
-        **Notes**:
+        Note:
            **The type Value must be Tensor Array.
 
         """

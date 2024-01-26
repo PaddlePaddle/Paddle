@@ -79,7 +79,7 @@ def monkey_patch_tensor():
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
-        **Notes**:
+        Notes:
             **This API is ONLY available in Dygraph mode**
 
         Transform a Tensor into static Variable with same attributes. It's a low level interface used
@@ -163,7 +163,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def set_value(self, value):
         """
-        **Notes**:
+        Note:
             **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
@@ -869,7 +869,7 @@ def monkey_patch_tensor():
         The inplace version of current Tensor.
         The version number is incremented whenever the current Tensor is modified through an inplace operation.
 
-        **Notes: This is a read-only property**
+        Note: This is a read-only property
 
         Examples:
             .. code-block:: python
@@ -1087,7 +1087,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def values(self):
         """
-        **Notes**:
+        Note:
             **This API is ONLY available in Dygraph mode**
 
         Get the values of current SparseTensor(COO or CSR).
@@ -1112,7 +1112,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def to_dense(self):
         """
-        **Notes**:
+        Note:
             **This API is ONLY available in Dygraph mode**
 
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
@@ -1141,7 +1141,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
         """
-        **Notes**:
+        Note:
             **This API is ONLY available in Dygraph mode**
 
         Convert the current DenseTensor to SparseTensor in COO format.
@@ -1168,7 +1168,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def _md5sum(self):
         """
-        **Notes**:
+        Note:
             **This API is ONLY available in Dygraph mode**
 
         Calculate the md5sum of current Tensor.

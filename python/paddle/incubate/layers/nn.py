@@ -122,7 +122,7 @@ def fused_seqpool_cvm(
 
     This OP is the fusion of sequence_pool and continuous_value_model op.
 
-    **Note:** The Op only receives List of LoDTensor as input, only support SUM pooling now.
+    Note: The Op only receives List of LoDTensor as input, only support SUM pooling now.
 
     Args:
         input(Tensor): Input is List of LoDTensor.
