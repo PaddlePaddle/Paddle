@@ -61,6 +61,7 @@ template <typename T, typename Context>
 void ArrayPopKernel(const Context& dev_ctx,
                     const TensorArray& array,
                     int index,
+                    TensorArray* array_out,
                     DenseTensor* out);
 
 }  // namespace phi

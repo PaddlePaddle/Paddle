@@ -742,7 +742,7 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
                                   paddle::dialect::OpYamlInfoInterface,
                                   paddle::dialect::InferMetaInterface,
                                   paddle::dialect::GetKernelTypeForVarInterface,
-                                  pir::SideEffectTrait> {
+                                  InplaceTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.array_pop"; }
@@ -762,7 +762,8 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
       const phi::DataType &expected_kernel_dtype);
 
   pir::Value input() { return operand_source(0); }
-  pir::Value out() { return result(0); }
+  pir::Value array_out() { return result(0); }
+  pir::Value out() { return result(1); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(

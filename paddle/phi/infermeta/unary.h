@@ -828,8 +828,9 @@ void LrnInferMeta(const MetaTensor& x,
                   MetaTensor* out,
                   MetaTensor* mid_out);
 
-void ArrayPopInferMeta(const MetaTensor& x,
+void ArrayPopInferMeta(const MetaTensor& array,
                        int index,
+                       MetaTensor* array_out,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 

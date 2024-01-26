@@ -4279,7 +4279,7 @@ const char *ArrayPopOp::attributes_name[1] = {"index"};
 
 OpInfoTuple ArrayPopOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
-      paddle::dialect::OpInputInfo("input",
+      paddle::dialect::OpInputInfo("array",
                                    "paddle::dialect::DenseTensorArrayType",
                                    false,
                                    false,
@@ -4292,15 +4292,17 @@ OpInfoTuple ArrayPopOp::GetOpInfo() {
 
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
+          "array_out", "paddle::dialect::DenseTensorArrayType", false, false),
+      paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info =
       paddle::dialect::OpRunTimeInfo("ArrayPopInferMeta",
-                                     {"input", "index"},
+                                     {"array", "index"},
                                      "array_pop",
-                                     {"input", "index"},
-                                     {"input"},
-                                     {"input"},
-                                     {},
+                                     {"array", "index"},
+                                     {"array"},
+                                     {"array"},
+                                     {{"array", "array_out"}},
                                      {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "array_pop");
@@ -4331,24 +4333,27 @@ void ArrayPopOp::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
+    IR_ENFORCE(output_size == 2u,
+               "The size %d of outputs must be equal to 2.",
                output_size);
     IR_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
         "Type validation failed for the 0th output.");
+    IR_ENFORCE(
+        (*this)->result(1).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 1st output.");
   }
   VLOG(4) << "End Verifying for: ArrayPopOp.";
 }
 
 void ArrayPopOp::Build(pir::Builder &builder,             // NOLINT
                        pir::OperationArgument &argument,  // NOLINT
-                       pir::Value input,
+                       pir::Value array,
                        int index) {
   VLOG(4) << "Start build ArrayPopOp";
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::Value> argument_inputs = {input};
-  argument.AddInputs({input});
+  std::vector<pir::Value> argument_inputs = {array};
+  argument.AddInputs({array});
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
   pir::Attribute attr_index =
@@ -4406,13 +4411,22 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
+  paddle::dialect::IrTensor array_out;
+  paddle::dialect::IrMetaTensor meta_array_out(&array_out);
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::ArrayPopInferMeta(
-      meta_input, index, &meta_out, phi::MetaConfig(false, false));
+  phi::ArrayPopInferMeta(meta_input,
+                         index,
+                         &meta_array_out,
+                         &meta_out,
+                         phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
+  pir::Type out_array_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(array_out.dtype()),
+      array_out.layout());
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
@@ -4420,6 +4434,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+  argument_outputs.push_back(out_array_type);
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
 }

@@ -139,6 +139,7 @@ template <typename T, typename Context>
 void ArrayPopKernel(const Context& dev_ctx,
                     const TensorArray& array,
                     int index,
+                    TensorArray* array_out,
                     DenseTensor* out) {
   PADDLE_ENFORCE_GT(
       array.size(),
@@ -151,7 +152,7 @@ void ArrayPopKernel(const Context& dev_ctx,
   }
 
   out->ShareDataWith(array[index]);
-  const_cast<TensorArray&>(array).pop(static_cast<size_t>(index));
+  array_out->pop(static_cast<size_t>(index));
 }
 
 }  // namespace phi
