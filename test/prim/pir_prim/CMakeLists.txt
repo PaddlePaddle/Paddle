@@ -5,8 +5,8 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_prim_jit
     test_pir_prim_flags
     test_sink_decomp
-    test_forward_dynamic
-    test_prim_dynamic)
+    test_prim_skip_dynamic
+    test_prim_forward_dynamic)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
