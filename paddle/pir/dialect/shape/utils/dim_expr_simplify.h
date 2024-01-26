@@ -18,6 +18,6 @@
 
 namespace symbol {
 
-DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
+IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
 
 }
