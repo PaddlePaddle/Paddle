@@ -65,7 +65,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     for (size_t i = 0; i < axis_.size(); i++) {
       value_ *= x_dim[axis_[i]];
     }
-    value = full<T>(empty_shape, value, sum_x.dtype());
+    value = full<T>(empty_shape, value_, sum_x.dtype());
   }
 
   Tensor res = sum_x / value;

@@ -46,6 +46,13 @@ class TestPrimMode(unittest.TestCase):
             y = paddle.static.data('y', self.shape_y, dtype='float32')
             res = rms_norm(x, y)
             [res2] = decomp.decompose(main_program, [res])
+
+            pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
+                pm, main_program
+            )
+            pm.run(main_program)
+
             exe = paddle.static.Executor()
             outs = exe.run(
                 feed={
