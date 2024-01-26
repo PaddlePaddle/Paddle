@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GLOG_v=4 FLAGS_cinn_convert_dynamic_to_static_dim=S0:2048 FLAGS_enable_pir_api=1 python test_repeat_kv_symbolic.py > output.log 2>&1
+GLOG_v=4 FLAGS_cinn_convert_dynamic_to_static_dim=S0:2048 FLAGS_enable_pir_api=1 FLAGS_pir_apply_shape_optimization_pass=True FLAGS_cinn_bucket_compile=True python test_repeat_kv_symbolic.py > output.log 2>&1
+# GLOG_v=4 FLAGS_cinn_convert_dynamic_to_static_dim="" FLAGS_enable_pir_api=1 FLAGS_pir_apply_shape_optimization_pass=True FLAGS_cinn_bucket_compile=True python test_repeat_kv_symbolic.py > output.log 2>&1

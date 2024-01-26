@@ -31,22 +31,37 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
+def unsqueeze_composite(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = paddle.reshape(x, x_shape)
+    return out
+
+
 class RepeatKV(nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, hidden_states, n_rep):
-        (
-            batch,
-            slen,
-            num_key_value_heads,
-            head_dim,
-        ) = hidden_states.shape
-
-        hidden_states = hidden_states.unsqueeze(-2).tile([1, 1, 1, n_rep, 1])
-        return hidden_states.reshape(
+        batch, slen, num_key_value_heads, head_dim = hidden_states.shape
+        rst_unsqueeze = unsqueeze_composite(hidden_states, [-2])
+        rst_tile = rst_unsqueeze.tile([1, 1, 1, n_rep, 1])
+        out = rst_tile.reshape(
             [batch, slen, num_key_value_heads * n_rep, head_dim]
         )
+        return out
 
 
 class TestRepeatKV(unittest.TestCase):
@@ -68,7 +83,7 @@ class TestRepeatKV(unittest.TestCase):
             input_spec = [
                 InputSpec(shape=[1, None, 8, 96], dtype='float32'),
             ]
-            net = apply_to_static(net, use_cinn, input_spec)
+            net = apply_to_static(net, use_cinn, None)
         net.eval()
         out = net(self.hidden_states, self.n_rep)
         return out

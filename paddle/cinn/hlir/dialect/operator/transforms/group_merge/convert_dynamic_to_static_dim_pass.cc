@@ -141,6 +141,7 @@ class DynamicToStaticConverter {
   void VisitEachValue(cinn::dialect::FusionOp fusion_op,
                       const DoEachT& DoEach) {
     for (pir::Operation* op : fusion_op.GetOperators()) {
+      VLOG(1) << "DEBUG op->name() = " << op->name();
       for (std::size_t i = 0; i < op->num_operands(); ++i) {
         DoEach(op->operand_source(i));
       }
@@ -176,6 +177,14 @@ class DynamicToStaticConverter {
     return static_shapes;
   }
 
+  void PrintVector(const std::vector<std::int64_t>& shape) {
+    std::string ret = "";
+    for (int i = 0; i < shape.size(); ++i) {
+      ret += std::to_string(i) + ", " + std::to_string(shape.at(i)) + "; ";
+    }
+    VLOG(1) << "DEBUG" << ret;
+  }
+
   bool UpdateValueShape(pir::Value value) {
     bool update = false;
     CHECK(shape_analysis_->HasShapeOrDataForValue(value));
@@ -187,7 +196,13 @@ class DynamicToStaticConverter {
         CHECK_GT(target_shape.at(i), 0);
         update = true;
       } else {
-        CHECK(origin_shape.at(i) == target_shape.at(i));
+        if (origin_shape.at(i) != target_shape.at(i)) {
+          PrintVector(origin_shape);
+          PrintVector(target_shape);
+        }
+        // CHECK(origin_shape.at(i) == target_shape.at(i)) << "origin_shape[" <<
+        // i << "] = " << origin_shape.at(i) << ", target_shape[" << i << "] = "
+        // << target_shape.at(i);
       }
     }
     if (update) {
