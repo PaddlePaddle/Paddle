@@ -39,31 +39,13 @@ class LayerCase(paddle.nn.Layer):
     ):
         var_4 = paddle.tensor.manipulation.reshape(var_0, [10, 49, 8, 16])
         var_5 = paddle.tensor.linalg.transpose(var_4, perm=[0, 2, 1, 3])
-        var_6 = paddle.tensor.linalg.transpose(
-            self.parameter_0,
-            (
-                1,
-                0,
-            ),
-        )
+        var_6 = paddle.tensor.linalg.transpose(self.parameter_0, (1, 0))
         concat_list = []
         for var in var_3:
             concat_list.append(paddle.tensor.manipulation.gather(var_6, var))
         var_7 = paddle.tensor.manipulation.concat(concat_list)
-        var_8 = paddle.tensor.linalg.transpose(
-            var_7,
-            (
-                1,
-                0,
-            ),
-        )
-        var_9 = var_8.reshape(
-            (
-                0,
-                49,
-                196,
-            )
-        )
+        var_8 = paddle.tensor.linalg.transpose(var_7, (1, 0))
+        var_9 = var_8.reshape((0, 49, 196))
         var_10 = paddle.tensor.linalg.transpose(var_1, perm=[0, 1, 3, 2])
         var_11 = paddle.tensor.linalg.matmul(var_5, var_10)
         var_12 = var_11.__mul__(0.25)
