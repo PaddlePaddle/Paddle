@@ -298,6 +298,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
             >>> import paddle
+            >>> import numpy as np
             >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
             >>> print(x)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -315,7 +316,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             >>> print(out_vector_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5., 6., 6., 6.])
-            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=float("inf"),axis=[1,2],keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [12., 11.])
