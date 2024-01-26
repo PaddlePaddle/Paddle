@@ -285,5 +285,138 @@ class TestCinnDyShapeRepeatKV(TestCinnDyShapeBase):
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
+def squeeze2_composite(x, axis):
+    """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
+    """
+    rank = len(x.shape)
+    if rank == 0:
+        return paddle.assign(x)
+    if len(axis) == 0:
+        dims = set(range(rank))
+    else:
+        dims = {ax % rank for ax in axis}
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = paddle.reshape(x, new_shape)
+    return out
+
+
+class RotaryPosEmb(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, q, k, cos, sin, position_ids):
+        cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
+        # cos = squeeze2_composite(cos, axis=[0, 2])
+
+        sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
+        # sin = squeeze2_composite(sin, axis=[0, 2])
+
+        # cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+        # cos = unsqueeze_composite(cos[position_ids], [2])
+
+        # decomp []
+        slice_index = paddle.unsqueeze(position_ids, -1)
+        cos_slice = paddle.gather_nd(cos, slice_index)
+        cos = paddle.unsqueeze(cos_slice, 2)
+
+        # sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
+        # sin = unsqueeze_composite(sin[position_ids], [2])
+        sin_slice = paddle.gather_nd(sin, slice_index)
+        sin = paddle.unsqueeze(sin_slice, 2)
+
+        q_embed = (q * cos) + (self.rotate_half(q) * sin)
+        k_embed = (k * cos) + (self.rotate_half(k) * sin)
+        # q_embed = cos
+        # k_embed = sin
+        return q_embed, k_embed
+
+    def rotate_half(self, x):
+        """Rotates half the hidden dims of the input."""
+        x1 = x[..., : x.shape[-1] // 2]
+        x2 = x[..., x.shape[-1] // 2 :]
+        return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
+
+
+class TestCinnDyShapeRotaryPosEmb(TestCinnDyShapeBase):
+    def prepare_data(self):
+        paddle.seed(2022)
+        # meta-llama/Llama-2-13b
+        self.bs = 1
+        self.in_len = 13
+        self.seq_len = 4096
+        self.dim = 128
+        self.num_attention_heads = 40
+
+        self.q_shape = [
+            self.bs,
+            self.in_len,
+            self.num_attention_heads,
+            self.dim,
+        ]
+        self.q = paddle.randn(self.q_shape, dtype="float32")
+        self.q.stop_gradient = False
+
+        self.k_shape = [
+            self.bs,
+            self.in_len,
+            self.num_attention_heads,
+            self.dim,
+        ]
+        self.k = paddle.randn(self.k_shape, dtype="float32")
+        self.k.stop_gradient = False
+
+        self.cos_shape = [1, self.seq_len, 1, self.dim]
+        self.cos = paddle.randn(self.cos_shape, dtype="float32")
+        self.cos.stop_gradient = False
+
+        self.sin_shape = [1, self.seq_len, 1, self.dim]
+        self.sin = paddle.randn(self.sin_shape, dtype="float32")
+        self.sin.stop_gradient = False
+
+        self.position_ids_shape = [self.bs, self.in_len]
+        self.position_ids = paddle.randint(
+            low=0,
+            high=self.in_len,
+            shape=self.position_ids_shape,
+            dtype="int64",
+        )
+        self.position_ids.stop_gradient = False
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = RotaryPosEmb()
+        input_spec = [
+            InputSpec(
+                shape=[None, None, self.num_attention_heads, self.dim],
+                dtype='float32',
+            ),
+            InputSpec(
+                shape=[None, None, self.num_attention_heads, self.dim],
+                dtype='float32',
+            ),
+            InputSpec(shape=[1, self.seq_len, 1, self.dim], dtype='float32'),
+            InputSpec(shape=[1, self.seq_len, 1, self.dim], dtype='float32'),
+            InputSpec(shape=[None, None], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        return out
+
+    def test_eval_symbolic(self):
+        # cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
 if __name__ == '__main__':
     unittest.main()
