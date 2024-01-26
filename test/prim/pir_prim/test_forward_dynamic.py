@@ -22,10 +22,6 @@ from paddle.framework import core
 
 paddle.enable_static()
 
-# def rms_norm(hidden_states, weight):
-#     variance = hidden_states.mean((0, 1), keepdim=True)
-#     return variance * weight
-
 
 def rms_norm(hidden_states, weight):
     variance = hidden_states.pow(2).mean((0, 1), keepdim=True)
@@ -48,9 +44,7 @@ class TestPrimMode(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', [-1, -1, 4096], dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
-            # x1 = paddle.nn.functional.relu(x)
             res = rms_norm(x, y)
-            # res = paddle.nn.functional.gelu(z)
             [res2] = decomp.decompose(main_program, [res])
             exe = paddle.static.Executor()
             outs = exe.run(
