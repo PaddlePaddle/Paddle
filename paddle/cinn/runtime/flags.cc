@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/flags.h"
 
 #ifdef CINN_WITH_CUDNN
