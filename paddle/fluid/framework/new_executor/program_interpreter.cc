@@ -503,7 +503,7 @@ void ProgramInterpreter::BuildInplace() {
         if (in_var_desc && in_var_desc->Persistable()) {
           continue;
         }
-        if (var_scope_.GetVarSikpInplace(iter->second[0])) {
+        if (var_scope_.GetVarSkipInplace(iter->second[0])) {
           continue;
         }
         if (BuildInplaceCheckVarIsOnlyInput(input_var2op, iter->second[0])) {
@@ -1574,7 +1574,7 @@ std::shared_ptr<ProgramDesc> ProgramInterpreter::GetMutableCopyProgram() {
 void ProgramInterpreter::SetFeedVarsInplaceSkip(
     const std::vector<std::string>& feed_names) {
   for (auto& feed_name : feed_names) {
-    var_scope_.SetVarSikpInplace(feed_name, true);
+    var_scope_.SetVarSkipInplace(feed_name, true);
   }
 }
 
