@@ -739,8 +739,8 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> out_dims;
   if (operand_shape_or_data.data().has_value()) {
     out_dims.push_back(operand_shape_or_data.data().value()[start]);
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs({out_dims.size()}, out_dims)};
+    symbol::ShapeOrDataDimExprs shape_data{symbol::TensorShapeOrDataDimExprs(
+        std::vector<symbol::DimExpr>{out_dims.size()}, out_dims)};
     shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
     op->set_attribute("symbolic_shape",
                       pir::shape::SymbolAttribute::get(
