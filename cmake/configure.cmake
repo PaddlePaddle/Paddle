@@ -203,7 +203,7 @@ if(WITH_XFT
   else()
     set(OPENMP_FLAGS "-fopenmp")
   endif()
-  set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} &{OPENMP_FLAGS} ${AVX512F_FLAG}")
+  set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} ${OPENMP_FLAGS} ")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
