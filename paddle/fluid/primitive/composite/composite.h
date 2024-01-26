@@ -656,7 +656,7 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& input) {
     int dim = input[i].dims().size();
     if (dim != 1 && dim != 2) {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "meshgrid_decomp only support 1D or 2D input"));
+          "meshgrid op only support 1D or 2D input"));
     }
 
     if (dim == 1) {
@@ -668,8 +668,7 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& input) {
   for (int i = 0; i < size; ++i) {
     std::vector<int64_t> view_shape(size, 1);
     view_shape[i] = shape[i];
-    auto out = reshape<T>(input[i], view_shape).broadcast_to(shape);
-    // primitive_broadcast_to
+    auto out = expand<T>(reshape<T>(input[i], view_shape), shape);
     out_tensors.push_back(out);
   }
   return out_tensors;
