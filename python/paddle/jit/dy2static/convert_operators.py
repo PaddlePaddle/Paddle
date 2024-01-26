@@ -785,3 +785,13 @@ def convert_auto_cast(
     amp_records[current_block_idx].append(
         (amp_options, start_op_idx, end_op_idx)
     )
+
+
+def create_bool_as_type(x, value=True):
+    '''
+    Create a bool variable, which type is the same as x.
+    '''
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
+    else:
+        return value
