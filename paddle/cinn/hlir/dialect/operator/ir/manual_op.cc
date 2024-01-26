@@ -434,8 +434,8 @@ bool GenerateShapeOp::InferSymbolicShape(
   }();
 
   // TODO(HongyuJia): use op->result(0) to infer the shape
-  std::vector<symbol::DimExpr> shape(
-      std::int64_t(substituted_dim_exprs.size()));
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
   symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
       symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 
