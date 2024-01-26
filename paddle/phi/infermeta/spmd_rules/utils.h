@@ -33,11 +33,11 @@ inline bool IsEmpty(const std::vector<int64_t>& shape) {
 }
 
 // Generate the axis notation of tensor for the einsum notation of a broadcast
-// operation(alignment star from the rightmost axis). tenosr_ndim: the size of
+// operation(alignment star from the rightmost axis). tensor_ndim: the size of
 // the tensor. broadcast_ndim: the maxium size of tensors in this broadcast
 // operation. alphabet: the characters used to represent the axes of tensor.
 // length of alphabet should >= broadcast_ndim.
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
 
