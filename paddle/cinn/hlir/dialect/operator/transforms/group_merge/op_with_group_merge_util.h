@@ -334,7 +334,7 @@ inline bool horizontal_with_same_size(
 
 inline std::vector<int64_t> GetBroadcastAxes(
     ::pir::Operation* bcast_op,
-    ::pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+    const ::pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   if (bcast_op->isa<cinn::dialect::BroadcastOp>()) {
     return GetVectorAttr(bcast_op, "broadcast_axes");
   } else if (bcast_op->isa<paddle::dialect::ExpandOp>()) {
@@ -368,8 +368,6 @@ inline bool reduce_fuse_broadcast(
   // if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
   //   return true;
   // }
-  auto& shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(producer->GetParentProgram());
 
   const auto& rinput_shape =
       shape_analysis.GetShapeOrDataForValue(producer->operand_source(0))

@@ -615,7 +615,7 @@ class OpFusionPassHelper {
               << " , Consumer Group [" << consumer->name()
               << "] Pattern : " << consumer_group->op_pattern_kind;
       bool result = relation.fusion_op_kind[consumer_group->op_pattern_kind](
-          producer, fusion_groups_[consumer]);
+          producer, fusion_groups_[consumer], shape_analysis);
       VLOG(0) << " CanFuse: " << result;
 
       return result;
