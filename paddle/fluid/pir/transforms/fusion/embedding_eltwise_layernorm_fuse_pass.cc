@@ -13,17 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
+
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
 class Fused2EmbeddingEltwiseLayernormPattern
-    : public paddle::drr::DrrPatternBase<
-          Fused2EmbeddingEltwiseLayernormPattern> {
+    : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -54,13 +55,11 @@ class Fused2EmbeddingEltwiseLayernormPattern
          &pat.Tensor("layernorm_variance")});
     // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      int x1_shape_size = match_ctx.Tensor("x1").Shape().size();
-      int x2_shape_size = match_ctx.Tensor("x2").Shape().size();
-      if (x1_shape_size == x2_shape_size) {
-        for (int i = 0; i < x1_shape_size; i++) {
-          int x1_dim = match_ctx.Tensor("x1").Shape().at(i);
-          int x2_dim = match_ctx.Tensor("x2").Shape().at(i);
-          if (x1_dim == x2_dim) {
+      auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
+      auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
+      if (x1_shape.size() == x2_shape.size()) {
+        for (int i = 0; i < static_cast<int>(x1_shape.size()); i++) {
+          if (x1_shape.at(i) == x2_shape.at(i)) {
             continue;
           } else {
             return false;
@@ -92,11 +91,13 @@ class Fused2EmbeddingEltwiseLayernormPattern
                                           &res.Tensor("scale")},
                                          {&res.Tensor("layernorm_out")});
   }
+  std::string name() const override {
+    return "Fused2EmbeddingEltwiseLayernormPattern";
+  }
 };
 
 class Fused3EmbeddingEltwiseLayernormPattern
-    : public paddle::drr::DrrPatternBase<
-          Fused3EmbeddingEltwiseLayernormPattern> {
+    : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -133,15 +134,14 @@ class Fused3EmbeddingEltwiseLayernormPattern
          &pat.Tensor("layernorm_variance")});
     // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      int x1_shape_size = match_ctx.Tensor("x1").Shape().size();
-      int x2_shape_size = match_ctx.Tensor("x2").Shape().size();
-      int x3_shape_size = match_ctx.Tensor("x3").Shape().size();
-      if (x1_shape_size == x2_shape_size && x1_shape_size == x3_shape_size) {
-        for (int i = 0; i < x1_shape_size; i++) {
-          int x1_dim = match_ctx.Tensor("x1").Shape().at(i);
-          int x2_dim = match_ctx.Tensor("x2").Shape().at(i);
-          int x3_dim = match_ctx.Tensor("x3").Shape().at(i);
-          if (x1_dim == x2_dim && x1_dim == x3_dim) {
+      auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
+      auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
+      auto x3_shape = pir::GetShapeFromValue(match_ctx.Tensor("x3"));
+      if (x1_shape.size() == x2_shape.size() &&
+          x1_shape.size() == x3_shape.size()) {
+        for (int i = 0; i < static_cast<int>(x1_shape.size()); i++) {
+          if (x1_shape.at(i) == x2_shape.at(i) &&
+              x1_shape.at(i) == x3_shape.at(i)) {
             continue;
           } else {
             return false;
@@ -172,6 +172,9 @@ class Fused3EmbeddingEltwiseLayernormPattern
                                           &res.Tensor("bias"),
                                           &res.Tensor("scale")},
                                          {&res.Tensor("layernorm_out")});
+  }
+  std::string name() const override {
+    return "Fused3EmbeddingEltwiseLayernormPattern";
   }
 };
 

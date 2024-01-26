@@ -14,15 +14,14 @@
 
 #include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
-class SiluFusePassPattern
-    : public paddle::drr::DrrPatternBase<SiluFusePassPattern> {
+class SiluFusePassPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -30,11 +29,12 @@ class SiluFusePassPattern
     const auto &multiply_op = pat.Op(paddle::dialect::MultiplyOp::name());
     pat.Tensor("sigmoid_out") = sigmoid_op(pat.Tensor("sigmoid_in"));
     pat.Tensor("multiply_out") =
-        multiply_op(pat.Tensor("multiply_in"), pat.Tensor("sigmoid_out"));
+        multiply_op(pat.Tensor("sigmoid_in"), pat.Tensor("sigmoid_out"));
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &swish_op = res.Op(paddle::dialect::MultiheadMatmulOp::name());
-    res.Tensor("multiply_out") = swish_op(pat.Tensor("sigmoid_in"));
+    const auto &swish_op = res.Op(paddle::dialect::SwishOp::name());
+    res.Tensor("multiply_out") = swish_op(res.Tensor("sigmoid_in"));
   }
+  std::string name() const override { return "SiluFusePassPattern"; }
 };
 
 class SiluFusePass : public pir::PatternRewritePass {
