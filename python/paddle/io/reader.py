@@ -319,6 +319,7 @@ class DataLoader:
 
         .. code-block:: python
 
+            >>> # doctest: +SOLO('can not use multiprocessing testing `paddle.io.reader`')
             >>> import numpy as np
 
             >>> import paddle
