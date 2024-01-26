@@ -420,19 +420,8 @@ void* GetCusolverDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
-#elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
-    return GetDsoHandleFromSearchPath(FLAGS_cusolver_dir, "libcusolver.so.11");
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
-    return GetDsoHandleFromSearchPath(FLAGS_cusolver_dir, "libcusolver.so.12");
-  } else {
-    std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
-        "temporarily no longer.");
-    return nullptr;
-  }
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so.11");
 #endif
 }
 
