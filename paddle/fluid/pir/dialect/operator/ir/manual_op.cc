@@ -2053,7 +2053,7 @@ void ArrayReadOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
-  VLOG(4) << "End Verifying for: ArrayWrite_Op.";
+  VLOG(4) << "End Verifying for: ArrayReadOp.";
 }
 
 void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
