@@ -179,7 +179,7 @@ struct SubGraph {
   std::unordered_set<SubGraphPtr> consumers;
 };
 
-using OpClassifier = std::function<bool(pir::Operation*)>;
+using OpClassifier = std::function<bool(const pir::Operation&)>;
 
 SubgraphDetector::SubgraphDetector(pir::Block* block,
                                    const OpClassifier& classifier)
@@ -222,14 +222,14 @@ void SubgraphDetector::DoOpFusion() {
   for (auto* op : sort_ops_) {
     auto subgraph = subgraph_map_.count(op)
                         ? subgraph_map_[op]
-                        : std::make_shared<SubGraph>(op, op_classifier_(op));
+                        : std::make_shared<SubGraph>(op, op_classifier_(*op));
     if (!subgraph_map_.count(op)) {
       subgraph_map_[op] = subgraph;
     }
     auto producers = GetProducerOpsReverseSort(op, op2id_);
 
     for (auto* producer : producers) {
-      if (op_classifier_(producer) != subgraph->substitute) {
+      if (op_classifier_(*producer) != subgraph->substitute) {
         continue;
       }
 

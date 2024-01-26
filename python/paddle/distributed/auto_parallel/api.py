@@ -611,6 +611,10 @@ class _ShardOptimizer:
                         placements=placements,
                     )
 
+            self._inner_opt._accumulators[key][target_name].name = (
+                target_name + "_" + key
+            )
+
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []

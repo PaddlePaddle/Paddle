@@ -242,13 +242,13 @@ class ResNet(paddle.nn.Layer):
 
 class TestDygraphResnet(unittest.TestCase):
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 doc = np.array(item[0]).reshape(3, 224, 224)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield doc, label
 
-        return _reader_imple
+        return _reader_simple
 
     def test_resnet_float32(self):
         seed = 90
