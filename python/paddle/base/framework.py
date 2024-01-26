@@ -63,22 +63,8 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_sub_grad": ['X', 'Y'],
     "elementwise_mul": ['X', 'Y'],
     "elementwise_mul_grad": ['X', 'Y'],
-    "elementwise_div": ['X', 'Y'],
-    "elementwise_div_grad": ['X', 'Y'],
-    "elementwise_floordiv": ['X', 'Y'],
-    "elementwise_floordiv_grad": ['X', 'Y'],
-    "elementwise_pow": ['X', 'Y'],
-    "elementwise_pow_grad": ['X', 'Y'],
     "where": ['X', 'Y'],
     "where_grad": ['X', 'Y'],
-    "equal": ['X', 'Y'],
-    "not_equal": ['X', 'Y'],
-    "less_than": ['X', 'Y'],
-    "less_equal": ['X', 'Y'],
-    "greater_than": ['X', 'Y'],
-    "greater_equal": ['X', 'Y'],
-    "matmul_v2": ['X', 'Y'],
-    "matmul_v2_grad": ['X', 'Y'],
 }
 
 

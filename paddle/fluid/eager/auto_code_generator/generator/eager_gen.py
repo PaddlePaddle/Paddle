@@ -80,17 +80,7 @@ prim_white_list = [
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],
-    "divide": ["x", "y"],
-    "floor_divide": ["x", "y"],
-    "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
-    "equal": ["x", "y"],
-    "not_equal": ["x", "y"],
-    "less_than": ["x", "y"],
-    "less_equal": ["x", "y"],
-    "greater_than": ["x", "y"],
-    "greater_equal": ["x", "y"],
-    "matmul": ["x", "y"],
 }
 
 # dict of special api that forward api's output will affect bacward api's output
