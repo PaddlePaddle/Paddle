@@ -69,8 +69,8 @@ black_ops_list = [
 # kernel performs same to it.
 prim_white_list = [
     "matmul_double_grad",  # ==> matmul_grad
-    "subtract_double_grad",  # ==> substract_grad
-    "add_triple_grad",  # ==> add_double_grad, add_grad
+    # "subtract_double_grad",  # ==> substract_grad
+    # "add_triple_grad",  # ==> add_double_grad, add_grad
     "silu_double_grad",  # ==> silu_grad
     "tanh_triple_grad",  # ==> tanh_grad, tanh_double_grad
 ]
@@ -2097,6 +2097,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         )
 
         if is_composite_grad_api:
+            # if self.backward_api_name == "tanh_grad":
+            #     next_grad_node_creation_str = ''
             if next_grad_node_creation_str != '':
                 if self.backward_api_name not in self.keep_native_op:
                     next_grad_node_creation_str = "\n".join(
@@ -2258,6 +2260,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
+        # if backward_api_name == "tanh_grad":
+        #     has_higher_order_node = False
         composite_grad_api_name = (
             self.composite_func_info["name"] if is_composite_grad_api else None
         )
@@ -2522,7 +2526,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }}"""
                         need_gen_trace_backard_for_inplace = True
                     else:
-                        inplace_for_grad_outs_str += inplace_str
+                        inplace_for_grad_outs_str += "  " + inplace_str
 
                 grad_function_prepare_str += f"""
   auto* api_output_{out_index} = (out_metas[{fwd_position}].empty() || out_metas[{fwd_position}][0].IsStopGradient()) ? nullptr : &returns[{fwd_position}][0];"""
