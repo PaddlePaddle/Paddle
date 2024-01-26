@@ -233,11 +233,12 @@ class ShapeOrData {
     } else if (shape.size() == 1) {
       IR_ENFORCE(shape[0].template Has<int64_t>(),
                  "When shape is 1-D, value of shape shoubld be int");
-      IR_ENFORCE(shape[0].template Get<int64_t>() == data.size(),
-                 "When shape is 1-D, size of data shoubld be the same as "
-                 "value[%d] of shape, but got [%d].",
-                 shape[0].template Get<std::int64_t>(),
-                 data.size());
+      IR_ENFORCE(
+          shape[0].template Get<int64_t>() == static_cast<int64_t>(data.size()),
+          "When shape is 1-D, size of data shoubld be the same as "
+          "value[%d] of shape, but got [%d].",
+          shape[0].template Get<std::int64_t>(),
+          data.size());
     } else {
       IR_THROW("Size of shape shoubld be 0 or 1, but got %d", shape.size());
     }
