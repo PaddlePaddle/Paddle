@@ -20,31 +20,9 @@ from test_distribution import DistributionNumpy
 import paddle
 from paddle import base
 from paddle.distribution import Uniform
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
-
-
-class InitDataContextManager:
-    def __init__(self, in_pir, prog):
-        self.in_pir = in_pir
-        self.prog = prog
-
-    def __enter__(self):
-        if self.in_pir:
-            self.guard = paddle.pir_utils.IrGuard()
-            self.guard.__enter__()
-            self.program_guard = paddle.static.program_guard(self.prog)
-            self.program_guard.__enter__()
-        else:
-            self.program_guard = base.program_guard(self.prog)
-            self.program_guard.__enter__()
-
-    def __exit__(self, ex_type, value, traceback):
-        if self.in_pir:
-            self.program_guard.__exit__(ex_type, value, traceback)
-            self.guard.__exit__(ex_type, value, traceback)
-        else:
-            self.program_guard.__exit__(ex_type, value, traceback)
 
 
 class UniformNumpy(DistributionNumpy):
@@ -93,10 +71,6 @@ class UniformTest(unittest.TestCase):
         self.init_dynamic_data(batch_size, dims)
 
         paddle.enable_static()
-        self.test_program = base.Program()
-        self.executor = base.Executor(self.place)
-        with paddle.pir_utils.IrGuard():
-            self.test_pir_program = paddle.base.Program()
 
     def init_numpy_data(self, batch_size, dims):
         # low ans high are 'float'
@@ -109,13 +83,10 @@ class UniformTest(unittest.TestCase):
         self.dynamic_high = self.high_np
         self.dynamic_values = paddle.to_tensor(self.values_np)
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
@@ -138,11 +109,14 @@ class UniformTest(unittest.TestCase):
         )
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
-    def test_old_ir_uniform_distribution_static(
-        self, sample_shape=7, tolerance=1e-6
-    ):
-        self.init_static_data(self.batch_size, self.dims, in_pir=False)
-        with base.program_guard(self.test_program, paddle.static.Program()):
+    @test_with_pir_api
+    def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        self.test_program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+        self.init_static_data(self.batch_size, self.dims)
+        with paddle.static.program_guard(
+            self.test_program, paddle.static.Program()
+        ):
             uniform = Uniform(self.static_low, self.static_high)
             sample = uniform.sample([sample_shape])
             entropy = uniform.entropy()
@@ -150,48 +124,18 @@ class UniformTest(unittest.TestCase):
             probs = uniform.probs(self.static_values)
             fetch_list = [sample, entropy, log_prob, probs]
 
-            feed_vars = {
-                'low': self.low_np,
-                'high': self.high_np,
-                'values': self.values_np,
-            }
+        feed_vars = {
+            'low': self.low_np,
+            'high': self.high_np,
+            'values': self.values_np,
+        }
 
-            self.executor.run(base.default_startup_program())
-            fetch_list = self.executor.run(
-                program=self.test_program, feed=feed_vars, fetch_list=fetch_list
-            )
+        self.executor.run(paddle.static.default_startup_program())
+        fetch_list = self.executor.run(
+            program=self.test_program, feed=feed_vars, fetch_list=fetch_list
+        )
 
-            self.compare_with_numpy(fetch_list)
-
-    def test_pir_uniform_distribution_static(
-        self, sample_shape=7, tolerance=1e-6
-    ):
-        self.init_static_data(self.batch_size, self.dims, in_pir=True)
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(
-                self.test_pir_program, paddle.static.Program()
-            ):
-                uniform = Uniform(self.static_low, self.static_high)
-                sample = uniform.sample([sample_shape])
-                entropy = uniform.entropy()
-                log_prob = uniform.log_prob(self.static_values)
-                probs = uniform.probs(self.static_values)
-                fetch_list = [sample, entropy, log_prob, probs]
-
-                feed_vars = {
-                    'low': self.low_np,
-                    'high': self.high_np,
-                    'values': self.values_np,
-                }
-
-                self.executor.run(paddle.static.default_startup_program())
-                fetch_list = self.executor.run(
-                    program=self.test_pir_program,
-                    feed=feed_vars,
-                    fetch_list=fetch_list,
-                )
-
-                self.compare_with_numpy(fetch_list)
+        self.compare_with_numpy(fetch_list)
 
     def func_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
         paddle.disable_static()
@@ -226,13 +170,10 @@ class UniformTest3(UniformTest):
         )
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -247,13 +188,10 @@ class UniformTest4(UniformTest):
         )
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -273,13 +211,10 @@ class UniformTest5(UniformTest):
         self.dynamic_high = self.high_np
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
@@ -299,11 +234,8 @@ class UniformTest6(UniformTest):
         self.dynamic_high = paddle.to_tensor(self.high_np)
         self.dynamic_values = paddle.to_tensor(self.values_np)
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+    def init_static_data(self, batch_size, dims):
+        with paddle.static.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float32'
             )
@@ -329,11 +261,8 @@ class UniformTest7(UniformTest):
         self.dynamic_high = paddle.to_tensor(self.high_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+    def init_static_data(self, batch_size, dims):
+        with paddle.static.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float64'
             )
@@ -359,11 +288,8 @@ class UniformTest8(UniformTest):
         self.dynamic_high = paddle.to_tensor(self.high_np, dtype='float64')
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+    def init_static_data(self, batch_size, dims):
+        with paddle.static.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float64'
             )
@@ -385,13 +311,10 @@ class UniformTest9(UniformTest):
         ).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -410,13 +333,10 @@ class UniformTest10(UniformTest):
         )
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -435,13 +355,10 @@ class UniformTest11(UniformTest):
         )
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
 
-    def init_static_data(self, batch_size, dims, in_pir=False):
+    def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        manager = InitDataContextManager(
-            in_pir, self.test_pir_program if in_pir else self.test_program
-        )
-        with manager as mgr:
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
