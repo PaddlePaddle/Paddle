@@ -177,6 +177,11 @@ bool ElementwisePowOpInferSymbolicShape(
 
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool ReluOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool Relu_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {

@@ -185,7 +185,7 @@ class IR_API alignas(8) Operation final
   ///
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
-    return detail::Walk<Order>(this, std::forward<FuncT>(callback));
+    return pir::Walk<Order>(this, std::forward<FuncT>(callback));
   }
 
   ///

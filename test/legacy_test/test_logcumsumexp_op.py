@@ -199,7 +199,6 @@ class TestLogcumsumexp(unittest.TestCase):
 
         self.run_static(use_gpu=True)
 
-    # @test_with_pir_api
     def test_name(self):
         with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])

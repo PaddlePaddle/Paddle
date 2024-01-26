@@ -33,8 +33,7 @@ class DynamicReshapeOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto scale_factor_gen_op =
-        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+    auto scale_factor_gen_op = op->operand_source(1).defining_op();
     auto output = op.result(0);
 
     // The value of shape attribute is fake, we only use the output shape info
@@ -43,8 +42,8 @@ class DynamicReshapeOpPattern
         output.type().dyn_cast<pir::ShapedTypeInterface>().GetRank(), 1);
     shape[0] = -1;
 
-    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-        op->operand_source(0).dyn_cast<pir::OpResult>(), shape);
+    auto cinn_reshape =
+        rewriter.Build<cinn::dialect::ReshapeOp>(op->operand_source(0), shape);
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
