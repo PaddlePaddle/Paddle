@@ -27,7 +27,10 @@ import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype, convert_dtype
 from paddle.base.framework import Variable
-from paddle.framework import in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 
 class Distribution:
@@ -233,7 +236,7 @@ class Distribution:
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',

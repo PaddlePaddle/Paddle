@@ -35,11 +35,8 @@
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
 
-bool IsSplitOp(pir::Operation* op) {
-  if (op->name() == "pd_op.matmul") {
-    return false;
-  }
-  return true;
+bool IsMatmulOp(const pir::Operation& op) {
+  return op.name() == "pd_op.matmul";
 }
 
 class SubGraphExtractPass : public pir::Pass {
@@ -53,7 +50,7 @@ class SubGraphExtractPass : public pir::Pass {
     auto& block = module_op.block();
 
     std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(&block, IsSplitOp)();
+        ::pir::SubgraphDetector(&block, IsMatmulOp)();
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
