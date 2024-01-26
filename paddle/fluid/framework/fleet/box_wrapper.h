@@ -107,7 +107,7 @@ class BasicAucCalculator {
   double size() const { return _size; }
   double rmse() const { return _rmse; }
   std::vector<double>& get_negative() { return _table[0]; }
-  std::vector<double>& get_postive() { return _table[1]; }
+  std::vector<double>& get_positive() { return _table[1]; }
   double& local_abserr() { return _local_abserr; }
   double& local_sqrerr() { return _local_sqrerr; }
   double& local_pred() { return _local_pred; }
@@ -453,7 +453,7 @@ class BoxWrapper {
       p_agent_ = boxps::PSAgentBase::GetIns(feedpass_thread_num_);
       p_agent_->Init();
       for (const auto& slot_name : slot_omit_in_feedpass) {
-        slot_name_omited_in_feedpass_.insert(slot_name);
+        slot_name_omitted_in_feedpass_.insert(slot_name);
       }
       slot_vector_ = slot_vector;
       keys_tensor.resize(platform::GetGPUDeviceCount());
@@ -548,8 +548,8 @@ class BoxWrapper {
 
   bool UseAfsApi() const { return use_afs_api_; }
 
-  const std::unordered_set<std::string>& GetOmitedSlot() const {
-    return slot_name_omited_in_feedpass_;
+  const std::unordered_set<std::string>& GetOmittedSlot() const {
+    return slot_name_omitted_in_feedpass_;
   }
 
   class MetricMsg {
@@ -914,7 +914,7 @@ class BoxWrapper {
   // TODO(hutuxian): magic number, will add a config to specify
   const int feedpass_thread_num_ = 30;  // magic number
   static std::shared_ptr<BoxWrapper> s_instance_;
-  std::unordered_set<std::string> slot_name_omited_in_feedpass_;
+  std::unordered_set<std::string> slot_name_omitted_in_feedpass_;
   // EMBEDX_DIM and EXPAND_EMBED_DIM
   static int embedx_dim_;
   static int expand_embed_dim_;
@@ -1098,9 +1098,9 @@ class BoxHelper {
     const std::deque<Record>& pass_data = input_channel_->GetData();
 
     // get feasigns that FeedPass doesn't need
-    const std::unordered_set<std::string>& slot_name_omited_in_feedpass_ =
-        box_ptr->GetOmitedSlot();
-    std::unordered_set<int> slot_id_omited_in_feedpass_;
+    const std::unordered_set<std::string>& slot_name_omitted_in_feedpass_ =
+        box_ptr->GetOmittedSlot();
+    std::unordered_set<int> slot_id_omitted_in_feedpass_;
     const auto& all_readers = dataset_->GetReaders();
     PADDLE_ENFORCE_GT(all_readers.size(),
                       0,
@@ -1108,9 +1108,9 @@ class BoxHelper {
                           "Readers number must be greater than 0."));
     const auto& all_slots_name = all_readers[0]->GetAllSlotAlias();
     for (size_t i = 0; i < all_slots_name.size(); ++i) {
-      if (slot_name_omited_in_feedpass_.find(all_slots_name[i]) !=
-          slot_name_omited_in_feedpass_.end()) {
-        slot_id_omited_in_feedpass_.insert(i);
+      if (slot_name_omitted_in_feedpass_.find(all_slots_name[i]) !=
+          slot_name_omitted_in_feedpass_.end()) {
+        slot_id_omitted_in_feedpass_.insert(i);
       }
     }
     const size_t tnum = box_ptr->GetFeedpassThreadNum();
@@ -1130,7 +1130,7 @@ class BoxHelper {
                       begin,
                       begin + len_per_thread + (i < remain ? 1 : 0),
                       p_agent,
-                      std::ref(slot_id_omited_in_feedpass_),
+                      std::ref(slot_id_omitted_in_feedpass_),
                       i));
       begin += len_per_thread + (i < remain ? 1 : 0);
     }

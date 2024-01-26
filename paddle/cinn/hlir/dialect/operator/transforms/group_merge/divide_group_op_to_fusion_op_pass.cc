@@ -154,8 +154,7 @@ std::vector<pir::Operation*> GetOutputOpList(
   auto yield_op = op_list.back();
 
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-    vec_res.push_back(
-        yield_op->operand(i).source().dyn_cast<pir::OpResult>().owner());
+    vec_res.push_back(yield_op->operand(i).source().defining_op());
   }
 
   return vec_res;
@@ -192,7 +191,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
         group_list, shape_analysis);
 
     for (auto group : merged_group_list) {
-      auto vec_outs = GetBlockOutsideOutput(group->ops);
+      auto vec_outs = group->GetGroupOutputValues();
+      // auto vec_outs = GetBlockOutsideOutput(group->ops);
 
       std::vector<pir::Type> output_types;
       for (auto& value : vec_outs) {

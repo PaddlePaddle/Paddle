@@ -36,7 +36,7 @@ class VarWrapper:
 
     def shape(self):
         """
-        Get the shape of the varibale.
+        Get the shape of the variable.
         """
         return self._var.shape
 
