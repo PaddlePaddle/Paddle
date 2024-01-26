@@ -392,7 +392,7 @@ class ClipGradByValue(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         max (float): The maximum value to clip by.
@@ -499,7 +499,7 @@ class ClipGradByNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm(float): The maximum norm value.
@@ -630,7 +630,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm (float): The maximum norm value.

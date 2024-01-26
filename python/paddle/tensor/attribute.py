@@ -212,7 +212,7 @@ def is_floating_point(x):
 
 
 def is_integer(x):
-    """Return whether x is a tensor of integeral data type.
+    """Return whether x is a tensor of integral data type.
 
     Args:
         x (Tensor): The input tensor.

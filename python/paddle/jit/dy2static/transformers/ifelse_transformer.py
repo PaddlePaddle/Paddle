@@ -28,9 +28,7 @@ from paddle.jit.dy2static.utils import (
     FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
-    create_funcDef_node,
     create_get_args_node,
-    create_name_str,
     create_nonlocal_stmt_nodes,
     create_set_args_node,
 )
@@ -43,6 +41,7 @@ from paddle.utils import gast
 
 from ..utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
 from .base import BaseTransformer
+from .utils import create_function_def_node, create_name_str
 
 __all__ = []
 
@@ -374,13 +373,13 @@ def transform_if_else(node, root):
         defaults=[],
     )
 
-    true_func_node = create_funcDef_node(
+    true_func_node = create_function_def_node(
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
         return_name_ids=[],
     )
-    false_func_node = create_funcDef_node(
+    false_func_node = create_function_def_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,
