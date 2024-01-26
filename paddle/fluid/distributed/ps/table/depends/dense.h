@@ -28,7 +28,7 @@
 namespace paddle {
 namespace distributed {
 
-// dense optimzier
+// dense optimizer
 // TODO(tangwei12) integrate with sparse optimzer later.
 class DenseOptimizer {
  public:

@@ -49,7 +49,6 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = LlamaRMSNorm()
-        # TODO(Aurelius84): Need to remove it after verify CINN
         if use_cinn:
             net = apply_to_static(net, use_cinn)
         net.eval()
@@ -152,9 +151,8 @@ class TestRepeatKV(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RepeatKV()
-        # TODO(Aurelius84): Need to remove it after verify CINN
         if use_cinn:
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.hidden_states, self.n_rep)
         return out
