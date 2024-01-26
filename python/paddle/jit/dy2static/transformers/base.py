@@ -22,9 +22,10 @@ from paddle.jit.dy2static.utils import (
     FOR_ITER_ZIP_TO_LIST_PREFIX,
     ORIGI_INFO,
     ast_to_source_code,
-    create_assign_node,
 )
 from paddle.utils import gast
+
+from .utils import create_assign_node
 
 __all__ = []
 
