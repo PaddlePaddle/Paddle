@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "batch_norm",
     "batch_norm_",
     "dropout",
+    "flatten",
     "full_like",
     "gelu",
     "group_norm",
@@ -48,6 +49,7 @@ decomp_interface_declare_gen_op_list = [
 decomp_interface_implementation_gen_op_list = [
     "add_n",
     "dropout",
+    "flatten",
     "full_like",
     "gelu",
     "group_norm",

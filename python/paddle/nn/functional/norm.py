@@ -87,6 +87,11 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
+    elif in_pir_mode():
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
+        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        return paddle.divide(x, _C_ops.maximum(out, eps), name=name)
+
     else:
         check_type(p, 'p', (float, int), 'normalize')
         check_type(axis, 'axis', (int), 'normalize')
