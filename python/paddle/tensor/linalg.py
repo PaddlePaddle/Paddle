@@ -300,7 +300,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
             >>> import paddle
             >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
             >>> print(x)
-            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[-12., -11., -10., -9. ],
               [-8. , -7. , -6. , -5. ],
               [-4. , -3. , -2. , -1. ]],
@@ -309,19 +309,19 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
               [ 8. ,  9. ,  10.,  11.]]])
             >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=2,axis=None,keepdim=False)
             >>> print(out_vector_norm)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             34.)
             >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
             >>> print(out_vector_norm)
-            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-            [5, 6, 6, 6])
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5., 6., 6., 6.])
             >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
             >>> print(out_vector_norm)
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [12., 11.])
             >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=1,axis=1,keepdim=False)
             >>> print(out_vector_norm)
-            Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[24., 21., 18., 15.],
              [12., 15., 18., 21.]])
     """
@@ -331,7 +331,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     ):
         return paddle.count_nonzero(
             input, axis=axis, keepdim=keepdim, name=name
-        )
+        ).astype(input.dtype)
 
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
