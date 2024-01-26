@@ -4135,6 +4135,7 @@ function main() {
     init
     case $CMD in
       build_only)
+        export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
@@ -4263,7 +4264,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
-        export ON_INFER=ON
+        export ON_INFER=ON PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_added_ut
@@ -4323,6 +4324,7 @@ function main() {
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
+        export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         gen_fluid_lib_by_setup ${parallel_number}
         ;;
       gpu_inference)
