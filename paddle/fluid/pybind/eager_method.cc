@@ -70,7 +70,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-PHI_DECLARE_bool(set_to_1d);
 PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
@@ -179,34 +178,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
-  if (py_rank == 0) {
-    Py_ssize_t args_num = PyTuple_Size(args);
-    // true by default
-    bool set_to_1d = FLAGS_set_to_1d;
-    if (args_num == (Py_ssize_t)1) {
-      PyObject* obj = PyTuple_GET_ITEM(args, 0);
-      if (obj == Py_False) {
-        set_to_1d = false;
-      }
-    }
-    if (set_to_1d) {
-      // 0D Tensor hack process to 1D numpy, will remove in release 2.6
-      VLOG(0)
-          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
-             "order to avoid this problem, "
-             "0D Tensor will be changed to 1D numpy currently, but it's not "
-             "correct and will be "
-             "removed in release 2.6. For Tensor contain only one element, "
-             "Please "
-             "modify "
-             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
-             "possible, "
-             "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
-      py_rank = 1;
-      py_dims[0] = 1;
-      py_strides[0] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
-    }
-  } else if (self->tensor.is_dense_tensor()) {
+  if (self->tensor.is_dense_tensor()) {
     auto tensor_stride = self->tensor.strides();
 
     for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
