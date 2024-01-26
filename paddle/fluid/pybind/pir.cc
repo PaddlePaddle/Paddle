@@ -1555,9 +1555,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   bool has_dynamic_shape = HasDynamicShape(program);
   pass_manager->EnableIRPrinting();
 
-  auto shape_analysis =
-      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
-                        : nullptr;
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
@@ -1565,7 +1562,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
             cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
-
   pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   if (has_dynamic_shape) {
