@@ -14,9 +14,13 @@
 
 import unittest
 
+import numpy as np
 import test_op_translator
 
 import paddle
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+)
 from paddle.base.layer_helper import LayerHelper
 
 
@@ -25,25 +29,25 @@ class TestDistributedPushSparseOpTranslator(
 ):
     def append_op(self):
         self.op_type = "distributed_push_sparse"
-        ids = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        shows = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        clicks = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        out = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        ids = paddle.ones(shape=(1, 1), dtype='float32')
+        shows = paddle.ones(shape=(1, 1), dtype='float32')
+        clicks = paddle.ones(shape=(1, 1), dtype='float32')
+        out = paddle.ones(shape=(1, 1), dtype='float32')
         attrs = {
             'table_id': 0,
             'size': 0,
             'is_distributed': False,
             'push_sparse_version': "push_sparse",
             'padding_idx': -1,
-            'dtype': "float32",
+            'dtype': convert_np_dtype_to_dtype_(np.float32),
             'is_test': False,
             'use_cvm_op': False,
         }
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"Ids": ids, "Shows": shows, "Clicks": clicks},
-            outputs={"Outputs": out},
+            inputs={"Ids": [ids], "Shows": [shows], "Clicks": [clicks]},
+            outputs={"Outputs": [out]},
             attrs=attrs,
         )
 
