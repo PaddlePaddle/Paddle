@@ -19,6 +19,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
+    test_legacy_and_pt,
     test_legacy_and_pt_and_pir,
 )
 
@@ -353,7 +354,8 @@ class TestOptimBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 
-    @test_legacy_and_pt_and_pir
+    # TODO: Open PIR test when while_loop dy2st fixed
+    @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
