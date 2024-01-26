@@ -64,35 +64,12 @@ class LayerCase(paddle.nn.Layer):
         var_2 = paddle.nn.functional.common.linear(
             x=var_1, weight=self.parameter_3, bias=self.parameter_4, name=None
         )
-        var_3 = var_2.reshape(
-            (
-                -1,
-                198,
-                3,
-                3,
-                64,
-            )
-        )
-        var_4 = var_3.transpose(
-            (
-                2,
-                0,
-                3,
-                1,
-                4,
-            )
-        )
+        var_3 = var_2.reshape((-1, 198, 3, 3, 64))
+        var_4 = var_3.transpose((2, 0, 3, 1, 4))
         var_5 = var_4.__getitem__(0)
         var_6 = var_4.__getitem__(1)
         var_7 = var_4.__getitem__(2)
-        var_8 = var_6.transpose(
-            (
-                0,
-                1,
-                3,
-                2,
-            )
-        )
+        var_8 = var_6.transpose((0, 1, 3, 2))
         var_9 = var_5.matmul(var_8)
         var_10 = var_9.__mul__(0.125)
         var_11 = paddle.nn.functional.activation.softmax(var_10, axis=-1)
@@ -105,21 +82,8 @@ class LayerCase(paddle.nn.Layer):
             name=None,
         )
         var_13 = var_12.matmul(var_7)
-        var_14 = var_13.transpose(
-            (
-                0,
-                2,
-                1,
-                3,
-            )
-        )
-        var_15 = var_14.reshape(
-            (
-                -1,
-                198,
-                192,
-            )
-        )
+        var_14 = var_13.transpose((0, 2, 1, 3))
+        var_15 = var_14.reshape((-1, 198, 192))
         var_16 = paddle.nn.functional.common.linear(
             x=var_15, weight=self.parameter_5, bias=self.parameter_2, name=None
         )

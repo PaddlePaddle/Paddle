@@ -52,6 +52,7 @@ class TestRelu6(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
+        paddle.seed(123)
         outs = net(*self.inputs)
         return outs
 
