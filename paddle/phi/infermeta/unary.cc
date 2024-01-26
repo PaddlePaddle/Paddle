@@ -2291,7 +2291,7 @@ void MaxOutInferMeta(const MetaTensor& x,
       axis == 1 || axis == -1 || axis == 3,
       true,
       phi::errors::InvalidArgument(
-          "axis only supported 1, -1 or 3, but recevied axis is: %d.", axis));
+          "axis only supported 1, -1 or 3, but received axis is: %d.", axis));
   PADDLE_ENFORCE_EQ(in_x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
@@ -2985,7 +2985,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
                     true,
                     phi::errors::InvalidArgument(
                         "data_format must be one of "
-                        "NCHW and NHWC. But recevied data_format: %s",
+                        "NCHW and NHWC. But received data_format: %s",
                         data_format));
 
   const bool channel_last = (data_format == "NHWC");
@@ -5012,13 +5012,13 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
                     0,
                     errors::InvalidArgument(
                         "The uniform_random's diag_num must greater than or "
-                        "equal 0. But recevied diag_num (%d) < 0.",
+                        "equal 0. But received diag_num (%d) < 0.",
                         diag_num));
   PADDLE_ENFORCE_GE(diag_step,
                     0,
                     errors::InvalidArgument(
                         "The uniform_random's diag_step must greater than or "
-                        "equal 0. But recevied diag_step (%d) < 0.",
+                        "equal 0. But received diag_step (%d) < 0.",
                         diag_step));
   PADDLE_ENFORCE_NE(out,
                     nullptr,
@@ -5375,7 +5375,7 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                     true,
                     phi::errors::InvalidArgument(
                         "data_format must be one of "
-                        "NCHW and NHWC. But recevied data_format: %s",
+                        "NCHW and NHWC. But received data_format: %s",
                         data_format));
 
   const bool channel_last = (data_format == "NHWC");

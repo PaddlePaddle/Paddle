@@ -25,6 +25,7 @@ from .convert_operators import (  # noqa: F401
     convert_shape as Shape,
     convert_var_dtype as AsDtype,
     convert_while_loop as While,
+    create_bool_as_type,
     indexable as Indexable,
     unpack_by_structure as Unpack,
 )
@@ -32,7 +33,6 @@ from .program_translator import convert_to_static  # noqa: F401
 from .transformers import DygraphToStaticAst  # noqa: F401
 from .utils import UndefinedVar, ast_to_source_code, saw  # noqa: F401
 from .variable_trans_func import (  # noqa: F401
-    create_bool_as_type,
     to_static_variable,
 )
 

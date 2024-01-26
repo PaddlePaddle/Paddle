@@ -35,7 +35,7 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 class SubgraphDetector {
  public:
   // Tell whether a node is inside a sub-graph.
-  using OpClassifier = std::function<bool(pir::Operation*)>;
+  using OpClassifier = std::function<bool(const pir::Operation&)>;
 
   SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
 
