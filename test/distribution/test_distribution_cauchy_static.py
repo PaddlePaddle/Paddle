@@ -79,6 +79,7 @@ default_dtype = paddle.get_default_dtype()
             ),
         )
     ],
+    test_pir=True,
 )
 class CauchyTestFeature(unittest.TestCase):
     def setUp(self):
@@ -272,6 +273,7 @@ class CauchyTestFeature(unittest.TestCase):
             [100, 2],
         ),
     ],
+    test_pir=True,
 )
 class CauchyTestSample(unittest.TestCase):
     def setUp(self):
@@ -333,7 +335,7 @@ class CauchyTestSample(unittest.TestCase):
 
 
 @place(DEVICES)
-@parameterize_cls([TEST_CASE_NAME], ['CauchyTestError'])
+@parameterize_cls([TEST_CASE_NAME], ['CauchyTestError'], test_pir=True)
 class CauchyTestError(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
