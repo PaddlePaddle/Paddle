@@ -1,7 +1,10 @@
+variables:
+  PADDLE_BRANCH: "${CI_COMMIT_REF_NAME}"
+  DOWNSTREAM_BRANCH:
+    description: The branch used on the https://gitlab-master.nvidia.com/dl/dgx/paddle pipeline, default is main.
+    value: bugfix_nvrtc_usage
+
 .template: &TEMPLATE
-  variables:
-    PADDLE_BRANCH: "${CI_COMMIT_REF_NAME}"
-    DOWNSTREAM_BRANCH: main
   stage: deploy
   trigger:
     project: dl/dgx/paddle
