@@ -28,7 +28,7 @@ bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
-      phi::errors::OutOfRange("Input index [%d] large than op input size [d]",
+      phi::errors::OutOfRange("Input index [%d] large than op input size [%d]",
                               index,
                               InputInfo().size()));
 

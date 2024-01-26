@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from paddle.base import unique_name
-from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
 from ..utils import (
@@ -24,6 +23,7 @@ from ..utils import (
 )
 from .base import BaseTransformer
 from .break_continue_transformer import ForToWhileTransformer
+from .utils import create_bool_node
 
 __all__ = []
 
