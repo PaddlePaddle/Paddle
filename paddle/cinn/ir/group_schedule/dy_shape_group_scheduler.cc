@@ -27,6 +27,10 @@ namespace cinn {
 namespace ir {
 
 void DynamicShapeGroupScheduler::Init() {
+  VLOG(4) << "=============================Start group "
+             "schedule==============================";
+  VLOG(4) << "original group func body: \n"
+          << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
   tactics_.emplace_back(new AlignIterSpaceTactic());
   tactics_.emplace_back(new ComputeInlineTactic());
@@ -154,6 +158,7 @@ DynamicShapeGroupScheduler::GetIRs() {
 
 IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     ScheduleBlockNode* node) {
+  VLOG(5) << "global master: " << node->id();
   IterativeSpaceInfo info;
   std::vector<int> sp_iter_indices;
   std::vector<int> rb_iter_indices;
@@ -199,12 +204,16 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       CHECK_NOTNULL(index.as_var());
       ir::Var iter_var = index.as_var_ref();
       ir::Expr iter_value = iter_var2value.at(iter_var);
-      CHECK_NOTNULL(iter_value.as_var());
+      CHECK(iter_value.as_var() || iter_value.is_constant());
       ir::For* for_node;
-      for (ir::Expr& loop : loops) {
-        if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
-          for_node = loop.As<ir::For>();
+      if (iter_value.as_var()) {
+        for (ir::Expr& loop : loops) {
+          if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
+            for_node = loop.As<ir::For>();
+          }
         }
+      } else if (iter_value.is_constant()) {
+        for_node = loops.at(loop_idx).As<ir::For>();
       }
       CHECK_NOTNULL(for_node);
       bool is_reduce_iter_var = reduce_iter_vars.count(iter_var) > 0;

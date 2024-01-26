@@ -23,7 +23,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-PD_DECLARE_string(cinn_convert_static_dim_to_dynamic);
+PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);
 
 namespace cinn::dialect::ir {
 
@@ -31,7 +31,7 @@ namespace {
 
 template <typename DoEachT>
 void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
-  const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic;
+  const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic_dim;
   size_t start = 0;
   while (true) {
     size_t end = env_var.find(",", start);

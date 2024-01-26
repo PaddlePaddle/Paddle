@@ -77,25 +77,36 @@ void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
             << value_to_shape_or_data_.size();
   LOG(INFO) << "----------- ShapeOrData for Values ------------";
   for (const auto& [value, shape_or_data] : value_to_shape_or_data_) {
-    LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+    if (value) {
+      LOG(INFO) << GetValueId(value) << " : " << shape_or_data;
+    }
   }
 }
 
-bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) {
+bool ShapeConstraintIRAnalysis::IsSameNumElements(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
-  // auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
-  // auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
+  auto lhs_shape_type = lhs.type().dyn_cast<pir::ShapedTypeInterface>();
+  auto rhs_shape_type = rhs.type().dyn_cast<pir::ShapedTypeInterface>();
+  // compare static shape
+  if (lhs_shape_type && rhs_shape_type && !lhs_shape_type.IsDynamicShape() &&
+      !rhs_shape_type.IsDynamicShape()) {
+    auto lhs_shape = lhs_shape_type.GetShape();
+    auto rhs_shape = rhs_shape_type.GetShape();
+    if (lhs_shape == rhs_shape) {
+      return true;
+    }
+    return common::product(lhs_shape) == common::product(rhs_shape);
+  }
 
-  // if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
-  //   return false;
+  // compare dynamic shape
+  const auto& lhs_shape = GetShapeOrDataForValue(lhs);
+  const auto& rhs_shape = GetShapeOrDataForValue(rhs);
+  if (lhs_shape.shape() == rhs_shape.shape() &&
+      lhs_shape.data() == rhs_shape.data()) {
+    return true;
+  }
 
-  // return IsProductEqual(lhs,
-  //                       0,
-  //                       static_cast<int>(lhs_type.GetRank()),
-  //                       rhs,
-  //                       0,
-  //                       static_cast<int>(rhs_type.GetRank()));
-  return true;
+  return false;
 }
 
 bool ShapeConstraintIRAnalysis::IsProductEqual(
@@ -112,37 +123,22 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   return true;
 }
 
-bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
+bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
   if (lhs == rhs) return true;
 
-  // auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
-  // auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
+  auto lhs_shape_type = lhs.type().dyn_cast<pir::ShapedTypeInterface>();
+  auto rhs_shape_type = rhs.type().dyn_cast<pir::ShapedTypeInterface>();
+  // compare static shape
+  if (lhs_shape_type && rhs_shape_type && !lhs_shape_type.IsDynamicShape() &&
+      !rhs_shape_type.IsDynamicShape()) {
+    return lhs_shape_type.GetShape() == rhs_shape_type.GetShape();
+  }
 
-  // if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
-  //   return false;
-
-  // if (lhs_type.HasStaticShape() && rhs_type.HasStaticShape()) {
-  //   return vectorize(lhs_type.GetShape()) == vectorize(rhs_type.GetShape());
-  // }
-
-  // auto lhs_it = value_to_sym_dims_.find(lhs);
-  // auto rhs_it = value_to_sym_dims_.find(rhs);
-
-  // if (lhs_it == value_to_sym_dims_.end() ||
-  //     rhs_it == value_to_sym_dims_.end() ||
-  //     lhs_it->second.size() != rhs_it->second.size())
-  //   return false;
-
-  // std::vector<SymbolicDimOp> lhs_syms;
-  // std::vector<SymbolicDimOp> rhs_syms;
-  // for (auto sym : lhs_it->second) {
-  //   lhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
-  // }
-  // for (auto sym : rhs_it->second) {
-  //   rhs_syms.push_back(mgr_.GetRootSymbolicDim(sym));
-  // }
-  // return lhs_syms == rhs_syms;
-  return true;
+  // compare dynamic shape
+  const auto& lhs_shape = GetShapeOrDataForValue(lhs);
+  const auto& rhs_shape = GetShapeOrDataForValue(rhs);
+  return lhs_shape.shape() == rhs_shape.shape() &&
+         lhs_shape.data() == rhs_shape.data();
 }
 
 bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,

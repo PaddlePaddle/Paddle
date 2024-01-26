@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from scipy import special
+from utils import static_guard
 
 import paddle
 from paddle.base import core
@@ -69,20 +70,19 @@ class TestGammainccOpApi(unittest.TestCase):
         self.dtype = "float64"
 
     def test_static_api(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('x', self.x_np.shape, self.x_np.dtype)
-            y = paddle.static.data('y', self.y_np.shape, self.y_np.dtype)
-            out = paddle.gammaincc(x, y)
-            exe = paddle.static.Executor(self.place)
-            (res,) = exe.run(
-                feed={'x': self.x_np, 'y': self.y_np}, fetch_list=[out]
-            )
-        out_ref = ref_gammaincc(self.x_np, self.y_np)
-        np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', self.x_np.shape, self.x_np.dtype)
+                y = paddle.static.data('y', self.y_np.shape, self.y_np.dtype)
+                out = paddle.gammaincc(x, y)
+                exe = paddle.static.Executor(self.place)
+                (res,) = exe.run(
+                    feed={'x': self.x_np, 'y': self.y_np}, fetch_list=[out]
+                )
+            out_ref = ref_gammaincc(self.x_np, self.y_np)
+            np.testing.assert_allclose(out_ref, res, rtol=1e-6, atol=1e-6)
 
     def test_dygraph_api(self):
-        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         out = paddle.gammaincc(x, y)
@@ -90,33 +90,30 @@ class TestGammainccOpApi(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-6, atol=1e-6)
 
     def test_x_le_zero_error(self):
-        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         x[0] = -1
         self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_a_le_zero_error(self):
-        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         y[0] = -1
         self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_dtype_error(self):
-        paddle.enable_static()
-        # in static graph mode
-        with self.assertRaises(TypeError):
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(
-                    name="x", shape=self.shape, dtype="int32"
-                )
-                y = paddle.static.data(
-                    name="y", shape=self.shape, dtype="int32"
-                )
-                out = paddle.gammaincc(x, y)
+        with static_guard():
+            # in static graph mode
+            with self.assertRaises(TypeError):
+                with paddle.static.program_guard(paddle.static.Program()):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype="int32"
+                    )
+                    y = paddle.static.data(
+                        name="y", shape=self.shape, dtype="int32"
+                    )
+                    out = paddle.gammaincc(x, y)
 
-        paddle.disable_static()
         # in dynamic mode
         with self.assertRaises(RuntimeError):
             with paddle.base.dygraph.guard():
