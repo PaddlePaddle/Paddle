@@ -14,7 +14,7 @@
 
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^LeViT^LeViT_128
-# api:paddle.tensor.manipulation.reshape
+# api:paddle.tensor.math.add
 import unittest
 
 import numpy as np
@@ -22,22 +22,26 @@ import numpy as np
 import paddle
 
 
-class ReshapeCase(paddle.nn.Layer):
+class AddCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(
         self,
-        var_0,  # (shape: [4312, 640], dtype: paddle.float32, stop_gradient: False)
+        var_0,  # (shape: [22, 196, 128], dtype: paddle.float32, stop_gradient: False)
+        var_1,  # (shape: [22, 196, 128], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.tensor.manipulation.reshape(var_0, [22, 196, 640])
-        return var_1
+        var_2 = paddle.tensor.math.add(var_0, var_1)
+        return var_2
 
 
-class TestReshape(unittest.TestCase):
+class TestAdd(unittest.TestCase):
     def setUp(self):
-        self.inputs = (paddle.rand(shape=[4312, 640], dtype=paddle.float32),)
-        self.net = ReshapeCase()
+        self.inputs = (
+            paddle.rand(shape=[22, 196, 128], dtype=paddle.float32),
+            paddle.rand(shape=[22, 196, 128], dtype=paddle.float32),
+        )
+        self.net = AddCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
