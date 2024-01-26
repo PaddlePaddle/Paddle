@@ -363,7 +363,6 @@ void Execute(const OneDNNContext& dev_ctx,
              int groups,
              const std::vector<int>& dilations,
              DenseTensor* out) {
-
   std::shared_ptr<dnnl::deconvolution_forward> conv_p;
   std::shared_ptr<dnnl::memory> src_memory_p;
   std::shared_ptr<dnnl::memory> weights_memory_p;
@@ -516,18 +515,18 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FusedConv2dTransposeKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& bias,
-                           const DenseTensor& filter,
-                           const std::vector<int>& strides,
-                           const std::vector<int>& paddings,
-                           const std::vector<int>& output_padding UNUSED,
-                           const IntArray& output_size UNUSED,
-                           const std::string& padding_algorithm,
-                           int groups,
-                           const std::vector<int>& dilations,
-                           const std::string& data_format UNUSED,
-                           DenseTensor* out) {
+                                const DenseTensor& x,
+                                const DenseTensor& bias,
+                                const DenseTensor& filter,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& output_padding UNUSED,
+                                const IntArray& output_size UNUSED,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format UNUSED,
+                                DenseTensor* out) {
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
@@ -569,7 +568,6 @@ void FusedConv2dTransposeKernel(const Context& dev_ctx,
                       out);
   }
 }
-
 
 KernelKey ConvTransposeGetKernelTypeForVar(
     const GetKernelTypeForVarContext* ctx) {
