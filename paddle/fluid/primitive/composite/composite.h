@@ -50,13 +50,26 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
       }
     }
   }
-
-  int64_t value = 1;
-  for (size_t i = 0; i < axis_.size(); i++) {
-    value *= x_dim[axis_[i]];
-  }
   auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
-  auto res = sum_x / full<T>(empty_shape, value, sum_x.dtype());
+
+  Tensor value;
+  if (find_value(x_dim, -1)) {
+    // dynamic shape branch
+    std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
+    Tensor idx =
+        reshape<T>(full_int_array<T>(axis_, DataType::INT64), gather_idx);
+    auto axis_dims = cast<T>(gather_nd<T>(shape<T>(x), idx), sum_x.dtype());
+    value = prod<T>(axis_dims, {0}, false, false);
+  } else {
+    int64_t value_ = 1;
+    for (size_t i = 0; i < axis_.size(); i++) {
+      value_ *= x_dim[axis_[i]];
+    }
+    value = full<T>(empty_shape, value, sum_x.dtype());
+  }
+
+  Tensor res = sum_x / value;
+
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
