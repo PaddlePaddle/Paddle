@@ -1953,6 +1953,64 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
   rpn_roi_probs->set_dims(common::make_ddim({-1, 1}));
 }
 
+void GraphKhopSamplerInferMeta(const MetaTensor& row,
+                               const MetaTensor& col_ptr,
+                               const MetaTensor& x,
+                               const MetaTensor& eids,
+                               const std::vector<int>& sample_sizes,
+                               bool return_eids,
+                               MetaTensor* out_src,
+                               MetaTensor* out_dst,
+                               MetaTensor* sample_index,
+                               MetaTensor* reindex_x,
+                               MetaTensor* out_eids) {
+  // GKS: GraphKhopSampler
+  auto GKSShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GKSShapeCheck(row.dims(), "row");
+  GKSShapeCheck(col_ptr.dims(), "col_ptr");
+  GKSShapeCheck(x.dims(), "x");
+  PADDLE_ENFORCE_EQ(
+      !sample_sizes.empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "The parameter 'sample_sizes' in GraphSampleOp must be set. "
+          "But received 'sample_sizes' is empty."));
+
+  if (return_eids) {
+    GKSShapeCheck(eids.dims(), "eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+
+  out_src->set_dims({-1, 1});
+  out_src->set_dtype(row.dtype());
+  out_dst->set_dims({-1, 1});
+  out_dst->set_dtype(row.dtype());
+  sample_index->set_dims({-1});
+  sample_index->set_dtype(DataType::INT32);
+  reindex_x->set_dims(x.dims());
+  reindex_x->set_dtype(x.dtype());
+}
+
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,
