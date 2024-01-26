@@ -1081,7 +1081,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
   dev_ctx.template Alloc<float>(&qk_sum_max_split_seq, qk_sum_max_split_seq.numel() * sizeof(float));
   params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
-  cudaMemset(params.qk_sum_max_split_seq, 0, sizeof(float) * qk_sum_max_split_seq.numel());
+  //cudaMemset(params.qk_sum_max_split_seq, 0, sizeof(float) * qk_sum_max_split_seq.numel());
 
   phi::DenseTensor real_split_each_batch;
   real_split_each_batch.Resize({{bsz}});
