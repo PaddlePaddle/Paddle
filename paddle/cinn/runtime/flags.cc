@@ -251,6 +251,10 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
 
+PD_DEFINE_bool(cinn_check_infer_symolic,
+               BoolFromEnv("cinn_check_infer_symolic", true),
+               "Whether to use check_infer_symbolic_pass");
+
 namespace cinn {
 namespace runtime {
 
