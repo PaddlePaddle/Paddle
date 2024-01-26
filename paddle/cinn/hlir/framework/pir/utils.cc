@@ -56,6 +56,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.split_with_num", "split"},
     {"pd_op.reshape", "reshape"},
     {"pd_op.expand", "broadcast_to"},
+    {"pd_op.concat", "concat"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
@@ -133,17 +134,34 @@ bool UnimplementOps(const ::pir::Operation& op) {
 bool HaveZeroDimInput(const ::pir::Operation& op) {
   bool have_zero_dim = false;
   for (size_t i = 0; i < op.num_operands(); ++i) {
-    auto in = op.operand_source(i);
-    if (in) {
-      if (auto tensor_type =
-              in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+    auto value = op.operand_source(i);
+    if (value && value.type()) {
+      auto value_type = value.type();
+      if (value_type.isa<::pir::VectorType>() &&
+          value_type.dyn_cast<::pir::VectorType>().size() > 0U) {
+        auto types = value_type.dyn_cast<::pir::VectorType>().data();
+        for (auto& type : types) {
+          if (auto tensor_type =
+                  value_type.dyn_cast<::pir::DenseTensorType>()) {
+            if (tensor_type.dims().size() == 0) {
+              have_zero_dim = true;
+              break;
+            }
+          }
+        }
+      } else if (auto tensor_type =
+                     value_type.dyn_cast<::pir::DenseTensorType>()) {
         if (tensor_type.dims().size() == 0) {
           have_zero_dim = true;
           break;
         }
+      } else {
+        // do nothing
       }
     }
   }
+
+  VLOG(4) << "HaveZeroDimInput: " << have_zero_dim;
 
   return have_zero_dim;
 }
@@ -151,14 +169,27 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
 bool AllInputDenseTensor(const ::pir::Operation& op) {
   bool all_denese_tensor = true;
   for (size_t i = 0; i < op.num_operands(); ++i) {
-    auto in = op.operand_source(i);
-    if (in) {
-      if (!(in.type().isa<paddle::dialect::DenseTensorType>())) {
+    auto value = op.operand_source(i);
+    if (value && value.type()) {
+      auto value_type = value.type();
+      if (value_type.isa<::pir::VectorType>() &&
+          value_type.dyn_cast<::pir::VectorType>().size() > 0U) {
+        auto types = value_type.dyn_cast<::pir::VectorType>().data();
+        for (auto& type : types) {
+          if (!type.isa<::pir::DenseTensorType>()) {
+            all_denese_tensor = false;
+            break;
+          }
+        }
+      } else if (!(value_type.isa<::pir::DenseTensorType>())) {
         all_denese_tensor = false;
         break;
+      } else {
+        // do nothing
       }
     }
   }
+  VLOG(4) << "AllInputDenseTensor: " << all_denese_tensor;
 
   return all_denese_tensor;
 }
@@ -168,22 +199,14 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
       CompatibleInfo::OP_NAMES.end()) {
     return true;
   }
-  // After PdToCinnPass, if pd_op.reshape still exists, return false.
-  std::string black_op_name =
-      std::string(cinn::dialect::OperatorDialect::name()) + "." +
-      CompatibleInfo::OpName(op);
-  if (CompatibleInfo::OP_NAMES.find(black_op_name) !=
-      CompatibleInfo::OP_NAMES.end()) {
-    VLOG(4) << "Found black op after PdToCinnPass, because it has Attribute "
-               "Tensor: "
-            << op.name();
-    return false;
-  }
   return OpRegistry::Global()->Find(CompatibleInfo::OpName(op)) != nullptr;
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
   if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
+    VLOG(4) << "Found " << op.name()
+            << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
+            << "So mark IsSupportForCinn: " << false;
     return false;
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
@@ -196,8 +219,8 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
   OpTransInfo trans_info;
   bool is_support =
       IsRegisteredInCINN(op) && !trans_info.default_deny_ops().count(op_name);
-  VLOG(4) << op_name << " is_support: " << is_support << " "
-          << IsRegisteredInCINN(op);
+  VLOG(4) << op_name << " is_support: " << is_support
+          << " IsRegisteredInCINN: " << IsRegisteredInCINN(op);
   // if the op type is registered in CINN and allow_ops is not empty, return
   // true only when it is in allow_ops
   if (!allow_ops.empty()) {
@@ -221,7 +244,10 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
 //    Such as cinn_op.reshape, except pd_op.reshape;
 // 3. otherwise, it should be registered in OpRegistry;
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
-  return IsSupportForCinn(op);
+  bool flag = IsSupportForCinn(op);
+  VLOG(4) << " CompatibleInfo::IsSupportCinn of " << op.name()
+          << " is: " << flag;
+  return flag;
 }
 
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
