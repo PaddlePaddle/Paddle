@@ -17,8 +17,12 @@
 #include <driver_types.h>
 #endif
 #ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
+#include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
+using cinn::runtime::Sycl::SYCLBackendAPI;
+#else
+#include "paddle/cinn/runtime/backend_api.h"
 #endif
+using cinn::runtime::BackendAPI;
 
 #include <glog/logging.h>
 
@@ -27,6 +31,8 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/flags.h"
+using cinn::runtime::CheckCompileWith;
 
 namespace cinn {
 namespace common {
@@ -37,7 +43,9 @@ Target::Target(OS o,
                Bit b,
                const std::vector<Feature> &features,
                const std::vector<Lib> &libs)
-    : os(o), arch(a), language(l), bits(b), features(features), libs(libs) {}
+    : os(o), arch(a), language(l), bits(b), features(features), libs(libs) {
+      //CheckCompileWith(language);
+    }
 
 bool Target::operator==(const Target &other) const {
   // set SYCLTarget to NVGPUTarget temporary
@@ -69,9 +77,21 @@ int Target::runtime_arch() const {
 }
 
 int Target::max_num_threads() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max number of threads.";
-  return 1024;
+  switch (arch) {
+    case Arch::NVGPU:
+      return 1024;
+    case Target::Arch::AMDGPU:
+      return 1024;
+    case Target::Arch::IntelGPU:
+      return 1024;
+    case Target::Arch::HygonDCU:
+      return 1024;
+    case Target::Arch::CambrianMLU:
+      LOG(FATAL) << "The target (" << arch << ") cannot get max number of threads.";
+    default:
+      LOG(FATAL) << "The target (" << arch << ") cannot get max number of threads.";
+  }
+  return -1;
 }
 
 int Target::get_multi_processor_count() const {
@@ -133,7 +153,8 @@ void Target::SetActiveDevices(std::vector<int> deviceIds) {
   if(language != Target::Language::sycl){
     LOG(ERROR) << "set device only supported for sycl backend!";
   }
-  SYCLWorkspace::Global()->SetActiveDevices(deviceIds);
+  //BackendAPI::get_backend(language)->SetActiveDevices(deviceIds);
+  //SYCLWorkspace::Global()->SetActiveDevices(deviceIds);
 }
 
 std::ostream &operator<<(std::ostream &os, const Target &target) {
@@ -245,9 +266,10 @@ const Target &DefaultNVGPUTarget() {
 }
 
 const Target &SYCLTarget(Target::Arch arch) {
+  arch = SYCLBackendAPI::Global()->Init(arch);
   static Target target(
       Target::OS::Linux, arch, Target::Language::sycl, Target::Bit::k64, {}, {});
-  SYCLWorkspace::Global()->Init(arch);
+  //BackendAPI::get_backend(target);
   return target;
 }
 

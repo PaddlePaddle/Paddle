@@ -62,7 +62,6 @@ void BindTarget(py::module *m) {
 
   m->def("DefaultHostTarget", &common::DefaultHostTarget)
       .def("DefaultNVGPUTarget", &common::DefaultNVGPUTarget)
-      .def("SYCLTarget", &common::SYCLTarget, py::arg("arch"))
       .def("DefaultTarget", &common::DefaultTarget);
 
   m->def("get_target", &cinn::runtime::CurrentTarget::GetCurrentTarget);
@@ -79,8 +78,12 @@ void BindTarget(py::module *m) {
   arch.value("Unk", Target::Arch::Unk)
       .value("X86", Target::Arch::X86)
       .value("ARM", Target::Arch::ARM)
-      .value("NVGPU", Target::Arch::NVGPU);
+      .value("NVGPU", Target::Arch::NVGPU)
+      .value("AMDGPU", Target::Arch::AMDGPU)
+      .value("IntelGPU", Target::Arch::IntelGPU);
   
+  m->def("SYCLTarget", &common::SYCLTarget, py::arg("arch")=Target::Arch::Unk);
+
   py::enum_<Target::Language> language(target, "Language");
   language.value("Unk", Target::Language::Unk)
           .value("llvm", Target::Language::llvm)
@@ -99,6 +102,9 @@ void BindTarget(py::module *m) {
 
   m->def("is_compiled_with_cuda", cinn::runtime::IsCompiledWithCUDA);
   m->def("is_compiled_with_cudnn", cinn::runtime::IsCompiledWithCUDNN);
+  m->def("is_compiled_with_sycl", cinn::runtime::IsCompiledWithSYCL);
+  m->def("is_compiled_with_hip", cinn::runtime::IsCompiledWithHIP);
+  m->def("is_compiled_with_bangc", cinn::runtime::IsCompiledWithBangC);
   m->def("reset_name_id", ResetGlobalNameID);
 }
 

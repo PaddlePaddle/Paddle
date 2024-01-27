@@ -1,5 +1,5 @@
 #include <paddle/cinn/runtime/sycl/sycl_module.h>
-#include <paddle/cinn/runtime/sycl/sycl_runtime.h>
+#include <paddle/cinn/runtime/sycl/sycl_backend_api.h>
 #include <dlfcn.h>
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
@@ -67,7 +67,7 @@ void cinn_call_sycl_kernel(void* kernel_fn,
     cinn::utils::RecordEvent record_run("syclLaunchKernel", cinn::utils::EventType::kInstruction);
     void (*kernel_func)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args) =
         (void (*)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args))(kernel_fn);
-    sycl::queue* Queue = SYCLWorkspace::Global()->active_queues[0];
+    sycl::queue* Queue = SYCLBackendAPI::Global()->get_now_queue();
     sycl::range<3> Grid(grid_z, grid_y, grid_x);
     sycl::range<3> Block(block_z, block_y, block_x);
     // need malloc_shared

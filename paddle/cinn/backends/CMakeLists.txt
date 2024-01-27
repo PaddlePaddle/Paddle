@@ -22,6 +22,7 @@ endif()
 
 if (CINN_WITH_SYCL)
   add_subdirectory(sycl)
+  list(APPEND srcs codegen_cuda_util.cc)
 endif()
 
 if(WITH_OPENMP)

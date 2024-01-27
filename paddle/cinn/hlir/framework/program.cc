@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/program.h"
-#ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
-#endif
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace hlir {
@@ -181,7 +180,7 @@ void Program::Execute(
   }
 #ifdef CINN_WITH_SYCL
   if (instrs_[0]->target_.language == Target::Language::sycl && stream == nullptr) {
-    SYCLWorkspace::Global()->queueSync();
+    BackendAPI::get_backend(instrs_[0]->target_)->device_sync();
   }
 #endif
 #ifdef CINN_WITH_CUDA

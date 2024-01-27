@@ -5,9 +5,13 @@
 #include "paddle/cinn/runtime/custom_function.h"
 
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
+using cinn::runtime::Sycl::cinn_call_sycl_kernel;
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+using cinn::backends::GlobalSymbolRegistry;
+#include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
+using cinn::runtime::Sycl::SYCLBackendAPI;
 
 CINN_REGISTER_HELPER(cinn_sycl_host_api) {
-  using cinn::runtime::Sycl::cinn_call_sycl_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_sycl_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()
@@ -22,6 +26,6 @@ CINN_REGISTER_HELPER(cinn_sycl_host_api) {
       .AddInputType<int>()     // block_z
       .AddInputType<void *>()  // stream
       .End();
-
+  GlobalSymbolRegistry::Global().RegisterFn("backend_api.sycl", reinterpret_cast<void*>(SYCLBackendAPI::Global()));
   return true;
 }

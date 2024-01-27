@@ -27,7 +27,7 @@ namespace syclrtc {
 class Compiler {
  public:
   Compiler();
-
+  static Compiler* Global();
   /**
    * Compile the \p code to shared library.
    * @param code The SYCL source code.
@@ -45,9 +45,15 @@ class Compiler {
   // compile to share library
   std::string CompileToSo(const std::string& code, const Target::Arch gpu_type);
 
-  std::string GetDeviceArch();
+  void SetDeviceArchOptions(const Target::Arch gpu_type);
 
-  std::string ReadFile(const std::string&, std::ios_base::openmode);
+  std::string compiler_path = SYCL_CXX_COMPILER;
+  std::string prefix_dir = "./source";
+  std::string cxx_compile_options = "-std=c++17 -O3 -fPIC -shared -ldl -fbracket-depth=1030"; // set 1030 for constant op, default max bracket-depth = 256";
+  std::string device_arch_options;
+  int compile_num=0;
+  std::string source_file_path;
+  std::string shared_lib_path;
 };
 
 }  // namespace syclrtc

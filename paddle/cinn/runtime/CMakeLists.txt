@@ -7,7 +7,8 @@ gather_srcs(
   intrinsic.cc
   cinn_runtime.cc
   intrinsic_types.cc
-  custom_function.cc)
+  custom_function.cc
+  backend_api.cc)
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc

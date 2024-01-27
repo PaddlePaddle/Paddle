@@ -18,6 +18,10 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/custom_function.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+using cinn::backends::GlobalSymbolRegistry;
+#include "paddle/cinn/runtime/cuda/cuda_backend_api.h"
+using cinn::runtime::CUDABackendAPI;
 
 CINN_REGISTER_HELPER(cuda_intrinsics) {
   auto target = cinn::common::DefaultNVGPUTarget();
@@ -588,6 +592,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<bool>()    // only_warning
       .AddInputType<void *>()  // stream
       .End();
+  GlobalSymbolRegistry::Global().RegisterFn("backend_api.cuda", reinterpret_cast<void*>(CUDABackendAPI::Global()));
 
 #ifdef CINN_WITH_CUDNN
   using cinn::runtime::cuda::cinn_call_cudnn_conv2d_forward;

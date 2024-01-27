@@ -53,6 +53,7 @@ struct Target {
     cuda,
     hip,
     sycl,
+    bangc,
   };
 
   enum class Bit : int {
@@ -122,7 +123,7 @@ const Target& DefaultHostTarget();
 
 const Target& DefaultNVGPUTarget();
 
-const Target& SYCLTarget(Target::Arch arch);
+const Target& SYCLTarget(Target::Arch arch=Target::Arch::Unk);
 
 const Target& DefaultTarget();
 

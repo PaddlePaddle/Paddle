@@ -16,13 +16,6 @@ from .version import full_version as __version__
 from .runtime.cinn_jit import to_cinn_llir
 import os
 
-cinndir = os.path.dirname(os.path.abspath(__file__))
-runtime_include_dir = os.path.join(cinndir, "libs")
-cuhfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
-
-if os.path.exists(cuhfile):
-    os.environ.setdefault('runtime_include_dir', runtime_include_dir)
-
 from .common import (  # noqa: F401
     BFloat16,
     Bool,
@@ -45,6 +38,9 @@ from .common import (  # noqa: F401
     get_target,
     is_compiled_with_cuda,
     is_compiled_with_cudnn,
+    is_compiled_with_sycl,
+    is_compiled_with_hip,
+    is_compiled_with_bangc,
     make_const,
     reset_name_id,
     set_target,
@@ -191,3 +187,12 @@ from .lang import (  # noqa: F401
     reduce_mul,
     reduce_sum,
 )
+
+cinndir = os.path.dirname(os.path.abspath(__file__))
+runtime_include_dir = os.path.join(cinndir, "libs")
+if is_compiled_with_cuda():
+    hfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
+elif is_compiled_with_sycl():
+    hfile = os.path.join(runtime_include_dir, "cinn_sycl_runtime_source.h")
+if os.path.exists(hfile):
+    os.environ.setdefault('runtime_include_dir', runtime_include_dir)

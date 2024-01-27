@@ -304,15 +304,49 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
+bool IsCompiledWithSYCL() {
+#if !defined(CINN_WITH_SYCL)
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithHIP() {
+#if !defined(CINN_WITH_ROCM)
+  return false;
+#else
+  return true;
+#endif
+}
+bool IsCompiledWithBangC() {
+#if !defined(CINN_WITH_BangC)
+  return false;
+#else
+  return true;
+#endif
+}
+void CheckCompileWith(common::Target::Language backend_language) {
+  if (!IsCompiledWithCUDA() && backend_language == common::Target::Language::cuda) {
+    LOG(FATAL) << "Current CINN version does not support cuda, please try to "
+                  "recompile with -DWITH_CUDA.";
+  } else if(!IsCompiledWithSYCL() && backend_language == common::Target::Language::sycl){
+    LOG(FATAL) << "Current CINN version does not support sycl, please try to "
+                  "recompile with CINN_WITH_SYCL.";
+  } else if(!IsCompiledWithHIP() && backend_language == common::Target::Language::hip){
+    LOG(FATAL) << "Current CINN version does not support hip, please try to "
+                  "recompile with CINN_WITH_ROCM.";
+  } else if(!IsCompiledWithBangC() && backend_language == common::Target::Language::bangc){
+    LOG(FATAL) << "Current CINN version does not support bangc, please try to "
+                  "recompile with CINN_WITH_MLU.";
+  }
+}
+
 common::Target CurrentTarget::target_ = common::DefaultTarget();
 
 void CurrentTarget::SetCurrentTarget(const common::Target& target) {
-  if (!IsCompiledWithCUDA() && target.arch == common::Target::Arch::NVGPU) {
-    LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
-                  "recompile with -DWITH_CUDA.";
-  } else {
-    target_ = target;
-  }
+  CheckCompileWith(target.language);
+  target_ = target;
 }
 
 common::Target& CurrentTarget::GetCurrentTarget() { return target_; }

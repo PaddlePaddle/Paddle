@@ -28,9 +28,8 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
-#ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
-#endif
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn::pybind {
 
@@ -123,10 +122,11 @@ void BindFramework(pybind11::module *m) {
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
              if (target.language == Target::Language::sycl) {
-               SYCLWorkspace::Global()->memcpy(
+               BackendAPI::get_backend(target)->memcpy(
                    mutable_data,
-                   t->data<void>(),
-                   t->shape().numel() * t->type().bytes());
+                   reinterpret_cast<void *>(t->mutable_data(target, t->type())),
+                   t->shape().numel() * t->type().bytes(),
+                   BackendAPI::MemcpyType::DeviceToHost);
              } else if (target.arch == Target::Arch::X86) {
                std::memcpy(mutable_data,
                            t->data<void>(),
@@ -170,10 +170,11 @@ void BindFramework(pybind11::module *m) {
             py::array array(std::move(dt), std::move(shape));
             void *array_data = array.mutable_data();
             if (target.language == Target::Language::sycl) {
-              SYCLWorkspace::Global()->memcpy(
+              BackendAPI::get_backend(target)->memcpy(
                   array_data,
                   self->data<void>(),
-                  self->shape().numel() * self->type().bytes());
+                  self->shape().numel() * self->type().bytes(),
+                  BackendAPI::MemcpyType::DeviceToHost);
             } else if (target.arch == Target::Arch::X86) {
               std::memcpy(array_data,
                           self->data<void>(),
@@ -209,10 +210,11 @@ void BindFramework(pybind11::module *m) {
                 self->shape().numel());
             auto *data = self->mutable_data(target, self->type());
             if (target.language == Target::Language::sycl) {
-              SYCLWorkspace::Global()->memcpy(
-                  data,
-                  array.data(),
-                  self->shape().numel() * self->type().bytes());
+              BackendAPI::get_backend(target)->memcpy(
+                  reinterpret_cast<void *>(data),
+                  reinterpret_cast<const void *>(array.data()),
+                  self->shape().numel() * self->type().bytes(),
+                  BackendAPI::MemcpyType::HostToDevice);
             } else if (target.arch == Target::Arch::X86) {
               std::memcpy(data,
                           array.data(),

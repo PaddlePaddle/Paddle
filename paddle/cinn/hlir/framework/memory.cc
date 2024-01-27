@@ -21,9 +21,8 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #endif
 
-#ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
-#endif
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace hlir {
@@ -62,17 +61,12 @@ class CudaMemoryMng : public MemoryInterface {
 #ifdef CINN_WITH_SYCL
 class SYCLMemoryMng : public MemoryInterface {
   public:
-    SYCLMemoryMng(){
-      sycl_workspace = SYCLWorkspace::Global();
-    }
     void* malloc(size_t nbytes) override {
-      return sycl_workspace->malloc(nbytes);
+      return BackendAPI::get_backend(Target::Language::sycl)->malloc(nbytes);
     }
     void free(void* data) override {
-      sycl_workspace->free(data);
+      BackendAPI::get_backend(Target::Language::sycl)->free(data);
     }
-  private:
-    SYCLWorkspace *sycl_workspace;
 };
 #endif
 

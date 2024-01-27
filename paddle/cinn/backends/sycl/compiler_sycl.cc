@@ -15,6 +15,8 @@
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
 #include <sys/stat.h> //for mkdir ...
 #include <fstream>
+#include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
+using cinn::runtime::Sycl::SYCLBackendAPI;
 
 namespace cinn {
 namespace backends {
@@ -22,77 +24,72 @@ namespace syclrtc {
 
 Compiler::Compiler() {}
 
+Compiler* Compiler::Global() {
+  static Compiler* inst = new Compiler();
+  return inst;
+}
+
 std::string Compiler::operator()(const std::string& code, const Target::Arch gpu_type) {
   return CompileToSo(code, gpu_type);
 }
-
-
-class NUM {
-  public:
-    static int n;
-    static int getNum(){
-      return n++;
-    }
-};
-int NUM::n = 0;
 
 std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
   return {Context::Global().runtime_include_dir()};
 }
 
 std::string Compiler::CompileToSo(const std::string& source_code, const Target::Arch gpu_type) {
-  // read dir source
-  std::string dir = "./source";
-  if (access(dir.c_str(), 0) == -1) {
-    CHECK(mkdir(dir.c_str(), 7) != -1) << "Fail to mkdir " << dir;
+  // create the folder to store sycl temporary files
+  if (access(prefix_dir.c_str(), F_OK) == -1) {
+    CHECK(mkdir(prefix_dir.c_str(), 7) != -1) << "Fail to mkdir " << prefix_dir;
   }
-
-  // get unqiue prefix name
-  // std::string prefix_name                    = dir + "/" + common::UniqName("rtc_tmp");
-  std::string prefix_name                    = dir + "/" + std::to_string(NUM::getNum());
-  std::string sycl_source_file    = prefix_name + ".cpp";
-  std::string sycl_shared_library = prefix_name + ".so";
-  std::ofstream ofs(sycl_source_file.c_str(), std::ios::out);
-  CHECK(ofs.is_open()) << "Fail to open file " << sycl_source_file;
+  // get unqiue file_path
+  compile_num++;
+  std::string filename = prefix_dir + "/sycl_" + std::to_string(compile_num);
+  source_file_path = filename + ".cc";
+  shared_lib_path = filename + ".so";
+  // write source file
+  std::ofstream ofs(source_file_path.c_str(), std::ios::out);
+  CHECK(ofs.is_open()) << "Fail to open file " << source_file_path;
   ofs << source_code;
   ofs.close();
-
-  // compile options
-  std::string options = SYCL_CXX_COMPILER;
+  //set compile command
+  std::string command = compiler_path;
   // prepare include headers
   auto cinn_headers = FindCINNRuntimeIncludePaths();
   for (auto& header : cinn_headers) {
-    options += " -I " + header;
+    command += " -I " + header;
   }
-  options += " -fsycl";
-  options += " -fsycl-targets=";
-  if (gpu_type == Target::Arch::NVGPU) {
-    options += "nvptx64-nvidia-cuda";
-  } else if (gpu_type == Target::Arch::AMDGPU) {
-    options += "amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx908";
-  } else if (gpu_type == Target::Arch::IntelGPU) {
-    options += "";
-  }
-  options += " -std=c++17";
-  options += " -lpthread";
-  options += " -fPIC -shared";
-  options += " -ldl";
-  options += " -O3";
-  options += " -ffast-math";
-  options += " -fbracket-depth=1030"; // set 1030 for constant op, default max bracket-depth = 256
-  options += " -o " + sycl_shared_library;
-  options += " " + sycl_source_file;
-  VLOG(2) << "SYCL Compile Options : " << options;
-
+  SetDeviceArchOptions(gpu_type);
+  command += " " + device_arch_options + " " + cxx_compile_options +
+                        " " + source_file_path + " -o " + shared_lib_path;
   // compile
-  std::cout << options << std::endl;
-  CHECK(system(options.c_str()) == 0) << options;
-  return sycl_shared_library;
+  LOG(INFO) << "compile command: " << command;
+  VLOG(2) << "compile command: " << command;
+  CHECK(system(command.c_str()) == 0) << command;
+  return shared_lib_path;
 }
 
-std::string Compiler::GetDeviceArch() {}
-
-std::string Compiler::ReadFile(const std::string& file_path, std::ios_base::openmode mode) {}
+void Compiler::SetDeviceArchOptions(const Target::Arch gpu_type){
+  std::string gpu_version = SYCLBackendAPI::Global()->GetGpuVersion();
+  switch (gpu_type)
+  {
+  case Target::Arch::NVGPU:
+    device_arch_options="-fsycl";
+    device_arch_options+= " -fsycl-targets=nvptx64-nvidia-cuda";
+    device_arch_options += " -Xsycl-target-backend --offload-arch=" + gpu_version;
+    break;
+  case Target::Arch::AMDGPU:
+    device_arch_options="-fsycl";
+    device_arch_options+= " -fsycl-targets=amdgcn-amd-amdhsa";
+    device_arch_options += " -Xsycl-target-backend --offload-arch=" + gpu_version;
+    break;
+  case Target::Arch::IntelGPU:
+    device_arch_options="-fsycl";
+    break;
+  default:
+    LOG(ERROR) << "valid gpu value in target! possible options: intel/amd/nvidia.";
+  }
+}
 
 }  // namespace syclrtc
 }  // namespace backends
