@@ -170,11 +170,15 @@ def is_api_in_module(node, module_prefix):
 
     func_str = ast_to_source_code(func_node).strip()
     try:
+        import paddle
         import paddle.jit.dy2static as _jst
+        from paddle import to_tensor
 
         globals = {
             'np': np,
+            'paddle': paddle,
             '_jst': _jst,
+            'to_tensor': to_tensor,
         }
 
         fn = eval(func_str, globals)
