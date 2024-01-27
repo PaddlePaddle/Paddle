@@ -23,7 +23,7 @@ import numpy as np  # noqa: F401
 from .origin_info import Location, OriginInfo, global_origin_info_map
 from .utils import (
     RE_PYMODULE,
-    _is_api_in_module_helper,
+    is_api_in_module_helper,
 )
 
 __all__ = []
@@ -215,7 +215,7 @@ class ErrorData:
                 break
         try:
             fn = eval(func_str)
-            module_result = _is_api_in_module_helper(fn, "numpy")
+            module_result = is_api_in_module_helper(fn, "numpy")
             is_numpy_api_err = module_result or (
                 func_str.startswith("numpy.") or func_str.startswith("np.")
             )
