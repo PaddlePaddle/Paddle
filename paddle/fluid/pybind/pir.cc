@@ -82,9 +82,13 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -131,6 +135,7 @@ USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -301,7 +306,8 @@ void BindProgram(py::module *m) {
           },
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
-          });
+          })
+      .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -363,6 +369,7 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
+      .def("num_ops", [](Block &self) { return self.num_ops(); })
       .def(
           "__enter__",
           [](Block &self) -> Block & {
@@ -1555,11 +1562,15 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = HasDynamicShape(program);
+  pass_manager->EnableIRPrinting();
 
-  auto shape_analysis =
-      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
-                        : nullptr;
-
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(
+        std::make_unique<
+            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  }
   pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   if (has_dynamic_shape) {
@@ -1571,10 +1582,19 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  bool force_static_shape = false;
+  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+    force_static_shape = true;
+  }
   if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
     pass_manager->AddPass(std::move(pass.value()));
   }
-  if (has_dynamic_shape) {
+
+  if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
@@ -1591,7 +1611,7 @@ void InferSymbolicShapePass(
     Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program)) {
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

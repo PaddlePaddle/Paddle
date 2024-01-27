@@ -38,7 +38,7 @@ void DebugPrintOpInfo(
   for (auto& res : op->results()) {
     std::ostringstream print_stream;
 
-    print_stream << "  result(" << res.index() << ") "
+    print_stream << "  result(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
     if (shape_analysis != nullptr) {
@@ -90,8 +90,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                          "InferSymbolicShape for %s failed.",
                          op.name());
         } else {
-          VLOG(3) << op.name()
-                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
+          VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+          PADDLE_THROW(phi::errors::Unimplemented(
+              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }

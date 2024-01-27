@@ -68,7 +68,7 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
           op_desc, "num_or_sections"));
 
   CHECK(!num_or_sections.empty())
-      << "The Split op cannot found [num_or_sections] attrbute!  ! Please "
+      << "The Split op cannot found [num_or_sections] attribute!  ! Please "
          "check.";
 
   auto axis =
