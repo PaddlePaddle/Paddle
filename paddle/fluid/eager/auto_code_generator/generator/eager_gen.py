@@ -69,10 +69,10 @@ black_ops_list = [
 # kernel performs same to it.
 prim_white_list = [
     "matmul_double_grad",  # ==> matmul_grad
-    "subtract_double_grad",  # ==> substract_grad
-    "add_triple_grad",  # ==> add_double_grad, add_grad
+    # "subtract_double_grad",  # ==> substract_grad
+    # "add_triple_grad",  # ==> add_double_grad, add_grad
     "silu_double_grad",  # ==> silu_grad
-    "tanh_triple_grad",  # ==> tanh_grad, tanh_double_grad
+    # "tanh_triple_grad",  # ==> tanh_grad, tanh_double_grad
 ]
 
 # white ops list whose kernel can automaically do type promotion.
@@ -2095,12 +2095,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         is_composite_grad_api = (
             False if self.composite_func_info == {} else True
         )
-
         if is_composite_grad_api:
-            # if self.backward_api_name == "tanh_grad":
-            #     next_grad_node_creation_str = ''
             if next_grad_node_creation_str != '':
-                # if self.backward_api_name not in self.keep_native_op:
                 next_grad_node_creation_str = "\n".join(
                     [
                         (f"  {line}" if len(line) else line)
@@ -2118,7 +2114,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     or is_invoke_forward_api
                 ):
                     next_grad_node_creation_str = f"""
-  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
      if (trace_backward) {{
        PADDLE_THROW(phi::errors::Unavailable(
        \"The Op {self.backward_api_name} doesn't have any grad\"
@@ -2126,8 +2122,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
        \"derivatives, please set `create_graph`to False.\"));
     }}
   }}
-  """
-
+"""
         if next_node_generator is not None:
             has_higher_order_node = True
             return (
@@ -2256,8 +2251,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
-        # if backward_api_name == "tanh_grad":
-        #     has_higher_order_node = False
         composite_grad_api_name = (
             self.composite_func_info["name"] if is_composite_grad_api else None
         )
@@ -2578,10 +2571,29 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 """
         elif is_composite_grad_api:
             if has_higher_order_node:
-                # if self.backward_api_name in self.keep_native_op:
-                # composite + has_higher_order_node + belongs to 1~k-1 order
                 # ==> just call high-order kernel
-                grad_function_call_str = f"""
+                if self.backward_api_name in prim_white_list:
+                    # call prim anyway and can not be skipped
+                    grad_function_call_str = f"""
+  std::string grad_op_name = "{composite_grad_api_name}";
+  auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
+  if (!need_skip) {{
+  {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+  {indent}}}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+  {indent}}}
+  }} else {{
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called";
+  }}
+"""
+                else:
+                    grad_function_call_str = f"""
   std::string grad_op_name = "{composite_grad_api_name}";
   auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
   if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
@@ -2590,51 +2602,56 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
   {indent}}}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
   {indent}if (!create_graph) {{
   {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
   {indent}}}
   }} else {{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-  {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called";
   }}
 """
-            #                 else:
-            #                     # composite + has_higher_order_node + not belongs to 1~k-1 order
-            #                     # ==> call composite or high-order kernel according to if composite enabled
-            #                     grad_function_call_str = f"""
-            #   std::string grad_op_name = "{composite_grad_api_name}";
-            #   auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
-            #   if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
-            #   {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
-            #   {indent}if (!create_graph) {{
-            #   {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
-            #   {indent}}}
-            #   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-            #   {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
-            #   {indent}if (!create_graph) {{
-            #   {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
-            #   {indent}}}
-            #   }} else {{
-            #   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-            #   {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
-            #   }}
-            # """
             else:
                 # composite + not has_higher_order_node
                 # ==> call composite for make program runnable as much as possible
-                grad_function_call_str = f"""
-  std::string grad_op_name = "{composite_grad_api_name}";
-  bool original_global_grad = egr::Controller::Instance().HasGrad();
-  if (!create_graph) {{
-  {indent}egr::Controller::Instance().SetHasGrad(create_graph);
-  }}
-  {composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-  VLOG(4) << "Composite api {composite_grad_api_name} is called ";
-  if (!create_graph) {{
-  {indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+                if self.backward_api_name in prim_white_list:
+                    grad_function_call_str = f"""
+  auto need_skip = false;
+  if (!need_skip) {{
+  {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+  {indent}}}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+  {indent}}}
+  }} else {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have non-prim implementation\"));
   }}
 """
+                else:
+                    grad_function_call_str = f"""
+  std::string grad_op_name = "{composite_grad_api_name}";
+  auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
+  {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+  {indent}}}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
+  {indent}if (!create_graph) {{
+  {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+  {indent}}}
+  }} else {{
+  {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called";
+  }}
+"""
+
         else:
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
@@ -2772,8 +2789,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Code Generation #
         ###################
         # Higher-order GradNode generation
-        self.GenerateNativeOP()
-
         (
             has_higher_order_node,
             is_invoke_forward_api,
@@ -2793,45 +2808,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             next_grad_node_out_list,
             backward_forward_inputs_map,
         )
-
-    def GenerateNativeOP(self) -> None:
-        if hasattr(self, "keep_native_op"):
-            return
-        self.keep_native_op = set()
-
-        MAPPING: dict[str, int] = {
-            "double": 2,
-            "triple": 3,
-        }
-        MAPPING_INV: dict[int, str] = {
-            1: "",
-            2: "_double",
-        }
-
-        for white_op in prim_white_list:
-            # assume white_op is k-th order op, then we need to keep 1~k-1 order op as
-            # non-prim op and k-th op as prim op
-            splits = white_op.split("_")
-            if len(splits) == 2:
-                # xx_grad
-                continue
-            elif len(splits) >= 3:
-                # xx_double/triple_grad
-                *name, order_str, _ = splits
-                name = "_".join(
-                    name
-                )  # process extra "_" in name, such as top_k_double/triple_grad(though top_k does not has this op)
-                order_int: int = MAPPING[order_str]
-                while order_int > 1:
-                    order_minus_1_op = (
-                        f"{name}{MAPPING_INV[order_int - 1]}_grad"
-                    )
-                    order_int -= 1
-                    self.keep_native_op.add(order_minus_1_op)
-            else:
-                raise ValueError(
-                    f"white_op {white_op} is not in the format of xx_double/triple_grad or xx_grad"
-                )
 
 
 class DygraphForwardAndNodesGenerator(GeneratorBase):
