@@ -133,7 +133,6 @@ def train():
         start_time = time.time()
         img = np.array([x[0] for x in data]).astype('float32')
         img = paddle.to_tensor(img)
-        # img = paddle.base.dygraph.to_variable(img)
 
         gt_box = np.array([x[1] for x in data]).astype('float32')
         gt_box = paddle.to_tensor(gt_box)
