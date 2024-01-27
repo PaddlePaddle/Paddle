@@ -354,6 +354,8 @@ def gen(
     fwd_pd_op_path: pathlib.Path,
     update_fwd_pd_op_path: pathlib.Path,
     rev_pd_op_path: pathlib.Path,
+    fused_op_path: pathlib.Path,
+    fused_rev_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
 ):
@@ -368,6 +370,8 @@ def gen(
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
         update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
+        fused_op_path (pathlib.Path): The YAML file path of the fused API.
+        fused_rev_path (pathlib.Path): The YAML file path of the fused backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
 
@@ -382,6 +386,8 @@ def gen(
         ir_fwds,
         ir_revs,
         ir_update_fwds,
+        fused_fwds,
+        fused_revs,
     ) = (
         load(prim_path),
         load(fwd_path),
@@ -390,13 +396,17 @@ def gen(
         load(fwd_pd_op_path),
         load(rev_pd_op_path),
         load(update_fwd_pd_op_path),
+        load(fused_op_path),
+        load(fused_rev_path),
     )
     filter_compat_info(compats)
 
-    fwd_apis = fwds + ir_fwds + ir_update_fwds
+    fwd_apis = fwds + ir_fwds + ir_update_fwds + fused_fwds
 
     apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
-    apis = apis + [{**api, **{'is_fwd': False}} for api in revs + ir_revs]
+    apis = apis + [
+        {**api, **{'is_fwd': False}} for api in revs + ir_revs + fused_revs
+    ]
     apis = [
         {**api, **{'is_prim': True}}
         if api['name'] in prims
@@ -453,6 +463,16 @@ if __name__ == "__main__":
         help='The ir backward ops parsed  yaml file.',
     )
     parser.add_argument(
+        '--fused_op_path',
+        type=str,
+        help='The parsed fused forward ops yaml file.',
+    )
+    parser.add_argument(
+        '--fused_rev_op_path',
+        type=str,
+        help='The parsed fused backward ops yaml file.',
+    )
+    parser.add_argument(
         '--templates_dir',
         type=str,
         help='JinJa2 templates base directory.',
@@ -472,6 +492,8 @@ if __name__ == "__main__":
         pathlib.Path(args.fwd_pd_op_path),
         pathlib.Path(args.update_fwd_pd_op_path),
         pathlib.Path(args.rev_pd_op_path),
+        pathlib.Path(args.fused_op_path),
+        pathlib.Path(args.fused_rev_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
     )
