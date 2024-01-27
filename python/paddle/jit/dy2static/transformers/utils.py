@@ -16,8 +16,12 @@ from __future__ import annotations
 
 import copy
 
+import numpy as np
+
 from paddle.jit.dy2static.ast_utils import ast_to_source_code
 from paddle.utils import gast
+
+from ..utils import PADDLE_MODULE_PREFIX, is_api_in_module_helper
 
 
 def index_in_list(array_list, item):
@@ -151,3 +155,37 @@ def get_attribute_full_name(node):
         node, gast.Attribute
     ), "Input non-Attribute node to get attribute full name"
     return ast_to_source_code(node).strip()
+
+
+def is_api_in_module(node, module_prefix):
+    assert isinstance(
+        node, gast.Call
+    ), "Input non-Call node for is_api_in_module"
+
+    # Python can have gast.Call as function, for example: convert_call(func)(x)
+    # We only check the most outside function
+    func_node = node.func
+    while isinstance(func_node, gast.Call):
+        func_node = func_node.func
+
+    func_str = ast_to_source_code(func_node).strip()
+    try:
+        import paddle
+        import paddle.jit.dy2static as _jst
+        from paddle import to_tensor
+
+        globals = {
+            'np': np,
+            'paddle': paddle,
+            '_jst': _jst,
+            'to_tensor': to_tensor,
+        }
+
+        fn = eval(func_str, globals)
+        return is_api_in_module_helper(fn, module_prefix)
+    except Exception:
+        return False
+
+
+def is_paddle_api(node):
+    return is_api_in_module(node, PADDLE_MODULE_PREFIX)
