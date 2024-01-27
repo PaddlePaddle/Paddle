@@ -20,6 +20,14 @@ from paddle.jit.dy2static.ast_utils import ast_to_source_code
 from paddle.utils import gast
 
 
+def index_in_list(array_list, item):
+    try:
+        return array_list.index(item)
+    except ValueError:
+        # Item not in array_list
+        return -1
+
+
 class BaseNodeVisitor(gast.NodeVisitor):
     """
     Implement customized NodeVisitor inherited from gast.NodeVisitor.

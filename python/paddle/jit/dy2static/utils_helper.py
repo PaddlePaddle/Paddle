@@ -22,15 +22,6 @@ from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
 
-
-def index_in_list(array_list, item):
-    try:
-        return array_list.index(item)
-    except ValueError:
-        # Item not in array_list
-        return -1
-
-
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'

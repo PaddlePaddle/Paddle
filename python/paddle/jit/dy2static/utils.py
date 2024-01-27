@@ -31,7 +31,6 @@ from importlib.machinery import SourceFileLoader
 import numpy as np
 
 import paddle
-from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -43,8 +42,6 @@ from .ast_utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
     PADDLE_MODULE_PREFIX,
     _is_api_in_module_helper,
-    index_in_list,
-    is_api_in_module,
     is_paddle_api,
 )
 
