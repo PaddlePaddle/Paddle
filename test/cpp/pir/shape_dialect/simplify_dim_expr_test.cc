@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include <atomic>
 #include "gtest/gtest.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
-namespace cinn::common::test {
-
-using namespace symbol;  // NOLINT
+namespace symbol::test {
 
 namespace {
 
@@ -137,4 +135,4 @@ TEST(Simplify, NestSymbolicMulAddUnit) {
   ASSERT_TRUE((simplified_dim_expr.Has<std::string>()));
   ASSERT_TRUE((simplified_dim_expr == sym));
 }
-}  // namespace cinn::common::test
+}  // namespace symbol::test
