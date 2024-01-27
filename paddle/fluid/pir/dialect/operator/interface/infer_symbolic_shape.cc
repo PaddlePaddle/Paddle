@@ -763,8 +763,12 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto attributes = op->attributes();
-  bool keepdim = attributes["keep_dim"].dyn_cast<pir::BoolAttribute>().data();
+  const auto &attr_map = op->attributes();
+  PADDLE_ENFORCE(
+      attr_map.count("keep_dim"),
+      phi::errors::PreconditionNotMet(
+          "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
+  bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
   auto axis = GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::ReduceInferDim(
