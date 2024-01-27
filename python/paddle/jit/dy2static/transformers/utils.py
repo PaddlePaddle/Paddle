@@ -106,8 +106,8 @@ def create_name_str(name_ids):
     if not name_ids:
         return 'None'
 
-    names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
-    return "(%s, )" % ','.join(names_str)
+    names_str = ["'{}'".format(name.replace("'", "\\'")) for name in name_ids]
+    return "({}, )".format(','.join(names_str))
 
 
 def create_function_def_node(nodes, name, input_args, return_name_ids):
@@ -244,8 +244,7 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
         raise TypeError(
-            'name_ids must be list or tuple or set, but received %s'
-            % type(type(name_ids))
+            f'name_ids must be list or tuple or set, but received {type(name_ids)}'
         )
 
     def create_node_for_name(name):
