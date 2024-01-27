@@ -396,10 +396,15 @@ inline bool horizontal_with_injective(
     return true;
   }
 
-  if (!is_same_size(first, second)) {
-    return false;
+  if (horizontal_relation(first, second, OpPatternKind::kInjective)) {
+    return true;
   }
-  return horizontal_relation(first, second, OpPatternKind::kInjective);
+
+  if (is_same_size(first, second)) {
+    return true;
+  }
+
+  return true;
 }
 
 inline bool injective_horizontal_with_reduce(
