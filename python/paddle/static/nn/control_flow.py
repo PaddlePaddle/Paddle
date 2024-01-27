@@ -792,7 +792,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             value.set_type(value_new_type)
             cur_block.args()[idx].set_type(value_new_type)
             while_op.results()[idx].set_type(value_new_type)
-        print(paddle.static.default_main_program())
         return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
@@ -1654,8 +1653,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             variable_true_output,
             variable_false_output,
         ) = output_selector.get_variable_outputs()
-
-        print(variable_true_output, variable_false_output)
 
         with if_op.true_block():
             cf_yield(variable_true_output)
