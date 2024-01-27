@@ -141,7 +141,6 @@ class DynamicToStaticConverter {
   void VisitEachValue(cinn::dialect::FusionOp fusion_op,
                       const DoEachT& DoEach) {
     for (pir::Operation* op : fusion_op.GetOperators()) {
-      VLOG(0) << "VisitEachValue op: " << op->name();
       for (std::size_t i = 0; i < op->num_operands(); ++i) {
         DoEach(op->operand_source(i));
       }
@@ -182,8 +181,6 @@ class DynamicToStaticConverter {
     CHECK(shape_analysis_->HasShapeOrDataForValue(value));
     const auto& origin_shape = GetOriginValueShape(value);
     const auto& target_shape = GetTargetValueShape(value);
-    VLOG(0) << "UpdateValueShape value.defining_op: "
-            << value.defining_op()->name();
     CHECK_EQ(origin_shape.size(), target_shape.size());
     for (std::size_t i = 0; i < origin_shape.size(); ++i) {
       if (origin_shape.at(i) == -1) {

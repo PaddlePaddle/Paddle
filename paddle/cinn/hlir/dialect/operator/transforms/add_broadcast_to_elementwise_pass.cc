@@ -83,16 +83,6 @@ bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
-  if (op->operand_source(0)
-          .type()
-          .dyn_cast<pir::ShapedTypeInterface>()
-          .IsDynamicShape() ||
-      op->operand_source(1)
-          .type()
-          .dyn_cast<pir::ShapedTypeInterface>()
-          .IsDynamicShape()) {
-    return false;
-  }
   auto x_dims = op->operand_source(0)
                     .type()
                     .dyn_cast<paddle::dialect::DenseTensorType>()
