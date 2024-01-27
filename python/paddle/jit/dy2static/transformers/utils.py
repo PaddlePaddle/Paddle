@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import copy
 
+import numpy as np
+
 from paddle.jit.dy2static.ast_utils import ast_to_source_code
 from paddle.utils import gast
 
@@ -160,7 +162,7 @@ def is_api_in_module(node, module_prefix):
         node, gast.Call
     ), "Input non-Call node for is_api_in_module"
 
-    # Python can have gast.Call as function, for example: covert_call(func)(x)
+    # Python can have gast.Call as function, for example: convert_call(func)(x)
     # We only check the most outside function
     func_node = node.func
     while isinstance(func_node, gast.Call):
@@ -168,11 +170,14 @@ def is_api_in_module(node, module_prefix):
 
     func_str = ast_to_source_code(func_node).strip()
     try:
-        import numpy as np  # noqa: F401
+        import paddle.jit.dy2static as _jst
 
-        import paddle.jit.dy2static as _jst  # noqa: F401
+        globals = {
+            'np': np,
+            '_jst': _jst,
+        }
 
-        fn = eval(func_str)
+        fn = eval(func_str, globals)
         return is_api_in_module_helper(fn, module_prefix)
     except Exception:
         return False
