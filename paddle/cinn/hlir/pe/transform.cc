@@ -1014,7 +1014,7 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const std::string& output_name) {
   std::vector<int> input_shape;
   for (const auto& shape : A->shape) {
-    input_shape.emplace_back(shape.as_int32());
+    input_shape.emplace_back(shape.as_int64());
   }
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
@@ -1026,6 +1026,60 @@ ir::Tensor Slice(const ir::Tensor& A,
       new_starts[i] = input_shape[axes[i]] - 1;
     }
   }
+
+  // output = input[starts:ends:strides]
+  // Note that when strides < 0, the output reverse:
+  // data=[[1,2,3,4],[5,6,7,8],]
+  // axes=[0,1]
+  // starts=[1,3]
+  // ends=[2,0]
+  // strides=[1,-1]
+  // ==> result=[[8,7,6],]
+  return Compute(
+      output_shape,
+      [=](const std::vector<Expr>& indice) {
+        std::vector<Expr> temp;
+        int indice_i = 0;
+        for (int i = 0; i < input_shape.size(); ++i) {
+          if (std::find(decrease_axis.cbegin(), decrease_axis.cend(), i) !=
+              decrease_axis.cend()) {
+            temp.emplace_back(0);
+          } else {
+            temp.emplace_back(indice[indice_i]);
+            indice_i++;
+          }
+        }
+        for (int i = 0; i < axes.size(); i++) {
+          temp[axes[i]] =
+              temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
+        }
+        return A(temp);
+      },
+      output_name);
+}
+
+ir::Tensor SliceSymbolic(const ir::Tensor& A,
+                         const std::vector<int>& starts,
+                         const std::vector<int>& axes,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& decrease_axis,
+                         const std::vector<Expr>& output_shape,
+                         const std::string& output_name) {
+  std::vector<Expr> input_shape;
+  for (const auto& shape : A->shape) {
+    input_shape.emplace_back(shape);
+  }
+  // hard case for symbolic
+  std::vector<int> new_starts(starts);
+  // for (int i = 0; i < axes.size(); i++) {
+  //   if (new_starts[i] < -input_shape[axes[i]]) {
+  //     new_starts[i] = 0;
+  //   } else if (new_starts[i] < 0) {
+  //     new_starts[i] = input_shape[axes[i]] + new_starts[i];
+  //   } else if (new_starts[i] > input_shape[axes[i]]) {
+  //     new_starts[i] = input_shape[axes[i]] - 1;
+  //   }
+  // }
 
   // output = input[starts:ends:strides]
   // Note that when strides < 0, the output reverse:
