@@ -23,12 +23,12 @@
 template <typename T = int64_t>
 std::vector<T> GetVectorAttr(const ::pir::Operation *op,
                              const std::string &name) {
-  auto &attr_map = op->attributes();
+  const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(name),
       phi::errors::PreconditionNotMet(
           "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
-  auto &val = attr_map.at(name);
+  const auto &val = attr_map.at(name);
 
   PADDLE_ENFORCE(val.isa<::pir::ArrayAttribute>(),
                  phi::errors::PreconditionNotMet(
@@ -758,9 +758,37 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-  return true;
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool ReduceInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto attributes = op->attributes();
+  bool keepdim = attributes["keep_dim"].dyn_cast<pir::BoolAttribute>().data();
+  auto axis = GetVectorAttr(op, "dim");
+  bool reduce_all = axis.size() == 0 ? true : false;
+  return paddle::dialect::ReduceInferDim(
+      op, shape_analysis, axis, keepdim, reduce_all);
+}
+
+bool ReduceMaxInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
+bool ReduceMinInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
+bool ReduceProdInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
+bool ReduceSumInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
 }  // namespace cinn::dialect
