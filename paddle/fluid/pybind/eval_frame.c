@@ -298,11 +298,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
-#if PY_VERSION_HEX >= 0x030c0000
-  if (true) {
-#else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
-#endif
 #else
   if (frame->f_code->co_flags & 0x20) {
     out = eval_frame_default(tstate, frame, throw_flag);
