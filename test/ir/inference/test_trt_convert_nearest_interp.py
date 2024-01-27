@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -42,7 +44,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for (
@@ -97,7 +99,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}

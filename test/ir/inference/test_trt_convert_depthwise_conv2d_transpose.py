@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -56,12 +58,12 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, attrs: list[dict[str, Any]]):
             return np.ones([batch, attrs[0]['groups'], 64, 64]).astype(
                 np.float32
             )
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([attrs[0]['groups'], 1, 3, 3]).astype(
                 np.float32
             )
@@ -130,7 +132,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {

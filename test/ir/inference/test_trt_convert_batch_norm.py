@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -29,7 +31,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch):
+        def generate_input1(attrs: list[dict[str, Any]], batch):
             if self.dims == 4:
                 if attrs[0]['data_layout'] == "NCHW":
                     return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -40,19 +42,19 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             elif self.dims == 2:
                 return np.ones([batch, 3]).astype(np.float32)
 
-        def generate_bias(attrs: List[Dict[str, Any]], batch):
+        def generate_bias(attrs: list[dict[str, Any]], batch):
             return np.full((3), 0.9).astype("float32")
 
-        def generate_mean(attrs: List[Dict[str, Any]], batch):
+        def generate_mean(attrs: list[dict[str, Any]], batch):
             return np.full((3), 0.9).astype("float32")
 
-        def generate_scale(attrs: List[Dict[str, Any]], batch):
+        def generate_scale(attrs: list[dict[str, Any]], batch):
             return np.full((3), 1.1).astype("float32")
 
-        def generate_variance(attrs: List[Dict[str, Any]], batch):
+        def generate_variance(attrs: list[dict[str, Any]], batch):
             return np.full((3), 1.2).astype("float32")
 
-        def generate_MomentumTensor(attrs: List[Dict[str, Any]], batch):
+        def generate_MomentumTensor(attrs: list[dict[str, Any]], batch):
             return np.full((3), 0.9).astype("float32")
 
         for dims, num_input, batch, epsilon, data_layout, momentum in product(
@@ -156,7 +158,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:

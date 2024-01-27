@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -205,7 +207,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

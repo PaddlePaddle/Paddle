@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -176,7 +179,7 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs, inputs):
             conv2d_c = inputs['conv2d_input'].shape[1]

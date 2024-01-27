@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -34,7 +36,7 @@ class TrtConvertStridedSliceTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
         for axes, starts, ends, decrease_axis, infer_flags, strides in product(
@@ -82,7 +84,7 @@ class TrtConvertStridedSliceTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
@@ -145,7 +147,7 @@ class TrtConvertStridedSliceTest2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
         for axes in [[1, 2], [2, 3], [1, 3]]:
@@ -200,7 +202,9 @@ class TrtConvertStridedSliceTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 56, 56, 192]

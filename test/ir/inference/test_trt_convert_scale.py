@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -29,7 +31,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch, is_int):
+        def generate_input1(attrs: list[dict[str, Any]], batch, is_int):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(
                     np.int32 if is_int else np.float32
@@ -47,7 +49,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             elif self.dims == 0:
                 return np.ones([]).astype(np.int32 if is_int else np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]], is_int):
+        def generate_weight1(attrs: list[dict[str, Any]], is_int):
             return np.ones([1]).astype(np.int32 if is_int else np.float32)
 
         for (
@@ -130,7 +132,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:

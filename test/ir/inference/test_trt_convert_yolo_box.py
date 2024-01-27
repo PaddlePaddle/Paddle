@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -30,7 +32,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch, channel):
+        def generate_input1(attrs: list[dict[str, Any]], batch, channel):
             if attrs[0]['iou_aware']:
                 return np.ones([batch, 3 * (channel + 6), 13, 13]).astype(
                     np.float32
@@ -40,7 +42,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                     np.float32
                 )
 
-        def generate_input2(attrs: List[Dict[str, Any]], batch):
+        def generate_input2(attrs: list[dict[str, Any]], batch):
             return np.random.random([batch, 2]).astype(np.int32)
 
         for (
@@ -120,7 +122,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, Tuple[paddle_infer.Config, List[int], float] | None
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
         def generate_dynamic_shape(attrs):
             if attrs[0]['iou_aware']:
