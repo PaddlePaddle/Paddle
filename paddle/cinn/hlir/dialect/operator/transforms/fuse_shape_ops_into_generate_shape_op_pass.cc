@@ -61,11 +61,14 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
   const auto& IsDimTensor = [&](pir::Value value) -> bool {
     return ShapeOrDataDimExprs4Value(value).data().has_value();
   };
+  const auto& IsFromCombineOp = [&](pir::Value value) -> bool {
+    return value.defining_op()->isa<pir::CombineOp>();
+  };
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         ForEachInputValue(value, [&](pir::Value input) {
-          if (IsDimTensor(input)) {
+          if (IsFromCombineOp(input) || IsDimTensor(input)) {
             Visit(input);
           }
         });
@@ -75,7 +78,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     size_t input_cnt = 0;
     ForEachInputValue(value, [&](pir::Value input) {
       ++input_cnt;
-      if (IsDimTensor(input)) return;
+      if (IsFromCombineOp(input) || IsDimTensor(input)) return;
       Emplace(input);
     });
     if (input_cnt == 0) {
