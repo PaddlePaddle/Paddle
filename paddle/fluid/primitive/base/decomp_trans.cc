@@ -273,13 +273,11 @@ void DecompProgram::decomp_program() {
   for (size_t i = 0; i < src_vars_.size(); i++) {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
-  if (VLOG_IS_ON(4)) {
-    std::ostringstream orig_prog_stream;
-    program_->Print(orig_prog_stream);
-    // Use cout instead of VLOG in case of incomplete log.
-    std::cout << "[Prim] Origin program before decomp :\n"
-              << orig_prog_stream.str() << std::endl;
-  }
+  std::ostringstream orig_prog_stream;
+  program_->Print(orig_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
+  VLOG(4) << "[Prim] Origin program before decomp :\n"
+          << orig_prog_stream.str();
 
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return;
@@ -332,13 +330,10 @@ void DecompProgram::decomp_program() {
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
   builder.SetInsertionPointToBlockEnd(block);
-  if (VLOG_IS_ON(4)) {
-    std::ostringstream orig_prog_stream;
-    program_->Print(orig_prog_stream);
-    // Use cout instead of VLOG in case of incomplete log.
-    std::cout << "[Prim] New program after decomp :\n"
-              << orig_prog_stream.str() << std::endl;
-  }
+  std::ostringstream decomp_prog_stream;
+  program_->Print(decomp_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
+  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
   dst_vars_ = tar_vars;
   return;
 }
