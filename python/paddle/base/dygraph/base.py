@@ -901,6 +901,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             [3, 2]
             [3, 2]
     """
+    return paddle.to_tensor(value, dtype=dtype)
     support_type = (
         list,
         tuple,
