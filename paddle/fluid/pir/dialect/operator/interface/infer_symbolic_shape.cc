@@ -756,11 +756,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool ScaleOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return SameOperandsAndResultShape(op, shape_analysis);
-}
-
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &attr_map = op->attributes();
@@ -775,22 +770,22 @@ bool ReduceInferSymbolicShape(pir::Operation *op,
       op, shape_analysis, axis, keepdim, reduce_all);
 }
 
-bool ReduceMaxInferSymbolicShape(
+bool ReduceMaxOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
-bool ReduceMinInferSymbolicShape(
+bool ReduceMinOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
-bool ReduceProdInferSymbolicShape(
+bool ReduceProdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
-bool ReduceSumInferSymbolicShape(
+bool ReduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
 }

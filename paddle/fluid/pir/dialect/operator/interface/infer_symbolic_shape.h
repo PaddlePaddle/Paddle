@@ -185,18 +185,17 @@ bool Relu_OpInferSymbolicShape(pir::Operation *op,
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
+using paddle::dialect::ScaleOpInferSymbolicShape;
 
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ScaleOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReduceMaxInferSymbolicShape(
+bool ReduceMaxOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReduceMinInferSymbolicShape(
+bool ReduceMinOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReduceProdInferSymbolicShape(
+bool ReduceProdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
-bool ReduceSumInferSymbolicShape(
+bool ReduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 }  // namespace cinn::dialect
