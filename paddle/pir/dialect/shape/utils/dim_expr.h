@@ -237,6 +237,15 @@ class ShapeOrData {
   const std::optional<std::vector<T>>& data() const { return data_; }
   void SetData(const std::vector<T>& data) { data_ = data; }
 
+  bool operator==(const ShapeOrData<T>& other) const {
+    // TODO(zhangbopd): dim_expr_simplify related funcs should be called here.
+    return shape_ == other.shape_ && data_ == other.data_;
+  }
+
+  bool operator!=(const ShapeOrData<T>& other) const {
+    return !(*this == other);
+  }
+
  private:
   std::vector<T> shape_;
   std::optional<std::vector<T>> data_;
@@ -269,6 +278,14 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
 
   const ShapeOrDataDimExprsBase& variant() const {
     return static_cast<const ShapeOrDataDimExprsBase&>(*this);
+  }
+
+  bool operator==(const ShapeOrDataDimExprs& other) const {
+    return this->variant() == other.variant();
+  }
+
+  bool operator!=(const ShapeOrDataDimExprs& other) const {
+    return !(*this == other);
   }
 
   const std::vector<DimExpr>& shape() const {
