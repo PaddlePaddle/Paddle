@@ -36,6 +36,8 @@ pir::OpResult parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 
+void shadow_output(const pir::Value& persist_value, const std::string& name);
+
 pir::OpResult embedding_grad(const pir::Value& x,
                              const pir::Value& weight,
                              const pir::Value& out_grad,

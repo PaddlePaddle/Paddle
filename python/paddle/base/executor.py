@@ -1141,7 +1141,7 @@ class _ExecutorCache:
         data_op_infos = []
         global_block = program.global_block()
         for op in global_block.ops:
-            if op.name() == 'pd_op.data':
+            if op.name() == 'pd_op.data' and not op.has_attr("is_persisable"):
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
@@ -2082,7 +2082,6 @@ class Executor:
             self.place,
             scope,
         )
-
         self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
