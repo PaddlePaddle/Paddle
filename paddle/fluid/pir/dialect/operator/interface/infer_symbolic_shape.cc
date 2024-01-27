@@ -257,15 +257,14 @@ bool ShapeSrOpInferSymbolicShape(
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
-  symbol::ShapeOrDataDimExprs operand_shape_or_data =
+  const auto &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 
   std::vector<symbol::DimExpr> out_dims;
   std::vector<symbol::DimExpr> out_dims_data;
   if (operand_shape_or_data.data().has_value()) {
     out_dims_data = operand_shape_or_data.data().value();
-    out_dims.emplace_back(
-        static_cast<std::int64_t>(operand_shape_or_data.shape().size()));
+    out_dims = operand_shape_or_data.shape();
   }
   // else : pir::VectorType x =
   // operand_source.type().dyn_cast<pir::VectorType>();
@@ -740,19 +739,17 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> out_dims;
   if (operand_shape_or_data.data().has_value()) {
     out_dims.push_back(operand_shape_or_data.data().value()[start]);
+    symbol::ShapeOrDataDimExprs shape_data{symbol::TensorShapeOrDataDimExprs(
+        std::vector<symbol::DimExpr>{out_dims.size()}, out_dims)};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+    op->set_attribute("symbolic_shape",
+                      pir::shape::SymbolAttribute::get(
+                          pir::IrContext::Instance(), shape_data));
+    return true;
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  if (operand_shape_or_data.data().has_value()) {
-    shape_data.SetData(operand_shape_or_data.shape());
-  }
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-
-  pir::Value res = op->result(0);
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
   return true;
 }
 
