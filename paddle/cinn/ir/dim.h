@@ -22,7 +22,6 @@ namespace cinn {
 namespace ir {
 
 struct _Dim_;
-using pir::shape::SymbolicDimOp;
 
 //! Wrapper for _Dim_
 class Dim : public IrNodeRef {

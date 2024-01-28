@@ -212,7 +212,7 @@ def is_floating_point(x):
 
 
 def is_integer(x):
-    """Return whether x is a tensor of integeral data type.
+    """Return whether x is a tensor of integral data type.
 
     Args:
         x (Tensor): The input tensor.
@@ -238,7 +238,7 @@ def is_integer(x):
             True
     """
     if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.OpResult)
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
     ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype

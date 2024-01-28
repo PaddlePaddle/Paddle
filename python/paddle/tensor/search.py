@@ -176,7 +176,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             [[2 2 0 1]]
     """
     if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.OpResult)
+        axis, (int, Variable, paddle.pir.Value)
     ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmax, but received %s."
@@ -269,7 +269,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             [[1 1 1 2]]
     """
     if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.OpResult)
+        axis, (int, Variable, paddle.pir.Value)
     ):
         raise TypeError(
             "The type of 'axis'  must be int or Tensor or None in argmin, but received %s."
@@ -1239,7 +1239,7 @@ def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     Args:
         x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
         ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
-            it is the cumulative probalitity threshold to limit low probality input.
+            it is the cumulative probability threshold to limit low probability input.
         threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
             it is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
         seed(int, optional): the random seed,

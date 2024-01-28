@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 
 from . import core, unique_name
+from .data_feeder import convert_dtype
 from .framework import (
     Variable,
     _current_expected_place,
@@ -97,9 +98,7 @@ class LayerHelperBase:
                 name if name else None,
                 True,
             )
-        elif isinstance(
-            value, (Variable, core.eager.Tensor, paddle.pir.OpResult)
-        ):
+        elif isinstance(value, (Variable, core.eager.Tensor, paddle.pir.Value)):
             return value
         else:
             raise TypeError(
@@ -361,6 +360,8 @@ class LayerHelperBase:
         # set global dtype
         if not dtype:
             dtype = self.__dtype
+        if isinstance(dtype, core.DataType):
+            dtype = convert_dtype(dtype)
         if is_bias:
             suffix = 'b'
             default_initializer = (

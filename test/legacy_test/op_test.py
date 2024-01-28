@@ -431,6 +431,7 @@ class OpTest(unittest.TestCase):
         cls.check_prim = False
         cls.check_prim_pir = False
         cls._check_cinn = False
+        cls.check_pir_onednn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -1407,16 +1408,14 @@ class OpTest(unittest.TestCase):
                             else:
                                 ret_to_check.append(var)
                                 fetch_list.append(var)
-                    elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.pir.OpResult
-                    ):
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
                         fetch_list.append(ret_tuple)
                         ret_to_check = ret_tuple
                     elif ret_tuple is None:
                         pass
                     else:
                         raise ValueError(
-                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
 
                 # executor run
@@ -2644,7 +2643,7 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_pir_onednn and self.is_mkldnn_op():
+        if check_pir_onednn:
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
@@ -3875,7 +3874,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.pir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.Value
                         ):
                             cast_outputs.append(
                                 paddle.cast(

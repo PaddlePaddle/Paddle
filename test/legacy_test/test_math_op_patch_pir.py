@@ -533,11 +533,13 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     int(x)
                 with self.assertRaises(TypeError):
                     float(x)
+                with self.assertRaises(TypeError):
+                    bool(x)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')
-            self.assertTrue(isinstance(a, paddle.pir.OpResult))
+            self.assertTrue(isinstance(a, paddle.pir.Value))
             self.assertTrue(inspect.ismethod(a.dot))
             self.assertTrue(inspect.ismethod(a.logsumexp))
             self.assertTrue(inspect.ismethod(a.multiplex))

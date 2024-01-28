@@ -61,7 +61,7 @@ class BlockArgumentImpl : public ValueImpl {
 
 BlockArgumentImpl::~BlockArgumentImpl() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destoryed a blockargument that is still in use.";
+    LOG(FATAL) << "Destroyed a block argument that is still in use.";
   }
 }
 

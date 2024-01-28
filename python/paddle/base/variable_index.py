@@ -82,12 +82,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
 
-    if type(ele) is int:
-        return True
-    elif isinstance(ele, Variable):
+    if isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.Value):
@@ -113,7 +111,6 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
         attrs[attr_name] = attr
 
 
-# the item is a tensor of bool
 def get_value_for_bool_tensor(var, item):
     if len(item.shape) > len(var.shape):
         raise IndexError(
@@ -155,7 +152,7 @@ def _setitem_for_tensor_array(var, item, value):
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+        from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -242,17 +239,11 @@ def slice_is_same_to_original(start, end, step):
         return True
 
     # If there is Variable, we cannot determine whether it is the same to original.
-    if isinstance(
-        start, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(start, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        end, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(end, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        step, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(step, (paddle.base.Variable, paddle.pir.Value)):
         return False
     return start == 0 and end == MAX_INTEGER and step == 1
 
@@ -291,10 +282,9 @@ def parse_index(x, indices):
     dim = 0
     for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
-        if is_integer_or_scalar_tensor(slice_item):
+        if type(slice_item) is int:
             if (
                 not is_tensor_array
-                and isinstance(slice_item, int)
                 and x.shape[dim] is not None
                 and x.shape[dim] >= 0
                 and slice_item >= x.shape[dim]
@@ -314,6 +304,13 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
+        elif is_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1
             dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
@@ -602,9 +599,7 @@ def _setitem_static(x, indices, values):
         #   3. assign values to the sliced result by index_put OP;
         #   4. transpose back and assign the result to original tensor by set_value OP.
 
-        if not isinstance(
-            values, (Variable, paddle.pir.Value, paddle.pir.OpResult)
-        ):
+        if not isinstance(values, (Variable, paddle.pir.Value)):
             values = paddle.assign(values).astype(x.dtype)
 
         sub_tensor, is_view = get_tensor_with_basic_indexing(
@@ -633,12 +628,31 @@ def _setitem_static(x, indices, values):
             values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
-            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
-            transed_sub_tensor = transed_sub_tensor.index_put_(
-                adjusted_advanced_index, values
-            )
-            if not is_view:
-                return transed_sub_tensor
+            if (
+                len(adjusted_advanced_index) == 1
+                and adjusted_advanced_index[0].dtype
+                in (paddle.bool, paddle.base.libpaddle.BOOL)
+                and len(
+                    adjusted_advanced_index[0].shape
+                    == len(transed_sub_tensor.shape)
+                )
+            ):
+                if values.shape != transed_sub_tensor.shape:
+                    values = values.expand(transed_sub_tensor.shape)
+                transed_sub_tensor = paddle._C_ops.where_(
+                    paddle.logical_not(adjusted_advanced_index[0]),
+                    transed_sub_tensor,
+                    values,
+                )
+                if not is_view:
+                    return x
+            else:
+                # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+                transed_sub_tensor = transed_sub_tensor.index_put_(
+                    adjusted_advanced_index, values
+                )
+                if not is_view:
+                    return x
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
@@ -751,6 +765,8 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
+                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
@@ -763,7 +779,16 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st), False
+                        if len(decrease_axes) > 0:
+                            return (
+                                paddle._pir_ops.slice_array_dense(x, st),
+                                False,
+                            )
+                        else:
+                            return (
+                                paddle._pir_ops.slice_array(x, st, end),
+                                False,
+                            )
                 out = paddle._C_ops.slice(
                     x,
                     axes,
@@ -853,10 +878,9 @@ def _getitem_static(x, indices):
         ) = deal_advanced_index(out, advanced_index, False, None)
 
         # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
-        if (
-            len(adjusted_advanced_index) == 1
-            and adjusted_advanced_index[0].dtype == paddle.bool
-        ):
+        if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
+            0
+        ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
             # Note: now slice not support 0-size Tensor, so only one bool tensor can return empty 0-size.
             out = get_value_for_bool_tensor(
                 transed_tensor, adjusted_advanced_index[0]

@@ -349,6 +349,20 @@ class ShardingPass(PassBase):
                                 OP_ROLE_KEY: op_role,
                             },
                         )
+                        dist_attr = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                out_var
+                            )
+                        )
+
+                        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                            main_block.ops[idx],
+                            dist_attr.process_mesh,
+                            dist_attr.dims_mapping,
+                            self._dist_context,
+                            chunk_id=dist_attr.chunk_id,
+                        )
+
                     else:
                         main_block._remove_op(idx, sync=False)
 
@@ -1713,7 +1727,7 @@ def re_order_program(block, param_grads, dist_context):
         if len(use_order) == len(pname_to_pg_pairs):
             break
 
-    # reorder optimzier
+    # reorder optimizer
     last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)
