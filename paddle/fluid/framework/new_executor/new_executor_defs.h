@@ -309,7 +309,7 @@ class Instruction {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool need_record_stream_for_gc_ = false;
   gpuStream_t stream_{nullptr};
-  void UpdataRecordStreamForGcInfo();
+  void UpdateRecordStreamForGcInfo();
 #endif
 
   bool can_use_infermeta_ctx_ = false;
