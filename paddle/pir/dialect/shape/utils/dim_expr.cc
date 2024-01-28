@@ -181,7 +181,8 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
   return stream;
 }
 
-std::ostream& operator<<(std::ostream&, const std::vector<DimExpr>& dim_exprs) {
+std::ostream& operator<<(std::ostream& stream,
+                         const std::vector<DimExpr>& dim_exprs) {
   std::stringstream ss;
   ss << "[";
   for (size_t i = 0; i < dim_exprs.size(); ++i) {
