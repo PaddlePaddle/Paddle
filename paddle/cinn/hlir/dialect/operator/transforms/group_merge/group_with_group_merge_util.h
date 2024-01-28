@@ -400,11 +400,7 @@ inline bool horizontal_with_injective(
     return true;
   }
 
-  if (is_same_size(first, second)) {
-    return true;
-  }
-
-  return true;
+  return false;
 }
 
 inline bool injective_horizontal_with_reduce(
