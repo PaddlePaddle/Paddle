@@ -3,10 +3,7 @@ paddle_test(
   SRCS
   pattern_rewrite_test.cc
   DEPS
-  gtest
-  op_dialect_vjp
-  pir
-  pir_transforms)
+  op_dialect_vjp)
 
 paddle_test(drr_test SRCS drr_test.cc DEPS drr pir_transforms)
 
@@ -16,10 +13,7 @@ paddle_test(
   drr_same_type_binding_test.cc
   DEPS
   drr
-  gtest
-  op_dialect_vjp
-  pir
-  pir_transforms)
+  op_dialect_vjp)
 
 paddle_test(
   drr_fuse_linear_test
@@ -27,10 +21,7 @@ paddle_test(
   drr_fuse_linear_test.cc
   DEPS
   pir_transforms
-  drr
-  gtest
-  op_dialect_vjp
-  pir)
+  drr)
 
 paddle_test(
   drr_fuse_linear_param_grad_add_test
@@ -39,8 +30,6 @@ paddle_test(
   DEPS
   pir_transforms
   drr
-  gtest
-  op_dialect_vjp
   pir)
 
 paddle_test(
@@ -50,6 +39,4 @@ paddle_test(
   DEPS
   pir_transforms
   drr
-  gtest
-  op_dialect_vjp
   pir)
