@@ -561,7 +561,8 @@ class OpcodeExecutorBase:
             breakpoint()  # noqa: T100
 
         opname = instr.opname if instr.opname != "PRECALL" else "PRECALL__CALL"
-        assert opname != "CALL", "CALL should fused with PRECALL"
+        if sys.version_info < (3, 12):
+            assert opname != "CALL", "CALL should fused with PRECALL"
         with EventGuard(f"{opname}", event_level=2):
             return getattr(self, opname)(instr)  # run single step.
 
@@ -716,7 +717,33 @@ class OpcodeExecutorBase:
 
     @call_break_graph_decorator(push_n=1)
     def LOAD_ATTR(self, instr: Instruction):
-        attr_name = self._code.co_names[instr.arg]
+        if sys.version_info >= (3, 12):
+            assert isinstance(instr.arg, int)
+            attr_name = self._code.co_names[instr.arg >> 1]
+        else:
+            attr_name = self._code.co_names[instr.arg]
+        if sys.version_info >= (3, 12) and instr.arg & 1:
+            attr_name_var = ConstantVariable.wrap_literal(
+                attr_name, self._graph
+            )
+            obj = self.stack.pop()
+
+            method = BuiltinVariable(
+                getattr, graph=self._graph, tracker=DanglingTracker()
+            )(obj, attr_name_var)
+
+            if isinstance(method, MethodVariable) and "__getattr__" not in dir(
+                method.bound_instance.get_py_type()
+            ):
+                # bound method or the class override the __getattr__
+                # push the unbound method and the self
+                self.stack.push(method.fn)
+                self.stack.push(obj)
+            else:
+                # unbound method, push the dummy and the function
+                self.stack.push(NullVariable())
+                self.stack.push(method)
+            return
         attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
         obj = self.stack.pop()
         self.stack.push(
