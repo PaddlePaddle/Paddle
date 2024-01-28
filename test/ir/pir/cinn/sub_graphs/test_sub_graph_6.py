@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # repo: PaddleClas
-# model: ppcls^configs^ImageNet^Distillation^resnet34_distill_resnet18_afd
-# api:paddle.nn.functional.pooling.max_pool2d
+# model: ppcls^configs^ImageNet^LeViT^LeViT_128
+# api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.split||api:paddle.tensor.linalg.transpose||api:paddle.tensor.linalg.transpose
 import unittest
 
 import numpy as np
@@ -22,33 +22,25 @@ import numpy as np
 import paddle
 
 
-class MaxPool2dCase(paddle.nn.Layer):
+class LayerCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(
         self,
-        var_0,  # (shape: [22, 64, 112, 112], dtype: paddle.float32, stop_gradient: False)
+        var_0,  # (shape: [10, 196, 640], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.nn.functional.pooling.max_pool2d(
-            var_0,
-            kernel_size=3,
-            stride=2,
-            padding=1,
-            return_mask=False,
-            ceil_mode=False,
-            data_format='NCHW',
-            name=None,
-        )
-        return var_1
+        var_1 = paddle.tensor.manipulation.reshape(var_0, [10, 196, 8, -1])
+        var_2, var_3 = paddle.tensor.manipulation.split(var_1, [16, 64], axis=3)
+        var_4 = paddle.tensor.linalg.transpose(var_2, perm=[0, 2, 1, 3])
+        var_5 = paddle.tensor.linalg.transpose(var_3, perm=[0, 2, 1, 3])
+        return var_4, var_5
 
 
-class TestMaxPool2d(unittest.TestCase):
+class TestLayer(unittest.TestCase):
     def setUp(self):
-        self.inputs = (
-            paddle.rand(shape=[22, 64, 112, 112], dtype=paddle.float32),
-        )
-        self.net = MaxPool2dCase()
+        self.inputs = (paddle.rand(shape=[10, 196, 640], dtype=paddle.float32),)
+        self.net = LayerCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
