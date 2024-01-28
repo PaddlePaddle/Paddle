@@ -483,21 +483,27 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     sym_shape.push_back(dim_expr);
   }
 
+  VLOG(0) << "##### operand_shape_or_data: " << operand_shape_or_data;
+
   std::vector<symbol::DimExpr> out_data;
   if (operand_shape_or_data.data().has_value()) {
     for (int64_t i = start; i < end; i++) {
       out_data.push_back(operand_shape_or_data.data().value()[i]);
     }
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape, out_data)};
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  } else {
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape)};
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(sym_shape, out_data)};
+  op->set_attribute("symbolic_shape",
+                    pir::shape::SymbolAttribute::get(
+                        pir::IrContext::Instance(),
+                        shape_analysis->GetShapeOrDataForValue(res)));
 
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
-
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
@@ -976,19 +982,23 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> out_dims;
   if (operand_shape_or_data.data().has_value()) {
     out_dims.push_back(operand_shape_or_data.data().value()[start]);
+    symbol::ShapeOrDataDimExprs shape_data{symbol::TensorShapeOrDataDimExprs(
+        std::vector<symbol::DimExpr>{out_dims.size()}, out_dims)};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+    return true;
+  } else {
+    out_dims.push_back(operand_shape_or_data.shape()[start]);
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  if (operand_shape_or_data.data().has_value()) {
-    shape_data.SetData(operand_shape_or_data.shape());
-  }
-  op->set_attribute(
-      "symbolic_shape",
-      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  op->set_attribute("symbolic_shape",
+                    pir::shape::SymbolAttribute::get(
+                        pir::IrContext::Instance(),
+                        shape_analysis->GetShapeOrDataForValue(op->result(0))));
 
-  pir::Value res = op->result(0);
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
