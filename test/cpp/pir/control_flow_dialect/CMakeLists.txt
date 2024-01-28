@@ -4,8 +4,7 @@ if(NOT WITH_ROCM)
     SRCS
     if_op_test.cc
     DEPS
-    op_dialect_vjp
-    op_dialect)
+    op_dialect_vjp)
 
   paddle_test(
     while_op_test
@@ -13,6 +12,5 @@ if(NOT WITH_ROCM)
     while_op_test.cc
     DEPS
     op_dialect_vjp
-    op_dialect
     device_event_base)
 endif()
