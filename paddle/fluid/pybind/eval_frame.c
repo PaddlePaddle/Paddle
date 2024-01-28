@@ -313,8 +313,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
   // In Python, gen close is also a Python function call that will enter this
   // function with GeneratorExit set, which will cause the PyObject_CallObject
-  // raise SystemError. So we disable the custom behavior for GeneratorExit. def
-  // func():
+  // raise SystemError. So we disable the custom behavior for GeneratorExit.
+  // def func():
   //     iter = iter([1, 2, 3])
   //     for i in iter:
   //         return i # <--- Early return, cause a GeneratorExit thrown,
