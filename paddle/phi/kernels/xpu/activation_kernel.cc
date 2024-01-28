@@ -195,15 +195,16 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  float pow_factor = factor.to<float>();
-  const T* x_data = x.data<T>();
-  T* y_data = out->data<T>();
+  T pow_factor = factor.to<T>();
+  const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
 
   auto xpu_context = dev_ctx.x_context();
   // allocate temp memory for factor on xpu
   xpu::ctx_guard RAII_GUARD(xpu_context);
-  T* factor_data = RAII_GUARD.alloc_l3_or_gm<T>(1);
+  XPUType* factor_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(1);
   PADDLE_ENFORCE_NOT_NULL(
       factor_data, errors::External("XPU alloc_l3_or_gm returns nullptr"));
   memory_utils::Copy(dev_ctx.GetPlace(),
@@ -653,6 +654,9 @@ PD_REGISTER_KERNEL(cos,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
+PD_REGISTER_KERNEL(
+    pow, XPU, ALL_LAYOUT, phi::PowKernel, float, phi::dtype::float16) {}
+
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
 
@@ -660,7 +664,6 @@ PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)

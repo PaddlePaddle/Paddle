@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -107,6 +108,20 @@ class TestMaskedSelectAPI(unittest.TestCase):
             fetch_list=[out],
         )
         self.assertEqual(np.allclose(res, np_out), True)
+
+    def test_simulator_skip_run_mode(self):
+        os.environ['XPUSIM_SKIP_RUN'] = '1'
+        paddle.disable_static(paddle.XPUPlace(0))
+        shape = (88, 6, 8)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        # only check the numel of output
+        np.testing.assert_equal(out.numpy().size, np_x.size)
+        paddle.enable_static()
+        del os.environ['XPUSIM_SKIP_RUN']
 
 
 class TestMaskedSelectError(unittest.TestCase):

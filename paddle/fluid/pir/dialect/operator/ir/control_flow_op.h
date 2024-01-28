@@ -49,7 +49,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
   void VerifySig();
   void VerifyRegion();
 
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -85,7 +85,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -94,7 +94,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {
-  static std::vector<std::vector<pir::OpResult>> Vjp(
+  static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs,
       const std::vector<std::vector<pir::Value>> &outputs,
@@ -161,6 +161,28 @@ class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
   pir::Value data() { return operand_source(1); }
 };
 
+class SelectInputOp : public pir::Op<SelectInputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.select_input"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  void VerifySig();
+  pir::Value mask() { return operand_source(0); }
+  pir::Value out() { return result(0); }
+};
+
+class SelectOutputOp : public pir::Op<SelectOutputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.select_output"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  void VerifySig();
+  pir::Value mask() { return operand_source(0); }
+  pir::Value x() { return operand_source(1); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -168,3 +190,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp);
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp);
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)

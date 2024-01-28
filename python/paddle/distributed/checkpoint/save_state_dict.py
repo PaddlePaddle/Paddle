@@ -139,7 +139,7 @@ def save_state_dict(
             for val in flat_state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
-                ), "Only support dygraph Tensor now, support static DistributedTensor later"
+                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
@@ -188,6 +188,8 @@ def save_state_dict(
                     if local_shape is None or global_offset is None:
                         continue
                     local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
@@ -203,6 +205,7 @@ def save_state_dict(
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
                 ] = file_name
+
         global_state_dict_metadata = []
         global_storage_metadata = []
         global_flatten_mapping = []

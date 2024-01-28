@@ -291,7 +291,7 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
       dilations,
       0,
       phi::errors::InvalidArgument(
-          "The dilation of Op(Conv) should be larget than 0, but received "
+          "The dilation of Op(Conv) should be larger than 0, but received "
           "dilation is %d.",
           dilations));
 
@@ -390,7 +390,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv_xpu). "
+          "length must be equal to 2 for Op(Conv_xpu). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
           "difference of input's dimention and Attr(strides)'s length = %u.",
@@ -405,7 +405,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -1870,7 +1870,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
       x_dims[x_dims_size - 1],
       4,
       phi::errors::InvalidArgument(
-          "The last dim of x should be larget than 4, but received "
+          "The last dim of x should be larger than 4, but received "
           " is %d.",
           x_dims[x_dims_size - 1]));
   // compute left out_dims
@@ -1993,7 +1993,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -2005,7 +2005,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -2331,7 +2331,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -2630,7 +2630,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
         embs_dim.size(),
         2,
         phi::errors::InvalidArgument(
-            "The Emb dim's size shoule be 2, but found %d.", embs_dim.size()));
+            "The Emb dim's size should be 2, but found %d.", embs_dim.size()));
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         dims_bias[0],
@@ -3141,27 +3141,12 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         const bool is_reverse,
                         const bool use_seq,
                         const bool origin_mode,
-                        const bool use_mkldnn,
-                        const std::string& mkldnn_data_type,
-                        const float scale_data,
-                        const float shift_data,
-                        const std::vector<float>& scale_weights,
                         const bool force_fp32_output,
                         MetaTensor* reordered_h0,
                         MetaTensor* xx,
                         MetaTensor* batched_input,
                         MetaTensor* batched_out,
                         MetaTensor* hidden) {
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
-
   DDim x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                         ? common::flatten_to_2d(x_dims, 1)
@@ -3640,13 +3625,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               float alpha,
                               int head_num,
                               int head_dim,
+                              bool qkv_fc_fusion,
                               DataType out_dtype,
                               MetaTensor* qkv,
                               MetaTensor* qkv_max) {
   auto q_dims = q.dims();
   auto k_dims = k.dims();
   auto v_dims = v.dims();
-  // input shape : {B, L, 3*H*D}
+  // input shape : {B, L, 3*H*D} or  {B, L, H*D}
   PADDLE_ENFORCE_EQ(q_dims.size(),
                     3,
                     phi::errors::InvalidArgument("The dim of q should be 3! "
@@ -3671,13 +3657,16 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
         phi::errors::InvalidArgument("The shape of k , v should be the same! "
                                      "But received ."));
   }
+  int hidden_dim =
+      qkv_fc_fusion ? 3 * head_num * head_dim : head_num * head_dim;
   PADDLE_ENFORCE_EQ(
       q_dims[2],
-      3 * head_num * head_dim,
-      phi::errors::InvalidArgument("To support do_fc_qkv_fusion,"
-                                   "The shape of q should be [B, L, 3*H*D]! "
-                                   "But received q_dims[2]: [%d] != 3*H*D.",
-                                   q_dims[2]));
+      hidden_dim,
+      phi::errors::InvalidArgument(
+          "The shape of q should be [B, L, H*D] or [B, L, 3*H*D]! "
+          "But received q_dims[2]: [%d] != expected hidden_dim : [%d].",
+          q_dims[2],
+          hidden_dim));
 
   // output shape: {B, L, HD}
   qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
@@ -3687,4 +3676,35 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
   qkv_max->set_dtype(out_dtype);
   qkv_max->set_layout(q.layout());
 }
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims_size,
+      3,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          x_dims_size));
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_size - 1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "x last dim size should be 1, but received is %d",
+                        x_dims[x_dims_size - 1]));
+  auto y_dims = y.dims();
+  auto y_dims_size = y_dims.size();
+  PADDLE_ENFORCE_EQ(
+      y_dims_size,
+      1,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 3, but received x_dims_size is %d",
+          y_dims_size));
+
+  phi::DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi

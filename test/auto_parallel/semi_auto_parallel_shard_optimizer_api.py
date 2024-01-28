@@ -116,7 +116,10 @@ class TestSemiAutoParallelShardOptimizerAPI:
         # save load
         ckpt_state_dict = opt.state_dict()
         ckpt_state_dict_keys = list(ckpt_state_dict.keys())
-        dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        ckpt_path = os.path.join(
+            self._ckpt_path, "test_shard_optimizer_from_non_shard_layer"
+        )
+        dist.save_state_dict(ckpt_state_dict, ckpt_path)
         linear = paddle.nn.Linear(10, 10)
         new_opt = paddle.optimizer.AdamW(parameters=linear.parameters())
         new_opt = dist.shard_optimizer(new_opt)
@@ -125,7 +128,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
             ckpt_state_dict_keys[i]: v
             for i, (k, v) in enumerate(new_state_dict.items())
         }
-        dist.load_state_dict(new_state_dict, self._ckpt_path)
+        dist.load_state_dict(new_state_dict, ckpt_path)
         assert len(new_state_dict) > 0, "load_state_dict fail"
         for k, v in new_state_dict.items():
             assert k in ckpt_state_dict
@@ -181,7 +184,10 @@ class TestSemiAutoParallelShardOptimizerAPI:
 
         # save load
         ckpt_state_dict = opt.state_dict()
-        dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        ckpt_path = os.path.join(
+            self._ckpt_path, "test_shard_optimizer_master_params"
+        )
+        dist.save_state_dict(ckpt_state_dict, ckpt_path)
         paddle.distributed.barrier()
         expected_local_state_dict = {}
         expected_local_state_dict.setdefault("master_weights", {})
@@ -216,7 +222,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
                 assert (
                     need_load_state_dict[k].numpy().sum() == 0.0
                 ), f"state_dict {k} is not zero"
-        dist.load_state_dict(need_load_state_dict, self._ckpt_path)
+        dist.load_state_dict(need_load_state_dict, ckpt_path)
         opt.set_state_dict(need_load_state_dict)
         new_state_dict = opt.state_dict()
         assert "master_weights" in new_state_dict, new_state_dict

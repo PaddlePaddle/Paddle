@@ -47,8 +47,8 @@ class PTQ(Quantization):
         quantization parameters.
 
         Args:
-            model(Layer) - The model to be quantized.
-            inplace(bool) - Whether to modify the model in-place.
+            model(Layer): The model to be quantized.
+            inplace(bool): Whether to modify the model in-place.
 
         Return: The prepared model for post-training quantization.
 
@@ -118,7 +118,7 @@ class PTQ(Quantization):
             _model.eval()
         assert (
             not model.training
-        ), "Post-Training Quantization shoud not work on training models. Please set evaluation mode by model.eval()."
+        ), "Post-Training Quantization should not work on training models. Please set evaluation mode by model.eval()."
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)

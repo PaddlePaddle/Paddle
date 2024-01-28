@@ -118,8 +118,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
-
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
@@ -1067,7 +1065,7 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
+set_tests_properties(test_cond PROPERTIES TIMEOUT 240)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
@@ -1084,6 +1082,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
+set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
@@ -1435,3 +1434,6 @@ endif()
 
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()
+
+set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)

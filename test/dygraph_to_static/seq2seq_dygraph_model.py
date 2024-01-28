@@ -41,7 +41,7 @@ class BasicLSTMUnit(Layer):
     ):
         super().__init__(dtype)
 
-        self._hiden_size = hidden_size
+        self._hidden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
@@ -52,13 +52,13 @@ class BasicLSTMUnit(Layer):
 
         self._weight = self.create_parameter(
             attr=self._param_attr,
-            shape=[self._input_size + self._hiden_size, 4 * self._hiden_size],
+            shape=[self._input_size + self._hidden_size, 4 * self._hidden_size],
             dtype=self._dtype,
         )
 
         self._bias = self.create_parameter(
             attr=self._bias_attr,
-            shape=[4 * self._hiden_size],
+            shape=[4 * self._hidden_size],
             dtype=self._dtype,
             is_bias=True,
         )

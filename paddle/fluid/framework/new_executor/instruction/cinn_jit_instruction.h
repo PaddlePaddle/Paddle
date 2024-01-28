@@ -49,7 +49,8 @@ class CinnJitInstruction : public InstructionBase {
 
   phi::DeviceContext* dev_ctx_;
 
-  phi::DenseTensor* out_tensor_;
+  int32_t input_tensor_size;
+  int32_t output_tensor_size;
 
   std::vector<phi::DenseTensor*> tensor_args_;
 

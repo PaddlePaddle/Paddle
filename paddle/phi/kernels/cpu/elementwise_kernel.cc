@@ -78,6 +78,23 @@ void HeavisideKernel(const Context& dev_ctx,
       dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
 }
 
+template <typename T, typename Context>
+void CopySignKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::CopySignFunctor<T>, T>(
+        dev_ctx, x, y, funcs::CopySignFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseCopySignFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseCopySignFunctor<T>(), out);
+  }
+}
+
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -148,3 +165,18 @@ PD_REGISTER_KERNEL(heaviside,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(copysign,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CopySignKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

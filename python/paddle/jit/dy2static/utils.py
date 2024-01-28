@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import builtins
-import copy
 import functools
 import importlib.util
 import inspect
@@ -35,18 +36,15 @@ from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.utils import gast
+from paddle.framework import CUDAPinnedPlace
+from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 from .utils_helper import (  # noqa: F401
-    DYGRAPH_MODULE_PREFIX,
-    DYGRAPH_TO_STATIC_MODULE_PREFIX,
     PADDLE_MODULE_PREFIX,
     _is_api_in_module_helper,
     index_in_list,
     is_api_in_module,
-    is_dygraph_api,
-    is_numpy_api,
     is_paddle_api,
 )
 
@@ -95,38 +93,6 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
-
-
-class BaseNodeVisitor(gast.NodeVisitor):
-    """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor.
-    Ancestor nodes are traced to easily support more operations of currently
-    visited node.
-    """
-
-    def __init__(self):
-        self.ancestor_nodes = []
-
-    def visit(self, node):
-        """Visit a node."""
-        self.ancestor_nodes.append(node)
-
-        method = 'visit_' + node.__class__.__name__
-        visitor = getattr(self, method, self.generic_visit)
-        ret = visitor(node)
-        self.ancestor_nodes.pop()
-        return ret
-
-
-dygraph_class_to_static_api = {
-    "CosineDecay": "cosine_decay",
-    "ExponentialDecay": "exponential_decay",
-    "InverseTimeDecay": "inverse_time_decay",
-    "NaturalExpDecay": "natural_exp_decay",
-    "NoamDecay": "noam_decay",
-    "PiecewiseDecay": "piecewise_decay",
-    "PolynomialDecay": "polynomial_decay",
-}
 
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
@@ -314,209 +280,6 @@ def is_paddle_func(func, ignore_white_list=True):
         return flag
     except Exception:
         return False
-
-
-def _delete_keywords_from(node):
-    assert isinstance(node, gast.Call)
-    func_src = ast_to_source_code(node.func)
-
-    full_args = eval(f"inspect.getfullargspec({func_src})")
-    full_args_name = full_args[0]
-
-    node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-
-
-def to_static_api(dygraph_class):
-    if dygraph_class in dygraph_class_to_static_api:
-        return dygraph_class_to_static_api[dygraph_class]
-    else:
-        raise NotImplementedError(
-            f"Paddle dygraph API {dygraph_class} cannot be converted "
-            "to static graph at present."
-        )
-
-
-def _add_keywords_to(node, dygraph_api_name):
-    assert isinstance(node, gast.Call)
-    if dygraph_api_name == "Linear":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "output_dim":
-                ast_keyword.arg = "size"
-
-        node.keywords.append(
-            gast.keyword(
-                arg="num_flatten_dims", value=gast.Constant(value=-1, kind=None)
-            )
-        )
-
-    if dygraph_api_name == "BilinearTensorProduct":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "output_dim":
-                ast_keyword.arg = "size"
-
-    if dygraph_api_name == "PRelu":
-        for ast_keyword in node.keywords:
-            if ast_keyword.arg == "input":
-                ast_keyword.arg = "x"
-
-
-def to_static_ast(node, class_node):
-    assert isinstance(node, gast.Call)
-    assert isinstance(class_node, gast.Call)
-    static_api = to_static_api(class_node.func.attr)
-
-    node.func = gast.Attribute(
-        attr=static_api,
-        ctx=gast.Load(),
-        value=gast.Attribute(
-            attr='layers',
-            ctx=gast.Load(),
-            value=gast.Name(
-                ctx=gast.Load(), id='base', annotation=None, type_comment=None
-            ),
-        ),
-    )
-
-    update_args_of_func(node, class_node, 'forward')
-
-    node.args.extend(class_node.args)
-    node.keywords.extend(class_node.keywords)
-    _add_keywords_to(node, class_node.func.attr)
-    _delete_keywords_from(node)
-
-    gast.fix_missing_locations(node)
-
-    return node
-
-
-def update_args_of_func(node, dygraph_node, method_name):
-    assert isinstance(node, gast.Call)
-    if method_name not in ["__init__", "forward"]:
-        raise ValueError(
-            "The method name of class to update args should be '__init__' or 'forward'"
-        )
-
-    class_src = ast_to_source_code(dygraph_node.func)
-
-    if method_name == "__init__" or eval(
-        f"issubclass({class_src}, paddle.nn.Layer)"
-    ):
-        full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
-        full_args_name = [
-            arg_name for arg_name in full_args[0] if arg_name != "self"
-        ]
-    else:
-        full_args_name = []
-    added_keywords = []
-    for idx, arg in enumerate(node.args):
-        added_keywords.append(gast.keyword(arg=full_args_name[idx], value=arg))
-
-    node.args = []
-    node.keywords = added_keywords + node.keywords
-
-
-def create_api_shape_node(tensor_shape_node):
-    assert isinstance(
-        tensor_shape_node, (gast.Name, gast.Attribute, gast.Subscript)
-    )
-
-    if isinstance(tensor_shape_node, gast.Name):
-        api_shape_node = gast.Call(
-            func=gast.parse('paddle.shape').body[0].value,
-            args=[tensor_shape_node],
-            keywords=[],
-        )
-        return api_shape_node
-
-    if isinstance(tensor_shape_node, gast.Attribute):
-        api_shape_node = gast.Call(
-            func=gast.parse('paddle.shape').body[0].value,
-            args=[tensor_shape_node.value],
-            keywords=[],
-        )
-        return api_shape_node
-
-    if isinstance(tensor_shape_node, gast.Subscript):
-        result_node = copy.deepcopy(tensor_shape_node)
-        result_node.value = create_api_shape_node(result_node.value)
-        return result_node
-
-
-def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
-    return gast.parse(
-        f'{name} = paddle.full({str(shape)}, "{str(value)}", {dtype})'
-    )
-
-
-def get_attribute_full_name(node):
-    assert isinstance(
-        node, gast.Attribute
-    ), "Input non-Attribute node to get attribute full name"
-    return ast_to_source_code(node).strip()
-
-
-def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
-    """
-    If name_ids is list or tuple or set with multiple strings, this function
-    generates gast.Tuple of gast.Name.
-    If the name_ids is single string or contains only 1 string, this function
-    returns gast.Name if gen_tuple_if_single==False else returns gast.Tuple
-    with only one gast.Name
-
-    This function is used at several gast.Return statements.
-    """
-    if isinstance(name_ids, str):
-        name_ids = [name_ids]
-    if not isinstance(name_ids, (list, tuple, set)):
-        raise TypeError(
-            'name_ids must be list or tuple or set, but received %s'
-            % type(type(name_ids))
-        )
-
-    def create_node_for_name(name):
-        if '.' not in name:
-            return gast.Name(
-                id=name, ctx=ctx, annotation=None, type_comment=None
-            )
-        return gast.parse(name).body[0].value
-
-    gast_names = [create_node_for_name(name_id) for name_id in name_ids]
-    if len(gast_names) == 1 and not gen_tuple_if_single:
-        name_node = gast_names[0]
-    else:
-        name_node = gast.Tuple(elts=gast_names, ctx=ctx)
-    return name_node
-
-
-def create_funcDef_node(nodes, name, input_args, return_name_ids):
-    """
-    Wrapper all statements of nodes into one ast.FunctionDef, which can be
-    called by ast.Call.
-    """
-    nodes = copy.copy(nodes)
-    # add return statement
-    if return_name_ids:
-        nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
-    else:
-        nodes.append(gast.Return(value=None))
-    func_def_node = gast.FunctionDef(
-        name=name,
-        args=input_args,
-        body=nodes,
-        decorator_list=[],
-        returns=None,
-        type_comment=None,
-    )
-    return func_def_node
-
-
-def create_assign_node(name, node):
-    """
-    Creates a `gast.Assign` node by given name_id as target and node as value.
-    """
-    targets = generate_name_node(name, ctx=gast.Store())
-    assign_node = gast.Assign(targets=[targets], value=node)
-    return targets, assign_node
 
 
 def get_temp_dir():
@@ -1189,17 +952,6 @@ class GetterSetterHelper:
         self.setter(vars)
 
 
-def create_name_str(name_ids):
-    """
-    Return "('x', 'y')" for [x, y]
-    """
-    if not name_ids:
-        return 'None'
-
-    names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
-    return "(%s, )" % ','.join(names_str)
-
-
 def prim_or_cinn_is_enabled(build_strategy, backend):
     return cinn_is_enabled(build_strategy, backend) or prim_is_enabled()
 
@@ -1279,3 +1031,19 @@ def tensor_name_guard(tensors, names):
     finally:
         for t, name in zip(tensors, origin_names):
             t.name = name
+
+
+def cuda_pinned_tensors_move_to_excepted_place(inputs):
+    if paddle.is_compiled_with_cuda():
+        expected_place = framework._current_expected_place()
+        cuda_pinned_place = CUDAPinnedPlace()
+
+        for value in flatten(inputs):
+            if (
+                isinstance(value, core.eager.Tensor)
+                and value.stop_gradient
+                and value.place._equals(cuda_pinned_place)
+            ):
+                var = value._copy_to(expected_place, True)
+                var.stop_gradient = True
+                var._share_buffer_to(value)

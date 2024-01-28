@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/flags.h"
@@ -310,7 +311,8 @@ void SignalHandle(const char *data, int size) {
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";
       sout << "\n--------------------------------------\n";
-      auto traceback = platform::GetCurrentTraceBackString(/*for_signal=*/true);
+      auto traceback =
+          ::common::enforce::GetCurrentTraceBackString(/*for_signal=*/true);
       if (traceback.empty()) {
         sout
             << "No stack trace in paddle, may be caused by external reasons.\n";

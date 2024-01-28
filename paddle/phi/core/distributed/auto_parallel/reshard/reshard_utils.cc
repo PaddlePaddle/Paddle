@@ -36,6 +36,19 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
 }
 }  // namespace
 
+std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
+                                        std::vector<int64_t> out_process_ids) {
+  std::vector<int64_t> result;
+  std::sort(in_process_ids.begin(), in_process_ids.end());
+  std::sort(out_process_ids.begin(), out_process_ids.end());
+  std::set_union(in_process_ids.begin(),
+                 in_process_ids.end(),
+                 out_process_ids.begin(),
+                 out_process_ids.end(),
+                 std::back_inserter(result));
+  return result;
+}
+
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank) {
   if (global_rank == -1) {
@@ -176,8 +189,32 @@ phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
-  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
+  auto place =
+      input && input->initialized() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
+}
+
+phi::DDim InferShapeForReshardFromReplicate(
+    const std::shared_ptr<phi::DenseTensor>& global_value,
+    const TensorDistAttr& dist_attr) {
+  phi::DDim out_dim = global_value->dims();
+  auto coord_id = GetCurRankCoordInMesh(dist_attr.process_mesh());
+  for (int tensor_axis = 0; tensor_axis < global_value->dims().size();
+       ++tensor_axis) {
+    if (dist_attr.is_shard(-1, tensor_axis)) {
+      for (int mesh_axis = 0; mesh_axis < dist_attr.process_mesh().ndim();
+           ++mesh_axis) {
+        if (dist_attr.is_shard(mesh_axis, tensor_axis)) {
+          // handle the shard axis
+          int64_t global_shape = out_dim[tensor_axis];
+          int64_t mesh_size = dist_attr.process_mesh().dim_size(mesh_axis);
+          auto balance_shard = BalancedSplit(global_shape, mesh_size);
+          out_dim[tensor_axis] = balance_shard[coord_id[mesh_axis]];
+        }
+      }
+    }
+  }
+  return out_dim;
 }
 
 }  // namespace distributed

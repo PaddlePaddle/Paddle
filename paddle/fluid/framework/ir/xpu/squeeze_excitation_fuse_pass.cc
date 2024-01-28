@@ -473,11 +473,6 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       output_name = ew_mul_out->Name();
     }
     fused_op_desc.SetOutput("out", {output_name});
-    std::string max_output_name = output_name + "_max";
-    VarDesc max_out_desc(max_output_name);
-    auto* max_output_node = graph->CreateVarNode(&max_out_desc);
-
-    fused_op_desc.SetOutput("out_max", {max_output_name});
     fused_op_desc.SetAttr("op_type", std::vector<int>{4});
     fused_op_desc.SetAttr("place_x", std::vector<int>{0});
     fused_op_desc.SetAttr("place_y", std::vector<int>{9});
@@ -539,7 +534,6 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     } else {
       IR_NODE_LINK_TO(new_op_node, ew_mul_out);
     }
-    IR_NODE_LINK_TO(new_op_node, max_output_node);
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {
         pool2d, mul_1, mul_1_out, mul_2, mul_2_out, ew_mul};

@@ -360,8 +360,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
       // visit all producer node
       // Get all the input Op
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer =
-            candidate->operand_source(i).dyn_cast<pir::OpResult>().owner();
+        auto producer = candidate->operand_source(i).defining_op();
         // check dependency.
         if (first_set.count(producer)) {
           return true;

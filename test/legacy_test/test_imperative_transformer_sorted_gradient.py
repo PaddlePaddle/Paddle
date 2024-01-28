@@ -88,7 +88,7 @@ class ModelHyperParams:
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
     src_vocab_size = 10000
-    # size of target word dictionay
+    # size of target word dictionary
     trg_vocab_size = 10000
     # index for <bos> token
     bos_idx = 0
@@ -235,7 +235,7 @@ def make_all_inputs(input_fields):
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
 batch_size = -1
-# The placeholder for squence length in compile time.
+# The placeholder for sequence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
 # The shapes here act as placeholder and are set to pass the infer-shape in
@@ -496,11 +496,11 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = paddle.nn.functional.dropout(
+            weights_dropped = paddle.nn.functional.dropout(
                 weights,
                 p=self._dropout_rate,
             )
-            out = paddle.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_dropped, transpose_v)
         else:
             out = paddle.matmul(weights, transpose_v)
 
@@ -775,7 +775,7 @@ class DecoderSubLayer(Layer):
         super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
-        self._prepostprcess_dropout = prepostprocess_dropout
+        self._prepostprocess_dropout = prepostprocess_dropout
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -819,7 +819,7 @@ class DecoderSubLayer(Layer):
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
         pre_process_rlt = self._pre_process_layer(
-            None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout
+            None, dec_input, self._preprocess_cmd, self._prepostprocess_dropout
         )
         slf_attn_output = self._multihead_attention_layer(
             pre_process_rlt, None, None, slf_attn_bias
@@ -828,13 +828,13 @@ class DecoderSubLayer(Layer):
             dec_input,
             slf_attn_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt2 = self._pre_process_layer2(
             None,
             slf_attn_output_pp,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias
@@ -843,20 +843,20 @@ class DecoderSubLayer(Layer):
             slf_attn_output_pp,
             enc_attn_output_pp,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt3 = self._pre_process_layer3(
             None,
             enc_attn_output,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         ffd_output = self._positionwise_feed_forward_layer(pre_process_rlt3)
         dec_output = self._post_process_layer3(
             enc_attn_output,
             ffd_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         return dec_output
 

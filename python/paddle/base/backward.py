@@ -2752,19 +2752,19 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         check_type(
             targets,
             'targets',
-            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            (paddle.pir.Value, list, tuple),
             'paddle.autograd.ir_backward.grad',
         )
         check_type(
             inputs,
             'inputs',
-            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            (paddle.pir.Value, list, tuple),
             'paddle.autograd.ir_backward.grad',
         )
         check_type(
             target_gradients,
             'target_gradients',
-            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
+            (paddle.pir.Value, list, tuple, type(None)),
             'paddle.autograd.ir_backward.grad',
         )
 
@@ -2772,7 +2772,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             no_grad_set,
             'no_grad_set',
             (
-                (paddle.pir.Value, paddle.pir.OpResult),
+                paddle.pir.Value,
                 list,
                 tuple,
                 set,

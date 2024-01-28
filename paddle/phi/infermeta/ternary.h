@@ -132,6 +132,14 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MatchMatrixTensorInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& w,
+                                int dim_t,
+                                MetaTensor* out,
+                                MetaTensor* tmp,
+                                MetaConfig config = MetaConfig());
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
@@ -237,5 +245,18 @@ void QuantLinearInferMeta(const MetaTensor& x,
                           float quant_max_bound,
                           float quant_min_bound,
                           MetaTensor* y);
+
+void TdmSamplerInferMeta(const MetaTensor& x,
+                         const MetaTensor& travel,
+                         const MetaTensor& layer,
+                         bool output_positive,
+                         const std::vector<int>& neg_samples_num_list,
+                         const std::vector<int>& layer_offset_lod,
+                         int seed,
+                         int dtype,
+                         MetaTensor* out,
+                         MetaTensor* labels,
+                         MetaTensor* mask,
+                         MetaConfig config = MetaConfig());
 
 }  // namespace phi

@@ -116,6 +116,8 @@ class ConditionalBlockOp : public ConditionalOp {
 #endif
         core_.reset(new InterpreterCore(
             dev_place, *block, &cur_scope, execution_config));
+        core_->SetOutputHooks(output_hookfuncs_);
+        core_->SetInputHooks(input_hookfuncs_);
         VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
         BuildScopeForControlFlowOp(*core_, *block, &cur_scope);

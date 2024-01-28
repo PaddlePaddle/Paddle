@@ -60,9 +60,12 @@ def dyfunc_with_if_else2(x, col=100):
         # TODO: Don't support return non-Tensor in Tensor-dependent `if` statement currently.
         #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
         # col = -1
-        col = paddle.tensor.fill_constant(shape=[1], value=-1, dtype="int64")
+        col = paddle.tensor.fill_constant(shape=[], value=-1, dtype="int64")
+    else:
+        col = paddle.tensor.fill_constant(shape=[], value=1, dtype="int64")
     if paddle.mean(x).numpy() > x.numpy()[row][col]:
-        y = paddle.nn.functional.relu(x)
+        x_pow = paddle.pow(x, 2)
+        y = paddle.nn.functional.relu(x_pow)
     else:
         x_pow = paddle.pow(x, 2)
         y = paddle.tanh(x_pow)
@@ -100,9 +103,12 @@ def dyfunc_with_if_else3(x):
         x = x + 1
         z = x + 2
         q = x + 3
+        m = x + 2
+        n = x + 3
     else:
         y = y + 1
         z = x - 2
+        q = x + 3
         m = x + 2
         n = x + 3
 
@@ -165,6 +171,22 @@ def nested_if_else(x_v):
             tmp = y * w
             y = paddle.nn.functional.relu(tmp)
             if paddle.mean(y).numpy() < batch_size:
+                tmp = paddle.tensor.fill_constant(
+                    y.shape, dtype='float32', value=-1
+                )
+                y = paddle.abs(y)
+            else:
+                tmp = paddle.tensor.fill_constant(
+                    y.shape, dtype='float32', value=-1
+                )
+                y = y - tmp
+        else:
+            tmp = y * w
+            y = paddle.nn.functional.relu(tmp)
+            if paddle.mean(y).numpy() < batch_size:
+                tmp = paddle.tensor.fill_constant(
+                    y.shape, dtype='float32', value=-1
+                )
                 y = paddle.abs(y)
             else:
                 tmp = paddle.tensor.fill_constant(
@@ -173,6 +195,11 @@ def nested_if_else(x_v):
                 y = y - tmp
     else:
         y = x_v - bias
+        w = paddle.tensor.fill_constant([feat_size], dtype='float32', value=10)
+        tmp = y * w
+        y = paddle.nn.functional.relu(tmp)
+        tmp = paddle.tensor.fill_constant(y.shape, dtype='float32', value=-1)
+        y = paddle.abs(y)
     return y
 
 
@@ -223,12 +250,14 @@ def nested_if_else_3(x):
             )
             # `z` is created in above code block.
             z = y + 1
+            out = x - 1
         else:
             res = paddle.tensor.fill_constant(
                 value=3, shape=x.shape, dtype="int32"
             )
             # `out` is a new var.
             out = x + 1
+            z = y - 1
     return res
 
 
@@ -378,7 +407,6 @@ def if_with_class_var(x, y=None):
 
 def if_tensor_case(x):
     x = base.dygraph.to_variable(x)
-
     mean = paddle.mean(x)
     # It is equivalent to `if mean != 0`
     if mean:

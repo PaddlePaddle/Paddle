@@ -58,6 +58,7 @@ from .utils import (
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
     backend_guard,
+    cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -714,6 +715,8 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        cuda_pinned_tensors_move_to_excepted_place(args)
+
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -1432,7 +1435,11 @@ class InplaceMap:
         self.params_dict = checkpoint
 
     def save_checkpoint(self):
-        return dict(self.params_dict.items())
+        ckp = {}
+        for program_id, params in self.params_dict.items():
+            new_params = dict(params.items())
+            ckp[program_id] = new_params
+        return ckp
 
 
 class FallbackProgramLayer:

@@ -72,7 +72,7 @@ class TestShardingPass(unittest.TestCase):
 
         strategy = apply_pass(use_sharding, stage)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
-        # NOTE: seting opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip) will cause precision problem
+        # NOTE: setting opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip) will cause precision problem
         opt = paddle.optimizer.AdamW(learning_rate=0.00001)
         model, loss = generate_model("dp")
 

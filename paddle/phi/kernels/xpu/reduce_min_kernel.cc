@@ -59,4 +59,10 @@ void MinRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(min_raw, XPU, ALL_LAYOUT, phi::MinRawKernel, float) {}
+PD_REGISTER_KERNEL(min_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MinRawKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
