@@ -1,4 +1,4 @@
-The classes in this directory are the interface of group fusion pass, you can use these apis to build the stragey for group fusion.
+The classes in this directory are the interface of group fusion pass, you can use these apis to build the strategy for group fusion.
 
 
 The Class and APIs are following:
@@ -9,7 +9,7 @@ The Class and APIs are following:
 
 `TensorNode` : Map the tensor in the program.
 
-`Shape` : The shape infomation of tensor
+`Shape` : The shape information of tensor
 
 `FusePassCtx` : The context is the parameter for the pass, it hold the data all you need in the pass.
 
