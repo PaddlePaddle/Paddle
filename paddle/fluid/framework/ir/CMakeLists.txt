@@ -169,6 +169,10 @@ if(WITH_TENSORRT)
   pass_library(set_subgraph_edge_pass inference)
 endif()
 
+if(WITH_TENSORRT AND WITH_TENSORRT_LLM)
+  pass_library(trt_llm_fused_rms_norm_pass inference)
+endif()
+
 if(WITH_GPU OR WITH_ROCM)
   pass_library(cudnn_placement_pass base DEPS placement_pass_base)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)

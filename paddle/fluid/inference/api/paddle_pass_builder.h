@@ -325,8 +325,11 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
   }
 };
 
-/// \brief List of tensorRT subgraph passes.
+/// \brief List of TensorRT subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
+
+/// \brief List of TensorRT-LLM subgraph passes.
+PD_INFER_DECL extern const std::vector<std::string> kTRTLLMSubgraphPasses;
 
 /// \brief List of dlnne subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;

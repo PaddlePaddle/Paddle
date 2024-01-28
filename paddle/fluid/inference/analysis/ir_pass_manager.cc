@@ -118,6 +118,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     // "use_tensorrt" is used for passes in subgraphs.
     pass->Set("use_tensorrt", new bool(argument->use_tensorrt()));
 
+    // "use_tensorrt_llm" is used for passes in subgraphs.
+    pass->Set("use_tensorrt_llm", new bool(argument->use_tensorrt_llm()));
+
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
       std::string dot_file_path;

@@ -1337,7 +1337,10 @@ void BindInternalUtils(py::module *m) {
                   [](paddle_infer::Config &config,
                      const std::unordered_set<std::string> &ops) {
                     InternalUtils::DisableTensorRtHalfOps(&config, ops);
-                  });
+                  })
+      .def_static("enable_tensorrt_llm", [](paddle_infer::Config &config) {
+        InternalUtils::EnableTensorRtLLM(&config);
+      });
 }
 }  // namespace
 }  // namespace pybind
