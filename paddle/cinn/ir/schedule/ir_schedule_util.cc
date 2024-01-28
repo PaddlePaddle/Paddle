@@ -100,16 +100,18 @@ void SetCudaAxisInfo(Expr* lowered_func) {
       auto bind_info = x->As<ir::For>()->bind_info();
       info.set_valid(true);
       ir::Expr range = x->As<ir::For>()->extent;
-      if (bind_info.for_type == ForType::GPUThread &&
-          CannotProveLT(range, info.block_dim(bind_info.offset))) {
-        VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
-                << range;
-        info.set_block_dim(bind_info.offset, range);
-      } else if (bind_info.for_type == ForType::GPUBlock &&
-                 CannotProveLT(range, info.grid_dim(bind_info.offset))) {
-        VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
-                << range;
-        info.set_grid_dim(bind_info.offset, range);
+      if (bind_info.for_type == ForType::GPUThread) {
+        if (CannotProveLT(range, info.block_dim(bind_info.offset))) {
+          VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_block_dim(bind_info.offset, range);
+        }
+      } else if (bind_info.for_type == ForType::GPUBlock) {
+        if (CannotProveLT(range, info.grid_dim(bind_info.offset))) {
+          VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_grid_dim(bind_info.offset, range);
+        }
       } else {
         LOG(FATAL) << "The for loop's bind info should be gpu block or thread!";
       }
