@@ -747,12 +747,20 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const int64_t axis = GetAttrInt64Value("axes");
 
   const pir::Value operand_source = op->operand_source(0);
-  std::vector<symbol::DimExpr> out_sym_shape =
-      shape_analysis->GetShapeOrDataForValue(operand_source).shape();
+  const auto &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+  std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
   out_sym_shape[axis] = end - start;
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
+  symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
+  if (operand_shape_or_data.data().has_value()) {
+    std::vector<symbol::DimExpr> out_data;
+    for (int64_t i = start; i < end; i++) {
+      out_data.push_back(operand_shape_or_data.data().value()[i]);
+    }
+    shape_dim_expr.SetData(out_data);
+  }
+  symbol::ShapeOrDataDimExprs shape_data{shape_dim_expr};
 
   op->set_attribute(
       "symbolic_shape",
@@ -789,6 +797,7 @@ bool ConcatOpInferSymbolicShape(
           " [%s] op must have at least one input, but received %d.",
           op->name(),
           input_size));
+  // TODO(dev): Need support GetShapeOrDataForValue().data() case.
   std::vector<symbol::DimExpr> out_dims =
       shape_analysis->GetShapeOrDataForValue(input_values[0]).shape();
   for (size_t i = 1; i < input_size; ++i) {
