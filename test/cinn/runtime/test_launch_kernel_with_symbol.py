@@ -36,8 +36,6 @@ def test_launch_kernel_with_symbol():
     N = 4
     x_np = np.random.rand(M, N).astype("float32")
     y_np = np.random.rand(M, N).astype("float32")
-    print(x_np)
-    print(y_np)
     target = cinn.common.DefaultNVGPUTarget()
     x = DataArray.from_numpy(x_np, target)
     y = DataArray.from_numpy(y_np, target)
