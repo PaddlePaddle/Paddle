@@ -5,9 +5,7 @@ if(NOT WITH_ROCM)
     if_op_test.cc
     DEPS
     op_dialect_vjp
-    pir_transforms
-    op_dialect
-    gtest)
+    op_dialect)
 
   paddle_test(
     while_op_test
@@ -15,8 +13,6 @@ if(NOT WITH_ROCM)
     while_op_test.cc
     DEPS
     op_dialect_vjp
-    pir_transforms
     op_dialect
-    gtest
     device_event_base)
 endif()
