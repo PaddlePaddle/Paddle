@@ -46,7 +46,7 @@ class DynamicExpandOpPattern
                        .dims()
                        .size();
       int out_rank =
-          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size()();
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size();
       std::vector<int64_t> broadcast_axes(x_rank, 0);
       size_t index_gap = out_rank - x_rank;
       for (size_t i = 0; i < x_rank; ++i) {
