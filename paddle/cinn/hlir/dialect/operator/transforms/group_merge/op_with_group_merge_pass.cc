@@ -659,7 +659,7 @@ GroupList OpFusionPassInternal(
       OpFusionPassHelper(op_list, output_op_list, shape_analysis);
   auto res = op_fusion_helper();
 
-  if (VLOG_IS_ON(3)) {
+  if (VLOG_IS_ON(6)) {
     std::stringstream ss;
     ::pir::IrPrinter printer(ss);
     for (size_t i = 0; i < res.size(); ++i) {
@@ -672,7 +672,7 @@ GroupList OpFusionPassInternal(
         ss << "\n";
       }
     }
-    VLOG(1) << ss.str();
+    VLOG(6) << ss.str();
   }
   VLOG(3) << "OpFusionPass Finish...!";
 
