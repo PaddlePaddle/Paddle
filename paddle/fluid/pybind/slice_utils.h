@@ -25,10 +25,13 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -345,11 +348,13 @@ static paddle::Tensor getTensorWithBasicIndexing(
     std::vector<int64_t>* decrease_axis,
     std::vector<int64_t>* none_axes,
     std::vector<int64_t>* infer_flags,
-    bool* use_strided_slice) {
+    bool* use_strided_slice,
+    bool* out_is_view) {
   paddle::Tensor out;
   if (slice_axes->empty()) {
     out = tensor;
   } else {
+    *out_is_view = true;
     if (!(*use_strided_slice)) {
       eager_gil_scoped_release guard;
       out = slice_ad_func(tensor,
@@ -370,6 +375,7 @@ static paddle::Tensor getTensorWithBasicIndexing(
     }
   }
   if (!none_axes->empty()) {
+    *out_is_view = true;
     eager_gil_scoped_release guard;
     // Deal with cases that decrease_axes is not empty
     // For example:
@@ -397,9 +403,9 @@ static paddle::Tensor dealWithAdvancedIndex(
     std::vector<paddle::Tensor>* transed_index,
     std::vector<int>* trans_back_dim,
     int* pos_of_new_dim,
-    int* rank_of_new_dim) {
-  std::vector<int> trans_dim;
-
+    int* rank_of_new_dim,
+    std::vector<int>* trans_dim,
+    bool* out_is_view) {
   int p = 0;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
@@ -408,30 +414,28 @@ static paddle::Tensor dealWithAdvancedIndex(
       // advanced_index_dim
       auto index = (*advanced_index)[p++];
 
-      if (!is_for_setitem) {
-        if (index_dim == 0) {
-          // case 1: advanced indices at axis 0, the new dim will be at first.
-          *pos_of_new_dim = 0;
-        } else if (index_dim > 0 && trans_dim.size() > 0 &&
-                   trans_dim[trans_dim.size() - 1] != index_dim - 1) {
-          // case 2: there are not adjacent advanced indices, the new dim will
-          // be at first.
-          *pos_of_new_dim = 0;
-        } else {
-          *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
-        }
-        *rank_of_new_dim =
-            std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
+      if (index_dim == 0) {
+        // case 1: advanced indices at axis 0, the new dim will be at first.
+        *pos_of_new_dim = 0;
+      } else if (index_dim > 0 && trans_dim->size() > 0 &&
+                 (*trans_dim)[trans_dim->size() - 1] != index_dim - 1) {
+        // case 2: there are not adjacent advanced indices, the new dim will
+        // be at first.
+        *pos_of_new_dim = 0;
+      } else {
+        *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
       }
+      *rank_of_new_dim =
+          std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
 
-      trans_dim.push_back(index_dim);
+      trans_dim->push_back(index_dim);
       transed_index->push_back(std::move(index));
     }
   }
 
   for (size_t i = 0; i < tensor.shape().size(); ++i) {
     if ((*advanced_index_dim)[i] == -1) {
-      trans_dim.push_back(i);
+      trans_dim->push_back(i);
     }
   }
 
@@ -441,19 +445,20 @@ static paddle::Tensor dealWithAdvancedIndex(
   std::vector<int> original_dim_order(tensor.shape().size());
   std::iota(original_dim_order.begin(), original_dim_order.end(), 0);
 
-  if (original_dim_order == trans_dim) {
+  if (original_dim_order == *trans_dim) {
     transed_tensor = tensor;
   } else {
-    transed_tensor = transpose_ad_func(tensor, trans_dim);
+    *out_is_view = true;
+    transed_tensor = transpose_ad_func(tensor, *trans_dim);
   }
 
   if (is_for_setitem) {
-    trans_back_dim->resize(trans_dim.size());
+    trans_back_dim->resize(trans_dim->size());
     std::iota(trans_back_dim->begin(), trans_back_dim->end(), 0);
     std::sort(trans_back_dim->begin(),
               trans_back_dim->end(),
               [&trans_dim](int left, int right) {
-                return trans_dim[left] < trans_dim[right];
+                return (*trans_dim)[left] < (*trans_dim)[right];
               });
   }
   return transed_tensor;
@@ -483,13 +488,15 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     i++;
   }
 
-  auto bool_2_idx = nonzero_ad_func(bool_index);
-
   const phi::distributed::ProcessMesh* mesh = nullptr;
-  if (InputsContainDistTensor(&mesh, tensor, bool_2_idx)) {
-    ConvertAllInputsToDistTensor(mesh, tensor, bool_2_idx);
+  if (InputsContainDistTensor(&mesh, tensor, bool_index)) {
+    ConvertAllInputsToDistTensor(mesh, tensor, bool_index);
   }
 
+  if (bool_index.shape().size() == tensor_shape.size()) {
+    return masked_select_ad_func(tensor, bool_index);
+  }
+  auto bool_2_idx = nonzero_ad_func(bool_index);
   return gather_nd_ad_func(tensor, bool_2_idx);
 }
 
@@ -504,11 +511,130 @@ static void ParseBoolAndBroadcastIndices(
     }
   }
   if (advanced_index->size() > 1) {
-    // Here advanced_index has been checked ContainDistTensor
-    // and transed in dealWithAdvancedIndex
-    auto broadcasted_index = broadcast_tensors_ad_func(*advanced_index);
-    advanced_index->assign(broadcasted_index.begin(), broadcasted_index.end());
+    bool need_broadcast = false;
+    common::DDim common_shape = common::make_ddim((*advanced_index)[0].shape());
+    for (size_t i = 1; i < advanced_index->size(); ++i) {
+      common::DDim current_shape =
+          common::make_ddim((*advanced_index)[i].shape());
+      if (current_shape != common_shape) {
+        need_broadcast = true;
+        common_shape = operators::details::BroadcastTwoDims(
+            current_shape, common_shape, -1);
+      }
+    }
+
+    if (need_broadcast) {
+      // Here advanced_index has been checked ContainDistTensor
+      // and transed in dealWithAdvancedIndex
+      auto common_shape_vec = common::vectorize<int64_t>(common_shape);
+      for (size_t i = 0; i < advanced_index->size(); ++i) {
+        auto current_shape = (*advanced_index)[i].shape();
+        if (current_shape != common_shape_vec) {
+          (*advanced_index)[i] =
+              expand_ad_func((*advanced_index)[i], common_shape_vec);
+        }
+      }
+    }
   }
+}
+
+static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
+                                     PyObject* value_obj,
+                                     std::vector<phi::Scalar>* values,
+                                     const bool trans_to_tensor) {
+  paddle::Tensor value_tensor;
+  if (PyCheckTensor(value_obj)) {
+    value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
+  } else if (py::isinstance<py::array>(value_obj)) {
+    paddle::Tensor value_tensor_tmp(
+        std::make_shared<phi::DenseTensor>(),
+        egr::Controller::Instance().GenerateUniqueName());
+    py::object value_obj_tmp(py::handle(value_obj), true);
+    py::object value = value_obj_tmp;
+    if (tensor.dtype() == phi::DataType::FLOAT32) {
+      if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+      if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::INT32) {
+      if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::INT64) {
+      if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::BOOL) {
+      if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+      if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<std::complex<float>>(
+            value_obj_tmp);
+      }
+    } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+      if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
+        value = pybind11::detail::CastNumpyArray<std::complex<double>>(
+            value_obj_tmp);
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "When assign a numpy.np value to a paddle.Tensor, "
+          "the data type of the paddle.Tensor must be bool, "
+          "float32, float64, complex64, complex128, int32 or int64, "
+          "please check the type of tensor."));
+    }
+    SetTensorFromPyArray(
+        static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+        value,
+        tensor.place(),
+        false);
+    value_tensor = value_tensor_tmp;
+  } else {
+    py::object value_obj_tmp(py::handle(value_obj), true);
+    // convert the value to self data type
+    if (py::isinstance<py::float_>(value_obj_tmp) ||
+        py::isinstance<py::int_>(value_obj_tmp) ||
+        py::isinstance<py::bool_>(value_obj_tmp) ||
+        PyComplex_Check(value_obj)) {
+      if (tensor.dtype() == phi::DataType::FLOAT32 ||
+          tensor.dtype() == phi::DataType::FLOAT16 ||
+          tensor.dtype() == phi::DataType::BFLOAT16) {
+        values->push_back(value_obj_tmp.cast<float>());
+      } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+        values->push_back(value_obj_tmp.cast<double>());
+      } else if (tensor.dtype() == phi::DataType::INT32 ||
+                 tensor.dtype() == phi::DataType::INT16 ||
+                 tensor.dtype() == phi::DataType::INT8 ||
+                 tensor.dtype() == phi::DataType::UINT8) {
+        values->push_back(value_obj_tmp.cast<float>());
+      } else if (tensor.dtype() == phi::DataType::INT64) {
+        values->push_back(value_obj_tmp.cast<double>());
+      } else if (tensor.dtype() == phi::DataType::BOOL) {
+        values->push_back(value_obj_tmp.cast<bool>());
+      } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+        values->push_back(value_obj_tmp.cast<std::complex<float>>());
+      } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+        values->push_back(value_obj_tmp.cast<std::complex<double>>());
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Value type error. The assign value allows "
+          "Tensor, numpy.ndarray, integer, float, complex or bool, "
+          "but received %s.",
+          Py_TYPE(value_obj)));
+    }
+
+    if (trans_to_tensor) {
+      value_tensor =
+          full_ad_func({1}, (*values)[0], tensor.dtype(), tensor.place());
+    }
+  }
+  return value_tensor;
 }
 
 }  // namespace pybind

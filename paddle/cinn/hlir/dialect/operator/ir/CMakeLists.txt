@@ -2,7 +2,7 @@
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
   set(CINN_DIALECT_SOURCE_DIR
-      "${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir")
+      "${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/operator/ir")
 
   # Generate cinn_op_dialect files defining op using op_gen_file
   set(cinn_op_gen_parsed_yaml_file
@@ -17,7 +17,7 @@ if(NOT CINN_ONLY)
   set(cinn_op_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
-  set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated)
+  set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated)
 
   set(cinn_op_parsed_yaml_file ${parsed_op_dir}/ops.parsed.yaml)
 
@@ -67,10 +67,12 @@ if(NOT CINN_ONLY)
     op_dialect.cc
     ${cinn_op_source_file}
     ${cinn_op_info_file}
+    generate_shape_util.cc
     manual_op.cc
     op_attribute.cc
     DEPS
-    op_dialect_vjp)
+    op_dialect_vjp
+    pir)
 
   target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_SOURCE_DIR})
 endif()

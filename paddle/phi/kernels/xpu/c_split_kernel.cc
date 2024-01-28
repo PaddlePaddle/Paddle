@@ -84,4 +84,5 @@ PD_REGISTER_KERNEL(c_split,
                    phi::CSplitKernel,
                    float,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

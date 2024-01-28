@@ -448,7 +448,8 @@ PDNode *PDNode::assert_is_not_ctrl_var() {
 
 PDNode *PDNode::assert_var_not_persistable() {
   assert_is_var();
-  asserts_.emplace_back([](Node *x) { return !x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [](Node *x) { return x->Var() && !x->Var()->Persistable(); });
   return this;
 }
 
@@ -4935,6 +4936,13 @@ void patterns::MulMatmulMatmulV2::operator()(
                      ->assert_is_ops_output(ops_type, "Out");
 
   ops->LinksTo({ops_out});
+}
+
+// subgraph_edge_pattern
+PDNode *patterns::SubgraphEdgePattern::operator()(
+    const std::unordered_set<std::string> &ops_type) {
+  auto ops = pattern->NewNode(ops_repr())->assert_is_ops(ops_type);
+  return ops;
 }
 
 PDNode *patterns::ConvBNAddAct::operator()(

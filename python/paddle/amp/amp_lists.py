@@ -22,6 +22,8 @@ WHITE_LIST = {
     'max_pool2d_with_index',
     'mul',
     'fused_gemm_epilogue',
+    "fused_rotary_position_embedding",
+    "flash_attn",
 }
 
 # The set of ops that support fp16, and bf16 was unsupported.

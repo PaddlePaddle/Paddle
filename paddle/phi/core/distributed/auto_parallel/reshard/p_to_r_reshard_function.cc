@@ -105,6 +105,8 @@ bool PToRReshardFunctionCrossMesh::IsSuitable(
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
 
   return true;

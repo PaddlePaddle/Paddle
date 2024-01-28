@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import re
 
 import paddle
 from paddle.base.backward import (
@@ -88,9 +89,8 @@ class RecomputeState(ProgramStats):
                     continue
 
             seg_name = op.attr('op_namescope')
-            seg_name = (
-                seg_name if '_exclude_rc' not in seg_name else seg_name[:-11]
-            )
+            res = re.search("/auto_parallel/rc_[0-9]*", seg_name)
+            seg_name = res.group(0)
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:

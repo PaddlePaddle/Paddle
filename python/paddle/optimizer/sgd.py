@@ -14,7 +14,7 @@
 
 import warnings
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -93,7 +93,7 @@ class SGD(Optimizer):
         self._master_weights = {}
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 

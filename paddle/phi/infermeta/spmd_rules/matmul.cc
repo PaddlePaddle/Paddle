@@ -286,43 +286,6 @@ static bool DistAttrsAreBasicallyEqual(
           in_dist_attr.partial_status() == out_dist_attr.partial_status());
 }
 
-TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad) {
-  auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
-  auto grad_dim = grad_in.dims_mapping().size();
-  auto input_dim = input.dims_mapping().size();
-  PADDLE_ENFORCE_GE(
-      grad_dim,
-      input_dim,
-      phi::errors::InvalidArgument("grad dim must ge than input dim, but we "
-                                   "got grad_dim [%d], input_dim[%d]",
-                                   grad_dim,
-                                   input_dim));
-  if (grad_dim == input_dim) {
-    return grad_in;
-  }
-  size_t broadcast_dim = grad_dim - input_dim;
-  // gather partial status
-  auto partial_dims = grad_in.partial_dims();
-  auto& grad_dims_mapping = grad_in.dims_mapping();
-  auto dims_mapping = input.dims_mapping();
-  for (size_t i = 0; i < grad_dim; ++i) {
-    auto mapping = grad_dims_mapping[i];
-    if (i < broadcast_dim) {
-      if (mapping >= 0) {
-        partial_dims.insert(mapping);
-      }
-    } else {
-      dims_mapping[i - broadcast_dim] = mapping;
-    }
-  }
-  auto grad_out = CopyTensorDistAttrForOutput(input);
-  grad_out.set_dims_mapping(dims_mapping);
-  std::vector<int64_t> partial_status(partial_dims.begin(), partial_dims.end());
-  grad_out.set_partial_status(partial_status);
-  return grad_out;
-}
-
 SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad,

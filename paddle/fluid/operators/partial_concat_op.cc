@@ -47,7 +47,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "ShapeError: Input tensors count should > 0. But "
-                          "recevied inputs' length is 0."));
+                          "received inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }

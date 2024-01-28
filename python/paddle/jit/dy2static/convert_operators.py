@@ -23,8 +23,10 @@ from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
+from paddle.framework import use_pir_api
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
+from paddle.utils import is_sequence, map_structure
 
 from .py_layer import StaticPyLayer
 from .utils import (
@@ -32,10 +34,30 @@ from .utils import (
     Dygraph2StaticException,
     GetterSetterHelper,
     UndefinedVar,
+    create_undefined_variable,
 )
-from .variable_trans_func import to_static_variable
 
 __all__ = []
+
+
+def to_static_variable(x):
+    '''
+    Translate a Python Tensor to PaddlePaddle static graph Tensor
+    '''
+    if isinstance(x, bool):
+        return paddle.full(shape=[], dtype='bool', fill_value=x)
+    if isinstance(x, float):
+        return paddle.full(shape=[], dtype='float64', fill_value=x)
+    if isinstance(x, int):
+        return paddle.full(shape=[], dtype='int64', fill_value=x)
+    if not use_pir_api() and (isinstance(x, UndefinedVar) or x is None):
+        """
+        for early return case, we need a variable to represent None, current we use data_layer_not_check.
+        """
+        return create_undefined_variable()
+    if is_sequence(x):
+        return map_structure(to_static_variable, x)
+    return x
 
 
 def convert_attr(x, attr):
@@ -69,7 +91,7 @@ def convert_load(x):
                 _global_inplace_map,
             )
 
-            new_var = _global_inplace_map.get(cur_block.program, id(x))
+            new_var = _global_inplace_map.get(cur_block.program, x)
             if new_var is not None:
                 return new_var
 
@@ -726,7 +748,7 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval(f'{dtype}(var)')
+        return eval(dtype)(var)
 
 
 def convert_assert(cond, message=""):
@@ -858,7 +880,7 @@ def _slice_tensor_array(array, start, end):
         return null_array
 
     def false_fn(array, start, end):
-        new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
+        new_array = array[start:end]
         return new_array
 
     new_array = paddle.static.nn.cond(
@@ -877,3 +899,13 @@ def _run_python_pop(target, *args):
     else:
         idx = args[0] if args else -1
         return target.pop(idx)
+
+
+def create_bool_as_type(x, value=True):
+    '''
+    Create a bool variable, which type is the same as x.
+    '''
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
+    else:
+        return value

@@ -109,6 +109,9 @@ function(inference_base_test_build TARGET)
   cmake_parse_arguments(base_test "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
   add_executable(${TARGET} ${base_test_SRCS})
+  if(WIN32)
+    target_compile_definitions(${TARGET} PUBLIC STATIC_PADDLE)
+  endif()
   if("${base_test_DEPS};" MATCHES "paddle_inference_shared;")
     list(REMOVE_ITEM base_test_DEPS paddle_inference_shared)
     target_link_libraries(

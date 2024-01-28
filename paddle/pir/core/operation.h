@@ -20,11 +20,12 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
-
+#include "paddle/pir/core/visitors.h"
 namespace pir {
 class OpBase;
 class Program;
@@ -35,6 +36,32 @@ namespace detail {
 class OpResultImpl;
 class OpOperendImpl;
 }  // namespace detail
+
+class CloneOptions {
+ public:
+  CloneOptions()
+      : clone_regions_{false},
+        clone_operands_{false},
+        clone_successors_{false} {}
+  CloneOptions(bool clone_regions, bool clone_operands, bool clone_successors)
+      : clone_regions_(clone_regions),
+        clone_operands_(clone_operands),
+        clone_successors_(clone_successors) {}
+
+  bool IsCloneRegions() const { return clone_regions_; }
+  bool IsCloneOperands() const { return clone_operands_; }
+  bool IsCloneSuccessors() const { return clone_successors_; }
+
+  static CloneOptions &All() {
+    static CloneOptions all{true, true, true};
+    return all;
+  }
+
+ private:
+  bool clone_regions_{true};
+  bool clone_operands_{true};
+  bool clone_successors_{true};
+};
 
 class IR_API alignas(8) Operation final
     : public DoubleLevelContainer<Operation> {
@@ -52,6 +79,12 @@ class IR_API alignas(8) Operation final
                            size_t num_regions = 0,
                            const std::vector<Block *> &successors = {});
   static Operation *Create(OperationArgument &&op_argument);
+
+  ///
+  /// \brief Deep copy all information and create a new operation.
+  ///
+  Operation *Clone(IrMapping &ir_mapping,
+                   CloneOptions options = CloneOptions()) const;
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
@@ -88,12 +121,12 @@ class IR_API alignas(8) Operation final
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  Value result(uint32_t index) const { return OpResult(op_result_impl(index)); }
   template <typename T = Type>
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
   }
-  std::vector<OpResult> results();
+  std::vector<Value> results() const;
 
   ///
   /// \brief op input related public interfaces
@@ -146,6 +179,14 @@ class IR_API alignas(8) Operation final
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
   std::string name() const;
+
+  ///
+  /// \brief Operation Walkers
+  ///
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback) {
+    return pir::Walk<Order>(this, std::forward<FuncT>(callback));
+  }
 
   ///
   /// \brief Remove this operation from its parent block and delete it.

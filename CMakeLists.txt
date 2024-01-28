@@ -54,7 +54,8 @@ option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
-option(WITH_XPU_XHPC "Compile PaddlePaddle with BAIDU XPU-HPC library" OFF)
+option(WITH_XPU_XHPC "Compile PaddlePaddle with BAIDU XPU-HPC library"
+       ${WITH_XPU})
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -320,6 +321,7 @@ option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
+option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -598,7 +600,10 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
-
+include(util) # set unittest and link libs
+include(version) # set PADDLE_VERSION
+include(coveralls) # set code coverage
+include(configure) # add paddle env configuration
 #------------- cinn cmake config start --------------
 
 if(WITH_CINN)
@@ -614,6 +619,7 @@ if(WITH_CINN)
       add_definitions(-DCINN_WITH_CUDNN)
     endif()
   endif()
+
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
 
@@ -637,11 +643,6 @@ if(WITH_PROFILER)
   include_directories(${GPERFTOOLS_INCLUDE_DIR})
   add_definitions(-DWITH_GPERFTOOLS)
 endif()
-
-include(util) # set unittest and link libs
-include(version) # set PADDLE_VERSION
-include(coveralls) # set code coverage
-include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 

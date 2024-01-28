@@ -203,7 +203,7 @@ void RunBrpcPushSparse() {
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   host_sign_list_.push_back(ph_host.SerializeToString());
 
-  // Srart Server
+  // Start Server
   std::thread server_thread(RunServer);
   sleep(1);
 

@@ -818,7 +818,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
   // TODO(fc500110) hard coding
   if (LLVM_WillVarLowerAsPointer(op->name)) {
     result = value;
-  } else if (value->getType()->isPointerTy()) {
+  } else if (value->getType()->isPointerTy() &&
+             !value->getType()->getPointerElementType()->isPointerTy()) {
     result = Load(value, op->name + "_load");
   } else {
     result = value;

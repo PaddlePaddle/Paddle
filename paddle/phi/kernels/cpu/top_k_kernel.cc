@@ -147,7 +147,7 @@ void TopkKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // axis < 0, cacluate the real axis
+  // axis < 0, calculate the real axis
   if (axis < 0) {
     axis += in_dims.size();
   }
@@ -184,7 +184,7 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
   } else {
-    // if the topk dims is not last dim, will tranpose and do topk
+    // if the topk dims is not last dim, will transpose and do topk
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
@@ -246,7 +246,14 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
+PD_REGISTER_KERNEL(topk,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TopkKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

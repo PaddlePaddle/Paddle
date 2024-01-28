@@ -96,8 +96,10 @@ function(set_pit_tests_properties)
        PIR_OP_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_TESTS})
     if(TEST ${IR_OP_TEST})
-      set_tests_properties(
-        ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
     endif()
   endforeach()
 
@@ -105,8 +107,10 @@ function(set_pit_tests_properties)
        PIR_OP_NO_CHECK_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_NO_CHECK_TESTS})
     if(TEST ${IR_OP_TEST})
-      set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                                                    "FLAGS_PIR_NO_CHECK=True")
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_NO_CHECK=True")
     endif()
   endforeach()
 
@@ -115,9 +119,10 @@ function(set_pit_tests_properties)
        PIR_OP_RELAXED_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_RELAXED_TESTS})
     if(TEST ${IR_OP_TEST})
-      set_tests_properties(
-        ${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                                 "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
+      set_property(
+        TEST ${IR_OP_TEST}
+        APPEND
+        PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
     endif()
   endforeach()
 

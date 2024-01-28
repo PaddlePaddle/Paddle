@@ -71,8 +71,8 @@ from .framework.dtype import (
 Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
-import paddle.distributed.fleet  # noqa: F401
-import paddle.text  # noqa: F401
+import paddle.distributed.fleet
+import paddle.text
 import paddle.vision  # noqa: F401
 from paddle import (  # noqa: F401
     amp,
@@ -130,7 +130,7 @@ from .device import (  # noqa: F401
     set_device,
 )
 from .distributed import DataParallel
-from .framework import (  # noqa: F401  # noqa: F401
+from .framework import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
     CUDAPlace,
@@ -156,6 +156,9 @@ from .hapi import (
     Model,
     flops,
     summary,
+)
+from .nn.functional.distance import (
+    pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
 from .tensor.attribute import (
@@ -219,7 +222,7 @@ from .tensor.linalg import (  # noqa: F401
     transpose,
     transpose_,
 )
-from .tensor.logic import (  # noqa: F401
+from .tensor.logic import (
     allclose,
     bitwise_and,
     bitwise_and_,
@@ -250,11 +253,11 @@ from .tensor.logic import (  # noqa: F401
     logical_or,
     logical_or_,
     logical_xor,
-    logical_xor_,
+    logical_xor_,  # noqa: F401
     not_equal,
-    not_equal_,
+    not_equal_,  # noqa: F401
 )
-from .tensor.manipulation import (  # noqa: F401
+from .tensor.manipulation import (
     as_complex,
     as_real,
     as_strided,
@@ -266,10 +269,12 @@ from .tensor.manipulation import (  # noqa: F401
     cast,
     cast_,
     chunk,
+    column_stack,
     concat,
     crop,
     diagonal_scatter,
     dsplit,
+    dstack,
     expand,
     expand_as,
     flatten,
@@ -278,6 +283,7 @@ from .tensor.manipulation import (  # noqa: F401
     gather,
     gather_nd,
     hsplit,
+    hstack,
     index_add,
     index_add_,
     index_fill,
@@ -286,31 +292,28 @@ from .tensor.manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
-    masked_scatter_,
     masked_scatter,
+    masked_scatter_,
     moveaxis,
     put_along_axis,
-    select_scatter,
     repeat_interleave,
     reshape,
     reshape_,
     roll,
     rot90,
+    row_stack,
     scatter,
     scatter_,
     scatter_nd,
     scatter_nd_add,
+    select_scatter,
     shard_index,
     slice,
+    slice_scatter,
     split,
     squeeze,
     squeeze_,
     stack,
-    hstack,
-    vstack,
-    dstack,
-    column_stack,
-    row_stack,
     strided_slice,
     take_along_axis,
     tensor_split,
@@ -328,6 +331,7 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     vsplit,
+    vstack,
 )
 from .tensor.math import (  # noqa: F401
     abs,
@@ -354,11 +358,17 @@ from .tensor.math import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
+    bitwise_left_shift,
+    bitwise_left_shift_,
+    bitwise_right_shift,
+    bitwise_right_shift_,
     broadcast_shape,
     ceil,
     clip,
     combinations,
     conj,
+    copysign,
+    copysign_,
     cos,
     cos_,
     cosh,
@@ -394,6 +404,12 @@ from .tensor.math import (  # noqa: F401
     frac,
     frac_,
     frexp,
+    gammainc,
+    gammainc_,
+    gammaincc,
+    gammaincc_,
+    gammaln,
+    gammaln_,
     gcd,
     gcd_,
     heaviside,
@@ -467,6 +483,7 @@ from .tensor.math import (  # noqa: F401
     scale,
     sgn,
     sign,
+    signbit,
     sin,
     sin_,
     sinh,
@@ -489,8 +506,8 @@ from .tensor.math import (  # noqa: F401
     vander,
 )
 from .tensor.random import (
-    binomial,
     bernoulli,
+    binomial,
     check_shape,
     multinomial,
     normal,
@@ -501,6 +518,7 @@ from .tensor.random import (
     randint_like,
     randn,
     randperm,
+    standard_gamma,
     standard_normal,
     uniform,
 )
@@ -530,10 +548,6 @@ from .tensor.stat import (
     quantile,
     std,
     var,
-)
-
-from .nn.functional.distance import (  # noqa: F401
-    pdist,
 )
 from .tensor.to_string import set_printoptions
 
@@ -627,6 +641,7 @@ __all__ = [
     'amin',
     'any',
     'slice',
+    'slice_scatter',
     'normal',
     'normal_',
     'logsumexp',
@@ -751,6 +766,7 @@ __all__ = [
     'bernoulli',
     'binomial',
     'poisson',
+    'standard_gamma',
     'sinh',
     'sinh_',
     'round',
@@ -763,6 +779,10 @@ __all__ = [
     'neg_',
     'lgamma',
     'lgamma_',
+    'gammaincc',
+    'gammaincc_',
+    'gammainc',
+    'gammainc_',
     'lerp',
     'erfinv',
     'inner',
@@ -771,6 +791,8 @@ __all__ = [
     'square_',
     'divide',
     'divide_',
+    'gammaln',
+    'gammaln_',
     'ceil',
     'atan',
     'atan_',
@@ -936,6 +958,12 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'copysign',
+    'copysign_',
+    'bitwise_left_shift',
+    'bitwise_left_shift_',
+    'bitwise_right_shift',
+    'bitwise_right_shift_',
     'masked_fill',
     'masked_fill_',
     'masked_scatter',
@@ -946,4 +974,5 @@ __all__ = [
     "index_fill_",
     'diagonal_scatter',
     'combinations',
+    'signbit',
 ]

@@ -93,6 +93,8 @@ class IR_API AbstractType {
     return GetInterfaceImpl(interface_id);
   }
 
+  AbstractType(AbstractType &&) = default;
+
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the
@@ -107,6 +109,8 @@ class IR_API AbstractType {
       : type_id_(type_id),
         dialect_(dialect),
         interface_set_(std::move(interface_set)) {}
+
+  AbstractType(const AbstractType &) = delete;
 
   void *GetInterfaceImpl(TypeId interface_id) const;
 

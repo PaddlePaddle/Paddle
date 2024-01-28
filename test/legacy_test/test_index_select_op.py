@@ -67,9 +67,13 @@ class TestIndexSelectOp(OpTest):
 
     def test_check_output(self):
         if self.x_type == np.complex64 or self.x_type == np.complex128:
-            self.check_output(check_prim=False, check_pir=True)
+            self.check_output(
+                check_prim=False, check_pir=True, check_prim_pir=False
+            )
         else:
-            self.check_output(check_prim=True, check_pir=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
     def test_check_grad_normal(self):
         if self.x_type == np.complex64 or self.x_type == np.complex128:
@@ -151,7 +155,7 @@ class TestIndexSelectBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)

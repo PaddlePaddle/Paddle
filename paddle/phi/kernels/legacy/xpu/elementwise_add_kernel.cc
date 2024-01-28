@@ -55,6 +55,7 @@ PD_REGISTER_KERNEL(add_raw,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    int,
                    int64_t) {}

@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
@@ -41,6 +42,8 @@ from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
+    name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -409,7 +412,7 @@ class Layer:
         self._forward_post_hooks = collections.OrderedDict()
 
         # only used in AMP Training
-        self._cast_to_low_precison = True
+        self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
         # Records orignal functions after @to_static to support to rollback
@@ -1136,7 +1139,9 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = (
+            ValueSet() if in_pir_mode() and not in_to_static_mode() else set()
+        )
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
@@ -1401,7 +1406,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)

@@ -14,6 +14,7 @@
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -118,6 +119,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             shared_program->block(),
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
+      // Note(lizhiyu): Add mannual event info
+      auto pir_inter = const_cast<PirInterpreter*>(
+          static_cast<const PirInterpreter*>(interpretercores_.back()->Impl()));
+      pir_inter->SetForceEventsToWaitInfo(
+          &(vec_force_events_to_wait_[micro_batch_id]));
     } else {
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,

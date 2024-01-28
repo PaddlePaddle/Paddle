@@ -25,8 +25,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
     is_forward_op,
-    is_loss_grad_op,
-    is_loss_op,
     is_optimize_op,
     use_new_executor,
 )
@@ -676,9 +674,9 @@ def _program_for_vpp(program, num_model_chunks, dist_context):
         type_to_ops["fetch"] = []
 
         for ip, op in enumerate(block.ops):
-            if is_forward_op(op) or is_loss_op(op):
+            if is_forward_op(op):
                 type = oprole_type[0]
-            elif is_backward_op(op) or is_loss_grad_op(op):
+            elif is_backward_op(op):
                 type = oprole_type[1]
             elif is_optimize_op(op):
                 type = oprole_type[2]

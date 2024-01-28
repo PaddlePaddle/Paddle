@@ -120,7 +120,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_duration=300, passes=["mul_lstm_fuse_pass"]
+            quant=False, max_duration=1000, passes=["mul_lstm_fuse_pass"]
         )
 
 

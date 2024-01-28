@@ -20,6 +20,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.pir_utils import test_with_pir_api
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
@@ -113,6 +114,7 @@ class TestLambOpV2(unittest.TestCase):
 
 
 class TestLambOpWithCombinedOp(unittest.TestCase):
+    @test_with_pir_api
     def test_lamb_op_with_multi_steps(self):
         paddle.enable_static()
 
@@ -124,7 +126,10 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                     name='X', shape=[-1, 13], dtype='float32'
                 )
                 y = paddle.static.data(name='Y', shape=[-1, 1], dtype='float32')
-                prediction = paddle.static.nn.fc(x, size=1, activation=None)
+                linear = paddle.nn.Linear(
+                    in_features=x.shape[-1], out_features=1
+                )
+                prediction = linear(x)
                 loss = paddle.nn.functional.square_error_cost(
                     input=prediction, label=y
                 )
@@ -138,8 +143,8 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             feed_x = np.random.random(size=(10, 13)).astype('float32')
             feed_y = np.random.random(size=(10, 1)).astype('float32')
 
-            main_program = base.Program()
-            startup_program = base.Program()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
             with base.program_guard(main_program, startup_program):
                 avg_loss = _build_static_model(main_program, startup_program)
                 lamb_kernel = paddle.optimizer.Lamb(learning_rate=0.2)
@@ -150,11 +155,11 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             output = executor.run(
                 program=main_program,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[avg_loss.name],
+                fetch_list=[avg_loss],
             )
 
-            main = base.Program()
-            startup = base.Program()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
             with base.program_guard(main, startup):
                 loss = _build_static_model(main, startup)
                 lamb = LAMBOptimizer(learning_rate=0.2)
@@ -165,7 +170,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             out = exe.run(
                 program=main,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
             np.testing.assert_allclose(out, output, rtol=1e-05)
@@ -226,8 +231,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
         weight, bias = linear.weight, linear.bias
         exe = paddle.static.Executor(place)
         scope = paddle.static.Scope()
-        x = main_prog.global_block().var(x.name)
-        if x.dtype == core.VarDesc.VarType.FP16:
+        if x.dtype in (core.VarDesc.VarType.FP16, core.DataType.FLOAT16):
             x_np = x_np.astype(np.float16)
 
         def get_parameter(var):
@@ -256,7 +260,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
 
             weight_np, bias_np = None, None
             for i in range(n):
-                feed_dict = {x.name: x_np}
+                feed_dict = {'x': x_np}
                 weight_np, bias_np = exe.run(
                     main_prog, feed=feed_dict, fetch_list=[weight, bias]
                 )

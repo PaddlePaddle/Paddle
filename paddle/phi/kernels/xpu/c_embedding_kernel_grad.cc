@@ -86,4 +86,5 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    ALL_LAYOUT,
                    phi::CEmbeddingGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

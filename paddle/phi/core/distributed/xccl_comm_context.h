@@ -28,6 +28,9 @@ class XCCLCommContext final : public CommContext {
                   int rank,
                   int size,
                   const ccl::CCLRootId& xccl_id);
+  ~XCCLCommContext();
+
+  static void ReleaseAll();
 
   ccl::CCLComm GetXcclComm() const { return xccl_comm_; }
 

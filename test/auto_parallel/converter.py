@@ -24,7 +24,7 @@ def test_convert():
     tensor_row = np.split(complete_tensor, 2, axis=0)
     tensor_col = np.split(complete_tensor, 2, axis=1)
     tensor_name = "tensor_0"
-    complet_strategy = {
+    complete_strategy = {
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
@@ -48,13 +48,13 @@ def test_convert():
 
     # test merge
     tensor_dict = {tensor_name: tensor_row}
-    converter = Converter(tensor_dict, row_strategy, complet_strategy)
+    converter = Converter(tensor_dict, row_strategy, complete_strategy)
     convert_tensor_dict = converter.convert()
     assert np.equal(convert_tensor_dict[tensor_name], complete_tensor).all()
 
     # test slice
     tensor_dict = {tensor_name: [complete_tensor]}
-    converter = Converter(tensor_dict, complet_strategy, col_strategy)
+    converter = Converter(tensor_dict, complete_strategy, col_strategy)
     convert_tensor_dict = converter.convert()
     assert np.equal(convert_tensor_dict[tensor_name], tensor_col[rank_id]).all()
 
@@ -80,7 +80,7 @@ def test_convert():
     # test sliced_shape is 1
     complete_tensor = np.arange(4).reshape([2, 2])
     tensor_row = np.split(complete_tensor, 2, axis=0)
-    complet_strategy = {
+    complete_strategy = {
         "tensor_2": {
             "process_shape": [2],
             "process_group": [0, 1],
@@ -95,7 +95,7 @@ def test_convert():
         }
     }
     tensor_dict = {"tensor_2": [complete_tensor]}
-    converter = Converter(tensor_dict, complet_strategy, row_strategy)
+    converter = Converter(tensor_dict, complete_strategy, row_strategy)
     convert_tensor_dict = converter.convert()
     assert np.equal(convert_tensor_dict["tensor_2"], tensor_row[rank_id]).all()
 

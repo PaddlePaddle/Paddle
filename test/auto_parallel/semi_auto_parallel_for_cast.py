@@ -24,9 +24,9 @@ class TestCastApiForSemiAutoParallel(SemiAutoParallelTestBase):
         super().__init__()
 
     def check_specs_unchanged(self, input, output):
-        input_dist_attr = input.dist_attr
-        output_dist_attr = output.dist_attr
-        assert input_dist_attr.dims_mapping == output_dist_attr.dims_mapping
+        input_placements = input.placements
+        output_placements = output.placements
+        assert input_placements == output_placements
 
     def test_cast_shard(self):
         x_shape = [16, 32]

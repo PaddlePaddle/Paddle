@@ -194,7 +194,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         dist_out.backward()
         np.testing.assert_equal(dist_in.grad._local_shape, [2, 4], verbose=True)
         np.testing.assert_equal(
-            dist_in.grad.dist_attr.dims_mapping, [0, -1], verbose=True
+            dist_in.grad.placements, [dist.Shard(0)], verbose=True
         )
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 

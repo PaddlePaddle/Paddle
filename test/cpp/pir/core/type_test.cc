@@ -26,13 +26,14 @@
 #include "paddle/pir/core/type_name.h"
 #include "paddle/pir/core/type_util.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 class TypeA {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeA)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeA)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 
 class TypeB {};
-IR_DECLARE_EXPLICIT_TYPE_ID(TypeB)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeB)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
 
 TEST(type_test, type_id) {
@@ -59,7 +60,7 @@ struct FakeDialect : pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
   static const char *name() { return "fake"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
 
 TEST(type_test, type_base) {
@@ -197,7 +198,7 @@ class IntegerType
  public:
   using Base::Base;
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)
 
 // Customize a Dialect IntegerDialect, registration type of IntegerType.
@@ -208,7 +209,7 @@ struct IntegerDialect : pir::Dialect {
   }
   static const char *name() { return "integer"; }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(IntegerDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {

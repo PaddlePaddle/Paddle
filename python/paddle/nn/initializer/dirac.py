@@ -106,6 +106,9 @@ class Dirac(Initializer):
         Returns:
             The most critical OP(scatter) in this initializer, which contains 7~8 ops in total.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, dirac initializer not support lazy init for dist param."
         block = self._check_block(block)
         assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
         assert isinstance(block, (framework.Block, pir.Block))
@@ -252,7 +255,7 @@ class Dirac(Initializer):
                 attrs={
                     'dtype': VarDesc.VarType.INT64,
                     'shape': [len(idx_list)],
-                    'int64_values': idx_list,
+                    'values': idx_list,
                 },
                 stop_gradient=True,
             )
@@ -295,7 +298,7 @@ class Dirac(Initializer):
                 attrs={
                     'dtype': VarDesc.VarType.FP32,
                     'shape': [len(value_list)],
-                    'fp32_values': value_list,
+                    'values': value_list,
                 },
                 stop_gradient=True,
             )

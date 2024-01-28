@@ -23,12 +23,13 @@ from ..base.core import (  # noqa: F401
     IPUPlace,
     XPUPlace,
 )
-from .io import async_save, clear_async_save_task_queue  # noqa: F401
 from ..base.dygraph import base, to_variable  # noqa: F401
-from ..base.dygraph.base import disable_dygraph as enable_static  # noqa: F401
-from ..base.dygraph.base import enable_dygraph as disable_static  # noqa: F401
-from ..base.dygraph.base import grad  # noqa: F401
-from ..base.dygraph.base import no_grad_ as no_grad  # noqa: F401
+from ..base.dygraph.base import (  # noqa: F401
+    disable_dygraph as enable_static,
+    enable_dygraph as disable_static,
+    grad,
+    no_grad_ as no_grad,
+)
 from ..base.framework import (  # noqa: F401
     Block,
     IrGraph,
@@ -43,11 +44,7 @@ from ..base.framework import (  # noqa: F401
     _get_paddle_place,
     _global_flags,
     _set_expected_place,
-)
-from ..base.framework import (  # noqa: F401
     _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
-)
-from ..base.framework import (  # noqa: F401
     convert_np_dtype_to_dtype_,
     deprecate_stat_dict,
     disable_signal_handler,
@@ -55,9 +52,7 @@ from ..base.framework import (  # noqa: F401
     dygraph_only,
     generate_control_dev_var_name,
     get_flags,
-)
-from ..base.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
-from ..base.framework import (  # noqa: F401
+    in_dygraph_mode as in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
     set_flags,
@@ -66,6 +61,7 @@ from ..base.framework import (  # noqa: F401
     use_pir_api,
 )
 from ..base.layer_helper import LayerHelper  # noqa: F401
+from .io import async_save, clear_async_save_task_queue  # noqa: F401
 
 # isort: off
 # Do the *DUPLICATED* monkey-patch for the tensor object.

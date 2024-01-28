@@ -806,6 +806,7 @@ class TransformerDecoderLayer(Layer):
             corresponding layer would not have trainable bias parameter. See
             usage for details in :code:`ParamAttr` . Default: None,which means
             the default bias parameter property is used.
+        layer_norm_eps: the eps value in layer normalization components. Default=1e-5.
 
     Examples:
 
@@ -843,6 +844,7 @@ class TransformerDecoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        layer_norm_eps=1e-5,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -889,9 +891,9 @@ class TransformerDecoderLayer(Layer):
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2]
         )
-        self.norm1 = LayerNorm(d_model)
-        self.norm2 = LayerNorm(d_model)
-        self.norm3 = LayerNorm(d_model)
+        self.norm1 = LayerNorm(d_model, layer_norm_eps)
+        self.norm2 = LayerNorm(d_model, layer_norm_eps)
+        self.norm3 = LayerNorm(d_model, layer_norm_eps)
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
         self.dropout2 = Dropout(dropout, mode="upscale_in_train")
         self.dropout3 = Dropout(dropout, mode="upscale_in_train")

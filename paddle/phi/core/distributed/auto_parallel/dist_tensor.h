@@ -58,6 +58,22 @@ class DistTensor final
              const ProcessMesh& process_mesh,
              const Placements& placements);
 
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based local dense tensor.
+  /// \param global_dims The global dim of the dist tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+             const DDim& global_dims,
+             const ProcessMesh& process_mesh,
+             const Placements& placements);
+
   /// \brief Construct a empty dist tensor (for infer spmd)
   /// \param dims The global dimension of the currnet Tensor.
   /// \param dist_attr The distributed attributes of the current tensor.

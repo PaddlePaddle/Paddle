@@ -28,7 +28,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope);
+IR_API std::unique_ptr<Pass> CreateConstantFoldingPass();
 
 }  // namespace pir

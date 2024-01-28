@@ -27,6 +27,7 @@ from op_gen import (
 
 PD_MANUAL_API_LIST = {
     'embedding_grad',
+    'assign',
 }
 
 H_FILE_TEMPLATE = """
@@ -85,6 +86,7 @@ API_INNER_CODE_TEMPLATE = """
     {in_combine}
     {compute_op}
     {handle_optional_outputs}
+    {set_null_type}
     {out_split}
     {return_result}"""
 
@@ -135,18 +137,24 @@ OPTIONAL_VALUE_INPUT_TEMPLATE = """
         optional_{name} = {name};
     }}"""
 
-OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
-    paddle::optional<pir::OpResult> optional_{name};
+OPTIONAL_VALUE_OUTPUT_TEMPLATE = """
+    paddle::optional<pir::Value> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
-        optional_{name} = paddle::make_optional<pir::OpResult>({op_name}_op.result({index}));
+        optional_{name} = paddle::make_optional<pir::Value>({op_name}_op.result({index}));
     }}"""
 
-OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
-    paddle::optional<std::vector<pir::OpResult>> optional_{name};
+OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE = """
+    paddle::optional<std::vector<pir::Value>> optional_{name};
     if (!IsEmptyValue({op_name}_op.result({index}))) {{
         auto optional_{name}_slice_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
-        optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
+        optional_{name} = paddle::make_optional<std::vector<pir::Value>>(optional_{name}_slice_op.outputs());
     }}"""
+
+SET_NULL_TYPE_TEMPLATE = """
+    if (!{input}) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
+
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -163,25 +171,15 @@ DATA_TYPE = "paddle::dialect::DataTypeAttribute"
 VECTOR_TYPE = 'pir::VectorType'
 INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
-INPUT_TYPE_MAP = {
+VALUE_TYPE_MAP = {
     'paddle::dialect::DenseTensorType': 'pir::Value',
     'paddle::dialect::SelectedRowsType': 'pir::Value',
     'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::Value>',
 }
-OPTIONAL_INPUT_TYPE_MAP = {
+OPTIONAL_VALUE_TYPE_MAP = {
     'paddle::dialect::DenseTensorType': 'paddle::optional<pir::Value>',
     'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::Value>',
     'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::Value>>',
-}
-OUTPUT_TYPE_MAP = {
-    'paddle::dialect::DenseTensorType': 'pir::OpResult',
-    'paddle::dialect::SelectedRowsType': 'pir::OpResult',
-    'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
-}
-OPTIONAL_OUTPUT_TYPE_MAP = {
-    'paddle::dialect::DenseTensorType': 'paddle::optional<pir::OpResult>',
-    'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::OpResult>',
-    'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::OpResult>>',
 }
 
 
@@ -234,7 +232,7 @@ class CodeGen:
     def _need_skip(self, op_info, op_name):
         return (
             op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
-        ) or op_name in PD_MANUAL_API_LIST
+        )
 
     def _is_optional_input(self, op_info, input_name):
         name_list = op_info.input_name_list
@@ -274,9 +272,9 @@ class CodeGen:
         ret = []
         for name, type, optional in zip(name_list, type_list, optional_list):
             if optional == 'true':
-                ret.append(f'const {OPTIONAL_INPUT_TYPE_MAP[type]}& {name}')
+                ret.append(f'const {OPTIONAL_VALUE_TYPE_MAP[type]}& {name}')
             else:
-                ret.append(f'const {INPUT_TYPE_MAP[type]}& {name}')
+                ret.append(f'const {VALUE_TYPE_MAP[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(
@@ -339,17 +337,17 @@ class CodeGen:
                 if intermediate == 'true':
                     continue
                 if self._is_optional_output(op_info, name):
-                    ret.append(OPTIONAL_OUTPUT_TYPE_MAP[type])
+                    ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
-                    ret.append(OUTPUT_TYPE_MAP[type])
+                    ret.append(VALUE_TYPE_MAP[type])
             return 'std::tuple<{}>'.format(', '.join(ret))
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
             if self._is_optional_output(op_info, name):
-                return OPTIONAL_OUTPUT_TYPE_MAP[type_list[index]]
+                return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
-                return OUTPUT_TYPE_MAP[type_list[index]]
+                return VALUE_TYPE_MAP[type_list[index]]
         elif output_num == 0:
             return 'void'
 
@@ -370,7 +368,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 declare_str += self._gen_one_declare(
                     op_info, op_name, False, False
@@ -422,17 +423,32 @@ class CodeGen:
                 continue
             if self._is_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
-                    ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
+                    ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
                         op_name=op_name,
                         index=i,
                     )
                 else:
-                    ret += OPTIONAL_OPRESULT_OUTPUT_TEMPLATE.format(
+                    ret += OPTIONAL_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
                         op_name=op_name,
                         index=i,
                     )
+        return ret
+
+    def _gen_set_null_type(self, op_info, op_name):
+        name_list = op_info.output_name_list
+        inplace_map = op_info.inplace_map
+        if inplace_map is None:
+            return ""
+
+        ret = ""
+        for i, out_name in enumerate(name_list):
+            if self._is_optional_output(op_info, out_name):
+                in_name = inplace_map[out_name]
+                ret += SET_NULL_TYPE_TEMPLATE.format(
+                    input=in_name, op_name=op_name, index=i
+                )
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
@@ -571,8 +587,7 @@ class CodeGen:
         )
 
         if (
-            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or op_name in ["print", "hardshrink", "det", "assign_out_"]
+            op_name in ["real_grad", "imag_grad"]
             or len(mapping_name_to_type) == 0
         ):
             return ""
@@ -728,6 +743,7 @@ class CodeGen:
                     handle_optional_outputs=self._gen_handle_optional_outputs(
                         op_info, kernel_name
                     ),
+                    set_null_type=self._gen_set_null_type(op_info, kernel_name),
                     out_split=out_split,
                     return_result=self._gen_return_result(ret_list),
                 )
@@ -766,8 +782,15 @@ class CodeGen:
                 op_info, op_inst_name
             )
 
+            kernel_name = (
+                list(dispatch_kernel.keys())[0]
+                if dispatch_kernel and len(dispatch_kernel.keys()) == 1
+                else op_name
+            )
+            if op_name.endswith('_') and not kernel_name.endswith('_'):
+                kernel_name = kernel_name + '_'
             api_inner_code = API_INNER_CODE_TEMPLATE.format(
-                check_data_type=self._gen_check_data_type(op_info, op_name),
+                check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(
                     op_info
                 ),
@@ -776,6 +799,7 @@ class CodeGen:
                 handle_optional_outputs=self._gen_handle_optional_outputs(
                     op_info, op_name
                 ),
+                set_null_type=self._gen_set_null_type(op_info, op_name),
                 out_split=out_split,
                 return_result=self._gen_return_result(ret_list),
             )
@@ -798,7 +822,10 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if self._need_skip(op_info, op_name):
+                if (
+                    self._need_skip(op_info, op_name)
+                    or op_name in PD_MANUAL_API_LIST
+                ):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name, False, False)
                 if len(op_info.mutable_attribute_name_list) > 0:

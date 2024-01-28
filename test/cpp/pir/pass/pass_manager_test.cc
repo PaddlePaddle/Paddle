@@ -33,14 +33,15 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "test/cpp/pir/tools/macros_utils.h"
 
 #ifndef _WIN32
 class TestAnalysis1 {};
 class TestAnalysis2 {};
 
-IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis1)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestAnalysis1)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis1)
-IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis2)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestAnalysis2)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis2)
 
 TEST(pass_manager, PreservedAnalyses) {
@@ -72,8 +73,8 @@ class AddOp : public pir::Op<AddOp> {
   void VerifySig();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult l_operand,
-                    pir::OpResult r_operand,
+                    pir::Value l_operand,
+                    pir::Value r_operand,
                     pir::Type sum_type);
 };
 void AddOp::VerifySig() {
@@ -86,14 +87,14 @@ void AddOp::VerifySig() {
 }
 void AddOp::Build(pir::Builder &,
                   pir::OperationArgument &argument,
-                  pir::OpResult l_operand,
-                  pir::OpResult r_operand,
+                  pir::Value l_operand,
+                  pir::Value r_operand,
                   pir::Type sum_type) {
   argument.AddInput(l_operand);
   argument.AddInput(r_operand);
   argument.AddOutput(sum_type);
 }
-IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(AddOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 struct CountOpAnalysis {
@@ -115,7 +116,7 @@ struct CountOpAnalysis {
   int count = 0;
 };
 
-IR_DECLARE_EXPLICIT_TYPE_ID(CountOpAnalysis)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(CountOpAnalysis)
 IR_DEFINE_EXPLICIT_TYPE_ID(CountOpAnalysis)
 
 class TestPass : public pir::Pass {
@@ -226,7 +227,7 @@ TEST(pass_manager, PassManager) {
       true,
       true));
 
-  pm.EnablePassTiming(true);
+  // pm.EnablePassTiming(true);
 
   CHECK_EQ(pm.Run(&program), true);
 }

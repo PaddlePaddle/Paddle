@@ -183,8 +183,8 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   // cpy to cpu
   bool cpu_found_inf_data = false;
 
-  // number of inf and nans
-  int nums_inf_nans = 0;
+  // has nans or infs
+  bool has_inf_nans = false;
   MPDType cpu_scale_data;
   if (scale.place().GetType() == phi::AllocationType::XPU) {
     memory_utils::Copy(phi::CPUPlace(),
@@ -202,25 +202,25 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     auto* out = outs[i];
     dev_ctx.template Alloc<T>(out);
 
-    DenseTensor inf_nan_count;
-    inf_nan_count.Resize(found_infinite->dims());
-    dev_ctx.template Alloc<int>(&inf_nan_count);
+    DenseTensor inf_nan_check;
+    inf_nan_check.Resize({1});
+    dev_ctx.template Alloc<bool>(&inf_nan_check);
 
-    if (nums_inf_nans == 0) {
+    if (!has_inf_nans) {
       int r =
-          xpu::count_nan_or_inf(dev_ctx.x_context(),
+          xpu::check_nan_or_inf(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x->data<T>()),
-                                inf_nan_count.data<int>(),
+                                inf_nan_check.data<bool>(),
                                 x->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "count_nan_or_inf");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_nan_or_inf");
       memory_utils::Copy(phi::CPUPlace(),
-                         &nums_inf_nans,
+                         &has_inf_nans,
                          dev_ctx.GetPlace(),
-                         inf_nan_count.data<int>(),
-                         sizeof(int));
+                         inf_nan_check.data<bool>(),
+                         sizeof(bool));
     }
 
-    if (nums_inf_nans > 0) {
+    if (has_inf_nans) {
       cpu_found_inf_data = true;
       inverse_scale = 0.0;
     }

@@ -148,6 +148,12 @@ class PirStreamAnalyzer {
 
   void ShareEventInfoFrom(const PirStreamAnalyzer& src);
 
+  void SetForceEventsToWaitInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          program_force_events_to_wait) {
+    program_force_events_to_wait_ = program_force_events_to_wait;
+  }
+
   std::shared_ptr<
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
   GetEventInfo() const;
@@ -174,6 +180,8 @@ class PirStreamAnalyzer {
   std::shared_ptr<
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
       event_info_;
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      program_force_events_to_wait_;  // not owned
 };
 
 }  // namespace interpreter

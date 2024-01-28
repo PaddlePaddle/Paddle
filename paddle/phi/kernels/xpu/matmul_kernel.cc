@@ -76,12 +76,18 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    matmul, XPU, ALL_LAYOUT, phi::MatmulKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(matmul,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MatmulKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    XPU,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

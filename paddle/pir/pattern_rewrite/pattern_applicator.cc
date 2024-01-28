@@ -14,8 +14,8 @@
 
 #include <algorithm>
 
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {

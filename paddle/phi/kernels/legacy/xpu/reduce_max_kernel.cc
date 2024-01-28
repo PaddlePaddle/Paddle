@@ -49,4 +49,11 @@ void MaxRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max_raw, XPU, ALL_LAYOUT, phi::MaxRawKernel, float, int) {}
+PD_REGISTER_KERNEL(max_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MaxRawKernel,
+                   float,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

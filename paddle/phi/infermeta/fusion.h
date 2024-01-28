@@ -706,11 +706,6 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         const bool is_reverse,
                         const bool use_seq,
                         const bool origin_mode,
-                        const bool use_mkldnn,
-                        const std::string& mkldnn_data_type,
-                        const float scale_data,
-                        const float shift_data,
-                        const std::vector<float>& scale_weights,
                         const bool force_fp32_output,
                         MetaTensor* reordered_h0,
                         MetaTensor* xx,
@@ -807,14 +802,7 @@ void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& bias,
                  const int in_num_col_dims,
                  const std::string& activation_type,
-                 const bool use_mkldnn,
                  const bool padding_weights,
-                 const bool use_quantizer,
-                 const std::string& mkldnn_data_type,
-                 const float scale_in,
-                 const std::vector<float>& sclae_weights,
-                 const float scale_out,
-                 const bool force_fp32_output,
                  MetaTensor* out);
 
 void VariableLengthMemoryEfficientAttentionInferMeta(
@@ -828,5 +816,22 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     bool causal,
     int pre_cache_length,
     MetaTensor* out);
+
+void QKVAttentionXPUInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              const MetaTensor& q_max,
+                              const MetaTensor& k_max,
+                              const MetaTensor& v_max,
+                              float alpha,
+                              int head_num,
+                              int head_dim,
+                              bool qkv_fc_fusion,
+                              DataType out_dtype,
+                              MetaTensor* qkv,
+                              MetaTensor* qkv_max);
+void SinePosXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out);
 
 }  // namespace phi

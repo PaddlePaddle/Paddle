@@ -37,6 +37,14 @@ using StrategyFunction = std::function<std::shared_ptr<OpStrategy>(
     const std::vector<Type>&,
     const std::vector<std::vector<int>>&,
     const cinn::common::Target&)>;
+
+using StrategyFunctionSymbolic = std::function<std::shared_ptr<OpStrategy>(
+    const NodeAttr&,
+    const std::vector<ir::Tensor>&,
+    const std::vector<Type>&,
+    const std::vector<std::vector<ir::Dim>>&,
+    const cinn::common::Target&)>;
+
 using InferShapeFunction = std::function<std::vector<std::vector<int>>(
     const std::vector<std::vector<int>>&, const AttrMapType&)>;
 

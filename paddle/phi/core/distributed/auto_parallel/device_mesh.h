@@ -23,13 +23,19 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
+
+class DeviceCapabilityProto;
+class DeviceProto;
+class LinkCapabilityProto;
+class LinkProto;
+class DeviceMeshProto;
+
 struct DeviceCapability {
   double single_precision_flops = 0.0;
   double double_precision_flops = 0.0;
@@ -40,7 +46,7 @@ struct DeviceCapability {
   std::string to_string() const;
 
   static DeviceCapability from_proto(const DeviceCapabilityProto& proto);
-  DeviceCapabilityProto to_proto() const;
+  void to_proto(DeviceCapabilityProto* proto) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DeviceCapability& obj) {
@@ -74,7 +80,7 @@ class Device {
   std::string to_string() const;
 
   static Device from_proto(const DeviceProto& proto);
-  DeviceProto to_proto() const;
+  void to_proto(DeviceProto* proto) const;
 
  private:
   int64_t global_id_;
@@ -103,7 +109,7 @@ struct LinkCapability {
   std::string to_string() const;
 
   static LinkCapability from_proto(const LinkCapabilityProto& proto);
-  LinkCapabilityProto to_proto() const;
+  void to_proto(LinkCapabilityProto* proto) const;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const LinkCapability& obj) {
@@ -131,7 +137,7 @@ class Link {
   std::string to_string() const;
 
   static Link from_proto(const LinkProto& proto);
-  LinkProto to_proto() const;
+  void to_proto(LinkProto* proto) const;
 
  private:
   int64_t source_id_;
@@ -273,7 +279,7 @@ class DeviceMesh {
   std::string to_string() const;
 
   static DeviceMesh from_proto(const DeviceMeshProto& proto);
-  DeviceMeshProto to_proto() const;
+  void to_proto(DeviceMeshProto* proto) const;
 
  private:
   std::string name_;

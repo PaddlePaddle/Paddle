@@ -15,6 +15,7 @@
 import copy
 import csv
 import itertools
+import logging
 import os
 import re
 from typing import Tuple
@@ -22,6 +23,8 @@ from typing import Tuple
 from .prune import _PRUNE_FUNC
 
 __SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
+
+logger = logging.getLogger('auto_tuner')
 
 
 def divisor(num, reverse=False):
@@ -104,7 +107,9 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 "num_attention_heads", None
             )
             seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
-            use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
+            use_sequence_parallel = tuner_cfg.get(
+                "use_sequence_parallel", False
+            )
 
             if hidden_size and hidden_size % mp_degree != 0:
                 prune_flag = True
@@ -118,7 +123,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
             if (
                 seq_length
                 and seq_length % mp_degree != 0
-                and use_sequence_paralel
+                and use_sequence_parallel
             ):
                 prune_flag = True
 
@@ -224,9 +229,22 @@ def default_candidates(tuner_cfg):
         candidates["use_recompute"] = (
             [True, False] if schedule_mode != "performance" else [False, True]
         )
-        tuner_cfg["recompute_granularity"] = "auto"
     elif isinstance(use_recompute, bool):
         candidates["use_recompute"] = [use_recompute]
+    elif isinstance(use_recompute, list):
+        if len(use_recompute) == 0:
+            candidates["use_recompute"] = [None]
+        else:
+            candidates["use_recompute"] = []
+            for recompute_setting in use_recompute:
+                if recompute_setting not in [True, False]:
+                    raise ValueError(
+                        f"use_recompute only supports auto/True/False, but got {recompute_setting}"
+                    )
+                else:
+                    candidates["use_recompute"].append(recompute_setting)
+            if len(candidates["use_recompute"]) == 0:
+                candidates["use_recompute"] = [None]
     # TODO: should remove this case in the future
     elif use_recompute is None:
         candidates["use_recompute"] = [None]
@@ -247,13 +265,32 @@ def default_candidates(tuner_cfg):
             candidates["recompute_granularity"] = [
                 recompute_granularity.lower()
             ]
-        # TODO: should remove this case in the future
-        elif recompute_granularity is None:
-            candidates["recompute_granularity"] = [None]
         else:
             raise ValueError(
                 f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
             )
+    elif isinstance(recompute_granularity, list):
+        if len(recompute_granularity) == 0:
+            candidates["recompute_granularity"] = [None]
+        else:
+            candidates["recompute_granularity"] = []
+            for granularity in recompute_granularity:
+                if (
+                    granularity.lower()
+                    not in __SUPPORTED_RECOMPUTE_GRANULARITY__
+                ):
+                    raise ValueError(
+                        f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {granularity}"
+                    )
+                else:
+                    candidates["recompute_granularity"].append(
+                        granularity.lower()
+                    )
+            if len(candidates["recompute_granularity"]) == 0:
+                candidates["recompute_granularity"] = [None]
+    # TODO: should remove this case in the future
+    elif recompute_granularity is None:
+        candidates["recompute_granularity"] = [None]
     else:
         raise ValueError(
             f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
@@ -363,6 +400,7 @@ def search_all(tuner_cfg):
             new_cfg[mapping[idx]] = val
         new_all_cfgs.append(new_cfg)
 
+    search_space_size_before_prune = len(new_all_cfgs)
     pruned_all_cfgs = []
     tuner_cfg["num_gpus"] = num_gpus
     for cur_cfg in new_all_cfgs:
@@ -374,6 +412,10 @@ def search_all(tuner_cfg):
                 break
         if not pruned:
             pruned_all_cfgs.append(cur_cfg)
+    search_space_size_after_prune = len(pruned_all_cfgs)
+    logger.info(
+        f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
+    )
     return pruned_all_cfgs
 
 
@@ -426,10 +468,21 @@ def search_by_dp_estimation(tuner_cfg):
         task["sharding_degree"] = 1
         task["sharding_stage"] = 1
         task["num_gpus"] = task["mp_degree"] * task["pp_degree"]
-        if task["num_gpus"] >= tuner_cfg["gpus_per_node"]:
-            task["nodes"] = task["num_gpus"] // tuner_cfg["gpus_per_node"]
+        actual_cards = task["num_gpus"]
+        if actual_cards <= tuner_cfg["gpus_per_node"]:
+            nnodes = 1
+        elif actual_cards % tuner_cfg["gpus_per_node"] == 0:
+            nnodes = actual_cards // tuner_cfg["gpus_per_node"]
         else:
-            task["nodes"] = 1
+            for i in range(2, tuner_cfg["nodes"] + 1):
+                if (
+                    actual_cards % i == 0
+                    and actual_cards // i <= tuner_cfg["gpus_per_node"]
+                ):
+                    nnodes = i
+                    break
+        assert actual_cards % nnodes == 0
+        task["nodes"] = nnodes
         task["global_batch_size"] = (
             tuner_cfg["model_cfg"]["global_batch_size"]
             // task["estimated_dp_degree"]
@@ -438,8 +491,8 @@ def search_by_dp_estimation(tuner_cfg):
             new_all_cfgs.append(task)
 
     # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    sharding_all_cfgs = []
     if tuner_cfg["search_algo"].get("sharding_overlap", None):
-        sharding_all_cfgs = []
         for task in new_all_cfgs:
             new_task = copy.deepcopy(task)
             given_num_gpus = tuner_cfg["nodes"] * tuner_cfg["gpus_per_node"]
@@ -453,12 +506,21 @@ def search_by_dp_estimation(tuner_cfg):
                     * new_task["pp_degree"]
                     * new_task["sharding_degree"]
                 )
-                if new_task["num_gpus"] >= tuner_cfg["gpus_per_node"]:
-                    new_task["nodes"] = (
-                        new_task["num_gpus"] // tuner_cfg["gpus_per_node"]
-                    )
+                actual_cards = new_task["num_gpus"]
+                if actual_cards <= tuner_cfg["gpus_per_node"]:
+                    nnodes = 1
+                elif actual_cards % tuner_cfg["gpus_per_node"] == 0:
+                    nnodes = actual_cards // tuner_cfg["gpus_per_node"]
                 else:
-                    new_task["nodes"] = 1
+                    for i in range(2, tuner_cfg["nodes"] + 1):
+                        if (
+                            actual_cards % i == 0
+                            and actual_cards // i <= tuner_cfg["gpus_per_node"]
+                        ):
+                            nnodes = i
+                            break
+                assert actual_cards % nnodes == 0
+                new_task["nodes"] = nnodes
                 new_task["global_batch_size"] = (
                     task["global_batch_size"] * sharding_degree
                 )
@@ -532,7 +594,7 @@ def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
     if "sharding_overlap" not in tuner_cfg["search_algo"]:
         return
     cmd = copy.deepcopy(tuner_cfg["search_algo"]["sharding_overlap"])
-    if cfg.get("sharding_overlap", False):
+    if "sharding_overlap" in cfg:
         valid_hybrid_strategy = ["sharding_mp", "sharding_pp", "sharding_mp_pp"]
         for key in cmd:
             if key not in valid_hybrid_strategy:
@@ -596,13 +658,17 @@ def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
                 value = None
                 for key in keys[: len(keys) - 1]:
                     if value:
-                        value = cmd_cfg[key]
-                    else:
                         value = value[key]
+                    else:
+                        value = cmd_cfg[key]
                 if value:
-                    value[keys[-1]] = cmd[arg][2]
+                    value[keys[-1]] = (
+                        cmd[arg][2] if cfg["sharding_overlap"] else cmd[arg][3]
+                    )
                 else:
-                    cmd_cfg[keys[-1]] = cmd[arg][2]
+                    cmd_cfg[keys[-1]] = (
+                        cmd[arg][2] if cfg["sharding_overlap"] else cmd[arg][3]
+                    )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
 
@@ -680,8 +746,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
         elif arg == "local_batch_size" and arg in cmd:
             global_batch_size = (
                 cfg["global_batch_size"]
-                if "global_batch_size"
-                in tuner_cfg["model_cfg"]["global_batch_size"]
+                if "global_batch_size" in cfg
                 else tuner_cfg["model_cfg"]["global_batch_size"]
             )
             local_batch_size = (
@@ -770,8 +835,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
             try:
                 global_batch_size = (
                     cfg["global_batch_size"]
-                    if "global_batch_size"
-                    in tuner_cfg["model_cfg"]["global_batch_size"]
+                    if "global_batch_size" in cfg
                     else tuner_cfg["model_cfg"]["global_batch_size"]
                 )
                 gradient_accumulation_steps = (
@@ -864,6 +928,180 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
+        elif arg == "sequence_parallel" and arg in cmd:
+            try:
+                sequence_parallel = 1 if cfg["mp_degree"] > 1 else 0
+            except:
+                return
+            if "--" in cmd["sequence_parallel"][0]:
+                cmd["sequence_parallel"][1] = cmd["sequence_parallel"][1] + str(
+                    sequence_parallel
+                )
+                res_args.extend(cmd["sequence_parallel"])
+
+            elif "-o" in cmd["sequence_parallel"][0]:
+                cmd["sequence_parallel"][1] = (
+                    cmd["sequence_parallel"][1] + "=" + str(sequence_parallel)
+                )
+                res_args.extend(cmd["sequence_parallel"])
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                prefix = ""
+                if len(cmd[arg]) >= 3:
+                    prefix = cmd[arg][2]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = (
+                        prefix + str(sequence_parallel)
+                        if prefix
+                        else sequence_parallel
+                    )
+                else:
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(sequence_parallel)
+                        if prefix
+                        else sequence_parallel
+                    )
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                prefix = ""
+                if len(cmd[arg]) >= 3:
+                    prefix = cmd[arg][2]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = (
+                        prefix + str(sequence_parallel)
+                        if prefix
+                        else sequence_parallel
+                    )
+                else:
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(sequence_parallel)
+                        if prefix
+                        else sequence_parallel
+                    )
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
+        elif arg == "global_batch_size" and arg in cmd:
+            try:
+                global_batch_size = (
+                    cfg["global_batch_size"]
+                    if "global_batch_size" in cfg
+                    else tuner_cfg["model_cfg"]["global_batch_size"]
+                )
+            except:
+                return
+            if "--" in cmd["global_batch_size"][0]:
+                cmd["global_batch_size"][1] = cmd["global_batch_size"][1] + str(
+                    global_batch_size
+                )
+                res_args.extend(cmd["global_batch_size"])
+
+            elif "-o" in cmd["global_batch_size"][0]:
+                cmd["global_batch_size"][1] = (
+                    cmd["global_batch_size"][1] + "=" + str(global_batch_size)
+                )
+                res_args.extend(cmd["global_batch_size"])
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                prefix = ""
+                if len(cmd[arg]) >= 3:
+                    prefix = cmd[arg][2]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = (
+                        prefix + str(global_batch_size)
+                        if prefix
+                        else global_batch_size
+                    )
+                else:
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(global_batch_size)
+                        if prefix
+                        else global_batch_size
+                    )
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                prefix = ""
+                if len(cmd[arg]) >= 3:
+                    prefix = cmd[arg][2]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = (
+                        prefix + str(global_batch_size)
+                        if prefix
+                        else global_batch_size
+                    )
+                else:
+                    cmd_cfg[keys[-1]] = (
+                        prefix + str(global_batch_size)
+                        if prefix
+                        else global_batch_size
+                    )
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
     assert "run_cmd" in tuner_cfg
     cmd = copy.deepcopy(tuner_cfg["run_cmd"])
     res_args = copy.deepcopy(raw_args)
@@ -879,6 +1117,8 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
     _gen_new_arg("recompute_granularity", cmd, cfg, res_args, tuner_cfg)
     _gen_new_arg("local_batch_size", cmd, cfg, res_args, tuner_cfg)
     _gen_new_arg("gradient_accumulation_steps", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("global_batch_size", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("sequence_parallel", cmd, cfg, res_args, tuner_cfg)
 
     if tuner_cfg["run_cmd"].get("search_stage", None) and not run_best:
         cmd = copy.deepcopy(tuner_cfg["run_cmd"]["search_stage"])
@@ -925,9 +1165,9 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 value = None
                 for key in keys[: len(keys) - 1]:
                     if value:
-                        value = cmd_cfg[key]
-                    else:
                         value = value[key]
+                    else:
+                        value = cmd_cfg[key]
                 if value:
                     value[keys[-1]] = cmd[arg][2]
                 else:
@@ -1015,10 +1255,20 @@ def gen_new_ctx(ctx, cur_cfg, tuner_cfg):
             if new_ctx.args.master:
                 new_ctx.args.nnodes = "1:1"
         else:
+            if actual_cards % tuner_cfg["gpus_per_node"] == 0:
+                nnodes = actual_cards // tuner_cfg["gpus_per_node"]
+            else:
+                for i in range(2, tuner_cfg["nodes"] + 1):
+                    if (
+                        actual_cards % i == 0
+                        and actual_cards // i <= tuner_cfg["gpus_per_node"]
+                    ):
+                        nnodes = i
+                        break
+            assert actual_cards % nnodes == 0
             new_ctx.args.devices = ",".join(
-                [str(i) for i in range(tuner_cfg["gpus_per_node"])]
+                [str(i) for i in range(actual_cards // nnodes)]
             )
-            nnodes = actual_cards // tuner_cfg["gpus_per_node"]
             new_ctx.args.nnodes = f"{nnodes}:{nnodes}"
     return new_ctx
 
@@ -1125,6 +1375,38 @@ def read_step_time_log(
     return res
 
 
+def read_allocated_memory_log(
+    path, file="workerlog.0", target_metric='max_memory_allocated'
+):
+    target_file = path + "/" + file
+    if not os.path.exists(target_file):
+        return None
+    with open(target_file, "r") as f:
+        # read file
+        re_metric_pattern = (
+            target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
+        )
+        metric_list = []
+        lines = f.readlines()
+        for line in lines:
+            metric = re.findall(re_metric_pattern, line)
+            if metric:
+                value = None
+                for item in metric[0]:
+                    try:
+                        value = int(float(item))
+                        metric_list.append(value)
+                        break
+                    except:
+                        continue
+                assert value is not None
+        if not metric_list:
+            return None
+        else:
+            metric_list.sort()
+            return metric_list[-1]
+
+
 def read_memory_log(path, file) -> Tuple[float, bool]:
     log_path = os.path.join(path, file)
     if not os.path.exists(log_path):
@@ -1187,6 +1469,48 @@ def read_log(
         res_memory = 0.0
         err_code = (1 << 2) | err_code
     return res_metric, res_memory, err_code
+
+
+def get_error_info(filename):
+    """
+    get error info from log file
+    return:
+        error_info: Specific error message
+    """
+    error_infos = []
+    error_pattern = r"Error"
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        last_lines = lines[-100:]
+        for line in last_lines:
+            error_info = re.findall(error_pattern, line, re.IGNORECASE)
+            if error_info:
+                if "Out of memory" in line:
+                    error_infos.append("Out of memory")
+                else:
+                    error_infos.append(line)
+    return list(set(error_infos))
+
+
+def find_error_from_log(path):
+    """
+    find error infos from log directory
+    return:
+        error_info: all error message on log directory
+    """
+    unique_error_info = ""
+    all_error_infos = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            error_infos = get_error_info(path + "/" + file)
+            all_error_infos += error_infos
+    all_error_infos = list(set(all_error_infos))
+    for info in all_error_infos:
+        unique_error_info = unique_error_info + info + ","
+    unique_error_info = unique_error_info[:-1]
+    return unique_error_info
 
 
 def three_mul_combinations(target):

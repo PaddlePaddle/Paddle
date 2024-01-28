@@ -19,7 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
-namespace pir {
+namespace paddle {
 namespace drr {
 
 template <class T>
@@ -32,11 +32,11 @@ struct CppTypeToIrAttribute;
     using type = ir_attr_type;                                     \
   };
 
-PD_SPECIALIZE_CppTypeToIrAttribute(bool, BoolAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(std::string, StrAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(bool, pir::BoolAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, pir::Int32Attribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, pir::Int64Attribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(float, pir::FloatAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(std::string, pir::StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
                                    paddle::dialect::DataTypeAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
@@ -61,7 +61,8 @@ struct IrAttrbuteCreator<std::vector<int32_t>> {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());
     for (int32_t x : obj) {
-      attr_vec.push_back(Int32Attribute::get(pir::IrContext::Instance(), x));
+      attr_vec.push_back(
+          pir::Int32Attribute::get(pir::IrContext::Instance(), x));
     }
     return pir::ArrayAttribute::get(pir::IrContext::Instance(), attr_vec);
   }
@@ -73,7 +74,8 @@ struct IrAttrbuteCreator<std::vector<float>> {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());
     for (float x : obj) {
-      attr_vec.push_back(FloatAttribute::get(pir::IrContext::Instance(), x));
+      attr_vec.push_back(
+          pir::FloatAttribute::get(pir::IrContext::Instance(), x));
     }
     return pir::ArrayAttribute::get(pir::IrContext::Instance(), attr_vec);
   }
@@ -110,13 +112,13 @@ template <>
 struct IrAttrTypeCast<std::vector<int64_t>> {
   static std::vector<int64_t> To(const pir::Attribute& attr) {
     std::vector<int64_t> result;
-    if (attr.dyn_cast<pir::ArrayAttribute>()) {
+    if (attr.isa<pir::ArrayAttribute>()) {
       auto array_attr = attr.dyn_cast<pir::ArrayAttribute>();
       for (size_t i = 0; i < array_attr.size(); i++) {
         result.push_back(
             array_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
       }
-    } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
+    } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
       result =
           attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
     } else {
@@ -140,4 +142,4 @@ struct IrAttrTypeCast<std::vector<float>> {
 };
 
 }  // namespace drr
-}  // namespace pir
+}  // namespace paddle

@@ -35,7 +35,7 @@ class PassInstrumentor;
 
 namespace detail {
 
-/// A utility class to reprensent the analyses that are kwnown to be preserved.
+/// A utility class to represent the analyses that are known to be preserved.
 class PreservedAnalyses {
   struct AllAnalysesType {};
 
@@ -305,4 +305,5 @@ class AnalysisManagerHolder {
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::detail::PreservedAnalyses::AllAnalysesType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(
+    pir::detail::PreservedAnalyses::AllAnalysesType)

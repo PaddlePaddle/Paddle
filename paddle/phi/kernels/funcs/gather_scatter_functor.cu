@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace funcs {
@@ -92,6 +93,12 @@ class ReduceMin {
 };
 static ReduceMin reduce_min;
 
+__global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid * sizeof(int) >= size) return;
+  dest[tid] = value;
+}
+
 template <typename tensor_t,
           typename index_t,
           typename func_t,
@@ -108,17 +115,10 @@ __global__ void ScatterAssignGPUKernel(tensor_t* self_data,
                                        int64_t outer_dim_size_src,
                                        int64_t numel,
                                        int64_t numel_data,
-                                       const func_t& reduce_op) {
+                                       const func_t& reduce_op,
+                                       int* thread_ids) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int thread_ids[];
-
-  if (tid == 0) {
-    for (int i = 0; i < numel_data; i++) {
-      thread_ids[i] = 0;
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
                     // squeezed from the N layers loop.
   /* tid = i * select_dim_size * outer_dim_size + j * outer_dim_size + k */
@@ -182,10 +182,10 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
                                        int64_t numel,
                                        int64_t numel_data,
                                        bool include_self,
-                                       const func_t& reduce_op) {
+                                       const func_t& reduce_op,
+                                       int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
   if (include_self == false) {
     if (tid == 0) {
       for (int i = 0; i < numel_data; i++) {
@@ -262,21 +262,11 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      int64_t numel,
                                      int64_t numel_data,
                                      bool include_self,
-                                     const func_t& reduce_op) {
+                                     const func_t& reduce_op,
+                                     int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
 
-  if (tid == 0) {
-    for (int i = 0; i < numel_data; i++) {
-      shared_mem[i] = 0;  // thread_id
-      if (include_self)
-        shared_mem[numel_data + i] = 1;  // reduce size
-      else
-        shared_mem[numel_data + i] = 0;
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;  // The i, j, k here is the index of the 3 layers loop
                     // squeezed from the N layers loop.
   /* tid = i * select_dim_size * outer_dim_size + j * outer_dim_size + k */
@@ -379,57 +369,80 @@ struct gpu_gather_scatter_functor {
     int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
     int64_t grid = (n + block - 1) / block;
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+    DenseTensor shared_mem_tensor;
     if (method_name == "scatter_assign_gpu") {
-      int shared_mem_size = sizeof(int) * self_size;
+      shared_mem_tensor.Resize({self_size});
+      ctx.Alloc<int>(&shared_mem_tensor);
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+
+      int* shared_mem = shared_mem_tensor.data<int>();
       ScatterAssignGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_size, stream>>>(self_data,
-                                                     dim,
-                                                     index_data,
-                                                     src_data,
-                                                     select_dim_size,
-                                                     self_select_dim_size,
-                                                     src_select_dim_size,
-                                                     outer_dim_size,
-                                                     outer_dim_size_self,
-                                                     outer_dim_size_src,
-                                                     index_size,
-                                                     self_size,
-                                                     reduce_op);
+          <<<grid, block, 0, stream>>>(self_data,
+                                       dim,
+                                       index_data,
+                                       src_data,
+                                       select_dim_size,
+                                       self_select_dim_size,
+                                       src_select_dim_size,
+                                       outer_dim_size,
+                                       outer_dim_size_self,
+                                       outer_dim_size_src,
+                                       index_size,
+                                       self_size,
+                                       reduce_op,
+                                       shared_mem);
     } else if (method_name == "scatter_mean_gpu") {
-      int shared_mem_size = sizeof(int) * self_size * 2;
+      shared_mem_tensor.Resize({self_size * 2});
+      ctx.Alloc<int>(&shared_mem_tensor);
+      if (include_self) {
+        int64_t grid_memset = (self_size * 2 + block - 1) / block;
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
+      } else {
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+      }
+
+      int* shared_mem = shared_mem_tensor.data<int>();
       ScatterMeanGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_size, stream>>>(self_data,
-                                                     dim,
-                                                     index_data,
-                                                     src_data,
-                                                     select_dim_size,
-                                                     self_select_dim_size,
-                                                     src_select_dim_size,
-                                                     outer_dim_size,
-                                                     outer_dim_size_self,
-                                                     outer_dim_size_src,
-                                                     index_size,
-                                                     self_size,
-                                                     include_self,
-                                                     reduce_op);
+          <<<grid, block, 0, stream>>>(self_data,
+                                       dim,
+                                       index_data,
+                                       src_data,
+                                       select_dim_size,
+                                       self_select_dim_size,
+                                       src_select_dim_size,
+                                       outer_dim_size,
+                                       outer_dim_size_self,
+                                       outer_dim_size_src,
+                                       index_size,
+                                       self_size,
+                                       include_self,
+                                       reduce_op,
+                                       shared_mem);
     } else {
-      int shared_mem_size = 0;
-      if (include_self == false) shared_mem_size = sizeof(int) * self_size;
+      int* shared_mem = nullptr;
+      if (include_self == false) {
+        shared_mem_tensor.Resize({self_size});
+        ctx.Alloc<int>(&shared_mem_tensor);
+        phi::funcs::set_constant(ctx, &shared_mem_tensor, index_size + 1);
+
+        shared_mem = shared_mem_tensor.data<int>();
+      }
       GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_size, stream>>>(self_data,
-                                                     dim,
-                                                     index_data,
-                                                     src_data,
-                                                     select_dim_size,
-                                                     self_select_dim_size,
-                                                     src_select_dim_size,
-                                                     outer_dim_size,
-                                                     outer_dim_size_self,
-                                                     outer_dim_size_src,
-                                                     index_size,
-                                                     self_size,
-                                                     include_self,
-                                                     reduce_op);
+          <<<grid, block, 0, stream>>>(self_data,
+                                       dim,
+                                       index_data,
+                                       src_data,
+                                       select_dim_size,
+                                       self_select_dim_size,
+                                       src_select_dim_size,
+                                       outer_dim_size,
+                                       outer_dim_size_self,
+                                       outer_dim_size_src,
+                                       index_size,
+                                       self_size,
+                                       include_self,
+                                       reduce_op,
+                                       shared_mem);
     }
   }
 };  // struct gpu_gather_scatter_functor
@@ -594,17 +607,16 @@ void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-  int shared_mem_size = sizeof(int) * grad_size;
   ScatterInputGradGPUKernel<tensor_t, index_t>
-      <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                 dim,
-                                                 index_data,
-                                                 select_dim_size,
-                                                 grad_select_dim_size,
-                                                 outer_dim_size,
-                                                 outer_dim_size_data,
-                                                 index_size,
-                                                 grad_size);
+      <<<grid, block, 0, stream>>>(grad_data,
+                                   dim,
+                                   index_data,
+                                   select_dim_size,
+                                   grad_select_dim_size,
+                                   outer_dim_size,
+                                   outer_dim_size_data,
+                                   index_size,
+                                   grad_size);
 }
 
 template <typename tensor_t, typename index_t>
@@ -618,16 +630,10 @@ __global__ void ScatterMulInputGradGPUKernel(tensor_t* grad_data,
                                              int64_t outer_dim_size,
                                              int64_t outer_dim_size_grad,
                                              int64_t numel,
-                                             int64_t numel_grad) {
+                                             int64_t numel_grad,
+                                             int* thread_ids) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int thread_ids[];
-  if (tid == 0) {
-    for (int i = 0; i < numel_grad; i++) {
-      thread_ids[i] = 0;
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -660,17 +666,10 @@ __global__ void ScatterMinMaxInputGradGPUKernel(tensor_t* grad_data,
                                                 int64_t outer_dim_size_value,
                                                 int64_t numel,
                                                 int64_t numel_grad,
-                                                const std::string& reduce) {
+                                                const std::string& reduce,
+                                                int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
-
-  if (tid == 0) {
-    for (int i = 0; i < numel_grad; i++) {
-      shared_mem[i] = 1;  // number of elements
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -739,39 +738,45 @@ void gpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self,
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({grad_size});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  int* shared_mem = shared_mem_tensor.data<int>();
   if (reduce == "mul" || reduce == "multiply") {
-    int shared_mem_size = sizeof(int) * grad_size;
+    phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
     ScatterMulInputGradGPUKernel<tensor_t, index_t>
-        <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                   dim,
-                                                   index_data,
-                                                   out_data,
-                                                   x_data,
-                                                   select_dim_size,
-                                                   grad_select_dim_size,
-                                                   outer_dim_size,
-                                                   outer_dim_size_grad,
-                                                   index_size,
-                                                   grad_size);
+        <<<grid, block, 0, stream>>>(grad_data,
+                                     dim,
+                                     index_data,
+                                     out_data,
+                                     x_data,
+                                     select_dim_size,
+                                     grad_select_dim_size,
+                                     outer_dim_size,
+                                     outer_dim_size_grad,
+                                     index_size,
+                                     grad_size,
+                                     shared_mem);
   } else if (reduce == "amin" || reduce == "amax") {
-    int shared_mem_size = sizeof(int) * grad_size;
+    phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
     ScatterMinMaxInputGradGPUKernel<tensor_t, index_t>
-        <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                   dim,
-                                                   index_data,
-                                                   out_data,
-                                                   x_data,
-                                                   value_data,
-                                                   self_data,
-                                                   select_dim_size,
-                                                   grad_select_dim_size,
-                                                   value_select_dim_size,
-                                                   outer_dim_size,
-                                                   outer_dim_size_grad,
-                                                   outer_dim_size_value,
-                                                   index_size,
-                                                   grad_size,
-                                                   reduce);
+        <<<grid, block, 0, stream>>>(grad_data,
+                                     dim,
+                                     index_data,
+                                     out_data,
+                                     x_data,
+                                     value_data,
+                                     self_data,
+                                     select_dim_size,
+                                     grad_select_dim_size,
+                                     value_select_dim_size,
+                                     outer_dim_size,
+                                     outer_dim_size_grad,
+                                     outer_dim_size_value,
+                                     index_size,
+                                     grad_size,
+                                     reduce,
+                                     shared_mem);
   }
 }
 
@@ -784,17 +789,10 @@ __global__ void ScatterMeanInputGradGPUKernel(tensor_t* grad_data,
                                               int64_t outer_dim_size,
                                               int64_t outer_dim_size_grad,
                                               int64_t numel,
-                                              int64_t numel_grad) {
+                                              int64_t numel_grad,
+                                              int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
-  if (tid == 0) {
-    for (int i = 0; i < numel_grad; i++) {
-      shared_mem[i] = 0;               // thread_ids
-      shared_mem[numel_grad + i] = 1;  // number of elements
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -843,21 +841,31 @@ void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
     outer_dim_size_grad *= grad_dims[i];
   }
 
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({grad_size * 2});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+  int* shared_mem = shared_mem_tensor.data<int>();
+
   int block = 512;
+  int64_t grid_memset = (grad_size + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
+  CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
+      shared_mem + grad_size, 1, sizeof(int) * grad_size);
+
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-  int shared_mem_size = sizeof(int) * grad_size * 2;
   ScatterMeanInputGradGPUKernel<tensor_t, index_t>
-      <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                 dim,
-                                                 index_data,
-                                                 select_dim_size,
-                                                 grad_select_dim_size,
-                                                 outer_dim_size,
-                                                 outer_dim_size_grad,
-                                                 index_size,
-                                                 grad_size);
+      <<<grid, block, 0, stream>>>(grad_data,
+                                   dim,
+                                   index_data,
+                                   select_dim_size,
+                                   grad_select_dim_size,
+                                   outer_dim_size,
+                                   outer_dim_size_grad,
+                                   index_size,
+                                   grad_size,
+                                   shared_mem);
 }
 
 template <typename tensor_t, typename index_t>
@@ -872,17 +880,11 @@ __global__ void ScatterValueGradGPUKernel(tensor_t* grad_data,
                                           int64_t outer_dim_size_self,
                                           int64_t outer_dim_size_grad,
                                           int64_t numel,
-                                          int64_t numel_data) {
+                                          int64_t numel_data,
+                                          int* thread_ids) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int thread_ids[];
 
-  if (tid == 0) {
-    for (int i = 0; i < numel_data; i++) {
-      thread_ids[i] = 0;
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -934,24 +936,30 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
     outer_dim_size_grad *= grad_dims[i];
   }
 
+  DenseTensor shared_mem_tensor;
+  shared_mem_tensor.Resize({self_size});
+  ctx.Alloc<int>(&shared_mem_tensor);
+  phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+  int* shared_mem = shared_mem_tensor.data<int>();
+
   int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
-  int shared_mem_size = sizeof(int) * self_size;
   ScatterValueGradGPUKernel<tensor_t, index_t>
-      <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                 dim,
-                                                 self_data,
-                                                 index_data,
-                                                 select_dim_size,
-                                                 self_select_dim_size,
-                                                 grad_select_dim_size,
-                                                 outer_dim_size,
-                                                 outer_dim_size_self,
-                                                 outer_dim_size_grad,
-                                                 index_size,
-                                                 self_size);
+      <<<grid, block, 0, stream>>>(grad_data,
+                                   dim,
+                                   self_data,
+                                   index_data,
+                                   select_dim_size,
+                                   self_select_dim_size,
+                                   grad_select_dim_size,
+                                   outer_dim_size,
+                                   outer_dim_size_self,
+                                   outer_dim_size_grad,
+                                   index_size,
+                                   self_size,
+                                   shared_mem);
 }
 
 template <typename tensor_t, typename index_t>
@@ -967,20 +975,10 @@ __global__ void ScatterMeanValueGradGPUKernel(tensor_t* grad_data,
                                               int64_t outer_dim_size_grad,
                                               int64_t numel,
                                               int64_t numel_self,
-                                              bool include_self) {
+                                              int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
 
-  if (tid == 0) {
-    for (int i = 0; i < numel_self; i++) {
-      if (include_self)
-        shared_mem[i] = 1;  // number of elements
-      else
-        shared_mem[i] = 0;
-    }
-  }
-  __syncthreads();
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -1072,21 +1070,29 @@ void gpu_scatter_add_mean_value_grad_kernel(
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   if (reduce == "mean") {
-    int shared_mem_size = sizeof(int) * self_size;
+    DenseTensor shared_mem_tensor;
+    shared_mem_tensor.Resize({self_size});
+    ctx.Alloc<int>(&shared_mem_tensor);
+    if (include_self) {
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 1);
+    } else {
+      phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
+    }
+    int* shared_mem = shared_mem_tensor.data<int>();
     ScatterMeanValueGradGPUKernel<tensor_t, index_t>
-        <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                   dim,
-                                                   self_data,
-                                                   index_data,
-                                                   select_dim_size,
-                                                   self_select_dim_size,
-                                                   grad_select_dim_size,
-                                                   outer_dim_size,
-                                                   outer_dim_size_self,
-                                                   outer_dim_size_grad,
-                                                   index_size,
-                                                   self_size,
-                                                   include_self);
+        <<<grid, block, 0, stream>>>(grad_data,
+                                     dim,
+                                     self_data,
+                                     index_data,
+                                     select_dim_size,
+                                     self_select_dim_size,
+                                     grad_select_dim_size,
+                                     outer_dim_size,
+                                     outer_dim_size_self,
+                                     outer_dim_size_grad,
+                                     index_size,
+                                     self_size,
+                                     shared_mem);
   } else if (reduce == "add") {
     ScatterAddValueGradGPUKernel<tensor_t, index_t>
         <<<grid, block, 0, stream>>>(grad_data,
@@ -1150,10 +1156,10 @@ __global__ void ScatterMinMaxValueGradGPUKernel(tensor_t* grad_data,
                                                 int64_t outer_dim_size_grad,
                                                 int64_t numel,
                                                 int64_t numel_self,
-                                                bool include_self) {
+                                                bool include_self,
+                                                int* shared_mem) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
-  extern __shared__ int shared_mem[];
   int64_t i, j, k;
   i = tid / (select_dim_size * outer_dim_size);
   int64_t remind = tid % (select_dim_size * outer_dim_size);
@@ -1245,24 +1251,29 @@ void gpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
                                      outer_dim_size_grad,
                                      index_size);
   } else if (reduce == "amin" || reduce == "amax") {
-    int shared_mem_size = sizeof(int) * self_size;
+    DenseTensor shared_mem_tensor;
+    shared_mem_tensor.Resize({self_size});
+    ctx.Alloc<int>(&shared_mem_tensor);
+
+    int* shared_mem = shared_mem_tensor.data<int>();
     ScatterMinMaxValueGradGPUKernel<tensor_t, index_t>
-        <<<grid, block, shared_mem_size, stream>>>(grad_data,
-                                                   dim,
-                                                   index_data,
-                                                   self_data,
-                                                   value_data,
-                                                   out_data,
-                                                   x_data,
-                                                   select_dim_size,
-                                                   self_select_dim_size,
-                                                   grad_select_dim_size,
-                                                   outer_dim_size,
-                                                   outer_dim_size_self,
-                                                   outer_dim_size_grad,
-                                                   index_size,
-                                                   self_size,
-                                                   include_self);
+        <<<grid, block, 0, stream>>>(grad_data,
+                                     dim,
+                                     index_data,
+                                     self_data,
+                                     value_data,
+                                     out_data,
+                                     x_data,
+                                     select_dim_size,
+                                     self_select_dim_size,
+                                     grad_select_dim_size,
+                                     outer_dim_size,
+                                     outer_dim_size_self,
+                                     outer_dim_size_grad,
+                                     index_size,
+                                     self_size,
+                                     include_self,
+                                     shared_mem);
   }
 }
 

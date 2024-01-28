@@ -143,7 +143,7 @@ def build_view(in_labels, out_labels):
     Returns
     -------
     The inverse map from out_labels to in_labels. The length of the inverse map equals that of
-    out_labels. -1 is filled if there's no matching intput dimension for a specific label.
+    out_labels. -1 is filled if there's no matching input dimension for a specific label.
 
     Examples
     --------
@@ -646,10 +646,10 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
         #       I... are aligned and not to be combined immediately
         #       J... are not aligned and not to be combined immediately
         #       K... are aligned and should be immediately combined
-        # At this point the non-trivial broadcast dimensinos in K are already reduced
+        # At this point the non-trivial broadcast dimensions in K are already reduced
         # and removed. That means all K dimensions are aligned and their sizes are not 1.
         # We then inspect the layout of I,J,K plus the above observation to make
-        # specializatoin decisions.  The current strategy is set as follows:
+        # specialization decisions.  The current strategy is set as follows:
         #  (1) if I... J... K... are all empty, it's multiplying a scalar
         #  (2) if K... are empty, better use a broadcast
         #  (3) if I... J... empty and K... not empty, a vector-vector multiply (or a dot)
@@ -672,7 +672,7 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     if any(ax != dim for ax, dim in enumerate(view[:nout])):
         perm = [dim for dim in view if dim >= 0]
         if sorted(perm) != perm:
-            varname = f'op{nop-1}'
+            varname = f'op{nop - 1}'
             step = transpose, [varname], varname, perm
             plan.add_step(step)
         dim = 0
@@ -684,14 +684,14 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
             if d == -1:
                 unsqueeze_dims.append(ax)
         if unsqueeze_dims:
-            varname = f'op{nop-1}'
+            varname = f'op{nop - 1}'
             step = unsqueeze, [varname], varname, unsqueeze_dims
             plan.add_step(step)
 
     squeeze_dims = [dim for dim in view[nout:] if dim != -1]
     if squeeze_dims:
         # plan_reduce(plan, nop-1, reduce_dims, keepdim=False)
-        varname = f'op{nop-1}'
+        varname = f'op{nop - 1}'
         step = squeeze, [varname], varname, squeeze_dims
         plan.add_step(step)
 
@@ -748,7 +748,7 @@ def parse_fake_shape(equation, operands, labels):
     def fake_shape(ori_label, label, op):
         """
         1. ori_label is the original labels, not aligned by '....'
-        2. if the '...' is evalulated to empty list, there is no '.' in label
+        2. if the '...' is evaluated to empty list, there is no '.' in label
         """
         assert len(op.shape) == len(label), (
             "length of shape and length of label must be the same, but received %d != %d"
@@ -802,7 +802,7 @@ def einsum_v2(equation, *operands):
     """
     einsum v2 implementation.
     1. Implement C++ EinsumOp.
-    2. V2 create the EinsumOp to calculate, so just a little verifty work in python.
+    2. V2 create the EinsumOp to calculate, so just a little verify work in python.
     3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
     """
     n_op = len(operands)
