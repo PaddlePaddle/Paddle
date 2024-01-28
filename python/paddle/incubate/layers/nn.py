@@ -467,7 +467,7 @@ def shuffle_batch(x, seed=None):
               Out.dims = [4, 2]
 
     Args:
-        x (Tensor): The input Tensor. The input Tensor is a N-D LoDTensor with type int, float32 or float64.
+        x (Tensor): The input Tensor. The input Tensor is a N-D LoDTensor with type int, float32, float64, complex64 or complex128.
         seed (None|int|Tensor, optional): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
             If not set(Default), start up seed of shuffle engine will be generated randomly. Default: None.
 
