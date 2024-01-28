@@ -87,7 +87,7 @@ def for_loop_dyfunc(max_len):
 
 def for_loop_dyfunc2(max_len):
     # Test case: a variable is used and created in loop, but used before created
-    x = paddle.tensor.fill_constant(shape=[1, 2], dtype="int32", value=1)
+    x = paddle.full(shape=[1, 2], fill_value=1, dtype="int32")
 
     for i in range(max_len):
         if i > 1:
@@ -95,7 +95,7 @@ def for_loop_dyfunc2(max_len):
         a = 1
         q, _ = x.shape  # test var x.shape only used but not created in loop
 
-    ret = paddle.tensor.fill_constant(shape=[1], dtype="int32", value=s + q)
+    ret = paddle.full(shape=[1], fill_value=s + q, dtype="int32")
     return ret
 
 
@@ -186,9 +186,7 @@ def for_loop_class_var(max_len):
 
     foo = Foo()
 
-    max_len = paddle.tensor.fill_constant(
-        shape=[1], value=max_len, dtype="int32"
-    )
+    max_len = paddle.full(shape=[1], fill_value=max_len, dtype="int32")
 
     for i in range(max_len):
         foo.b = paddle.zeros(shape=[1], dtype='float32')
@@ -203,8 +201,8 @@ def var_create_in_for_loop(max_len):
 
 
 def nested_for_loop_dyfunc():
-    two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
-    three = paddle.tensor.fill_constant(shape=[1], value=3, dtype="int32")
+    two = paddle.full(shape=[1], fill_value=2, dtype="int32")
+    three = paddle.full(shape=[1], fill_value=3, dtype="int32")
     for j in range(two):
         for i in range(10):
             a = 2 + j
