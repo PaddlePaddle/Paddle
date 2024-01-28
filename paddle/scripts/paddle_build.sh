@@ -1166,8 +1166,6 @@ function generate_api_spec() {
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-        pip cache purge
-        pip install --upgrade pip
         pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
         pip --no-cache-dir install ${PADDLE_ROOT}/dist/*whl
