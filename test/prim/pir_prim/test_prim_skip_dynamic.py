@@ -12,28 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
+from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decomp
 from paddle.framework import core
 
 paddle.enable_static()
 
 
-def rms_norm(hidden_states, weight):
-    variance = hidden_states.pow(2).mean((0, 1), keepdim=True)
-    hidden_states = paddle.rsqrt(variance + 1e-5) * hidden_states
-    return hidden_states * weight
-
-
 class TestPrimMode(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [1, 300, 4096]
-        self.shape_y = [4096]
+        self.shape_x = [2, 1024, 1024]
+        self.shape_y = [2, 1024, 1024]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
 
@@ -42,36 +38,35 @@ class TestPrimMode(unittest.TestCase):
             core._set_prim_all_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', [-1, -1, 4096], dtype='float32')
+            x = paddle.static.data('x', [-1, 1024, 1024], dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
-            res = rms_norm(x, y)
+            x.stop_gradient = False
+            x1 = paddle.nn.functional.relu(x)
+            y.stop_gradient = False
+            z = paddle.divide(x1, y)
+            res = paddle.nn.functional.gelu(z)
             [res2] = decomp.decompose(main_program, [res])
-            if flag == "all":
-                # Todo(CZ): when symbolic shape rules of all op are ready, set flag to make this branch effective
-                pm = paddle.base.libpaddle.pir.PassManager()
-                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
-                    pm, main_program
-                )
-                pm.run(main_program)
-
+            gradients = grad(res2, (x, y))
             exe = paddle.static.Executor()
             outs = exe.run(
                 feed={
                     'x': self.x,
                     'y': self.y,
                 },
-                fetch_list=[res2],
+                fetch_list=[res2, gradients[0], gradients[1]],
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
-        if not flag:
-            assert 'pd_op.mean' in whole_ops
         if flag == "all":
             core._set_prim_all_enabled(False)
-            assert 'pd_op.mean' not in whole_ops
+            assert (
+                'pd_op.gelu' not in whole_ops
+                and 'pd_op.divide_grad' in whole_ops
+            )
         return outs
 
     def test_prim_all_dynamic(self):
+        os.environ["FLAGS_prim_skip_dynamic"] = "1"
         res_ref = self.base_net()
         res = self.base_net("all")
         for ref, actual in zip(res_ref, res):
