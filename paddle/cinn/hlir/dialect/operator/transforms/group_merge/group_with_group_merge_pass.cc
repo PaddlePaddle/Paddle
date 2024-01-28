@@ -410,7 +410,7 @@ template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseInjective(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
   bool can_all_special_ops_fused = false;
-  src.WalkOpNodes([&](const OpNode& op) {
+  dst.WalkOpNodes([&](const OpNode& op) {
     can_all_special_ops_fused =
         can_all_special_ops_fused &&
         SpecialOpsFusionRule::GetInstance().ConsumerOpAllowsFusion(
