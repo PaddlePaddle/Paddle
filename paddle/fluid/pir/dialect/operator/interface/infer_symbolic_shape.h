@@ -189,6 +189,8 @@ using paddle::dialect::ScaleOpInferSymbolicShape;
 
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+bool ConcatOpInferSymbolicShape(pir::Operation *op,
+                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool ReduceMaxOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool ReduceMinOpInferSymbolicShape(
