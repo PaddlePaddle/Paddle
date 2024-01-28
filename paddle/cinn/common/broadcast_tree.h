@@ -33,6 +33,4 @@ BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves);
 
 std::string ToTxtString(const BroadcastTree&);
 
-std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree);
-
 }  // namespace cinn::common

@@ -137,7 +137,7 @@ Expr GetNextForLoop(const Expr& for_loop) {
       << "The input of GetNextForLoop should be ir::For!";
   Expr for_body = for_loop.As<ir::For>()->body;
   ir::Block* for_body_block = for_body.As<ir::Block>();
-  CHECK(for_body_block) << "The for_loop's body shoule be Block!";
+  CHECK(for_body_block) << "The for_loop's body should be Block!";
 
   // Only support for body block contains a sub for loop
   int next_idx = -1;

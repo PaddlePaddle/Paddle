@@ -58,6 +58,7 @@ Add::Add(Expr a, Expr b) : BinaryOpNode<Add>(a.type(), a, b) {}
 void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
   CHECK(a.defined());
   CHECK(b.defined());
+  TryElevateInt32ToInt64({a, b});
   CHECK_EQ(a.type(), b.type())
       << "The operands' types of the node [" << ir_name << "] don't match";
 }
@@ -72,9 +73,7 @@ Expr Sub::Make(Expr a, Expr b) {
 void Sub::Verify() const { BinaryNodeVerify(a(), b(), "Sub"); }
 
 Expr Mul::Make(Expr a, Expr b) {
-  CHECK(a.defined());
-  CHECK(b.defined());
-  CHECK_EQ(a.type(), b.type()) << "a=" << a << ", b=" << b;
+  BinaryNodeVerify(a, b, "Mul");
   auto node = make_shared<Mul>(a, b);
   return Expr(node);
 }
@@ -203,6 +202,7 @@ void Let::Verify() const {
   CHECK(symbol.defined());
   // The default value(contained in body) is not required.
   if (body.defined()) {
+    TryElevateInt32ToInt64({symbol, body});
     CHECK_EQ(symbol.type(), body.type());
   }
 }
@@ -217,11 +217,13 @@ Expr _Var_::Make(const std::string &name, const Type &type) {
 Expr _Var_::Make(Expr lower_bound,
                  Expr upper_bound,
                  const std::string &name,
-                 bool is_reduce_axis) {
+                 bool is_reduce_axis,
+                 bool is_symbolic_constant) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_symbolic_constant = is_symbolic_constant;
   n->name = name;
   n->set_type(lower_bound.type());
   return Expr(n);
@@ -583,7 +585,11 @@ Var &Var::operator=(const _Var_ *x) {
 Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
   CHECK(tensor->type().valid());
   CHECK(!indices.empty());
-  for (auto &idx : indices) CHECK_EQ(idx.type().ElementOf(), Int(32));
+  TryElevateInt32ToInt64(indices);
+  for (auto &idx : indices) {
+    CHECK(idx.type().ElementOf() == Int(64) ||
+          idx.type().ElementOf() == Int(32));
+  }
   auto node = make_shared<Load>();
   node->tensor = tensor;
   node->indices = indices;
@@ -695,8 +701,13 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
   if (vs.size() == 1) return vs.front();
 
   auto *n = make_shared<Sum>();
+  TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
-  for (auto &v : vs) CHECK_EQ(v.type(), type) << vs.front() << " " << v;
+  for (auto &v : vs) {
+    CHECK_EQ(v.type(), type) << "The operands' types of the node ["
+                             << n->node_type() << "] don't match: "
+                             << "(" << v << " vs " << vs.front() << ")";
+  }
 
   n->operands() = vs;
 
@@ -709,6 +720,7 @@ Expr Product::Make(const std::vector<Expr> &vs) {
   CHECK_GE(vs.size(), 1);
 
   auto *n = make_shared<Product>();
+  TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
   for (auto &v : vs) CHECK_EQ(v.type(), type);
 

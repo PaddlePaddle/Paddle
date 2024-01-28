@@ -20,7 +20,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 // This unittest is used to test the construction interfaces of value class and
 // operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,
@@ -52,7 +52,7 @@ TEST(value_test, value_test) {
       op1_output_types,
       pir::OpInfo());
   op1->Print(std::cout);
-  pir::OpResult a = op1->result(0);
+  pir::Value a = op1->result(0);
   EXPECT_TRUE(a.use_empty());
   // 2. Construct OP2: b = OP2();
   std::vector<pir::Value> op2_inputs = {};
@@ -63,7 +63,7 @@ TEST(value_test, value_test) {
       op2_output_types,
       pir::OpInfo());
   op2->Print(std::cout);
-  pir::OpResult b = op2->result(0);
+  pir::Value b = op2->result(0);
   EXPECT_TRUE(b.use_empty());
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<pir::Value> op3_inputs{a, b};
@@ -77,7 +77,7 @@ TEST(value_test, value_test) {
   EXPECT_TRUE(op1->result(0).HasOneUse());
   EXPECT_TRUE(op2->result(0).HasOneUse());
   op3->Print(std::cout);
-  pir::OpResult c = op3->result(0);
+  pir::Value c = op3->result(0);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<pir::Value> op4_inputs = {a, c};
   std::vector<pir::Type> op4_output_types;
@@ -92,13 +92,13 @@ TEST(value_test, value_test) {
   op4->Print(std::cout);
 
   // Test 1:
-  EXPECT_EQ(op1->result(0).owner(), op1);
-  EXPECT_EQ(op2->result(0).owner(), op2);
-  EXPECT_EQ(op3->result(0).owner(), op3);
-  EXPECT_EQ(op4->result(6).owner(), op4);
+  EXPECT_EQ(op1->result(0).defining_op(), op1);
+  EXPECT_EQ(op2->result(0).defining_op(), op2);
+  EXPECT_EQ(op3->result(0).defining_op(), op3);
+  EXPECT_EQ(op4->result(6).defining_op(), op4);
 
   // Test 2: op1_first_output -> op4_first_input
-  pir::OpResult op1_first_output = op1->result(0);
+  pir::Value op1_first_output = op1->result(0);
   pir::OpOperand op4_first_input = op4->operand(0);
 
   EXPECT_EQ(op1_first_output.first_use(), op4_first_input);

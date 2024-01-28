@@ -98,7 +98,7 @@ def get_infermeta_inputs_str(
     infermeta_inputs_str += "\n"
 
     infermeta_inputs_str += '  VLOG(4) << "Builder construction outputs";\n'
-    # Prepar input type
+    # Prepare input type
     for idx in range(len(op_input_name_list)):
         if op_input_name_list[idx] not in inuse_infer_meta_args:
             continue
@@ -251,9 +251,9 @@ def GenBuildOutputsPart2(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-                          {name}_.dyn_cast<pir::OpResult>().owner()
+                          {name}_.defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                           .attribute("value"))));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -281,9 +281,9 @@ def GenBuildOutputsPart2(
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
-                    {name}_.dyn_cast<pir::OpResult>().owner()
+                    {name}_.defining_op()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                     .attribute("value"));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -308,8 +308,8 @@ def GenBuildOutputsPart2(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.dyn_cast<pir::OpResult>().owner()
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
+    {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
@@ -367,7 +367,7 @@ def GenBuildOutputsPart2(
             elif attr_dtype[0] == "pir::StrAttribute":
                 build_output_str += ""
             else:
-                assert "mutable attribtue type is not right."
+                assert "mutable attribute type is not right."
         build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta

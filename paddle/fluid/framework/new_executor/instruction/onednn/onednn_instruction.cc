@@ -100,6 +100,7 @@ void TensorNameMap(pir::Operation* op,
                        inputs_tensor_name_map,  // NOLINT
                    std::map<std::string, std::vector<std::string>>&
                        outputs_tensor_name_map) {  // NOLINT
+  static int unique_id = 0;
   const Scope* inner_scope = value_exec_info.GetScope();
   VLOG(6) << "TensorNameMap in scope[" << inner_scope << "]";
 
@@ -132,14 +133,16 @@ void TensorNameMap(pir::Operation* op,
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      inputs_tensor_name_map[legacy_arg_name] = {in_var_name};
+      inputs_tensor_name_map[legacy_arg_name] = {in_var_name +
+                                                 std::to_string(unique_id++)};
     } else if (type.isa<pir::VectorType>()) {
       auto var = inner_scope->FindVar(in_var_name);
       auto var_ref = var->Get<VariableRefArray>();
       std::vector<std::string> vec_tmp;
       vec_tmp.reserve(var_ref.size());
       for (size_t k = 0; k < var_ref.size(); ++k) {
-        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]));
+        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]) +
+                          std::to_string(unique_id++));
       }
       inputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
@@ -168,14 +171,16 @@ void TensorNameMap(pir::Operation* op,
     auto type = ptr.type();
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      outputs_tensor_name_map[legacy_arg_name] = {out_var_name};
+      outputs_tensor_name_map[legacy_arg_name] = {out_var_name +
+                                                  std::to_string(unique_id++)};
     } else if (type.isa<pir::VectorType>()) {
       auto var = inner_scope->FindVar(out_var_name);
       auto var_ref = var->Get<VariableRefArray>();
       std::vector<std::string> vec_tmp;
       vec_tmp.reserve(var_ref.size());
       for (size_t k = 0; k < var_ref.size(); ++k) {
-        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]));
+        vec_tmp.push_back(value_exec_info.GetVarName(var_ref[k]) +
+                          std::to_string(unique_id++));
       }
       outputs_tensor_name_map[legacy_arg_name] = vec_tmp;
     } else {
@@ -293,8 +298,9 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .AsVector();
 
     for (auto& attr : data_format_tensors_attr) {
-      auto pair = kernel_context_.InputRangeAt(value_exec_info_->GetIdByName(
-          attr.dyn_cast<pir::StrAttribute>().AsString()));
+      auto pair =
+          kernel_context_.InputRangeAt(yaml_info_parser.InputName2Id().at(
+              attr.dyn_cast<pir::StrAttribute>().AsString()));
       for (int i = pair.first; i < pair.second; ++i) {
         data_format_tensors_.insert(i);
       }
@@ -308,14 +314,41 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .at("extra_args")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
-    std::vector<std::string> extra_args;
+    auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       extra_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
           op_attributes.at(attr_name), attr_name, yaml_info_parser);
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(fluid_op_name, attr_name);
+      if (legacy_attr_name != attr_name) {
+        extra_attr_[legacy_attr_name] = extra_attr_[attr_name];
+      }
+    }
+    auto attr_name_list = yaml_info_parser.AttrParams(true);
+    for (auto& attr : attr_name_list) {
+      auto attr_name = attr;
+      if (!op_attributes.count(attr_name)) {
+        // In PIR, IntArray attr will be input, but not attr.
+        continue;
+      }
+      ctx_attr_[attr_name] = ConvertPirAttribute2RuntimeAttribute(
+          op_attributes.at(attr_name), attr_name, yaml_info_parser);
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(fluid_op_name, attr_name);
+      if (legacy_attr_name != attr_name) {
+        ctx_attr_[legacy_attr_name] = ctx_attr_[attr_name];
+      }
     }
   }
   TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
+
+  // Step4: Mark is_run_mkldnn_kernel=true
+  phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
+  new_config.is_run_mkldnn_kernel = true;
+  infer_meta_context_.SetMetaConfig(new_config);
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
@@ -330,6 +363,9 @@ void OneDNNPhiKernelInstruction::Run() {
       size_t(0), kernel_context_.InputsSize());
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto input = inputs[i];
+    if (input == nullptr) {
+      continue;
+    }
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
 
@@ -367,6 +403,9 @@ void OneDNNPhiKernelInstruction::Run() {
   auto one_dnn_ctx = const_cast<phi::OneDNNContext*>(
       &kernel_context_.GetDeviceContext<phi::OneDNNContext>());
   for (auto& attr : extra_attr_) {
+    one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
+  }
+  for (auto& attr : ctx_attr_) {
     one_dnn_ctx->SetDnnAttr(attr.first, attr.second);
   }
   one_dnn_ctx->SetInputsName(inputs_);

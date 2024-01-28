@@ -96,6 +96,13 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
+  if(LINUX)
+    set(CUDA_USE_STATIC_CUDA_RUNTIME
+        OFF
+        CACHE BOOL "" FORCE)
+    set(CMAKE_CUDA_FLAGS "--cudart shared")
+  endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -321,6 +328,7 @@ option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
+option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -599,7 +607,10 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
-
+include(util) # set unittest and link libs
+include(version) # set PADDLE_VERSION
+include(coveralls) # set code coverage
+include(configure) # add paddle env configuration
 #------------- cinn cmake config start --------------
 
 if(WITH_CINN)
@@ -615,6 +626,7 @@ if(WITH_CINN)
       add_definitions(-DCINN_WITH_CUDNN)
     endif()
   endif()
+
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
 
@@ -638,11 +650,6 @@ if(WITH_PROFILER)
   include_directories(${GPERFTOOLS_INCLUDE_DIR})
   add_definitions(-DWITH_GPERFTOOLS)
 endif()
-
-include(util) # set unittest and link libs
-include(version) # set PADDLE_VERSION
-include(coveralls) # set code coverage
-include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 

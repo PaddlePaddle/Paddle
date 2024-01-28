@@ -88,7 +88,7 @@ class IrMapping {
   }
 
   template <typename T>
-  void Earse(T from) {
+  void Erase(T from) {
     GetMutableMap<IrType<T>>().erase(from);
   }
 

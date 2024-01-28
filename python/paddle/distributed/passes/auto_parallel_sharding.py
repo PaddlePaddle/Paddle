@@ -42,6 +42,7 @@ from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
+from .auto_parallel_master_grad import _is_master_grad_cast_op
 from .pass_base import PassBase, register_pass
 from .pass_utils import AutoParallelStreamType
 
@@ -72,6 +73,9 @@ _supported_optimizer_type = [
 
 _logger = get_logger(logging.INFO)
 
+__amp_target_dtype__ = core.VarDesc.VarType.FP16
+__amp_target_dtype_name__ = "float16"
+
 
 def _is_reshard_op(op):
     return op.desc.has_attr(
@@ -100,6 +104,7 @@ class ShardingPass(PassBase):
         self.set_attr("enable_hierarchical_comm", None)
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
+        self.set_attr("amp_dtype", "float16")
         self.dp_groups = set()
         self.sharding_infos = []
         self.varname_to_sharding_info = {}
@@ -180,6 +185,11 @@ class ShardingPass(PassBase):
             main_program.global_block(),
             startup_program.global_block(),
         )
+
+        self.amp_dtype = self.get_attr("amp_dtype")
+        if self.amp_dtype == "bfloat16":
+            __amp_target_dtype__ = core.VarDesc.VarType.BF16
+            __amp_target_dtype_name__ = "bfloat16"
 
         # NOTE Multi / Sub-Block Support
         # we assume that only parameter are present and partitioned in main_block,
@@ -339,6 +349,20 @@ class ShardingPass(PassBase):
                                 OP_ROLE_KEY: op_role,
                             },
                         )
+                        dist_attr = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                out_var
+                            )
+                        )
+
+                        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                            main_block.ops[idx],
+                            dist_attr.process_mesh,
+                            dist_attr.dims_mapping,
+                            self._dist_context,
+                            chunk_id=dist_attr.chunk_id,
+                        )
+
                     else:
                         main_block._remove_op(idx, sync=False)
 
@@ -1508,8 +1532,10 @@ def _is_param_grad_fp32_cast_op(block, op):
     if not is_backward_op(op):
         return False
     if not _is_desired_cast_op(
-        block, op, core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
+        return False
+    if _is_master_grad_cast_op(block, op, __amp_target_dtype_name__):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]
@@ -1533,7 +1559,7 @@ def _is_desired_cast_op(
     block,
     op,
     src_var_type=core.VarDesc.VarType.FP32,
-    dst_var_type=core.VarDesc.VarType.FP16,
+    dst_var_type=__amp_target_dtype__,
 ):
     if op.type != "cast":
         return False
@@ -1552,6 +1578,8 @@ def _get_base_name_from_grad_name(grad_name):
     base_name = None
     if ".cast_fp16@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find(".cast_fp16@GRAD")]
+    elif ".cast_bf16@GRAD" in grad_name:
+        base_name = grad_name[: grad_name.find(".cast_bf16@GRAD")]
     elif "@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find("@GRAD")]
     return base_name
@@ -1699,7 +1727,7 @@ def re_order_program(block, param_grads, dist_context):
         if len(use_order) == len(pname_to_pg_pairs):
             break
 
-    # reorder optimzier
+    # reorder optimizer
     last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)

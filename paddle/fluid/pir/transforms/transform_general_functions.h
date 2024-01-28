@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/common/ddim.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/operation.h"
@@ -41,9 +40,9 @@ std::string GetParameterNameFromValue(pir::Value value);
  *
  * @param pir::Value
  *
- * @return const phi::DDim&
+ * @return std::vector<int64_t>
  */
-const common::DDim& GetShapeFromValue(pir::Value value);
+std::vector<int64_t> GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.
@@ -68,7 +67,7 @@ Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
  * @brief Get operations and the index of designative op operand (op result)
  that use the specific output of the operation.
  *
- * @param const Operation* cosnt pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of result of the operation
 
  * @return std::vector<std::pair<Operation*, int32_t>>

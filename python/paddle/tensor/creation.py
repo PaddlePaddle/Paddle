@@ -308,17 +308,17 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
-    if not isinstance(num, (Variable, paddle.pir.OpResult)):
+    if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'linspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, (Variable, paddle.pir.OpResult)):
+    if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
+    if not isinstance(stop, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-    if not isinstance(num, (Variable, paddle.pir.OpResult)):
+    if not isinstance(num, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dynamic_or_pir_mode():
@@ -440,20 +440,20 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     tensor_start = start
     tensor_stop = stop
     tensor_base = base
-    if not isinstance(num, (Variable, paddle.pir.OpResult)):
+    if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'logspace')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, (Variable, paddle.pir.OpResult)):
+    if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
-    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
+    if not isinstance(stop, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, (Variable, paddle.pir.OpResult)):
+    if not isinstance(num, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if not isinstance(base, (Variable, paddle.pir.OpResult)):
+    if not isinstance(base, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
     if in_dynamic_or_pir_mode():
@@ -651,7 +651,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
-    if isinstance(data, (Variable, paddle.pir.OpResult)):
+    if isinstance(data, (Variable, paddle.pir.Value)):
         output = data
         if dtype is not None and dtype != data.dtype:
             output = paddle.cast(output, dtype)
@@ -904,7 +904,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
                     shape = paddle.utils.get_int_tensor_list(shape, place)
-            elif isinstance(shape, paddle.pir.OpResult):
+            elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
                 TypeError("Shape only supports OpReslut, or list, or tuple.")
@@ -1185,9 +1185,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(
-            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
-        ):
+        if isinstance(attr, ((Variable, core.eager.Tensor, paddle.pir.Value))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -1196,7 +1194,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     if dtype is None:
         dtype = paddle.get_default_dtype()
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1242,9 +1240,9 @@ def full(shape, fill_value, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
-            If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
+            If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
             type of created Tensor is `float32`.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1358,7 +1356,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, (Variable, paddle.pir.OpResult)):
+            if isinstance(val, (Variable, paddle.pir.Value)):
                 if not paddle.is_integer(val):
                     dtype = paddle.get_default_dtype()
                     break
@@ -1373,9 +1371,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     out_shape = None
     is_value_input = (
-        not isinstance(start, (Variable, paddle.pir.OpResult))
-        and not isinstance(end, (Variable, paddle.pir.OpResult))
-        and not isinstance(step, (Variable, paddle.pir.OpResult))
+        not isinstance(start, (Variable, paddle.pir.Value))
+        and not isinstance(end, (Variable, paddle.pir.Value))
+        and not isinstance(step, (Variable, paddle.pir.Value))
     )
 
     if not in_dynamic_mode() and is_value_input:
@@ -1387,19 +1385,19 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     if is_value_input and in_pir_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
-    if not isinstance(start, (Variable, paddle.pir.OpResult)):
+    if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = paddle.cast(start, dtype)
 
-    if not isinstance(end, (Variable, paddle.pir.OpResult)):
+    if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = paddle.cast(end, dtype)
 
-    if not isinstance(step, (Variable, paddle.pir.OpResult)):
+    if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
@@ -2305,7 +2303,7 @@ def assign(x, output=None):
              [2.5 2.5]]
     """
     # speed up
-    if x is output and isinstance(x, (Variable, paddle.pir.OpResult)):
+    if x is output and isinstance(x, (Variable, paddle.pir.Value)):
         return x
 
     input = x
@@ -2315,7 +2313,7 @@ def assign(x, output=None):
         'input',
         (
             Variable,
-            paddle.pir.OpResult,
+            paddle.pir.Value,
             np.ndarray,
             list,
             tuple,
@@ -2335,7 +2333,7 @@ def assign(x, output=None):
     # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.OpResult)):
+    if isinstance(input, (Variable, core.eager.Tensor, paddle.pir.Value)):
         if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2376,14 +2374,14 @@ def assign(x, output=None):
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
         if len(input.shape) > 0 and any(
-            isinstance(x, (Variable, paddle.pir.OpResult)) for x in input
+            isinstance(x, (Variable, paddle.pir.Value)) for x in input
         ):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 x.shape == (1,)
                 for x in input
                 if isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 )
             ):
                 raise TypeError(
@@ -2392,7 +2390,7 @@ def assign(x, output=None):
 
             def convert_scalar(x):
                 if not isinstance(
-                    x, (Variable, core.eager.Tensor, paddle.pir.OpResult)
+                    x, (Variable, core.eager.Tensor, paddle.pir.Value)
                 ):
                     return assign(x)
                 return x
@@ -2843,7 +2841,7 @@ def cauchy_(x, loc=0, scale=1, name=None):
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2877,7 +2875,7 @@ def geometric_(x, probs, name=None):
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
