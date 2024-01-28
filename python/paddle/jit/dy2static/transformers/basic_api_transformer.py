@@ -185,7 +185,7 @@ def to_assign_node(node):
     #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
 
     assert isinstance(node, gast.Call)
-    assign_api = gast.parse('paddle.assign').body[0].value
+    assign_api = gast.parse('paddle.to_tensor').body[0].value
     node.func = assign_api
 
     if node.args:
@@ -194,7 +194,7 @@ def to_assign_node(node):
     else:
         for idx, kw in enumerate(node.keywords):
             if kw.arg == 'value' or kw.arg == 'data':
-                node.keywords[idx].arg = 'x'
+                node.keywords[idx].arg = 'data'
                 node.keywords = [node.keywords[idx]]
                 node.args = []
                 break
