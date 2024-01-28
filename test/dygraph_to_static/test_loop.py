@@ -24,7 +24,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
 from paddle.base.framework import use_pir_api
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
@@ -34,7 +33,7 @@ np.random.seed(SEED)
 
 
 def while_loop_dyfunc(x):
-    i = base.dygraph.to_variable(x)
+    i = paddle.assign(x)
     while x < 10:
         i = i + x
         x = x + 1
@@ -53,7 +52,7 @@ def while_loop_dyfunc_without_tensor(x):
 
 
 def while_loop_dyfun_with_conflict_var(x):
-    i = base.dygraph.to_variable(x)
+    i = paddle.assign(x)
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -70,15 +69,8 @@ def while_loop_dyfun_with_conflict_var(x):
 
 
 def while_loop_dyfunc_with_none(x):
-    i = (
-        base.dygraph.to_variable(x)
-        if x is not None
-        else base.dygraph.to_variable(x + 1)
-    )
-    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    x = base.dygraph.to_variable(
-        x
-    )  # TODO(liym27): Delete it if the type of parameter x can be resolved
+    i = paddle.assign(x) if x is not None else paddle.assign(x + 1)
+
     flag = 1
     while x < 10:
         i = i + x if flag is not None else x + i
@@ -139,7 +131,7 @@ def for_break_single_return(max_len):
 
 
 def while_loop_bool_op(x):
-    i = base.dygraph.to_variable(x)
+    i = paddle.assign(x)
 
     while x <= -1 or x < -3 or (x < -7 or x < -5) or (x >= 0 and x < 10):
         i = i + x
@@ -148,7 +140,7 @@ def while_loop_bool_op(x):
 
 
 def while_loop_bool_op2(x):
-    i = base.dygraph.to_variable(x)
+    i = paddle.assign(x)
     a = 1
 
     # In the while condition, there are both Paddle Variable and non-Variable.
@@ -167,7 +159,7 @@ def while_loop_class_var(x):
             self.c = 5
 
     foo = Foo()
-    i = base.dygraph.to_variable(x)
+    i = paddle.assign(x)
     while i < 10:
         foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
@@ -194,7 +186,6 @@ def for_loop_class_var(max_len):
 
     foo = Foo()
 
-    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
     max_len = paddle.tensor.fill_constant(
         shape=[1], value=max_len, dtype="int32"
     )
@@ -328,7 +319,7 @@ class TestTransformWhileLoop(Dy2StTestBase):
 
     def _run(self, to_static):
         # Set the input of dyfunc to Tensor
-        tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
+        tensor_x = paddle.to_tensor(self.x)
         if to_static:
             ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
         else:

@@ -34,7 +34,7 @@ np.random.seed(SEED)
 # Situation 1: Test list append
 def test_list_append_without_control_flow(x):
     # Python list will not be transformed.
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     # It's a plain python control flow which won't be transformed
     if 2 > 1:
@@ -43,7 +43,7 @@ def test_list_append_without_control_flow(x):
 
 
 def test_list_append_in_if(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
@@ -56,7 +56,7 @@ def test_list_append_in_if(x):
 
 
 def test_list_append_in_for_loop(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
@@ -68,7 +68,7 @@ def test_list_append_in_for_loop(x, iter_num):
 
 
 def test_list_append_in_for_subscript(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     iter_num = paddle.shape(x)[0]
     a = []
     for i in range(iter_num):
@@ -79,7 +79,7 @@ def test_list_append_in_for_subscript(x):
 
 
 def test_list_append_in_while_loop_subscript(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     iter_num = paddle.shape(x)[0]
     a = []
     i = 0
@@ -92,7 +92,7 @@ def test_list_append_in_while_loop_subscript(x):
 
 
 def test_list_append_in_for_loop_with_concat(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
@@ -105,7 +105,7 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
 
 
 def test_list_append_in_while_loop(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -118,7 +118,7 @@ def test_list_append_in_while_loop(x, iter_num):
 
 
 def test_list_append_in_while_loop_with_stack(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -141,7 +141,7 @@ def test_tensor_array_slice(x, iter_num):
 
 # Situation 2: Test list pop
 def test_list_pop_without_control_flow_1(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     if 2 > 1:
         a.append(x)
@@ -150,7 +150,7 @@ def test_list_pop_without_control_flow_1(x):
 
 
 def test_list_pop_without_control_flow_2(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     if 2 > 1:
         a.append(x)
@@ -160,7 +160,7 @@ def test_list_pop_without_control_flow_2(x):
 
 
 def test_list_pop_in_if(x):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     a = []
     b = [x * 2 + (x + 1)]
     if x.numpy()[0] > 0:
@@ -176,7 +176,7 @@ def test_list_pop_in_if(x):
 
 
 def test_list_pop_in_for_loop(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
@@ -195,7 +195,7 @@ def test_list_pop_in_for_loop(x, iter_num):
 
 
 def test_list_pop_in_while_loop(x, iter_num):
-    x = paddle.to_tensor(x)
+    x = paddle.assign(x)
     iter_num = paddle.tensor.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
@@ -249,13 +249,11 @@ class TestListWithoutControlFlowConfig(Dy2StTestBase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-        # deep copy to avoid inplace operation
-        input = np.copy(self.input)
         with base.dygraph.guard():
             if to_static:
-                res = paddle.jit.to_static(self.dygraph_func)(input)
+                res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
-                res = self.dygraph_func(input)
+                res = self.dygraph_func(self.input)
             return self.result_to_numpy(res)
 
     def compare_transformed_static_result(self):
