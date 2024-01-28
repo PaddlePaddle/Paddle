@@ -43,6 +43,7 @@ void DebugPrintOpInfo(
 
     if (shape_analysis != nullptr) {
       auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
+      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
       print_stream << "shape: [";
 
       for (size_t i = 0; i < shape_data.shape().size(); ++i) {
