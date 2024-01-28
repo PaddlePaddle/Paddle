@@ -20,6 +20,6 @@ namespace cinn::adt {
 
 class ScheduleMesh;
 
-std::string ToTxtString(const ScheduleMesh& schecule_mesh);
+std::string ToTxtString(const ScheduleMesh& schedule_mesh);
 
 }  // namespace cinn::adt

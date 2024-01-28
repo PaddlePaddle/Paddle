@@ -189,7 +189,8 @@ phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
-  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
+  auto place =
+      input && input->initialized() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
 }
 

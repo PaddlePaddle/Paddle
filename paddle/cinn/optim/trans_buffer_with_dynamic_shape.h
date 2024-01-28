@@ -21,8 +21,8 @@ namespace cinn {
 namespace optim {
 
 /**
- * Given Expr AST, translate buffers with dynamic shape introduced
- * by CacheRead and CacheWrite to buffers with static shape
+ * Given Expr AST, translate dynamic shape in buffers to
+ * static shape, the pass is just used on Nvidia GPU temporarily.
  */
 void TransBufferWithDynamicShape(ir::Expr* expr);
 

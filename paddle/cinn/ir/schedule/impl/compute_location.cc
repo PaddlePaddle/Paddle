@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
@@ -97,10 +98,15 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   auto this_loop = loop;
   auto block_name = GetTensor(block)->name;
   auto this_block = block;
-  if (GetLoopExtent(loops[0]) == 1 && GetLoopExtent(block_loops[0]) != 1) {
+  if (loops[0].As<ir::For>()->extent.is_constant() &&
+      GetLoopExtent(loops[0]) == 1 &&
+      (!block_loops[0].As<ir::For>()->extent.is_constant() ||
+       GetLoopExtent(block_loops[0]) != 1)) {
     this->Split(block_loops[0], {1, -1});
     this_block = this->GetBlock(block_name);
-  } else if (GetLoopExtent(loops[0]) != 1 &&
+  } else if ((!loops[0].As<ir::For>()->extent.is_constant() ||
+              GetLoopExtent(loops[0]) != 1) &&
+             block_loops[0].As<ir::For>()->extent.is_constant() &&
              GetLoopExtent(block_loops[0]) == 1) {
     auto splited = this->Split(loops[0], {1, -1});
     this_loop = splited[1];
@@ -114,10 +120,15 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
+  common::cas_intervals_t var_intervals;
+  common::SymbolicExprAnalyzer analyzer{var_intervals};
   for (int i = 0; i < loops.size(); ++i) {
     VLOG(3) << i << "-th loop is:\n " << loops[i];
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
-    if (GetLoopExtent(loops[i]) != GetLoopExtent(block_loops[i])) {
+    std::optional<bool> prove_eq = analyzer.ProveEQ(
+        loops[i].As<ir::For>()->extent, block_loops[i].As<ir::For>()->extent);
+    CHECK(prove_eq.has_value() && prove_eq.value());
+    if (!prove_eq.has_value() || prove_eq.value() == false) {
       os << "Extent of loop in Expr Param(loop) and extent of loop in Expr "
             "Param(block) should be equal correspondingly!\n";
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
@@ -141,13 +152,14 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
   auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
+  auto checker = [block_name](const Expr* x) {
+    return x->As<ir::ScheduleBlockRealize>() &&
+           x->As<ir::ScheduleBlockRealize>()
+                   ->schedule_block.As<ScheduleBlock>()
+                   ->name == block_name;
+  };
   for (auto if_expr : if_set) {
-    auto checker = [block_name](const Expr* x) {
-      return x->As<ir::ScheduleBlockRealize>() &&
-             x->As<ir::ScheduleBlockRealize>()
-                     ->schedule_block.As<ScheduleBlock>()
-                     ->name == block_name;
-    };
+    if (Contains(result, if_expr)) continue;
     if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
             .size() > 0) {
       result =

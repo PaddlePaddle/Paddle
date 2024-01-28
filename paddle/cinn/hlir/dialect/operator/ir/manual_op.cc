@@ -16,7 +16,6 @@
 
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
@@ -27,6 +26,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
@@ -63,7 +63,7 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::ops() {
+std::vector<pir::Operation*> GroupOp::GetOperators() {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -82,7 +82,46 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto& sub_op : ops()) {
+  for (auto& sub_op : GetOperators()) {
+    os << "\n";
+    printer.PrintOperation(sub_op);
+  }
+  os << " \n }";
+}
+
+void FusionOp::Build(pir::Builder& builder,
+                     pir::OperationArgument& argument,
+                     const std::vector<pir::Type>& output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+pir::Block* FusionOp::block() {
+  pir::Region& region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::GetOperators() {
+  std::vector<pir::Operation*> rt_ops;
+  for (auto& op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void FusionOp::VerifySig() {}
+
+void FusionOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = " << name();
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {";
+  for (auto& sub_op : GetOperators()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }
@@ -355,14 +394,6 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
 
 bool GenerateShapeOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto GetShapeOrDataDimExprs =
-      [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-    return shape_analysis->GetShapeOrDataForValue(value);
-  };
-  auto SetShapeOrDataDimExprs =
-      [&](pir::Value value, const symbol::ShapeOrDataDimExprs& dim_exprs) {
-        shape_analysis->SetShapeOrDataForValue(value, dim_exprs);
-      };
   const auto attr_dim_exprs = [&] {
     std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
@@ -385,8 +416,8 @@ bool GenerateShapeOp::InferSymbolicShape(
   }();
   auto DimExprs4InputDim =
       [&](int input_idx) -> const symbol::ShapeOrDataDimExprs& {
-    pir::Value input = this->operand_source(input_idx);
-    return GetShapeOrDataDimExprs(input);
+    return shape_analysis->GetShapeOrDataForValue(
+        this->operand_source(input_idx));
   };
   auto DimExprs4SymbolName =
       MakeGetterDimExpr4SymbolName(symbol_bindings, DimExprs4InputDim);
@@ -396,15 +427,20 @@ bool GenerateShapeOp::InferSymbolicShape(
     for (const auto& attr_dim_expr : attr_dim_exprs) {
       const auto& substituted =
           SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
-      const auto& simplified = common::SimplifyDimExpr(substituted);
+      const auto& simplified = symbol::SimplifyDimExpr(substituted);
       dim_exprs.push_back(simplified);
     }
     return dim_exprs;
   }();
-  const auto shape_or_data_dim_exprs =
-      symbol::ShapeOrDataDimExprs::MakeConsistentShapeOrData(
-          substituted_dim_exprs);
-  SetShapeOrDataDimExprs(this->out(), shape_or_data_dim_exprs);
+
+  // TODO(HongyuJia): use op->result(0) to infer the shape
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
+  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
+      symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
+
+  shape_analysis->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
+
   return true;
 }
 
@@ -412,6 +448,7 @@ bool GenerateShapeOp::InferSymbolicShape(
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

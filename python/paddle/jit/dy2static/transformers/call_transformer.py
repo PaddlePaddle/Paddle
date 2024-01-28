@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
+from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.utils import gast
 
-from ..utils import is_builtin  # noqa: F401
+from ..utils import is_builtin
 from .base import BaseTransformer
+from .utils import is_paddle_api
 
 PDB_SET = "pdb.set_trace"
 
@@ -51,9 +52,10 @@ class CallTransformer(BaseTransformer):
                 'enumerate',
                 'print',
             }
-            is_builtin = eval(f"is_builtin({func_str})")  # noqa: F811
+            fn = eval(func_str)
+            is_builtin_fn = is_builtin(fn)
             need_convert = func_str in need_convert_builtin_func_list
-            return is_builtin and not need_convert
+            return is_builtin_fn and not need_convert
         except Exception:
             return False
 

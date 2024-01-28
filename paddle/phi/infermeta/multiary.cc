@@ -481,6 +481,48 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void ASGDInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& d,
+                   const MetaTensor& y,
+                   const MetaTensor& n,
+                   const MetaTensor& master_param,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* d_out,
+                   MetaTensor* y_out,
+                   MetaTensor* master_param_out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      param_out,
+      phi::errors::InvalidArgument(
+          "Output(ParamOut) of ASGDOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(d_out,
+                          phi::errors::InvalidArgument(
+                              "Output(DOut) of ASGDOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(y_out,
+                          phi::errors::InvalidArgument(
+                              "Output(YOut) of ASGDOp should not be null."));
+
+  param_out->set_dims(param.dims());
+  param_out->set_dtype(param.dtype());
+  d_out->set_dims(d.dims());
+  d_out->set_dtype(d.dtype());
+  y_out->set_dims(y.dims());
+  y_out->set_dtype(y.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
+}
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -2836,7 +2878,7 @@ void LLMInt8LinearInferMeta(const MetaTensor& x,
       x_dims[x_dims.size() - 1],
       w_dims[1],
       errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
@@ -2856,7 +2898,7 @@ void LLMInt8LinearInferMeta(const MetaTensor& x,
       weight_scale.dims()[0],
       w_dims[0],
       errors::InvalidArgument(
-          "Input(weight_scale) dim[0] and Input(Weight) dim[0] should be euqal."
+          "Input(weight_scale) dim[0] and Input(Weight) dim[0] should be equal."
           "But received Input(weight_scale) dim[0](%s) != Input(Weight) "
           "dim[0](%s)",
           weight_scale.dims()[0],
@@ -4117,7 +4159,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
       x_dims[x_dims.size() - 1],
       w_dims[1],
       errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
@@ -4205,7 +4247,7 @@ void YoloLossInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       dim_x[2],
       dim_x[3],
-      phi::errors::InvalidArgument("Input(X) dim[3] and dim[4] should be euqal."
+      phi::errors::InvalidArgument("Input(X) dim[3] and dim[4] should be equal."
                                    "But received dim[3](%s) != dim[4](%s)",
                                    dim_x[2],
                                    dim_x[3]));

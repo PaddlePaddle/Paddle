@@ -199,7 +199,7 @@ inline bool IsVariableCompatTensor(const paddle::Tensor& tensor) {
  * **/
 class EagerVariable final {
  public:
-  /* Default constructor and name constructor should only be used for contruct
+  /* Default constructor and name constructor should only be used for construct
    * output and in fluid*/
   EagerVariable() = default;
 
@@ -293,7 +293,7 @@ class EagerVariable final {
         true,
         paddle::platform::errors::Fatal(
             "Tensor %s does not hold phi::SelectedRows or phi::DenseTensor. "
-            "Or it holds empty impl, this should not happend since we should "
+            "Or it holds empty impl, this should not happened since we should "
             "treat all kinds of tensor as what they are.",
             tensor.name()));
     *framework_tensor = *tensor_dense;
@@ -314,7 +314,7 @@ class EagerVariable final {
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,
                             paddle::platform::errors::Fatal(
                                 "Tensor %s holds empty impl, this should not "
-                                "happend since we should "
+                                "happened since we should "
                                 "treat all kinds of tensor as what they are.",
                                 tensor.name()));
     *framework_holder = compat_tensor->Get<VarType>();

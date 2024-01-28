@@ -233,8 +233,8 @@ class PSClient {
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
-  virtual int RegisteClient2ClientMsgHandler(int msg_type,
-                                             MsgHandlerFunc handler) {
+  virtual int RegisterClient2ClientMsgHandler(int msg_type,
+                                              MsgHandlerFunc handler) {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }

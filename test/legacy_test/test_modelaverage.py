@@ -225,7 +225,7 @@ class TestModelAverage(unittest.TestCase):
             model_average._get_accumulator('restore', layer.bias)
         ).numpy()
         # print(check_param)
-        # print("\nEvaluate With Restored Paramters")
+        # print("\nEvaluate With Restored Parameters")
         model_average.restore()
         evaluate(layer, eval_loader, loss_fn, check_param)
 

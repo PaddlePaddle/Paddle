@@ -81,7 +81,7 @@ class DistributedContext:
         self._serial_optimizer = None
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
-        self._lr_optimizer = None  # record the optimzier holding lr_scheduler
+        self._lr_optimizer = None  # record the optimizer holding lr_scheduler
 
         # Data members related to the program
         self._dist_tensors_for_program = {}

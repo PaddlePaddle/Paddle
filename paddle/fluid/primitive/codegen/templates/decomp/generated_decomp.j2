@@ -20,7 +20,7 @@ using IntArray = paddle::experimental::IntArray;
 {% set output_names=[] %}
 {% set output_types=[] %}
 
-std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* op) {
+std::vector<std::vector<pir::Value>> {{class_name}}::Decomp(pir::Operation* op) {
   VLOG(4) << "Decomp call {{fwd_name}}'s decomp interface begin";
 
   {{class_name}} op_obj = op->dyn_cast<{{class_name}}>();
@@ -47,7 +47,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   paddle::optional<std::vector<Tensor>> {{item.name}};
   if (!IsEmptyValue(op_obj.{{item.name}}())){
       pir::CombineOp combine_op_obj =
-          op_obj.{{item.name}}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
+          op_obj.{{item.name}}().defining_op()->dyn_cast<pir::CombineOp>();
       std::vector<Tensor> optional_{{item.name}};
       for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
           optional_{{item.name}}.emplace_back(
@@ -58,7 +58,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
 
         {% else %}
   pir::CombineOp combine_op_obj_{{item.name}} =
-    op_obj.{{item.name}}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
+    op_obj.{{item.name}}().defining_op()->dyn_cast<pir::CombineOp>();
   std::vector<Tensor> {{item.name}};
   for (size_t idx = 0; idx < combine_op_obj_{{item.name}}.inputs().size(); idx++) {
       {{item.name}}.emplace_back(
@@ -79,8 +79,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   auto* {{item.name}}_define_op =
       std::static_pointer_cast<primitive::LazyTensor>({{item.name}}_.impl())
           ->value()
-          .dyn_cast<pir::OpResult>()
-          .owner();
+          .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full") {
     PADDLE_THROW(
         platform::errors::Unimplemented("We don't support dynamic tensors "
@@ -96,8 +95,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   auto* {{item.name}}_define_op =
       std::static_pointer_cast<primitive::LazyTensor>({{item.name}}_.impl())
           ->value()
-          .dyn_cast<pir::OpResult>()
-          .owner();
+          .defining_op();
   if ({{item.name}}_define_op->name() != "pd_op.full_int_array") {
     PADDLE_THROW(
         platform::errors::Unimplemented("We don't support dynamic tensors "
@@ -120,7 +118,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule prepare";
 
   auto org_res = op->results();
-  std::vector<std::vector<pir::OpResult>> res(org_res.size());
+  std::vector<std::vector<pir::Value>> res(org_res.size());
 
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule begin";
   {% if outputs|length == 1 %}
@@ -129,8 +127,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
 
   res[0].push_back(
     std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
-        ->value()
-        .dyn_cast<pir::OpResult>());
+        ->value());
   {% else %}
     {% for item in outputs %}
       {% do output_names.append(item.name) %}
@@ -141,10 +138,10 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   VLOG(6) << "Decomp call {{fwd_name}}'s forward composite rule end";
   {% for k in range(outputs|length) %}
     {% if outputs[k].intermediate and fwd_name in decomp_ops_list_contain_unused_output %}
-  pir::OpResult {{outputs[k].name}};
+  pir::Value {{outputs[k].name}};
   res[{{k}}].push_back({{outputs[k].name}});
     {% else %}
-  res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value().dyn_cast<pir::OpResult>());
+  res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value());
     {% endif %}
   {% endfor %}
   {% endif %}

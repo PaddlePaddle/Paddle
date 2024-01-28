@@ -127,7 +127,7 @@ class IR_API Block {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
     for (auto &op = begin; op != end; ++op) {
-      detail::Walk<Order>(&*op, callback);
+      pir::Walk<Order>(&*op, callback);
     }
   }
 
@@ -136,6 +136,12 @@ class IR_API Block {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
     return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
+  }
+
+  uint32_t num_ops() {
+    uint32_t num = 0;
+    Walk([&num](Operation *) { ++num; });
+    return num;
   }
 
  private:
