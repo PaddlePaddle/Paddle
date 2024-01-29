@@ -320,6 +320,13 @@ class ResultPattern {
         });
   }
 
+  Attribute VectorFloatAttr(const std::vector<float>& value) const {
+    return ComputeAttr(
+        [=](const MatchContext& match_ctx) -> std::vector<float> {
+          return value;
+        });
+  }
+
   Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const {
     return ComputeAttribute(attr_compute_func);
   }
