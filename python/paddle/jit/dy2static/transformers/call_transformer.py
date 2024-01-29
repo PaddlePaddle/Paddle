@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.utils import gast
 
-from ..utils import is_builtin
+from ..utils import ast_to_source_code, is_builtin
 from .base import BaseTransformer
 from .utils import is_paddle_api
 

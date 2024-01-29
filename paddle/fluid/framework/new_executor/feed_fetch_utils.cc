@@ -77,7 +77,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       0,
                       phi::errors::InvalidArgument(
                           "Split expects feed data (%s)'s dim[0] (%d) is "
-                          "diviable by micro_batch_num (%d).",
+                          "divisible by micro_batch_num (%d).",
                           feed_names[i],
                           numel_size,
                           micro_batch_num));
@@ -211,7 +211,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
               tensor_dims[j],
               new_dim[j],
               phi::errors::InvalidArgument(
-                  "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                  "DenseTensor.ddim[%d] should equal to %d, but is %d",
                   j,
                   new_dim[j],
                   tensor_dims[j]));
