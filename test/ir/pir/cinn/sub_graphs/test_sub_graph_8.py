@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # repo: PaddleClas
-# model: ppcls^configs^ImageNet^Distillation^resnet34_distill_resnet18_afd
-# api:paddle.nn.functional.pooling.max_pool2d
+# model: ppcls^configs^ImageNet^LeViT^LeViT_128
+# method:flatten||api:paddle.tensor.linalg.transpose
 import unittest
 
 import numpy as np
@@ -22,33 +22,25 @@ import numpy as np
 import paddle
 
 
-class MaxPool2dCase(paddle.nn.Layer):
+class LayerCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(
         self,
-        var_0,  # (shape: [22, 64, 112, 112], dtype: paddle.float32, stop_gradient: False)
+        var_0,  # (shape: [22, 128, 14, 14], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.nn.functional.pooling.max_pool2d(
-            var_0,
-            kernel_size=3,
-            stride=2,
-            padding=1,
-            return_mask=False,
-            ceil_mode=False,
-            data_format='NCHW',
-            name=None,
-        )
-        return var_1
+        var_1 = var_0.flatten(2)
+        var_2 = paddle.tensor.linalg.transpose(var_1, perm=[0, 2, 1])
+        return var_2
 
 
-class TestMaxPool2d(unittest.TestCase):
+class TestLayer(unittest.TestCase):
     def setUp(self):
         self.inputs = (
-            paddle.rand(shape=[22, 64, 112, 112], dtype=paddle.float32),
+            paddle.rand(shape=[22, 128, 14, 14], dtype=paddle.float32),
         )
-        self.net = MaxPool2dCase()
+        self.net = LayerCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
@@ -65,11 +57,10 @@ class TestMaxPool2d(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)

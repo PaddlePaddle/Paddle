@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 #include <numeric>
 
-namespace cinn::common {
-
-using namespace symbol;  // NOLINT
+namespace symbol {
 
 namespace {
 
@@ -202,8 +200,8 @@ struct IsLhsBeforeRhsStruct<std::string, std::string> {
 template <>
 struct IsLhsBeforeRhsStruct<Negative<DimExpr>, Negative<DimExpr>> {
   static bool Call(const Negative<DimExpr>& lhs, const Negative<DimExpr>& rhs) {
-    const auto& [lhs_operand] = *lhs;
-    const auto& [rhs_operand] = *rhs;
+    const auto& lhs_operand = lhs->data;
+    const auto& rhs_operand = rhs->data;
     return IsLhsBeforeRhs(lhs_operand, rhs_operand);
   }
 };
@@ -212,8 +210,8 @@ template <>
 struct IsLhsBeforeRhsStruct<Reciprocal<DimExpr>, Reciprocal<DimExpr>> {
   static bool Call(const Reciprocal<DimExpr>& lhs,
                    const Reciprocal<DimExpr>& rhs) {
-    const auto& [lhs_operand] = *lhs;
-    const auto& [rhs_operand] = *rhs;
+    const auto& lhs_operand = lhs->data;
+    const auto& rhs_operand = rhs->data;
     return IsLhsBeforeRhs(lhs_operand, rhs_operand);
   }
 };
@@ -266,7 +264,7 @@ struct SortOperands {
 
   bool IsSorted(const List<DimExpr>& operands) {
     CHECK(!operands->empty());
-    for (int i = 0; i < operands->size() - 1; ++i) {
+    for (std::size_t i = 0; i < operands->size() - 1; ++i) {
       if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
       }
@@ -277,7 +275,7 @@ struct SortOperands {
 
 std::int64_t GetInteger(const DimExpr& expr) {
   if (expr.Has<Negative<DimExpr>>()) {
-    const auto& [integer] = *expr.Get<Negative<DimExpr>>();
+    const auto& integer = expr.Get<Negative<DimExpr>>()->data;
     CHECK(integer.Has<std::int64_t>());
     return -integer.Get<std::int64_t>();
   }
@@ -496,7 +494,7 @@ struct FoldOperandTrait<Add> {
       return true;
     }
     if (dim_expr.Has<Negative<DimExpr>>()) {
-      const auto& [operand] = *dim_expr.Get<Negative<DimExpr>>();
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
       return operand.Has<std::int64_t>();
     }
     return false;
@@ -520,7 +518,7 @@ struct FoldOperandTrait<Add> {
 
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
     if (lhs.Has<Negative<DimExpr>>()) {
-      const auto& [lhs_operand] = *lhs.Get<Negative<DimExpr>>();
+      const auto& lhs_operand = lhs.Get<Negative<DimExpr>>()->data;
       return lhs_operand == rhs;
     }
     if (rhs.Has<Negative<DimExpr>>()) {
@@ -539,22 +537,28 @@ ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
 }
 
 template <typename T>
-ConstRational GetConstRationalImpl(const T& expr) {
+std::optional<ConstRational> GetConstRationalImpl(const T& expr) {
   LOG(FATAL) << "not supported.";
+  return std::nullopt;
 }
 
-ConstRational GetConstRationalImpl(std::int64_t value) {
+std::optional<ConstRational> GetConstRationalImpl(std::int64_t value) {
   return ConstRational{value, 1};
 }
 
-ConstRational GetConstRationalImpl(const Reciprocal<DimExpr>& value) {
+std::optional<ConstRational> GetConstRationalImpl(
+    const Reciprocal<DimExpr>& value) {
   const auto& [denominator] = *value;
   return ConstRational{1, denominator.Get<std::int64_t>()};
 }
 
 ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
-      [&](const auto& impl) { return GetConstRationalImpl(impl); },
+      [&](const auto& impl) {
+        std::optional<ConstRational> opt_ret = GetConstRationalImpl(impl);
+        CHECK(opt_ret.has_value());
+        return opt_ret.value();
+      },
       expr.variant());
 }
 
@@ -580,7 +584,7 @@ struct FoldOperandTrait<Mul> {
       return true;
     }
     if (dim_expr.Has<Reciprocal<DimExpr>>()) {
-      const auto& [operand] = *dim_expr.Get<Reciprocal<DimExpr>>();
+      const auto& operand = dim_expr.Get<Reciprocal<DimExpr>>()->data;
       return operand.Has<std::int64_t>();
     }
     return false;
@@ -610,11 +614,11 @@ struct FoldOperandTrait<Mul> {
   }
   static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
     if (lhs.Has<Reciprocal<DimExpr>>()) {
-      const auto& [lhs_operand] = *lhs.Get<Reciprocal<DimExpr>>();
+      const auto& lhs_operand = lhs.Get<Reciprocal<DimExpr>>()->data;
       return lhs_operand == rhs;
     }
     if (rhs.Has<Reciprocal<DimExpr>>()) {
-      const auto& [rhs_operand] = *rhs.Get<Reciprocal<DimExpr>>();
+      const auto& rhs_operand = rhs.Get<Reciprocal<DimExpr>>()->data;
       return rhs_operand == lhs;
     }
     return false;
@@ -669,8 +673,8 @@ struct FoldInversedPairToUnit {
   using dim_expr_type = Op<DimExpr>;
 
   struct SearchResult {
-    int value_pos;
-    int inverse_value_pos;
+    std::size_t value_pos;
+    std::size_t inverse_value_pos;
   };
 
   DimExpr Rewrite(const DimExpr& expr) {
@@ -704,8 +708,8 @@ struct FoldInversedPairToUnit {
 
   std::optional<SearchResult> SearchInversedPair(
       const List<DimExpr>& operands) {
-    for (int i = 0; i < operands->size(); ++i) {
-      for (int j = 0; j < operands->size(); ++j) {
+    for (std::size_t i = 0; i < operands->size(); ++i) {
+      for (std::size_t j = 0; j < operands->size(); ++j) {
         if (i == j) {
           continue;
         }
@@ -758,7 +762,8 @@ struct FoldRedundantSymbolicBroadcast {
 
   std::optional<MaxInt64> SearchMaxInt64(const List<DimExpr>& operands) {
     std::optional<MaxInt64> ret;
-    for (int i = 0; i < operands->size(); ++i) {
+    int operands_size = static_cast<int>(operands->size());
+    for (int i = 0; i < operands_size; ++i) {
       const auto& expr = operands->at(i);
       if (!expr.Has<std::int64_t>()) {
         continue;
@@ -788,8 +793,8 @@ struct FoldRedundantBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
   struct SearchResult {
-    int value_pos;
-    int same_value_pos;
+    std::size_t value_pos;
+    std::size_t same_value_pos;
   };
 
   DimExpr Rewrite(const DimExpr& expr) {
@@ -816,8 +821,8 @@ struct FoldRedundantBroadcast {
 
   std::optional<SearchResult> SearchInversedPair(
       const List<DimExpr>& operands) {
-    for (int i = 0; i < operands->size(); ++i) {
-      for (int j = 0; j < operands->size(); ++j) {
+    for (std::size_t i = 0; i < operands->size(); ++i) {
+      for (std::size_t j = 0; j < operands->size(); ++j) {
         if (i == j) {
           continue;
         }
@@ -871,4 +876,4 @@ DimExpr Simplify(const DimExpr& expr) {
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
 
-}  // namespace cinn::common
+}  // namespace symbol
