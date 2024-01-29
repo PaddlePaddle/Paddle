@@ -230,7 +230,7 @@ def array_write(x, i, array=None):
         if array is None:
             array = paddle._pir_ops.create_array(x.dtype)
 
-        array = paddle._pir_ops.array_write_(array, x, i)
+        paddle._pir_ops.array_write_(array, x, i)
         return array
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')

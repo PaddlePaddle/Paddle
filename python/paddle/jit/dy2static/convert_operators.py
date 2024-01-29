@@ -84,21 +84,6 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
-        if (
-            hasattr(x, "__code__")
-            and x.__code__ is paddle.pir.Value.append.__code__
-        ):
-            # tensor array append is a inplace op, we should change the inplace map.
-            self_tensor_array = x.__self__
-
-            def proxy_append(var):
-                output = self_tensor_array.append(var)
-                _global_inplace_map.add(
-                    default_main_program(), self_tensor_array, output
-                )
-
-            return proxy_append
-
         if x is paddle.amp.auto_cast:
             return convert_auto_cast
 
