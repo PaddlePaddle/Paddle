@@ -125,14 +125,14 @@ paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   return vec_meta_info_[id].var_desc_;
 }
 
-void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+void VariableScope::SetVarSkipInplace(const std::string& name, bool skip) {
   CheckExist(name);
-  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+  vec_meta_info_[VarId(name)].skip_inplace_ = skip;
 }
 
-bool VariableScope::GetVarSikpInplace(int id) const {
+bool VariableScope::GetVarSkipInplace(int id) const {
   CheckExist(id);
-  return vec_meta_info_[id].sikp_inplace_;
+  return vec_meta_info_[id].skip_inplace_;
 }
 
 void VariableScope::CheckExist(int id) const {
