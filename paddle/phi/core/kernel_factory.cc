@@ -121,9 +121,6 @@ const Kernel& KernelFactory::SelectKernelWithGPUDNN(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
-    if (kernel_name == "divide") {
-      VLOG(6) << "The kernel `divide` is not registered";
-    }
     return empty_kernel;
   }
   KernelKey kernel_key = KernelKey(const_kernel_key);
@@ -132,11 +129,6 @@ const Kernel& KernelFactory::SelectKernelWithGPUDNN(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      if (kernel_name == "divide") {
-        VLOG(6) << "The kernel `divide` key1 is not registered";
-        VLOG(6) << "The kernel `divide` hash value: "
-                << kernel_key.hash_value();
-      }
       return kernel_iter->second;
     }
     kernel_key =
@@ -160,29 +152,8 @@ const Kernel& KernelFactory::SelectKernelWithGPUDNN(
                                      kernel_key.dtype()});
   }
 #endif
-  if (kernel_name == "divide") {
-    VLOG(6) << "The kernel `divide` hash value: " << kernel_key.hash_value();
-    VLOG(6) << "The kernel `divide` layout value: "
-            << static_cast<uint8_t>(kernel_key.layout());
-    VLOG(6) << "The kernel `divide` backend value: "
-            << static_cast<uint8_t>(kernel_key.backend());
-    VLOG(6) << "The kernel `divide` dtype value: "
-            << static_cast<uint8_t>(kernel_key.dtype());
-  }
 
   if (kernel_iter == iter->second.end()) {
-    if (kernel_name == "divide") {
-      VLOG(6) << "=========================================";
-      VLOG(6) << "The kernel `divide` key is not registered";
-      VLOG(6) << "The kernel `divide` hash value: " << kernel_key.hash_value();
-      VLOG(6) << "The kernel `divide` layout value: "
-              << static_cast<uint8_t>(kernel_key.layout());
-      VLOG(6) << "The kernel `divide` backend value: "
-              << static_cast<uint8_t>(kernel_key.backend());
-      VLOG(6) << "The kernel `divide` dtype value: "
-              << static_cast<uint8_t>(kernel_key.dtype());
-      VLOG(6) << "=========================================";
-    }
     return empty_kernel;
   }
 
