@@ -972,7 +972,7 @@ for binary_fn in BINARY_OPS:
             raise FallbackError('Numpy operator need fallback to dygraph')
 
 
-# Register dispatch for DataVariable: directy call and return a wrapped variable.
+# Register dispatch for DataVariable: directly call and return a wrapped variable.
 def data_variable_binary_dispatcher(var, other, operator):
     return VariableFactory.from_value(
         operator(var.get_py_value(), other.get_py_value()),
