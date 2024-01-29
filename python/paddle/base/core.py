@@ -310,7 +310,6 @@ try:
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
-        _switch_amp_state,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,

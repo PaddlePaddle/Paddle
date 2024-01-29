@@ -174,7 +174,6 @@ class GlobalThreadLocal(threading.local):
             global _dygraph_tracer_
             _dygraph_tracer_ = val
             core._switch_tracer(val)
-            core._switch_amp_state(val._get_amp_state())
         self.__dict__[name] = val
 
 
