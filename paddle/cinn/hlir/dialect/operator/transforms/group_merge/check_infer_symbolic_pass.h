@@ -22,7 +22,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for checking the symbolic inference accurancy.
+// This is a helper pass for checking the symbolic inference accuracy.
 std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass();
 }  // namespace ir
 }  // namespace dialect

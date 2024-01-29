@@ -140,7 +140,7 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
 PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
-PD_DECLARE_bool(cinn_check_infer_symbolic_pass);
+PHI_DECLARE_bool(check_infer_symbolic);
 
 namespace paddle {
 namespace pybind {
@@ -1560,7 +1560,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   bool has_dynamic_shape = HasDynamicShape(program);
   pass_manager->EnableIRPrinting();
 
-  if (!has_dynamic_shape && FLAGS_cinn_check_infer_symbolic_pass) {
+  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
   }

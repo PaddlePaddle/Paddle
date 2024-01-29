@@ -29,7 +29,7 @@
 namespace {
 
 std::vector<std::int64_t> GetOriginValueShape(pir::Value value) {
-  auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
+  const auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
   return ::common::vectorize(dim);
 }
 
@@ -49,13 +49,19 @@ void CompareOriginAndTargetValueShape(
     pir::Value value,
     const pir::ShapeConstraintIRAnalysis& shape_analysis,
     const pir::Operation& op) {
-  auto origin_value_shape = GetOriginValueShape(value);
-  auto target_value_shape = GetTargetValueShape(value, shape_analysis);
+  std::vector<std::int64_t> origin_value_shape = GetOriginValueShape(value);
+  std::vector<std::int64_t> target_value_shape =
+      GetTargetValueShape(value, shape_analysis);
   CHECK(origin_value_shape.size() == target_value_shape.size())
-      << op.name() << ": origin shape size is not equal to target";
+      << op.name() << ": shape size is not equal\nthe origin shape is: "
+      << origin_value_shape.size()
+      << ", and the target shape is: " << target_value_shape.size();
   for (int i = 0; i < origin_value_shape.size(); ++i) {
     CHECK(origin_value_shape[i] == target_value_shape[i])
-        << op.name() << ": origin shape is not equal to target shape";
+        << op.name()
+        << ": origin shape is not equal to target shape\nthe origin shape[" << i
+        << "] is: " << origin_value_shape[i] << ", and the target shape[" << i
+        << "] is: " << target_value_shape[i];
   }
 }
 
@@ -64,8 +70,8 @@ void CheckInferSymbolic(pir::ModuleOp module_op) {
   const auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      for (auto& op : block) {
+    for (const auto& block : module_op->region(i)) {
+      for (const auto& op : block) {
         for (std::size_t j = 0; j < op.num_operands(); ++j) {
           CompareOriginAndTargetValueShape(
               op.operand_source(j), shape_analysis, op);
