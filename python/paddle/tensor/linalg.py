@@ -27,7 +27,12 @@ from ..base.data_feeder import (
     convert_dtype,
 )
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from ..framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -58,24 +63,40 @@ def transpose(x, perm, name=None):
 
         .. code-block:: text
 
-            x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-                 [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-            shape(x) =  [2,3,4]
+            # The following codes in this code block are pseudocode, designed to show the execution logic and results of the function.
+
+            x = to_tensor([[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
+                           [[13 14 15 16] [17 18 19 20] [21 22 23 24]]])
+            shape(x): return [2,3,4]
 
             # Example 1
             perm0 = [1,0,2]
-            y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                       [[ 5  6  7  8]  [17 18 19 20]]
-                       [[ 9 10 11 12]  [21 22 23 24]]]
-            shape(y_perm0) = [3,2,4]
+            y_perm0 = transpose(x, perm0) # Permute x by perm0
+
+            # dim:0 of y_perm0 is dim:1 of x
+            # dim:1 of y_perm0 is dim:0 of x
+            # dim:2 of y_perm0 is dim:2 of x
+            # The above two lines can also be understood as exchanging the zeroth and first dimensions of x
+
+            y_perm0.data = [[[ 1  2  3  4]  [13 14 15 16]]
+                            [[ 5  6  7  8]  [17 18 19 20]]
+                            [[ 9 10 11 12]  [21 22 23 24]]]
+            shape(y_perm0): return [3,2,4]
 
             # Example 2
             perm1 = [2,1,0]
-            y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                       [[ 2 14] [ 6 18] [10 22]]
-                       [[ 3 15]  [ 7 19]  [11 23]]
-                       [[ 4 16]  [ 8 20]  [12 24]]]
-            shape(y_perm1) = [4,3,2]
+            y_perm1 = transpose(x, perm1) # Permute x by perm1
+
+            # dim:0 of y_perm1 is dim:2 of x
+            # dim:1 of y_perm1 is dim:1 of x
+            # dim:2 of y_perm1 is dim:0 of x
+            # The above two lines can also be understood as exchanging the zeroth and second dimensions of x
+
+            y_perm1.data = [[[ 1 13]  [ 5 17]  [ 9 21]]
+                            [[ 2 14]  [ 6 18]  [10 22]]
+                            [[ 3 15]  [ 7 19]  [11 23]]
+                            [[ 4 16]  [ 8 20]  [12 24]]]
+            shape(y_perm1): return [4,3,2]
 
     Examples:
 
@@ -1711,7 +1732,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.OpResult)):
+        if isinstance(tol, (Variable, paddle.pir.Value)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -2939,26 +2960,30 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.eigh(x, UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        return _C_ops.eigh(x, UPLO)
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigh', **locals())
@@ -3451,27 +3476,32 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape)
+            )
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+            )
+        if UPLO != 'L' and UPLO != 'U':
+            raise ValueError(
+                f"UPLO must be L or U. But received UPLO is: {UPLO}"
+            )
+
+    if in_pir_mode():
+        __check_input(x, UPLO)
+        values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
     else:
-
-        def __check_input(x, UPLO):
-            x_shape = list(x.shape)
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "Input(input) only support >=2 tensor, but received "
-                    "length of Input(input) is %s." % len(x.shape)
-                )
-            if x_shape[-1] != x_shape[-2]:
-                raise ValueError(
-                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
-                )
-            if UPLO != 'L' and UPLO != 'U':
-                raise ValueError(
-                    f"UPLO must be L or U. But received UPLO is: {UPLO}"
-                )
-
         __check_input(x, UPLO)
 
         helper = LayerHelper('eigvalsh', **locals())
@@ -4277,7 +4307,7 @@ def matrix_exp(x, name=None):
         (
             paddle.Tensor,
             paddle.base.framework.Variable,
-            paddle.base.libpaddle.pir.OpResult,
+            paddle.base.libpaddle.pir.Value,
         ),
     ):
         mat_a = paddle.to_tensor(x)

@@ -314,7 +314,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     Args:
         input (variable): Tensor with lod_level no more than 2. The data type should be float32 or float64.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
-        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
+        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tensor maxIndex is
             created to record the index information corresponding to the maximum value, which is used for backward
             gradient calculation in the training phase. Default: False.
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0

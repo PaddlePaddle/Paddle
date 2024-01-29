@@ -38,8 +38,8 @@ void DebugPrintOpInfo(
   for (auto& res : op->results()) {
     std::ostringstream print_stream;
 
-    print_stream << "result(" << res.index() << ") "
-                 << "ShapeOrData: ";
+    print_stream << "  result(" << res.dyn_cast<pir::OpResult>().index() << ") "
+                 << "ShapeOrData: {";
 
     if (shape_analysis != nullptr) {
       auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
@@ -67,8 +67,9 @@ void DebugPrintOpInfo(
         print_stream << "nullopt";
       }
 
-      print_stream << "]\n";
+      print_stream << "]";
     }
+    print_stream << " }";
     VLOG(3) << print_stream.str();
   }
 }
@@ -89,8 +90,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                          "InferSymbolicShape for %s failed.",
                          op.name());
         } else {
-          VLOG(3) << op.name()
-                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
+          VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+          PADDLE_THROW(phi::errors::Unimplemented(
+              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }
@@ -115,9 +117,10 @@ class ShapeOptimizationPass : public pir::Pass {
       pm.EnableIRPrinting();
       return pm.Run(m.program());
     };
+
+    PrintProgram(module_op, "ShapeOptimizationPass Program");
     VLOG(3) << "===================== ShapeOptimizationPass Run End. "
                "=====================";
-    PrintProgram(module_op, "ShapeOptimizationPass Program");
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

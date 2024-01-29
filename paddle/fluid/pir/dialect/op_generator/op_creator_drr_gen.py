@@ -109,9 +109,7 @@ class OpCreatorCodeGen:
                 ir_op_name = self.dialect_name + "." + phi_op_name
                 params_no_mutable_attr = []
                 for i in range(len(op_info_item.input_name_list)):
-                    params_no_mutable_attr.append(
-                        f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                    )
+                    params_no_mutable_attr.append(f"inputs[{i}]")
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
@@ -131,9 +129,7 @@ class OpCreatorCodeGen:
                         len(op_info_item.input_name_list)
                         + len(op_info_item.mutable_attribute_name_list)
                     ):
-                        params_with_mutable_attr.append(
-                            f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                        )
+                        params_with_mutable_attr.append(f"inputs[{i}]")
                     if len(op_info_item.attribute_name_list) > len(
                         op_info_item.mutable_attribute_name_list
                     ):

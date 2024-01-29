@@ -45,21 +45,6 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
-datatype_to_vartype = {
-    DataType.FLOAT32: VarDesc.VarType.FP32,
-    DataType.FLOAT64: VarDesc.VarType.FP64,
-    DataType.FLOAT16: VarDesc.VarType.FP16,
-    DataType.BFLOAT16: VarDesc.VarType.BF16,
-    DataType.INT32: VarDesc.VarType.INT32,
-    DataType.INT16: VarDesc.VarType.INT16,
-    DataType.INT64: VarDesc.VarType.INT64,
-    DataType.BOOL: VarDesc.VarType.BOOL,
-    DataType.UINT8: VarDesc.VarType.UINT8,
-    DataType.INT8: VarDesc.VarType.INT8,
-    DataType.COMPLEX64: VarDesc.VarType.COMPLEX64,
-    DataType.COMPLEX128: VarDesc.VarType.COMPLEX128,
-}
-
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
@@ -302,9 +287,9 @@ def create_parameter(
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = name
-    if not op_result_name:
-        op_result_name = unique_name.generate('parameter')
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
@@ -315,12 +300,12 @@ def create_parameter(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
-        set_parameter(init_result, op_result_name)
+        set_parameter(init_result, value_name)
 
     main_program.move_parameters_from(startup_program)
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
-        param = parameter(op_result_name, dtype, shape)
+        param = parameter(value_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
         param.persistable = True
@@ -332,7 +317,7 @@ def create_parameter(
 
 def _convert_into_value(tensor):
     """
-    Convert Tensor into OpResult.
+    Convert Tensor into Value.
     """
     import paddle
     from paddle.jit.pir_dy2static.parameter_recorder import (

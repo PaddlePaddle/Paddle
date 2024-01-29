@@ -200,7 +200,7 @@ class TestDy2staticPir5(unittest.TestCase):
 
 
 class TestDy2staticPir6(unittest.TestCase):
-    # test basic-indexing __getitem__ for OpResult
+    # test basic-indexing __getitem__ for Value
     def test_basic_network(self):
         def func(x):
             shape = paddle.shape(x)
@@ -217,7 +217,7 @@ class TestDy2staticPir6(unittest.TestCase):
 
 
 class TestDy2staticPir7(unittest.TestCase):
-    # test basic-indexing __getitem__ for OpResult
+    # test basic-indexing __getitem__ for Value
     def test_basic_network(self):
         def func(x):
             x = x * 2

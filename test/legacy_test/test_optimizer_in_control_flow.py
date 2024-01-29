@@ -235,7 +235,7 @@ class TestMultiTask(unittest.TestCase):
         for epoch in range(EPOCH_NUM):
             self.train_data.append(self.random_input(epoch))
 
-    def test_optimzier_in_switch(self):
+    def test_optimizer_in_switch(self):
         self.init_train_data()
         use_cuda = core.is_compiled_with_cuda()
         hidden_2, pre_2, loss_2 = dynamic(self.train_data, use_cuda)

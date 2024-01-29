@@ -18,27 +18,29 @@ from collections import defaultdict
 from paddle.base import unique_name
 from paddle.utils import gast
 
-from ..static_analysis import StaticAnalysisVisitor
 from ..utils import (
-    FOR_BODY_PREFIX,
-    FOR_CONDITION_PREFIX,
-    WHILE_BODY_PREFIX,
-    WHILE_CONDITION_PREFIX,
-    FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
-    create_get_args_node,
-    create_name_str,
-    create_nonlocal_stmt_nodes,
-    create_set_args_node,
-    get_attribute_full_name,
 )
 from .base import (
     BaseTransformer,
     ForLoopTuplePreTransformer,
     ForNodeVisitor,
 )
-from .ifelse_transformer import ARGS_NAME
+from .utils import (
+    ARGS_NAME,
+    FOR_BODY_PREFIX,
+    FOR_CONDITION_PREFIX,
+    WHILE_BODY_PREFIX,
+    WHILE_CONDITION_PREFIX,
+    FunctionNameLivenessAnalysis,
+    create_get_args_node,
+    create_name_str,
+    create_nonlocal_stmt_nodes,
+    create_set_args_node,
+    get_attribute_full_name,
+    get_parent_mapping,
+)
 
 __all__ = []
 
@@ -137,10 +139,7 @@ class NameVisitor(gast.NodeVisitor):
         # Some names are types, we shouldn't record them as loop var names.
         self.type_vars = set()
 
-        self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
-        self.node_to_wrapper_map = (
-            self.static_analysis_visitor.get_node_to_wrapper_map()
-        )
+        self.to_parent_mapping = get_parent_mapping(root_node)
 
         self.visit(root_node)
 
@@ -184,10 +183,6 @@ class NameVisitor(gast.NodeVisitor):
         write_vars = self.write_in_loop[node]
         write_names = self._var_nodes_to_names(write_vars)
 
-        name_to_type = {}
-        for var in in_loop_vars:
-            wrapper = self.node_to_wrapper_map[var]
-            name_to_type[self._var_node_to_name(var)] = wrapper.node_var_type
         for name in in_loop_name_strs:
             if name in before_loop_name_strs:
                 # If a variable is used in loop and created before loop
@@ -363,12 +358,7 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _get_parent_node(self, node):
-        wrapper_node = self.node_to_wrapper_map.get(node)
-        if wrapper_node:
-            if wrapper_node.parent:
-                parent_node = wrapper_node.parent.node
-                return parent_node
-        return None
+        return self.to_parent_mapping.get(node)
 
     def _remove_unnecessary_vars(self, loop_vars, loop_node):
         """

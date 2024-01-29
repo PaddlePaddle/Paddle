@@ -126,20 +126,13 @@ bool DimExpr::operator!=(const DimExpr& other) const {
 }
 
 namespace {
+template <class... Ts>
+struct Overloaded : Ts... {
+  using Ts::operator()...;
+};
 
-std::string ToStringImpl(std::int64_t dim_expr) {
-  return std::to_string(dim_expr);
-}
-
-std::string ToStringImpl(const std::string& dim_expr) { return dim_expr; }
-
-std::string ToStringImpl(const Negative<DimExpr>& dim_expr) {
-  return "-" + ToString(dim_expr->data);
-}
-
-std::string ToStringImpl(const Reciprocal<DimExpr>& dim_expr) {
-  return "1 / (" + ToString(dim_expr->data) + ")";
-}
+template <class... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
 std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
                                 const std::string& delim = ", ") {
@@ -152,32 +145,35 @@ std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
   }
   return ret;
 }
-
-std::string ToStringImpl(const Add<DimExpr>& dim_expr) {
-  return "Add(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
-}
-
-std::string ToStringImpl(const Mul<DimExpr>& dim_expr) {
-  return "Mul(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
-}
-
-std::string ToStringImpl(const Max<DimExpr>& dim_expr) {
-  return "Max(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
-}
-
-std::string ToStringImpl(const Min<DimExpr>& dim_expr) {
-  return "Min(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
-}
-
-std::string ToStringImpl(const Broadcast<DimExpr>& dim_expr) {
-  return "Broadcast(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
-}
-
 }  // namespace
 
 std::string ToString(const DimExpr& dim_expr) {
-  return std::visit([](const auto& impl) { return ToStringImpl(impl); },
-                    dim_expr.variant());
+  auto lambdas = Overloaded{
+      [](std::int64_t dim_expr) { return std::to_string(dim_expr); },
+      [](const std::string& dim_expr) { return dim_expr; },
+      [](const Negative<DimExpr>& dim_expr) {
+        return "-" + ToString(dim_expr->data);
+      },
+      [](const Reciprocal<DimExpr>& dim_expr) {
+        return "1 / (" + ToString(dim_expr->data) + ")";
+      },
+      [](const Add<DimExpr>& dim_expr) {
+        return "Add(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+      },
+      [](const Mul<DimExpr>& dim_expr) {
+        return "Mul(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+      },
+      [](const Max<DimExpr>& dim_expr) {
+        return "Max(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+      },
+      [](const Min<DimExpr>& dim_expr) {
+        return "Min(" + ListDimExprToString(dim_expr.operands, ", ") + ")";
+      },
+      [](const Broadcast<DimExpr>& dim_expr) {
+        return "Broadcast(" + ListDimExprToString(dim_expr.operands, ", ") +
+               ")";
+      }};
+  return std::visit(lambdas, dim_expr.variant());
 }
 
 std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
@@ -186,28 +182,80 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
 }
 
 std::ostream& operator<<(std::ostream& stream,
+                         const std::vector<DimExpr>& dim_exprs) {
+  std::stringstream ss;
+  ss << "[";
+  for (size_t i = 0; i < dim_exprs.size(); ++i) {
+    ss << ToString(dim_exprs[i]);
+    if (i < dim_exprs.size() - 1) {
+      ss << ", ";
+    }
+  }
+  ss << "]";
+  return stream << ss.str();
+}
+
+std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
-  std::string result = "shape[";
-  for (size_t i = 0; i < shape_or_data.shape().size(); ++i) {
-    result += ToString(shape_or_data.shape()[i]);
-    if (i < shape_or_data.shape().size() - 1) {
-      result += ", ";
-    }
-  }
-  result += "]";
-  if (shape_or_data.data()) {
-    result += ", data[";
-    for (size_t i = 0; i < shape_or_data.data()->size(); ++i) {
-      result += ToString(shape_or_data.data()->at(i));
-      if (i < shape_or_data.data()->size() - 1) {
-        result += ", ";
-      }
-    }
-    result += "]";
-  } else {
-    result += ", data[NULL]";
-  }
+  std::string result;
+  auto lambdas = Overloaded{
+      [&result](const TensorShapeOrDataDimExprs& tensor_shape_data) {
+        result += "shape[";
+        for (size_t i = 0; i < tensor_shape_data.shape().size(); ++i) {
+          result += ToString(tensor_shape_data.shape()[i]);
+          if (i < tensor_shape_data.shape().size() - 1) {
+            result += ", ";
+          }
+        }
+        result += "]";
+        if (tensor_shape_data.data()) {
+          result += ", data[";
+          for (size_t i = 0; i < tensor_shape_data.data()->size(); ++i) {
+            result += ToString(tensor_shape_data.data()->at(i));
+            if (i < tensor_shape_data.data()->size() - 1) {
+              result += ", ";
+            }
+          }
+          result += "]";
+        } else {
+          result += ", data[NULL]";
+        }
+      },
+      [&result](const TensorListShapeOrDataDimExprs& tensor_list_shape_data) {
+        for (size_t i = 0; i < tensor_list_shape_data.size(); ++i) {
+          result += "shape[";
+          for (size_t i = 0; i < tensor_list_shape_data[i].shape().size();
+               ++i) {
+            result += ToString(tensor_list_shape_data[i].shape()[i]);
+            if (i < tensor_list_shape_data[i].shape().size() - 1) {
+              result += ", ";
+            }
+          }
+          result += "]";
+          if (tensor_list_shape_data[i].data()) {
+            result += ", data[";
+            for (size_t i = 0; i < tensor_list_shape_data[i].data()->size();
+                 ++i) {
+              result += ToString(tensor_list_shape_data[i].data()->at(i));
+              if (i < tensor_list_shape_data[i].data()->size() - 1) {
+                result += ", ";
+              }
+            }
+            result += "]";
+          } else {
+            result += ", data[NULL]";
+          }
+
+          if (i < tensor_list_shape_data.size() - 1) {
+            result += ", ";
+          }
+        }
+      }};
+
+  std::visit(lambdas, shape_or_data.variant());
+
   stream << result;
+
   return stream;
 }
 

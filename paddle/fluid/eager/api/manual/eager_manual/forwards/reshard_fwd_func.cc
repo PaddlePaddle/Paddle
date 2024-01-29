@@ -82,7 +82,7 @@ paddle::Tensor reshard_ad_function(
 #else
   PADDLE_THROW(phi::errors::Unavailable(
       "Reshard is not supported in this version of Paddle. Try to recompile it "
-      "with WITH_DISTRIBTUE=ON and reinstall this package."));
+      "with WITH_DISTRIBUTE=ON and reinstall this package."));
   return paddle::Tensor();
 #endif
 }
