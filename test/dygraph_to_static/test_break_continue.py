@@ -274,7 +274,7 @@ class TestBreakContinueInFor(TestContinueBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_break_continue_in_for
 
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -296,8 +296,7 @@ class TestContinueInWhile(TestContinueNotPirBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_while
 
-    # TODO(dev): Remove this after fix PT Rename issue
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -314,8 +313,7 @@ class TestBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_while
 
-    # TODO(dev): Remove this after fix PT Rename issue
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -332,7 +330,7 @@ class TestWhileLoopClassVar(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
 
-    @test_legacy_and_pt
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
@@ -356,7 +354,7 @@ class TestOptimBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 
-    # TODO(dev): Remove this after fix PT Rename issue
+    # TODO: Open PIR test when while_loop dy2st fixed
     @test_legacy_and_pt
     def test_transformed_static_result(self):
         self.init_dygraph_func()

@@ -39,30 +39,33 @@ class DynamicExpandOpPattern
       return false;
     }
 
-    auto x_rank = op->operand_source(0)
-                      .type()
-                      .dyn_cast<pir::ShapedTypeInterface>()
-                      .GetRank();
-    auto out_rank =
-        op->result(0).type().dyn_cast<pir::ShapedTypeInterface>().GetRank();
-    std::vector<int64_t> broadcast_axes(x_rank, 0);
-    size_t index_gap = out_rank - x_rank;
-    for (size_t i = 0; i < x_rank; ++i) {
-      broadcast_axes[i] = i + index_gap;
-    }
-    std::vector<int64_t> out_shape(out_rank, -1);
-    auto broadcast = rewriter.Build<cinn::dialect::BroadcastOp>(
-        op->operand_source(0), broadcast_axes, out_shape);
+    const ::pir::Operation* broadcast = [&] {
+      int x_rank = op->operand_source(0)
+                       .type()
+                       .dyn_cast<pir::DenseTensorType>()
+                       .dims()
+                       .size();
+      int out_rank =
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims().size();
+      std::vector<int64_t> broadcast_axes(x_rank, 0);
+      size_t index_gap = out_rank - x_rank;
+      for (size_t i = 0; i < x_rank; ++i) {
+        broadcast_axes[i] = i + index_gap;
+      }
+      std::vector<int64_t> out_shape(out_rank, -1);
+      return rewriter.Build<cinn::dialect::BroadcastOp>(
+          op->operand_source(0), broadcast_axes, out_shape);
+    }();
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     CHECK(shape_analysis.HasShapeOrDataForValue(op.result(0)))
         << "Can't find DimExpr for output of reshape in shape_analysis.";
     shape_analysis.SetShapeOrDataForValue(
-        broadcast.result(0),
+        broadcast->result(0),
         shape_analysis.GetShapeOrDataForValue(op.result(0)));
 
-    rewriter.ReplaceAllUsesWith(op->result(0), broadcast.result(0));
+    rewriter.ReplaceAllUsesWith(op->result(0), broadcast->result(0));
     rewriter.EraseOp(op);
 
     return true;
@@ -89,7 +92,7 @@ class ReplaceDynamicExpandOpPass : public pir::Pass {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
           if (op.isa<cinn::dialect::FusionOp>()) {
-            auto [_, num_rewrites] =
+            const auto& [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);
           }
