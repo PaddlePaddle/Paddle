@@ -1,5 +1,5 @@
 if(NOT WITH_ROCM)
   paddle_test(if_op_test SRCS if_op_test.cc)
 
-  paddle_test(while_op_test SRCS while_op_test.cc DEPS device_event_base)
+  paddle_test(while_op_test SRCS while_op_test.cc)
 endif()
