@@ -237,7 +237,7 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
 /**
  * Naive idea to split a graph.
  *
- * 1. treat each stage as a seperate group.
+ * 1. treat each stage as a separate group.
  * 2. If ComputeAt is set between two stages and their iteration domain matches,
  * the stages will be put in a group with relative order.
  */
