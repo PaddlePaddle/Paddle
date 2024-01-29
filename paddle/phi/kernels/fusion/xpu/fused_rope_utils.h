@@ -32,7 +32,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
         (dims_size == 2 || dims_size == 4),
         true,
         phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but recieved %d.",
+                                     "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
@@ -58,7 +58,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
                         2,
                         phi::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
-                            "be 2, but recieved %d.",
+                            "be 2, but received %d.",
                             position_ids_dims.size()));
 
       PADDLE_ENFORCE_EQ(
