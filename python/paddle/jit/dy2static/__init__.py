@@ -28,13 +28,11 @@ from .convert_operators import (  # noqa: F401
     convert_while_loop as While,
     create_bool_as_type,
     indexable as Indexable,
+    to_static_variable,
     unpack_by_structure as Unpack,
 )
 from .program_translator import convert_to_static  # noqa: F401
 from .transformers import DygraphToStaticAst  # noqa: F401
 from .utils import UndefinedVar, ast_to_source_code, saw  # noqa: F401
-from .variable_trans_func import (  # noqa: F401
-    to_static_variable,
-)
 
 __all__ = []

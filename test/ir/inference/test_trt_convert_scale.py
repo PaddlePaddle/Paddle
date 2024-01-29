@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,7 +31,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch, is_int):
+        def generate_input1(attrs: list[dict[str, Any]], batch, is_int):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(
                     np.int32 if is_int else np.float32
@@ -46,83 +49,91 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             elif self.dims == 0:
                 return np.ones([]).astype(np.int32 if is_int else np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]], is_int):
+        def generate_weight1(attrs: list[dict[str, Any]], is_int):
             return np.ones([1]).astype(np.int32 if is_int else np.float32)
 
-        for num_input in [0, 1]:
-            for dims in [0, 1, 2, 3, 4]:
-                for batch in [1, 2]:
-                    for scale in [0.1, -1.0]:
-                        for bias in [0.0, 1.2]:
-                            for bias_after_scale in [False, True]:
-                                for is_int in [False, True]:
-                                    self.num_input = num_input
-                                    self.dims = dims
-                                    self.is_int = is_int
-                                    dics = [
-                                        {
-                                            "scale": scale,
-                                            "bias": bias,
-                                            "bias_after_scale": bias_after_scale,
-                                        },
-                                        {},
-                                    ]
+        for (
+            num_input,
+            dims,
+            batch,
+            scale,
+            bias,
+            bias_after_scale,
+            is_int,
+        ) in product(
+            [0, 1],
+            [0, 1, 2, 3, 4],
+            [1, 2],
+            [0.1, -1.0],
+            [0.0, 1.2],
+            [False, True],
+            [False, True],
+        ):
+            self.num_input = num_input
+            self.dims = dims
+            self.is_int = is_int
+            dics = [
+                {
+                    "scale": scale,
+                    "bias": bias,
+                    "bias_after_scale": bias_after_scale,
+                },
+                {},
+            ]
 
-                                    dics_intput = [
-                                        {
-                                            "X": ["scale_input"],
-                                            "ScaleTensor": ["ScaleTensor"],
-                                        },
-                                        {"X": ["scale_input"]},
-                                    ]
-                                    dics_intputs = [
-                                        {
-                                            "ScaleTensor": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_weight1,
-                                                    dics,
-                                                    is_int,
-                                                )
-                                            )
-                                        },
-                                        {},
-                                    ]
+            dics_intput = [
+                {
+                    "X": ["scale_input"],
+                    "ScaleTensor": ["ScaleTensor"],
+                },
+                {"X": ["scale_input"]},
+            ]
+            dics_intputs = [
+                {
+                    "ScaleTensor": TensorConfig(
+                        data_gen=partial(
+                            generate_weight1,
+                            dics,
+                            is_int,
+                        )
+                    )
+                },
+                {},
+            ]
 
-                                    ops_config = [
-                                        {
-                                            "op_type": "scale",
-                                            "op_inputs": dics_intput[num_input],
-                                            "op_outputs": {
-                                                "Out": ["scale_out"]
-                                            },
-                                            "op_attrs": dics[0],
-                                        }
-                                    ]
-                                    ops = self.generate_op_config(ops_config)
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights=dics_intputs[num_input],
-                                        inputs={
-                                            "scale_input": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1,
-                                                    dics,
-                                                    batch,
-                                                    is_int,
-                                                )
-                                            )
-                                        },
-                                        outputs=["scale_out"],
-                                        no_cast_list=["scale_input"]
-                                        if is_int
-                                        else [],
-                                    )
+            ops_config = [
+                {
+                    "op_type": "scale",
+                    "op_inputs": dics_intput[num_input],
+                    "op_outputs": {"Out": ["scale_out"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights=dics_intputs[num_input],
+                inputs={
+                    "scale_input": TensorConfig(
+                        data_gen=partial(
+                            generate_input1,
+                            dics,
+                            batch,
+                            is_int,
+                        )
+                    )
+                },
+                outputs=["scale_out"],
+                no_cast_list=["scale_input"] if is_int else [],
+            )
 
-                                    yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {

@@ -17,8 +17,8 @@
 #include <optional>
 #include <unordered_map>
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn::common {
 
@@ -208,7 +208,8 @@ symbol::DimExpr GetCstrLhsEqRhsDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqRhsReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrLhsEqOneDimExpr(
@@ -216,7 +217,8 @@ symbol::DimExpr GetCstrLhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrRhsEqOneDimExpr(
@@ -224,7 +226,8 @@ symbol::DimExpr GetCstrRhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrRhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 typedef symbol::DimExpr (*ConvertDimExprT)(
