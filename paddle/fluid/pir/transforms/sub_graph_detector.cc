@@ -36,6 +36,11 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/utils/flags.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
+#endif
 namespace pir {
 
 std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
@@ -174,7 +179,7 @@ struct SubGraph {
   std::unordered_set<SubGraphPtr> consumers;
 };
 
-using OpClassifier = std::function<bool(pir::Operation*)>;
+using OpClassifier = std::function<bool(const pir::Operation&)>;
 
 SubgraphDetector::SubgraphDetector(pir::Block* block,
                                    const OpClassifier& classifier)
@@ -217,14 +222,14 @@ void SubgraphDetector::DoOpFusion() {
   for (auto* op : sort_ops_) {
     auto subgraph = subgraph_map_.count(op)
                         ? subgraph_map_[op]
-                        : std::make_shared<SubGraph>(op, op_classifier_(op));
+                        : std::make_shared<SubGraph>(op, op_classifier_(*op));
     if (!subgraph_map_.count(op)) {
       subgraph_map_[op] = subgraph;
     }
     auto producers = GetProducerOpsReverseSort(op, op2id_);
 
     for (auto* producer : producers) {
-      if (op_classifier_(producer) != subgraph->substitute) {
+      if (op_classifier_(*producer) != subgraph->substitute) {
         continue;
       }
 
@@ -476,7 +481,9 @@ void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+#ifdef PADDLE_WITH_DNNL
+  ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
+#endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
   auto* last_op = group_ops.back();

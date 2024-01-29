@@ -2291,7 +2291,7 @@ void MaxOutInferMeta(const MetaTensor& x,
       axis == 1 || axis == -1 || axis == 3,
       true,
       phi::errors::InvalidArgument(
-          "axis only supported 1, -1 or 3, but recevied axis is: %d.", axis));
+          "axis only supported 1, -1 or 3, but received axis is: %d.", axis));
   PADDLE_ENFORCE_EQ(in_x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
@@ -2985,7 +2985,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
                     true,
                     phi::errors::InvalidArgument(
                         "data_format must be one of "
-                        "NCHW and NHWC. But recevied data_format: %s",
+                        "NCHW and NHWC. But received data_format: %s",
                         data_format));
 
   const bool channel_last = (data_format == "NHWC");
@@ -3755,7 +3755,7 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
 }
 
 // This logic is copied from
-// `paddle/fluid/operators/slice_op.cc/Slcieop::InferShape`
+// `paddle/fluid/operators/slice_op.cc/Sliceop::InferShape`
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,
                          const IntArray& ends,
@@ -5012,13 +5012,13 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
                     0,
                     errors::InvalidArgument(
                         "The uniform_random's diag_num must greater than or "
-                        "equal 0. But recevied diag_num (%d) < 0.",
+                        "equal 0. But received diag_num (%d) < 0.",
                         diag_num));
   PADDLE_ENFORCE_GE(diag_step,
                     0,
                     errors::InvalidArgument(
                         "The uniform_random's diag_step must greater than or "
-                        "equal 0. But recevied diag_step (%d) < 0.",
+                        "equal 0. But received diag_step (%d) < 0.",
                         diag_step));
   PADDLE_ENFORCE_NE(out,
                     nullptr,
@@ -5375,7 +5375,7 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                     true,
                     phi::errors::InvalidArgument(
                         "data_format must be one of "
-                        "NCHW and NHWC. But recevied data_format: %s",
+                        "NCHW and NHWC. But received data_format: %s",
                         data_format));
 
   const bool channel_last = (data_format == "NHWC");
@@ -5460,6 +5460,21 @@ void LrnInferMeta(const MetaTensor& x,
   mid_out->set_dims(x.dims());
   mid_out->set_layout(x.layout());
   mid_out->share_lod(x);
+}
+
+void ArrayPopInferMeta(const MetaTensor& array,
+                       int index,
+                       MetaTensor* array_out,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  array_out->set_dtype(array.dtype());
+  array_out->set_layout(array.layout());
+  if (config.is_runtime) {
+    return;
+  }
+  // TODO(dev): Support get a tensor dims from TensorArray.
+  // out->set_dims(x.dims());
+  out->set_dtype(array.dtype());
 }
 
 }  // namespace phi

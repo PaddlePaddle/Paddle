@@ -30,6 +30,7 @@
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
+#include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/optim/unroll_loops.h"
@@ -64,6 +65,7 @@ Expr Optimize(Expr e,
     RemoveGpuForloopsAxis(&copied);
   }
   CudaSyncThreadsDropIfThenElse(&copied);
+  // TransBufferWithDynamicShape(&copied);
 #endif
 
   SimplifyBlocks(&copied);

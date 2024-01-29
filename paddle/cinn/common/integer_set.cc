@@ -28,6 +28,31 @@ ir::Expr SymbolicExprLimit::positive_inf =
 ir::Expr SymbolicExprLimit::negative_inf =
     ir::Expr(ir::Var("negative_infinity"));
 
+cas_intervals_t CollectVarIntervalsOfExprs(const std::vector<ir::Expr>& exprs,
+                                           bool is_lower_bound_zero) {
+  cas_intervals_t var_intervals;
+  for (ir::Expr expr : exprs) {
+    ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
+      if (const ir::_Var_* var = x->as_var()) {
+        ir::Expr lower_bound = is_lower_bound_zero
+                                   ? ir::Expr(static_cast<int64_t>(1))
+                                   : SymbolicExprLimit::negative_inf;
+        ir::Expr upper_bound = SymbolicExprLimit::positive_inf;
+        if (var->lower_bound.defined()) {
+          lower_bound = var->lower_bound;
+        }
+        if (var->upper_bound.defined()) {
+          upper_bound = var->upper_bound;
+        }
+        var_intervals.insert(
+            {var->name, CasInterval(lower_bound, upper_bound)});
+      }
+      return false;
+    });
+  }
+  return var_intervals;
+}
+
 std::optional<bool> SymbolicExprAnalyzer::Prove(
     const ir::Expr& condition) const {
   if (condition.As<ir::EQ>()) {

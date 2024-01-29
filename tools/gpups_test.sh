@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+failuretest=''
 
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
-        if [ $exit_code -ne 0 ]; then
-            failuretest=''
-        else
-            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-            failed_test_lists="${failed_test_lists}
-            ${failuretest}"
+        if [ $exit_code -eq 0 ]; then
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'|grep -v 'Passed'`
+	    failed_test_lists="${failuretest}
+            ${failed_test_lists}"
         fi
     done
 }
@@ -55,6 +54,7 @@ serial_list="^test_conv2d_op$|\
 
 parallel_list="^init_phi_test$|\
 ^operator_test$|\
+^test_tcp_store$|\
 ^test_collective_cpu_barrier_with_gloo$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
@@ -127,14 +127,15 @@ parallel_list="^init_phi_test$|\
 ^test_pool_max_op$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
-^test_tcp_store$|\
 ^test_to_tensor$|\
 ^test_top_k_v2_op$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`
 tmpfile_rand=`date +%s%N`
+tmpfile1_rand=`date +%s%N`
 tmpfile=$tmp_dir/$tmpfile_rand"_"$i
+tmpfile1=$tmp_dir/$tmpfile1_rand"_"$i
 set +e
 
 get_quickly_disable_ut||disable_ut_quickly='disable_ut'
@@ -159,7 +160,7 @@ done
 pids=()
 for (( i = 0; i < $NUM_PROC; i++ )); do
     cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 180 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 180 -j1 | tee -a $tmpfile1; test ${PIPESTATUS[0]} -eq 0)&
     pids+=($!)
 done
 
@@ -176,10 +177,9 @@ set -e
 if [ "${EXIT_CODE}" != "0" ];then
   echo "Sorry, some tests failed."
   collect_failed_tests
-  rm -f $tmp_dir/*
   echo "Summary Failed Tests... "
   echo "========================================"
   echo "The following tests FAILED: "
-  echo "${failuretest}" | sort -u
+  echo "${failed_test_lists}"| sort -u
   exit 8
 fi

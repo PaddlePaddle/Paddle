@@ -88,7 +88,46 @@ if(WITH_CINN AND NOT CINN_ONLY)
 
 endif()
 
+if(WITH_MKLDNN)
+  set(onednn_dialect_name onednn_op)
+  set(pir_op_onednn_yaml
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml
+  )
+  set(pd_ops_onednn_extra_yaml_file
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
+  )
+  set(onednn_op_creator_file
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/onednn_op_factory_generated.cc)
+  set(onednn_op_creator_file_tmp ${onednn_op_creator_file}.tmp)
+
+  add_custom_command(
+    OUTPUT ${onednn_op_creator_file}
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
+      ${op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+      --dialect_name ${onednn_dialect_name} --op_creator_file
+      ${onednn_op_creator_file_tmp} --onednn_yaml_file ${pir_op_onednn_yaml}
+      --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${onednn_op_creator_file_tmp}
+            ${onednn_op_creator_file}
+    COMMENT "copy_if_different ${onednn_op_creator_file}"
+    DEPENDS ${op_creator_gen_file}
+            ${op_forward_yaml_file1}
+            ${op_backward_yaml_file1}
+            ${op_compat_yaml_file}
+            ${op_yaml_file3}
+            ${op_yaml_file4}
+            op_dialect
+    VERBATIM)
+
+endif()
+
+set(DRR_SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE})
+
+if(WITH_MKLDNN)
+  set(DRR_SRCS ${DRR_SRCS} ${onednn_op_creator_file})
+endif()
 cc_library(
   drr
-  SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
+  SRCS ${DRR_SRCS}
   DEPS op_dialect_vjp ${CINN_DEPS} pir)
