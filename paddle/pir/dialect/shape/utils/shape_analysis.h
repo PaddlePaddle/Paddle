@@ -45,6 +45,9 @@ class IR_API ShapeConstraintIRAnalysis {
   bool SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
+  void UpdateShapeOrDataForValue(
+      Value val, const symbol::ShapeOrDataDimExprs& shape_or_data);
+
   symbol::DimExprBuilder CreateDimExprBuilder();
 
   // Used to debug
