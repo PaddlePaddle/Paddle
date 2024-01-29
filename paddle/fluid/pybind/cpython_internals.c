@@ -446,8 +446,7 @@ static void Internal_take_ownership(PyFrameObject *f,
     } else {
       f->f_back = (PyFrameObject *)Py_NewRef(back);
     }
-#if PY_VERSION_HEX >= 0x030c0000
-#else
+#if PY_VERSION_HEX < 0x030c0000
     frame->previous = NULL;
 #endif
   }
