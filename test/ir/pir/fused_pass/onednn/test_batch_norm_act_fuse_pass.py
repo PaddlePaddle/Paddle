@@ -38,10 +38,11 @@ class TestConv3dAddFusePass(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[3, 32, 28, 28], dtype='float32'
                 )
-                bn = paddle.nn.BatchNorm2D(
-                    num_features=32,
-                    data_format='NCHW',
+                bn = paddle.nn.layer.norm.BatchNorm(
+                    num_channels=32,
+                    data_layout='NCHW',
                     use_global_stats=True,
+                    is_test=True,
                 )
                 bn_out = bn(x)
                 out = paddle.nn.functional.relu(bn_out)
@@ -52,7 +53,7 @@ class TestConv3dAddFusePass(PassTest):
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
-                    "onednn_op.batch_norm": 1,
+                    "onednn_op.batch_norm_": 1,
                     "pd_op.batch_norm": 0,
                     "pd_op.relu": 0,
                 }

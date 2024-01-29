@@ -1671,7 +1671,9 @@ void BindPassManager(pybind11::module *m) {
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
       .def("empty", &PassManager::empty)
-      .def("clear", &PassManager::clear);
+      .def("clear", &PassManager::clear)
+      .def("enable_ir_printing",
+           [](PassManager &self) { self.EnableIRPrinting(); });
 }
 
 void BindPir(pybind11::module *module) {

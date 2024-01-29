@@ -24,10 +24,19 @@
 namespace {
 class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  BatchNormActFusePattern(std::string bn_name, std::string fused_bn_name)
+      : bn_name_(bn_name), fused_bn_name_(fused_bn_name) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
-    const auto &bn = pat.Op(paddle::dialect::BatchNormOp::name());
+    const auto &bn =
+        pat.Op(bn_name_,
+               {{"momentum", pat.Attr("momentum")},
+                {"epsilon", pat.Attr("epsilon")},
+                {"data_format", pat.Attr("data_format")},
+                {"use_global_stats", pat.Attr("use_global_stats")},
+                {"trainable_statistics", pat.Attr("trainable_statistics")},
+                {"is_test", pat.Attr("is_test")}});
     const auto &relu = pat.Op(paddle::dialect::ReluOp::name());
     bn({&pat.Tensor("x"),
         &pat.Tensor("mean"),
@@ -55,7 +64,7 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_bn =
-        res.Op(paddle::onednn::dialect::BatchNormOp::name(),
+        res.Op(fused_bn_name_,
                {{
                    {"is_test", res.BoolAttr(true)},
                    {"momentum", pat.Attr("momentum")},
@@ -82,6 +91,10 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
   std::string name() const override { return "BatchNormActFusePattern"; }
 
   uint32_t benefit() const override { return 2; }
+
+ private:
+  std::string bn_name_;
+  std::string fused_bn_name_;
 };
 
 class BatchNormActFusePass : public pir::PatternRewritePass {
@@ -91,7 +104,13 @@ class BatchNormActFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(BatchNormActFusePattern().Build(context));
+    ps.Add(BatchNormActFusePattern(paddle::dialect::BatchNormOp::name(),
+                                   paddle::onednn::dialect::BatchNormOp::name())
+               .Build(context));
+    ps.Add(
+        BatchNormActFusePattern(paddle::dialect::BatchNorm_Op::name(),
+                                paddle::onednn::dialect::BatchNorm_Op::name())
+            .Build(context));
     return ps;
   }
 };

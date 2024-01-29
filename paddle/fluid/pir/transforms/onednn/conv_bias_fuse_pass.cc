@@ -120,7 +120,15 @@ class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &conv = pat.Op(conv_name_);
+    const auto &conv =
+        pat.Op(conv_name_,
+               {{"strides", pat.Attr("strides")},
+                {"paddings", pat.Attr("paddings")},
+                {"padding_algorithm", pat.Attr("padding_algorithm")},
+                {"dilations", pat.Attr("dilations")},
+                {"groups", pat.Attr("groups")},
+                {"data_format", pat.Attr("data_format")}});
+
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
     conv({&pat.Tensor("input"), &pat.Tensor("filter")},
