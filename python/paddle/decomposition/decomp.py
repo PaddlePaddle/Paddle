@@ -308,7 +308,7 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
 
             if (
                 lower
-                and core._enable_prim_dynamic_shape()
+                and core._enable_prim_skip_dynamic_shape()
                 and _check_prim_dynamic(op)
             ):
                 lower = False

@@ -243,7 +243,7 @@ def _check_vjp_dynamic_shape(op, inputs):
 def dynamic_shape_prim_vjp_guard(op, inputs):
     skip_prim = (
         core._is_bwd_prim_enabled()
-        and core._enable_prim_dynamic_shape()
+        and core._enable_prim_skip_dynamic_shape()
         and _check_vjp_dynamic_shape(op, inputs)
     )
     try:
