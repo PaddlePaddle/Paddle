@@ -81,8 +81,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::RequantizeOp::name(),
 #endif
     CReduceMinOp::name(),
-    PushSparseV2Op::name(),
-    LarsMomentumOp::name()};
+    PushSparseV2Op::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
