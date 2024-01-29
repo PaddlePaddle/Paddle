@@ -34,7 +34,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
                     pir::Value cond,
                     std::vector<pir::Type> &&output_types);
 
-  static void Build(pir::Builder &builder,             // NOLINT
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
                     std::unique_ptr<pir::Block> &&true_block,
