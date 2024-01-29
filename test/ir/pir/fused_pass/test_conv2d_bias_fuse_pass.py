@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -82,8 +82,6 @@ class TestConv2dAddFusePass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
-        # todo(bukejiyu): This pass will support accuracy verification in the future
-        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct()
@@ -156,8 +154,6 @@ class TestConv2dAddFusePassWithAddParam(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
-        # todo(bukejiyu): This pass will support accuracy verification in the future
-        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct()
