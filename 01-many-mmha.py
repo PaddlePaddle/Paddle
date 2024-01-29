@@ -10,11 +10,11 @@ max_seq_len = 2560
 max_batch = 2
 dtype = "float16"
 cache_kv = paddle.rand((2, max_batch, kv_head, max_seq_len, head_dim),dtype = dtype)
-batch = 2
+batch = max_batch
 q_len = 1
 
-# 一共要解码100次哦！
-decoder_len = 2048
+# 一共要解码decoder_len次哦！
+decoder_len = 2050
 Q = paddle.rand((decoder_len, batch, heads, 1, head_dim),dtype = dtype)
 K = paddle.rand((decoder_len, batch, heads, 1, head_dim),dtype = dtype)
 V = paddle.rand((decoder_len, batch, heads, 1, head_dim),dtype = dtype)
@@ -35,7 +35,7 @@ for i in range(decoder_len):
     qkv = qkv.reshape([3, batch, heads, q_len, head_dim])
     qkv_out = qkv.transpose([1, 3, 0, 2, 4]).reshape([batch,3 * heads * head_dim])
 
-    seq_lens = paddle.to_tensor([[i], [i]]).astype("int32")
+    seq_lens = paddle.to_tensor([[i] * batch]).astype("int32")
 
     attn_mask = ATTN_MASK[:,:,:,:i+1]
 
@@ -51,7 +51,7 @@ q = Q[i]
 k = K[i]
 v = V[i]
 attn_mask = ATTN_MASK[:,:,:,:i+1]
-seq_lens = paddle.to_tensor([[i], [i]]).astype("int32")
+seq_lens = paddle.to_tensor([[i] * batch]).astype("int32")
 
 import datetime
 starttime = datetime.datetime.now()
