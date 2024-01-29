@@ -236,6 +236,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             self.check_api(axis)
         self.check_api(-1, 'float64')
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name='X1', shape=[100], dtype='int32')

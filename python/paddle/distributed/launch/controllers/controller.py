@@ -227,6 +227,8 @@ class Controller(ControllerBase):
                     "-u",
                     self.ctx.args.training_script,
                 ]
+        elif self.ctx.args.training_script.endswith('.pyxes'):
+            entrypoint = [sys.executable, self.ctx.args.training_script]
         else:
             entrypoint = [self.ctx.args.training_script]
 

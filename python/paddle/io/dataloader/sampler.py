@@ -288,7 +288,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
 
 class WeightedRandomSampler(Sampler):
     """
-    Random sample with given weights (probabilities), sampe index will be in range
+    Random sample with given weights (probabilities), sample index will be in range
     [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
     multiple times.
 

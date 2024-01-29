@@ -252,7 +252,7 @@ class CtrDymfAccessor : public ValueAccessor {
     return &_save_filtered_slots;
   }
 
-  // 根据pass_id和show_threashold阈值来判断cache到ssd
+  // 根据pass_id和show_threshold阈值来判断cache到ssd
   bool SaveMemCache(float* value,
                     int param,
                     double global_cache_threshold,

@@ -34,7 +34,7 @@ namespace backends {
 #define TENSOR_SHAPE_ARGS "tensor_shape_args"
 
 /**
- * Split a CINN Module into two separate modules, one cantains the host
+ * Split a CINN Module into two separate modules, one contains the host
  * functions, the other contains the device kernels.
  *
  * This contains some process:
@@ -109,12 +109,12 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                        {kernel_ptr,
                         kernel_args,
                         kernel_args_num,
-                        Expr(func->cuda_axis_info.grid_dim(0)),   // grid_x
-                        Expr(func->cuda_axis_info.grid_dim(1)),   // grid_y
-                        Expr(func->cuda_axis_info.grid_dim(2)),   // grid_z
-                        Expr(func->cuda_axis_info.block_dim(0)),  // block_x
-                        Expr(func->cuda_axis_info.block_dim(1)),  // block_y
-                        Expr(func->cuda_axis_info.block_dim(2)),  // block_z
+                        func->cuda_axis_info.grid_dim(0),   // grid_x
+                        func->cuda_axis_info.grid_dim(1),   // grid_y
+                        func->cuda_axis_info.grid_dim(2),   // grid_z
+                        func->cuda_axis_info.block_dim(0),  // block_x
+                        func->cuda_axis_info.block_dim(1),  // block_y
+                        func->cuda_axis_info.block_dim(2),  // block_z
                         kernel_stream},
                        {},
                        ir::CallType::Extern,
@@ -152,7 +152,7 @@ struct CollectBucketStrategyHostFunctionVisitor
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
         kernel_stream_(KERNEL_STREAM, type_of<void*>()),
-        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int32_t**>()) {}
+        tensor_shape_args_(TENSOR_SHAPE_ARGS, type_of<int64_t**>()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -162,6 +162,9 @@ struct CollectBucketStrategyHostFunctionVisitor
 
  private:
   void Visit(const ir::_Module_* op, Expr* expr) {
+    if (op->functions.size() == 1 && op->predicates.size() == 0) {
+      expr->as_module()->predicates.push_back(ir::Expr(true));
+    }
     CHECK_EQ(op->functions.size(), op->predicates.size());
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);

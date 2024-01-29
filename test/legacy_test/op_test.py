@@ -431,6 +431,7 @@ class OpTest(unittest.TestCase):
         cls.check_prim = False
         cls.check_prim_pir = False
         cls._check_cinn = False
+        cls.check_pir_onednn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -1193,6 +1194,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1377,6 +1379,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 if hasattr(self, "python_out_sig"):
@@ -1405,16 +1408,14 @@ class OpTest(unittest.TestCase):
                             else:
                                 ret_to_check.append(var)
                                 fetch_list.append(var)
-                    elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.pir.OpResult
-                    ):
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
                         fetch_list.append(ret_tuple)
                         ret_to_check = ret_tuple
                     elif ret_tuple is None:
                         pass
                     else:
                         raise ValueError(
-                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
 
                 # executor run
@@ -2642,7 +2643,7 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_pir_onednn and self.is_mkldnn_op():
+        if check_pir_onednn:
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
@@ -2987,6 +2988,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3012,7 +3014,94 @@ class OpTest(unittest.TestCase):
                 check_cinn=check_cinn,
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
+
+    def check_grad_with_place_for_static(
+        self,
+        user_defined_grads,
+        inputs_to_check,
+        place,
+        output_names,
+        no_grad_set,
+        user_defined_grad_outputs,
+        numeric_place,
+        numeric_grad_delta,
+        in_place,
+        check_cinn,
+        max_relative_error,
+        atol,
+    ):
+        if user_defined_grads is None and self.is_compared_with_fp32():
+            self.enable_cal_ref_output()
+            numeric_grads = self._get_gradient(
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+            )
+            self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
+
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs,
+            check_cinn=check_cinn,
+        )
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+
+        fp32_analytic_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = (
+                    0.01 if max_relative_error < 0.01 else max_relative_error
+                )
+            fp32_analytic_grads.append(grad)
+        analytic_grads = fp32_analytic_grads
+
+        fp32_numeric_grads = []
+        for grad in numeric_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = (
+                    0.01 if max_relative_error < 0.01 else max_relative_error
+                )
+            fp32_numeric_grads.append(grad)
+        numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
+        self._assert_is_close(
+            numeric_grads,
+            analytic_grads,
+            inputs_to_check,
+            max_relative_error,
+            "Gradient Check On %s" % str(place),
+            atol=atol,
+        )
+
+        return numeric_grads
 
     def check_grad_with_place(
         self,
@@ -3034,6 +3123,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3132,6 +3222,7 @@ class OpTest(unittest.TestCase):
                         else None,
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
+
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}
@@ -3207,74 +3298,37 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        if user_defined_grads is None and self.is_compared_with_fp32():
-            self.enable_cal_ref_output()
-            numeric_grads = self._get_gradient(
-                inputs_to_check,
-                place,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            self.disable_cal_ref_output()
-        else:
-            numeric_grads = user_defined_grads or [
-                get_numeric_gradient(
-                    numeric_place,
-                    self.scope,
-                    self.op,
-                    self.inputs,
-                    input_to_check,
-                    output_names,
-                    delta=numeric_grad_delta,
-                    in_place=in_place,
-                )
-                for input_to_check in inputs_to_check
-            ]
-
-        analytic_grads = self._get_gradient(
+        numeric_grads = self.check_grad_with_place_for_static(
+            user_defined_grads,
             inputs_to_check,
             place,
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
-            check_cinn=check_cinn,
-        )
-        # comparison of bf16 results will happen as fp32
-        # loop over list of grads and convert bf16 to fp32
-
-        fp32_analytic_grads = []
-        for grad in analytic_grads:
-            if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
-            fp32_analytic_grads.append(grad)
-        analytic_grads = fp32_analytic_grads
-
-        fp32_numeric_grads = []
-        for grad in numeric_grads:
-            if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
-            fp32_numeric_grads.append(grad)
-        numeric_grads = fp32_numeric_grads
-
-        if self.is_float16_op():
-            max_relative_error = (
-                0.001 if max_relative_error < 0.001 else max_relative_error
-            )
-        self._assert_is_close(
-            numeric_grads,
-            analytic_grads,
-            inputs_to_check,
+            numeric_place,
+            numeric_grad_delta,
+            in_place,
+            check_cinn,
             max_relative_error,
-            "Gradient Check On %s" % str(place),
-            atol=atol,
+            atol,
         )
+
+        if check_pir_onednn:
+            with pir_executor_guard():
+                self.check_grad_with_place_for_static(
+                    user_defined_grads,
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                    numeric_place,
+                    numeric_grad_delta,
+                    in_place,
+                    check_cinn,
+                    max_relative_error,
+                    atol,
+                )
 
         if check_dygraph:
             with base.dygraph.base.guard(place):
@@ -3770,6 +3824,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
@@ -3819,7 +3874,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.pir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.Value
                         ):
                             cast_outputs.append(
                                 paddle.cast(

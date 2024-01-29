@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -581,7 +580,7 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
 
 void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
-                                 int out_dtype,
+                                 DataType out_dtype,
                                  MetaTensor* y);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
@@ -744,7 +743,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs);
 
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
-
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -828,5 +827,11 @@ void LrnInferMeta(const MetaTensor& x,
                   int n,
                   MetaTensor* out,
                   MetaTensor* mid_out);
+
+void ArrayPopInferMeta(const MetaTensor& array,
+                       int index,
+                       MetaTensor* array_out,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 }  // namespace phi

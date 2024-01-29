@@ -399,7 +399,7 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
-      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward") &&
           dst_type == framework::proto::VarType::FP32) {
         if (pair.first != "LnScale" && pair.first != "LnBias" &&
             pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&

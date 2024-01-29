@@ -318,6 +318,61 @@ class TestWhereAPI(unittest.TestCase):
                 expect = np.where(cond_data, x_data, y_data)
                 np.testing.assert_array_equal(out[0], expect)
 
+    def __test_where_with_type_promotion(
+        self, x_dtype, y_dtype, expeced_dtype=None
+    ):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        shape = [3, 10]
+        with paddle.static.program_guard(main_program):
+            cond = paddle.static.data(name='cond', shape=[3, 10], dtype='bool')
+            x = paddle.static.data(name='x', shape=shape, dtype=x_dtype)
+            y = paddle.static.data(name='y', shape=shape, dtype=y_dtype)
+            cond_data_tmp = np.random.random(size=shape).astype('float32')
+            cond_data = cond_data_tmp < 0.3
+
+            if x_dtype != 'bfloat16':
+                x_data = np.random.random(size=shape).astype(x_dtype)
+            else:
+                x_data = convert_float_to_uint16(
+                    np.random.random(size=shape).astype('float32')
+                )
+            if y_dtype != 'bfloat16':
+                y_data = np.random.random(size=shape).astype(y_dtype)
+            else:
+                y_data = convert_float_to_uint16(
+                    np.random.random(size=shape).astype('float32')
+                )
+            result = paddle.where(condition=cond, x=x, y=y)
+            for use_cuda in [False, True]:
+                if use_cuda and (not base.core.is_compiled_with_cuda()):
+                    return
+                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                exe = base.Executor(place)
+                out = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'cond': cond_data, 'x': x_data, 'y': y_data},
+                    fetch_list=[result],
+                )
+                if x_dtype == 'bfloat16' or y_dtype == 'bfloat16':
+                    x_data_convert = (
+                        convert_uint16_to_float(x_data)
+                        if x_dtype == 'bfloat16'
+                        else x_data
+                    )
+                    y_data_convert = (
+                        convert_uint16_to_float(y_data)
+                        if y_dtype == 'bfloat16'
+                        else y_data
+                    )
+                    expect = np.where(cond_data, x_data_convert, y_data_convert)
+                    np.testing.assert_array_equal(out[0], expect)
+                    self.assertEqual(out[0].dtype.__str__(), expeced_dtype)
+                else:
+                    expect = np.where(cond_data, x_data, y_data)
+                    np.testing.assert_array_equal(out[0], expect)
+                    self.assertEqual(out[0].dtype, expect.dtype)
+
     @test_with_pir_api
     def test_static_api_broadcast_1(self):
         cond_shape = [2, 4]
@@ -373,6 +428,63 @@ class TestWhereAPI(unittest.TestCase):
         a_shape = [2, 2, 1]
         b_shape = [2, 2, 1]
         self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    def test_static_api_type_promotion_fp16_fp32(self):
+        x_dtype = 'float16'
+        y_dtype = 'float32'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
+
+    def test_static_api_type_promotion_fp16_fp64(self):
+        x_dtype = 'float16'
+        y_dtype = 'float64'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
+
+    def test_static_api_type_promotion_fp32_fp64(self):
+        x_dtype = 'float32'
+        y_dtype = 'float64'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype)
+        self.__test_where_with_type_promotion(y_dtype, x_dtype)
+
+    @unittest.skipIf(
+        not (
+            paddle.is_compiled_with_cuda()
+            and paddle.base.core.supports_bfloat16()
+        ),
+        "bf16 is not supported in current device",
+    )
+    def test_static_api_type_promotion_bf16_fp16(self):
+        x_dtype = 'bfloat16'
+        y_dtype = 'float16'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype, 'float32')
+        self.__test_where_with_type_promotion(y_dtype, x_dtype, 'float32')
+
+    @unittest.skipIf(
+        not (
+            paddle.is_compiled_with_cuda()
+            and paddle.base.core.supports_bfloat16()
+        ),
+        "bf16 is not supported in current device",
+    )
+    def test_static_api_type_promotion_bf16_fp32(self):
+        x_dtype = 'bfloat16'
+        y_dtype = 'float32'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype, 'float32')
+        self.__test_where_with_type_promotion(y_dtype, x_dtype, 'float32')
+
+    @unittest.skipIf(
+        not (
+            paddle.is_compiled_with_cuda()
+            and paddle.base.core.supports_bfloat16()
+        ),
+        "bf16 is not supported in current device",
+    )
+    def test_static_api_type_promotion_bf16_fp64(self):
+        x_dtype = 'bfloat16'
+        y_dtype = 'float64'
+        self.__test_where_with_type_promotion(x_dtype, y_dtype, 'float64')
+        self.__test_where_with_type_promotion(y_dtype, x_dtype, 'float64')
 
 
 class TestWhereDygraphAPI(unittest.TestCase):
@@ -672,6 +784,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
 
 
 class TestWhereOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -685,11 +798,11 @@ class TestWhereOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            def test_OpResult():
+            def test_Value():
                 with paddle.pir_utils.IrGuard():
                     paddle.where(cond_i, x_i, y_i)
 
-            self.assertRaises(TypeError, test_OpResult)
+            self.assertRaises(TypeError, test_Value)
 
             def test_type():
                 x = paddle.static.data(name='x', shape=[-1, 4], dtype='bool')

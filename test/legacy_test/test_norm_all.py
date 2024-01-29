@@ -542,43 +542,6 @@ def check_linalg_norm_dygraph(
         np.testing.assert_equal(result.shape, expected_result.shape)
 
 
-def check_linalg_vector_static(
-    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
-):
-    with base.program_guard(base.Program()):
-        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
-        out = paddle.linalg.vector_norm(
-            x=data, p=p, axis=axis, keepdim=keep_dim
-        )
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
-        expected_result = np_linalg_vector_norm(
-            np_input, porder=p, axis=axis, keepdims=keep_dim
-        ).astype(dtype)
-        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
-    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
-    if keep_dim and check_dim:
-        np.testing.assert_equal(result.shape, expected_result.shape)
-
-
-def check_linalg_vector_dygraph(
-    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
-):
-    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
-    expected_result = np_linalg_vector_norm(
-        x_numpy, porder=p, axis=axis, keepdims=keep_dim
-    )
-    x_paddle = paddle.to_tensor(x_numpy)
-    result = paddle.linalg.vector_norm(
-        x=x_paddle, p=p, axis=axis, keepdim=keep_dim
-    )
-    result = result.numpy()
-    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
-    if keep_dim and check_dim:
-        np.testing.assert_equal(result.shape, expected_result.shape)
-
-
 def check_linalg_matrix_static(
     self, p, axis, shape_x, dtype, keep_dim, check_dim=False
 ):
@@ -608,6 +571,43 @@ def check_linalg_matrix_dygraph(
     )
     x_paddle = paddle.to_tensor(x_numpy)
     result = paddle.linalg.matrix_norm(
+        x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+    )
+    result = result.numpy()
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_linalg_vector_static(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    with base.program_guard(base.Program()):
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
+        out = paddle.linalg.vector_norm(
+            x=data, p=p, axis=axis, keepdim=keep_dim
+        )
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        expected_result = np_linalg_vector_norm(
+            np_input, porder=p, axis=axis, keepdims=keep_dim
+        ).astype(dtype)
+        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_linalg_vector_dygraph(
+    self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+):
+    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    expected_result = np_linalg_vector_norm(
+        x_numpy, porder=p, axis=axis, keepdims=keep_dim
+    )
+    x_paddle = paddle.to_tensor(x_numpy)
+    result = paddle.linalg.vector_norm(
         x=x_paddle, p=p, axis=axis, keepdim=keep_dim
     )
     result = result.numpy()
@@ -781,7 +781,7 @@ class API_NormTest(unittest.TestCase):
             )
             check_linalg_vector_static(
                 self,
-                p=2,
+                p=4,
                 axis=1,
                 shape_x=[3, 4],
                 dtype="float64",
@@ -1277,7 +1277,6 @@ class API_NormTest(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-
         with base.program_guard(base.Program(), base.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):

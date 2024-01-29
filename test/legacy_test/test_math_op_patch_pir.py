@@ -488,22 +488,52 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 np.testing.assert_array_equal(x_np, a_np)
                 self.assertNotEqual(id(x), id(a))
 
-    def test_append(self):
+    def test_append_pop(self):
         with paddle.pir_utils.IrGuard():
-            _, _, program_guard = new_program()
+            main_program, exe, program_guard = new_program()
             with program_guard:
-                x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
-                init_data = [
-                    np.random.random(shape).astype('float32')
-                    for shape in [[10, 4], [8, 12], [1]]
-                ]
-
-                array = paddle.tensor.create_array(
-                    'int64', [paddle.to_tensor(x) for x in init_data]
+                item_1 = paddle.static.data(
+                    name='item_1', shape=[2, 3], dtype="float32"
                 )
-                array.append(x)
+                item_2 = paddle.static.data(
+                    name='item_2', shape=[3, 3], dtype="float32"
+                )
+                item_3 = paddle.static.data(
+                    name='item_3', shape=[4, 3], dtype="float32"
+                )
+
+                item_1_np = np.random.random(size=[2, 3]).astype('float32')
+                item_2_np = np.random.random(size=[3, 3]).astype('float32')
+                item_3_np = np.random.random(size=[4, 3]).astype('float32')
+
+                array = paddle.tensor.create_array('float32')
+                array.append(item_1)
+                array.append(item_2)
+                array.append(item_3)
+
+                sliced_item_1 = array[0]
+                poped_item_3 = array.pop()
+                final_length = paddle.tensor.array_length(array)
+                (
+                    sliced_item_1_out,
+                    poped_item_3_out,
+                    final_length_out,
+                ) = exe.run(
+                    main_program,
+                    feed={
+                        "item_1": item_1_np,
+                        "item_2": item_2_np,
+                        "item_3": item_3_np,
+                    },
+                    fetch_list=[sliced_item_1, poped_item_3, final_length],
+                )
+
+                np.testing.assert_array_equal(sliced_item_1_out, item_1_np)
+                np.testing.assert_array_equal(poped_item_3_out, item_3_np)
+                np.testing.assert_array_equal(final_length_out.item(), 2)
+
                 with self.assertRaises(TypeError):
-                    x.append(array)
+                    item_1.append(array)
 
     def test_neg(self):
         x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
@@ -524,10 +554,22 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 np.testing.assert_array_equal(res, a_np)
                 np.testing.assert_array_equal(res, b_np)
 
+    def test_builtin_type_conversion(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data(name='x', shape=[], dtype="float32")
+                with self.assertRaises(TypeError):
+                    int(x)
+                with self.assertRaises(TypeError):
+                    float(x)
+                with self.assertRaises(TypeError):
+                    bool(x)
+
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
             a = paddle.static.data(name='a', shape=[1], dtype='float32')
-            self.assertTrue(isinstance(a, paddle.pir.OpResult))
+            self.assertTrue(isinstance(a, paddle.pir.Value))
             self.assertTrue(inspect.ismethod(a.dot))
             self.assertTrue(inspect.ismethod(a.logsumexp))
             self.assertTrue(inspect.ismethod(a.multiplex))
