@@ -110,9 +110,11 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
@@ -796,9 +798,11 @@ bool AnalysisPredictor::PrepareExecutor() {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
+        gpu_pm.AddPass(::pir::CreateSiluFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());

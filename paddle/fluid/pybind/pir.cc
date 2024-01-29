@@ -47,6 +47,7 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
@@ -55,6 +56,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
@@ -121,10 +123,12 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
+USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
