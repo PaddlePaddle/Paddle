@@ -72,7 +72,8 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum, save_name=None):
-    module_name = re.match("^[a-zA-Z0-9_-]+$", module_name).group()
+    module_name = re.match("^[a-zA-Z0-9_/\\-]+$", module_name).group()
+    save_name = re.match("^[a-zA-Z0-9_/\\-]+$", save_name).group()
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
