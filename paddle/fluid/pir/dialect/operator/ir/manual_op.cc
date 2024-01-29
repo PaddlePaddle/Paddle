@@ -24,7 +24,8 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
     paddle::dialect::AssignArrayOp, paddle::dialect::AssignArray_Op,
     paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
     paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
-    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp
+    paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
+    paddle::dialect::ArrayPopOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -2052,7 +2053,7 @@ void ArrayReadOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
-  VLOG(4) << "End Verifying for: ArrayWrite_Op.";
+  VLOG(4) << "End Verifying for: ArrayReadOp.";
 }
 
 void ArrayReadOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -2860,7 +2861,7 @@ void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
                          pir::Value input,
                          pir::Value starts,
                          pir::Value ends) {
-  VLOG(4) << "Start build SliceArrayDenseOp";
+  VLOG(4) << "Start build SliceArrayOp";
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {input, starts, ends};
   argument.AddInputs(argument_inputs);
@@ -4435,6 +4436,179 @@ phi::DataType MemcpyD2hMultiIoOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+const char *ArrayPopOp::attributes_name[1] = {"index"};
+
+OpInfoTuple ArrayPopOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("array",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("index", "pir::Int32Attribute", ""),
+  };
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "array_out", "paddle::dialect::DenseTensorArrayType", false, false),
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("ArrayPopInferMeta",
+                                     {"array", "index"},
+                                     "array_pop",
+                                     {"array", "index"},
+                                     {"array"},
+                                     {"array"},
+                                     {{"array_out", "array"}},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "array_pop");
+}
+
+void ArrayPopOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: ArrayPopOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("index") > 0, "index does not exist.");
+    IR_ENFORCE(attributes.at("index").isa<pir::Int32Attribute>(),
+               "Type of attribute: index is not pir::Int32Attribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 2u,
+               "The size %d of outputs must be equal to 2.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        "Type validation failed for the 0th output.");
+    IR_ENFORCE(
+        (*this)->result(1).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 1st output.");
+  }
+  VLOG(4) << "End Verifying for: ArrayPopOp.";
+}
+
+void ArrayPopOp::Build(pir::Builder &builder,             // NOLINT
+                       pir::OperationArgument &argument,  // NOLINT
+                       pir::Value array,
+                       int index) {
+  VLOG(4) << "Start build ArrayPopOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {array};
+  argument.AddInputs({array});
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  pir::Attribute attr_index =
+      pir::Int32Attribute::get(pir::IrContext::Instance(), index);
+  argument.AddAttribute("index", attr_index);
+  argument_attributes.insert({"index", attr_index});
+  std::vector<pir::Type> argument_outputs =
+      ArrayPopOp::InferMeta(argument_inputs, argument_attributes);
+
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void ArrayPopOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::ArrayPopInferMeta);
+  fn(infer_meta);
+}
+
+std::vector<pir::Type> ArrayPopOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta ArrayPopOp";
+  IR_ENFORCE(input_values.size() == 1,
+             "Num of inputs is expected to be 1 but got %d.",
+             input_values.size());
+  pir::Value input = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorArrayType input_type;
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    input_type = input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    (void)input_type;
+  } else if (input.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
+        input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
+    input_type = paddle::dialect::DenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        allocated_input.dtype(),
+        allocated_input.data_layout());
+    (void)input_type;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorArrayType or "
+        "paddle::dialect::AllocatedDenseTensorArrayType"));
+  }
+
+  IR_ENFORCE(attributes.find("index") != attributes.end(),
+             "'index' Attribute is expected for ArrayPopOp. ");
+  int index = attributes.at("index").dyn_cast<pir::Int32Attribute>().data();
+
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      {},
+      input_type.data_layout(),
+      {});
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+  paddle::dialect::IrTensor array_out;
+  paddle::dialect::IrMetaTensor meta_array_out(&array_out);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+  phi::ArrayPopInferMeta(meta_input,
+                         index,
+                         &meta_array_out,
+                         &meta_out,
+                         phi::MetaConfig(false, false));
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_array_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(array_out.dtype()),
+      array_out.layout());
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_array_type);
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
+}
+
+phi::DataType ArrayPopOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: ArrayPopOp";
+
+  return expected_kernel_dtype;
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -4462,4 +4636,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 #endif
