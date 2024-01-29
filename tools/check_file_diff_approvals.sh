@@ -270,7 +270,7 @@ if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddl
     fi
 fi
 
-IF_USE_SUBPROCESS = `git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "subprocess" || true`
+IF_USE_SUBPROCESS=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "subprocess" || true`
 if [ ${IF_USE_SUBPROCESS} ]; then
     echo_line="You must have one RD wanghuancoder approval for using subprocess, which may cause security problem.\n"
     check_approval 1 wanghuancoder
