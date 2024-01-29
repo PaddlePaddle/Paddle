@@ -119,7 +119,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
   int first_reduce_loop_idx = context_->iter_space_info.sp_space.size();
   CHECK_LT(first_reduce_loop_idx, loops.size())
-      << "first_reduce_loop_idx shoud be less than number of loop.";
+      << "first_reduce_loop_idx should be less than number of loop.";
   ir::Expr block = sch->GetBlock(block_id);
   ir::Tensor reduce_tensor = analyzer::GetStoreTensorOfSBlock(block);
   int non_reduce_memory_space_rank =

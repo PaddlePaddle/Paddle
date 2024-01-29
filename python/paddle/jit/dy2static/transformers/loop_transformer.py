@@ -27,11 +27,8 @@ from ..utils import (
     GetterSetterHelper,
     ast_to_source_code,
     create_get_args_node,
-    create_name_str,
     create_nonlocal_stmt_nodes,
     create_set_args_node,
-    get_attribute_full_name,
-    get_parent_mapping,
 )
 from .base import (
     BaseTransformer,
@@ -39,6 +36,7 @@ from .base import (
     ForNodeVisitor,
 )
 from .ifelse_transformer import ARGS_NAME
+from .utils import create_name_str, get_attribute_full_name, get_parent_mapping
 
 __all__ = []
 

@@ -134,7 +134,7 @@ class IR_API GenerateShapeOp
 
   void VerifySig() {}
 
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 

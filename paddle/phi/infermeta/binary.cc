@@ -1097,6 +1097,49 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs) {
+  auto table_dims = w.dims();
+
+  PADDLE_ENFORCE_EQ(w.dims().size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Only 2 dimensions of the 'Embedding' is supported."));
+
+  for (auto& id : ids) {
+    PADDLE_ENFORCE_EQ(id->dims().size(),
+                      2,
+                      errors::InvalidArgument(
+                          "The dimension of the 'Ids' tensor must be 2."));
+  }
+
+  // for fluid.embedding
+  for (size_t i = 0; i < ids.size(); ++i) {
+    MetaTensor* output = outputs[i];
+    auto id_dims = ids[i]->dims();
+    if (lookup_table_version == "lookup_table") {
+      output->set_dims(common::make_ddim({id_dims[0], table_dims[1]}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    } else if (lookup_table_version == "lookup_table_v2") {
+      output->set_dims(
+          common::make_ddim({static_cast<int64_t>(id_dims[0]),
+                             static_cast<int64_t>(id_dims[1]),
+                             static_cast<int64_t>(table_dims[1])}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    }
+  }
+}
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -1236,7 +1279,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
       x_rank == static_cast<int>(y_dims.size()),
       phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
-          "input tenosr X: %s",
+          "input tensor X: %s",
           y_dims.to_str(),
           x_dims.to_str()));
   bool shape_match = true;
@@ -2529,7 +2572,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'all', size of weight Alpha must be one. "
-                          "But recevied alpha's size: %d.",
+                          "But received alpha's size: %d.",
                           product(alpha.dims())));
   } else if (mode == "channel") {
     auto x_rank = x_dim.size();
@@ -2537,14 +2580,14 @@ void PReluInferMeta(const MetaTensor& x,
                       2,
                       phi::errors::InvalidArgument(
                           "For mode 'channel', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 2. But received X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
                       true,
                       phi::errors::InvalidArgument(
                           "For mode 'channel', data_format must be one of "
-                          "NCHW and NHWC. But recevied data_format: %s",
+                          "NCHW and NHWC. But received data_format: %s",
                           data_format));
     if (data_format == "NCHW" || config.is_run_mkldnn_kernel) {
       PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[1],
@@ -2552,7 +2595,7 @@ void PReluInferMeta(const MetaTensor& x,
                         phi::errors::InvalidArgument(
                             "For mode 'channel', size of weight Alpha must be "
                             "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
+                            "received alpha's size: %d, x_dim[1]: %d",
                             product(alpha.dims()),
                             x_dim[1]));
     } else {
@@ -2561,7 +2604,7 @@ void PReluInferMeta(const MetaTensor& x,
                         phi::errors::InvalidArgument(
                             "For mode 'channel', size of weight Alpha must be "
                             "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[%d]: %d",
+                            "received alpha's size: %d, x_dim[%d]: %d",
                             product(alpha.dims()),
                             x_rank - 1,
                             x_dim[x_rank - 1]));
@@ -2574,7 +2617,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 1. But recevied X's "
+                          "equal or larger than 1. But received X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
@@ -2582,7 +2625,7 @@ void PReluInferMeta(const MetaTensor& x,
         x_rank,
         phi::errors::InvalidArgument(
             "For mode 'element', rank of weight Alpha must be ",
-            "equal to the rank of input(x). But recevied alpha's rank: %d, "
+            "equal to the rank of input(x). But received alpha's rank: %d, "
             "x's rank: %d.",
             alpha_rank,
             x_rank));
@@ -2597,14 +2640,14 @@ void PReluInferMeta(const MetaTensor& x,
         x_product,
         phi::errors::InvalidArgument(
             "For mode 'element', the size of weight Alpha must be "
-            "equal to the size of input(x). But recevied alpha's size: %d, "
+            "equal to the size of input(x). But received alpha's size: %d, "
             "x's size: %d.",
             alpha_product,
             x_product));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Attr(mode) of prelu must be one of 'all', 'channel', or 'element'. "
-        "But recevied "
+        "But received "
         "mode: '%s'.",
         mode));
   }
