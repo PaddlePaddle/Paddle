@@ -41,7 +41,7 @@ class LlamaRMSNorm(nn.Layer):
 
 class TestLlamaRMSNorm(TestCinnSubGraphBase):
     def prepare_data(self):
-        self.shape = [1, 2048, 768]
+        self.shape = [7, 2048, 768]
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
