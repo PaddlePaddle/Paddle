@@ -68,7 +68,8 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     value = full<T>(empty_shape, value_, sum_x.dtype());
   }
 
-  Tensor res = sum_x / value;
+  Tensor res = sum_x / backend::full_with_tensor<T>(
+                           shape<T>(sum_x), value, sum_x.dtype());
 
   if (need_cast) {
     return cast<T>(res, org_dtype);
