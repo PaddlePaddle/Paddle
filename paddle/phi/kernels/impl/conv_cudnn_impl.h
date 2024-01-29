@@ -32,7 +32,7 @@
 
 COMMON_DECLARE_bool(cudnn_deterministic);
 PD_DECLARE_int64(conv_workspace_size_limit);
-PD_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
