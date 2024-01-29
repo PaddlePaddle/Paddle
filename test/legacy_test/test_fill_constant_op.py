@@ -452,7 +452,7 @@ class TestFillConstantOpError(unittest.TestCase):
             )
 
     def test_errors2(self):
-        with paddle_static_guard(), program_guard(Program(), Program()):
+        with paddle_static_guard(), paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
             # The argument dtype of fill_constant_op must be one of bool, float16,
             # float32, float64, uint8, int16, int32 or int64
             x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype="int32")
