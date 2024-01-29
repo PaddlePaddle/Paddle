@@ -29,12 +29,12 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
   static const char *name() { return "pd_op.if"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
                     std::vector<pir::Type> &&output_types);
 
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
+  static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
                     std::unique_ptr<pir::Block> &&true_block,
