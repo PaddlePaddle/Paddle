@@ -300,7 +300,7 @@ def git_commit():
             subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                cwd=env_dict.get("PADDLE_SOURCE_DIR1"),
+                cwd=env_dict.get("PADDLE_SOURCE_DIR"),
             )
             .communicate()[0]
             .strip()
