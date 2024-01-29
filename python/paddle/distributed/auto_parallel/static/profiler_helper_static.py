@@ -61,7 +61,7 @@ def process_job_log(log_data, device_id, multi_machine_idx=-1):
         start_time = float(job_start_time.strip()) * 1000
         end_time = float(job_end_time.strip()) * 1000
 
-        if job_type == "forward" and micro_batch_id == "0":
+        if job_type in ["forward", "forward0"] and micro_batch_id == "0":
             if step_start_time != 0:
                 step_times.append([step_start_time, step_end_time])
             step_start_time = start_time
