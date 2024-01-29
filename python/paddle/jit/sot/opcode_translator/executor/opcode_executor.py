@@ -724,26 +724,7 @@ class OpcodeExecutorBase:
         else:
             attr_name = self._code.co_names[instr.arg]
         if sys.version_info >= (3, 12) and instr.arg & 1:
-            attr_name_var = ConstantVariable.wrap_literal(
-                attr_name, self._graph
-            )
-            obj = self.stack.pop()
-
-            method = BuiltinVariable(
-                getattr, graph=self._graph, tracker=DanglingTracker()
-            )(obj, attr_name_var)
-
-            if isinstance(method, MethodVariable) and "__getattr__" not in dir(
-                method.bound_instance.get_py_type()
-            ):
-                # bound method or the class override the __getattr__
-                # push the unbound method and the self
-                self.stack.push(method.fn)
-                self.stack.push(obj)
-            else:
-                # unbound method, push the dummy and the function
-                self.stack.push(NullVariable())
-                self.stack.push(method)
+            self.load_method(attr_name)
             return
         attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
         obj = self.stack.pop()
@@ -806,8 +787,7 @@ class OpcodeExecutorBase:
             raise InnerError(f"{name} not in globals and builtins")
         self.stack.push(value)
 
-    def LOAD_METHOD(self, instr: Instruction):
-        method_name = self._code.co_names[instr.arg]
+    def load_method(self, method_name):
         method_name_var = ConstantVariable.wrap_literal(
             method_name, self._graph
         )
@@ -828,6 +808,10 @@ class OpcodeExecutorBase:
             # unbound method, push the dummy and the function
             self.stack.push(NullVariable())
             self.stack.push(method)
+
+    def LOAD_METHOD(self, instr: Instruction):
+        method_name = self._code.co_names[instr.arg]
+        self.load_method(method_name)
 
     @call_break_graph_decorator(push_n=0)
     def STORE_ATTR(self, instr: Instruction):
