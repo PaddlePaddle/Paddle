@@ -283,10 +283,13 @@ class TestDivideSink(unittest.TestCase):
             core._set_prim_backward_enabled(True)
         elif flag == "all":
             core._set_prim_all_enabled(True)
+        place = paddle.CPUPlace()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', self.shape_x, dtype='float16')
-            y = paddle.static.data('y', self.shape_y, dtype='float16')
+            # x = paddle.static.data('x', self.shape_x, dtype='float16')
+            # y = paddle.static.data('y', self.shape_y, dtype='float16')
+            x = paddle.full(shape=self.shape_x, fill_value=0.5, dtype='float16')
+            y = paddle.full(shape=self.shape_y, fill_value=1.0, dtype='float16')
             x.stop_gradient = False
             y.stop_gradient = False
             # divide_out = paddle.multiply(x, y)
@@ -309,6 +312,10 @@ class TestDivideSink(unittest.TestCase):
     def test_prim_backward(self):
         # res_ref = self.base_net()
         res = self.base_net("all")
+
+    def test_prim_forward(self):
+        # res_ref = self.base_net()
+        res = self.base_net("forward")
 
 
 if __name__ == "__main__":
