@@ -119,7 +119,6 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
     TestEnableLowPrecisionIO, unittest.TestCase
 ):
     def init_predictor(self, low_precision_io: bool):
-        print("Temporary directory name:", self.temp_dir.name)  # 打印临时目录名
         config = Config(
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
