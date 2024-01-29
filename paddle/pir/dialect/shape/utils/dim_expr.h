@@ -268,14 +268,14 @@ class ShapeOrData {
     if (data_.has_value() && other.data_.has_value()) {
       if (data_.value().size() != other.data_.value().size()) return false;
 
-      for (int i = 0; i < data_.value().size(); ++i) {
+      for (size_t i = 0; i < data_.value().size(); ++i) {
         DimExpr dim0 = symbol::SimplifyDimExpr(data_.value()[i]);
         DimExpr dim1 = symbol::SimplifyDimExpr(other.data_.value()[i]);
         if (dim0 != dim1) return false;
       }
     }
 
-    for (int i = 0; i < shape_.size(); ++i) {
+    for (size_t i = 0; i < shape_.size(); ++i) {
       DimExpr dim0 = symbol::SimplifyDimExpr(shape_[i]);
       DimExpr dim1 = symbol::SimplifyDimExpr(other.shape_[i]);
       if (dim0 != dim1) return false;
