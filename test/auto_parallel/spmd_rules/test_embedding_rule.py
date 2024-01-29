@@ -206,7 +206,7 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, 0, -1])
 
         # table row-wise parallel
-        # skiped
+        # skipped
 
 
 if __name__ == "__main__":

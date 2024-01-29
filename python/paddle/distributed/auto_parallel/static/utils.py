@@ -319,7 +319,7 @@ def _get_idx_in_axis(processes, shape, axis, rank):
     Given a rank and the processes mesh the rank belongs to,
     compute the index of the rank in given axis.
 
-    Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
+    Example: 27 processes managed in a 3-Dimensional mesh with shape of [3, 3, 3].
     the index of rank 22 are:
     in axis 0: 1
     in axis 1: 1
@@ -861,7 +861,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     """
     Merge parameters with previous dist_attr and slice parameters with current dist_attr
 
-    Arags:
+    Args:
         dist_param_dict(dict): parameters' value of all ranks.
         pre_dist_attr(dict): parameters' dist_attr of last training process.
         cur_dist_attr(dict): parameters' dist_attr of current training process.
@@ -962,14 +962,14 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
     )
     # merge the parameter with dist_attr
     partition_param_list = []
-    merged_partiton = []
+    merged_partition = []
     for process in process_group:
         partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group
         )
         index = process_group.index(process)
-        if partition_index not in merged_partiton:
-            merged_partiton.append(partition_index)
+        if partition_index not in merged_partition:
+            merged_partition.append(partition_index)
             _merge_parameter(
                 partition_param_list,
                 param_list[index],
@@ -1539,10 +1539,10 @@ def get_all_distributed_main_program(
 
 class SerialProgramInfo:
     def __init__(
-        self, train_program, satrtup_program, loss, optimizer, cluster=None
+        self, train_program, startup_program, loss, optimizer, cluster=None
     ):
         self._train_program = train_program
-        self._startup_program = satrtup_program
+        self._startup_program = startup_program
         self._loss = loss
         self._optimizer = optimizer
         self._cluster = cluster
@@ -1700,7 +1700,7 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     elif op_original_id in dist_context._dist_ops_for_program:
         dist_op_desc.set_original_id(op_original_id)
         return
-    # Third, print error infomation if we cannot find the original id
+    # Third, print error information if we cannot find the original id
     else:
         raise AssertionError(
             "Cannot find the original id in the distributed context"
@@ -1748,7 +1748,7 @@ def get_var_numel(var):
     input:
         - var: variable
     return:
-        number of elemnet in var
+        number of element in var
     """
     assert isinstance(var, Variable)
     assert -1 not in var.shape
@@ -1835,7 +1835,7 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         )
                         client_sockets[send_rank].close()
                         print(
-                            "It is able to instantiate {} as recver now.".format(
+                            "It is able to instantiate {} as receiver now.".format(
                                 process_group.ranks
                             )
                         )
@@ -1982,7 +1982,7 @@ def set_data_parallel(x):
 
 
 def is_naive_data_parallel(dist_context):
-    # Navie data parallel only completes dist_attr once from the front to back.
+    # Naive data parallel only completes dist_attr once from the front to back.
     if not dist_context.data_parallel:
         return False
 

@@ -33,6 +33,9 @@ paddle/phi/include/*
 paddle/phi/infermeta/generated.*
 paddle/fluid/prim/api/generated_prim/*.cc
 paddle/fluid/prim/api/generated_prim/*.h
+python/paddle/libs/bfloat16.h
+python/paddle/libs/cinn_cuda_runtime_source.cuh
+python/paddle/libs/float16.h
 *.DS_Store
 *.vs
 build/
@@ -78,7 +81,7 @@ tools/nvcc_lazy
 paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h
 paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h
 
-# these files (directories) are generated before build system generation
+#these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op*.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
@@ -104,19 +107,3 @@ paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
 paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp/*
 paddle/fluid/pybind/static_op_function.*
 paddle/fluid/pybind/ops_api.cc
-paddle/fluid/pir/dialect/operator/ir/pd_api.*
-paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
-paddle/fluid/pir/dialect/operator/ir/pd_op_vjp.cc
-paddle/fluid/pir/dialect/operator/ir/pd_op.*
-paddle/fluid/pir/dialect/operator/ir/onednn_op.*
-paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.*
-paddle/fluid/pir/dialect/operator/ir/pd_op_bwd.*
-paddle/fluid/pir/dialect/operator/ir/pd_op_fused.*
-paddle/fluid/pir/dialect/operator/ir/pd_op_fused_bwd.*
-paddle/fluid/pir/dialect/operator/ir/pd_pir_op.*
-paddle/fluid/pir/dialect/operator/ir/pd_pir_op_bwd.*
-paddle/fluid/pir/dialect/operator/ir/pd_pir_op_update.*
-paddle/fluid/pir/dialect/operator/ir/pd_op_info.*
-paddle/cinn/hlir/dialect/generated/ops.parsed.yaml
-paddle/cinn/hlir/dialect/operator/ir/cinn_op.*
-paddle/cinn/hlir/dialect/operator/ir/cinn_op_info.*

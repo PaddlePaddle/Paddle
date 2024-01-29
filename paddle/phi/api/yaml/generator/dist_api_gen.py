@@ -1730,8 +1730,8 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
 
@@ -1815,7 +1815,7 @@ class DistForwardAPI(ForwardAPI):
                     and not self.api.endswith("_double_grad")
                     and not self.api.endswith("_triple_grad")
                 ):
-                    dist_branch_code += self.generate_auto_paralel_branch()
+                    dist_branch_code += self.generate_auto_parallel_branch()
             kernel_dispatch_code += dist_branch_code
             for kernel_name in self.kernel['func']:
                 kernel_dispatch_code += self.gene_dispatch_code(
@@ -1837,7 +1837,7 @@ class DistForwardAPI(ForwardAPI):
                 and not self.api.endswith("_double_grad")
                 and not self.api.endswith("_triple_grad")
             ):
-                dist_branch_code = self.generate_auto_paralel_branch()
+                dist_branch_code = self.generate_auto_parallel_branch()
             return API_IMPL_TEMPLATE.format(
                 self.get_return_type(inplace_flag),
                 api_func_name,
@@ -1889,15 +1889,15 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        dist_foward_api = DistForwardAPI(api)
-        if dist_foward_api.is_dygraph_api:
-            dist_foward_api.is_dygraph_api = False
+        dist_forward_api = DistForwardAPI(api)
+        if dist_forward_api.is_dygraph_api:
+            dist_forward_api.is_dygraph_api = False
 
-        header_file.write(dist_foward_api.gene_api_declaration())
+        header_file.write(dist_forward_api.gene_api_declaration())
         if is_fused_ops_yaml is True:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
         else:
-            source_file.write(dist_foward_api.gene_api_code())
+            source_file.write(dist_forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

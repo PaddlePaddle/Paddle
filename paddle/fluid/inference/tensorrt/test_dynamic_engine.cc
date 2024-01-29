@@ -132,10 +132,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   PrepareInputOutput(x_v, {8, 8, 4});
   PrepareShapeInput(shape_v);
 #if IS_TRT_VERSION_GE(8500)
-  const char *tensorName1 = engine_->engine()->getBindingName(0);
-  const char *tensorName2 = engine_->engine()->getBindingName(1);
-  engine_->context()->setInputShape(tensorName1, nvinfer1::Dims2{8, 32});
-  engine_->context()->setInputShape(tensorName2, shape_dim);
+  engine_->context()->setInputShape("input", nvinfer1::Dims2{8, 32});
 #else
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
   engine_->context()->setBindingDimensions(1, shape_dim);
@@ -151,7 +148,12 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 #if IS_TRT_VERSION_GE(8500)
   for (size_t i = 0; i < buffers.size(); i++) {
     auto name = engine_->engine()->getBindingName(i);
-    engine_->context()->setTensorAddress(name, buffers[i]);
+    if (engine_->engine()->isShapeBinding(i) &&
+        engine_->engine()->bindingIsInput(i)) {
+      engine_->context()->setTensorAddress(name, shape_v.data());
+    } else {
+      engine_->context()->setTensorAddress(name, buffers[i]);
+    }
   }
 #endif
 

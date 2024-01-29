@@ -31,13 +31,15 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 0:
+                return np.random.random([]).astype(np.bool8)
             if dims == 1:
                 return np.random.random([32]).astype(np.bool8)
             else:
-                return np.random.random([3, 32]).astype(np.int8)
+                return np.random.random([batch, 3, 32, 32]).astype(np.int64)
 
-        for dims in [1, 2]:
-            for batch in [1, 4]:
+        for dims in [0, 1, 4]:
+            for batch in [1]:
                 self.dims = dims
                 dics = [{}]
 
@@ -70,14 +72,24 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
             else:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32]}
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 16, 16]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 3, 32, 32]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 32, 32]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

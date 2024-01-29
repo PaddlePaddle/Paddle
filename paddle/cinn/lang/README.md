@@ -12,7 +12,7 @@ One can pass a `Shared` object by passing a pointer and the consumer object shou
 
 ## Tensor
 
-The input or the temporary ouptut node.
+The input or the temporary output node.
 
 Every `Compute` will output a Tensor, the tensor can be sliced.
 
