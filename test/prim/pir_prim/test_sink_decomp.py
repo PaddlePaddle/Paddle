@@ -198,7 +198,7 @@ class TestHardSwishSink(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [8, 16, 32, 64]
-        self.x = np.random.random(self.shape_x).astype("float16")
+        self.x = np.random.random(self.shape_x).astype("float32")
         self.prog = None
 
     def base_net(self, flag=None):
@@ -210,14 +210,11 @@ class TestHardSwishSink(unittest.TestCase):
             core._set_prim_all_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', self.shape_x, dtype='float16')
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
             x.stop_gradient = False
             sum_out = F.hardswish(x)
             [new_out] = decompose(main_program, [sum_out])
             gradients = grad(new_out, x)
-            print("======================")
-            print(main_program)
-            print("======================")
 
             exe = paddle.static.Executor()
             [fwd, dx] = exe.run(
@@ -249,73 +246,22 @@ class TestHardSwishSink(unittest.TestCase):
         return fwd, dx
 
     def test_prim_forward(self):
-        # res_ref = self.base_net()
+        res_ref = self.base_net()
         res = self.base_net("forward")
-        # for ref, actual in zip(res_ref, res):
-        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
     def test_prim_backward(self):
-        # res_ref = self.base_net()
+        res_ref = self.base_net()
         res = self.base_net("backward")
-        # for ref, actual in zip(res_ref, res):
-        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
     def test_prim_all(self):
-        # res_ref = self.base_net()
+        res_ref = self.base_net()
         res = self.base_net("all")
-        # for ref, actual in zip(res_ref, res):
-        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
-
-
-class TestDivideSink(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.shape_x = [8, 16, 32, 64]
-        self.shape_y = [8, 16, 32, 64]
-        self.x = np.random.random(self.shape_x).astype("float16")
-        self.y = np.random.random(self.shape_y).astype("float16")
-        self.prog = None
-
-    def base_net(self, flag=None):
-        if flag == "forward":
-            core._set_prim_forward_enabled(True)
-        elif flag == "backward":
-            core._set_prim_backward_enabled(True)
-        elif flag == "all":
-            core._set_prim_all_enabled(True)
-        place = paddle.CPUPlace()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
-            # x = paddle.static.data('x', self.shape_x, dtype='float16')
-            # y = paddle.static.data('y', self.shape_y, dtype='float16')
-            x = paddle.full(shape=self.shape_x, fill_value=0.5, dtype='float16')
-            y = paddle.full(shape=self.shape_y, fill_value=1.0, dtype='float16')
-            x.stop_gradient = False
-            y.stop_gradient = False
-            # divide_out = paddle.multiply(x, y)
-            sum_out = paddle.divide(x, y)
-            [new_out] = decompose(main_program, [sum_out])
-            gradients = grad(new_out, (x, y))
-            print("======================")
-            print(main_program)
-            print("======================")
-
-            exe = paddle.static.Executor()
-            [fwd, dx, dy] = exe.run(
-                feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
-            )
-
-        whole_ops = [op.name() for op in main_program.global_block().ops]
-        self.prog = main_program
-        return fwd, dx
-
-    def test_prim_backward(self):
-        # res_ref = self.base_net()
-        res = self.base_net("all")
-
-    def test_prim_forward(self):
-        # res_ref = self.base_net()
-        res = self.base_net("forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":

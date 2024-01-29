@@ -83,8 +83,7 @@ void divide_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    auto one_tensor =
-        full<T>(common::vectorize(y.dims()), 1.0, y.dtype(), Place());
+    auto one_tensor = full<T>(common::vectorize(y.dims()), 1.0, y.dtype());
     auto dx_res = one_tensor / y * out_grad;
     if (out_grad.dims() != x.dims()) {
       auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
