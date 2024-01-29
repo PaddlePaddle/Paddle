@@ -51,10 +51,14 @@ class TestFlattenOp(OpTest):
                 no_check_set=["XShape"],
                 check_prim=True,
                 check_pir=True,
+                check_prim_pir=True,
             )
         else:
             self.check_output(
-                no_check_set=["XShape"], check_prim=True, check_pir=True
+                no_check_set=["XShape"],
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad(self):

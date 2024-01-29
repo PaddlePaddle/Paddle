@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/dim_expr.h"
-#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/map_expr.h"

@@ -15,7 +15,7 @@
 
 from paddle.utils import gast
 
-from .. import utils
+from ..utils import ast_to_source_code
 from .base import BaseTransformer
 
 __all__ = []
@@ -82,7 +82,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def _surround_with_ld(self, node):
         node = (
-            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
+            gast.parse(f"_jst.Ld({ast_to_source_code(node).strip()})")
             .body[0]
             .value
         )
@@ -161,7 +161,7 @@ class AttributeJstTransformer(BaseTransformer):
             value = node.value
             node = (
                 gast.parse(
-                    f"_jst.Attr({utils.ast_to_source_code(value).strip()}, \"{attr}\")"
+                    f"_jst.Attr({ast_to_source_code(value).strip()}, \"{attr}\")"
                 )
                 .body[0]
                 .value
@@ -172,7 +172,7 @@ class AttributeJstTransformer(BaseTransformer):
 
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
-    api_name = utils.ast_to_source_code(node.func).strip()
+    api_name = ast_to_source_code(node.func).strip()
 
     return api_name.split(".")[-1] == "to_variable"
 
