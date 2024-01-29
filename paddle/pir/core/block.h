@@ -96,9 +96,9 @@ class IR_API Block {
   ///
   /// \brief Position argument management
   ///
-  using ArgListType = std::vector<Value>;
-  using ArgsIterator = ArgListType::iterator;
-  using ConstArgsIterator = ArgListType::const_iterator;
+  using ArgsType = std::vector<Value>;
+  using ArgsIterator = ArgsType::iterator;
+  using ConstArgsIterator = ArgsType::const_iterator;
 
   ArgsIterator args_begin() { return args_.begin(); }
   ArgsIterator args_end() { return args_.end(); }
@@ -106,20 +106,20 @@ class IR_API Block {
   ConstArgsIterator args_end() const { return args_.end(); }
   bool args_empty() const { return args_.empty(); }
   uint32_t args_size() const { return args_.size(); }
-  const ArgListType &args() const { return args_; }
+  const ArgsType &args() const { return args_; }
   Value arg(uint32_t index) const { return args_[index]; }
   Type arg_type(uint32_t index) const { return args_[index].type(); }
   void ClearArgs();
-  Value AddArgument(Type type);
-  void EraseArgument(uint32_t index);
+  Value AddArg(Type type);
+  void EraseArg(uint32_t index);
   template <class TypeIter>
-  void AddArguments(TypeIter first, TypeIter last);
+  void AddArgs(TypeIter first, TypeIter last);
   template <class TypeContainer>
-  void AddArguments(const TypeContainer &container) {
-    AddArguments(container.begin(), container.end());
+  void AddArgs(const TypeContainer &container) {
+    AddArgs(container.begin(), container.end());
   }
-  void AddArguments(std::initializer_list<Type> type_list) {
-    AddArguments(std::begin(type_list), std::end(type_list));
+  void AddArgs(std::initializer_list<Type> type_list) {
+    AddArgs(std::begin(type_list), std::end(type_list));
   }
 
   ///
@@ -192,15 +192,15 @@ class IR_API Block {
  private:
   BlockOperand first_use_;
   OpListType ops_;     // owned
-  ArgListType args_;   // owned
+  ArgsType args_;      // owned
   KwargsType kwargs_;  // owned
   Region *parent_;     // not owned
 };
 
 template <class TypeIter>
-void Block::AddArguments(TypeIter first, TypeIter last) {
+void Block::AddArgs(TypeIter first, TypeIter last) {
   while (first != last) {
-    AddArgument(*first++);
+    AddArg(*first++);
   }
 }
 

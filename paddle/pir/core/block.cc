@@ -101,13 +101,13 @@ void Block::ClearArgs() {
   args_.clear();
 }
 
-Value Block::AddArgument(Type type) {
+Value Block::AddArg(Type type) {
   auto argument = BlockArgument::Create(type, this, args_.size());
   args_.emplace_back(argument);
   return argument;
 }
 
-void Block::EraseArgument(uint32_t index) {
+void Block::EraseArg(uint32_t index) {
   auto argument = arg(index);
   IR_ENFORCE(argument.use_empty(),
              "Erase a block argument that is still in use.");

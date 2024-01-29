@@ -81,7 +81,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
                     bool construct_body = true);
   TEST_API pir::Block &body();
   pir::Value cond();
-  const pir::Block::ArgListType &block_args() { return body().args(); }
+  const pir::Block::ArgsType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();

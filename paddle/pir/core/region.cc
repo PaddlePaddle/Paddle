@@ -52,7 +52,7 @@ void Region::CloneInto(Region &other, IrMapping &ir_mapping) const {
     auto new_block = new Block;
     ir_mapping.Add(&block, new_block);
     for (const auto &arg : block.args()) {
-      ir_mapping.Add(arg, new_block->AddArgument(arg.type()));
+      ir_mapping.Add(arg, new_block->AddArg(arg.type()));
     }
     other.push_back(new_block);
   }

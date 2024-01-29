@@ -30,7 +30,7 @@ TEST(block_argument_test, base) {
   pir::Builder builder(&ctx, block);
 
   std::vector<pir::Type> types(3, builder.float32_type());
-  block->AddArguments(types);
+  block->AddArgs(types);
 
   EXPECT_FALSE(block->args_empty());
   EXPECT_EQ(block->args_size(), types.size());
@@ -55,10 +55,10 @@ TEST(block_argument_test, base) {
   EXPECT_FALSE(argument);
   op_result = value.dyn_cast<pir::OpResult>();
   EXPECT_TRUE(op_result);
-  block->AddArguments({builder.bool_type()});
+  block->AddArgs({builder.bool_type()});
   EXPECT_EQ(block->args_size(), 4u);
 
-  value = block->AddArgument(builder.bool_type());
+  value = block->AddArg(builder.bool_type());
   EXPECT_EQ(value.type(), builder.bool_type());
 }
 
