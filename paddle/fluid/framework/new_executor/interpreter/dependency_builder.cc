@@ -32,7 +32,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// Program, while "serial_run" ensures that all Ops are scheduled in a signal
 // thread. In standalone executor, "sequential_run" is also "serial_run", while
 // "serial_run" is not necessarily "sequential_run".
 PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
@@ -206,13 +206,13 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       }
 
       // find first op read 'outputs' between (first_read_fused_out_op, end)
-      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+      // add depend:  first_read_fused_out_op -> first op that reads 'outputs'
 
       // special case for consecutive communication ops, for example,
       // FusedOutput = c_sync_calc_stream(FusedOutput)
       // FusedOutput= c_allreduce_sum(FusedOutput)
       // FusedOutput = c_sync_comm_stream(FusedOutput)
-      // we should take the last one to add depned instead of
+      // we should take the last one to add depend instead of
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
@@ -355,8 +355,8 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   std::set<size_t>& downstream_ops = (*op_downstream_map_)[prior_op_idx];
   // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
   // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
-  // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
-  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrinked by
+  // a->c will not be shrunk in the following case: AddDownstreamOp(a, b) ->
+  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrunk by
   // ShrinkDownstreamMap.
   for (size_t op_idx : downstream_ops) {
     if (OpHappensBefore(op_idx, posterior_op_idx)) {
@@ -531,7 +531,7 @@ void DependencyBuilder::ShrinkDownstreamMap() {
       }
     }
     // NOTE(Ruibiao): op_happens_before will not be changed when shrink
-    // dowstream map
+    // downstream map
     (*op_downstream_map_)[i] = minumum_nexts;
   }
   VLOG(8) << "Finish shrink downstream map";
@@ -963,7 +963,7 @@ void DependencyBuilderSimplify::ShrinkDownstreamMap() {
       }
     }
     // NOTE(Ruibiao): op_happens_before will not be changed when shrink
-    // dowstream map
+    // downstream map
     op_downstream_map_.at(i) = minumum_nexts;
   }
   VLOG(8) << "Finish shrink downstream map";
@@ -1031,13 +1031,13 @@ void DependencyBuilderSimplify::AddDependencyForCoalesceTensorOp() {
       }
 
       // find first op read 'outputs' between (first_read_fused_out_op, end)
-      // add depned:  first_read_fused_out_op -> first op that reads 'outputs'
+      // add depend:  first_read_fused_out_op -> first op that reads 'outputs'
 
       // special case for consecutive communication ops, for example,
       // FusedOutput = c_sync_calc_stream(FusedOutput)
       // FusedOutput= c_allreduce_sum(FusedOutput)
       // FusedOutput = c_sync_comm_stream(FusedOutput)
-      // we should take the last one to add depned instead of
+      // we should take the last one to add depend instead of
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
@@ -1236,8 +1236,8 @@ void DependencyBuilderSimplify::SetSameStream() {
   }
 }
 
-// get_new_exector_order  by dfs
-std::vector<size_t> DependencyBuilderSimplify::get_new_exexutor_order() {
+// get_new_executor_order  by dfs
+std::vector<size_t> DependencyBuilderSimplify::get_new_executor_order() {
   PADDLE_ENFORCE_EQ(
       is_build_,
       true,
@@ -1288,17 +1288,17 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_exexutor_order() {
     is_visit[op_idx] = true;
   }
 
-  std::vector<size_t> dependecy_count(op_num_, 0);
+  std::vector<size_t> dependency_count(op_num_, 0);
   for (auto it : op_downstream_map_) {
     for (auto op_idx : it.second) {
-      dependecy_count[op_idx]++;
+      dependency_count[op_idx]++;
     }
   }
   std::stack<size_t> s;
   std::priority_queue<std::pair<size_t, size_t>> pq;
 
   for (size_t op_idx = op_num_ - 1; op_idx >= start_index_; op_idx--) {
-    if (dependecy_count[op_idx] == 0) {
+    if (dependency_count[op_idx] == 0) {
       pq.push(std::make_pair(op_behind_num[op_idx], op_idx));
     }
   }
@@ -1318,7 +1318,7 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_exexutor_order() {
       for (auto it = op_downstream_map_[current].rbegin();
            it != op_downstream_map_[current].rend();
            it++) {
-        if (--dependecy_count[*it] == 0 && !not_usefull_op.count(current)) {
+        if (--dependency_count[*it] == 0 && !not_usefull_op.count(current)) {
           pq.push(std::make_pair(op_behind_num[*it], *it));
           // s.push(*it);
         }
@@ -1383,8 +1383,8 @@ void DependencyBuilderSimplify::AddDownstreamOp(size_t prior_op_idx,
   std::set<size_t>& downstream_ops = op_downstream_map_[prior_op_idx];
   // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
   // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
-  // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
-  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrinked by
+  // a->c will not be shrunk in the following case: AddDownstreamOp(a, b) ->
+  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrunk by
   // ShrinkDownstreamMap.
   for (size_t op_idx : downstream_ops) {
     if (OpHappensBefore(op_idx, posterior_op_idx)) {

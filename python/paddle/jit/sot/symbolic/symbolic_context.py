@@ -83,7 +83,7 @@ class SymbolicTraceContext:
         ), "call_METHOD must method api name. string."
         assert isinstance(
             inputs[0][0], Symbol
-        ), "call_METHOD must first augument must be Symbol Variable."
+        ), "call_METHOD first argument must be Symbol Variable."
         stmt = MethodStatement(method_name, inputs, outputs, stacks)
         self.TOS.add_statement(stmt)
 
@@ -120,7 +120,7 @@ class SymbolicTraceContext:
     def replace_TOS(self, sir):
         """
         Use deepcopyed sir to replace the TOS.
-        This function will update statment_factory.
+        This function will update statement_factory.
         """
         self.sir_stack.pop()
         self.sir_stack.append(sir)

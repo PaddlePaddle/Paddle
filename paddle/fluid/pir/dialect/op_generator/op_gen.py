@@ -1642,7 +1642,10 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 )
 
                 if dialect_name == "onednn_op":
-                    if len(op_info.onednn_extra_args) > 0:
+                    if (
+                        op_info.onednn_extra_args is not None
+                        and len(op_info.onednn_extra_args) > 0
+                    ):
                         args_name = []
                         for arg in op_info.onednn_extra_args:
                             args_name.append(arg["name"])
@@ -1933,7 +1936,14 @@ def OpGenerator(
                 op_name = op['op']
                 item = {}
                 item["is_onednn_only"] = False
-                item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
+                if 'extra_args' in op:
+                    item["extra_args"] = parse_extra_args(
+                        op_name, op['extra_args']
+                    )
+                    item["attrs"] = parse_extra_args(op_name, op['extra_args'])
+                else:
+                    item["extra_args"] = None
+                    item["attrs"] = None
                 if 'data_format_tensors' in op:
                     item["data_format_tensors"] = parse_data_format_tensors(
                         op_name, op['data_format_tensors']
@@ -1944,7 +1954,6 @@ def OpGenerator(
                     item["dynamic_fallback"] = op['dynamic_fallback']
                 else:
                     item["dynamic_fallback"] = False
-                item["attrs"] = parse_extra_args(op_name, op['extra_args'])
                 ops_onednn_extra_map[op_name] = item
         op_yaml_files.insert(0, onednn_yaml_file)
 
@@ -2008,7 +2017,8 @@ def OpGenerator(
                         "data_format_tensors"
                     ]
                     op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
-                    op["attrs"] = op["attrs"] + onednn_item["attrs"]
+                    if onednn_item["attrs"] is not None:
+                        op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
                     continue
             item = OpInfoParser(op, op_compat_item)
