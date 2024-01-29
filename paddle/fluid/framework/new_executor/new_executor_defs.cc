@@ -315,7 +315,7 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void Instruction::UpdataRecordStreamForGcInfo() {
+void Instruction::UpdateRecordStreamForGcInfo() {
   if (!IsInterpretercoreFastGCEnabled() ||
       KernelType() != OpFuncType::kGpuAsync) {
     return;
