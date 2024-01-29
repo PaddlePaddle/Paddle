@@ -208,7 +208,10 @@ def create_test_cudnn_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, check_dygraph=(not self.use_mkldnn), check_pir=True
+                place,
+                check_dygraph=(not self.use_mkldnn),
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
         def test_check_grad_no_filter(self):
@@ -223,6 +226,7 @@ def create_test_cudnn_bf16_class(parent):
                 check_dygraph=(not self.use_mkldnn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
         def test_check_grad_no_input(self):
@@ -237,6 +241,7 @@ def create_test_cudnn_bf16_class(parent):
                 check_dygraph=(not self.use_mkldnn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
         def test_check_grad(self):
@@ -251,6 +256,7 @@ def create_test_cudnn_bf16_class(parent):
                 user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
                 check_dygraph=(not self.use_mkldnn),
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
@@ -455,6 +461,7 @@ class TestConv3DOp(OpTest):
             atol=1e-5,
             check_dygraph=(not self.use_mkldnn),
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -467,6 +474,7 @@ class TestConv3DOp(OpTest):
             max_relative_error=0.03,
             check_dygraph=(not self.use_mkldnn),
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -480,6 +488,7 @@ class TestConv3DOp(OpTest):
             no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -493,6 +502,7 @@ class TestConv3DOp(OpTest):
             no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_test_case(self):
@@ -608,7 +618,12 @@ class TestFP16CUDNN(TestConv3DOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2, check_pir=True)
+                self.check_output_with_place(
+                    place,
+                    atol=2e-2,
+                    check_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
+                )
 
 
 @unittest.skipIf(
@@ -632,7 +647,12 @@ class TestFP16WithGroup1CUDNN(TestWithGroup1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2, check_pir=True)
+                self.check_output_with_place(
+                    place,
+                    atol=2e-2,
+                    check_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
+                )
 
 
 @unittest.skipIf(
@@ -656,7 +676,12 @@ class TestFP16WithGroup2CUDNN(TestWithGroup2):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2, check_pir=True)
+                self.check_output_with_place(
+                    place,
+                    atol=2e-2,
+                    check_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
+                )
 
 
 @unittest.skipIf(
@@ -680,7 +705,12 @@ class TestFP16With1x1CUDNN(TestWith1x1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2, check_pir=True)
+                self.check_output_with_place(
+                    place,
+                    atol=2e-2,
+                    check_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
+                )
 
 
 @unittest.skipIf(
@@ -704,7 +734,12 @@ class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2, check_pir=True)
+                self.check_output_with_place(
+                    place,
+                    atol=2e-2,
+                    check_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
+                )
 
 
 class TestCUDNNExhaustiveSearch(TestCUDNN):
@@ -780,7 +815,12 @@ class TestConv3DOp_2(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5, check_pir=True)
+        self.check_output_with_place(
+            place,
+            atol=1e-5,
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -792,6 +832,7 @@ class TestConv3DOp_2(OpTest):
             'Output',
             max_relative_error=0.03,
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -805,6 +846,7 @@ class TestConv3DOp_2(OpTest):
             max_relative_error=0.03,
             no_grad_set={'Filter'},
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -818,6 +860,7 @@ class TestConv3DOp_2(OpTest):
             max_relative_error=0.03,
             no_grad_set={'Input'},
             check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_test_case(self):

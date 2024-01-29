@@ -2841,7 +2841,7 @@ def cauchy_(x, loc=0, scale=1, name=None):
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2875,7 +2875,7 @@ def geometric_(x, probs, name=None):
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.

@@ -13,19 +13,12 @@
 # limitations under the License.
 
 import paddle
-from paddle.base.framework import Variable
 from paddle.framework import use_pir_api
-from paddle.pir import Value
-from paddle.utils import gast, is_sequence, map_structure
+from paddle.utils import is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable
 
 __all__ = []
-
-
-def create_undefined_var(name):
-    func_code = f"{name} = _jst.UndefinedVar('{name}')"
-    return gast.parse(func_code).body[0]
 
 
 def to_static_variable(x):
@@ -46,22 +39,3 @@ def to_static_variable(x):
     if is_sequence(x):
         return map_structure(to_static_variable, x)
     return x
-
-
-def create_bool_as_type(x, value=True):
-    '''
-    Create a bool variable, which type is the same as x.
-    '''
-    if isinstance(x, (Variable, Value)):
-        return paddle.full(shape=[], fill_value=value, dtype="bool")
-    else:
-        return value
-
-
-def create_bool_node(name, value):
-    '''
-    Create a assign stmt for name = value .
-    '''
-    assert isinstance(value, bool)
-    node = f"{name} = {value}"
-    return gast.parse(node).body[0]

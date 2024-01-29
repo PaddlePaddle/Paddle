@@ -51,7 +51,7 @@ class IR_API ShapeConstraintIRAnalysis {
   void PrintShapeOrDatas() const;
 
   // Returns true if the two value have the same symbolic shape.
-  bool IsShapeEqual(Value lhs, Value rhs);
+  bool IsShapeEqual(Value lhs, Value rhs) const;
 
   // Suppose:
   //    lhs_dim_idxs = {ld0, ld1, ...}
@@ -71,7 +71,7 @@ class IR_API ShapeConstraintIRAnalysis {
       Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to);
 
   // Returns true if the two value have the same number elements.
-  bool IsSameNumElements(Value lhs, Value rhs);
+  bool IsSameNumElements(Value lhs, Value rhs) const;
 
  private:
   ModuleOp m_;
