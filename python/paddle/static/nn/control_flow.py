@@ -752,14 +752,14 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if in_pir_mode():
         from paddle.jit.dy2static.utils import UndefinedVar
 
-        def create_undefined_var():
+        def create_fake_value_for_undefined_var():
             # Create a fake value for create WhileOp, it's type will be reset after body is executed.
             return paddle.full(shape=[], fill_value=0)
 
         flattened_loop_vars = flatten(loop_vars)
 
         undefined_var_mapping = {
-            idx: create_undefined_var()
+            idx: create_fake_value_for_undefined_var()
             for idx, var in enumerate(flattened_loop_vars)
             if isinstance(var, UndefinedVar)
         }
@@ -791,7 +791,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             value_new_type = flatten(next_vars)[idx].type()
             value.set_type(value_new_type)
             cur_block.args()[idx].set_type(value_new_type)
-            while_op.results()[idx].set_type(value_new_type)
+            while_op.as_operation().results()[idx].set_type(value_new_type)
         return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
