@@ -294,7 +294,7 @@ struct RegisterGetterSetterVisitor {
 };
 
 static void RegisterGlobalVarGetterSetter() {
-#ifdef PADDLE_WITH_DITRIBUTE
+#ifdef PADDLE_WITH_DISTRIBUTE
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_get_thread_num);
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);
 #endif
