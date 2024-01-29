@@ -4386,7 +4386,6 @@ function main() {
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            # Currently, only compile on Python 3.12
             run_sot_test $PY_VERSION
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
