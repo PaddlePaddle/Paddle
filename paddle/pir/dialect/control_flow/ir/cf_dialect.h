@@ -28,7 +28,7 @@ class ControlFlowDialect : public Dialect {
   void PrintOperation(Operation *op,
                       IrPrinter &printer) const override;  // NOLINT
  private:
-  void initialize();
+  TEST_API void initialize();
 };
 
 }  // namespace pir
