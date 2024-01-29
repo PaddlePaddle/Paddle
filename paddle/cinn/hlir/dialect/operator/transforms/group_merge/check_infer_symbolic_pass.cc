@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
+#include <string>
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -28,25 +28,15 @@
 
 namespace {
 
-template <typename DoEachT>
-void VisitEachValue(pir::ModuleOp module_op, const DoEachT& DoEach) {
-  for (std::size_t i = 0; i < module_op->num_operands(); ++i) {
-    DoEach(module_op->operand_source(i));
-  }
-  for (std::size_t i = 0; i < module_op->num_results(); ++i) {
-    DoEach(module_op->result(i));
-  }
-}
-
 std::vector<std::int64_t> GetOriginValueShape(pir::Value value) {
   auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
   return ::common::vectorize(dim);
 }
 
 std::vector<std::int64_t> GetTargetValueShape(
-    pir::Value value, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Value value, const pir::ShapeConstraintIRAnalysis& shape_analysis) {
   const auto& dynamic_shapes =
-      shape_analysis->GetShapeOrDataForValue(value).shape();
+      shape_analysis.GetShapeOrDataForValue(value).shape();
   std::vector<std::int64_t> target_shapes{};
   for (const auto& dim_expr : dynamic_shapes) {
     CHECK(dim_expr.Has<std::int64_t>());
@@ -55,15 +45,38 @@ std::vector<std::int64_t> GetTargetValueShape(
   return target_shapes;
 }
 
+void CompareOriginAndTargetValueShape(
+    pir::Value value,
+    const pir::ShapeConstraintIRAnalysis& shape_analysis,
+    const pir::Operation& op) {
+  auto origin_value_shape = GetOriginValueShape(value);
+  auto target_value_shape = GetTargetValueShape(value, shape_analysis);
+  CHECK(origin_value_shape.size() == target_value_shape.size())
+      << op.name() << ": origin shape size is not equal to target";
+  for (int i = 0; i < origin_value_shape.size(); ++i) {
+    CHECK(origin_value_shape[i] == target_value_shape[i])
+        << op.name() << ": origin shape is not equal to target shape";
+  }
+}
+
 void CheckInferSymbolic(pir::ModuleOp module_op) {
-  pir::ShapeConstraintIRAnalysis* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(module_op.program());
-  VisitEachValue(module_op, [&](pir::Value value) {
-    auto origin_value_shape = GetOriginValueShape(value);
-    auto target_value_shape = GetTargetValueShape(value, shape_analysis);
-    VLOG(4) << "CheckInferSymbolic";
-    CHECK(origin_value_shape == target_value_shape);
-  });
+  VLOG(4) << "CheckInferSymbolic Start!";
+  const auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(module_op.program());
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      for (auto& op : block) {
+        for (std::size_t j = 0; j < op.num_operands(); ++j) {
+          CompareOriginAndTargetValueShape(
+              op.operand_source(j), shape_analysis, op);
+        }
+        for (std::size_t j = 0; j < op.num_results(); ++j) {
+          CompareOriginAndTargetValueShape(op.result(j), shape_analysis, op);
+        }
+      }
+    }
+  }
+  VLOG(4) << "CheckInferSymbolic Succeed!";
 }
 
 class CheckInferSymbolicPass : public pir::Pass {
