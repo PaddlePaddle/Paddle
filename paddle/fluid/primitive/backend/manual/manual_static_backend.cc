@@ -68,7 +68,7 @@ Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
   pir::Value shape_res =
       std::static_pointer_cast<LazyTensor>(shape.impl())->value();
   pir::Value value_res = paddle::dialect::full(
-      std::vector<int64_t>{1}, value.to<float>(), dtype, place);
+      std::vector<int64_t>{}, value.to<float>(), dtype, place);
   auto op_res = paddle::dialect::full_with_tensor(shape_res, value_res, dtype);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
