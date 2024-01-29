@@ -1220,6 +1220,7 @@ class FusedMultiTransformer(Layer):
         ring_id=-1,
         norm_type="layernorm",
         use_neox_rotary_style=False,
+        gqa_group_size=-1,
         name=None,
     ):
         super().__init__()
@@ -1247,6 +1248,7 @@ class FusedMultiTransformer(Layer):
         self._ring_id = ring_id
         self._norm_type = norm_type
         self._use_neox_rotary_style = use_neox_rotary_style
+        self._gqa_group_size = gqa_group_size
         self._norm_weight_dtype = (
             "float32" if self._norm_type == "layernorm" else self._dtype
         )
@@ -1324,10 +1326,15 @@ class FusedMultiTransformer(Layer):
                     dtype=self._norm_weight_dtype,
                 )
 
+            qkv_head_shape = (
+                [3, num_heads]
+                if self._gqa_group_size <= 0
+                else [num_heads + 2 * self._gqa_group_size]
+            )
             qkv_weight = self.create_parameter(
-                shape=[3, num_heads, self.head_dim, embed_dim]
+                shape=qkv_head_shape + [self.head_dim, embed_dim]
                 if trans_qkvw
-                else [embed_dim, 3, num_heads, self.head_dim],
+                else [embed_dim] + qkv_head_shape + [self.head_dim],
                 attr=qkv_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
@@ -1336,7 +1343,7 @@ class FusedMultiTransformer(Layer):
             qkv_bias = None
             if qkv_bias_attr:
                 qkv_bias = self.create_parameter(
-                    shape=[3, num_heads, self.head_dim],
+                    shape=qkv_head_shape + [self.head_dim],
                     attr=qkv_bias_attr,
                     dtype=self._dtype,
                     is_bias=True,
@@ -1561,6 +1568,7 @@ class FusedMultiTransformer(Layer):
             ring_id=self._ring_id,
             norm_type=self._norm_type,
             use_neox_rotary_style=self._use_neox_rotary_style,
+            gqa_group_size=self._gqa_group_size,
             name=self.name,
         )
         return out

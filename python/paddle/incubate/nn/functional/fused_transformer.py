@@ -902,6 +902,7 @@ def fused_multi_transformer(
     ring_id=-1,
     norm_type="layernorm",
     use_neox_rotary_style=False,
+    gqa_group_size=-1,
     name=None,
 ):
     r"""
@@ -1122,6 +1123,8 @@ def fused_multi_transformer(
             norm_type,
             'use_neox_rotary_style',
             use_neox_rotary_style,
+            'gqa_group_size',
+            gqa_group_size,
         )
         if cache_kvs is not None:
             return final_out, cache_kv_out
@@ -1191,6 +1194,7 @@ def fused_multi_transformer(
             'ring_id': ring_id,
             'norm_type': norm_type,
             'use_neox_rotary_style': use_neox_rotary_style,
+            'gqa_group_size': gqa_group_size,
         }
 
         outputs = {}

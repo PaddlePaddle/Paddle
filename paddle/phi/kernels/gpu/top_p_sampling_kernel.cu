@@ -625,10 +625,11 @@ void TopPSamplingKernel(const Context& dev_ctx,
   unsigned int seed = 0;
   if (random_seed == -1) {
     rand_r(&seed);
-    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
   } else {
     seed = random_seed;
   }
+  setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
+  VLOG(1) << "seed " << seed;
 
   DenseTensor count_iter;
   count_iter.Resize(phi::make_ddim({bs + 1}));
