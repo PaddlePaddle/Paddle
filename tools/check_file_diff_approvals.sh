@@ -270,6 +270,12 @@ if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddl
     fi
 fi
 
+IF_USE_SUBPROCESS = `git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator subprocess || true`
+if [ "${IF_USE_SUBPROCESS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD wanghuancoder approval for using subprocess, which may cause security problem.\n"
+    check_approval 1 wanghuancoder
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
