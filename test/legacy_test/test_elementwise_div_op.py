@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.framework import use_pir_api
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -493,8 +492,8 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
     @test_with_pir_api
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
-        main_program = base.Program()
-        with base.program_guard(main_program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
@@ -508,23 +507,16 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 
 
 class TestDivideOp(unittest.TestCase):
-    @test_with_pir_api
     def test_name(self):
         paddle.enable_static()
-        main_program = base.Program()
-        with base.program_guard(main_program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
 
-            def name_call():
-                self.assertEqual(('div_res' in y_1.name), True)
-
-            if use_pir_api():
-                self.assertRaises(ValueError, name_call)
-            else:
-                name_call()
+            self.assertEqual(('div_res' in y_1.name), True)
 
         paddle.disable_static()
 
