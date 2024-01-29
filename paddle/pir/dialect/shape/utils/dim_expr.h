@@ -25,6 +25,7 @@
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace symbol {
 
@@ -218,6 +219,9 @@ class IR_API DimExpr : public DimExprBase {
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 // ShapeOrDataDimExprs = (tShape [DimExpr], tData (opt [DimExpr]))
+
+DimExpr SimplifyDimExpr(const DimExpr& expr);
+
 template <typename T>
 class ShapeOrData {
  public:
@@ -257,8 +261,27 @@ class ShapeOrData {
   void SetData(const std::vector<T>& data) { data_ = data; }
 
   bool operator==(const ShapeOrData<T>& other) const {
-    // TODO(zhangbopd): dim_expr_simplify related funcs should be called here.
-    return shape_ == other.shape_ && data_ == other.data_;
+    if (data_.has_value() && !other.data_.has_value()) return false;
+    if (!data_.has_value() && other.data_.has_value()) return false;
+    if (shape_.size() != shape_.size()) return false;
+
+    if (data_.has_value() && other.data_.has_value()) {
+      if (data_.value().size() != other.data_.value().size()) return false;
+
+      for (int i = 0; i < data_.value().size(); ++i) {
+        DimExpr dim0 = symbol::SimplifyDimExpr(data_.value()[i]);
+        DimExpr dim1 = symbol::SimplifyDimExpr(other.data_.value()[i]);
+        if (dim0 != dim1) return false;
+      }
+    }
+
+    for (int i = 0; i < shape_.size(); ++i) {
+      DimExpr dim0 = symbol::SimplifyDimExpr(shape_[i]);
+      DimExpr dim1 = symbol::SimplifyDimExpr(other.shape_[i]);
+      if (dim0 != dim1) return false;
+    }
+
+    return true;
   }
 
   bool operator!=(const ShapeOrData<T>& other) const {
