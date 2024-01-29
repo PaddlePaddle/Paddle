@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-PD_DECLARE_int64(embedding_deterministic);
+COMMON_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 

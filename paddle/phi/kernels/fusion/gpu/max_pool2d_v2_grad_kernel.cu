@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 
-PHI_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 

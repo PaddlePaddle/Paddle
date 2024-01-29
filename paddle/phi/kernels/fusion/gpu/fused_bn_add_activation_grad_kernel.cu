@@ -32,7 +32,7 @@
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/fused_bn_add_activation_grad_kernel.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace phi {
 namespace fusion {

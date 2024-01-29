@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 PHI_DECLARE_bool(cudnn_deterministic);
-PHI_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 namespace fusion {
