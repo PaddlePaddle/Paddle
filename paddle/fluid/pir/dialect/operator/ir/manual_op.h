@@ -779,6 +779,39 @@ class IR_API ShapeBroadcastOp
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
+class ArrayPopOp : public pir::Op<ArrayPopOp,
+                                  paddle::dialect::OpYamlInfoInterface,
+                                  paddle::dialect::InferMetaInterface,
+                                  paddle::dialect::GetKernelTypeForVarInterface,
+                                  InplaceTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.array_pop"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    int index);
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value input() { return operand_source(0); }
+  pir::Value array_out() { return result(0); }
+  pir::Value out() { return result(1); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -806,3 +839,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IncrementOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
