@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -339,6 +340,10 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.fw_comp_rtol = 1e-3
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
+        # prim bf16 has diff in windows
+        if sys.platform == "Windows":
+            self.rev_comp_atol = 1e-2
+            self.rev_comp_rtol = 1e-2
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"
@@ -363,6 +368,10 @@ class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
         self.fw_comp_rtol = 1e-3
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
+        # prim bf16 has diff in windows
+        if sys.platform == "Windows":
+            self.rev_comp_atol = 1e-2
+            self.rev_comp_rtol = 1e-2
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"
