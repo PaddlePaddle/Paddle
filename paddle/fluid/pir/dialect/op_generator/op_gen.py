@@ -46,7 +46,7 @@ import gen as vjp_gen
 
 # Note(Galaxy1458) The need_export_symbol_op_list is used
 # for some unittests these need to export symbol op compiled with dynamic lib.
-need_export_symbol_op_list = ['AbsOp', 'FullOp', 'UniformOp']
+need_export_symbol_op_list = ['AbsOp', 'FullOp', 'UniformOp', 'ScaleOp', 'AddOp', 'FetchOp', 'MatmulOp', 'ReshapeOp', 'SoftmaxOp', 'TransposeOp']
 
 # =====================================
 # String Template for h file code gen
