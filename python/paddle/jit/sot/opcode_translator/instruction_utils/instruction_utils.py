@@ -38,7 +38,7 @@ class Instruction:
     jump_to: Instruction | None = None
     is_generated: bool = True
 
-    # for analys EXTENDED_ARG
+    # for analysis EXTENDED_ARG
     first_ex_arg: Instruction | None = None
     ex_arg_for: Instruction | None = None
 
@@ -109,7 +109,7 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
                 jump_offset += 1
 
             if origin_jump_target != jump_offset:
-                # copy infos from EXETENDED_ARG to other opcode
+                # copy infos from EXTENDED_ARG to other opcode
 
                 if instrs[origin_jump_target].is_jump_target:
                     instrs[jump_offset].is_jump_target = instrs[

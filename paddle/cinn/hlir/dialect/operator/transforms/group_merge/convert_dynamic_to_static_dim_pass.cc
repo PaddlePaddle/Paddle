@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -24,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_string(cinn_convert_dynamic_dim_to_static_dim);
@@ -168,7 +168,7 @@ class DynamicToStaticConverter {
         shape_analysis_->GetShapeOrDataForValue(value).shape();
     std::vector<std::int64_t> static_shapes{};
     VisitEachDimExpr(dynamic_shapes, [&](const symbol::DimExpr& dim_expr) {
-      const auto& static_shape = cinn::common::SimplifyDimExpr(
+      const auto& static_shape = symbol::SimplifyDimExpr(
           cinn::dialect::SubstituteDimExpr(dim_expr, DimExpr4SymbolName_));
       CHECK(static_shape.Has<std::int64_t>());
       static_shapes.push_back(static_shape.Get<std::int64_t>());

@@ -158,7 +158,7 @@ def gen_new_opcode(
     for key, val in code_options.items():
         if isinstance(val, list):
             code_options[key] = tuple(val)
-    # code_options is a dict, use keys to makesure the input order
+    # code_options is a dict, use keys to make sure the input order
     return types.CodeType(*[code_options[k] for k in keys])
 
 
