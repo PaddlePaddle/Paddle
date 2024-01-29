@@ -30,9 +30,9 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value cond,
-                    std::vector<pir::Type> &&output_types);
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value cond,
+                             std::vector<pir::Type> &&output_types);
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
