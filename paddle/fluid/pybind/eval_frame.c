@@ -113,10 +113,6 @@ PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
   return self;
 }
 
-#if PY_VERSION_HEX < 0x030c0000
-
-#endif
-
 #else
 typedef PyFrameObject FrameObject;
 #endif
