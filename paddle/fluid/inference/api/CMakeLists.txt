@@ -10,7 +10,7 @@ if(WITH_MKLDNN)
   cc_library(
     ${mkldnn_quantizer_cfg}
     SRCS mkldnn_quantizer_config.cc
-    DEPS lod_tensor paddle_pass_builder)
+    DEPS lod_tensor paddle_pass_builder paddle_pass_controller)
   set(mkldnn_quantizer_cfg
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
@@ -33,6 +33,7 @@ set(paddle_inference_api_deps
     reset_tensor_array
     paddle_infer_contrib
     paddle_pass_builder
+    paddle_pass_controller
     zero_copy_tensor
     trainer_desc_proto
     custom_operator
