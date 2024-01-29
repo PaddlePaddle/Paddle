@@ -29,6 +29,7 @@ set(WARPCTC_CCBIN_OPTION "")
 set(WARPCTC_PATCH_CUDA_COMMAND
     patch -d ${SOURCE_DIR} <
     ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch)
+
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
                                                   VERSION_GREATER 12.0)
