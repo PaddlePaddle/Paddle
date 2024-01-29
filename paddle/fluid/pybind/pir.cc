@@ -97,6 +97,10 @@
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #endif
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
+#endif
+
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
@@ -136,6 +140,10 @@ USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
+
+#ifdef PADDLE_WITH_DNNL
+USE_PIR_PASS(batch_norm_act_fuse_pass);
+#endif
 
 PHI_DECLARE_bool(print_ir);
 PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
