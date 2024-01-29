@@ -421,7 +421,7 @@ class TestFillConstantImperative(unittest.TestCase):
 class TestFillConstantOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors1(self):
-        with paddle_static_guard(), program_guard(Program(), Program()):
+        with paddle_static_guard(), paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
             self.assertRaises(
