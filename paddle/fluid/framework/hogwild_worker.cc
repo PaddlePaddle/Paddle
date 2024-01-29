@@ -805,7 +805,7 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       // depend_builder.Build(ops_, start_index, sharding_mode_);  hbm not safe
       // should run in debug model need to fix
       depend_builder.Build(ops_, start_index, false);
-      new_order = depend_builder.get_new_exexutor_order();
+      new_order = depend_builder.get_new_executor_order();
       std::vector<std::unique_ptr<OperatorBase>> new_ops;
       std::vector<size_t> final_order;
       std::vector<std::string> new_op_names;
