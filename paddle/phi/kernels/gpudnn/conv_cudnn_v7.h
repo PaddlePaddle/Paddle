@@ -698,7 +698,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
         result.exhaustive_search = t.exhaustive_search;
       }
       if (!result.exhaustive_search) {
-        // In conv2d_tranpose, enable_autotune is set to false because some
+        // In conv2d_transpose, enable_autotune is set to false because some
         // algorithm picked by exhaustive search method produce wrong result.
         use_autotune = enable_autotune &&
                        phi::autotune::AutoTuneStatus::Instance().UseAutoTune();

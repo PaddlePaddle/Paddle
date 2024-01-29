@@ -13,17 +13,16 @@
 # limitations under the License.
 
 from paddle.base import unique_name
-from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
 from ..utils import (
     ORIGI_INFO,
     Dygraph2StaticException,
     ast_to_source_code,
-    index_in_list,
 )
 from .base import BaseTransformer
 from .break_continue_transformer import ForToWhileTransformer
+from .utils import create_bool_node, index_in_list
 
 __all__ = []
 

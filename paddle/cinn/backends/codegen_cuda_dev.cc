@@ -216,13 +216,22 @@ void CodeGenCUDA_Dev::Visit(const ir::Max *op) {
 void CodeGenCUDA_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
+    bool has_symbol_in_thread_num = false;
     int thread_num = 1;
     for (int i = 0; i < 3; i++) {
-      thread_num *= op->cuda_axis_info.block_dim(i);
+      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
+      if (block_dim.is_constant()) {
+        thread_num *= block_dim.get_constant();
+      } else {
+        has_symbol_in_thread_num = true;
+        break;
+      }
     }
-    str_ += "__launch_bounds__(";
-    str_ += std::to_string(thread_num);
-    str_ += ") ";
+    if (!has_symbol_in_thread_num) {
+      str_ += "__launch_bounds__(";
+      str_ += std::to_string(thread_num);
+      str_ += ") ";
+    }
   }
 
   str_ += op->name;
