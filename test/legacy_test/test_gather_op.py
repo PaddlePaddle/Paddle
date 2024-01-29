@@ -535,6 +535,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
+    @test_with_pir_api
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -567,6 +568,7 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype1)
 
+    @test_with_pir_api
     def test_error2(self):
         with base.program_guard(base.Program(), base.Program()):
             shape = [8, 9, 6]
@@ -586,6 +588,7 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_index_type)
 
+    @test_with_pir_api
     def test_error3(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

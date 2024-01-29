@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class DotOp(OpTest):
@@ -131,6 +132,7 @@ class DotOpBatch(DotOp):
 
 
 class TestDotOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
