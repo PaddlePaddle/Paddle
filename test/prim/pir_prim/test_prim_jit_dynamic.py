@@ -60,9 +60,18 @@ class TestPrimMode(unittest.TestCase):
             ],
         )
         res = fn(x, y)
+        ops = [
+            op.name()
+            for op in fn.program_cache.last()[-1][-1]
+            .infer_program.program.global_block()
+            .ops
+        ]
 
         if flag == "prim":
+            assert "pd_op.mean" not in ops
             core._set_prim_all_enabled(False)
+        else:
+            assert "pd_op.mean" in ops
         return res
 
     def test_prim_all_dynamic(self):
