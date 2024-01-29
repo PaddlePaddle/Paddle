@@ -119,10 +119,12 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
     TestEnableLowPrecisionIO, unittest.TestCase
 ):
     def init_predictor(self, low_precision_io: bool):
+        print("Temporary directory name:", self.temp_dir.name)  # 打印临时目录名
         config = Config(
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
         )
+
         config.enable_use_gpu(256, 0, PrecisionType.Half)
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
@@ -137,6 +139,11 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
         config.enable_new_executor()
         config.enable_low_precision_io(low_precision_io)
         config.exp_disable_tensorrt_ops(["flatten_contiguous_range"])
+        # 这个模型一共两个trt子图,第一个让一个子图进trt,第二个跑原生,不让进trt,跑原生gpu推理,方便debug
+        config.exp_disable_tensorrt_node(
+            ["pool2d_2.tmp_0"], ["save_infer_model/scale_0.tmp_0"]
+        )
+        config.switch_ir_debug()
         config.disable_glog_info()
         predictor = create_predictor(config)
         return predictor

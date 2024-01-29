@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/string/split.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -122,7 +125,7 @@ void SubgraphDetector::MarkNodesInsideSubGraph() {
 using node_map_t = std::map<int, Node *>;
 // Find the ancestor id of a node.
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
-  int tmp = static_cast<int>(id);
+  int tmp = id;
   do {
     tmp = Agent(node_map.at(tmp)).union_find_parent();
   } while (Agent(node_map.at(tmp)).union_find_parent() != tmp);
@@ -134,8 +137,8 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
   Agent(node_map.at(b_ancestor)).set_union_find_parent(a_ancestor);
-  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);  // NOLINT
-  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);  // NOLINT
+  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);
 }
 
 // This is a simple representation of a graph.
@@ -234,7 +237,6 @@ void FlexibleDFS(const std::vector<BriefNode *> &source,
   } FNode;
 
   std::vector<FNode> stack;
-  stack.reserve(source.size());
   for (auto &node : source) {
     stack.push_back(FNode{node, false});
   }
@@ -396,14 +398,10 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
   std::unordered_set<Node *> valid_output;
 
   for (auto *output : *outputs) {
-    if (output->IsSubgraphOutput()) {
-      valid_output.insert(output);
-    } else {
-      int num_used = 0;
-      for (auto *node : output->outputs) {
-        if (!subgraph_set.count(node)) ++num_used;
-        if (num_used > 0) valid_output.insert(output);
-      }
+    int num_used = 0;
+    for (auto *node : output->outputs) {
+      if (!subgraph_set.count(node)) ++num_used;
+      if (num_used > 0) valid_output.insert(output);
     }
   }
 
@@ -424,10 +422,44 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
+
+    bool continue_run = false;
+
+    if (trt_enter_var_names_.empty()) {
+      continue_run = true;
+    }
+
+    for (auto *node : subgraph) {
+      for (auto tmp_name : node->outputs) {
+        if (std::find(trt_enter_var_names_.begin(),
+                      trt_enter_var_names_.end(),
+                      tmp_name->Name()) != trt_enter_var_names_.end()) {
+          continue_run = true;
+        }
+      }
+    }
+
+    if (continue_run == false) continue;
+
+    continue_run = true;
+
+    for (auto *node : subgraph) {
+      for (auto tmp_name : node->outputs) {
+        if (std::find(trt_exclude_var_names_.begin(),
+                      trt_exclude_var_names_.end(),
+                      tmp_name->Name()) != trt_exclude_var_names_.end()) {
+          continue_run = false;
+        }
+      }
+    }
+
+    if (continue_run == false) continue;
+
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
-    // replace this sub-graph with the first node. Two steps: 1. Create a Block
-    // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
-    // as deleted. 3. Replace the deleted node with the new Block Node.
+    // replace this sub-graph with the first node. Two steps: 1. Create a
+    // Block Node that contains this subgraph 2. Mark the nodes inside the
+    // sub-graph as deleted. 3. Replace the deleted node with the new Block
+    // Node.
     framework::OpDesc empty_desc;
     empty_desc.SetType(name_);
     auto *block_node = graph_->CreateOpNode(&empty_desc);
@@ -439,8 +471,8 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
     for (auto *node : subgraph) {
-      // TODO(Superjomn) need a unified mechanism to treat deleted node in each
-      // pass.
+      // TODO(Superjomn) need a unified mechanism to treat deleted node in
+      // each pass.
       Agent(node).set_deleted(true);
       Agent(block_node).subgraph()->push_back(node);
     }

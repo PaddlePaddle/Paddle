@@ -149,8 +149,10 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool use_cuda_graph = Get<bool>("use_cuda_graph");
+
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
   auto teller = [&](const framework::ir::Node *node) {
@@ -183,6 +185,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
+      Get<std::vector<std::string>>("trt_enter_var_names"),
+      Get<std::vector<std::string>>("trt_exclude_var_names"),
       "tensorrt_engine");
   fuser();
 
@@ -314,6 +318,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
+
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
   for (auto node : subgraph) {
     if (node->NodeType() == Node::Type::kOperation) {
