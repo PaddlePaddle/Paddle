@@ -154,6 +154,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_min_',
     'push_sparse_v2',
     'push_sparse_v2_',
+    'distributed_fused_lamb',
 ]
 
 
