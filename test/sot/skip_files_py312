@@ -1,3 +1,4 @@
+./test_01_basic.py
 ./test_02_store_inplace.py
 ./test_03_tuple.py
 ./test_04_list.py
