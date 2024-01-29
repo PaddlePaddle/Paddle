@@ -286,6 +286,7 @@ PD_MANUAL_OP_LIST = {
     'expand',
     'increment',
     'increment_',
+    'assign_out_',
 }
 
 attr_types_map = {

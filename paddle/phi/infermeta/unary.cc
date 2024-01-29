@@ -5464,6 +5464,21 @@ void LrnInferMeta(const MetaTensor& x,
   mid_out->share_lod(x);
 }
 
+void ArrayPopInferMeta(const MetaTensor& array,
+                       int index,
+                       MetaTensor* array_out,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  array_out->set_dtype(array.dtype());
+  array_out->set_layout(array.layout());
+  if (config.is_runtime) {
+    return;
+  }
+  // TODO(dev): Support get a tensor dims from TensorArray.
+  // out->set_dims(x.dims());
+  out->set_dtype(array.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
