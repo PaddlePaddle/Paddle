@@ -248,8 +248,8 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                 if op.type in [
                     "c_sync_comm_stream",
                     "conditional_block",
+                    "data",
                     "nop",
-                    "shadow_output",
                     "while",
                 ]:
                     continue
