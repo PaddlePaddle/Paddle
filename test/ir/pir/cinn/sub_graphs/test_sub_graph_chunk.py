@@ -57,7 +57,6 @@ class TestChunk(unittest.TestCase):
         return outs
 
     # NOTE prim + cinn lead to error
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
