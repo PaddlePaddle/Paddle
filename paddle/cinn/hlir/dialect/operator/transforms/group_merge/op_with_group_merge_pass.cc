@@ -356,7 +356,7 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+    const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         ops_.front()->GetParentProgram());
     for (auto consumer : ops_) {
       auto consumer_kind =

@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,21 +15,35 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+)
 
 import paddle
 
 
-class TestImperativeNumpyBridge(unittest.TestCase):
-    def test_tensor_from_numpy(self):
-        data_np = np.array([[2, 3, 1]]).astype('float32')
-        paddle.set_device('cpu')
-        var2 = paddle.to_tensor(data_np)
-        np.testing.assert_array_equal(var2.numpy(), data_np)
-        data_np[0][0] = -1
-        self.assertEqual(data_np[0][0], -1)
-        self.assertNotEqual(var2[0][0].numpy(), -1)
+def f(x, cond):
+    x[:] = 0
+    if cond > 0:
+        x[:] = 1
+    else:
+        x[:] = 2
+    return x
 
-        self.assertFalse(np.array_equal(var2.numpy(), data_np))
+
+class TestASTSetValueInCond(Dy2StTestBase):
+    @test_ast_only
+    def test_set_value_in_cond(self):
+        x = paddle.to_tensor([3])
+        cond = paddle.to_tensor([0])
+        dy_out = f(x, cond)
+
+        x = paddle.to_tensor([3])
+        cond = paddle.to_tensor([0])
+        st_out = paddle.jit.to_static(f, full_graph=True)(x, cond)
+
+        np.testing.assert_allclose(dy_out, st_out)
 
 
 if __name__ == '__main__':
