@@ -22,12 +22,14 @@ from paddle.autograd.backward_utils import (
     ValueDict,
     ValueSet,
     _as_list,
+    all_stop_gradient_true,
     check_type,
     dynamic_shape_prim_vjp_guard,
     get_real_op_inputs,
     inplace_net,
     inverse_sort_op,
     is_control_flow,
+    parent_total_op,
     remove_op,
     remove_useless_full_like_ops,
     some_in_set,
@@ -869,29 +871,6 @@ def create_backward_prune_set(
     return outputs_set, inputs_set, no_gradvar_set
 
 
-def all_stop_gradient_true(block):
-    for op in block.ops:
-        for value in op.results():
-            if value.stop_gradient is False:
-                return False
-    return True
-
-
-def update_total_ops(block):
-    '''
-    when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
-    '''
-    total_ops = []
-    if block.parent_block is not None:
-        if block.parent_block.parent_block:
-            total_ops += block.parent_block.parent_block.ops
-        total_ops += block.parent_block.ops
-    total_ops += block.ops
-
-    return total_ops
-
-
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
@@ -901,7 +880,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         )
         return state.value_to_valuegrad
 
-    total_ops = update_total_ops(block)
+    total_ops = parent_total_op(block)
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
@@ -1122,7 +1101,6 @@ def grad(
     return input_grad
 
 
-# only for test
 def append_backward(loss, parameter_list=None, no_grad_set=None):
     '''
     Parameters:

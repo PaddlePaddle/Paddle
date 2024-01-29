@@ -429,3 +429,26 @@ def remove_useless_full_like_ops(block, ops, state):
         elif is_control_flow(op):
             for sub_block in op.blocks():
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+
+def all_stop_gradient_true(block):
+    for op in block.ops:
+        for value in op.results():
+            if value.stop_gradient is False:
+                return False
+    return True
+
+
+def parent_total_ops(block):
+    '''
+    when block is sub_block, forward op should include its parent block ops
+    (sub block nest should Add on demand to aviod block copy)
+    '''
+    total_ops = []
+    if block.parent_block is not None:
+        if block.parent_block.parent_block:
+            total_ops += block.parent_block.parent_block.ops
+        total_ops += block.parent_block.ops
+    total_ops += block.ops
+
+    return total_ops
