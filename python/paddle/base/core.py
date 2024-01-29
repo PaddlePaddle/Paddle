@@ -532,15 +532,6 @@ def _enable_prim_dynamic_shape():
         return False
 
 
-# This api is used for development for sinking decomp in c++, and will be removed in future.
-def _enable_sink_decomp():
-    flag = os.getenv("FLAGS_sink_decomp", "true")
-    if flag and flag.lower() in ("1", "true"):
-        return True
-    else:
-        return False
-
-
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):
