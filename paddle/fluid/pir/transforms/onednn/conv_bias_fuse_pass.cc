@@ -40,6 +40,9 @@ class Conv2dBiasFusePattern : public paddle::drr::DrrPatternBase {
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
+    const auto &parameter_bias = pat.Op(
+        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
+    pat.Tensor("bias") = parameter_bias();
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
@@ -98,6 +101,10 @@ class FusedConv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
+    const auto &parameter_bias = pat.Op(
+        pir::ParameterOp::name(), {{"parameter_name", pat.Attr("param_name")}});
+    pat.Tensor("bias") = parameter_bias();
+
     pat.Tensor("add_out") = add(pat.Tensor("conv2d_out"), pat.Tensor("bias"));
 
     const auto &parameter = pat.Op(
