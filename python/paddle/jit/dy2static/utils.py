@@ -31,7 +31,6 @@ from importlib.machinery import SourceFileLoader
 import numpy as np
 
 import paddle
-from paddle import base, get_flags, set_flags  # noqa: F401
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -40,15 +39,12 @@ from paddle.framework import CUDAPinnedPlace
 from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
-from .utils_helper import (  # noqa: F401
-    PADDLE_MODULE_PREFIX,
-    _is_api_in_module_helper,
-    index_in_list,
-    is_api_in_module,
-    is_paddle_api,
-)
 
 __all__ = []
+
+# Note(Aurelius): Do not forget the dot `.` to distinguish other
+# module such as paddlenlp.
+PADDLE_MODULE_PREFIX = 'paddle.'
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -83,9 +79,6 @@ WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
-
-GRAD_PREFIX = 'grad/'
-GRAD_SUFFIX = '@GRAD'
 
 NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.READER,
@@ -971,6 +964,11 @@ def cinn_is_enabled(build_strategy, backend):
 def prim_is_enabled():
     core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
+
+
+def is_api_in_module_helper(obj, module_prefix):
+    m = inspect.getmodule(obj)
+    return m is not None and m.__name__.startswith(module_prefix)
 
 
 def is_builtin(func, name=None):

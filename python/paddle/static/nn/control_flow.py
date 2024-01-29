@@ -1270,7 +1270,7 @@ class OutputSelector:
 
     @staticmethod
     def constant_to_variable_promotion(out_with_blocks, name):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+        from paddle.jit.dy2static.convert_operators import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
         outs, _ = zip(*out_with_blocks)
@@ -1774,8 +1774,8 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
+    from paddle.jit.dy2static.convert_operators import to_static_variable
     from paddle.jit.dy2static.utils import UndefinedVar
-    from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
     false_var, true_var = inputs
 
