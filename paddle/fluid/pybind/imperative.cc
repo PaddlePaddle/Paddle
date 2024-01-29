@@ -635,6 +635,10 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
+  m.def("_switch_amp_state",
+        [](const std::shared_ptr<paddle::imperative::AMPState> &amp_state) {
+          egr::Controller::Instance().SetCurrentAMPState(amp_state);
+        });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
@@ -779,7 +783,10 @@ void BindImperative(py::module *m_ptr) {
                return std::make_tuple(
                    kernelsig_ins, kernelsig_attrs, kernelsig_outs);
              }
-           });
+           })
+      .def("_get_amp_state", [](imperative::Tracer &self) {
+        return paddle::imperative::GetCurrentAMPState();
+      });
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(

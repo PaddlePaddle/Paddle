@@ -231,6 +231,52 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
+thread_local bool AMPState::use_promote_ = true;
+
+thread_local AmpLevel AMPState::amp_level_ = AmpLevel::O0;
+
+thread_local phi::DataType AMPState::amp_dtype_ = phi::DataType::FLOAT32;
+
+AMPState::AMPState() {}
+
+AMPState::~AMPState() = default;
+
+bool AMPState::GetUsePromote() const { return use_promote_; }
+
+void AMPState::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
+
+AmpLevel AMPState::GetAmpLevel() const { return amp_level_; }
+
+void AMPState::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
+
+std::string AMPState::GetAmpDtype() const {
+  if (amp_dtype_ == phi::DataType::FLOAT16) {
+    return std::string("float16");
+  } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    return std::string("bfloat16");
+  } else {
+    return std::string("float32");
+  }
+}
+
+void AMPState::SetAmpDtype(std::string amp_dtype) {
+  if (amp_dtype == "float16") {
+    amp_dtype_ = phi::DataType::FLOAT16;
+  } else if (amp_dtype == "bfloat16") {
+    amp_dtype_ = phi::DataType::BFLOAT16;
+  } else {
+    amp_dtype_ = phi::DataType::FLOAT32;
+  }
+}
+
+phi::DataType AMPState::GetAmpPhiDtype() const { return amp_dtype_; }
+
+// void AMPState::Reset() {
+//   use_promote_ = true;
+//   amp_level_ = AmpLevel::O0;
+//   amp_dtype_ = phi::DataType::FLOAT32;
+// }
+
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
   return framework::DataTypeToString(GetDataType<VarType>(var));

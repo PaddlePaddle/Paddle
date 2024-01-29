@@ -84,6 +84,25 @@ class AmpOperators {
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 
+class AMPState {
+ public:
+  AMPState();
+  ~AMPState();
+  bool GetUsePromote() const;
+  void SetUsePromote(bool use_promote);
+  AmpLevel GetAmpLevel() const;
+  void SetAmpLevel(AmpLevel level);
+  std::string GetAmpDtype() const;
+  void SetAmpDtype(std::string amp_dtype);
+  phi::DataType GetAmpPhiDtype() const;
+  // void Reset();
+
+ private:
+  static thread_local bool use_promote_;
+  static thread_local AmpLevel amp_level_;
+  static thread_local phi::DataType amp_dtype_;
+};
+
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
