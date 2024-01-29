@@ -25,6 +25,7 @@ from op_test import OpTest
 
 from paddle import base
 from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 # 2D normal case
@@ -258,6 +259,7 @@ class TestSolveOpBatched_case8(OpTest):
 
 
 class TestSolveOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.

@@ -21,6 +21,7 @@ from testsuite import create_op
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def conv2d_forward_naive(
@@ -726,6 +727,7 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
 

@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.set_printoptions(threshold=np.inf)
 
@@ -324,6 +325,7 @@ class TestEigvalsAPI(unittest.TestCase):
             self.run_dygraph(place)
             self.run_static(place)
 
+    @test_with_pir_api
     def test_error(self):
         paddle.disable_static()
         x = paddle.to_tensor([1])
