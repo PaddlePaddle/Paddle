@@ -428,8 +428,14 @@ void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {
     return inference::lite::OpTeller::Global().Tell(node->Op()->Type(),
                                                     *node->Op());
   };
-
-  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "lite_engine");
+  std::vector<std::string> trt_enter_var_names = {};
+  std::vector<std::string> trt_exclude_var_names = {};
+  SubGraphFuser fuser(graph,
+                      teller,
+                      0 /* min_subgraph_size */,
+                      trt_enter_var_names,
+                      trt_exclude_var_names,
+                      "lite_engine");
   fuser();
 
   std::vector<std::string> repetitive_params;
