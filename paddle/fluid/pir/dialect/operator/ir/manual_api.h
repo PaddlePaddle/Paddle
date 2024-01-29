@@ -85,6 +85,18 @@ pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends);
 
 pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
+pir::Value strided_slice_array(const pir::Value& x,
+                               const std::vector<int>& axes,
+                               const std::vector<int64_t>& starts,
+                               const std::vector<int64_t>& ends,
+                               const std::vector<int64_t>& strides);
+
+pir::Value strided_slice_array(const pir::Value& x,
+                               pir::Value starts,
+                               pir::Value ends,
+                               pir::Value strides,
+                               const std::vector<int>& axes);
+
 pir::Value assign(const pir::Value& x);
 
 }  // namespace dialect

@@ -205,6 +205,34 @@ pir::Value slice_array_dense(pir::Value input, pir::Value starts) {
   return op.result(0);
 }
 
+pir::Value strided_slice_array(const pir::Value& x,
+                               const std::vector<int>& axes,
+                               const std::vector<int64_t>& starts,
+                               const std::vector<int64_t>& ends,
+                               const std::vector<int64_t>& strides) {
+  CheckValueDataType(x, "x", "strided_slice_array");
+  paddle::dialect::StridedSliceArrayOp strided_slice_array_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::StridedSliceArrayOp>(
+              x, axes, starts, ends, strides);
+  return strided_slice_array_op.result(0);
+}
+
+pir::Value strided_slice_array(const pir::Value& x,
+                               pir::Value starts,
+                               pir::Value ends,
+                               pir::Value strides,
+                               const std::vector<int>& axes) {
+  CheckValueDataType(x, "x", "strided_slice_array");
+  paddle::dialect::StridedSliceArrayOp strided_slice_array_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::StridedSliceArrayOp>(
+              x, starts, ends, strides, axes);
+  return strided_slice_array_op.result(0);
+}
+
 pir::Value assign(const pir::Value& x) {
   CheckValueDataType(x, "x", "assign");
   if (x.type().isa<paddle::dialect::DenseTensorType>()) {

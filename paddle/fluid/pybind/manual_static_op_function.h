@@ -417,6 +417,81 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
   }
 }
 
+PyObject *static_api_strided_slice_array(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add strided_slice_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "strided_slice_array", 0);
+
+    // Parse Attributes
+    PyObject *axes_obj = PyTuple_GET_ITEM(args, 1);
+    PyObject *starts_obj = PyTuple_GET_ITEM(args, 2);
+    PyObject *ends_obj = PyTuple_GET_ITEM(args, 3);
+    PyObject *strides_obj = PyTuple_GET_ITEM(args, 4);
+
+    // Check for mutable attrs
+    pir::Value starts;
+
+    pir::Value ends;
+
+    pir::Value strides;
+
+    std::vector<int> axes = CastPyArg2Ints(axes_obj, "strided_slice_array", 1);
+    if (PyObject_CheckIRValue(starts_obj)) {
+      starts = CastPyArg2Value(starts_obj, "strided_slice_array", 2);
+    } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
+      std::vector<pir::Value> starts_tmp =
+          CastPyArg2VectorOfValue(starts_obj, "strided_slice_array", 2);
+      starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
+
+    } else {
+      std::vector<int64_t> starts_tmp =
+          CastPyArg2Longs(starts_obj, "strided_slice_array", 2);
+      starts = paddle::dialect::full_int_array(
+          starts_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+    if (PyObject_CheckIRValue(ends_obj)) {
+      ends = CastPyArg2Value(ends_obj, "strided_slice_array", 3);
+    } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
+      std::vector<pir::Value> ends_tmp =
+          CastPyArg2VectorOfValue(ends_obj, "strided_slice_array", 3);
+      ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
+
+    } else {
+      std::vector<int64_t> ends_tmp =
+          CastPyArg2Longs(ends_obj, "strided_slice_array", 3);
+      ends = paddle::dialect::full_int_array(
+          ends_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+    if (PyObject_CheckIRValue(strides_obj)) {
+      strides = CastPyArg2Value(strides_obj, "strided_slice_array", 4);
+    } else if (PyObject_CheckIRVectorOfValue(strides_obj)) {
+      std::vector<pir::Value> strides_tmp =
+          CastPyArg2VectorOfValue(strides_obj, "strided_slice_array", 4);
+      strides = paddle::dialect::stack(strides_tmp, /*axis*/ 0);
+
+    } else {
+      std::vector<int64_t> strides_tmp =
+          CastPyArg2Longs(strides_obj, "strided_slice_array", 4);
+      strides = paddle::dialect::full_int_array(
+          strides_tmp, phi::DataType::INT64, phi::CPUPlace());
+    }
+
+    // Call ir static api
+    auto static_api_out =
+        paddle::dialect::strided_slice_array(x, starts, ends, strides, axes);
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 extern PyObject *eager_api_run_custom_op(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs);
@@ -799,6 +874,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_slice_array_dense,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for slice_array_dense."},
+    {"strided_slice_array",
+     (PyCFunction)(void (*)(void))static_api_strided_slice_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for strided_slice_array."},
     {"_run_custom_op",
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
