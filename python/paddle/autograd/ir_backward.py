@@ -29,7 +29,7 @@ from paddle.autograd.backward_utils import (
     inplace_net,
     inverse_sort_op,
     is_control_flow,
-    parent_total_op,
+    parent_total_ops,
     remove_op,
     remove_useless_full_like_ops,
     some_in_set,
@@ -880,7 +880,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         )
         return state.value_to_valuegrad
 
-    total_ops = parent_total_op(block)
+    total_ops = parent_total_ops(block)
 
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
