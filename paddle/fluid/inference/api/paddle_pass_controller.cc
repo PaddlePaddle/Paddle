@@ -504,7 +504,7 @@ const std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
     LOG(INFO) << "pass controller run in RadicalMode mode!";
   }
   auto new_passes = std::vector<std::string>();
-  for (auto const pass : passes) {
+  for (const std::string& pass : passes) {
     if (pass_ctrl_map_.count(pass) != 0 &&
         pass_ctrl_map_[pass].HasRuntimeStatue(pass_runtime_status)) {
       if (pass_ctrl_map_[pass].GetPassStatus(
