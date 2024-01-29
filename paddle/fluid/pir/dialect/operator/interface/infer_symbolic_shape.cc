@@ -695,7 +695,7 @@ bool SqueezeOpInferSymbolicShape(
   std::vector<bool> should_squeeze(in_dims_sym.size(), false);
   // Mark dimensions need to be squeezed.
   if (num_squeeze_dims == 0) {
-    for (int i = 0; i < in_dims_sym.size(); ++i) {
+    for (size_t i = 0; i < in_dims_sym.size(); ++i) {
       // TODO(lanxianghit): if symbol here, maybe we need the result of dim expr
       // simplification
       if (in_dims_sym[i] == 1) {
@@ -725,7 +725,7 @@ bool SqueezeOpInferSymbolicShape(
 
   // Make output dimensions
   std::vector<symbol::DimExpr> output_shape_sym;
-  for (int i = 0; i < in_dims_sym.size(); ++i) {
+  for (size_t i = 0; i < in_dims_sym.size(); ++i) {
     if (!should_squeeze[i]) {
       output_shape_sym.emplace_back(in_dims_sym[i]);
     }
