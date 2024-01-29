@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateMapOp2AnotherPass();
+IR_API std::unique_ptr<Pass> CreateMapOpToAnotherPass();
 
 }  // namespace pir

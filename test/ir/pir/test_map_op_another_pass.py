@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 
 import numpy as np
@@ -25,6 +27,22 @@ from paddle.pir.core import create_parameter
 paddle.enable_static()
 
 
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 8100,
+    "DepthwiseConv2ConvPass requires CUDA >= 8100",
+)
 class TestDepthwiseConv2ConvPass(PassTest):
     r""" """
 
@@ -48,18 +66,15 @@ class TestDepthwiseConv2ConvPass(PassTest):
                             shape=conv2d_filter_shape,
                             dtype='float32',
                             initializer=initializer,
+                            padding="SAME",
+                            dilation=[1, 1],
+                            stride=[1, 1],
                         )
                         depthwise_conv2d_out = F.conv2d(
                             x, conv2d_filter, groups=32, data_format="NCHW"
                         )
-                        bn = paddle.nn.BatchNorm2D(
-                            num_features=32,
-                            data_format='NCHW',
-                            use_global_stats=True,
-                        )
-                        out = bn(depthwise_conv2d_out)
-                        out = paddle.assign(out)
-                        self.pass_list = ['depthwise_conv_to_conv_pass']
+                        out = paddle.assign(depthwise_conv2d_out)
+                        self.pass_list = ['map_op_to_another_pass']
                         self.feeds = {
                             "x": np.random.random(x_shape).astype("float32"),
                         }
@@ -67,7 +82,6 @@ class TestDepthwiseConv2ConvPass(PassTest):
                         self.valid_op_map = {
                             "pd_op.depthwise_conv2d": 0,
                             "pd_op.conv2d": 1,
-                            "pd_op.add": 0,
                         }
                         yield [main_prog, start_prog], False
 

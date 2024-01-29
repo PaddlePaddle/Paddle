@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/depthwise_conv_to_conv_pass.h"
+#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -22,7 +22,7 @@
 
 namespace {
 
-class MapOp2AnotherPattern : public paddle::drr::DrrPatternBase {
+class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
  public:
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -38,37 +38,36 @@ class MapOp2AnotherPattern : public paddle::drr::DrrPatternBase {
                         {&pat.Tensor("depthwise_conv2d_out")});
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+#ifdef PADDLE_WITH_CUDA
 #if CUDNN_VERSION >= 8100
           auto groups = match_ctx.Attr<int>("groups");
-          if (groups > 1) {
-            return true;
-          } else {
-            return false;
-          }
-#endif
+          return groups > 1;
+#else
           return false;
+#endif
+#else
+          return false;
+#endif
         });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &conv2d =
-        pat.Op(paddle::dialect::Conv2dOp::name(),
+        res.Op(paddle::dialect::Conv2dOp::name(),
                {{"strides", pat.Attr("strides")},
                 {"paddings", pat.Attr("paddings")},
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
                 {"data_format", pat.Attr("data_format")}});
-    conv2d({
-        &res.Tensor("input"),
-        &res.Tensor("filter"),
-    } {&res.Tensor("depthwise_conv2d_out")});
+    conv2d({&res.Tensor("input"), &res.Tensor("filter")},
+           {&res.Tensor("depthwise_conv2d_out")});
   }
+  std::string name() const override { return "DepthWiseConv2d2Conv2dPattern"; }
 };
 
-class DepthwiseConv2ConvPass : public pir::PatternRewritePass {
+class MapOpToAnotherPass : public pir::PatternRewritePass {
  public:
-  DepthwiseConv2ConvPass()
-      : pir::PatternRewritePass("depthwise_conv_to_conv_pass", 2) {}
+  MapOpToAnotherPass() : pir::PatternRewritePass("map_op_to_another_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -81,9 +80,9 @@ class DepthwiseConv2ConvPass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateDepthwiseConv2ConvPass() {
-  return std::make_unique<DepthwiseConv2ConvPass>();
+std::unique_ptr<Pass> CreateMapOpToAnotherPass() {
+  return std::make_unique<MapOpToAnotherPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(depthwise_conv_to_conv_pass, DepthwiseConv2ConvPass);
+REGISTER_IR_PASS(map_op_to_another_pass, MapOpToAnotherPass);
