@@ -11,6 +11,14 @@
 - op : add_triple_grad
   extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
 
+- op : batch_norm
+  extra_args : bool fuse_with_relu=false
+  data_format_tensors : x
+
+- op : batch_norm_grad
+  extra_args : bool fuse_with_relu=false
+  data_format_tensors : x, out_grad
+
 - op : conv2d
   extra_args : bool is_test=false
   data_format_tensors : input
@@ -53,12 +61,6 @@
 #   layout_transform :
 #     arg_name: cur_paddle_data_layout
 #     tensors: x, y
-
-# - op : batch_norm
-#   extra_args : bool fuse_with_relu=false
-#   layout_transform :
-#     arg_name: data_layout
-#     tensors: x
 
 # - op : prelu
 #   extra_args : bool is_test=false, str mkldnn_data_type="float32"

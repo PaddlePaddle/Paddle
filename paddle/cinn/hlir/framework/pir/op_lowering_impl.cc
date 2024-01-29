@@ -158,7 +158,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_op_schedule,
+                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -737,6 +737,31 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   }
 }
 
+ir::Tensor OpLowererImpl::GetTensorSymbolic(const GroupPtr& group,
+                                            const ::pir::Value& value) {
+  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto dtype = type_info.dtype();
+  std::string input_id = ValueName(value);
+  auto ForEachDimExpr = [&](const auto& DoEach) {
+    if (!group->value_to_shape_or_data_exprs.empty()) {
+      const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      for (const auto& dim_expr : sym_vec) {
+        DoEach(dim_expr);
+      }
+    } else {
+      auto in_shape = ::common::vectorize<int64_t>(type_info.dims());
+      for (int64_t dim : in_shape) {
+        DoEach(::symbol::DimExpr{dim});
+      }
+    }
+  };
+  std::vector<ir::Dim> sym_shape;
+  ForEachDimExpr(
+      [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+  return lang::CreatePlaceHolder(
+      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+}
+
 std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
     const GroupPtr& group,
     const ::pir::Operation* op,
@@ -745,7 +770,12 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << ValueName(in_value);
-    ir::Tensor tensor = GetTensor(group, in_value);
+    ir::Tensor tensor;
+    if (FLAGS_cinn_bucket_compile) {
+      tensor = GetTensorSymbolic(group, in_value);
+    } else {
+      tensor = GetTensor(group, in_value);
+    }
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
