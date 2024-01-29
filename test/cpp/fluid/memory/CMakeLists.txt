@@ -1,4 +1,4 @@
-paddle_test(memory_stats_test SRCS memory_stats_test.cc DEPS)
+paddle_test(memory_stats_test SRCS memory_stats_test.cc)
 cc_test(
   stats_test
   SRCS stats_test.cc
