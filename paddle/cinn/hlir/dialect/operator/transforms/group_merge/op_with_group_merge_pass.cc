@@ -161,7 +161,7 @@ phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value& value) {
+const phi::DDim& GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
