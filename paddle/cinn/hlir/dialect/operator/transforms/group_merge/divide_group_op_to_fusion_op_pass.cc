@@ -74,11 +74,11 @@ std::vector<pir::Value> GetBlockOutsideOutput(
   assert(group_all_list.size() >= 2);
   assert(group_all_list.back()->isa<pir::YieldOp>());
 
-  auto yeild_op = group_all_list.back()->dyn_cast<pir::YieldOp>();
+  auto yield_op = group_all_list.back()->dyn_cast<pir::YieldOp>();
 
-  std::unordered_set<pir::Value> yeild_inputs;
-  for (size_t i = 0; i < yeild_op.num_operands(); ++i) {
-    yeild_inputs.insert(yeild_op.operand_source(i));
+  std::unordered_set<pir::Value> yield_inputs;
+  for (size_t i = 0; i < yield_op.num_operands(); ++i) {
+    yield_inputs.insert(yield_op.operand_source(i));
   }
 
   std::unordered_set<pir::Operation*> innner_op_set(op_list.begin(),
@@ -95,7 +95,7 @@ std::vector<pir::Value> GetBlockOutsideOutput(
 
   for (auto* op : op_list) {
     for (size_t i = 0; i < op->num_results(); ++i) {
-      if (yeild_inputs.count(op->result(i))) {
+      if (yield_inputs.count(op->result(i))) {
         vec_res.push_back(op->result(i));
       } else {
         for (auto it = op->result(i).use_begin(); it != op->result(i).use_end();
@@ -172,9 +172,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     VLOG(4) << "Before GroupOpPattern: " << *program;
 
     std::unordered_map<::pir::Value, size_t> value2id;
-    auto yeild_op = group_op.GetOperators().back();
-    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-      value2id[yeild_op->operand_source(i)] = i;
+    auto yield_op = group_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      value2id[yield_op->operand_source(i)] = i;
     }
     auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(
         pir::ShapeAnalysisManager::Instance().Get(
