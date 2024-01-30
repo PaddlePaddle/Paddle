@@ -654,14 +654,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       value2id[group->output_values[i]] = i;
     }
 
-    auto yeild_op = fusion_op.GetOperators().back();
+    auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(
           fusion_op.result(i),
-          complied_op->result(value2id[yeild_op->operand_source(i)]));
+          complied_op->result(value2id[yield_op->operand_source(i)]));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            complied_op->result(value2id[yeild_op->operand_source(i)]),
+            complied_op->result(value2id[yield_op->operand_source(i)]),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "
@@ -712,9 +712,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild output_ops and input_ops of the group
-    auto yeild_op = fusion_op.GetOperators().back();
-    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-      group->output_ops.insert(yeild_op->operand_source(i).defining_op());
+    auto yield_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      group->output_ops.insert(yield_op->operand_source(i).defining_op());
     }
 
     // Rebuild other informations
