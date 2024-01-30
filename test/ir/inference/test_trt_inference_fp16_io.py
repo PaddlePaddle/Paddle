@@ -142,7 +142,7 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
         config.exp_disable_tensorrt_node(
             ["pool2d_2.tmp_0"], ["save_infer_model/scale_0.tmp_0"]
         )
-        config.switch_ir_debug()
+        # config.switch_ir_debug(True)
         config.disable_glog_info()
         predictor = create_predictor(config)
         return predictor
