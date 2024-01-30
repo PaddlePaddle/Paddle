@@ -41,9 +41,9 @@ def get_cuda_version():
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 8100,
-    "DepthwiseConv2ConvPass requires CUDA >= 8100",
+    "DepthwiseConv2ConvPattern requires CUDA >= 8100",
 )
-class TestDepthwiseConv2ConvPass(PassTest):
+class TestDepthwiseConv2ConvPattern(PassTest):
     r""" """
 
     def is_program_valid(self, program=None):

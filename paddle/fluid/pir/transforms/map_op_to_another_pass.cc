@@ -38,13 +38,9 @@ class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
                         {&pat.Tensor("depthwise_conv2d_out")});
     pat.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
-#ifdef PADDLE_WITH_CUDA
-#if CUDNN_VERSION >= 8100
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8100
           auto groups = match_ctx.Attr<int>("groups");
           return groups > 1;
-#else
-          return false;
-#endif
 #else
           return false;
 #endif
