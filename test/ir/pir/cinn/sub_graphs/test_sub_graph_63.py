@@ -44,11 +44,11 @@ class LayerCase(paddle.nn.Layer):
         var_10 = paddle.tensor.manipulation.gather(var_4, var_3)
         var_11 = paddle.tensor.manipulation.concat([var_5])
         var_12 = paddle.tensor.manipulation.gather(var_11, var_3)
-        var_13 = var_10.__sub__(var_12)
+        var_13 = var_10 - var_12
         var_14 = paddle.tensor.abs(var_13)
         var_15 = var_14.sum()
-        var_16 = var_9.__truediv__(256)
-        var_17 = var_15.__truediv__(256)
+        var_16 = var_9 / 256
+        var_17 = var_15 / 256
         return var_16, var_17
 
 

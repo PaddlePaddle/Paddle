@@ -32,12 +32,12 @@ class LayerCase(paddle.nn.Layer):
     ):
         var_1, var_2 = paddle.tensor.search.topk(var_0, k=1, axis=0)
         var_3 = paddle.tensor.creation.full([1, 2002], -1, dtype='int32')
-        var_4 = var_1.__gt__(-1)
-        var_5 = var_1.__lt__(0.5)
+        var_4 = var_1 > -1
+        var_5 = var_1 < 0.5
         var_6 = paddle.tensor.logic.logical_and(var_4, var_5)
         var_7 = paddle.tensor.creation.zeros_like(var_3)
         var_8 = paddle.tensor.search.where(var_6, var_7, var_3)
-        var_9 = var_1.__ge__(0.5)
+        var_9 = var_1 >= 0.5
         var_10 = paddle.tensor.creation.ones_like(var_8)
         var_11 = paddle.tensor.search.where(var_9, var_10, var_8)
         var_12 = var_2.flatten()

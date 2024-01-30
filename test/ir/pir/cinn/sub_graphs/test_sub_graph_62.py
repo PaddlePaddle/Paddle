@@ -39,16 +39,16 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [], dtype: paddle.float32, stop_gradient: False)
         var_1,  # (shape: [], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_2 = self.parameter_1.__neg__()
+        var_2 = -self.parameter_1
         var_3 = paddle.tensor.ops.exp(var_2)
-        var_4 = var_3.__mul__(var_1)
-        var_5 = self.parameter_0.__neg__()
+        var_4 = var_3 * var_1
+        var_5 = -self.parameter_0
         var_6 = paddle.tensor.ops.exp(var_5)
-        var_7 = var_6.__mul__(var_0)
-        var_8 = var_4.__add__(var_7)
-        var_9 = self.parameter_1.__add__(self.parameter_0)
-        var_10 = var_8.__add__(var_9)
-        var_11 = var_10.__mul__(0.5)
+        var_7 = var_6 * var_0
+        var_8 = var_4 + var_7
+        var_9 = self.parameter_1 + self.parameter_0
+        var_10 = var_8 + var_9
+        var_11 = var_10 * 0.5
         return var_11
 
 
