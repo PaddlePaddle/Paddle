@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <exception>
 #include <list>
 #include <ostream>
 #include <string>
@@ -145,6 +146,22 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 }
 
+void IrPrinter::AddIndentation() { cur_indentation_level_++; }
+
+void IrPrinter::DecreaseIndentation() {
+  if (cur_indentation_level_ == 0) {
+    return;
+  }
+  cur_indentation_level_--;
+}
+
+std::string IrPrinter::indentation() {
+  // return std::string(cur_indentation_level_, '-') +
+  // std::to_string(cur_indentation_level_) +
+  // std::string(cur_indentation_level_, '-');
+  return std::string(cur_indentation_level_ * 4, ' ');
+}
+
 void IrPrinter::PrintProgram(const Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
@@ -154,15 +171,22 @@ void IrPrinter::PrintProgram(const Program* program) {
 }
 
 void IrPrinter::PrintOperation(Operation* op) {
+  os << indentation();
+
   if (auto* dialect = op->dialect()) {
-    dialect->PrintOperation(op, *this);
-    return;
+    if (auto print_fn = dialect->PrintOperation(op)) {
+      print_fn(op, *this);
+      os << newline;
+      return;
+    }
   }
 
   PrintGeneralOperation(op);
+
+  os << newline;
 }
 
-void IrPrinter::PrintGeneralOperation(Operation* op) {
+void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -183,8 +207,8 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(Operation* op) {
-  PrintGeneralOperation(op);
+void IrPrinter::PrintGeneralOperation(Operation* op) {
+  PrintOperationWithNoRegion(op);
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -201,12 +225,13 @@ void IrPrinter::PrintRegion(const Region& region) {
 }
 
 void IrPrinter::PrintBlock(const Block& block) {
-  os << "{\n";
+  os << indentation() << "{\n";
+  cur_indentation_level_++;
   for (auto& item : block) {
     PrintOperation(&item);
-    os << newline;
   }
-  os << "}\n";
+  cur_indentation_level_--;
+  os << indentation() << "}\n";
 }
 
 void IrPrinter::PrintValue(Value v) {
@@ -234,7 +259,7 @@ void IrPrinter::PrintValue(Value v) {
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
-  os << " (";
+  os << "(";
   auto num_op_result = op->num_results();
   std::vector<Value> op_results;
   op_results.reserve(num_op_result);
@@ -328,9 +353,6 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
   IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
   aliases_[key] = alias;
-}
-void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
-  printer.PrintGeneralOperation(op);
 }
 
 void Program::Print(std::ostream& os) const {

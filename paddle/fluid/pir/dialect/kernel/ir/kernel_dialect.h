@@ -29,8 +29,7 @@ class KernelDialect : public pir::Dialect {
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();
@@ -46,8 +45,7 @@ class CustomKernelDialect : public pir::Dialect {
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();
@@ -64,8 +62,7 @@ class OneDNNKernelDialect : public pir::Dialect {
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();

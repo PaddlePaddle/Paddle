@@ -31,6 +31,10 @@ class Operation;
 class IrPrinter;
 class IrParser;
 class DialectInterface;
+
+using OpPrintFn =
+    std::function<void(Operation *op, IrPrinter &printer)>;  // NOLINT
+
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
 /// can define a series of types, attributes, operations, etc. An instance of
@@ -154,8 +158,7 @@ class IR_API Dialect {
     IR_THROW("dialect has no registered attribute parsing hook");
   }
 
-  virtual void PrintOperation(Operation *op,
-                              IrPrinter &printer) const;  // NOLINT
+  virtual OpPrintFn PrintOperation(Operation *op) const;
 
   virtual Operation ParseOperation(IrParser &parser) {  // NOLINT
     IR_THROW("dialect has no registered operation parsing hook");
