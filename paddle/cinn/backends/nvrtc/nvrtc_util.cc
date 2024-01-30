@@ -175,7 +175,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
     CHECK(mkdir(dir.c_str(), 7) != -1) << "Fail to mkdir " << dir;
   }
 
-  // get unqiue prefix name
+  // get unique prefix name
   prefix_name_ = dir + "/" + cinn::common::UniqName("rtc_tmp");
 
   auto cuda_c_file = prefix_name_ + ".cu";
