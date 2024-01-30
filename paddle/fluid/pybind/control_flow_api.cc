@@ -29,9 +29,9 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
@@ -44,6 +44,7 @@ using paddle::pybind::PyIfOp;
 using paddle::pybind::PyWhileOp;
 using pir::Block;
 using pir::Builder;
+using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
 using pir::Region;
@@ -60,6 +61,11 @@ void BindIfOp(py::module* m) {
     return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
         cond, std::vector<Type>{}));
   });
+  m->def("build_if_op", [](const std::vector<Value>& cond) {
+    auto& builder = ApiBuilder::Instance().GetBuilder();
+    auto new_cond = builder->Build<CombineOp>(cond).out();
+    return PyIfOp(builder->Build<IfOp>(new_cond, std::vector<Type>{}));
+  });
   py::class_<PyIfOp> if_op(*m, "IfOp", R"DOC(
     The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional 'update_output' interface.
     The 'update_output' interface will construct a new IfOp operation to replace its underlying IfOp. In the process, the original
@@ -67,12 +73,13 @@ void BindIfOp(py::module* m) {
   )DOC");
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
+      .def("cond", &PyIfOp::cond)
       .def("update_output", &PyIfOp::UpdateOutput)
       .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
-          op_list.append(self.result(i));
+          op_list.append(static_cast<pir::Value>(self.result(i)));
         }
         return op_list;
       });
@@ -126,7 +133,7 @@ Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
       PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
                         false,
                         phi::errors::InvalidArgument(
-                            "The last container in foward while op must used "
+                            "The last container in forward while op must used "
                             "after construct while_grad op"));
       break;
     }
@@ -236,7 +243,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       body_block.arg(arg_index).ReplaceAllUsesWith(
           operand_source(operand_index));
-      body_block.EraseArgument(arg_index);
+      body_block.EraseArg(arg_index);
       no_change = false;
       res[operand_index - 1u] = operand_source(operand_index);
     } else {

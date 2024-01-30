@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
@@ -26,6 +27,10 @@ namespace cinn {
 namespace ir {
 
 void DynamicShapeGroupScheduler::Init() {
+  VLOG(4) << "=============================Start group "
+             "schedule==============================";
+  VLOG(4) << "original group func body: \n"
+          << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
   tactics_.emplace_back(new AlignIterSpaceTactic());
   tactics_.emplace_back(new ComputeInlineTactic());
@@ -37,7 +42,17 @@ void DynamicShapeGroupScheduler::Init() {
 
 void DynamicShapeGroupScheduler::InitBuckets() {
   std::unordered_set<std::string> output_names = OutputTensorNames();
-  ir::Expr fake_predicate = ir::LE::Make(Expr(1023), Expr(1024));
+
+  auto OutOfRange =
+      [](ir::Expr extent, int lower_bound, int upper_bound) -> bool {
+    if (!extent.is_constant()) return false;
+    int extent_value = static_cast<int>(extent.get_constant());
+    if (extent_value < lower_bound || extent_value >= upper_bound) {
+      return true;
+    }
+    return false;
+  };
+
   auto InitBucket = [&](BucketInfo&& bucket_info) {
     std::unique_ptr<ir::IRSchedule> ir_sch =
         std::make_unique<ir::IRSchedule>(*ir_sch_);
@@ -46,6 +61,14 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ir::ScheduleBlockNode* global_master =
         FindGlobalMasterNode(schedule_block_graph);
     IterativeSpaceInfo iter_space_info = ConstructIterSpaceInfo(global_master);
+    if (OutOfRange(iter_space_info.total_sp_extent,
+                   bucket_info.sp_lower_bound,
+                   bucket_info.sp_upper_bound) ||
+        OutOfRange(iter_space_info.total_rb_extent,
+                   bucket_info.rb_lower_bound,
+                   bucket_info.rb_upper_bound)) {
+      return;
+    }
     SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
         iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
     SymbolicPredicate sp_upper_bound_predicate = ir::LT::Make(
@@ -69,6 +92,7 @@ void DynamicShapeGroupScheduler::InitBuckets() {
                                  std::move(schedule_context)};
     bucket_contexts_.emplace_back(std::move(bucket_context));
   };
+
   // naive buckets
   // 1. {sp_extent[1 - 1024], rb_extent[1 - 256]}
   InitBucket({/* sp_lower_bound = */ 1,
@@ -134,6 +158,7 @@ DynamicShapeGroupScheduler::GetIRs() {
 
 IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     ScheduleBlockNode* node) {
+  VLOG(5) << "global master: " << node->id();
   IterativeSpaceInfo info;
   std::vector<int> sp_iter_indices;
   std::vector<int> rb_iter_indices;
@@ -179,12 +204,16 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       CHECK_NOTNULL(index.as_var());
       ir::Var iter_var = index.as_var_ref();
       ir::Expr iter_value = iter_var2value.at(iter_var);
-      CHECK_NOTNULL(iter_value.as_var());
+      CHECK(iter_value.as_var() || iter_value.is_constant());
       ir::For* for_node;
-      for (ir::Expr& loop : loops) {
-        if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
-          for_node = loop.As<ir::For>();
+      if (iter_value.as_var()) {
+        for (ir::Expr& loop : loops) {
+          if (loop.As<ir::For>()->loop_var == iter_value.as_var_ref()) {
+            for_node = loop.As<ir::For>();
+          }
         }
+      } else if (iter_value.is_constant()) {
+        for_node = loops.at(loop_idx).As<ir::For>();
       }
       CHECK_NOTNULL(for_node);
       bool is_reduce_iter_var = reduce_iter_vars.count(iter_var) > 0;
@@ -227,8 +256,8 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     const ir::Expr& extent = std::get<0>(axis);
     rb_extent = rb_extent * extent;
   }
-  info.total_sp_extent = sp_extent;
-  info.total_rb_extent = rb_extent;
+  info.total_sp_extent = common::AutoSimplify(sp_extent);
+  info.total_rb_extent = common::AutoSimplify(rb_extent);
 
   return info;
 }

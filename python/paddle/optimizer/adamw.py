@@ -19,7 +19,7 @@ from collections.abc import Callable
 import paddle
 from paddle import pir
 from paddle.base.libpaddle import DataType
-from paddle.pir import OpResult
+from paddle.pir import Value
 
 from .. import _C_ops
 from ..base import core, framework
@@ -175,14 +175,14 @@ class AdamW(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not 0 <= beta1 < 1:
+        if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
             raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if not 0 <= beta2 < 1:
+        if not isinstance(beta1, Value) and not 0 <= beta2 < 1:
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
-        if not 0 <= epsilon:
+        if not isinstance(beta1, Value) and not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
-            weight_decay, (framework.Variable, OpResult)
+            weight_decay, (framework.Variable, Value)
         ):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
@@ -375,7 +375,7 @@ class AdamW(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, (Variable, OpResult))
+            if isinstance(self._beta1, (Variable, Value))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -386,7 +386,7 @@ class AdamW(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, (Variable, OpResult))
+            if isinstance(self._beta2, (Variable, Value))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,

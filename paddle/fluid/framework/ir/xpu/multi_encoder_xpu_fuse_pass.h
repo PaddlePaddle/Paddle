@@ -153,14 +153,25 @@ class MultiEncoderXPUFusePass : public FusePassBase {
   // 2. Concat q_w, k_w, v_w
   // 3. Generate qkv_w_max tensor
   // 4. Quant qkv_w to int16
-  void PrepareQKVWeight(Graph* graph,
-                        Scope* scope,
-                        BlockDesc* block,
-                        Node* q_w,
-                        Node* k_w,
-                        Node* v_w,
-                        Node** qkv_w,
-                        Node** qkv_w_max) const;
+  void PrepareQKVWeight(
+      Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      Node* q_w,
+      Node* k_w,
+      Node* v_w,
+      bool enable_int8,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      Node** qkv_w,
+      Node** qkv_w_max,
+      Node** qkv_scale_max) const;
+  void PrepareInputMax(
+      Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      std::unordered_map<std::string, std::vector<Node*>>* node_maps,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      std::vector<Node*>* input_max_nodes) const;
 
   // 1. Cast bias to fp32
   // 2. Concat q/k/v bias

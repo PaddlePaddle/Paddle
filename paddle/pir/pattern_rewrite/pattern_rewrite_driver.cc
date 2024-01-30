@@ -172,8 +172,7 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     // that single use values often have more canonicalization opportunities.
     if (!operand || (!operand.use_empty() && !operand.HasOneUse())) return;
 
-    if (auto* def_op = operand.dyn_cast<pir::OpResult>().owner())
-      AddToWorklist(def_op);
+    if (auto* def_op = operand.defining_op()) AddToWorklist(def_op);
   }
 
   void AddOperandsToWorklist(const std::vector<pir::Value> operands) {
@@ -221,10 +220,26 @@ std::pair<bool, int64_t> ApplyPatternsGreedily(
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
   auto [converged, num_rewrites] = driver.Simplify();
   if (!converged) {
-    LOG(WARNING) << "The pattern rewrite did not converge after scaning "
+    LOG(WARNING) << "The pattern rewrite did not converge after scanning "
                  << config.max_iterations << " times";
   }
   return std::make_pair(converged, num_rewrites);
+}
+
+IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
+    Operation* op,
+    const FrozenRewritePatternSet& patterns,
+    GreedyRewriteConfig config) {
+  bool sum_converged = true;
+  int64_t sum_num_rewrites = 0;
+  for (uint32_t i = 0; i < op->num_regions(); ++i) {
+    Region& region = op->region(i);
+    auto [converged, num_rewrites] =
+        ApplyPatternsGreedily(region, patterns, config);
+    sum_converged &= converged;
+    sum_num_rewrites += num_rewrites;
+  }
+  return std::make_pair(sum_converged, sum_num_rewrites);
 }
 
 }  // namespace pir

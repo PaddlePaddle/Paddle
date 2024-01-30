@@ -128,7 +128,7 @@ class GradientAccumulator {
 
  protected:
   VariableWrapper* var_;
-  // NOTE: only gradient accumulater of leaf tensor should hold
+  // NOTE: only gradient accumulator of leaf tensor should hold
   // inner_var_, So not hold it by other shared pointer.
   std::shared_ptr<VariableWrapper> inner_var_;
   size_t ref_cnt_{0};

@@ -25,7 +25,7 @@
 namespace cinn::frontend::paddle {
 namespace framework_proto = ::cinn::frontend::paddle::proto;
 
-/// For VarDesc transfrom
+/// For VarDesc transform
 #define TRANS_VAR_ANY_WITH_CPP_IMPL(T)                             \
   template <>                                                      \
   void TransformVarDescCppToAny<T>(const cpp::VarDesc &cpp_desc,   \

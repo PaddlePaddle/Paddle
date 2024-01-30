@@ -42,3 +42,11 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_cross_mesh_reshard PROPERTIES TIMEOUT "120" LABELS
                                                           "RUN_TYPE=HYBRID")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_semi_auto_parallel_llama_model_vpp MODULES
+    test_semi_auto_parallel_llama_model_vpp ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_semi_auto_parallel_llama_model_vpp
+                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
+endif()

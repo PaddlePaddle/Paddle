@@ -123,7 +123,7 @@ class IR_API CombineOp : public pir::Op<CombineOp> {
     }
     return inputs;
   }
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 };
 
 ///
@@ -172,8 +172,8 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
 
   void VerifySig() const;
   pir::Value input() { return operand_source(0); }
-  std::vector<OpResult> outputs() {
-    std::vector<OpResult> res;
+  std::vector<Value> outputs() {
+    std::vector<Value> res;
     for (uint32_t idx = 0; idx < num_results(); idx++) {
       res.push_back(result(idx));
     }
@@ -208,7 +208,7 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
                     Type output_type);
 
   void VerifySig() const;
-  OpResult out() { return result(0); }
+  Value out() { return result(0); }
   Attribute value() const;
 };
 
@@ -222,6 +222,11 @@ class IR_API ConstantTensorOp : public ConstantOp {
 
   static ConstantTensorOp dyn_cast(Operation *op);
   static bool classof(const Operation *op);
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &name,
+                    Type output_type);
 
   void VerifySig() const;
 

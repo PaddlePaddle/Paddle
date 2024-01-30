@@ -18,9 +18,6 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
@@ -32,31 +29,22 @@ class ReplaceFetchWithShadowOutputPattern
       paddle::dialect::FetchOp op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
     rewriter.Build<pir::ShadowOutputOp>(
-        op->operand_source(0).dyn_cast<pir::OpResult>(),
+        op->operand_source(0),
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
     rewriter.EraseOp(op);
     return true;
   }
 };
 
-class ReplaceFetchWithShadowOutputPass : public pir::Pass {
+class ReplaceFetchWithShadowOutputPass : public pir::PatternRewritePass {
  public:
   ReplaceFetchWithShadowOutputPass()
-      : pir::Pass("replace_fetch_with_shadow_output_pass", 0) {}
+      : pir::PatternRewritePass("replace_fetch_with_shadow_output_pass", 0) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ReplaceFetchWithShadowOutputPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    AddStatistics(num_rewrites);
+    return ps;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

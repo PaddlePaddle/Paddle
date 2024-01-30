@@ -165,7 +165,7 @@ class QuantizationTransformPass:
                 preprocess method works or not. The function's input is non-quantized
                 activation and function returns processed activation to be quantized.
                 If None, the activation will be quantized directly. Default is None.
-            optimizer_func(function): Fuction return a optimizer. When 'is_test' is
+            optimizer_func(function): Function return a optimizer. When 'is_test' is
                 False and user want to use self-defined quantization function and
                 preprocess function, this function must be set. Default is None.
             executor(base.Executor): If user want to use self-defined quantization
@@ -300,10 +300,10 @@ class QuantizationTransformPass:
 
                     # if var node is weight and weight_preprocess_func is not None,
                     # will insert weight preprocess func
-                    # to preorocess weight before quantization
+                    # to preprocess weight before quantization
                     # if var node is activation and act_preprocess_func is not None,
                     # will insert activation preprocess func
-                    # to preorocess activation before quantization
+                    # to preprocess activation before quantization
                     if is_weight and self._weight_preprocess_func is not None:
                         var_node = self._insert_func(
                             graph, self._weight_preprocess_func, var_node, op
@@ -414,7 +414,7 @@ class QuantizationTransformPass:
         if not self._is_test:
             self._create_global_step(graph)
         ops = graph.all_op_nodes()
-        # Do the preproccess of quantization, such as skipping some ops
+        # Do the preprocess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:
             if (
@@ -2550,10 +2550,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
                 # if var node is weight and weight_preprocess_func is not None,
                 # will insert weight preprocess func
-                # to preorocess weight before quantization
+                # to preprocess weight before quantization
                 # if var node is activation and act_preprocess_func is not None,
                 # will insert activation preprocess func
-                # to preorocess activation before quantization
+                # to preprocess activation before quantization
                 if is_weight and self._weight_preprocess_func is not None:
                     var_node = self._insert_func(
                         graph, self._weight_preprocess_func, var_node, op
@@ -2762,7 +2762,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             ):
                 self.persistable_cast_output_vars.append(op.outputs[0].name())
 
-        # Do the preproccess of quantization, such as skipping some ops
+        # Do the preprocess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:
             if (
@@ -3364,7 +3364,7 @@ class AddQuantDequantForInferencePass:
                         dequantized_vars_map[var_name] = dequant_var_node
                     dequant_node_map[var_name] = dequant_var_node
 
-        # remove unuse node and link act quant/dequant linear to op node
+        # remove unused node and link act quant/dequant linear to op node
         for op_node in graph.all_op_nodes():
             if op_node.name() == 'moving_average_abs_max_scale':
                 graph.safe_remove_nodes(op_node)
@@ -3597,7 +3597,7 @@ class AddQuantDequantForResidual:
 
     def _insert_quant_dequant(self, graph, var_node, op):
         """
-        Insert per tensort quantize_linear and dequantize_linear node between var_node and op
+        Insert per tensor quantize_linear and dequantize_linear node between var_node and op
         """
         insert_quant_pass = InsertQuantizeLinear(
             self._place,

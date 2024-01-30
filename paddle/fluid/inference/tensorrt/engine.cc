@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include <NvInfer.h>
 #include <glog/logging.h>
-
 #include <string>
 
 #include "NvInferRuntimeCommon.h"
@@ -29,7 +28,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-thread_local int TensorRTEngine::predictor_id_per_thread = -1;
+thread_local int TensorRTEngine::predictor_id_per_thread = 0;
 
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
@@ -176,7 +175,12 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 #if IS_TRT_VERSION_GE(8500)
   for (size_t j = 0; j < buffers->size(); ++j) {
     auto name = context->getEngine().getBindingName(j);
-    context->setTensorAddress(name, (*buffers)[j]);
+    if (context->getEngine().isShapeBinding(j) &&
+        context->getEngine().bindingIsInput(j)) {
+      continue;
+    } else {
+      context->setTensorAddress(name, (*buffers)[j]);
+    }
   }
 #endif
 

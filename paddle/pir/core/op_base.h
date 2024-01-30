@@ -17,9 +17,9 @@
 
 #include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_support.h"
-#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/utils.h"
+#include "paddle/pir/core/value.h"
 
 namespace pir {
 class Builder;
@@ -49,7 +49,7 @@ class IR_API OpBase {
 
   Block *parent() const { return operation()->GetParent(); }
 
-  // Attribtue related interfaces
+  // Attribute related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
   Attribute attribute(const std::string &key) const {
     return operation()->attribute(key);
@@ -66,7 +66,7 @@ class IR_API OpBase {
     return operation()->operand_type(index);
   }
 
-  OpResult result(uint32_t index) const { return operation()->result(index); }
+  Value result(uint32_t index) const { return operation()->result(index); }
 
   template <typename T = Type>
   T result_type(uint32_t index) const {
