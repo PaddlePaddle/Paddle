@@ -57,6 +57,7 @@ need_export_symbol_op_list = [
     'FetchOp',
     'MatmulOp',
     'SoftmaxOp',
+    'ReshapeOp',
     'TransposeOp',
 ]
 
