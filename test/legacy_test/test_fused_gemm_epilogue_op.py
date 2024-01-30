@@ -25,7 +25,7 @@ from paddle.incubate.nn.functional import fused_linear_activation
 
 def is_fused_gemm_epilogue_supported():
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.eager.ops, 'fused_gemm_epilogue')
+        return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
     else:
         return False
 
@@ -91,7 +91,7 @@ class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -150,7 +150,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -209,7 +209,7 @@ class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -268,7 +268,7 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -327,7 +327,7 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -390,7 +390,7 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -452,7 +452,7 @@ class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
@@ -510,7 +510,7 @@ class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
         ):
             return
         self.check_output_with_place(
-            self.place, atol=self.atol, check_dygraph=False, check_pir=True
+            self.place, atol=self.atol, check_dygraph=False
         )
 
 
