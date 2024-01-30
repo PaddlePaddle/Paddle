@@ -80,7 +80,6 @@ class TestLayer(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
         outs = net(*self.inputs)
         return outs
 
@@ -94,7 +93,6 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-6)
 
     # NOTE prim + cinn lead to error
-    # NOTE can not pass when atol=1e-8 with prim
     def _test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
