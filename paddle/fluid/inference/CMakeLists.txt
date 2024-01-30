@@ -35,7 +35,7 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
-set(utils_modules pretty_log string_helper benchmark utf8proc)
+set(utils_modules pretty_log string_helper utf8proc)
 
 add_subdirectory(api)
 
@@ -91,7 +91,8 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/paddle_infer_contrib.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/benchmark.cc)
 
 # NOTE(Aurelius84): For inference library, some DEPS is usless
 # such as non-infer operator related targets et.al.
