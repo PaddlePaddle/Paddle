@@ -15,14 +15,11 @@
 import hashlib
 import os
 import os.path as osp
-import shlex
 import shutil
-import subprocess
 import sys
 import tarfile
 import time
 import zipfile
-from urllib.parse import urlparse
 
 import httpx
 
@@ -198,9 +195,7 @@ def _get_download(url, fullname):
         return False
 
 
-_download_methods = {
-    'get': _get_download,
-}
+_download_methods = {'get': _get_download}
 
 
 def _download(url, path, md5sum=None, method='get'):
