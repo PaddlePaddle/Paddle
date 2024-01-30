@@ -42,27 +42,27 @@ class LayerCase(paddle.nn.Layer):
         var_10 = paddle.tensor.math.maximum(var_2, var_6)
         var_11 = paddle.tensor.math.minimum(var_3, var_7)
         var_12 = paddle.tensor.math.minimum(var_4, var_8)
-        var_13 = var_11.__sub__(var_9)
+        var_13 = var_11 - var_9
         var_14 = var_13.clip(0)
-        var_15 = var_12.__sub__(var_10)
+        var_15 = var_12 - var_10
         var_16 = var_15.clip(0)
-        var_17 = var_14.__mul__(var_16)
-        var_18 = var_3.__sub__(var_1)
-        var_19 = var_4.__sub__(var_2)
-        var_20 = var_18.__mul__(var_19)
+        var_17 = var_14 * var_16
+        var_18 = var_3 - var_1
+        var_19 = var_4 - var_2
+        var_20 = var_18 * var_19
         var_21 = var_20.clip(0)
-        var_22 = var_7.__sub__(var_5)
-        var_23 = var_8.__sub__(var_6)
-        var_24 = var_22.__mul__(var_23)
+        var_22 = var_7 - var_5
+        var_23 = var_8 - var_6
+        var_24 = var_22 * var_23
         var_25 = var_24.clip(0)
-        var_26 = var_21.__add__(var_25)
-        var_27 = var_26.__sub__(var_17)
-        var_28 = var_27.__add__(1e-09)
-        var_29 = var_17.__truediv__(var_28)
+        var_26 = var_21 + var_25
+        var_27 = var_26 - var_17
+        var_28 = var_27 + 1e-09
+        var_29 = var_17 / var_28
         var_30 = paddle.nn.functional.loss.binary_cross_entropy_with_logits(
             var_0, var_29, reduction='none'
         )
-        var_31 = var_30.__mul__(1.0)
+        var_31 = var_30 * 1.0
         return var_31
 
 

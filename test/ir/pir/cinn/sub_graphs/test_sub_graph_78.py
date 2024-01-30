@@ -87,7 +87,7 @@ class LayerCase(paddle.nn.Layer):
             op_type='conv2d',
             use_cudnn=True,
         )
-        var_4 = var_3.__mul__(self.parameter_1)
+        var_4 = var_3 * self.parameter_1
         var_5 = paddle.nn.functional.conv._conv_nd(
             var_1,
             self.parameter_3,
