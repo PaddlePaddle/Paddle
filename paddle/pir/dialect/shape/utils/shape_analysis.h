@@ -21,6 +21,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
 
