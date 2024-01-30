@@ -1930,7 +1930,7 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
       num_outs,
       1UL,
       phi::errors::InvalidArgument(
-          "Expected the number of outputs >= 1. Recived %d.", num_outs));
+          "Expected the number of outputs >= 1. Received %d.", num_outs));
 
   PADDLE_ENFORCE_EQ(type,
                     0UL,
@@ -2149,13 +2149,13 @@ static void Interpolate1DInferShapeCheck(
     PADDLE_ENFORCE_NE(
         dim_x[i],
         0,
-        phi::errors::InvalidArgument("The shape of input(x) should be larged "
+        phi::errors::InvalidArgument("The shape of input(x) should be larger "
                                      "than 0, bug received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
   if (size_tensor && !size_tensor->empty()) {
-    // top prority size
+    // top priority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -2225,7 +2225,7 @@ static void Interpolate1DInferShapeCheck(
         out_size_dim.size(),
         1,
         phi::errors::InvalidArgument(
-            "OutSize's dimension size must be 1, but got dimention = %d .",
+            "OutSize's dimension size must be 1, but got dimension = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
         out_size_dim[0],
@@ -2281,14 +2281,14 @@ static void Interpolate2DInferShapeCheck(
     PADDLE_ENFORCE_NE(
         dim_x[i],
         0,
-        phi::errors::InvalidArgument("The shape of input(x) should be larged "
+        phi::errors::InvalidArgument("The shape of input(x) should be larger "
                                      "than 0, bug received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
 
   if (size_tensor && !size_tensor->empty()) {
-    // top prority size
+    // top priority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -2384,7 +2384,7 @@ static void Interpolate2DInferShapeCheck(
         out_size_dim[0],
         2,
         phi::errors::InvalidArgument(
-            "OutSize's dim[0] must be 2, but got dimention = %d .",
+            "OutSize's dim[0] must be 2, but got dimension = %d .",
             out_size_dim[0]));
     // dims will be seted in kernel
     output->set_dtype(x.dtype());
@@ -2434,14 +2434,14 @@ static void Interpolate3DInferShapeCheck(
     PADDLE_ENFORCE_NE(
         dim_x[i],
         0,
-        phi::errors::InvalidArgument("The shape of input(x) should be larged "
+        phi::errors::InvalidArgument("The shape of input(x) should be larger "
                                      "than 0, bug received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
 
   if (size_tensor && !size_tensor->empty()) {
-    // top prority size
+    // top priority size
     auto inputs_name = size_tensor.get();
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
