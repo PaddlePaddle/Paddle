@@ -22,7 +22,7 @@
 import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 from .attn_bias import (
     BlockDiagonalCausalMask,
@@ -99,7 +99,7 @@ def memory_efficient_attention(
     bias = _get_tensor_bias(attn_bias)
     is_test = not training
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         output, logsumexp, seed_and_offset = _C_ops.memory_efficient_attention(
             query,
             key,

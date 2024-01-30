@@ -436,12 +436,9 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
                const bool is_reverse,
                const bool use_seq,
                const bool origin_mode,
-               const bool use_mkldnn,
-               const std::string& mkldnn_data_type,
                const float scale_data,
                const float shift_data,
                const std::vector<float>& scale_weights,
-               const bool force_fp32_output,
                DenseTensor* reordered_h0,
                DenseTensor* xx,
                DenseTensor* batched_input,
@@ -564,17 +561,40 @@ void FusionGRUKernel(const Context& dev_ctx,
                      const bool is_reverse,
                      const bool use_seq,
                      const bool origin_mode,
-                     const bool use_mkldnn,
-                     const std::string& mkldnn_data_type,
-                     const float scale_data,
-                     const float shift_data,
-                     const std::vector<float>& scale_weights,
                      const bool force_fp32_output,
                      DenseTensor* reordered_h0,
                      DenseTensor* xx,
                      DenseTensor* batched_input,
                      DenseTensor* batched_out,
                      DenseTensor* hidden) {
+  const std::string mkldnn_data_type =
+      dev_ctx.HasDnnAttr("mkldnn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("mkldnn_data_type"))
+          : "float32";
+  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
+  PADDLE_ENFORCE_EQ(
+      std::find(std::begin(mkldnn_data_type_list),
+                std::end(mkldnn_data_type_list),
+                mkldnn_data_type) != std::end(mkldnn_data_type_list),
+      true,
+      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
+                                   "int8, bfloat16], but found %s.",
+                                   mkldnn_data_type.c_str()));
+  const float scale_data =
+      dev_ctx.HasDnnAttr("Scale_data")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_data"))
+          : 1.0f;
+  const float shift_data =
+      dev_ctx.HasDnnAttr("Shift_data")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Shift_data"))
+          : 1.0f;
+  std::vector<float> tmp_scale_weights = {1.0f};
+  const std::vector<float> scale_weights =
+      dev_ctx.HasDnnAttr("Scale_weights")
+          ? PADDLE_GET_CONST(std::vector<float>,
+                             dev_ctx.GetDnnAttr("Scale_weights"))
+          : tmp_scale_weights;
   const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
@@ -589,12 +609,9 @@ void FusionGRUKernel(const Context& dev_ctx,
                         is_reverse,
                         use_seq,
                         origin_mode,
-                        use_mkldnn,
-                        mkldnn_data_type,
                         scale_data,
                         shift_data,
                         scale_weights,
-                        force_fp32_output,
                         reordered_h0,
                         xx,
                         batched_input,
@@ -612,12 +629,9 @@ void FusionGRUKernel(const Context& dev_ctx,
                  is_reverse,
                  use_seq,
                  origin_mode,
-                 use_mkldnn,
-                 mkldnn_data_type,
                  scale_data,
                  shift_data,
                  scale_weights,
-                 force_fp32_output,
                  reordered_h0,
                  xx,
                  batched_input,

@@ -61,7 +61,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default
     export FLAGS_call_stack_level=2
-    export FLAGS_set_to_1d=False
 }
 
 function cmake_base() {
@@ -3319,7 +3318,7 @@ function distribute_test() {
     parallel_test_base_gpups
     echo "End gpups tests"
 
-    echo "Download ..."
+    echo "Dowloading ...."
     cd ${work_dir}
     git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
     cd PaddleNLP
@@ -3330,7 +3329,7 @@ function distribute_test() {
     pip install -r ./csrc/requirements.txt
     python setup.py install
     python -m pip install pytest-timeout
-    cd csrc && python  setup_cuda.py install
+    cd csrc && python setup_cuda.py install
 
     cd ${work_dir}
     wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
@@ -3339,12 +3338,6 @@ function distribute_test() {
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
 
-    sed -i '35c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
-    sed -i '37c # gpt_auto_recompute_bs16_fp16_o2_DP4-MP2-Sharding4_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
-    sed -i '38c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP1-PP4_Sharding2_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
-    sed -i '40c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP1-PP4_Sharding2_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
-    sed -i '41c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP2-PP2_Sharding2_stage1' PaddleNLP/scripts/distribute/ci_case_auto.sh
-    sed -i '43c # gpt_auto_recompute_bs16_fp16_o2_DP2-MP2-PP2_Sharding2_stage3' PaddleNLP/scripts/distribute/ci_case_auto.sh
     sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
     export FLAGS_dynamic_static_unified_comm=True
 

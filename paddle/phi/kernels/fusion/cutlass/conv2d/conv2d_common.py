@@ -111,7 +111,7 @@ CommonCutlassConvKernelExecute = """
 
 # CommonConvFunction is a wrapper for many kernels
 # a func_name is like conv2d_bias_silu_sm75
-# it has many kernels, we should pick up a performence-best
+# it has many kernels, we should pick up a performance-best
 # ${func_name} is like conv2d_bias_silu_sm75
 # ${enum_op_name} is like CONV2D_BIAS_SILU
 
