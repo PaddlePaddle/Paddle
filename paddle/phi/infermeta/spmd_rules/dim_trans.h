@@ -57,7 +57,7 @@ class DimTrans {
   Type type_;
 };
 
-// InputDim indicates that the output dimention
+// InputDim indicates that the output dimension
 // is obtained directed from one input dimension.
 class InputDim : public DimTrans {
  public:

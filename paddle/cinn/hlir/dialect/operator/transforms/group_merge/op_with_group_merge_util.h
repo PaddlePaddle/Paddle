@@ -306,7 +306,11 @@ inline bool horizontal_or_can_inline(
       return false;
     }
   }
+
   // vertical relation: 1.can compute inline
+  if (producer->result(0).use_count() == 1) {
+    return true;
+  }
   // if (helper->GetNodeData(producer)->outlinks().size() == 1 &&
   //     helper->output_ops_set_.count(producer) == 0) {
   //   return true;
