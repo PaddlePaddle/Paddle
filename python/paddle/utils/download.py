@@ -205,6 +205,17 @@ def _wget_download(url: str, fullname: str):
             'https',
         ), 'Only support https and http url'
         # using wget to download url
+
+        if fullname == '':
+            raise ValueError('fullname should not be empty')
+        
+        normalized_filename = os.path.normpath(fullname)
+        if '/' in normalized_filename or '\\' in normalized_filename:
+            raise ValueError(
+                f'fullname should be a filename not a path, but got {fullname}'
+            )
+        
+
         tmp_fullname = shlex.quote(fullname + "_tmp")
         url = shlex.quote(url)
         # –user-agent
