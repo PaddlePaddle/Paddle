@@ -73,7 +73,7 @@ int gcd(int a, int b) {
 }
 
 //////// All the following symbolic computation methods are implemented
-/// referencing to the book <Computer Algegra and
+/// referencing to the book <Computer Algebra and
 /// Symbolic Computation - Joel S. Cohen>
 
 template <typename T>
@@ -1348,7 +1348,7 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
           return const_operand;
         }
       }
-      // not unfold var for var may be eliminated in the caculation
+      // not unfold var for var may be eliminated in the calculation
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, false)) {
         // if non_const_operand's lower_bound is larger than const_operand, then
         // non_const_operand must be larger than const_operand
@@ -1448,10 +1448,10 @@ Expr CasSimplifyMutator::SimplifyCmp(Expr u) {
 }
 
 /**
- * deal with index's div-mod add simplification, tempory solution, not cover all
- * situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2: (m /
- * n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is
- * int)
+ * deal with index's div-mod add simplification, temporary solution, not cover
+ * all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2:
+ * (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type
+ * is int)
  */
 Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   auto sum = tmp.As<Sum>();
@@ -1546,11 +1546,11 @@ Expr CasSimplifyMutator::operator()(Expr u) {
 
   if (u.As<Sum>()) {
     auto tmp = detail::SumOrProductGetSingleElementsRec(SimplifySum(u));
-    // deal with index's div-mod add simplification, tempory solution, not cover
-    // all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case
-    // 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2,
-    // n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 = n1 * n2
-    // (m, n1, n2, n3's type is int)
+    // deal with index's div-mod add simplification, temporary solution, not
+    // cover all situations. case 1: (m / n) * n + m % n = m (m, n's type is
+    // int) case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m,
+    // n1, n2, n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 =
+    // n1 * n2 (m, n1, n2, n3's type is int)
     return SimplifySpecificSum(tmp);
   }
 
