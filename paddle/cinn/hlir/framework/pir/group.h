@@ -325,6 +325,7 @@ struct Group {
 
 static std::ostream& operator<<(std::ostream& os, const Group& group) {
   ::pir::IrPrinter printer(os);
+  os << "Group " << group.group_id << " :\n";
   for (auto* op : group.ops) {
     printer.PrintOperation(op);
     os << "\n";
