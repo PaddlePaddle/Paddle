@@ -35,9 +35,9 @@ class LayerCase(paddle.nn.Layer):
         var_3 = paddle.tensor.manipulation.reshape(x=var_1, shape=(-1,))
         var_4 = paddle.tensor.manipulation.reshape(x=var_2, shape=(-1, 4))
         var_5 = paddle.tensor.manipulation.concat([var_0])
-        var_6 = var_5.__eq__(1)
+        var_6 = var_5 == 1
         var_7 = paddle.tensor.search.nonzero(var_6)
-        var_8 = var_5.__ge__(0)
+        var_8 = var_5 >= 0
         var_9 = paddle.tensor.search.nonzero(var_8)
         return var_9, var_3, var_5, var_7, var_4
 

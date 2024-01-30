@@ -41,26 +41,26 @@ class LayerCase(paddle.nn.Layer):
         var_9 = paddle.tensor.math.maximum(var_1, var_5)
         var_10 = paddle.tensor.math.minimum(var_2, var_6)
         var_11 = paddle.tensor.math.minimum(var_3, var_7)
-        var_12 = var_10.__sub__(var_8)
+        var_12 = var_10 - var_8
         var_13 = var_12.clip(0)
-        var_14 = var_11.__sub__(var_9)
+        var_14 = var_11 - var_9
         var_15 = var_14.clip(0)
-        var_16 = var_13.__mul__(var_15)
-        var_17 = var_2.__sub__(var_0)
-        var_18 = var_3.__sub__(var_1)
-        var_19 = var_17.__mul__(var_18)
+        var_16 = var_13 * var_15
+        var_17 = var_2 - var_0
+        var_18 = var_3 - var_1
+        var_19 = var_17 * var_18
         var_20 = var_19.clip(0)
-        var_21 = var_6.__sub__(var_4)
-        var_22 = var_7.__sub__(var_5)
-        var_23 = var_21.__mul__(var_22)
+        var_21 = var_6 - var_4
+        var_22 = var_7 - var_5
+        var_23 = var_21 * var_22
         var_24 = var_23.clip(0)
-        var_25 = var_20.__add__(var_24)
-        var_26 = var_25.__sub__(var_16)
-        var_27 = var_26.__add__(1e-09)
-        var_28 = var_16.__truediv__(var_27)
-        var_29 = var_28.__mul__(var_28)
-        var_30 = var_29.__rsub__(1)
-        var_31 = var_30.__mul__(2.5)
+        var_25 = var_20 + var_24
+        var_26 = var_25 - var_16
+        var_27 = var_26 + 1e-09
+        var_28 = var_16 / var_27
+        var_29 = var_28 * var_28
+        var_30 = 1 - var_29
+        var_31 = var_30 * 2.5
         return var_31
 
 

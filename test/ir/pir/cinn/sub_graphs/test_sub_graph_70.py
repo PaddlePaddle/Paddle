@@ -33,13 +33,13 @@ class LayerCase(paddle.nn.Layer):
         var_2,  # (shape: [2], dtype: paddle.int32, stop_gradient: True)
     ):
         var_3 = paddle.tensor.manipulation.gather(var_2, var_0)
-        var_4 = var_1.__eq__(0)
+        var_4 = var_1 == 0
         var_5 = paddle.tensor.creation.ones_like(var_3)
-        var_6 = var_5.__mul__(80)
+        var_6 = var_5 * 80
         var_7 = paddle.tensor.search.where(var_4, var_6, var_3)
-        var_8 = var_1.__eq__(-1)
+        var_8 = var_1 == -1
         var_9 = paddle.tensor.creation.ones_like(var_7)
-        var_10 = var_9.__mul__(-1)
+        var_10 = var_9 * -1
         var_11 = paddle.tensor.search.where(var_8, var_10, var_7)
         return var_11
 
