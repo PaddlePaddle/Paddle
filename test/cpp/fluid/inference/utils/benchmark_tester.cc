@@ -17,7 +17,6 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
-DECLARE_FILE_SYMBOLS(benchmark);
 
 using namespace paddle::inference;  // NOLINT
 TEST(Benchmark, basic) {
