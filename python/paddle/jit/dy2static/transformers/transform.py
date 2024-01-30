@@ -46,7 +46,7 @@ __all__ = []
 
 def apply_optimization(transformers):
     """
-    Judge wheter to apply optimized transformation, such as BreakTransformOptimizer.
+    Judge whether to apply optimized transformation, such as BreakTransformOptimizer.
     And not all optimized transformations are applied by default. It's controlled by
     'export FLAGS_optim_transformation=1'
     """

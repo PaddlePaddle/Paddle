@@ -19,7 +19,7 @@ function collect_failed_tests() {
         exit_code=0
         grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
         if [ $exit_code -eq 0 ]; then
-            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'|grep -v 'Passed'`
 	    failed_test_lists="${failuretest}
             ${failed_test_lists}"
         fi

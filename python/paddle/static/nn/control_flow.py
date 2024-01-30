@@ -750,13 +750,31 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        from paddle.jit.dy2static.utils import UndefinedVar
+
+        def create_fake_value_for_undefined_var():
+            # Create a fake value for create WhileOp, it's type will be reset after body is executed.
+            return paddle.full(shape=[], fill_value=0)
+
+        flattened_loop_vars = flatten(loop_vars)
+
+        undefined_var_mapping = {
+            idx: create_fake_value_for_undefined_var()
+            for idx, var in enumerate(flattened_loop_vars)
+            if isinstance(var, UndefinedVar)
+        }
+        unified_loop_vars = [
+            undefined_var_mapping[idx] if isinstance(var, UndefinedVar) else var
+            for idx, var in enumerate(flattened_loop_vars)
+        ]
+        while_op = build_while_op(pre_cond, unified_loop_vars)
         with while_op.body() as cur_block:
             args = pack_sequence_as(loop_vars, cur_block.args())
             next_vars = body(*args)
+
             try:
                 assert_same_structure(
-                    flatten(next_vars), flatten(loop_vars), check_types=False
+                    flatten(next_vars), unified_loop_vars, check_types=False
                 )
             except ValueError as e:
                 raise ValueError(
@@ -768,6 +786,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             next_cond = cond(*next_vars)
             next_cond.stop_gradient = True
             cf_yield([next_cond, *flatten(next_vars)])
+        # Reset type of UndefinedVar from next_vars
+        for idx, value in undefined_var_mapping.items():
+            value_new_type = flatten(next_vars)[idx].type()
+            value.set_type(value_new_type)
+            cur_block.args()[idx].set_type(value_new_type)
+            while_op.as_operation().results()[idx].set_type(value_new_type)
         return pack_sequence_as(loop_vars, while_op.optimize_update())
 
     if in_dygraph_mode():
@@ -1270,7 +1294,7 @@ class OutputSelector:
 
     @staticmethod
     def constant_to_variable_promotion(out_with_blocks, name):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+        from paddle.jit.dy2static.convert_operators import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
         outs, _ = zip(*out_with_blocks)
@@ -1774,8 +1798,8 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
+    from paddle.jit.dy2static.convert_operators import to_static_variable
     from paddle.jit.dy2static.utils import UndefinedVar
-    from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
     false_var, true_var = inputs
 

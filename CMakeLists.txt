@@ -96,6 +96,13 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
+  if(LINUX)
+    set(CUDA_USE_STATIC_CUDA_RUNTIME
+        OFF
+        CACHE BOOL "" FORCE)
+    set(CMAKE_CUDA_FLAGS "--cudart shared")
+  endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
