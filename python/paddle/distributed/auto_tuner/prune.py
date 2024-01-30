@@ -531,17 +531,25 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     memory_estimation_cmd = [
         "python",
         memory_estimation_tool,
-        "--dp_degree", str(dp_degree),
-        "--mp_degree", str(mp_degree),
-        "--pp_degree", str(pp_degree),
-        "--vpp_degree", str(vpp_degree),
-        "--sharding_degree", str(sharding_degree),
-        "--sharding_stage", str(sharding_stage),
-        "--use_recompute", str(use_recompute),
-        "--micro_batch_size", str(micro_batch_size),
-        "--recompute_granularity", str(recompute_granularity),
+        "--dp_degree",
+        str(dp_degree),
+        "--mp_degree",
+        str(mp_degree),
+        "--pp_degree",
+        str(pp_degree),
+        "--vpp_degree",
+        str(vpp_degree),
+        "--sharding_degree",
+        str(sharding_degree),
+        "--sharding_stage",
+        str(sharding_stage),
+        "--use_recompute",
+        str(use_recompute),
+        "--micro_batch_size",
+        str(micro_batch_size),
+        "--recompute_granularity",
+        str(recompute_granularity),
     ]
-
 
     # get model config
     hidden_size = model_cfg.get('hidden_size', None)
@@ -550,7 +558,9 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     num_attention_heads = model_cfg.get('num_attention_heads', None)
     if num_attention_heads is not None:
-        memory_estimation_cmd.extend(["--num_attention_heads", str(num_attention_heads)])
+        memory_estimation_cmd.extend(
+            ["--num_attention_heads", str(num_attention_heads)]
+        )
 
     num_layers = model_cfg.get('num_layers', None)
     if num_layers is not None:
@@ -558,7 +568,9 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     max_sequence_length = model_cfg.get('max_sequence_length', None)
     if max_sequence_length is not None:
-        memory_estimation_cmd.extend(["--max_sequence_length", str(max_sequence_length)])
+        memory_estimation_cmd.extend(
+            ["--max_sequence_length", str(max_sequence_length)]
+        )
 
     vocab_size = model_cfg.get('vocab_size', None)
     if vocab_size is not None:
@@ -566,8 +578,9 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
     intermediate_size = model_cfg.get('intermediate_size', None)
     if intermediate_size is not None:
-        memory_estimation_cmd.extend(["--intermediate_size", str(intermediate_size)])
-
+        memory_estimation_cmd.extend(
+            ["--intermediate_size", str(intermediate_size)]
+        )
 
     result = subprocess.run(
         memory_estimation_cmd,
