@@ -871,7 +871,6 @@ def gen_einsum_op(equation, *operands):
     """
 
     if in_dynamic_or_pir_mode():
-        print("start einsum:", equation, [o.shape for o in operands])
         return _C_ops.einsum(operands, equation)[0]
     else:
         assert len(operands) <= 2, "Only support two operands in EinsumOp."
@@ -1059,7 +1058,6 @@ def einsum(equation, *operands):
     """
     import os
 
-    print("start einsum:", equation, [o.shape for o in operands])
     if int(os.environ.get('FLAGS_new_einsum', "1")):
         return einsum_v2(equation, *operands)
 

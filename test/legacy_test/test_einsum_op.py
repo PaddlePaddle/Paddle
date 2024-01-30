@@ -133,11 +133,10 @@ class TestEinsumAPI(unittest.TestCase):
                 x.stop_gradient = False
                 inputs.append(x)
             output = paddle.einsum(self.equation, *inputs)
-            output = output.mean()
-            output.backward()
-            paddle.enable_static()
             expect = np.einsum(self.equation, *[x.numpy() for x in inputs])
             np.testing.assert_allclose(output.numpy(), expect)
+            output = output.mean()
+            output.backward()
 
     def set_mandatory(self):
         self.types = []
