@@ -27,10 +27,9 @@ if(WITH_PSCORE)
 endif()
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
-# TODO(gouzil): enable this after the bug is fixed. windows: Exit code 0xc000007b, pr: #53470
-# if(WITH_GPU AND TENSORRT_FOUND)
-#   add_subdirectory(tensorrt)
-# endif()
+if(WITH_GPU AND TENSORRT_FOUND)
+  add_subdirectory(tensorrt)
+endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
