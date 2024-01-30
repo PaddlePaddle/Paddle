@@ -40,7 +40,9 @@ class CUDAMallocAsyncAllocation : public Allocation {
   void RecordGraphCapturingStreams();
   void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
 
-  bool CanBeFreed();
+  void EraseStream(gpuStream_t stream);
+
+  bool CanBeFreed(bool synchronize = false);
   void Free(int dev_id, gpuStream_t free_stream);
 
  private:
@@ -49,13 +51,17 @@ class CUDAMallocAsyncAllocation : public Allocation {
   gpuStream_t malloc_stream_;
   bool used_in_another_stream;
   std::set<gpuStream_t> graph_capturing_stream_set_;
+
+  SpinLock event_map_lock_;
   std::map<gpuStream_t, gpuEvent_t> event_map_;
 };
 
 class CUDAMallocAsyncAllocator : public Allocator {
  public:
-  explicit CUDAMallocAsyncAllocator(const platform::CUDAPlace& place,
-                                    gpuStream_t default_stream);
+  explicit CUDAMallocAsyncAllocator(
+      std::shared_ptr<Allocator> underlying_allocator,
+      const platform::CUDAPlace& place,
+      gpuStream_t default_stream);
 
   bool IsAllocThreadSafe() const override;
   gpuStream_t GetDefaultStream() const;
@@ -66,11 +72,13 @@ class CUDAMallocAsyncAllocator : public Allocator {
   void FreeImpl(phi::Allocation* allocation) override;
   // Implementation of allocating memory of a certain size.
   phi::Allocation* AllocateImpl(size_t size) override;
+  uint64_t ReleaseImpl(const platform::Place& place) override;
 
  private:
-  void ProcessUnfreedAllocations();
+  void ProcessUnfreedAllocations(bool synchronize = false);
   void TryFree(CUDAMallocAsyncAllocation* allocation);
 
+  std::shared_ptr<Allocator> underlying_allocator_;
   platform::CUDAPlace place_;  // The CUDA place (device context)
   gpuStream_t stream_;         // Default stream associated with this allocator
   gpuStream_t free_stream_;

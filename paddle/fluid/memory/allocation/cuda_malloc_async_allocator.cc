@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include <cstdint>
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -69,11 +69,17 @@ void CUDAMallocAsyncAllocation::RecordStream(gpuStream_t stream) {
   }
 }
 
+void CUDAMallocAsyncAllocation::EraseStream(gpuStream_t stream) {
+  std::lock_guard<SpinLock> lock_guard(event_map_lock_);
+  event_map_.erase(stream);
+}
+
 void CUDAMallocAsyncAllocation::Free(int dev_id, gpuStream_t free_stream) {
   platform::RecordedGpuFreeAsync(ptr(), size(), place_.device, malloc_stream_);
 }
 
-bool CUDAMallocAsyncAllocation::CanBeFreed() {
+// if synchronize, we sync the event so the block could be fully released.
+bool CUDAMallocAsyncAllocation::CanBeFreed(bool synchronize) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() && event_map_.empty();
   }
@@ -86,12 +92,16 @@ bool CUDAMallocAsyncAllocation::CanBeFreed() {
 
   for (auto it = event_map_.begin(); it != event_map_.end();) {
     gpuEvent_t& event = it->second;
-    gpuError_t err = cudaEventQuery(event);
-    if (err == cudaErrorNotReady) {
-      VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      return false;
+    if (synchronize) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event));
+    } else {
+      gpuError_t err = cudaEventQuery(event);
+      if (err == cudaErrorNotReady) {
+        VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
+        return false;
+      }
+      PADDLE_ENFORCE_GPU_SUCCESS(err);
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
     VLOG(8) << "Destroy event " << event;
     it = event_map_.erase(it);
@@ -100,15 +110,19 @@ bool CUDAMallocAsyncAllocation::CanBeFreed() {
 }
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
-    const platform::CUDAPlace& place, gpuStream_t default_stream)
-    : place_(place), stream_(default_stream) {
+    std::shared_ptr<Allocator> underlying_allocator,
+    const platform::CUDAPlace& place,
+    gpuStream_t default_stream)
+    : underlying_allocator_(std::move(underlying_allocator)),
+      place_(place),
+      stream_(default_stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamCreateWithPriority(&free_stream_, cudaStreamNonBlocking, 0));
 }
 
 bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
 
-void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations() {
+void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations(bool synchronize) {
   if (unfreed_allocations_.empty()) {
     return;
   }
@@ -117,7 +131,7 @@ void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations() {
   for (auto it = unfreed_allocations_.begin();
        it != unfreed_allocations_.end();) {
     CUDAMallocAsyncAllocation* allocation = (*it);
-    if (allocation->CanBeFreed()) {
+    if (allocation->CanBeFreed(synchronize)) {
       allocation->Free(place_.device, free_stream_);
       delete allocation;
       it = unfreed_allocations_.erase(it);
@@ -135,6 +149,21 @@ void CUDAMallocAsyncAllocator::TryFree(CUDAMallocAsyncAllocation* allocation) {
     std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
     unfreed_allocations_.emplace_back(allocation);
   }
+}
+
+uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const platform::Place& place) {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+    VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
+    return 0;
+  }
+
+  uint64_t released_size = 0;
+  // we synchronize the event so all the block could be release.
+  ProcessUnfreedAllocations(true);
+  if (underlying_allocator_)
+    released_size += underlying_allocator_->Release(place_);
+  VLOG(8) << "Release " << released_size << " bytes memory from all streams";
+  return released_size;
 }
 
 void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* phi_allocation) {

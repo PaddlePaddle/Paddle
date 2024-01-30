@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include <cstdint>
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
@@ -339,8 +339,6 @@ class AllocatorFacadePrivate {
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, size_t size) {
-    VLOG(6) << "GetAllocator"
-            << " " << place << " " << size;
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : GetAllocatorMap())
@@ -350,6 +348,9 @@ class AllocatorFacadePrivate {
                       allocators.end(),
                       platform::errors::NotFound(
                           "No allocator found for the place, %s", place));
+    VLOG(6) << "[GetAllocator]"
+            << " place = " << place << " size = " << size
+            << " Allocator = " << iter->second;
     return iter->second;
   }
 
@@ -500,9 +501,12 @@ class AllocatorFacadePrivate {
 
   void EraseStream(std::shared_ptr<phi::Allocation> allocation,
                    gpuStream_t stream) {
-    std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
-        std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
-    if (stream_safe_cuda_allocation != nullptr) {
+    if (auto cuda_malloc_async_allocation =
+            std::dynamic_pointer_cast<CUDAMallocAsyncAllocation>(allocation)) {
+      cuda_malloc_async_allocation->EraseStream(stream);
+    } else if (auto stream_safe_cuda_allocation =
+                   std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(
+                       allocation)) {
       stream_safe_cuda_allocation->EraseStream(stream);
     } else {
       VLOG(6) << "EraseStream for a non-StreamSafeCUDAAllocation";
@@ -511,10 +515,16 @@ class AllocatorFacadePrivate {
 
   gpuStream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
-    const std::shared_ptr<StreamSafeCUDAAllocation>
-        stream_safe_cuda_allocation =
-            std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
-    if (stream_safe_cuda_allocation != nullptr) {
+    if (const std::shared_ptr<CUDAMallocAsyncAllocation>
+            cuda_malloc_async_allocation =
+                std::dynamic_pointer_cast<CUDAMallocAsyncAllocation>(
+                    allocation)) {
+      return cuda_malloc_async_allocation->GetOwningStream();
+
+    } else if (const std::shared_ptr<StreamSafeCUDAAllocation>
+                   stream_safe_cuda_allocation =
+                       std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(
+                           allocation)) {
       return stream_safe_cuda_allocation->GetOwningStream();
     }
 
@@ -859,8 +869,9 @@ class AllocatorFacadePrivate {
   }
 
   void InitCUDAMallocAsyncAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     cuda_allocators_[p][stream] =
-        std::make_shared<CUDAMallocAsyncAllocator>(p, stream);
+        std::make_shared<CUDAMallocAsyncAllocator>(allocator, p, stream);
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
@@ -1076,15 +1087,16 @@ class AllocatorFacadePrivate {
         // we set default stream of the Allocator to 0 (nullptr) here, but we
         // would set it to the compute stream of the device with
         // SetDefaultStream later
-        VLOG(8) << "[WrapStreamSafeCUDAAllocatorForDefault] place = " << place;
+
         std::shared_ptr<CUDAMallocAsyncAllocator>&& allocator =
             std::make_shared<CUDAMallocAsyncAllocator>(
+                pair.second,
                 place,
                 /* default_stream = */ nullptr);
         pair.second = allocator;
 
         default_cuda_malloc_async_allocators_[place] = allocator;
-        VLOG(8) << "WrapCUDAMallocAsyncAllocator for " << place
+        VLOG(8) << "[WrapCUDAMallocAsyncAllocatorForDefault] " << place
                 << ", allocator address = " << pair.second.get();
       }
     }
