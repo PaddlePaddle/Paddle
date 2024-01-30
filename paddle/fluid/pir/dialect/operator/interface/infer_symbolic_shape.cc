@@ -580,7 +580,7 @@ bool ConcatOpInferSymbolicShape(
   int axis = shape_data_list[0].shape().size() - 1;
 
   // TODO(zhangbopd): Dim size of non-axis dims may be infered out.
-  for (int i = 0; i < shape_data_list.size(); ++i) {
+  for (size_t i = 0; i < shape_data_list.size(); ++i) {
     if (i != axis) continue;
     out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
   }
