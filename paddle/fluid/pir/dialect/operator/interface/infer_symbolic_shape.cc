@@ -259,7 +259,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   pir::Value operand_source = op->operand_source(0);
 
   const auto &attributes = op->attributes();
-  int axis = attributes["axis"].dyn_cast<pir::Int32Attribute>().data();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
   symbol::TensorListShapeOrDataDimExprs shape_data_list =
       shape_analysis->GetShapeOrDataForValue(operand_source)
