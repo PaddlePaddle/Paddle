@@ -111,13 +111,13 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
-    return force_evnets_to_wait_;
+    return force_events_to_wait_;
   }
 
   void SetForceEventsToWaitInfo(
       std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-          force_evnets_to_wait) {
-    force_evnets_to_wait_ = force_evnets_to_wait;
+          force_events_to_wait) {
+    force_events_to_wait_ = force_events_to_wait;
   }
 
  private:
@@ -168,7 +168,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   ExecutionConfig execution_config_;
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-      force_evnets_to_wait_;
+      force_events_to_wait_;
 
   VariableScope var_scope_;
   Scope* scope_{nullptr};
@@ -187,9 +187,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
-  // need to wait
-  std::shared_ptr<std::vector<size_t>> dependecy_count_;
+  // (*dependency_count_)[i] contains the number of dependencies that the i-th
+  // op need to wait
+  std::shared_ptr<std::vector<size_t>> dependency_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;

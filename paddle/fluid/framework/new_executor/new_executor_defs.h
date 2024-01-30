@@ -63,7 +63,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
-  bool sikp_inplace_{false};
+  bool skip_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -127,9 +127,9 @@ class VariableScope {
 
   std::vector<Variable*>& MutableVarList() { return var_list_; }
 
-  void SetVarSikpInplace(const std::string& name, bool skip);
+  void SetVarSkipInplace(const std::string& name, bool skip);
 
-  bool GetVarSikpInplace(int id) const;
+  bool GetVarSkipInplace(int id) const;
 
  private:
   // not owned, better remove it since all vars should be
@@ -309,7 +309,7 @@ class Instruction {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool need_record_stream_for_gc_ = false;
   gpuStream_t stream_{nullptr};
-  void UpdataRecordStreamForGcInfo();
+  void UpdateRecordStreamForGcInfo();
 #endif
 
   bool can_use_infermeta_ctx_ = false;

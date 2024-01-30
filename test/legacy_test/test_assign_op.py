@@ -262,6 +262,34 @@ class TestAssignOpApiFP16(unittest.TestCase):
         )
 
 
+class TestAssignOut_(unittest.TestCase):
+    def test_pir_assign_out_(self):
+        with paddle.pir_utils.IrGuard():
+            main_program = base.Program()
+            startup_program = base.Program()
+            with base.program_guard(main_program, startup_program):
+                out = paddle.tensor.fill_constant(
+                    [2, 2], dtype='float32', value=0.0
+                )
+                tmp = paddle.tensor.fill_constant(
+                    [2, 2], dtype='float32', value=1.0
+                )
+                tmp.stop_gradient = False
+                x = paddle.add(tmp, tmp)
+                paddle.assign(x, out)
+                loss = paddle.mean(out)
+                dx = paddle.autograd.ir_backward.grad(loss, tmp)
+
+                exe = paddle.static.Executor()
+                dx_out = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={},
+                    fetch_list=[dx],
+                )[0]
+
+        np.testing.assert_array_equal(dx_out, 0.5 * np.ones((2, 2)))
+
+
 class TestAssignOpErrorApi(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):

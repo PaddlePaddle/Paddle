@@ -343,7 +343,7 @@ class GraphLogger:
             sub_op_num += 1
         self.ops.append(sub_op_num)
 
-    def add_subgprah_info(self, strs):
+    def add_subgraph_info(self, strs):
         for i in range(len(self.graphs)):
             strs.append(
                 "------------------------------------------------------"
@@ -359,7 +359,7 @@ class GraphLogger:
         strs.append(f"OpNum: {self.get_op_num()}")
 
         # We can display every subgraph info
-        log_do(5, lambda: self.add_subgprah_info(strs))
+        log_do(5, lambda: self.add_subgraph_info(strs))
 
         strs.append("---------------- PaddleSOT graph info ----------------")
         return "\n".join(strs)
