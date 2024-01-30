@@ -127,7 +127,7 @@ class IR_API Block {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
     for (auto &op = begin; op != end; ++op) {
-      detail::Walk<Order>(&*op, callback);
+      pir::Walk<Order>(&*op, callback);
     }
   }
 
@@ -138,6 +138,12 @@ class IR_API Block {
     return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
   }
 
+  uint32_t num_ops() {
+    uint32_t num = 0;
+    Walk([&num](Operation *) { ++num; });
+    return num;
+  }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
@@ -146,7 +152,7 @@ class IR_API Block {
   friend class Region;
   void SetParent(Region *parent);
 
-  // Take out corresponding Operation and its ownershipe.
+  // Take out corresponding Operation and its ownership.
   friend class Operation;
   Operation *Take(Operation *op);
 

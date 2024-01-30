@@ -94,7 +94,10 @@ PhiKernelInstruction::PhiKernelInstruction(
     }
     SetEventsToWaitInfo(events_to_wait);
   }
-  VLOG(6) << "finish process dist attributes";
+  VLOG(6) << "finish process dist attributes for " << op_name
+          << " : [execution_stream, stream_priority, scheduling_priority] = ["
+          << GetExecutionStream() << ", " << GetStreamPriority() << ", "
+          << GetSchedulingPriority() << "]";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -110,7 +113,8 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
-      yaml_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
+      yaml_interface->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
   VLOG(6) << "finish process yaml_info_parser";
 
   if (infer_meta_interface_) {
@@ -136,6 +140,16 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
+  platform::DeviceContext* dev_ctx =
+      ParseDeviceContext(op,
+                         phi::DeviceContextPool::Instance().Get(
+                             phi::TransToPhiPlace(kernel_key.backend())),
+                         place,
+                         GetExecutionStream(),
+                         GetStreamPriority());
+  SetDeviceContext(dev_ctx);
+  VLOG(6) << "finish process device context";
+
   BuildPhiContext<phi::KernelContext,
                   const phi::TensorBase*,
                   phi::TensorBase*,
@@ -144,18 +158,8 @@ PhiKernelInstruction::PhiKernelInstruction(
                   true>(
       op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
-  kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
+  kernel_context_.SetDeviceContext(dev_ctx);
   VLOG(6) << "finish process kernel context";
-
-  SetDeviceContext(
-      ParseDeviceContext(op,
-                         phi::DeviceContextPool::Instance().Get(
-                             phi::TransToPhiPlace(kernel_key.backend())),
-                         place,
-                         GetExecutionStream(),
-                         GetStreamPriority()));
-  VLOG(6) << "finish process device context";
 
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
@@ -176,12 +180,14 @@ PhiKernelInstruction::~PhiKernelInstruction() {
 }
 
 void PhiKernelInstruction::Run() {
+  VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   (*(phi_kernel_))(&(kernel_context_));
-  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

@@ -35,7 +35,7 @@ class TestConv2dAddFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
 
-    def build_ir_progam(self):
+    def build_ir_program(self):
         with paddle.pir_utils.IrGuard():
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -70,7 +70,7 @@ class TestConv2dAddFusePass(PassTest):
                 return [main_prog, start_prog]
 
     def sample_program(self):
-        yield self.build_ir_progam(), False
+        yield self.build_ir_program(), False
 
     def setUp(self):
         if core.is_compiled_with_cuda():

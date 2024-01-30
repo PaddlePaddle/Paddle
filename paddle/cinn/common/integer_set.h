@@ -20,6 +20,9 @@
 namespace cinn {
 namespace common {
 
+cas_intervals_t CollectVarIntervalsOfExprs(const std::vector<ir::Expr>& exprs,
+                                           bool is_lower_bound_zero = true);
+
 // A naive implementation of Symbolic Expression Analyzer
 class SymbolicExprAnalyzer {
  public:
@@ -41,6 +44,8 @@ class SymbolicExprAnalyzer {
   std::optional<bool> ProveLE(const ir::Expr& lhs, const ir::Expr& rhs) const;
   std::optional<bool> ProveGT(const ir::Expr& lhs, const ir::Expr& rhs) const;
   std::optional<bool> ProveLT(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveDivisible(const ir::Expr& lhs,
+                                     const ir::Expr& rhs) const;
 
   ir::Expr LowerBound(const ir::Expr& expr) const;
   ir::Expr UpperBound(const ir::Expr& expr) const;

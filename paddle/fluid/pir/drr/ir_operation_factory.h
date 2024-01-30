@@ -16,7 +16,7 @@
 
 #include <unordered_map>
 
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 
@@ -62,6 +62,9 @@ class OperationFactory {
 #ifdef PADDLE_WITH_CINN
     RegisterCinnOpGeneratedOpCreator();
 #endif
+#ifdef PADDLE_WITH_DNNL
+    RegisterOnednnOpGeneratedOpCreator();
+#endif
     RegisterManualOpCreator();
   }
 
@@ -69,6 +72,9 @@ class OperationFactory {
   void RegisterPdOpGeneratedOpCreator();
 #ifdef PADDLE_WITH_CINN
   void RegisterCinnOpGeneratedOpCreator();
+#endif
+#ifdef PADDLE_WITH_DNNL
+  void RegisterOnednnOpGeneratedOpCreator();
 #endif
   std::unordered_map<std::string, operation_create_fn> op_creator_map;
 };

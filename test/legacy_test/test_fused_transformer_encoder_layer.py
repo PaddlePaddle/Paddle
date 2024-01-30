@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle.base.framework import default_main_program, in_dygraph_mode
@@ -236,6 +237,30 @@ class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
 
     def setAttnMask(self):
         self.has_attn_mask = False
+
+
+class TestPirFusedTransformerEncoderLayer(unittest.TestCase):
+    def run_program(self):
+        with static_guard():
+            paddle.seed(1)
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                enc_input = paddle.rand((2, 4, 128))
+                attn_mask = paddle.rand((2, 2, 4, 4))
+                encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
+                enc_output = encoder_layer(enc_input, attn_mask)
+
+                exe = paddle.static.Executor()
+                exe.run(startup)
+                out = exe.run(feed={}, fetch_list=[enc_output])
+                return out
+
+    def test_pir(self):
+        out1 = self.run_program()
+        with paddle.pir_utils.IrGuard():
+            out2 = self.run_program()
+        np.testing.assert_allclose(out1, out2)
 
 
 if __name__ == "__main__":

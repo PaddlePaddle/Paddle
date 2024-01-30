@@ -274,8 +274,8 @@ class TransposeCollapsingPass : public ProgramPass {
       // step |    axis   | after_transpose
       //  1   | [0, 2, 1] | [0, 2, 1]
       //  2   | [2, 1, 0] | [1, 2, 0]
-      // so we can fuse tranpose([0, 2, 1]) and tranpose([2, 1, 0]) into
-      // tranpose([1, 2, 0])
+      // so we can fuse transpose([0, 2, 1]) and transpose([2, 1, 0]) into
+      // transpose([1, 2, 0])
       const auto& fused_axis = FuseTransposeAxis(axis, next_axis);
 
       VLOG(4) << "Fuse transpose of {input[" << input_name << "], output["

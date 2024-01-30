@@ -28,7 +28,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
-from paddle.pir import Value, fake_op_result, is_fake_op_result
+from paddle.pir import Value, fake_value, is_fake_value
 
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
@@ -59,13 +59,13 @@ class NestSequence:
         """
         Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        variable_map = ValueDict()  # opresult -> list idx
+        variable_map = ValueDict()  # value -> list idx
         variable_list = []
         for value in paddle.utils.flatten(self._raw_input):
             if not isinstance(value, Value):
                 continue
             if value in variable_map:
-                # remove duplicate opresults.
+                # remove duplicate values.
                 continue
             variable_map[value] = len(variable_list)
             variable_list.append(value)
@@ -133,7 +133,7 @@ class RunableProgram:
     @classmethod
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
-        ret[fake_op_result()] = "FakeVar"
+        ret[fake_value()] = "FakeVar"
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
@@ -551,9 +551,12 @@ class PartialProgramLayer:
 
             def pass_fn(forward_program, backward_program):
                 pm = paddle.base.libpaddle.pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
+                    pm, forward_program
+                )
                 if self._build_strategy.build_cinn_pass:
                     paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
-                    pm.run(forward_program)
+                pm.run(forward_program)
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
@@ -614,7 +617,9 @@ class PartialProgramLayer:
         Return current train or eval program hash id.
         """
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         if self.training:
             return self._train_program_id
         else:
@@ -623,13 +628,17 @@ class PartialProgramLayer:
     @cached_property
     def train_program(self):
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         return self._create_program()
 
     @cached_property
     def infer_program(self):
         if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError("not implement error.")
+            raise NotImplementedError(
+                "Currently, AMP is not supported in PIR mode"
+            )
         return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program):
@@ -656,7 +665,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -680,7 +689,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -691,9 +700,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.global_block().create_var(
@@ -703,13 +712,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for _, op in finded_ops:
+            for _, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.global_block()._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -746,14 +755,14 @@ class PartialProgramLayer:
             with ir_static.program_guard(program, None):
                 # create outputs_grad for backward to avoid full and full_like op.
                 forward_outputs_grads = []
-                for out_op_result in targets:
-                    if out_op_result.stop_gradient is True:
-                        forward_outputs_grads.append(fake_op_result())
+                for out_value in targets:
+                    if out_value.stop_gradient is True:
+                        forward_outputs_grads.append(fake_value())
                     else:
                         value = paddle.full_like(
-                            out_op_result,
+                            out_value,
                             fill_value=1.0,
-                            dtype=out_op_result.dtype,
+                            dtype=out_value.dtype,
                         )
                         forward_outputs_grads.append(value)
                 paddle.base.libpaddle.pir.append_shadow_outputs(
@@ -782,7 +791,7 @@ class PartialProgramLayer:
                         ),
                         grad_outputs=list(
                             filter(
-                                lambda x: not is_fake_op_result(x),
+                                lambda x: not is_fake_value(x),
                                 forward_outputs_grads,
                             )
                         ),
@@ -801,24 +810,18 @@ class PartialProgramLayer:
             # start_idx + 1, main_program, program
             # )
 
-        mapping_op_result = (
-            lambda x: x if isinstance(x, Value) else fake_op_result()
-        )
+        mapping_value = lambda x: x if isinstance(x, Value) else fake_value()
         inputs_size = len(inputs)
-        x_grad_value = list(
-            map(mapping_op_result, grad_info_map[0:inputs_size])
-        )
-        p_grad_value = list(map(mapping_op_result, grad_info_map[inputs_size:]))
-        o_grad_value = list(map(mapping_op_result, forward_outputs_grads))
+        x_grad_value = list(map(mapping_value, grad_info_map[0:inputs_size]))
+        p_grad_value = list(map(mapping_value, grad_info_map[inputs_size:]))
+        o_grad_value = list(map(mapping_value, forward_outputs_grads))
 
         # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
-            filter(lambda x: not is_fake_op_result(x), o_grad_value)
+            filter(lambda x: not is_fake_value(x), o_grad_value)
         )
         output_grads_to_append = list(
-            filter(
-                lambda x: not is_fake_op_result(x), x_grad_value + p_grad_value
-            )
+            filter(lambda x: not is_fake_value(x), x_grad_value + p_grad_value)
         )
         backward_end_op_index = len(program.global_block().ops)
         paddle.base.libpaddle.pir.append_shadow_outputs(
@@ -923,7 +926,7 @@ class PartialProgramLayer:
         return input_vars
 
     def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_op_results(
+        return paddle.framework.core.create_empty_tensors_with_values(
             self._outputs.var_list
         )
 
@@ -1011,7 +1014,7 @@ class PartialProgramLayer:
         forward_params_grads = train_program.param_grad_values
         train_program = train_program.program
         for param, value in zip(params, forward_params_grads):
-            if is_fake_op_result(value):
+            if is_fake_value(value):
                 continue
             if value.is_selected_row_type():
                 param._set_grad_type(
@@ -1041,7 +1044,7 @@ class PartialProgramLayer:
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(

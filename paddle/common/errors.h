@@ -87,7 +87,7 @@ enum ErrorCode {
   EXTERNAL = 12,
 
   // Client specified an unmatched type.
-  // Error type string: "INVALID_TYPE"
+  // Error type string: "InvalidTypeError"
   INVALID_TYPE = 13,
 };
 

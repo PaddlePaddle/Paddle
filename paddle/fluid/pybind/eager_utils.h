@@ -40,7 +40,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -71,9 +71,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype);
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
-bool PyObject_CheckIROpResult(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
-bool PyObject_CheckIRVectorOfOpResult(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
@@ -157,8 +155,8 @@ PyObject* ToPyObject(
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
-PyObject* ToPyObject(const pir::OpResult& value);
-PyObject* ToPyObject(const std::vector<pir::OpResult>& value);
+PyObject* ToPyObject(const pir::Value& value);
+PyObject* ToPyObject(const std::vector<pir::Value>& value);
 
 class PyTensorHook : public egr::TensorHook {
  public:
@@ -395,9 +393,9 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
                                                       bool allow_none = false);
 paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmpytyTensorsWithOpResult(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 

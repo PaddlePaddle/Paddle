@@ -847,7 +847,7 @@ struct GemmFpAIntBSplitK {
     // static_assert(print_type<Mma::>());
 
     // Perform this tile's range of multiply-accumulate (MAC) iterations
-    Mma mma(shared_storage.main_loop, thread_idx, warp_idx, lane_idx);
+    Mma mma(shared_storage.main_loop, -1, thread_idx, warp_idx, lane_idx);
 
     mma(tile_work.k_iters_remaining,
         accumulator_tile,

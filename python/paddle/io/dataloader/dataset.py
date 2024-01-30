@@ -325,7 +325,7 @@ class ComposeDataset(Dataset):
     """
     A Dataset which composes fields of multiple datasets.
 
-    This dataset is used for composing fileds of multiple map-style
+    This dataset is used for composing fields of multiple map-style
     datasets of same length.
 
     Args:

@@ -111,7 +111,7 @@ pass_library(conv2d_trans_filter_dilations_nxn_to_1x1_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
-pass_library(fused_conv2d_add_act_layout_transfer_pass inference)
+pass_library(transfer_layout_pass inference)
 pass_library(transfer_layout_elim_pass inference)
 pass_library(relu6_fuse_pass inference)
 pass_library(silu_fuse_pass inference)
@@ -272,6 +272,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(qk_qkv_attention_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(decoder_attention_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
@@ -318,6 +320,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(sine_pos_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(quant_dequant_xpu_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

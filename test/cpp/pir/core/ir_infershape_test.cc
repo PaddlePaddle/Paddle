@@ -52,6 +52,13 @@ class OperationTest
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
   }
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      const pir::AttributeMap &attributes) {
+    VLOG(4) << "Start infermeta OperationTest";
+    std::vector<pir::Type> argument_outputs;
+    return argument_outputs;
+  }
 };
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(OperationTest)
 IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)

@@ -71,7 +71,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   pir::Value input,
                   pir::Value output,
                   const std::string& op_name) {
-  if (!input.type() || !output.type()) {
+  if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
     return false;
   }
 
@@ -91,7 +91,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       return true;
     }
 
-    auto is_numel_euqal = [](const TensorType& in,
+    auto is_numel_equal = [](const TensorType& in,
                              const TensorType& out) -> bool {
       int64_t in_numel = 1;
       int64_t out_numel = 1;
@@ -127,7 +127,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     };
     // In this version, we don't consider the -1 in ddim, we just calculate the
     // result.
-    auto is_numel_euqal_loose_version = [](const TensorType& in,
+    auto is_numel_equal_loose_version = [](const TensorType& in,
                                            const TensorType& out) -> bool {
       auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
         int64_t numel = 1;
@@ -144,10 +144,10 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     bool equal = false;
     bool relax = (RelaxShapeCheckOps.count(op_name) > 0);
     if (relax) {
-      equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
+      equal = is_numel_equal_loose_version(input_alloc_tensor_type,
                                            output_alloc_tensor_type);
     } else {
-      equal = is_numel_euqal(input_alloc_tensor_type, output_alloc_tensor_type);
+      equal = is_numel_equal(input_alloc_tensor_type, output_alloc_tensor_type);
     }
 
     if (!equal) {
@@ -159,7 +159,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     return false;
   }
   if (eager_dels.count(input) == 0) {
-    VLOG(9) << "     -- input not in eager_deletion_valus, can't do inplace";
+    VLOG(9) << "     -- input not in eager_deletion_vars, can't do inplace";
     return false;
   }
   return true;
@@ -181,7 +181,8 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     if (info_interface) {
       paddle::dialect::OpYamlInfoParser info_parser(
-          info_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
+          info_interface->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
       for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
         if (value == op->operand_source(no_need_buffer_ids[id])) {
@@ -274,23 +275,19 @@ void GetEagerDelValueOfOp(
 std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
 GetEagerDeletionValues(const pir::Block& block) {
   std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
-
   std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
   GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
-
   std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
       eager_dels;
   for (auto& kv : del_value_2_op) {
     eager_dels[kv.second].insert(kv.first);
   }
-
   return eager_dels;
 }
 
 std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     const pir::Block& block) {
   const auto eager_dels = GetEagerDeletionValues(block);
-
   std::unordered_map<pir::Operation*, std::string> inplace_ops;
 
   std::unordered_set<pir::Value> visited_values;
@@ -312,7 +309,6 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       }
       continue;
     }
-
     auto upper_op_attrs = op.attributes();
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -389,7 +385,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         phi::errors::PreconditionNotMet(
             "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
     paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
-        upper_inplace_op_interface->get_op_info_());
+        upper_inplace_op_interface->get_op_info_(upper_op_name + "_"));
     std::unordered_map<uint32_t, uint32_t> inplace_out_2_in =
         upper_inplace_op_info_parser.GetInplaceIdMap();
 
@@ -496,7 +492,7 @@ class InplacePass : public pir::Pass {
         }
       }
     }
-    PrintStatistics(num_rewrites_);
+    AddStatistics(num_rewrites_);
   }
 };
 

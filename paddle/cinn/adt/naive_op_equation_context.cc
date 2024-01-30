@@ -105,7 +105,6 @@ std::optional<DimExpr> GetArgDimExpr(const List<Tensor>& tensors,
   if (dim_idx >= tensor_shape.size()) {
     return std::nullopt;
   }
-  CHECK(tensor_shape.at(dim_idx).has_value());
   return tensor_shape.at(dim_idx);
 }
 

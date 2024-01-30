@@ -252,14 +252,15 @@ class Parallelizer:
         #    but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
         learning_rate = optimizer._learning_rate
-        optimizer = copy.deepcopy(optimizer)
+        new_optimizer = copy.deepcopy(optimizer)
+        new_optimizer._learning_rate = learning_rate
+        new_optimizer._sorted = False
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
-        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with main_program.switch_name_generator_guard("opt_"):
-                optimizer_ops = optimizer.apply_gradients(params_grads)
+                optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
@@ -335,6 +336,15 @@ class Parallelizer:
 
         return main_program, startup_program, params_grads
 
+    def _check_dist_attr(self, program, num_model_chunks, dist_context):
+        for _, block in enumerate(program.blocks):
+            for _, op in enumerate(block.ops):
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                if op_dist_attr is None:
+                    raise ValueError(
+                        f"There is not dist_attr for op[{op.type}]."
+                    )
+
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
     ):
@@ -380,6 +390,21 @@ class Parallelizer:
                     [main_program], [startup_program], self._pass_context
                 )
 
+        # apply master grad pass
+        if self._strategy.amp.enable:
+            amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+            config = {}
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["completer"] = self._completer
+            if amp_config['level'] == "o2" and amp_config["use_master_grad"]:
+                master_grad_pass = new_pass(
+                    "auto_parallel_master_grad_pass", config
+                )
+                master_grad_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+
         # data parallel optimization
         if self._strategy.dp_optimization.enable:
             config = copy.deepcopy(self._strategy.dp_optimization.to_dict())
@@ -396,6 +421,9 @@ class Parallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            if self._strategy.amp.enable:
+                amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config["amp_dtype"] = amp_config['dtype']
             auto_parallel_sharding_pass = new_pass(
                 "auto_parallel_sharding", config
             )
@@ -473,6 +501,13 @@ class Parallelizer:
             )
             auto_parallel_pipeline_pass.apply(
                 [main_program], [startup_program], self._pass_context
+            )
+
+        if use_new_executor():
+            self._check_dist_attr(
+                main_program,
+                self._strategy.pipeline.vpp_degree,
+                self._dist_context,
             )
 
         enable_ir = get_flags("FLAGS_enable_pir_in_executor")[

@@ -22,6 +22,7 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/ir_mapping.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 
@@ -54,9 +55,12 @@ class IR_API Program {
 
   static std::unique_ptr<Program> Parse(std::istream& is, IrContext* ctx);
 
+  std::shared_ptr<Program> Clone(IrMapping& ir_mapping) const;  // NOLINT
+
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }
 
+  uint32_t num_ops() { return block()->num_ops(); }
   Parameter* GetParameter(const std::string& name) const;
   void SetParameter(const std::string& name,
                     std::unique_ptr<Parameter>&& parameter);

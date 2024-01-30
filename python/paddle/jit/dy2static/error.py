@@ -18,12 +18,12 @@ import re
 import sys
 import traceback
 
-import numpy as np  # noqa: F401
+import numpy as np
 
 from .origin_info import Location, OriginInfo, global_origin_info_map
 from .utils import (
     RE_PYMODULE,
-    _is_api_in_module_helper,  # noqa: F401
+    is_api_in_module_helper,
 )
 
 __all__ = []
@@ -214,9 +214,9 @@ class ErrorData:
                 func_str = searched_name.group(0)
                 break
         try:
-            module_result = eval(
-                "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
-            )
+            globals = {'np': np}
+            fn = eval(func_str, globals)
+            module_result = is_api_in_module_helper(fn, "numpy")
             is_numpy_api_err = module_result or (
                 func_str.startswith("numpy.") or func_str.startswith("np.")
             )

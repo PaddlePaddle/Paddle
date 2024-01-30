@@ -21,7 +21,9 @@ from .cauchy import Cauchy
 from .continuous_bernoulli import ContinuousBernoulli
 from .dirichlet import Dirichlet
 from .distribution import Distribution
+from .exponential import Exponential
 from .exponential_family import ExponentialFamily
+from .gamma import Gamma
 from .geometric import Geometric
 from .gumbel import Gumbel
 from .independent import Independent
@@ -58,6 +60,7 @@ __all__ = [
     'ContinuousBernoulli',
     'Dirichlet',
     'Distribution',
+    'Exponential',
     'ExponentialFamily',
     'Multinomial',
     'MultivariateNormal',
@@ -69,6 +72,7 @@ __all__ = [
     'TransformedDistribution',
     'Laplace',
     'LogNormal',
+    'Gamma',
     'Gumbel',
     'Geometric',
     'Binomial',

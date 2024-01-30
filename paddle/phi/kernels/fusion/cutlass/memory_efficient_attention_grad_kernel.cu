@@ -65,7 +65,7 @@ void MemoryEfficientAttentionGradKernel(
         output_grad.dims().size(),
         phi::errors::InvalidArgument(
             "The size of query's dimensions "
-            "should be euqal to output grad. But received query's "
+            "should be equal to output grad. But received query's "
             "dimensions = %d, output grad's dimensions = %d.",
             query.dims().size(),
             output_grad.dims().size()));
@@ -73,7 +73,7 @@ void MemoryEfficientAttentionGradKernel(
                       key.dims().size(),
                       phi::errors::InvalidArgument(
                           "The size of query's dimensions "
-                          "should be euqal to key. But received query's "
+                          "should be equal to key. But received query's "
                           "dimensions = %d, key's dimensions = %d.",
                           query.dims().size(),
                           key.dims().size()));
@@ -81,7 +81,7 @@ void MemoryEfficientAttentionGradKernel(
                       value.dims().size(),
                       phi::errors::InvalidArgument(
                           "The size of query's dimensions "
-                          "should be euqal to value. But received query's "
+                          "should be equal to value. But received query's "
                           "dimensions = %d, value's dimensions = %d.",
                           query.dims().size(),
                           key.dims().size()));
@@ -99,7 +99,7 @@ void MemoryEfficientAttentionGradKernel(
         output_grad.dims()[0],
         phi::errors::InvalidArgument(
             "The batch size of query's dimensions "
-            "should be euqal to output grad. But received query's "
+            "should be equal to output grad. But received query's "
             "batch size = %d, output grad's batch size = %d.",
             query.dims()[0],
             output_grad.dims()[0]));
@@ -107,7 +107,7 @@ void MemoryEfficientAttentionGradKernel(
                       key.dims()[0],
                       phi::errors::InvalidArgument(
                           "The batch size of query's dimensions "
-                          "should be euqal to key. But received query's "
+                          "should be equal to key. But received query's "
                           "batch size = %d, key's batch size = %d.",
                           query.dims()[0],
                           key.dims()[0]));
@@ -115,7 +115,7 @@ void MemoryEfficientAttentionGradKernel(
                       value.dims()[0],
                       phi::errors::InvalidArgument(
                           "The batch size of query's dimensions "
-                          "should be euqal to value. But received query's "
+                          "should be equal to value. But received query's "
                           "batch size = %d, value's batch size = %d.",
                           query.dims()[0],
                           value.dims()[0]));
@@ -126,7 +126,7 @@ void MemoryEfficientAttentionGradKernel(
         value.dims()[1],
         phi::errors::InvalidArgument(
             "The sequence length of key"
-            "should be euqal to value. But received key's sequence length = "
+            "should be equal to value. But received key's sequence length = "
             "%d, value's sequence length = %d.",
             key.dims()[1],
             value.dims()[1]));
@@ -134,7 +134,7 @@ void MemoryEfficientAttentionGradKernel(
                       output_grad.dims()[1],
                       phi::errors::InvalidArgument(
                           "The sequence length of query"
-                          "should be euqal to output grad. But received "
+                          "should be equal to output grad. But received "
                           "query's sequence length = "
                           "%d, output grad's sequence length = %d.",
                           query.dims()[1],
@@ -146,7 +146,7 @@ void MemoryEfficientAttentionGradKernel(
         key.dims()[2],
         phi::errors::InvalidArgument(
             "The head number of query"
-            "should be euqal to key. But received query's head number = "
+            "should be equal to key. But received query's head number = "
             "%d, key's head number = %d.",
             query.dims()[2],
             key.dims()[2]));
@@ -155,7 +155,7 @@ void MemoryEfficientAttentionGradKernel(
         value.dims()[2],
         phi::errors::InvalidArgument(
             "The head number of query"
-            "should be euqal to value. But received query's head number = "
+            "should be equal to value. But received query's head number = "
             "%d, value's head number = %d.",
             query.dims()[2],
             value.dims()[2]));
@@ -163,7 +163,7 @@ void MemoryEfficientAttentionGradKernel(
                       output_grad.dims()[2],
                       phi::errors::InvalidArgument(
                           "The head number of query"
-                          "should be euqal to output grad. But received "
+                          "should be equal to output grad. But received "
                           "query's head number = "
                           "%d, output grad's head number = %d.",
                           query.dims()[2],
@@ -175,7 +175,7 @@ void MemoryEfficientAttentionGradKernel(
         key.dims()[3],
         phi::errors::InvalidArgument(
             "The head size of query"
-            "should be euqal to key. But received query's head size = "
+            "should be equal to key. But received query's head size = "
             "%d, key's head size = %d.",
             query.dims()[3],
             key.dims()[3]));
@@ -184,7 +184,7 @@ void MemoryEfficientAttentionGradKernel(
         output_grad.dims()[3],
         phi::errors::InvalidArgument(
             "The head size of value"
-            "should be euqal to output grad. But received value's head size = "
+            "should be equal to output grad. But received value's head size = "
             "%d, output grad's head size = %d.",
             value.dims()[3],
             output_grad.dims()[3]));
@@ -237,7 +237,7 @@ void MemoryEfficientAttentionGradKernel(
           cu_seqlens_q.get().dims()[0],
           cu_seqlens_k.get().dims()[0],
           phi::errors::InvalidArgument("The first dimension of cu_seqlens_q"
-                                       "should be euqal to cu_seqlens_q."));
+                                       "should be equal to cu_seqlens_q."));
       PADDLE_ENFORCE_EQ(
           q_dims[0],
           1,
@@ -361,7 +361,7 @@ void MemoryEfficientAttentionGradKernel(
         query.dims()[0],
         phi::errors::InvalidArgument(
             "The first dimension of delta"
-            "should be euqal to query. But received delta's first dimension = "
+            "should be equal to query. But received delta's first dimension = "
             "%d, query's first dimension = %d.",
             delta.dims()[0],
             query.dims()[0]));
@@ -369,7 +369,7 @@ void MemoryEfficientAttentionGradKernel(
                       query.dims()[2],
                       phi::errors::InvalidArgument(
                           "The second dimension of delta"
-                          "should be euqal to third dimension query. But "
+                          "should be equal to third dimension query. But "
                           "received delta's second dimension = "
                           "%d, query's third dimension = %d.",
                           delta.dims()[1],
@@ -378,7 +378,7 @@ void MemoryEfficientAttentionGradKernel(
                       query.dims()[1],
                       phi::errors::InvalidArgument(
                           "The third dimension of delta"
-                          "should be euqal to second dimension query. But "
+                          "should be equal to second dimension query. But "
                           "received delta's third dimension = "
                           "%d, query's second dimension = %d.",
                           delta.dims()[2],
@@ -454,19 +454,19 @@ void MemoryEfficientAttentionGradKernel(
                       DimStride(query_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad query"
-                          "should be euqal to the first dimension size of "
+                          "should be equal to the first dimension size of "
                           "query grad's stride"));
     PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
                       DimStride(key_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad key"
-                          "should be euqal to the first dimension size of key "
+                          "should be equal to the first dimension size of key "
                           "grad's stride"));
     PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
                       DimStride(value_grad->dims(), 1),
                       phi::errors::InvalidArgument(
                           "The strideM of grad value"
-                          "should be euqal to the first dimension size of "
+                          "should be equal to the first dimension size of "
                           "value grad's stride"));
 
     PD_MEA_CHECK_OVERFLOW(p.q_strideB, DimStride(query.dims(), 0));

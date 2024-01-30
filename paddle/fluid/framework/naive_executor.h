@@ -77,7 +77,8 @@ class NaiveExecutor {
   void Run();
 
   void RunInterpreterCore(const std::vector<std::string>& feed_names = {},
-                          bool need_fetch = false);
+                          bool need_fetch = false,
+                          bool switch_stream = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   phi::DenseTensor* FindTensor(const std::string& name);
@@ -89,7 +90,7 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void CloneLiteEnigne(int num, void* stream);
+  void CloneLiteEngine(int num, void* stream);
 
   void RegisterOutputHook(const HookFunc& hookfunc);
   void RegisterInputHook(const HookFunc& hookfunc);
