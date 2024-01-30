@@ -85,7 +85,7 @@ class TensorGroup {
   /**
    * Get all tensors which the tensor with given name depends on.
    */
-  std::set<ir::Tensor> GetCrtlDepTensors(const std::string& tensor_name);
+  std::set<ir::Tensor> GetCtrlDepTensors(const std::string& tensor_name);
 
   /**
    * Get Union-Find set algorithm root tensor name which shares memory with the

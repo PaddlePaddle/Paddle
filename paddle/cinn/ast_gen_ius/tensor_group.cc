@@ -152,7 +152,7 @@ void TensorGroup::CtrlDepend(const ir::Tensor& tensor,
   }
 }
 
-std::set<ir::Tensor> TensorGroup::GetCrtlDepTensors(
+std::set<ir::Tensor> TensorGroup::GetCtrlDepTensors(
     const std::string& tensor_name) {
   if (!ctrl_dep_.count(tensor_name)) {
     return {};

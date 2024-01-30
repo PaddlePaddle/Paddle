@@ -309,7 +309,6 @@ class TestDygraphIfTensor(Dy2StTestBase):
             ret = self.dyfunc(x_v)
         return ret.numpy()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
     @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
@@ -338,7 +337,6 @@ class TestDygraphIfElseNet(Dy2StTestBase):
             ret = net(x_v)
             return ret.numpy()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
     @test_legacy_only
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
@@ -510,7 +508,6 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
             out = static_func(self.x)
         return out
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
@@ -525,7 +522,6 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):

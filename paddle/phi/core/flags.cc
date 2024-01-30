@@ -744,16 +744,6 @@ PHI_DEFINE_EXPORTED_int32(
     "instead of sum. Default is 0.");
 
 /**
- * Tensor.numpy() has a hack, and this flag can close this hack
- * [true]: set 0D Tensor to 1D Numpy
- * [false]: not set 0D Tensor to 1D Numpy, close the hack
- *
- * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6) .
- */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
-
-/**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_on
  * Since Version: 2.0.0

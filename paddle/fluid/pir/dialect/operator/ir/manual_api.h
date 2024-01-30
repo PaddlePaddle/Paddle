@@ -87,5 +87,7 @@ pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
 
+pir::Value array_pop(pir::Value input, int index);
+
 }  // namespace dialect
 }  // namespace paddle
