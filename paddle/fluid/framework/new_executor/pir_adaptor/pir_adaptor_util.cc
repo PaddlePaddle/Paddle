@@ -554,7 +554,8 @@ void HandleForSpecialOp(pir::Operation* op,
 
     auto value = op->operand_source(0);
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (value.defining_op()->HasAttribute(kAttrIsPersisable)) {
+    if (value.defining_op()->HasAttribute(kAttrIsPersisable) &&
+        value.attribute<pir::BoolAttribute>(kAttrIsPersisable).data()) {
       VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
               << var_name;
       scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
