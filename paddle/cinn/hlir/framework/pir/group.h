@@ -99,6 +99,12 @@ struct Group {
     return value_to_shape_or_data_exprs.at(value);
   }
 
+  void SetShapeOrDataExprs(const ::pir::Value& value,
+                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    value_to_shape_or_data_exprs.erase(value);
+    value_to_shape_or_data_exprs.emplace(value, shape_or_data);
+  }
+
   // distance to last group.
   int depth{0};
   int max_depth{0};
