@@ -39,6 +39,12 @@ Tensor embedding_grad(const Tensor& x,
                       int64_t padding_idx = -1,
                       bool sparse = false);
 
+template <typename T>
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            DataType dtype = DataType::FLOAT32,
+            Place place = Place());
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle
