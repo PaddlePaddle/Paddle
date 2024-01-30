@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include <cstdint>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -74,7 +74,7 @@ void CUDAMallocAsyncAllocation::EraseStream(gpuStream_t stream) {
   event_map_.erase(stream);
 }
 
-void CUDAMallocAsyncAllocation::Free(int dev_id, gpuStream_t free_stream) {
+void CUDAMallocAsyncAllocation::Free(int dev_id) {
   platform::RecordedGpuFreeAsync(ptr(), size(), place_.device, malloc_stream_);
 }
 
@@ -117,7 +117,7 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
       place_(place),
       stream_(default_stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaStreamCreateWithPriority(&free_stream_, cudaStreamNonBlocking, 0));
+      cudaStreamCreateWithPriority(&memory_stream_, cudaStreamNonBlocking, 0));
 }
 
 bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
@@ -132,7 +132,7 @@ void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations(bool synchronize) {
        it != unfreed_allocations_.end();) {
     CUDAMallocAsyncAllocation* allocation = (*it);
     if (allocation->CanBeFreed(synchronize)) {
-      allocation->Free(place_.device, free_stream_);
+      allocation->Free(place_.device);
       delete allocation;
       it = unfreed_allocations_.erase(it);
     } else {
@@ -143,7 +143,7 @@ void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations(bool synchronize) {
 
 void CUDAMallocAsyncAllocator::TryFree(CUDAMallocAsyncAllocation* allocation) {
   if (allocation->CanBeFreed()) {
-    allocation->Free(place_.device, free_stream_);
+    allocation->Free(place_.device);
     delete allocation;
   } else {
     std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);

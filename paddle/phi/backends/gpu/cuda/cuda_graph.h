@@ -335,12 +335,25 @@ class CUDAGraph {
 
   std::vector<SetSeedFunc> set_seed_funcs_;
 
+  // Holds callbacks that are triggered after the CUDA graph is reset. These
+  // callbacks are used for operations that need to be performed following the
+  // reset of a CUDA graph.
   std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
+
+  // Contains callbacks that are invoked after the CUDA graph has been captured.
+  // These callbacks are crucial for managing memory allocations related to the
+  // CUDA graph. They ensure that memory blocks not associated with a graph (as
+  // detailed in cuda_malloc_async_allocator) are not erroneously released
+  // during the graph's lifecycle.
   std::vector<std::function<void()>> cudagraph_post_capture_callbacks_;
-  // we collect all callbacks as a sequence of 'prehooks', i.e. these functions
-  // are called prior to the execution of the cudagraph.
+
+  // Maintains a collection of 'pre-hooks' - functions that are executed before
+  // the CUDA graph is replayed. These pre-hooks are essential for setting up
+  // the necessary conditions or states required for the correct execution of
+  // the CUDA graph.
   std::vector<std::vector<cudaGraphExecuterSetter_t>>
       cudagraph_pre_replay_callbacks_;
+
   std::mutex func_mtx_;
 
   bool is_first_run_{true};

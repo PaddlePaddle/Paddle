@@ -24,6 +24,16 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// TODO: It may be beneficial to introduce an abstract class named
+// `StreamAllocator` in future developments. This class would serve as a central
+// entity for methods specifically related to stream management, such as
+// `RecordStream` and `EraseStream`. The introduction of `StreamAllocator` would
+// enable both `StreamSafeCUDAAllocator` and `CUDAMallocAsyncAllocator` to
+// inherit directly from it,
+
+// The `CUDAMallocAsyncAllocation` class extends `Allocation` and is used for
+// managing memory allocations with CUDA async malloc. It includes methods to
+// handle stream associations and to query the owning stream of the allocation.
 class CUDAMallocAsyncAllocation : public Allocation {
  public:
   CUDAMallocAsyncAllocation(void* ptr,
@@ -35,27 +45,31 @@ class CUDAMallocAsyncAllocation : public Allocation {
         used_in_another_stream(false) {}
 
   gpuStream_t GetOwningStream() const { return malloc_stream_; }
-  // Ensure that the block is released after the recorded stream event
+
+  // TODO: The current implementation of RecordStream is
+  // similar to that in StreamSafeCUDAAllocator. This approach might lead to
+  // host execution blocking and redundant EventQuery checks. Considering
+  // cudaMallocFree, stream-ordered semantics could be leveraged for more
+  // efficient device-side release.
   void RecordStream(gpuStream_t stream);
   void RecordGraphCapturingStreams();
   void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
-
   void EraseStream(gpuStream_t stream);
-
   bool CanBeFreed(bool synchronize = false);
-  void Free(int dev_id, gpuStream_t free_stream);
+  void Free(int dev_id);
 
  private:
-  thread_local static std::once_flag once_flag_;
-
+  static thread_local std::once_flag once_flag_;
   gpuStream_t malloc_stream_;
   bool used_in_another_stream;
   std::set<gpuStream_t> graph_capturing_stream_set_;
-
   SpinLock event_map_lock_;
   std::map<gpuStream_t, gpuEvent_t> event_map_;
 };
 
+// The `CUDAMallocAsyncAllocator` class extends `Allocator` and is specialized
+// for asynchronous memory allocation in CUDA. It offers thread-safe allocation
+// and incorporates a default stream for memory operations.
 class CUDAMallocAsyncAllocator : public Allocator {
  public:
   explicit CUDAMallocAsyncAllocator(
@@ -68,9 +82,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
   void SetDefaultStream(gpuStream_t stream);
 
  protected:
-  // Implementation of freeing an allocation.
   void FreeImpl(phi::Allocation* allocation) override;
-  // Implementation of allocating memory of a certain size.
   phi::Allocation* AllocateImpl(size_t size) override;
   uint64_t ReleaseImpl(const platform::Place& place) override;
 
@@ -79,14 +91,12 @@ class CUDAMallocAsyncAllocator : public Allocator {
   void TryFree(CUDAMallocAsyncAllocation* allocation);
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  platform::CUDAPlace place_;  // The CUDA place (device context)
-  gpuStream_t stream_;         // Default stream associated with this allocator
-  gpuStream_t free_stream_;
-  std::once_flag once_flag_;  // Flag to ensure some actions are done only once
-
-  // Map from graph ID to the set of allocations it owns.
+  platform::CUDAPlace place_;   // Specifies the CUDA device context.
+  gpuStream_t default_stream_;  // Default stream for memory operations.
+  gpuStream_t memory_stream_;   // TODO: We may use a single stream to
+                                // malloc/free to prevent host blocking
+  std::once_flag once_flag_;
   std::unordered_set<CUDAMallocAsyncAllocation*> graph_owned_allocations_;
-
   std::list<CUDAMallocAsyncAllocation*> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;
 };
