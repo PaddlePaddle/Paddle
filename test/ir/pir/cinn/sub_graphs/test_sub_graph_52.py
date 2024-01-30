@@ -36,11 +36,11 @@ class LayerCase(paddle.nn.Layer):
         var_5,  # (shape: [91], dtype: paddle.float32, stop_gradient: True)
     ):
         var_6, var_7 = paddle.tensor.manipulation.split(var_1, 2, axis=-1)
-        var_8 = var_6.__mul__(var_4)
-        var_9 = var_8.__add__(var_3)
+        var_8 = var_6 * var_4
+        var_9 = var_8 + var_3
         var_10 = paddle.nn.functional.activation.elu(var_7)
-        var_11 = var_10.__add__(1.0)
-        var_12 = var_11.__mul__(var_4)
+        var_11 = var_10 + 1.0
+        var_12 = var_11 * var_4
         var_13 = var_2.reshape([1, 21504, 1, 91])
         var_14 = paddle.nn.functional.activation.softmax(var_13)
         var_15 = var_14.matmul(var_5)

@@ -59,7 +59,7 @@ class LayerCase(paddle.nn.Layer):
             use_cudnn=True,
         )
         var_5 = paddle.nn.functional.activation.hardsigmoid(var_4)
-        var_6 = var_2.__mul__(var_5)
+        var_6 = var_2 * var_5
         return var_6
 
 

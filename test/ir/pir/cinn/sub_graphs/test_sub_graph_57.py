@@ -30,11 +30,11 @@ class LayerCase(paddle.nn.Layer):
         self,
     ):
         var_0 = paddle.tensor.creation.arange(16, dtype='float32')
-        var_1 = var_0.__add__(0.5)
-        var_2 = var_1.__mul__(16)
+        var_1 = var_0 + 0.5
+        var_2 = var_1 * 16
         var_3 = paddle.tensor.creation.arange(16, dtype='float32')
-        var_4 = var_3.__add__(0.5)
-        var_5 = var_4.__mul__(16)
+        var_4 = var_3 + 0.5
+        var_5 = var_4 * 16
         var_6, var_7 = paddle.tensor.creation.meshgrid(var_5, var_2)
         var_8 = var_6.flatten()
         var_9 = var_7.flatten()

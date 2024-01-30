@@ -54,7 +54,7 @@ class LayerCase(paddle.nn.Layer):
             use_cudnn=True,
         )
         var_3 = paddle.tensor.ops.sigmoid(var_2)
-        var_4 = var_0.__mul__(var_3)
+        var_4 = var_0 * var_3
         return var_4
 
 

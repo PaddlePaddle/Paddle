@@ -33,63 +33,63 @@ class LayerCase(paddle.nn.Layer):
         var_2,  # (shape: [1, 96, 128, 128], dtype: paddle.float32, stop_gradient: False)
     ):
         var_3 = paddle.tensor.attribute.shape(var_0)
-        var_4 = var_3.__getitem__(0)
-        var_5 = var_3.__getitem__(1)
-        var_6 = var_3.__getitem__(2)
-        var_7 = var_3.__getitem__(3)
+        var_4 = var_3[0]
+        var_5 = var_3[1]
+        var_6 = var_3[2]
+        var_7 = var_3[3]
         var_8 = paddle.tensor.creation.arange(end=var_7)
-        var_9 = var_8.__add__(0.5)
-        var_10 = var_9.__mul__(32)
+        var_9 = var_8 + 0.5
+        var_10 = var_9 * 32
         var_11 = paddle.tensor.creation.arange(end=var_6)
-        var_12 = var_11.__add__(0.5)
-        var_13 = var_12.__mul__(32)
+        var_12 = var_11 + 0.5
+        var_13 = var_12 * 32
         var_14, var_15 = paddle.tensor.creation.meshgrid(var_13, var_10)
         var_16 = paddle.tensor.manipulation.stack([var_15, var_14], axis=-1)
         var_17 = paddle.tensor.manipulation.cast(var_16, dtype='float32')
         var_18 = var_17.reshape([1, -1, 2])
-        var_19 = var_6.__mul__(var_7)
+        var_19 = var_6 * var_7
         var_20 = paddle.tensor.creation.full(
             [1, var_19, 1], 32, dtype='float32'
         )
-        var_21 = var_6.__mul__(var_7)
+        var_21 = var_6 * var_7
         var_22 = paddle.tensor.attribute.shape(var_1)
-        var_23 = var_22.__getitem__(0)
-        var_24 = var_22.__getitem__(1)
-        var_25 = var_22.__getitem__(2)
-        var_26 = var_22.__getitem__(3)
+        var_23 = var_22[0]
+        var_24 = var_22[1]
+        var_25 = var_22[2]
+        var_26 = var_22[3]
         var_27 = paddle.tensor.creation.arange(end=var_26)
-        var_28 = var_27.__add__(0.5)
-        var_29 = var_28.__mul__(16)
+        var_28 = var_27 + 0.5
+        var_29 = var_28 * 16
         var_30 = paddle.tensor.creation.arange(end=var_25)
-        var_31 = var_30.__add__(0.5)
-        var_32 = var_31.__mul__(16)
+        var_31 = var_30 + 0.5
+        var_32 = var_31 * 16
         var_33, var_34 = paddle.tensor.creation.meshgrid(var_32, var_29)
         var_35 = paddle.tensor.manipulation.stack([var_34, var_33], axis=-1)
         var_36 = paddle.tensor.manipulation.cast(var_35, dtype='float32')
         var_37 = var_36.reshape([1, -1, 2])
-        var_38 = var_25.__mul__(var_26)
+        var_38 = var_25 * var_26
         var_39 = paddle.tensor.creation.full(
             [1, var_38, 1], 16, dtype='float32'
         )
-        var_40 = var_25.__mul__(var_26)
+        var_40 = var_25 * var_26
         var_41 = paddle.tensor.attribute.shape(var_2)
-        var_42 = var_41.__getitem__(0)
-        var_43 = var_41.__getitem__(1)
-        var_44 = var_41.__getitem__(2)
-        var_45 = var_41.__getitem__(3)
+        var_42 = var_41[0]
+        var_43 = var_41[1]
+        var_44 = var_41[2]
+        var_45 = var_41[3]
         var_46 = paddle.tensor.creation.arange(end=var_45)
-        var_47 = var_46.__add__(0.5)
-        var_48 = var_47.__mul__(8)
+        var_47 = var_46 + 0.5
+        var_48 = var_47 * 8
         var_49 = paddle.tensor.creation.arange(end=var_44)
-        var_50 = var_49.__add__(0.5)
-        var_51 = var_50.__mul__(8)
+        var_50 = var_49 + 0.5
+        var_51 = var_50 * 8
         var_52, var_53 = paddle.tensor.creation.meshgrid(var_51, var_48)
         var_54 = paddle.tensor.manipulation.stack([var_53, var_52], axis=-1)
         var_55 = paddle.tensor.manipulation.cast(var_54, dtype='float32')
         var_56 = var_55.reshape([1, -1, 2])
-        var_57 = var_44.__mul__(var_45)
+        var_57 = var_44 * var_45
         var_58 = paddle.tensor.creation.full([1, var_57, 1], 8, dtype='float32')
-        var_59 = var_44.__mul__(var_45)
+        var_59 = var_44 * var_45
         var_60 = paddle.tensor.manipulation.concat(
             [var_18, var_37, var_56], axis=1
         )

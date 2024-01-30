@@ -33,24 +33,24 @@ class LayerCase(paddle.nn.Layer):
         var_2,  # (shape: [24], dtype: paddle.float32, stop_gradient: True)
     ):
         var_3 = var_1.cast('int64')
-        var_4 = var_3.__add__(1)
+        var_4 = var_3 + 1
         var_5 = var_4.cast('float32')
-        var_6 = var_5.__sub__(var_1)
+        var_6 = var_5 - var_1
         var_7 = var_3.cast('float32')
-        var_8 = var_1.__sub__(var_7)
+        var_8 = var_1 - var_7
         var_9 = paddle.nn.functional.loss.cross_entropy(
             var_0, var_3, reduction='none'
         )
-        var_10 = var_9.__mul__(var_6)
+        var_10 = var_9 * var_6
         var_11 = paddle.nn.functional.loss.cross_entropy(
             var_0, var_4, reduction='none'
         )
-        var_12 = var_11.__mul__(var_8)
-        var_13 = var_10.__add__(var_12)
-        var_14 = var_13.__rmul__(0.25)
-        var_15 = var_14.__mul__(var_2)
+        var_12 = var_11 * var_8
+        var_13 = var_10 + var_12
+        var_14 = 0.25 * var_13
+        var_15 = var_14 * var_2
         var_16 = var_15.sum()
-        var_17 = var_16.__truediv__(4.0)
+        var_17 = var_16 / 4.0
         return var_17
 
 
