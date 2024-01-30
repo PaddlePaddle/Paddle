@@ -101,8 +101,12 @@ struct Group {
 
   void SetShapeOrDataExprs(const ::pir::Value& value,
                            const symbol::ShapeOrDataDimExprs& shape_or_data) {
-    value_to_shape_or_data_exprs.erase(value);
-    value_to_shape_or_data_exprs.emplace(value, shape_or_data);
+    auto iter = value_to_shape_or_data_exprs.find(value);
+    if (iter == value_to_shape_or_data_exprs.end()) {
+      value_to_shape_or_data_exprs.emplace(value, shape_or_data);
+    } else {
+      iter->second = shape_or_data;
+    }
   }
 
   // distance to last group.
