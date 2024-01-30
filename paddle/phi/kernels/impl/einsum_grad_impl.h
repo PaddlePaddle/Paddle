@@ -85,7 +85,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
           << paddle::string::join_strings(
                  common::vectorize<int>(undiagonal_out.dims()), ',');
   repeat_times.clear();
-  for (auto i = 0; i < x_shape.size(); ++i) {
+  for (size_t i = 0; i < x_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i] << ", x_shape is "
             << x_shape[i];
     repeat_times.push_back(broadcast_shape[i] / x_shape[i]);
