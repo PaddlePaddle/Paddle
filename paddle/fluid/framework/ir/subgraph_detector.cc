@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-
 #include "glog/logging.h"
 
 namespace paddle {
@@ -424,6 +423,17 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
+    // 存储所有子图名称的集合
+    std::set<std::string> all_subgraph_names;
+
+    for (auto &subgraph : subgraphs) {
+      for (auto *node : subgraph) {
+        for (auto tmp_name : node->outputs) {
+          LOG(INFO) << "tmp_name->Name() = " << tmp_name->Name();
+          all_subgraph_names.insert(tmp_name->Name());
+        }
+      }
+    }
 
     bool continue_run = false;
 
