@@ -1875,8 +1875,10 @@ __global__ void masked_multihead_attention_kernel(
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
-    load_func.template load<V_vec>(
-        v, 2 * params.num_head * Dh + qkv_base_offset + kv_hi * Dh + vi);
+    load_func.template load<V_vec>(v,
+                                   params.num_head * Dh +
+                                       params.gqa_group_size * Dh +
+                                       qkv_base_offset + kv_hi * Dh + vi);
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
           &params.qkv_bias[(params.num_head + params.gqa_group_size) * Dh +
@@ -5171,7 +5173,7 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int gqa_group_size) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = phi::AlignedVector<float, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
@@ -5194,13 +5196,14 @@ __global__ void GQAVariableLengthRotaryKernel(
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
-    const int64_t emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int64_t emb_idx =
+        ori_bi * seq_len * last_dim + ori_seq_id * last_dim + h_bias;
     const int64_t bias_idx = hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * offset + bias_idx;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
     phi::Load<T, VecSize>(&qkv_biases[bias_idx], &bias_vec);
-    phi::Load<float, HalfVecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-    phi::Load<float, HalfVecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
 #pragma unroll
     for (int i = 0; i < HalfVecSize; i++) {
       const float input_left =
@@ -5214,8 +5217,8 @@ __global__ void GQAVariableLengthRotaryKernel(
       // input_left * sin_tmp);
 
       if (hi < num_head + gqa_group_size) {  // qk rope
-        const float cos_tmp = cos_emb_vec[i];
-        const float sin_tmp = sin_emb_vec[i];
+        const float cos_tmp = cos_emb_vec[2 * i];
+        const float sin_tmp = sin_emb_vec[2 * i];
         src_vec[2 * i] =
             static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
         src_vec[2 * i + 1] =
@@ -5243,7 +5246,8 @@ void gqa_rotary_qk_variable(
     const int seq_len,
     const int input_output_len,
     const int dim_head,
-    const int gqa_group_size) {
+    const int gqa_group_size,
+    const int rope_bsz) {
   const int elem_nums =
       token_num * (head_num + 2 * gqa_group_size) * dim_head;  // for all q k v
   constexpr int PackSize = 16 / sizeof(T);
@@ -5252,7 +5256,7 @@ void gqa_rotary_qk_variable(
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
   const float *cos_emb = rotary_emb;
-  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  const float *sin_emb = rotary_emb + rope_bsz * input_output_len * dim_head;
   GQAVariableLengthRotaryKernel<T, PackSize>
       <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
                                                       cos_emb,

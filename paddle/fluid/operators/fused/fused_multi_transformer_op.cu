@@ -63,6 +63,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     auto gqa_group_size = ctx.Attr<int>("gqa_group_size");
 
+    VLOG(1) << "gqa_group_size is " << gqa_group_size;
+
     auto *beam_cache_offset = ctx.Input<phi::DenseTensor>("BeamCacheOffset");
     int beam_size = 1;
     if (beam_cache_offset) {
@@ -547,6 +549,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
         int max_seq_len = cache_kv->dims()[3];
+        VLOG(1) << "sequence_lengths " << *sequence_lengths;
         fmha<T>(dev_ctx,
                 qkv_out,
                 *qkv_bias,
@@ -576,6 +579,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 (do_cachekv_quant) ? cache_v_scale[i] : -1.0,
                 (do_cachekv_quant) ? cache_k_out_scale[i] : -1.0,
                 (do_cachekv_quant) ? cache_v_out_scale[i] : -1.0,
+                -1,       // quant_fmha_out_scale
+                1,        // quant_round_type
+                127.0f,   // quant_max_bound
+                -127.0f,  // quant_min_bound
                 gqa_group_size);
       } else if (cache_kv_out) {  // generation context stage
         if (FLAGS_fmha_mode == "flash_attention_v2" && encoder_remove_padding) {
@@ -608,7 +615,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                      seq_len,
                                      rotary_tensor->dims()[3],
                                      dim_head,
-                                     gqa_group_size);
+                                     gqa_group_size,
+                                     rotary_tensor->dims()[1]);
             }
           }
           if (gqa_group_size <= 0) {

@@ -1224,70 +1224,79 @@ class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
             self.x_type = np.float16
 
 
-# class TestFusedMultiTransformerOpVariableNormTransformer1(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = False
-#         self.gen_cache_kv = False
-#         self.remove_padding = True
-#         self.x_type = np.float16
-#         self.layers = 3  # odd layers
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpVariableNormTransformer1(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpVariableNormTransformer2(
-#     TestFusedMultiTransformerOp
-# ):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = False
-#         self.gen_cache_kv = False
-#         self.remove_padding = True
-#         self.layers = 4  # even layers
-#         if "FLAGS_fmha_mode" in os.environ and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
-#             self.x_type = np.float16
+class TestFusedMultiTransformerOpVariableNormTransformer2(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.has_cache_kv = False
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.layers = 4  # even layers
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
 
 
-# class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = False
-#         self.remove_padding = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.x_type = np.float16
-#         self.layers = 3  # odd layers
-#         self.pre_layer_norm = False
+class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
 
 
-# class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = False
-#         self.remove_padding = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.layers = 4  # even layers
-#         if "FLAGS_fmha_mode" in os.environ and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
-#             self.x_type = np.float16
+class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
 
 
-# class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
-#     def config(self):
-#         super().config()
-#         self.has_cache_kv = True
-#         self.gen_cache_kv = False
-#         self.remove_padding = True
-#         self.query_length = 1
-#         self.key_length, self.value_length = 1, 1
-#         self.layers = 4  # even layers
-#         self.rotary_emb_dims = 2
-#         if "FLAGS_fmha_mode" in os.environ and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2":
-#             self.x_type = np.float16
+class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.layers = 4  # even layers
+        self.rotary_emb_dims = 2
+        if (
+            "FLAGS_fmha_mode" in os.environ
+            and os.environ["FLAGS_fmha_mode"] == "flash_attention_v2"
+        ):
+            self.x_type = np.float16
 
 
 if __name__ == "__main__":
