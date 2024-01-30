@@ -181,7 +181,6 @@ inline bool reduce_fuse_reduce(
 
 inline bool is_horizontal_relation(::pir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
-  VLOG(0) << "#### is_horizontal_relation ######";
   auto check_depency = [&](::pir::Operation* op) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
@@ -414,8 +413,8 @@ inline bool reduce_fuse_broadcast(
         return false;
       };
 
-  const auto& routput_shape =
-      GetValueShape(producer->result(0)) for (auto op : consumer->ops_set) {
+  const auto& routput_shape = GetValueShape(producer->result(0));
+  for (auto op : consumer->ops_set) {
     if (hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
         OpPatternKind::kBroadcast) {
       continue;
