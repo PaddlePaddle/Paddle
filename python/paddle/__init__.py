@@ -562,6 +562,7 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 if is_compiled_with_cuda():
+    import os
     import platform
 
     if platform.system() == 'Linux' and platform.machine() == 'x86_64':
