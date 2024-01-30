@@ -36,6 +36,7 @@ import paddle.version as paddle_version
 
 from .. import pir
 from . import core, unique_name
+from .data_feeder import _PADDLE_DTYPE_2_NUMPY_DTYPE
 from .libpaddle import DataType
 from .proto import (
     data_feed_pb2,  # noqa: F401
@@ -56,6 +57,17 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
+# SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
+#     "elementwise_add": ['X', 'Y'],
+#     "elementwise_add_grad": ['X', 'Y'],
+#     "elementwise_sub": ['X', 'Y'],
+#     "elementwise_sub_grad": ['X', 'Y'],
+#     "elementwise_mul": ['X', 'Y'],
+#     "elementwise_mul_grad": ['X', 'Y'],
+#     "where": ['X', 'Y'],
+#     "where_grad": ['X', 'Y'],
+# }
+
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_add": ['X', 'Y'],
     "elementwise_add_grad": ['X', 'Y'],
@@ -63,8 +75,42 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_sub_grad": ['X', 'Y'],
     "elementwise_mul": ['X', 'Y'],
     "elementwise_mul_grad": ['X', 'Y'],
+    "elementwise_div": ['X', 'Y'],
+    "elementwise_div_grad": ['X', 'Y'],
+    "elementwise_floordiv": ['X', 'Y'],
+    "elementwise_floordiv_grad": ['X', 'Y'],
+    "elementwise_pow": ['X', 'Y'],
+    "elementwise_pow_grad": ['X', 'Y'],
     "where": ['X', 'Y'],
     "where_grad": ['X', 'Y'],
+    "equal": ['X', 'Y'],
+    "not_equal": ['X', 'Y'],
+    "less_than": ['X', 'Y'],
+    "less_equal": ['X', 'Y'],
+    "greater_than": ['X', 'Y'],
+    "greater_equal": ['X', 'Y'],
+    "matmul_v2": ['X', 'Y'],
+    "matmul_v2_grad": ['X', 'Y'],
+    "logical_and": ['X', 'Y'],
+    "logical_or": ['X', 'Y'],
+    "logical_xor": ['X', 'Y'],
+    "bitwise_and": ['X', 'Y'],
+    "bitwise_or": ['X', 'Y'],
+    "bitwise_xor": ['X', 'Y'],
+    "elementwise_fmax": ['X', 'Y'],
+    "elementwise_fmax_grad": ['X', 'Y'],
+    "elementwise_fmin": ['X', 'Y'],
+    "elementwise_fmin_grad": ['X', 'Y'],
+    "elementwise_max": ['X', 'Y'],
+    "elementwise_max_grad": ['X', 'Y'],
+    "elementwise_min": ['X', 'Y'],
+    "elementwise_min_grad": ['X', 'Y'],
+    "elementwise_mod": ['X', 'Y'],
+    "huber_loss": ['input', 'label'],
+    "huber_loss_grad": ['input', 'label'],
+    "nextafter": ['x', 'y'],
+    "atan2": ['X1', 'X2'],
+    "atan2_grad": ['X1', 'X2'],
 }
 
 
@@ -8155,16 +8201,11 @@ def _get_paddle_place_list(places):
 
 
 def dtype_to_str(in_dtype):
-    if in_dtype == core.VarDesc.VarType.FP16:
-        return "fp16"
-    elif in_dtype == core.VarDesc.VarType.BF16:
-        return "bf16"
-    elif in_dtype == core.VarDesc.VarType.FP32:
-        return "fp32"
-    elif in_dtype == core.VarDesc.VarType.FP64:
-        return "fp64"
+    if in_dtype == core.VarDesc.VarType.BF16:
+        # _PADDLE_DTYPE_2_NUMPY_DTYPE will trans bfloat16 to uint16. Can delete this if after same.
+        return "bfloat16"
     else:
-        return None
+        return _PADDLE_DTYPE_2_NUMPY_DTYPE[in_dtype]
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
