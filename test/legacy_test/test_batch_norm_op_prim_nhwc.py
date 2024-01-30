@@ -87,7 +87,7 @@ class TestBatchNormOpNHWCTestModebf16(TestBatchNormOp):
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
         # prim bf16 has diff in windows
-        if sys.platform == "Windows":
+        if sys.platform == "win32":
             self.rev_comp_atol = 1e-2
             self.rev_comp_rtol = 1e-2
         self.cinn_atol = 1e-3
@@ -159,7 +159,7 @@ class TestBatchNormOpNHWCbf16(TestBatchNormOp):
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
         # prim bf16 has diff in windows
-        if sys.platform == "Windows":
+        if sys.platform == "win32":
             self.rev_comp_atol = 1e-2
             self.rev_comp_rtol = 1e-2
         self.cinn_atol = 1e-3
