@@ -1536,12 +1536,6 @@
   outputs :
     {out_src : Out_Src, out_dst : Out_Dst, sample_index : Sample_Index, reindex_x : Reindex_X, out_eids : Out_Eids}
 
-- op : graph_sample_neighbors
-  inputs :
-    {row : Row, colptr : Col_Ptr, x : X, eids : Eids, perm_buffer : Perm_Buffer}
-  outputs :
-    {out : Out, out_count : Out_Count, out_eids : Out_Eids}
-
 - op : greater_equal
   inputs :
     {x : X, y : Y}
