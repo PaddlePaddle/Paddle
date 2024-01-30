@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -377,17 +378,18 @@ class TestSplitOpErrorStatic(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type)
 
-            # The type of axis in split_op should be int or Variable.
-            def test_axis_variable_type():
-                x9 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x9'
-                )
-                x10 = paddle.static.data(
-                    shape=[-1, 1], dtype='float16', name='x10'
-                )
-                paddle.split(x=x9, num_or_sections=2, axis=x10)
+            if not in_pir_mode():
+                # The type of axis in split_op should be int or Variable.
+                def test_axis_variable_type():
+                    x9 = paddle.static.data(
+                        shape=[-1, 4], dtype='float16', name='x9'
+                    )
+                    x10 = paddle.static.data(
+                        shape=[-1, 1], dtype='float16', name='x10'
+                    )
+                    paddle.split(x=x9, num_or_sections=2, axis=x10)
 
-            self.assertRaises(TypeError, test_axis_variable_type)
+                self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
