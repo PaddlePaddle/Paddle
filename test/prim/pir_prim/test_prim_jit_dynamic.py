@@ -32,19 +32,28 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-def rms_norm(hidden_states, weight):
+def rms_norm1(hidden_states, weight):
+    # From llama2, reduce dim is not equal to dynamic shape dim
+    variance = hidden_states.pow(2).mean(-1, keepdim=True)
+    hidden_states = paddle.rsqrt(variance + 1e-5) * hidden_states
+    return hidden_states * weight
+
+
+def rms_norm2(hidden_states, weight):
+    # reduce dim is not equal to dynamic shape dim
     variance = hidden_states.pow(2).mean((0, 1), keepdim=True)
     hidden_states = paddle.rsqrt(variance + 1e-5) * hidden_states
     return hidden_states * weight
 
 
-class TestPrimMode(unittest.TestCase):
+class TestPrimMode1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [1, 300, 4096]
         self.shape_y = [4096]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
+        self.net = rms_norm1
 
     def base_net(self, flag=None):
         if flag == "prim":
@@ -52,7 +61,7 @@ class TestPrimMode(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         fn = apply_to_static(
-            rms_norm,
+            self.net,
             use_cinn=False,
             input_spec=[
                 InputSpec(shape=[None, None, 4096], dtype='float32'),
@@ -79,6 +88,16 @@ class TestPrimMode(unittest.TestCase):
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+
+class TestPrimMode2(TestPrimMode1):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [1, 300, 4096]
+        self.shape_y = [4096]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.y = np.random.random(self.shape_y).astype("float32")
+        self.net = rms_norm2
 
 
 if __name__ == "__main__":
