@@ -289,7 +289,7 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
     node_map[n->id()] = n;
   }
 
-  // create breif node map
+  // create brief node map
   for (auto &itr : brief_node_map) {
     for (Node *node : itr.second->node->inputs) {
       if (!valid_node_ids.count(node->id())) {

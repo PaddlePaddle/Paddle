@@ -2245,7 +2245,7 @@ struct ReverseRollPattern : public PatternBase {
   PATTERN_DECL_NODE(roll_40_op);
   PATTERN_DECL_NODE(roll_40_out);
   PATTERN_DECL_NODE(reshape2_50_op);
-  PATTERN_DECL_NODE(reshaep2_50_out);
+  PATTERN_DECL_NODE(reshape2_50_out);
 };
 
 // pattern for merge_layernorm
