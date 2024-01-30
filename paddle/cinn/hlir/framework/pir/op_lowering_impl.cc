@@ -103,6 +103,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                                      bool apply_op_schedule,
                                                      bool apply_group_schedule,
                                                      bool apply_pass) {
+  VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   auto& ops = group->ops;
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -113,7 +114,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
-  VLOG(0) << "##### lower group : \n" << *group;
   std::vector<ir::Expr> func_bodies =
       LowerOps(group,
                ops,
@@ -721,51 +721,33 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
-    std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
-    }
-    return lang::CreatePlaceHolder(
-        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-  } else {
-    return lang::CreatePlaceHolder(
-        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-  }
-}
 
-ir::Tensor OpLowererImpl::GetTensorSymbolic(const GroupPtr& group,
-                                            const ::pir::Value& value) {
-  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto dtype = type_info.dtype();
-  std::string input_id = ValueName(value);
   auto ForEachDimExpr = [&](const auto& DoEach) {
     const auto& dims = type_info.dims();
-    VLOG(0) << "###### value: " << value.defining_op()->name() << " @"
-            << value.impl();
-    VLOG(0) << "####### input dims : " << dims;
     if (::common::contain_unknown_dim(dims)) {  // dynamic shape
       const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
-      VLOG(0) << "####### input sym_vec : "
-              << group->GetShapeOrDataExprs(value);
       for (const auto& dim_expr : sym_vec) {
         DoEach(dim_expr);
       }
     } else {  // static shape
       for (int i = 0; i < dims.size(); ++i) {
-        DoEach(symbol::DimExpr{dims[i]});
+        DoEach(::symbol::DimExpr{dims[i]});
       }
     }
   };
-  std::vector<ir::Dim> sym_shape;
-  ForEachDimExpr(
-      [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
-  return lang::CreatePlaceHolder(
-      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  if (FLAGS_cinn_bucket_compile) {
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    return lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
+                                   CompatibleInfo::ConvertIRType(dtype),
+                                   input_id);
+  }
 }
 
 std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
@@ -776,12 +758,7 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << ValueName(in_value);
-    ir::Tensor tensor;
-    if (FLAGS_cinn_bucket_compile) {
-      tensor = GetTensorSymbolic(group, in_value);
-    } else {
-      tensor = GetTensor(group, in_value);
-    }
+    ir::Tensor tensor = GetTensor(group, in_value);
     VLOG(4) << "shape: " << tensor->shape;
     VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
@@ -841,10 +818,8 @@ void OpLowererImpl::CollectOutputInfo(
 
     auto ForEachDimExpr = [&](const auto& DoEach) {
       const auto& dims = type_info.dims();
-      VLOG(0) << "###### op " << op->name() << " dims: " << dims;
       if (::common::contain_unknown_dim(dims)) {  // dynamic shape
         const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
-        VLOG(0) << " ###### sym_vec: " << group->GetShapeOrDataExprs(out_value);
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
@@ -856,7 +831,6 @@ void OpLowererImpl::CollectOutputInfo(
         }
       }
     };
-    VLOG(0) << "####### out value : @" << out_value.impl();
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(
         [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });

@@ -128,13 +128,8 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
-      VLOG(0) << "####### expand out: "
-              << group->GetShapeOrDataExprs(expand_out);
-      VLOG(0) << "####### broadcast out value : @" << broadcast_out.impl();
       group->SetShapeOrDataExprs(broadcast_out,
                                  group->GetShapeOrDataExprs(expand_out));
-      VLOG(0) << "####### broadcast out : "
-              << group->GetShapeOrDataExprs(broadcast_out);
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();

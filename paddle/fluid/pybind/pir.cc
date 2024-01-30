@@ -1556,7 +1556,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = HasDynamicShape(program);
-  if (VLOG_IS_ON(3)) {
+  if (FLAGS_print_ir) {
     pass_manager->EnableIRPrinting();
   }
 
