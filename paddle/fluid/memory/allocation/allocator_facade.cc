@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include <cstdint>
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
@@ -486,9 +486,12 @@ class AllocatorFacadePrivate {
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     gpuStream_t stream) {
-    std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
-        std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
-    if (stream_safe_cuda_allocation != nullptr) {
+    if (auto cuda_malloc_async_allocation =
+            std::dynamic_pointer_cast<CUDAMallocAsyncAllocation>(allocation)) {
+      cuda_malloc_async_allocation->RecordStream(stream);
+    } else if (auto stream_safe_cuda_allocation =
+                   std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(
+                       allocation)) {
       stream_safe_cuda_allocation->RecordStream(stream);
     } else {
       VLOG(6) << "RecordStream for a non-StreamSafeCUDAAllocation";

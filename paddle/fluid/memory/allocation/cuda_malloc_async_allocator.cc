@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include <cstdint>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -32,15 +32,119 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
-void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* allocation) {
-  auto* casted_allocation =
-      dynamic_cast<CUDAMallocAsyncAllocation*>(allocation);
 
+thread_local std::once_flag CUDAMallocAsyncAllocation::once_flag_;
+
+void CUDAMallocAsyncAllocation::RecordGraphCapturingStreams() {
+  for (gpuStream_t stream : graph_capturing_stream_set_) {
+    RecordStreamWithNoGraphCapturing(stream);
+  }
+  graph_capturing_stream_set_.clear();
+}
+
+void CUDAMallocAsyncAllocation::RecordStreamWithNoGraphCapturing(
+    gpuStream_t stream) {
+  if (event_map_.find(stream) == event_map_.end()) {
+    gpuEvent_t event;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
+    event_map_[stream] = event;
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_map_[stream], stream));
+  }
+}
+
+void CUDAMallocAsyncAllocation::RecordStream(gpuStream_t stream) {
+  std::call_once(once_flag_,
+                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+    // Disallow recording when graph is capturing
+    graph_capturing_stream_set_.insert(stream);
+    return;
+  } else {
+    RecordStreamWithNoGraphCapturing(stream);
+    // Record the stream after graph is captured
+    RecordGraphCapturingStreams();
+  }
+}
+
+void CUDAMallocAsyncAllocation::Free(int dev_id, gpuStream_t free_stream) {
+  platform::RecordedGpuFreeAsync(ptr(), size(), place_.device, malloc_stream_);
+}
+
+bool CUDAMallocAsyncAllocation::CanBeFreed() {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+    return graph_capturing_stream_set_.empty() && event_map_.empty();
+  }
+  // When try to free a block, we record the stream that should be record during
+  // capturing.
+  RecordGraphCapturingStreams();
+
+  std::call_once(once_flag_,
+                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
+
+  for (auto it = event_map_.begin(); it != event_map_.end();) {
+    gpuEvent_t& event = it->second;
+    gpuError_t err = cudaEventQuery(event);
+    if (err == cudaErrorNotReady) {
+      VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
+      return false;
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
+    VLOG(8) << "Destroy event " << event;
+    it = event_map_.erase(it);
+  }
+  return true;
+}
+
+CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
+    const platform::CUDAPlace& place, gpuStream_t default_stream)
+    : place_(place), stream_(default_stream) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaStreamCreateWithPriority(&free_stream_, cudaStreamNonBlocking, 0));
+}
+
+bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
+
+void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations() {
+  if (unfreed_allocations_.empty()) {
+    return;
+  }
+
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+  for (auto it = unfreed_allocations_.begin();
+       it != unfreed_allocations_.end();) {
+    CUDAMallocAsyncAllocation* allocation = (*it);
+    if (allocation->CanBeFreed()) {
+      allocation->Free(place_.device, free_stream_);
+      delete allocation;
+      it = unfreed_allocations_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+void CUDAMallocAsyncAllocator::TryFree(CUDAMallocAsyncAllocation* allocation) {
+  if (allocation->CanBeFreed()) {
+    allocation->Free(place_.device, free_stream_);
+    delete allocation;
+  } else {
+    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+    unfreed_allocations_.emplace_back(allocation);
+  }
+}
+
+void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* phi_allocation) {
+  auto* allocation = dynamic_cast<CUDAMallocAsyncAllocation*>(phi_allocation);
+
+  // VLOG(0) << "Free " << allocation->ptr();
   // During graph capturing, only free the memory blocks owned by the graph;
   // others are cached.
   if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    if (graph_owned_allocations_.find(casted_allocation) ==
+    if (graph_owned_allocations_.find(allocation) ==
         graph_owned_allocations_.end()) {
       // If the block is not owned by the graph, cache it for release after
       // capturing.
@@ -49,12 +153,7 @@ void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* allocation) {
             // Release this block after capturing
             VLOG(0) << "[PostCaptureCallback] Releasing ptr = "
                     << allocation->ptr() << " size = " << allocation->size();
-            platform::RecordedGpuFreeAsync(
-                allocation->ptr(),
-                allocation->size(),
-                place_.device,
-                casted_allocation->GetOwningStream());
-            delete allocation;
+            TryFree(allocation);
           });
 
       return;
@@ -62,18 +161,15 @@ void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 
   // If not capturing or if the block is graph-owned, free it immediately.
-  platform::RecordedGpuFreeAsync(allocation->ptr(),
-                                 allocation->size(),
-                                 place_.device,
-                                 casted_allocation->GetOwningStream());
   if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    graph_owned_allocations_.erase(casted_allocation);
+    graph_owned_allocations_.erase(allocation);
   }
-  delete allocation;
+  TryFree(allocation);
 }
 
 phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
+  ProcessUnfreedAllocations();
 
   void* ptr;
   auto result =

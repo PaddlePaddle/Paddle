@@ -17,6 +17,7 @@
 #include <unordered_set>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -28,19 +29,33 @@ class CUDAMallocAsyncAllocation : public Allocation {
   CUDAMallocAsyncAllocation(void* ptr,
                             size_t size,
                             platform::Place place,
-                            gpuStream_t owning_stream)
-      : Allocation(ptr, size, place), owning_stream_(owning_stream) {}
-  gpuStream_t GetOwningStream() const { return owning_stream_; }
+                            gpuStream_t stream)
+      : Allocation(ptr, size, place),
+        malloc_stream_(stream),
+        used_in_another_stream(false) {}
+
+  gpuStream_t GetOwningStream() const { return malloc_stream_; }
+  // Ensure that the block is released after the recorded stream event
+  void RecordStream(gpuStream_t stream);
+  void RecordGraphCapturingStreams();
+  void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
+
+  bool CanBeFreed();
+  void Free(int dev_id, gpuStream_t free_stream);
 
  private:
-  gpuStream_t owning_stream_;
+  thread_local static std::once_flag once_flag_;
+
+  gpuStream_t malloc_stream_;
+  bool used_in_another_stream;
+  std::set<gpuStream_t> graph_capturing_stream_set_;
+  std::map<gpuStream_t, gpuEvent_t> event_map_;
 };
 
 class CUDAMallocAsyncAllocator : public Allocator {
  public:
   explicit CUDAMallocAsyncAllocator(const platform::CUDAPlace& place,
-                                    gpuStream_t default_stream)
-      : place_(place), stream_(default_stream) {}
+                                    gpuStream_t default_stream);
 
   bool IsAllocThreadSafe() const override;
   gpuStream_t GetDefaultStream() const;
@@ -53,12 +68,19 @@ class CUDAMallocAsyncAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
+  void ProcessUnfreedAllocations();
+  void TryFree(CUDAMallocAsyncAllocation* allocation);
+
   platform::CUDAPlace place_;  // The CUDA place (device context)
   gpuStream_t stream_;         // Default stream associated with this allocator
-  std::once_flag once_flag_;   // Flag to ensure some actions are done only once
+  gpuStream_t free_stream_;
+  std::once_flag once_flag_;  // Flag to ensure some actions are done only once
 
   // Map from graph ID to the set of allocations it owns.
   std::unordered_set<CUDAMallocAsyncAllocation*> graph_owned_allocations_;
+
+  std::list<CUDAMallocAsyncAllocation*> unfreed_allocations_;
+  SpinLock unfreed_allocation_lock_;
 };
 
 }  // namespace allocation
