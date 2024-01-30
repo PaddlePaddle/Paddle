@@ -82,7 +82,7 @@ class LabelMap {
  public:
   explicit LabelMap(int default_value = 0) {
     this->default_value = default_value;
-    for (int i = 0; i < N; ++i) map[i] = default_value;
+    for (auto i = 0; i < N; ++i) map[i] = default_value;
   }
   int& operator[](int label) {
     int i = label - 'a';
@@ -329,14 +329,14 @@ inline static std::vector<int> perm_moveto(int n, int from, int to) {
   if (from < 0) from = n + from;
   if (to < 0) to = n + to;
   std::vector<int> res(n);
-  for (int i = 0; i < n; ++i) {
+  for (auto i = 0; i < n; ++i) {
     res[i] = i;
   }
   res[to] = from;
   auto offset = from > to ? -1 : 1;
   auto start = from > to ? to + 1 : from;
   auto end = from > to ? from : to - 1;
-  for (int i = start; i <= end; ++i) {
+  for (auto i = start; i <= end; ++i) {
     res[i] += offset;
   }
   return res;
@@ -403,7 +403,7 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
   // tiling tensor for broadcast
   std::vector<int> repeat_times;
   auto tensor_origin_shape = common::vectorize(tensor.dims());
-  for (int i = 0; i < tensor_origin_shape.size(); ++i) {
+  for (auto i = 0; i < tensor_origin_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i]
             << ", tensor shape is " << tensor_origin_shape[i];
     repeat_times.push_back(broadcast_shape[i] / tensor_origin_shape[i]);
@@ -659,7 +659,7 @@ void EinsumKernel(const Context& dev_ctx,
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer
   // to BuildPhiKernelContext for details.
   int diff = inputs.size() - cache.size();
-  for (int i = 0; i < diff; ++i) {
+  for (auto i = 0; i < diff; ++i) {
     cache.push_back(nullptr);
   }
   EinsumKernelImpl<T, Context>(
