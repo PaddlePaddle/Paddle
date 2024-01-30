@@ -516,7 +516,7 @@ decomp_ops_contain_unused_output = {
 
 
 # This api is used for development for dynamic shape in prim, and will be removed in future.
-def _enable_prim_dynamic_shape():
+def _enable_prim_skip_dynamic_shape():
     flag = os.getenv("FLAGS_prim_skip_dynamic")
     if flag and flag.lower() in ("1", "true"):
         return True
@@ -524,9 +524,8 @@ def _enable_prim_dynamic_shape():
         return False
 
 
-# This api is used for development for sinking decomp in c++, and will be removed in future.
-def _enable_sink_decomp():
-    flag = os.getenv("FLAGS_sink_decomp", "true")
+def _enable_prim_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_enable_dynamic")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:
