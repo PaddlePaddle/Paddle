@@ -642,6 +642,16 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
 
+- op : fused_softmax_mask
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxMaskFuseInferMeta
+  kernel :
+    func : fused_softmax_mask
+    data_type : x
+  backward: fused_softmax_mask_grad
+
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
   output : Tensor(Out)
