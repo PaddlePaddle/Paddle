@@ -54,6 +54,7 @@ def process_job_log(log_data, device_id, multi_machine_idx=-1):
     step_times = []
     step_start_time = 0
     step_end_time = 0
+    recorded_start_time_ids = []
 
     for i, match in enumerate(matches):
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
@@ -61,10 +62,18 @@ def process_job_log(log_data, device_id, multi_machine_idx=-1):
         start_time = float(job_start_time.strip()) * 1000
         end_time = float(job_end_time.strip()) * 1000
 
-        if job_type.startswith("forward") and micro_batch_id == "0":
+        is_start_time_recorded = 0
+
+        if (
+            job_type.startswith("forward")
+            and micro_batch_id == "0"
+            and job_id not in recorded_start_time_ids
+        ):
             if step_start_time != 0:
                 step_times.append([step_start_time, step_end_time])
             step_start_time = start_time
+            recorded_start_time_ids.append(job_id)
+
         step_end_time = end_time
 
         tid_name = (
