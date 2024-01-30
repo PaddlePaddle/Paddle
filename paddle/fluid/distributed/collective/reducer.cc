@@ -27,7 +27,8 @@ namespace distributed {
 
 static bool IsStreamSafeAllocator() {
   return (FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_use_stream_safe_cuda_allocator) || (FLAGS_use_cuda_malloc_async_allocator);
+          FLAGS_use_stream_safe_cuda_allocator) ||
+         (FLAGS_use_cuda_malloc_async_allocator);
 }
 
 static Backend TransToBackend(platform::Place place) {

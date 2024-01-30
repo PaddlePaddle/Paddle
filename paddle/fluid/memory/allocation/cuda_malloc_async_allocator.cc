@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include <cstdint>
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -115,7 +115,7 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),
-      stream_(default_stream) {
+      default_stream_(default_stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamCreateWithPriority(&memory_stream_, cudaStreamNonBlocking, 0));
 }
@@ -201,11 +201,11 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
   ProcessUnfreedAllocations();
 
   void* ptr;
-  auto result =
-      platform::RecordedGpuMallocAsync(&ptr, size, place_.device, stream_);
+  auto result = platform::RecordedGpuMallocAsync(
+      &ptr, size, place_.device, default_stream_);
   if (LIKELY(result == gpuSuccess)) {
     auto* allocation = new CUDAMallocAsyncAllocation(
-        ptr, size, platform::Place(place_), stream_);
+        ptr, size, platform::Place(place_), default_stream_);
 
     // If capturing, associate allocation with the current graph.
     if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
@@ -249,11 +249,11 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
 }
 
 gpuStream_t CUDAMallocAsyncAllocator::GetDefaultStream() const {
-  return stream_;
+  return default_stream_;
 }
 
 void CUDAMallocAsyncAllocator::SetDefaultStream(gpuStream_t stream) {
-  stream_ = stream;
+  default_stream_ = stream;
 }
 
 }  // namespace allocation

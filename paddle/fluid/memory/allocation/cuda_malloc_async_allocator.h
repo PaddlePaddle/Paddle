@@ -24,7 +24,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-// TODO: It may be beneficial to introduce an abstract class named
+// TODO(eee4017): It may be beneficial to introduce an abstract class named
 // `StreamAllocator` in future developments. This class would serve as a central
 // entity for methods specifically related to stream management, such as
 // `RecordStream` and `EraseStream`. The introduction of `StreamAllocator` would
@@ -46,7 +46,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
 
   gpuStream_t GetOwningStream() const { return malloc_stream_; }
 
-  // TODO: The current implementation of RecordStream is
+  // TODO(eee4017): The current implementation of RecordStream is
   // similar to that in StreamSafeCUDAAllocator. This approach might lead to
   // host execution blocking and redundant EventQuery checks. Considering
   // cudaMallocFree, stream-ordered semantics could be leveraged for more
@@ -93,8 +93,9 @@ class CUDAMallocAsyncAllocator : public Allocator {
   std::shared_ptr<Allocator> underlying_allocator_;
   platform::CUDAPlace place_;   // Specifies the CUDA device context.
   gpuStream_t default_stream_;  // Default stream for memory operations.
-  gpuStream_t memory_stream_;   // TODO: We may use a single stream to
-                                // malloc/free to prevent host blocking
+  // TODO(eee4017): We may use a single stream to malloc/free to prevent host
+  // blocking
+  gpuStream_t memory_stream_;
   std::once_flag once_flag_;
   std::unordered_set<CUDAMallocAsyncAllocation*> graph_owned_allocations_;
   std::list<CUDAMallocAsyncAllocation*> unfreed_allocations_;

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import deque
 from enum import Enum
 
 import paddle
+from paddle.base import log_helper
 
 from .graphs import CUDAGraph
-from paddle.base import log_helper
-import logging
 
 logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='[%(levelname)s] %(message)s'
@@ -194,7 +194,7 @@ class CUDAGraphContext:
         # graph queue
         self.graph_queue = deque()
 
-    ## Graph Operations
+    # Graph Operations
     def get_graph(self):
         if len(self.graph_queue) == 0:
             return CUDAGraphForwardBackward(self.num_warmup_steps)
@@ -204,14 +204,14 @@ class CUDAGraphContext:
     def reuse_graph(self, g):
         self.graph_queue.append(g)
 
-    ## Tensor Queue Operations
+    # Tensor Queue Operations
     def push_data(self, args):
         self.data_queue.append(args)
 
     def pop_data(self):
         return self.data_queue.popleft()
 
-    ## Finite State Machine of Layer State
+    # Finite State Machine of Layer State
     def warmup_step(self):
         self._step += 1
         if self._step == self.num_warmup_steps:
@@ -279,7 +279,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         inputs = (grad_inputs, detached_grad_inputs)
 
         if context.is_warmup_step():
-            logger.debug(f"[CUDAGraph] Forward Step (Default)")
+            logger.debug("[CUDAGraph] Forward Step (Default)")
 
             with paddle.enable_grad():
                 y = context.layer(*args, **kwargs)
@@ -289,7 +289,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
             graph = context.get_graph()
             if graph.is_record_step():
                 # In record step, record the forward pass in CUDA graph
-                logger.info(f"[CUDAGraph] Forward Step (Record)")
+                logger.info("[CUDAGraph] Forward Step (Record)")
 
                 def forward(*args, **kwargs):
                     with paddle.enable_grad():
@@ -323,7 +323,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
         y, dy = select_y_with_grad(ys, dys)
 
         if status == CUDAGraphLayerStatus.WARMUP:
-            logger.debug(f"[CUDAGraph] Backward Step (Default)")
+            logger.debug("[CUDAGraph] Backward Step (Default)")
 
             # In warmup step, perform standard backward operation
             y.backward(dy)
@@ -331,7 +331,7 @@ class _CUDAGraphedLayer(paddle.autograd.PyLayer):
 
             context.warmup_step()
         elif status == CUDAGraphLayerStatus.RECORD:
-            logger.info(f"[CUDAGraph] Backward Step (Record)")
+            logger.info("[CUDAGraph] Backward Step (Record)")
 
             # In record step, record the backward pass in CUDA graph
             def backward(y, dy):
