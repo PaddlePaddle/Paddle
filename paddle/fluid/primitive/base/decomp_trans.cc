@@ -77,10 +77,8 @@ static bool check_dynamic_shape(const pir::OpOperand& item,
   auto dims = GetValueDims(item.source());
   std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
   if (find_value(shape, -1)) {
-    LOG(WARNING)
-        << "[Prim] Decomp op does not support dynamic shape -1, but got "
-           "shape ["
-        << dims << "] in inputs of op " << op.name();
+    VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << dims
+            << "] in inputs of op " << op.name();
     return true;
   } else {
     return false;
@@ -159,18 +157,12 @@ void DecompProgram::check_decomp_outputs(
       auto decomp_dim = GetValueDims(decomp_outs[i]);
       std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
       if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-        LOG(WARNING)
-            << "[Prim] Decomp op does not support dynamic shape -1, but got "
-               "shape ["
-            << orig_dim << "] in " << i << "-index output of origin op "
-            << op_name;
+        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
+                << "] in " << i << "-index output of origin op " << op_name;
       }
       if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-        LOG(WARNING)
-            << "[Prim] Decomp op does not support dynamic shape -1, but got "
-               "shape ["
-            << decomp_dim << "] in " << i << "-index output of decomp op "
-            << op_name;
+        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
+                << "] in " << i << "-index output of decomp op " << op_name;
       }
 
       PADDLE_ENFORCE(orig_dim == decomp_dim,
@@ -283,6 +275,7 @@ void DecompProgram::decomp_program() {
   }
   std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] Origin program before decomp :\n"
           << orig_prog_stream.str();
 
@@ -339,6 +332,7 @@ void DecompProgram::decomp_program() {
   builder.SetInsertionPointToBlockEnd(block);
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
   dst_vars_ = tar_vars;
   return;

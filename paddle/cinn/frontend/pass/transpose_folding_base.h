@@ -180,7 +180,7 @@ class TransposeFoldingBase : public ProgramPass {
       return false;
     }
 
-    // `axis` of tranpose must be consecutive in the reverse order,
+    // `axis` of transpose must be consecutive in the reverse order,
     // excluding the first dim
     auto axis = transpose.GetAttrs<std::vector<int>>("axis");
     if (axis.size() <= 1) {

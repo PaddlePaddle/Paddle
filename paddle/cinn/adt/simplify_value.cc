@@ -15,13 +15,13 @@
 #include <optional>
 #include <typeinfo>
 
-#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/get_sub_reshape_dim_ranges.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn::adt {
 
@@ -64,7 +64,7 @@ struct SimplifyRedundantBroadcastedIterator {
       return SimplifyValue(outter_iterator, ctx);
     } else {
       const auto& bd = MakeBroadcastedDim(outter_dim, inner_dim);
-      const auto& simplified_bd = DimExpr{SimplifyDimExpr(bd)};
+      const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
     LOG(FATAL) << "Dead code";

@@ -27,6 +27,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {
@@ -98,8 +99,8 @@ inline bool is_same_size(
     const std::shared_ptr<Group>& consumer,
     const ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
   auto master_op = consumer->master_ops.begin();
-  return shape_analysis.IsSameNumElements(producer->result(0),
-                                          (*master_op)->result(0));
+  return shape_analysis.IsSameNumel(producer->result(0),
+                                    (*master_op)->result(0));
 }
 
 inline bool without_last_dimension_in_reduce(
@@ -302,7 +303,11 @@ inline bool horizontal_or_can_inline(
       return false;
     }
   }
+
   // vertical relation: 1.can compute inline
+  if (producer->result(0).use_count() == 1) {
+    return true;
+  }
   // if (helper->GetNodeData(producer)->outlinks().size() == 1 &&
   //     helper->output_ops_set_.count(producer) == 0) {
   //   return true;

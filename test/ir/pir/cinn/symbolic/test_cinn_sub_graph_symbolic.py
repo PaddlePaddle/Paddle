@@ -92,12 +92,15 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def prepare_data(self):
         self.shape = [64, 128]
-        self.axis = -1
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
+    def test_eval_symbolic(self):
+        pass
+
+
+class TestCinnExpSubGraph(TestCinnSubGraphBase):
     def eval_symbolic(self, use_cinn):
-        paddle.seed(2022)
         net = CINNSubGraphNet()
         input_spec = [InputSpec(shape=[None, 128], dtype='float32')]
         net = apply_to_static(net, use_cinn, input_spec)
@@ -200,7 +203,7 @@ class LlamaRMSNorm(paddle.nn.Layer):
         return hidden_states * self.weight
 
 
-class TestCinnDyShapeRMSNorm(TestCinnDyShapeBase):
+class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
     def prepare_data(self):
         self.hidden_states_shape = [1, 300, 4096]
         self.hidden_states = paddle.randn(
@@ -277,7 +280,7 @@ class LlamaRepeatKV(paddle.nn.Layer):
         return out
 
 
-class TestCinnDyShapeRepeatKV(TestCinnDyShapeBase):
+class TestCinnDyShapeRepeatKV(TestCinnSubGraphBase):
     def prepare_data(self):
         self.hidden_states_shape = [1, 300, 32, 128]
         self.hidden_states = paddle.randn(
