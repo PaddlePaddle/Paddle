@@ -141,11 +141,11 @@ class LayerCase(paddle.nn.Layer):
         var_6 = paddle.nn.functional.common.interpolate(
             var_5, scale_factor=2.0, mode='nearest'
         )
-        var_7 = var_4.__add__(var_6)
+        var_7 = var_4 + var_6
         var_8 = paddle.nn.functional.common.interpolate(
             var_7, scale_factor=2.0, mode='nearest'
         )
-        var_9 = var_3.__add__(var_8)
+        var_9 = var_3 + var_8
         var_10 = paddle.nn.functional.conv._conv_nd(
             var_9,
             self.parameter_13,
