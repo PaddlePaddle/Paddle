@@ -49,7 +49,7 @@ bool MakeGenerateShapeOpAttribute(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<symbol::DimExpr>& out_dim_exprs,
     const std::vector<pir::Value>& origin_inputs,
-    std::vector<pir::Value>* minial_inputs,
+    std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings);
 
