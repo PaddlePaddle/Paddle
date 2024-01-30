@@ -53,22 +53,21 @@ class Fused2EmbeddingEltwiseLayernormPattern
         {&pat.Tensor("layernorm_out"),
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
-    // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
       auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
-      if (x1_shape.size() == x2_shape.size()) {
-        for (int i = 0; i < static_cast<int>(x1_shape.size()); i++) {
-          if (x1_shape.at(i) == x2_shape.at(i)) {
-            continue;
-          } else {
-            return false;
-          }
-        }
-        return true;
-      } else {
+
+      if (x1_shape.size() != x2_shape.size()) {
         return false;
       }
+
+      for (size_t i = 0; i < x1_shape.size(); i++) {
+        if (x1_shape.at(i) != x2_shape.at(i)) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
@@ -132,25 +131,21 @@ class Fused3EmbeddingEltwiseLayernormPattern
         {&pat.Tensor("layernorm_out"),
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
-    // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
       auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
       auto x3_shape = pir::GetShapeFromValue(match_ctx.Tensor("x3"));
-      if (x1_shape.size() == x2_shape.size() &&
-          x1_shape.size() == x3_shape.size()) {
-        for (int i = 0; i < static_cast<int>(x1_shape.size()); i++) {
-          if (x1_shape.at(i) == x2_shape.at(i) &&
-              x1_shape.at(i) == x3_shape.at(i)) {
-            continue;
-          } else {
-            return false;
-          }
-        }
-        return true;
-      } else {
+      if (x1_shape.size() != x2_shape.size() ||
+          x1_shape.size() != x3_shape.size()) {
         return false;
       }
+      for (size_t i = 0; i < x1_shape.size(); i++) {
+        if (x1_shape.at(i) != x2_shape.at(i) ||
+            x1_shape.at(i) != x2_shape.at(i)) {
+          return false;
+        }
+      }
+      return true;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
