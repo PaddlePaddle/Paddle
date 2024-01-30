@@ -1093,6 +1093,9 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
+  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
