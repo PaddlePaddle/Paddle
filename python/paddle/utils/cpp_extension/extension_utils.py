@@ -1326,6 +1326,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
@@ -1385,14 +1386,12 @@ def run_cmd(command, verbose=False):
 
     # execute command
     try:
-        commands = []
-        commands.append(command)
         if verbose:
             return subprocess.check_call(
-                commands, shell=True, stderr=subprocess.STDOUT
+                command, shell=True, stderr=subprocess.STDOUT
             )
         else:
-            return subprocess.check_call(commands, shell=True, stdout=DEVNULL)
+            return subprocess.check_call(command, shell=True, stdout=DEVNULL)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(f"Failed to run command: {compile}, errors: {error}")
