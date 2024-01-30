@@ -55,10 +55,10 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.q = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.q.stop_gradient = False
 
-        self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.k = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.k.stop_gradient = False
 
         self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
