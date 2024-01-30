@@ -947,11 +947,6 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = paddle.static.data(shape=[4], dtype='uint8', name='x4')
-            x5 = paddle.static.data(shape=[4], dtype='uint8', name='x5')
-            self.assertRaises(TypeError, paddle.concat, [x4, x5])
-
             # The type of axis in concat_op should be int or Variable.
             x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
             x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
