@@ -36,7 +36,6 @@ import paddle.version as paddle_version
 
 from .. import pir
 from . import core, unique_name
-from .data_feeder import _PADDLE_DTYPE_2_NUMPY_DTYPE
 from .libpaddle import DataType
 from .proto import (
     data_feed_pb2,  # noqa: F401
@@ -8201,11 +8200,20 @@ def _get_paddle_place_list(places):
 
 
 def dtype_to_str(in_dtype):
-    if in_dtype == core.VarDesc.VarType.BF16:
-        # _PADDLE_DTYPE_2_NUMPY_DTYPE will trans bfloat16 to uint16. Can delete this if after same.
-        return "bfloat16"
+    if in_dtype == core.VarDesc.VarType.FP16:
+        return "fp16"
+    elif in_dtype == core.VarDesc.VarType.BF16:
+        return "bf16"
+    elif in_dtype == core.VarDesc.VarType.FP32:
+        return "fp32"
+    elif in_dtype == core.VarDesc.VarType.FP64:
+        return "fp64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX64:
+        return "complex64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX128:
+        return "complex128"
     else:
-        return _PADDLE_DTYPE_2_NUMPY_DTYPE[in_dtype]
+        raise TypeError(f"got unspport data type for promotion: {in_dtype}.")
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
