@@ -698,6 +698,30 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
+def replace_ellipsis(left_equation, rhs, *operands):
+    """
+    we replace ... as unused variables to simplify the EinsumOp implementation.
+    """
+    ellipsis_strings = None
+    for equ, operand in zip(left_equation.split(','), operands):
+        if '...' not in equ:
+            continue
+        # create unused variables
+        if ellipsis_strings is None:
+            unused_variables = {chr(c) for c in range(ord('a'), ord('z'))}
+            for c in equ:
+                unused_variables.discard(c)
+            ndims = len(operand.shape) - len(equ.replace("...", ""))
+            ellipsis_strings = ''.join(
+                unused_variables.pop() for _ in range(ndims)
+            )
+            break
+    if ellipsis_strings is not None:
+        left_equation = left_equation.replace('...', ellipsis_strings)
+        rhs = rhs.replace('...', ellipsis_strings)
+    return left_equation, rhs
+
+
 def preprocess(equation, *operands):
     """
     check equation / raise error, default right labels generation
@@ -727,6 +751,7 @@ def preprocess(equation, *operands):
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
 
+    lhs, rhs = replace_ellipsis(lhs, rhs, *operands)
     return lhs, rhs, labels
 
 
