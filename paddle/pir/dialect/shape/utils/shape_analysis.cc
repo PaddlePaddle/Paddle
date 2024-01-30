@@ -62,12 +62,7 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.at(val);
 }
 
-bool ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
-    Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  return value_to_shape_or_data_.emplace(val, shape_or_data).second;
-}
-
-void ShapeConstraintIRAnalysis::UpdateShapeOrDataForValue(
+void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
   value_to_shape_or_data_.erase(val);
   CHECK(value_to_shape_or_data_.emplace(val, shape_or_data).second);

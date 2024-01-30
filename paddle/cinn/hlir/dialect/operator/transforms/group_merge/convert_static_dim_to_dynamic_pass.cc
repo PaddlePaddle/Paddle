@@ -349,7 +349,7 @@ struct StaticDimToDynamicConverter {
       pir::ShapeConstraintIRAnalysis* shape_analysis,
       pir::Value value,
       const symbol::ShapeOrDataDimExprs& shape_or_data_dim_exprs) {
-    shape_analysis->UpdateShapeOrDataForValue(value, shape_or_data_dim_exprs);
+    shape_analysis->SetShapeOrDataForValue(value, shape_or_data_dim_exprs);
   }
 
   template <typename ConverterT>
