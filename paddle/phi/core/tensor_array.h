@@ -111,6 +111,8 @@ class TensorArray : public TensorBase,
 
   void emplace_back(const DenseTensor& tensor);
 
+  void pop(size_t i);
+
   /// \brief Return the last tensor in TensorArray
   DenseTensor& back() { return tensors_.back(); }
 

@@ -982,7 +982,7 @@ ir::Tensor Transpose(const ir::Tensor& input,
     output_shape.push_back(shape[axis[idx]]);
   }
 
-  // tranpose axis to map output to input
+  // transpose axis to map output to input
   // new_axis = axis(T)
   std::vector<int> new_axis;
   for (int idx = 0; idx < axis.size(); ++idx) {
@@ -1024,6 +1024,64 @@ ir::Tensor Slice(const ir::Tensor& A,
       new_starts[i] = input_shape[axes[i]] + new_starts[i];
     } else if (new_starts[i] > input_shape[axes[i]]) {
       new_starts[i] = input_shape[axes[i]] - 1;
+    }
+  }
+
+  // output = input[starts:ends:strides]
+  // Note that when strides < 0, the output reverse:
+  // data=[[1,2,3,4],[5,6,7,8],]
+  // axes=[0,1]
+  // starts=[1,3]
+  // ends=[2,0]
+  // strides=[1,-1]
+  // ==> result=[[8,7,6],]
+  return Compute(
+      output_shape,
+      [=](const std::vector<Expr>& indice) {
+        std::vector<Expr> temp;
+        int indice_i = 0;
+        for (int i = 0; i < input_shape.size(); ++i) {
+          if (std::find(decrease_axis.cbegin(), decrease_axis.cend(), i) !=
+              decrease_axis.cend()) {
+            temp.emplace_back(0);
+          } else {
+            temp.emplace_back(indice[indice_i]);
+            indice_i++;
+          }
+        }
+        for (int i = 0; i < axes.size(); i++) {
+          temp[axes[i]] =
+              temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
+        }
+        return A(temp);
+      },
+      output_name);
+}
+
+ir::Tensor SliceSymbolic(const ir::Tensor& A,
+                         const std::vector<int>& starts,
+                         const std::vector<int>& axes,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& decrease_axis,
+                         const std::vector<Expr>& output_shape,
+                         const std::string& output_name) {
+  std::vector<Expr> input_shape;
+  for (const auto& shape : A->shape) {
+    input_shape.emplace_back(shape);
+  }
+
+  std::vector<int> new_starts(starts);
+  for (int i = 0; i < axes.size(); i++) {
+    CHECK(input_shape[axes[i]].is_constant())
+        << "Not supported Slice in dynamic dimensions, because the "
+           "relationship between slice range and symbol size cannot be "
+           "determined at compile time";
+    if (new_starts[i] < -input_shape[axes[i]].as_int64()) {
+      new_starts[i] = 0;
+    } else if (new_starts[i] < 0) {
+      new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
+    } else if (new_starts[i] > input_shape[axes[i]].as_int64()) {
+      new_starts[i] = input_shape[axes[i]].as_int64() - 1;
     }
   }
 
@@ -1229,7 +1287,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         std::vector<Expr> indice_updates = indice;
         indice_updates[pos_axis] = id;
 
-        // check wheter Index[id] == cur_index and return by check result
+        // check whether Index[id] == cur_index and return by check result
         return ir::Select::Make(
             ir::EQ::Make(id, Expr(-1)), input(indice), updates(indice_updates));
       },
