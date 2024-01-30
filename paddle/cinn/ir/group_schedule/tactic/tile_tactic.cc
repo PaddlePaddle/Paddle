@@ -20,15 +20,23 @@ namespace ir {
 
 void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
-  // fake strategy
-  auto GetFirstFactor = [](int num) {
+  // TODO(BiynXu): Create schedule config and bucket info based on hardware
+  // information, and get the config here. naive strategy
+  auto GetFirstFactor = [](int64_t num) -> int64_t {
     if (num == 1) return 1;
     int factor = 1;
-    for (int i = num - 1; i >= 1; --i) {
+    for (int64_t i = num - 1; i >= 1; --i) {
       if (num % i == 0) {
         return i;
       }
     }
+  };
+  auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> ir::Expr {
+    if (total_rb_extent.is_constant()) {
+      int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
+      return ir::Expr(GetFirstFactor(extent));
+    }
+    return ir::Expr(context_->bucket_info.rb_lower_bound);
   };
 
   bool has_rb_iter = !context_->iter_space_info.rb_space.empty();
@@ -38,57 +46,22 @@ void TileTactic::Init(ScheduleContext* context) {
   context_->iter_space_info.rb_space.clear();
   context_->iter_space_info.sp_space.clear();
 
-  if (has_sp_iter) {
-    int sp_factor = GetFirstFactor(context_->bucket_info.sp_lower_bound);
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(context_->bucket_info.sp_lower_bound / sp_factor),
-        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockY
-                    : IterativeSpaceInfo::AxisType::kCudaBlockX);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(sp_factor),
-        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockX
-                    : IterativeSpaceInfo::AxisType::kCudaThreadX);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-  }
-
   if (has_rb_iter) {
+    context_->iter_space_info.sp_space.emplace_back(
+        context_->iter_space_info.total_sp_extent,
+        IterativeSpaceInfo::AxisType::kCudaBlockX);
     context_->iter_space_info.rb_space.emplace_back(
-        ir::Expr(context_->bucket_info.rb_lower_bound),
+        GetTreeReduceSize(context_->iter_space_info.total_rb_extent),
         IterativeSpaceInfo::AxisType::kCudaThreadX);
-    VLOG(6) << "rb_space: <"
-            << std::get<0>(context_->iter_space_info.rb_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.rb_space.back()))
-            << "]>";
     context_->iter_space_info.rb_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
-    VLOG(6) << "rb_space: <"
-            << std::get<0>(context_->iter_space_info.rb_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.rb_space.back()))
-            << "]>";
+  } else {
+    context_->iter_space_info.sp_space.emplace_back(
+        ir::Expr(-1), IterativeSpaceInfo::AxisType::kCudaBlockX);
+    context_->iter_space_info.sp_space.emplace_back(
+        ir::Expr(512), IterativeSpaceInfo::AxisType::kCudaThreadX);
   }
+  VLOG(6) << context_->iter_space_info.PrintIterSpace();
 }
 
 void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
