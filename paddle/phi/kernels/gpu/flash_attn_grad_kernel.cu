@@ -51,7 +51,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
 
@@ -97,7 +97,11 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     dv_ptr = ctx.template Alloc<T>(&dv_tmp);
   }
 
+#ifdef PADDLE_WITH_HIP
+  const hipStream_t stream = ctx.stream();
+#else
   const cudaStream_t stream = ctx.stream();
+#endif
 
   int num_splits = get_num_split();
 
@@ -190,7 +194,7 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
@@ -236,8 +240,11 @@ void FlashAttnGradKernel(const Context& ctx,
     dv_ptr = ctx.template Alloc<T>(&dv_tmp);
   }
 
+#ifdef PADDLE_WITH_HIP
+  const hipStream_t stream = ctx.stream();
+#else
   const cudaStream_t stream = ctx.stream();
-
+#endif
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
       head_size_og,
