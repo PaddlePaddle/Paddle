@@ -122,7 +122,7 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
-  static void Build(pir::Builder &builder,             // NOLINT
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value container);
   void VerifySig();
