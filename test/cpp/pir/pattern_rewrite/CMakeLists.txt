@@ -6,9 +6,9 @@ paddle_test(drr_same_type_binding_test SRCS drr_same_type_binding_test.cc)
 
 paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
 
-paddle_test(drr_fuse_linear_param_grad_add_test SRCS drr_fuse_linear_param_grad_add_test.cc)
+paddle_test(drr_fuse_linear_param_grad_add_test SRCS 
+            drr_fuse_linear_param_grad_add_test.cc)
 
 if(WITH_GPU)
-  paddle_test(
-    drr_attention_fuse_test SRCS drr_attention_fuse_test.cc)
+  paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc)
 endif()
