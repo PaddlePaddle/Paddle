@@ -1388,9 +1388,11 @@ def run_cmd(command, verbose=False):
         commands = []
         commands.append(command)
         if verbose:
-            return subprocess.check_call(commands, stderr=subprocess.STDOUT)
+            return subprocess.check_call(
+                commands, shell=True, stderr=subprocess.STDOUT
+            )
         else:
-            return subprocess.check_call(commands, stdout=DEVNULL)
+            return subprocess.check_call(commands, shell=True, stdout=DEVNULL)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(f"Failed to run command: {compile}, errors: {error}")
