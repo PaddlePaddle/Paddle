@@ -26,9 +26,16 @@ set(WARPCTC_TAG bdc2b4550453e0ef2d3b5190f9c6103a84eff184)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warpctc)
 set(WARPCTC_PATCH_COMMAND "")
 set(WARPCTC_CCBIN_OPTION "")
-set(WARPCTC_PATCH_CUDA_COMMAND
-    patch -d ${SOURCE_DIR} <
-    ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch)
+if(WIN32)
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch
+      "<SOURCE_DIR>/")
+else()
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      patch -d ${SOURCE_DIR} <
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch)
+endif()
 
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
