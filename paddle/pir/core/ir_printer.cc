@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <exception>
 #include <list>
 #include <ostream>
 #include <string>
@@ -32,6 +31,7 @@ namespace pir {
 
 namespace {
 constexpr char newline[] = "\n";  // NOLINT
+constexpr size_t indent_size = 4;
 }  // namespace
 
 void BasicIrPrinter::PrintType(Type type) {
@@ -146,20 +146,12 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 }
 
-void IrPrinter::AddIndentation() { cur_indentation_level_++; }
-
-void IrPrinter::DecreaseIndentation() {
-  if (cur_indentation_level_ == 0) {
-    return;
-  }
-  cur_indentation_level_--;
+void IrPrinter::AddIndentation() {
+  cur_indentation_ += std::string(indent_size, ' ');
 }
 
-std::string IrPrinter::indentation() {
-  // return std::string(cur_indentation_level_, '-') +
-  // std::to_string(cur_indentation_level_) +
-  // std::string(cur_indentation_level_, '-');
-  return std::string(cur_indentation_level_ * 4, ' ');
+void IrPrinter::DecreaseIndentation() {
+  cur_indentation_.resize(cur_indentation_.size() - indent_size);
 }
 
 void IrPrinter::PrintProgram(const Program* program) {
@@ -226,11 +218,11 @@ void IrPrinter::PrintRegion(const Region& region) {
 
 void IrPrinter::PrintBlock(const Block& block) {
   os << indentation() << "{\n";
-  cur_indentation_level_++;
+  AddIndentation();
   for (auto& item : block) {
     PrintOperation(&item);
   }
-  cur_indentation_level_--;
+  DecreaseIndentation();
   os << indentation() << "}\n";
 }
 
