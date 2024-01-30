@@ -179,7 +179,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     return shape_analysis.GetShapeOrDataForValue(value);
   };
 
-  std::vector<pir::Value> lhs_minial_inputs;
+  std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
@@ -187,11 +187,11 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {lhs_expr},
                                                   group_inputs,
-                                                  &lhs_minial_inputs,
+                                                  &lhs_minimal_inputs,
                                                   &lhs_output_dim_expr_attrs,
                                                   &lhs_symbol_bindings);
   CHECK(success);
-  std::vector<pir::Value> rhs_minial_inputs;
+  std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
@@ -199,20 +199,22 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {rhs_expr},
                                                   group_inputs,
-                                                  &rhs_minial_inputs,
+                                                  &rhs_minimal_inputs,
                                                   &rhs_output_dim_expr_attrs,
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
   auto lhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              lhs_minial_inputs, lhs_output_dim_expr_attrs, lhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
+                                                 lhs_output_dim_expr_attrs,
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              rhs_minial_inputs, rhs_output_dim_expr_attrs, rhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
+                                                 rhs_output_dim_expr_attrs,
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder
@@ -711,9 +713,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild output_ops and input_ops of the group
-    auto yeild_op = fusion_op.GetOperators().back();
-    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-      group->output_ops.insert(yeild_op->operand_source(i).defining_op());
+    auto yield_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      group->output_ops.insert(yield_op->operand_source(i).defining_op());
     }
 
     // Rebuild other informations

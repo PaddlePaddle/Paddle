@@ -462,9 +462,17 @@ class TestBatchNormOpInference(unittest.TestCase):
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
                 self.check_with_place_without_scale_and_bias(
                     place, data_format, self.dtype, [2, 3, 4, 5]
                 )
@@ -493,9 +501,17 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 @unittest.skipIf(
@@ -516,9 +532,17 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
