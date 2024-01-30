@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 

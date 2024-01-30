@@ -62,7 +62,7 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
-option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
+option(WIPHITH_SHARED_ "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 

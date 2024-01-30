@@ -38,7 +38,7 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
 
-PD_DECLARE_bool(new_executor_serial_run);
+COMMON_DECLARE_bool(new_executor_serial_run);
 PD_DECLARE_bool(new_executor_static_build);
 PD_DECLARE_bool(new_executor_use_inplace);
 PD_DECLARE_bool(new_executor_use_local_scope);
