@@ -24,7 +24,8 @@
 namespace {
 class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
  public:
-  BatchNormActFusePattern(std::string bn_name, std::string fused_bn_name)
+  BatchNormActFusePattern(const std::string &bn_name,
+                          const std::string &fused_bn_name)
       : bn_name_(bn_name), fused_bn_name_(fused_bn_name) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

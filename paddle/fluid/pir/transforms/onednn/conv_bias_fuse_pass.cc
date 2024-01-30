@@ -24,7 +24,8 @@
 namespace {
 class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
  public:
-  ConvBiasFusePattern(std::string conv_name, std::string fused_conv_name)
+  ConvBiasFusePattern(const std::string &conv_name,
+                      const std::string &fused_conv_name)
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -116,7 +117,8 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
 
 class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
  public:
-  FusedConvAddFusePattern(std::string conv_name, std::string fused_conv_name)
+  FusedConvAddFusePattern(const std::string &conv_name,
+                          const std::string &fused_conv_name)
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
