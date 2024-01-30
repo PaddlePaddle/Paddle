@@ -93,10 +93,6 @@ const std::shared_ptr<AMPState>& GetCurrentAMPState() {
   return g_current_amp_state;
 }
 
-void SetCurrentAMPState(const std::shared_ptr<AMPState>& amp_state) {
-  g_current_amp_state = amp_state;
-}
-
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {

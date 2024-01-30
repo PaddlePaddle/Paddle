@@ -231,7 +231,7 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
-thread_local bool AMPState::use_promote_ = true;
+thread_local bool AMPState::use_promote_ = false;
 
 thread_local AmpLevel AMPState::amp_level_ = AmpLevel::O0;
 
@@ -270,12 +270,6 @@ void AMPState::SetAmpDtype(std::string amp_dtype) {
 }
 
 phi::DataType AMPState::GetAmpPhiDtype() const { return amp_dtype_; }
-
-// void AMPState::Reset() {
-//   use_promote_ = true;
-//   amp_level_ = AmpLevel::O0;
-//   amp_dtype_ = phi::DataType::FLOAT32;
-// }
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {

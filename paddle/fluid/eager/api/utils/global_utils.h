@@ -95,11 +95,6 @@ class Controller {
     return paddle::imperative::GetCurrentAMPState();
   }
 
-  void SetCurrentAMPState(
-      const std::shared_ptr<paddle::imperative::AMPState>& amp_state) {
-    paddle::imperative::SetCurrentAMPState(amp_state);
-  }
-
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
   GetOpMetaInfoMap() {
     return op_meta_info_map_;

@@ -201,7 +201,6 @@ class Tracer {
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
 const std::shared_ptr<AMPState>& GetCurrentAMPState();
-void SetCurrentAMPState(const std::shared_ptr<AMPState>& amp_state);
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);
