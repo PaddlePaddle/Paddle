@@ -804,7 +804,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 constant_next_var_indices,
             )
             (fake_constant_next_vars,) = select_by_indices(
-                unified_loop_vars, constant_next_var_indices
+                cur_block.args(), constant_next_var_indices
             )
             unified_next_vars = create_container_by_items_and_indices(
                 (variable_next_vars, variable_next_var_indices),
@@ -826,6 +826,13 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         (optimized_variable_results,) = select_by_indices(
             optimized_results, variable_next_var_indices
         )
+        # Prune unused fake values
+        for fake_value in undefined_var_mapping.values():
+            if fake_value.use_empty():
+                fake_value_def_op = fake_value.get_defining_op()
+                fake_value_def_op.get_parent_block().remove_op(
+                    fake_value_def_op
+                )
 
         return pack_sequence_as(
             loop_vars,
