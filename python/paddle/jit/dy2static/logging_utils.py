@@ -39,7 +39,7 @@ def synchronized(func):
 
 class TranslatorLogger:
     """
-    class for Logging and debugging during the tranformation from dygraph to static graph.
+    class for Logging and debugging during the transformation from dygraph to static graph.
     The object of this class is a singleton.
     """
 
@@ -199,7 +199,7 @@ def set_verbosity(level=0, also_to_stdout=False):
     `set_verbosity` has a higher priority than the environment variable.
 
     Args:
-        level(int): The verbosity level. The larger value idicates more verbosity.
+        level(int): The verbosity level. The larger value indicates more verbosity.
             The default value is 0, which means no logging.
         also_to_stdout(bool): Whether to also output log messages to `sys.stdout`.
 

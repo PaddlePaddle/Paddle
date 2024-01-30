@@ -66,6 +66,25 @@ class Conv2dAddActFusePattern
     if (act_name == "") return false;
 
     auto op_attributes = conv2d_op->attributes();
+    auto padding_algorithm = op_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = op_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        op_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
     op_attributes["activation"] = rewriter.str_attr(act_name);
     op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});
@@ -129,6 +148,25 @@ class Conv2dAdd2ActFusePattern
     }
 
     auto op_attributes = conv2d_op->attributes();
+    auto padding_algorithm = op_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = op_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        op_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
     op_attributes["activation"] = rewriter.str_attr(act_name);
     op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});

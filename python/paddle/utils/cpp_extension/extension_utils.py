@@ -331,7 +331,7 @@ def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanaged.
+    even though source file content keeps unchanged.
     """
 
     def serialize(path, version_info):
@@ -938,7 +938,7 @@ def get_build_directory(verbose=False):
 
 def parse_op_info(op_name):
     """
-    Parse input names and outpus detail information from registered custom op
+    Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
@@ -1356,7 +1356,7 @@ def _jit_compile(file_path, verbose=False):
 
 def parse_op_name_from(sources):
     """
-    Parse registerring custom op name from sources.
+    Parse registering custom op name from sources.
     """
 
     def regex(content):
