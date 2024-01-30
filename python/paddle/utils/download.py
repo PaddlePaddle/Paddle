@@ -206,7 +206,14 @@ def _wget_download(url: str, fullname: str):
         # using wget to download url
         tmp_fullname = fullname + "_tmp"
         # –user-agent
-        command = ['wget', '-O', tmp_fullname, '-t', str(DOWNLOAD_RETRY_LIMIT), url]
+        command = [
+            'wget',
+            '-O',
+            tmp_fullname,
+            '-t',
+            str(DOWNLOAD_RETRY_LIMIT),
+            url,
+        ]
         subprc = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
