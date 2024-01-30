@@ -982,7 +982,7 @@ ir::Tensor Transpose(const ir::Tensor& input,
     output_shape.push_back(shape[axis[idx]]);
   }
 
-  // tranpose axis to map output to input
+  // transpose axis to map output to input
   // new_axis = axis(T)
   std::vector<int> new_axis;
   for (int idx = 0; idx < axis.size(); ++idx) {
@@ -1287,7 +1287,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         std::vector<Expr> indice_updates = indice;
         indice_updates[pos_axis] = id;
 
-        // check wheter Index[id] == cur_index and return by check result
+        // check whether Index[id] == cur_index and return by check result
         return ir::Select::Make(
             ir::EQ::Make(id, Expr(-1)), input(indice), updates(indice_updates));
       },

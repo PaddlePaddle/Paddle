@@ -267,7 +267,7 @@ class StatementIR:
 
     def __str__(self):
         strs = []
-        strs.append("StatmentIR: %s" % self.name)
+        strs.append("StatementIR: %s" % self.name)
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"
