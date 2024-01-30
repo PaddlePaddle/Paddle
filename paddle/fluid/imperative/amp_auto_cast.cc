@@ -119,17 +119,17 @@ OpSupportedInfos(const std::string& place,
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
 
-AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
-    : tracer_(tracer) {
-  pre_amp_level_ = tracer_->GetAmpLevel();
+AutoCastGuard::AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel level)
+    : state_(state) {
+  pre_amp_level_ = state_->GetAmpLevel();
 
   if (pre_amp_level_ != level) {
-    tracer_->SetAmpLevel(level);
+    state_->SetAmpLevel(level);
   }
 }
 
 AutoCastGuard::~AutoCastGuard() {  // NOLINT
-  tracer_->SetAmpLevel(pre_amp_level_);
+  state_->SetAmpLevel(pre_amp_level_);
 }
 
 AmpOperators::AmpOperators()
@@ -308,7 +308,7 @@ static inline std::shared_ptr<VarType> CastToType(
   imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, AmpLevel::O0);
+    AutoCastGuard guard(imperative::GetCurrentAMPState(), AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 

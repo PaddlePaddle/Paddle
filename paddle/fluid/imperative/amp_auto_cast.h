@@ -106,7 +106,7 @@ class AMPState {
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel guard_level);
+  AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel guard_level);
 
   ~AutoCastGuard();
 
@@ -115,7 +115,7 @@ class AutoCastGuard {
   AutoCastGuard& operator=(const AutoCastGuard& guard) = delete;
 
  private:
-  std::shared_ptr<Tracer> tracer_;
+  std::shared_ptr<AMPState> state_;
   AmpLevel pre_amp_level_;
 };
 
