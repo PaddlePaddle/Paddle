@@ -76,21 +76,21 @@ void SampleNeighbors(const T* src,
                      std::vector<T>* output_counts,
                      std::vector<T>* outputs_eids,
                      int k,
+                     int bs,
                      bool is_first_layer,
                      bool is_last_layer,
                      bool return_eids) {
-  const size_t bs = inputs->size();
   // Allocate the memory of outputs
   // Collect the neighbors size
   std::vector<std::vector<T>> out_src_vec;
   std::vector<std::vector<T>> out_eids_vec;
   // `sample_cumsum_sizes` record the start position and end position after the
   //  sample.
-  std::vector<size_t> sample_cumsum_sizes(bs + 1);
-  size_t total_neighbors = 0;
+  std::vector<int> sample_cumsum_sizes(bs + 1);
+  int total_neighbors = 0;
   // `total_neighbors` the size of output after the sample
   sample_cumsum_sizes[0] = total_neighbors;
-  for (size_t i = 0; i < bs; i++) {
+  for (int i = 0; i < bs; i++) {
     T node = inputs->data()[i];
     T begin = dst_count[node];
     T end = dst_count[node + 1];
@@ -125,7 +125,7 @@ void SampleNeighbors(const T* src,
 #pragma omp parallel for
 #endif
   // Sample the neighbour parallelism
-  for (size_t i = 0; i < bs; i++) {
+  for (int i = 0; i < bs; i++) {
     T node = inputs->data()[i];
     T begin = dst_count[node];
     T end = dst_count[node + 1];
@@ -156,7 +156,7 @@ void SampleNeighbors(const T* src,
 #pragma omp parallel for
 #endif
   // Copy the results parallelism
-  for (size_t i = 0; i < bs; i++) {
+  for (int i = 0; i < bs; i++) {
     int sample_size = sample_cumsum_sizes[i + 1] - sample_cumsum_sizes[i];
     std::copy(out_src_vec[i].begin(),
               out_src_vec[i].begin() + sample_size,
@@ -231,8 +231,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   const T* src_data = row.data<T>();
   const T* dst_count_data = col_ptr.data<T>();
   const T* p_vertices = x.data<T>();
-  const size_t bs = x.dims()[0];
-
+  int bs = static_cast<int>(x.dims()[0]);
   // 2. Get unique input nodes(X).
   std::vector<T> inputs(bs);
   std::copy(p_vertices, p_vertices + bs, inputs.begin());
@@ -249,12 +248,12 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   std::vector<std::vector<T>> output_counts_vec;
   std::vector<std::vector<T>> outputs_eids_vec;
 
-  const size_t num_layers = sample_sizes.size();
+  int num_layers = sample_sizes.size();
   bool is_last_layer = false, is_first_layer = true;
 
   if (return_eids) {
     const T* src_eids_data = eids.get_ptr()->data<T>();
-    for (size_t i = 0; i < num_layers; i++) {
+    for (int i = 0; i < num_layers; i++) {
       if (i == num_layers - 1) {
         is_last_layer = true;
       }
@@ -273,6 +272,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
                          &output_counts,
                          &outputs_eids,
                          sample_sizes[i],
+                         bs,
                          is_first_layer,
                          is_last_layer,
                          return_eids);
@@ -281,7 +281,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
       outputs_eids_vec.emplace_back(outputs_eids);
     }
   } else {
-    for (size_t i = 0; i < num_layers; i++) {
+    for (int i = 0; i < num_layers; i++) {
       if (i == num_layers - 1) {
         is_last_layer = true;
       }
@@ -300,6 +300,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
                          &output_counts,
                          &outputs_eids,
                          sample_sizes[i],
+                         bs,
                          is_first_layer,
                          is_last_layer,
                          return_eids);
@@ -311,7 +312,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
 
   // 4. Concat intermediate sample results.
   int64_t unique_dst_size = 0, src_size = 0;
-  for (size_t i = 0; i < num_layers; i++) {
+  for (int i = 0; i < num_layers; i++) {
     unique_dst_size += dst_vec[i].size();
     src_size += outputs_vec[i].size();
   }
@@ -323,7 +324,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   auto src_merge_ptr = src_merge.begin();
   auto dst_sample_counts_merge_ptr = dst_sample_counts_merge.begin();
   // TODO(daisiming): We may try to use std::move in the future.
-  for (size_t i = 0; i < num_layers; i++) {
+  for (int i = 0; i < num_layers; i++) {
     if (i == 0) {
       unique_dst_merge_ptr = std::copy(
           dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge.begin());
@@ -347,7 +348,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   if (return_eids) {
     std::vector<T> eids_merge(src_size);
     auto eids_merge_ptr = eids_merge.begin();
-    for (size_t i = 0; i < num_layers; i++) {
+    for (int i = 0; i < num_layers; i++) {
       if (i == 0) {
         eids_merge_ptr = std::copy(outputs_eids_vec[i].begin(),
                                    outputs_eids_vec[i].end(),
@@ -400,7 +401,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   // 7. Get Reindex_X for input nodes.
   reindex_x->Resize({static_cast<int>(bs)});
   T* p_reindex_x = dev_ctx.template Alloc<T>(reindex_x);
-  for (size_t i = 0; i < bs; i++) {
+  for (int i = 0; i < bs; i++) {
     p_reindex_x[i] = node_map[p_vertices[i]];
   }
 
@@ -415,7 +416,6 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   std::copy(src_merge.begin(), src_merge.end(), p_out_src);
   std::copy(dst_merge.begin(), dst_merge.end(), p_out_dst);
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(graph_khop_sampler,

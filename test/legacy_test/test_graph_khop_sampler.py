@@ -79,7 +79,7 @@ class TestGraphKhopSampler(unittest.TestCase):
                 continue
             # Ensure no repetitive sample neighbors.
             self.assertTrue(
-                edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0]
+                edge_src_n.shape[0] == np.unique(edge_src_n).shape[0]
             )
             # Ensure the correct sample size.
             self.assertTrue(
@@ -138,7 +138,7 @@ class TestGraphKhopSampler(unittest.TestCase):
                 if edge_src_n.shape[0] == 0:
                     continue
                 self.assertTrue(
-                    edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0]
+                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0]
                 )
                 self.assertTrue(
                     edge_src_n.shape[0] == self.sample_sizes[0]
