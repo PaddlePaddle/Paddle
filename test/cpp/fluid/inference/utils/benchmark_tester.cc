@@ -15,8 +15,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/inference/utils/benchmark.h"
-
 DECLARE_FILE_SYMBOLS(benchmark);
 
 using namespace paddle::inference;  // NOLINT
