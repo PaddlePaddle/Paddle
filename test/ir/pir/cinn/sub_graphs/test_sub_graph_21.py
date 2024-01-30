@@ -66,12 +66,12 @@ class LayerCase(paddle.nn.Layer):
         )
         var_3 = var_2.reshape((-1, 198, 3, 3, 64))
         var_4 = var_3.transpose((2, 0, 3, 1, 4))
-        var_5 = var_4.__getitem__(0)
-        var_6 = var_4.__getitem__(1)
-        var_7 = var_4.__getitem__(2)
+        var_5 = var_4[0]
+        var_6 = var_4[1]
+        var_7 = var_4[2]
         var_8 = var_6.transpose((0, 1, 3, 2))
         var_9 = var_5.matmul(var_8)
-        var_10 = var_9.__mul__(0.125)
+        var_10 = var_9 * 0.125
         var_11 = paddle.nn.functional.activation.softmax(var_10, axis=-1)
         var_12 = paddle.nn.functional.common.dropout(
             var_11,

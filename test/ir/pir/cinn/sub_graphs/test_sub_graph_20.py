@@ -53,8 +53,8 @@ class LayerCase(paddle.nn.Layer):
         var_3 = paddle.nn.functional.common.linear(
             x=var_1, weight=self.parameter_0, bias=self.parameter_2, name=None
         )
-        var_4 = var_2.__add__(var_3)
-        var_5 = var_4.__truediv__(2)
+        var_4 = var_2 + var_3
+        var_5 = var_4 / 2
         return var_5
 
 

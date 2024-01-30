@@ -31,7 +31,7 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [22, 1500, 1, 1], dtype: paddle.float32, stop_gradient: False)
         var_1,  # (shape: [22, 1500, 14, 14], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_2 = var_1.__mul__(var_0)
+        var_2 = var_1 * var_0
         return var_2
 
 
