@@ -126,20 +126,21 @@ class TestEinsumAPI(unittest.TestCase):
         self.set_mandatory()
 
     def test_api(self):
-        for ty in self.types:
-            inputs = []
-            for shape in self.shapes:
-                x = paddle.randn(shape).astype(ty)
-                x.stop_gradient = False
-                inputs.append(x)
-            output = paddle.einsum(self.equation, *inputs)
-            expect = np.einsum(self.equation, *[x.numpy() for x in inputs])
-            np.testing.assert_allclose(output.numpy(), expect)
-            output = output.mean()
-            output.backward()
+        inputs = []
+        for shape, ty in zip(self.shapes, self.types):
+            x = paddle.randn(shape).astype(ty)
+            x.stop_gradient = False
+            inputs.append(x)
+        output = paddle.einsum(self.equation, *inputs)
+        expect = np.einsum(self.equation, *[x.numpy() for x in inputs])
+        np.testing.assert_allclose(output.numpy(), expect)
+        output = output.mean()
+        output.backward()
 
     def set_mandatory(self):
-        self.types = []
+        self.shapes = [(10,), (10,)]
+        self.types = [np.float64, np.float64]
+        self.equation = "...,..."
 
 
 class TestEinsumWithReduction1(TestEinsumBinary):
@@ -210,6 +211,13 @@ class TestEinsumWithBroadcast6(TestEinsumBinary):
         self.shapes = [(100), (100)]
         self.types = [np.float64, np.float64]
         self.equation = "i,i->"
+
+
+class TestEinsumWithBroadcast7(TestEinsumAPI):
+    def set_mandatory(self):
+        self.shapes = [(32, 13, 13, 12, 12), (1, 12)]
+        self.types = [np.float64, np.float64]
+        self.equation = "...ii,...i->...i"
 
 
 class TestEinsumWithDiagonal(TestEinsumBinary):
