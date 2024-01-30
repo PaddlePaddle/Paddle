@@ -15,14 +15,31 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 namespace fusion {
 
+#define TRANSFORMER_ENCODER_KERNEL_IMPL(x_dtype_, w_dtype_, gemm_dtype_) \
+  int r = xpu::transformer_encoder<x_dtype_, w_dtype_, gemm_dtype_>(     \
+      ctx.x_context(),                                                   \
+      x_fp16_data,                                                       \
+      fc_weight_data_##gemm_dtype_,                                      \
+      out_fp16_data,                                                     \
+      fc_input_max_data,                                                 \
+      fc_weight_max_data,                                                \
+      fc_bias_data,                                                      \
+      ln_scale_data,                                                     \
+      ln_bias_data,                                                      \
+      qkv_attn_param,                                                    \
+      mask_data);                                                        \
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+
 template <typename T, typename Context>
 void MultiEncoderXPUKernel(const Context& ctx,
                            const DenseTensor& x,
+                           const std::vector<const DenseTensor*>& fc_input_max,
                            const std::vector<const DenseTensor*>& fc_weight,
                            const std::vector<const DenseTensor*>& fc_weight_max,
                            const std::vector<const DenseTensor*>& fc_bias,
@@ -40,6 +57,7 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            int act_type,
                            int relative_type,
                            int slice_idx,
+                           bool is_per_channel,
                            DenseTensor* out,
                            DenseTensor* x_fp16,
                            DenseTensor* out_fp16) {
@@ -48,12 +66,19 @@ void MultiEncoderXPUKernel(const Context& ctx,
   const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
                                     ? nullptr
                                     : max_seq_len.get_ptr()->data<int>();
+  int batch_size = x.dims()[0];
+  int seq_len = x.dims()[1];
+  DDim out_dims;
   if (seq_lod_data) {
-    out->Resize(
-        {seq_lod.get_ptr()->numel() - 1, max_seq_len_data[0], x.dims()[2]});
-    out_fp16->Resize(
-        {seq_lod.get_ptr()->numel() - 1, max_seq_len_data[0], x.dims()[2]});
+    batch_size = seq_lod.get_ptr()->numel() - 1;
+    seq_len = max_seq_len_data[0];
   }
+  out_dims = {batch_size, seq_len, x.dims()[2]};
+  if (slice_idx != -1) {
+    out_dims = {batch_size, x.dims()[2]};
+  }
+  out->Resize(out_dims);
+  out_fp16->Resize(out_dims);
   // XPU2 only support fp16 input/output.
   auto x_dtype = x.dtype();
   const XPUTypeFP16* x_fp16_data = nullptr;
@@ -77,23 +102,57 @@ void MultiEncoderXPUKernel(const Context& ctx,
 
   // q,k,v weight are fused.
   // Each encoder's weight should be: w0, null, null, w3, w4, w5
+  auto enable_int8 = fc_weight[0]->dtype() == phi::DataType::INT8;
+  std::vector<xpu::QuantType> quant_types(8 * layer_num,
+                                          xpu::QuantType::NOT_QUANT);
+  if (enable_int8) {
+    int quant_types_size = 0;
+    if (static_cast<int>(fc_input_max.size()) == 18 * layer_num) {
+      // quant mul + matmul
+      quant_types_size = 8;
+    } else if (static_cast<int>(fc_input_max.size()) == 12 * layer_num) {
+      // quant mul
+      quant_types_size = 6;
+    } else {
+      PADDLE_ENFORCE_XDNN_SUCCESS(
+          1, "fc_input_max size must be 12 * layer_num or 18 * layer_num.");
+    }
+    for (int i = 0; i < layer_num; i++) {
+      for (int j = 0; j < quant_types_size; j++) {
+        quant_types[i * 8 + j] = xpu::QuantType::QUANT_INT8;
+      }
+    }
+  }
   std::vector<const float*> fc_input_max_data;
-  std::vector<const int16_t*> fc_weight_data;
+  std::vector<const int16_t*> fc_weight_data_int16_t;
+  std::vector<const int8_t*> fc_weight_data_int8_t;
   std::vector<const float*> fc_weight_max_data;
   std::vector<const float*> fc_bias_data;
   for (size_t i = 0; i < fc_weight.size(); i++) {
-    fc_weight_data.push_back(fc_weight[i]->data<int16_t>());
+    if (!enable_int8) {
+      fc_weight_data_int16_t.push_back(fc_weight[i]->data<int16_t>());
+    } else {
+      fc_weight_data_int8_t.push_back(fc_weight[i]->data<int8_t>());
+    }
     fc_weight_max_data.push_back(fc_weight_max[i]->data<float>());
     fc_bias_data.push_back(fc_bias[i]->data<float>());
     if (i % 4 == 0) {
-      fc_weight_data.push_back(nullptr);
-      fc_weight_data.push_back(nullptr);
+      fc_weight_data_int16_t.push_back(nullptr);
+      fc_weight_data_int16_t.push_back(nullptr);
+      fc_weight_data_int8_t.push_back(nullptr);
+      fc_weight_data_int8_t.push_back(nullptr);
       fc_weight_max_data.push_back(nullptr);
       fc_weight_max_data.push_back(nullptr);
       fc_bias_data.push_back(nullptr);
       fc_bias_data.push_back(nullptr);
     }
   }
+
+  std::vector<float> test_data(6, 0);
+  for (size_t i = 0; i < fc_input_max.size(); i++) {
+    fc_input_max_data.push_back(fc_input_max[i]->data<float>());
+  }
+
   std::vector<const float*> ln_scale_data;
   std::vector<const float*> ln_bias_data;
   for (size_t i = 0; i < ln_scale.size(); i++) {
@@ -107,8 +166,6 @@ void MultiEncoderXPUKernel(const Context& ctx,
 
   int batch = x.dims()[0];
   // matmul_size * layer_num
-  std::vector<xpu::QuantType> quant_types(8 * layer_num,
-                                          xpu::QuantType::NOT_QUANT);
   if (seq_lod_data) {
     xpu::VectorParam<int> query_lod = {
         seq_lod_data, seq_lod.get_ptr()->numel(), nullptr};
@@ -122,21 +179,15 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      max_seq_len_value,
                                      hidden_dim,
                                      norm_before,
-                                     false);
+                                     is_per_channel);
     qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
-        ctx.x_context(),
-        x_fp16_data,
-        fc_weight_data,
-        out_fp16_data,
-        fc_input_max_data,
-        fc_weight_max_data,
-        fc_bias_data,
-        ln_scale_data,
-        ln_bias_data,
-        qkv_attn_param);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+    if (!enable_int8) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    } else {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+    }
+
   } else if (mask_data) {
     auto mask_dims = mask.get_ptr()->dims();
     std::vector<int> mask_shape(mask_dims.Get(),
@@ -152,22 +203,14 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      true,
                                      hidden_dim,
                                      norm_before,
-                                     false);
+                                     is_per_channel);
     qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
-        ctx.x_context(),
-        x_fp16_data,
-        fc_weight_data,
-        out_fp16_data,
-        fc_input_max_data,
-        fc_weight_max_data,
-        fc_bias_data,
-        ln_scale_data,
-        ln_bias_data,
-        qkv_attn_param,
-        mask_data);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+    if (!enable_int8) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    } else {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+    }
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
     int max_seq_len_value = x.dims()[1];
@@ -187,21 +230,14 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      -1,
                                      hidden_dim,
                                      norm_before,
-                                     false);
+                                     is_per_channel);
     qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
-        ctx.x_context(),
-        x_fp16_data,
-        fc_weight_data,
-        out_fp16_data,
-        fc_input_max_data,
-        fc_weight_max_data,
-        fc_bias_data,
-        ln_scale_data,
-        ln_bias_data,
-        qkv_attn_param);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+    if (!enable_int8) {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+    } else {
+      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
+    }
   }
 
   if (x_dtype == phi::DataType::FLOAT32) {
@@ -224,6 +260,6 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->InputAt(7).SetBackend(phi::Backend::CPU);
   kernel->InputAt(8).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(9).SetBackend(phi::Backend::CPU);
 }

@@ -215,7 +215,7 @@ class AuToTune:
 
 class DataLoader:
     """
-    DataLoader prodives an iterator which iterates given dataset
+    DataLoader provides an iterator which iterates given dataset
     once by the batch_sampler.
 
     DataLoader supports single-process and multi-prcess data loading,
@@ -319,6 +319,7 @@ class DataLoader:
 
         .. code-block:: python
 
+            >>> # doctest: +SOLO('can not use multiprocessing testing `paddle.io.DataLoader`')
             >>> import numpy as np
 
             >>> import paddle
