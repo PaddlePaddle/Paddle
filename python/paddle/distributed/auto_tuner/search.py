@@ -60,12 +60,12 @@ class GridSearch(SearchAlgo):
     def search_once(self, history_cfgs):
         new_cfg = None
         stop = False
-        if self.previous_cfg:
-            if self.previous_cfg.get("time", -1) > 0:
+        if history_cfgs:
+            if history_cfgs[-1].get("time", -1) > 0:
                 if self.baseline is None:
                     from .utils import performance_sort
 
-                    self.baseline = self.previous_cfg
+                    self.baseline = history_cfgs[-1]
                     self.all_tasks[self.idx :] = sorted(
                         self.all_tasks[self.idx : len(self.all_tasks)],
                         key=performance_sort,
@@ -83,8 +83,7 @@ class GridSearch(SearchAlgo):
                 stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
             else:
                 return None
-        if self.previous_cfg is None:
-            self.previous_cfg = new_cfg
+
         return new_cfg
 
 
