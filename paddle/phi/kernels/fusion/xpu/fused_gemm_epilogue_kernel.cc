@@ -43,7 +43,6 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
 
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
-  const XPUType* bias_ptr = reinterpret_cast<const XPUType*>(bias.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
   decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[5] = {
@@ -81,14 +80,18 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
       errors::InvalidArgument(
           "FusedGemm do not support batched fc now, but got batch size %d.",
           batch_size));
-  const float* bias_fp32 = reinterpret_cast<const float*>(bias.data<T>());
+  const float* bias_ptr = reinterpret_cast<const float*>(bias.data<T>());
   if (!std::is_same<T, float>::value) {
     // TODO(lijin23): Now xblas and xdnn support fp32 bias only, may be removed
     // in the future.
-    bias_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(bias.numel());
+    float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(bias.numel());
     r = xpu::cast<XPUType, float>(
-        xpu_ctx, bias_ptr, const_cast<float*>(bias_fp32), bias.numel());
+        xpu_ctx,
+        reinterpret_cast<const XPUType*>(bias.data<T>()),
+        bias_tmp,
+        bias.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    bias_ptr = bias_tmp;
   }
   fc_api(xpu_ctx,
          x_ptr,
@@ -107,7 +110,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
          ldout,
          1.0f,
          0,
-         bias_fp32,
+         bias_ptr,
          act);
 }
 
