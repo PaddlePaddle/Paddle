@@ -35,7 +35,7 @@ class LayerCase(paddle.nn.Layer):
         var_4,  # (shape: [1, 100, 4], dtype: paddle.float32, stop_gradient: True)
         var_5,  # (shape: [1, 100, 256], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_6 = var_4.__getitem__(0)
+        var_6 = var_4[0]
         var_7 = paddle.tensor.creation.full([1], 100)
         var_8 = var_7.astype('int32')
         out = paddle.vision.ops.distribute_fpn_proposals(

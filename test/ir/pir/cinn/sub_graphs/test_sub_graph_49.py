@@ -32,11 +32,11 @@ class LayerCase(paddle.nn.Layer):
         var_1,  # (shape: [1], dtype: paddle.float32, stop_gradient: False)
         var_2,  # (shape: [], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_3 = var_2.__rmul__(1.0)
-        var_4 = var_0.__rmul__(2.5)
-        var_5 = var_3.__add__(var_4)
-        var_6 = var_1.__rmul__(0.05)
-        var_7 = var_5.__add__(var_6)
+        var_3 = 1.0 * var_2
+        var_4 = 2.5 * var_0
+        var_5 = var_3 + var_4
+        var_6 = 0.05 * var_1
+        var_7 = var_5 + var_6
         return var_7
 
 

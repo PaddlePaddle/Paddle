@@ -36,31 +36,31 @@ class LayerCase(paddle.nn.Layer):
         var_5,  # (shape: [2, 4], dtype: paddle.float32, stop_gradient: True)
     ):
         var_6 = paddle.tensor.manipulation.concat([var_3])
-        var_7 = var_0.__pow__(2.0)
-        var_8 = var_7.__rmul__(0.75)
-        var_9 = var_0.__rsub__(1)
-        var_10 = var_9.__add__(1e-08)
+        var_7 = var_0**2.0
+        var_8 = 0.75 * var_7
+        var_9 = 1 - var_0
+        var_10 = var_9 + 1e-08
         var_11 = var_10.log()
-        var_12 = var_11.__neg__()
-        var_13 = var_8.__mul__(var_12)
-        var_14 = var_0.__rsub__(1)
-        var_15 = var_14.__pow__(2.0)
-        var_16 = var_15.__rmul__(0.25)
-        var_17 = var_0.__add__(1e-08)
+        var_12 = -var_11
+        var_13 = var_8 * var_12
+        var_14 = 1 - var_0
+        var_15 = var_14**2.0
+        var_16 = 0.25 * var_15
+        var_17 = var_0 + 1e-08
         var_18 = var_17.log()
-        var_19 = var_18.__neg__()
-        var_20 = var_16.__mul__(var_19)
+        var_19 = -var_18
+        var_20 = var_16 * var_19
         var_21 = paddle.tensor.manipulation.gather(var_20, var_1, axis=1)
         var_22 = paddle.tensor.manipulation.gather(var_13, var_1, axis=1)
-        var_23 = var_21.__sub__(var_22)
+        var_23 = var_21 - var_22
         var_24 = var_4.unsqueeze(0)
         var_25 = paddle.tensor.manipulation.concat([var_24])
         var_26 = var_25.unsqueeze(1)
         var_27 = var_26.tile([1, 100, 1])
         var_28 = var_27.flatten(start_axis=0, stop_axis=1)
         var_29 = paddle.tensor.manipulation.concat([var_5])
-        var_30 = var_2.__truediv__(var_28)
-        var_31 = var_6.__truediv__(var_29)
+        var_30 = var_2 / var_28
+        var_31 = var_6 / var_29
         var_32 = var_30.unsqueeze(-2)
         var_33 = paddle.nn.functional.loss.l1_loss(
             var_32, var_31, reduction='none'

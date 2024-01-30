@@ -36,7 +36,7 @@ class LayerCase(paddle.nn.Layer):
         var_4 = paddle.tensor.ops.sigmoid(var_3)
         var_5 = var_1.flatten(start_axis=0, stop_axis=1)
         var_6 = paddle.tensor.manipulation.concat([var_2])
-        var_7 = var_6.__gt__(-1)
+        var_7 = var_6 > -1
         var_8 = var_7.all()
         return var_8, var_4, var_6, var_5
 

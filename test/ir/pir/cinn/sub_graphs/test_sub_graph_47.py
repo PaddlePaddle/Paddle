@@ -30,11 +30,11 @@ class LayerCase(paddle.nn.Layer):
         self,
         var_0,  # (shape: [2], dtype: paddle.int64, stop_gradient: True)
     ):
-        var_1 = var_0.__getitem__(0)
-        var_2 = var_1.__truediv__(640)
-        var_3 = var_0.__getitem__(1)
-        var_4 = var_3.__truediv__(640)
-        var_5 = var_4.__ne__(1)
+        var_1 = var_0[0]
+        var_2 = var_1 / 640
+        var_3 = var_0[1]
+        var_4 = var_3 / 640
+        var_5 = var_4 != 1
         return var_5, var_2, var_4
 
 
