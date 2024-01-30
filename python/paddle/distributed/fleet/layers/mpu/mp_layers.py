@@ -213,9 +213,10 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         if not fuse_matmul_bias:
             return paddle._C_ops.linear(x, weight, bias)
         else:
-            return paddle._C_ops.fused_gemm_epilogue(
+            result, _ = paddle._C_ops.fused_gemm_epilogue(
                 x, weight, bias, False, False, "none"
             )
+            return result
 
     @staticmethod
     def backward(ctx, dy):

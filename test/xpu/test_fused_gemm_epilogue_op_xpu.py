@@ -251,9 +251,9 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        out1 = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'none')
-        out2 = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'relu')
-        out3 = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'gelu')
+        out1, _ = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'none')
+        out2, _ = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'relu')
+        out3, _ = _C_ops.fused_gemm_epilogue(x, y, bias, False, False, 'gelu')
 
         out_np1 = get_output(x_np, y_np, bias_np, 'none')
         out_np2 = get_output(x_np, y_np, bias_np, 'relu')

@@ -57,9 +57,10 @@ def fused_matmul_bias(
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_gemm_epilogue(
+        out, _ = _C_ops.fused_gemm_epilogue(
             x, y, bias, transpose_x, transpose_y, "none"
         )
+        return out
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -146,7 +147,7 @@ def fused_linear_activation(
         activation = "none"
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.fused_gemm_epilogue(
+        out, _ = _C_ops.fused_gemm_epilogue(
             x,
             y,
             bias,
@@ -154,6 +155,7 @@ def fused_linear_activation(
             trans_y,
             activation,
         )
+        return out
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
