@@ -41,6 +41,24 @@ namespace {
 using ShapeOrDataDimExprs4ValueT =
     std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
 
+bool IsDimOnDataExpr(const symbol::TensorShapeOrDataDimExprs& shape_exprs) {
+  return shape_exprs.data().has_value();
+}
+
+bool IsDimOnDataExpr(const symbol::TensorListShapeOrDataDimExprs& shape_exprs) {
+  for (const auto& expr : shape_exprs) {
+    if (!IsDimOnDataExpr(expr)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsDimOnDataExpr(const symbol::ShapeOrDataDimExprs& shape_exprs) {
+  return std::visit([&](const auto& exprs) { return IsDimOnDataExpr(exprs); },
+                    shape_exprs.variant());
+}
+
 std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     pir::Value shape,
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
@@ -59,16 +77,14 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
         }
       };
   const auto& IsDimTensor = [&](pir::Value value) -> bool {
-    return ShapeOrDataDimExprs4Value(value).data().has_value();
+    return IsDimOnDataExpr(ShapeOrDataDimExprs4Value(value));
   };
-  const auto& IsFromCombineOp = [&](pir::Value value) -> bool {
-    return value.defining_op()->isa<pir::CombineOp>();
-  };
+
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         ForEachInputValue(value, [&](pir::Value input) {
-          if (IsFromCombineOp(input) || IsDimTensor(input)) {
+          if (IsDimTensor(input)) {
             Visit(input);
           }
         });
@@ -78,7 +94,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     size_t input_cnt = 0;
     ForEachInputValue(value, [&](pir::Value input) {
       ++input_cnt;
-      if (IsFromCombineOp(input) || IsDimTensor(input)) return;
+      if (IsDimTensor(input)) return;
       Emplace(input);
     });
     if (input_cnt == 0) {
