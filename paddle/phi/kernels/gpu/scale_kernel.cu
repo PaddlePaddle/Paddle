@@ -27,10 +27,10 @@ struct ScaleFunctor {
   ParamT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_scale)
       : bias(bias_data),
         scale(scale_data),
-        bias_after_scale(is_bias_after_sacle) {}
+        bias_after_scale(is_bias_after_scale) {}
 
   __device__ __forceinline__ DataT operator()(const DataT x) const {
     if (bias_after_scale) {

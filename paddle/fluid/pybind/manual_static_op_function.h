@@ -59,7 +59,7 @@ static PyObject *static_api_set_parameter(PyObject *self,
     VLOG(6) << "Add set_parameter op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-    // Get OpResult from args
+    // Get Value from args
     PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
     auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
 
@@ -754,6 +754,30 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+static PyObject *static_api_array_pop(PyObject *self,
+                                      PyObject *args,
+                                      PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_pop op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "array_pop", 0);
+
+    PyObject *index_obj = PyTuple_GET_ITEM(args, 1);
+    auto index = CastPyArg2Int(index_obj, "array_pop", 1);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_pop(input, index);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -803,6 +827,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
+    {"array_pop",
+     (PyCFunction)(void (*)(void))static_api_array_pop,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_pop."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

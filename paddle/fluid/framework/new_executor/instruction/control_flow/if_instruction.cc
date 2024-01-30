@@ -251,7 +251,7 @@ void IfInstruction::Run() {
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
-  // copy ouptut
+  // copy output
 }
 
 }  // namespace framework

@@ -80,6 +80,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -802,7 +803,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
-        // gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
+        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
@@ -835,6 +836,28 @@ bool AnalysisPredictor::PrepareExecutor() {
           gpu_pm.EnableIRPrinting();
         }
         gpu_pm.Run(pir_program_.get());
+#ifdef PADDLE_WITH_DNNL
+      } else if (config_.mkldnn_enabled()) {
+        ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
+
+        mkldnn_pm.AddPass(::pir::CreateConv2dBiasFusePass());
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        mkldnn_pm.AddPass(std::move(constant_folding_pass));
+        mkldnn_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        mkldnn_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          mkldnn_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          mkldnn_pm.EnableIRPrinting();
+        }
+        mkldnn_pm.Run(pir_program_.get());
+#endif
       } else {
         ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
 
@@ -1789,10 +1812,10 @@ void AnalysisPredictor::PrepareArgument() {
         model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
-      pass_builder->AppendPass("map_op_to_another_pass");
-      pass_builder->AppendPass("simplify_with_basic_ops_pass");
-      pass_builder->AppendPass("is_test_pass");
       if (!FLAGS_enable_pir_in_executor) {
+        pass_builder->AppendPass("map_op_to_another_pass");
+        pass_builder->AppendPass("simplify_with_basic_ops_pass");
+        pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
       }
       pass_builder->AppendPass("auto_mixed_precision_pass");
@@ -2875,10 +2898,10 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 #endif
 #ifdef PADDLE_WITH_LITE
 #ifdef LITE_SUBGRAPH_WITH_XPU
-  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_,
                                 config_.xpu_config_.stream);
 #else
-  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_, nullptr);
 #endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);

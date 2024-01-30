@@ -18,7 +18,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -86,6 +86,8 @@ pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends);
 pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
+
+pir::Value array_pop(pir::Value input, int index);
 
 }  // namespace dialect
 }  // namespace paddle

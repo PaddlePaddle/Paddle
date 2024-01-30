@@ -20,6 +20,9 @@ from typing import Any
 
 from paddle import pir
 from paddle.base import core
+from paddle.base.libpaddle.pir import (
+    get_used_external_value,
+)
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 
@@ -253,3 +256,199 @@ def dynamic_shape_prim_vjp_guard(op, inputs):
     finally:
         if skip_prim:
             core._set_prim_backward_enabled(True)
+
+
+def check_type(input, input_name, expected_type, op_name, extra_message=''):
+    if not isinstance(input, expected_type):
+        raise TypeError(
+            f"The type of '{input_name}' in {op_name} must be {expected_type}, but received {type(input)}. {extra_message}"
+        )
+
+
+def _as_list(x):
+    if x is None:
+        return []
+    return list(x) if isinstance(x, Sequence) else [x]
+
+
+def some_in_set(value_list, value_set):
+    def operand2value(values):
+        value_set = ValueSet()
+        for item in values:
+            if isinstance(item, pir.OpOperand):
+                value_set.add(item.source())
+            else:
+                value_set.add(item)
+        return value_set
+
+    if operand2value(value_list) & operand2value(value_set):
+        return True
+    else:
+        return False
+
+
+def is_control_flow(op):
+    return op.name() == "pd_op.if" or op.name() == "pd_op.while"
+
+
+def update_no_grad_set_by_stopgradient(block, no_grad_set):
+    for op in block.ops:
+        if is_control_flow(op):
+            for sub_block in op.blocks():
+                update_no_grad_set_by_stopgradient(sub_block, no_grad_set)
+        for value in op.results():
+            if value.stop_gradient and value not in no_grad_set:
+                no_grad_set.add(value)
+
+
+def get_real_op_inputs(op):
+    if op.name() == "pd_op.if":
+        return get_used_external_value(op)
+    elif op.name() == "pd_op.while":
+        return op.operands_source() + get_used_external_value(
+            op.as_while_op().body()
+        )
+    else:
+        return op.operands_source()
+
+
+def inverse_sort_op(ops):
+    '''
+    if topo graph is op1 -> op2 -> op3
+    return [op3, op2, op1]
+
+    '''
+
+    # init pending_count[op] which descibes number of
+    # pending edges for its grad_op
+
+    pending_count = collections.defaultdict(int)
+    ops_set = set(ops)
+    sorted_list = []
+    for op in ops:
+        for x in get_real_op_inputs(op):
+            if not pir.is_fake_value(x) and x.get_defining_op() in ops_set:
+                pending_count[x.get_defining_op()] += 1
+
+    queue = collections.deque()
+
+    for op in ops:
+        if pending_count[op] == 0:
+            queue.append(op)
+
+    while queue:
+        op = queue.popleft()
+        sorted_list.append(op)
+        for x in get_real_op_inputs(op):
+            x_op = x.get_defining_op()
+            pending_count[x_op] -= 1
+            if pending_count[x_op] == 0:
+                queue.append(x_op)
+
+    if len(sorted_list) != len(ops):
+        raise ValueError(
+            "inverse_sort_op wrong, sorted_list size is not equal to origin_list size"
+        )
+    change_list = []
+    # true  %0 = op1, 1% = increment(0%), 3% = op2(0%), tuple_push(%0, 1%, 3%),
+    # no one use 1% so increment be the first op, actually op2 use 1% ,
+    # sorted_list = [increment, op2, op1] should be [op2, increment, op1],
+    # tuple_push(0%) must be forward last op, backward first op, so skip it.
+    for op in reversed(sorted_list):
+        if op.name() == 'pd_op.increment_':
+            idx_1 = sorted_list.index(op)
+            idx_2 = sorted_list.index(op)
+
+            for op_in in reversed(sorted_list[: sorted_list.index(op)]):
+                if (
+                    some_in_set(
+                        op.operands_source(),
+                        ValueSet(get_real_op_inputs(op_in)),
+                    )
+                    and op_in.name() != "cf.tuple_push"
+                ):
+                    idx_2 = sorted_list.index(op_in)
+            if idx_1 != idx_2:
+                change_list.append((idx_1, idx_2))
+    for idx_1, idx_2 in change_list:
+        sorted_list[idx_1], sorted_list[idx_2] = (
+            sorted_list[idx_2],
+            sorted_list[idx_1],
+        )
+
+    return sorted_list
+
+
+def inplace_net(op_list):
+    '''
+    when program has inpalce op , it's difficult to find the actual pending_count.
+    '''
+    for op in op_list:
+        if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
+            return True
+        if is_control_flow(op):
+            for block in op.blocks():
+                if inplace_net(block.ops):
+                    return True
+
+    return False
+
+
+def remove_op(block, op, state):
+    '''
+    remove op from block
+    '''
+    block.remove_op(op)
+    if state.opgrad_to_op[op] != []:
+        fwd_op = state.opgrad_to_op[op][0]
+        state.op_to_opgrad[fwd_op].remove(op)
+
+    for valuegrad in op.results():
+        if state.valuegrad_to_value[valuegrad] != []:
+            value = state.valuegrad_to_value[valuegrad][0]
+            state.value_to_valuegrad[value] = []
+
+            if value in state.sumvaluegrad_to_value:
+                raise ValueError(
+                    'input_grad in [%s] is value which need to sum ', op.name()
+                )
+
+
+def remove_useless_full_like_ops(block, ops, state):
+    '''
+    remove ops which are not in use recursively,
+
+    '''
+    # from output to input
+    for op in inverse_sort_op(list(ops)):
+        if op.name() == 'pd_op.full_like':
+            if op.result(0).use_empty():
+                full_op = op.operand_source(1).get_defining_op()
+                remove_op(block, op, state)
+                remove_op(block, full_op, state)
+        elif is_control_flow(op):
+            for sub_block in op.blocks():
+                remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+
+def all_stop_gradient_true(block):
+    for op in block.ops:
+        for value in op.results():
+            if value.stop_gradient is False:
+                return False
+    return True
+
+
+def parent_total_ops(block):
+    '''
+    when block is sub_block, forward op should include its parent block ops
+    (sub block nest should Add on demand to aviod block copy)
+    '''
+    total_ops = []
+    if block.parent_block is not None:
+        if block.parent_block.parent_block:
+            total_ops += block.parent_block.parent_block.ops
+        total_ops += block.parent_block.ops
+    total_ops += block.ops
+
+    return total_ops
