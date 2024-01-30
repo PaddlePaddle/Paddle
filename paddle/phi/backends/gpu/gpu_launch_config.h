@@ -226,6 +226,13 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   config.compute_capability = capability;
   config.thread_per_block = dim3(block_x, block_y, block_z);
   config.block_per_grid = dim3(grid_x, grid_y, grid_z);
+
+  VLOG(3) << "Get 3-D launch config: num_img=" << num_img
+          << ", height=" << height << ", width=" << width
+          << ", max_threads=" << max_threads << ", block_x=" << block_x
+          << ", block_y=" << block_y << ", block_z=" << block_z
+          << ", grid_x=" << grid_x << ", grid_y=" << grid_y
+          << ", grid_z=" << grid_z;
   return config;
 }
 

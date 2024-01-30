@@ -54,11 +54,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   constexpr const int vec_size = 2;
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -181,27 +176,59 @@ void FusedRopeKernel(const Context& dev_ctx,
   }
 
   int sign = 1;
-  if (is_same_num_heads) {
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          3,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>;
+  if (true /*force-true, only for testing*/) {
+    // x: num_heads * head_dim / vec_size
+    // y: seq_len
+    // z: batch_size
+    auto config_3d = phi::backends::gpu::GetGpuLaunchConfig3D(
+        dev_ctx,
+        batch_size,
+        seq_len,
+        phi::backends::gpu::DivUp<int>(inputs_num_heads[0] * head_dim,
+                                       vec_size));
 
-    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
-                                                sin_cos_data,
-                                                position_ids_data,
-                                                flag_sin_cos,
-                                                sign,
-                                                batch_size,
-                                                seq_len,
-                                                inputs_num_heads[0],
-                                                head_dim,
-                                                outs_data,
-                                                num_inputs,
-                                                div_c);
+    VectorizedFusedRopeWithRotateHalfKernel3D<T, MPType, 3, vec_size>
+        <<<config_3d.block_per_grid,
+           config_3d.thread_per_block,
+           0,
+           dev_ctx.stream()>>>(
+            ins_data,
+            sin_cos_data,
+            position_ids_data,
+            flag_sin_cos,
+            sign,
+            batch_size,
+            seq_len,
+            inputs_num_heads[0],
+            inputs_num_heads[1], /*NOTE: may cause crash in specific cases*/
+            head_dim,
+            outs_data,
+            num_inputs,
+            div_c);
+
+    // VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv
+    // =
+    //     use_neox_rotary_style
+    //         ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
+    //                                                       MPType,
+    //                                                       3,
+    //                                                       vec_size>
+    //         : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3,
+    //         vec_size>;
+
+    // kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
+    //                                             sin_cos_data,
+    //                                             position_ids_data,
+    //                                             flag_sin_cos,
+    //                                             sign,
+    //                                             batch_size,
+    //                                             seq_len,
+    //                                             inputs_num_heads[0],
+    //                                             head_dim,
+    //                                             outs_data,
+    //                                             num_inputs,
+    //                                             div_c);
+
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -243,6 +270,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                                           vec_size>
             : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>;
 
+#if 0
     // rotary position embedding Q
     phi::Array<const T*, 1> input_q{ins_data[0]};
     phi::Array<T*, 1> out_q{outs_data[0]};
@@ -274,6 +302,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                                out_kv,
                                                num_inputs - 1,
                                                div_c);
+#endif
   }
 }
 }  // namespace fusion

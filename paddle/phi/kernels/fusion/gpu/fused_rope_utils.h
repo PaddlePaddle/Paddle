@@ -86,6 +86,64 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
   }
 }
 
+template <typename T, typename MPType, int VecSize = 2>
+__device__ void VectorizedGetSinCos3D(phi::Array<const T*, 2> sin_cos_data,
+                                      const int64_t* position_ids_data,
+                                      bool flag_sin_cos,
+                                      int64_t idx_pos,
+                                      int64_t tid_x,
+                                      int64_t idx_batch,
+                                      int64_t seq_len,
+                                      int64_t num_heads,
+                                      int64_t head_dim,
+                                      MPType* out_sin,
+                                      MPType* out_cos,
+                                      MPType div_c) {
+  MPType* sin_value = out_sin;
+  MPType* cos_value = out_cos;
+
+  if (flag_sin_cos) {
+#pragma unroll
+    for (int64_t nx = 0; nx < VecSize; ++nx) {
+      // NOTE(MarioLulab): maybe redundant
+      int64_t idx_x = tid_x + nx;
+      int64_t last_2_dim_total = num_heads * head_dim;
+      if (idx_x >= last_2_dim_total) {
+        break;
+      }
+
+      int64_t pos_seq = idx_pos;
+      if (position_ids_data) {
+        int64_t index_ids = idx_batch * seq_len + idx_pos;
+        pos_seq = position_ids_data[index_ids];
+      }
+      int64_t idx_dim = idx_x % head_dim;
+      int64_t index_sc = pos_seq * head_dim + idx_dim;
+      const T* sin_input = sin_cos_data[0] + index_sc;
+      const T* cos_input = sin_cos_data[1] + index_sc;
+
+      sin_value[nx] = static_cast<MPType>(sin_input[0]);
+      cos_value[nx] = static_cast<MPType>(cos_input[0]);
+    }
+  } else {
+#if 0
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      // get sin_index and cos_index
+      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+      int64_t pos_seq = index_wc / (num_heads * head_dim);
+      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
+      MPType indicses =
+          static_cast<MPType>(1) /
+          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
+      MPType value = pos_seq * indicses;
+      sin_value[nx] = sin(value);
+      cos_value[nx] = cos(value);
+    }
+#endif
+  }
+}
+
 template <typename T, typename MPType, int NInputs, int VecSize = 2>
 __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     phi::Array<const T*, NInputs> ins_data,
@@ -155,6 +213,90 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
 
         store[pr_index] = static_cast<T>(result[pr_index]);
         store[ls_index] = static_cast<T>(result[ls_index]);
+      }
+      out[0] = *(reinterpret_cast<VecType*>(store));
+    }
+  }
+}
+
+template <typename T, typename MPType, int NInputs, int VecSize = 2>
+__global__ void VectorizedFusedRopeWithRotateHalfKernel3D(
+    phi::Array<const T*, NInputs> ins_data,
+    phi::Array<const T*, 2> sin_cos_data,
+    const int64_t* position_ids_data,
+    bool flag_sin_cos,
+    int sign,
+    int64_t batch_size,
+    int64_t seq_len,
+    int64_t num_heads,
+    int64_t num_kv_heads,
+    int64_t head_dim,
+    phi::Array<T*, NInputs> outs_data,
+    int num_inputs,
+    MPType div_c) {
+  // int64_t index =
+  //     (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+  //      threadIdx.x) *
+  //     VecSize;
+  // int64_t stride = static_cast<int64_t>(gridDim.x) *
+  //                  static_cast<int64_t>(blockDim.x) * VecSize;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      threadIdx.x;
+  int64_t tid_x = tid * VecSize;
+  int64_t idx_pos = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t idx_batch = blockIdx.z * blockDim.z + threadIdx.z;
+
+  if (tid_x < head_dim * num_heads && idx_pos < seq_len &&
+      idx_batch < batch_size) {
+    int64_t size = batch_size * seq_len * num_heads * head_dim;
+    MPType sin_value[VecSize];
+    MPType cos_value[VecSize];
+    MPType result[VecSize];
+    T store[VecSize];
+    using VecType = phi::AlignedVector<T, VecSize>;
+
+    VectorizedGetSinCos3D(sin_cos_data,
+                          position_ids_data,
+                          flag_sin_cos,
+                          idx_pos,
+                          tid_x,
+                          idx_batch,
+                          seq_len,
+                          num_heads,
+                          head_dim,
+                          sin_value,
+                          cos_value,
+                          div_c);
+
+    // use rotate_half mode
+    int stride_r = head_dim / 2;
+#pragma unroll
+    for (int iter = 0; iter < NInputs; iter++) {
+      if (iter >= num_inputs) break;
+      // get value_index and rotate_half_index
+      int index_v = tid_x;
+      int index_r = (tid_x % head_dim) < stride_r ? (tid_x + stride_r)
+                                                  : (tid_x - stride_r);
+      MPType sign_r = (tid_x % head_dim) < stride_r ? static_cast<MPType>(-1)
+                                                    : static_cast<MPType>(1);
+      const T* input_v = ins_data[iter] + index_v;
+      const T* input_r = ins_data[iter] + index_r;
+      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + tid_x);
+
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        // NOTE(MarioLulab): maybe redundant
+        if (tid_x + nx >= num_heads * head_dim) {
+          break;
+        }
+
+        MPType p0 = static_cast<MPType>(input_v[nx]);
+        MPType p1 = static_cast<MPType>(input_r[nx]);
+
+        result[nx] = cos_value[nx] * p0 + sign * sign_r * sin_value[nx] * p1;
+
+        store[nx] = static_cast<T>(result[nx]);
       }
       out[0] = *(reinterpret_cast<VecType*>(store));
     }
