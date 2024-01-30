@@ -257,18 +257,32 @@ bool ShapeSrOpInferSymbolicShape(
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
-  const auto &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  auto attributes = op->attributes();
+  int axis = attributes["axis"].dyn_cast<pir::Int32Attribute>().data();
+
+  symbol::TensorListShapeOrDataDimExprs shape_data_list =
+      shape_analysis->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   std::vector<symbol::DimExpr> out_dims;
   std::vector<symbol::DimExpr> out_dims_data;
-  if (operand_shape_or_data.data().has_value()) {
-    out_dims_data = operand_shape_or_data.data().value();
-    out_dims = operand_shape_or_data.shape();
+  VLOG(1) << "shape_data_list.size(): " << shape_data_list.size();
+  for (int i = 0; i < shape_data_list.size(); ++i) {
+    // For 0-Dim tensor case.
+    if (shape_data_list[i].data().has_value() && axis == 0) {
+      out_dims_data.emplace_back(shape_data_list[i].data().value()[0]);
+      if (i == shape_data_list.size() - 1) {
+        out_dims.emplace_back(
+            static_cast<std::int64_t>(shape_data_list.size()));
+      }
+    } else {
+      // TODO(zhangbopd): else branch is not implemented yet.
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
+    }
   }
-  // else : pir::VectorType x =
-  // operand_source.type().dyn_cast<pir::VectorType>();
-  // TODO(zhangbopd): else branch is not implemented yet.
+
   symbol::ShapeOrDataDimExprs shape_data(
       symbol::TensorShapeOrDataDimExprs(out_dims, out_dims_data));
 

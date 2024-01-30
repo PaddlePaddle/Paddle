@@ -37,6 +37,14 @@ namespace dialect {
 namespace ir {
 
 namespace {
+// helper type for the visitor
+template <class... Ts>
+struct Overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
 using ShapeOrDataDimExprs4ValueT =
     std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
@@ -58,14 +66,22 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(owner->operand_source(i));
         }
       };
-  const auto& IsDimTensor = [&](pir::Value value) -> bool {
-    return ShapeOrDataDimExprs4Value(value).data().has_value();
+  const auto& IsDimTensorOrListDimExpr = [&](pir::Value value) -> bool {
+    const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
+    auto lambda =
+        Overloaded{[](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
+                     return dim_expr.data().has_value();
+                   },
+                   [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
+                     return true;
+                   }};
+    return std::visit(lambda, sym_shape.variant());
   };
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         ForEachInputValue(value, [&](pir::Value input) {
-          if (IsDimTensor(input)) {
+          if (IsDimTensorOrListDimExpr(input)) {
             Visit(input);
           }
         });
@@ -75,7 +91,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     size_t input_cnt = 0;
     ForEachInputValue(value, [&](pir::Value input) {
       ++input_cnt;
-      if (IsDimTensor(input)) return;
+      if (IsDimTensorOrListDimExpr(input)) return;
       Emplace(input);
     });
     if (input_cnt == 0) {
