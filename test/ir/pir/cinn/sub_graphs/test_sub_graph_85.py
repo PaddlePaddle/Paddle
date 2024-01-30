@@ -31,13 +31,13 @@ class LayerCase(paddle.nn.Layer):
         var_0,  # (shape: [16384, 5], dtype: paddle.float32, stop_gradient: False)
         var_1,  # (shape: [16384, 5], dtype: paddle.float32, stop_gradient: True)
     ):
-        var_2 = var_0.__sub__(var_1)
+        var_2 = var_0 - var_1
         var_3 = paddle.tensor.abs(var_2)
-        var_4 = var_3.__lt__(0.1111111111111111)
-        var_5 = var_3.__rmul__(0.5)
-        var_6 = var_5.__mul__(var_3)
-        var_7 = var_6.__truediv__(0.1111111111111111)
-        var_8 = var_3.__sub__(0.05555555555555555)
+        var_4 = var_3 < 0.1111111111111111
+        var_5 = 0.5 * var_3
+        var_6 = var_5 * var_3
+        var_7 = var_6 / 0.1111111111111111
+        var_8 = var_3 - 0.05555555555555555
         var_9 = paddle.tensor.search.where(var_4, var_7, var_8)
         return var_9
 

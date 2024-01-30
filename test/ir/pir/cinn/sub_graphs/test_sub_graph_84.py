@@ -55,9 +55,9 @@ class LayerCase(paddle.nn.Layer):
         )
         var_9 = var_8.squeeze(1)
         var_10, var_11 = paddle.tensor.manipulation.split(var_9, 2, -1)
-        var_12 = var_10.__neg__()
-        var_13 = var_12.__add__(var_0)
-        var_14 = var_11.__add__(var_0)
+        var_12 = -var_10
+        var_13 = var_12 + var_0
+        var_14 = var_11 + var_0
         var_15 = paddle.tensor.manipulation.concat([var_13, var_14], -1)
         return var_15
 

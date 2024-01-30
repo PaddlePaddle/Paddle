@@ -43,7 +43,7 @@ class LayerCase(paddle.nn.Layer):
         var_9 = paddle.tensor.manipulation.gather_nd(var_4, index=var_8)
         var_10 = paddle.tensor.manipulation.unsqueeze(var_2, axis=2)
         var_11 = paddle.tensor.manipulation.expand_as(var_10, var_9)
-        var_12 = var_11.__gt__(0)
+        var_12 = var_11 > 0
         var_13 = paddle.tensor.search.masked_select(var_9, var_12)
         var_14 = paddle.tensor.manipulation.reshape(var_13, shape=[-1, 128])
         return var_8, var_14
