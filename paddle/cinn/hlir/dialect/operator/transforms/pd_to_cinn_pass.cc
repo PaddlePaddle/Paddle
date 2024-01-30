@@ -155,7 +155,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
 
     if (auto full_op =
             scale_factor_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
-      // sacle is generator by full op
+      // scale is generator by full op
       // get attribute value from full op
       auto scale_value =
           full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
@@ -212,7 +212,7 @@ class ReshapeOpPattern
 
     auto full_op =
         scale_factor_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    // sacle is generator by full op
+    // scale is generator by full op
     // get attribute value from full op
 
     auto out_shape_attr =
@@ -354,7 +354,7 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     auto end_gen_op = op->operand_source(2)
                           .defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>();
-    // sacle is generator by full op
+    // scale is generator by full op
     // get attribute value from full op
     auto start_vec = cinn::dialect::ir::GetVectorAttr(start_gen_op, "value");
     auto end_vec = cinn::dialect::ir::GetVectorAttr(end_gen_op, "value");

@@ -107,7 +107,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
-  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+  dependency_count_ = std::make_shared<std::vector<size_t>>();
 
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
@@ -170,7 +170,7 @@ PirInterpreter::PirInterpreter(
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
-  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+  dependency_count_ = std::make_shared<std::vector<size_t>>();
 
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
@@ -207,7 +207,7 @@ PirInterpreter::PirInterpreter(
 }
 
 PirInterpreter::~PirInterpreter() {
-  // cancle gc's thread
+  // cancel gc's thread
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~PirInterpreter(): " << this << " on " << place_;
@@ -289,7 +289,7 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   }
   // share op dependency
   ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
-  dependecy_count_ = impl.GetDependencyCount();
+  dependency_count_ = impl.GetDependencyCount();
   // share event analysis
   ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
@@ -313,7 +313,7 @@ PirInterpreter::GetPirDependencyBuilder() const {
 
 std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
     const {
-  return dependecy_count_;
+  return dependency_count_;
 }
 
 const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
@@ -629,8 +629,8 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   if (VLOG_IS_ON(2)) {
     ss << "\nLeaf nodes: ";
   }
-  for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
-    if ((*dependecy_count_)[instr_id] == 0) {
+  for (size_t instr_id = 0; instr_id < dependency_count_->size(); ++instr_id) {
+    if ((*dependency_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
       if (VLOG_IS_ON(2)) {
         ss << instr_id << "[" << vec_instruction_base_[instr_id]->Name()
@@ -663,9 +663,9 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
 
   PADDLE_ENFORCE_EQ(
       trace_order.size(),
-      dependecy_count_->size(),
+      dependency_count_->size(),
       platform::errors::PreconditionNotMet(
-          "trace_order size should be equal to dependecy_count_."));
+          "trace_order size should be equal to dependency_count_."));
 
   trace_execute_order_ = trace_order;
 
@@ -893,11 +893,11 @@ std::vector<std::string> PirInterpreter::DebugInfo() {
 
 void PirInterpreter::BuildInstructionDependences() {
   // analysis the dependences between instructions, add next_instr_list to each
-  // instr, and set the dependecy_count_
+  // instr, and set the dependency_count_
   size_t instr_num = vec_instruction_base_.size();
-  dependecy_count_ = GetDependencyCount();
+  dependency_count_ = GetDependencyCount();
   if (!is_shared_results_build_) {
-    dependecy_count_->assign(instr_num, 0);
+    dependency_count_->assign(instr_num, 0);
   }
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
@@ -940,7 +940,7 @@ void PirInterpreter::BuildInstructionDependences() {
 
     if (!is_shared_results_build_) {
       for (size_t next_instr_id : next_instr_ids) {
-        ++(*dependecy_count_)[next_instr_id];
+        ++(*dependency_count_)[next_instr_id];
       }
     }
   }
@@ -1013,7 +1013,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor
-      // is not freed until the H2D copies done. However, simplely launch a
+      // is not freed until the H2D copies done. However, simply launch a
       // CUDA runtime callback to the H2D stream may lead a high performance
       // overhead. As all the cases we meet in H2D are copies from CPUPlace at
       // present, we just log a WARNING here. A better design is required.
@@ -1037,7 +1037,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
    * async CUDA kernel.
    *
    * Here we only process the first condition, because:
-   * 1. Since the RecordStream function will directly return when the recored
+   * 1. Since the RecordStream function will directly return when the recorded
    * stream is equal to the owning stream, recording a stream same as which
    * initialized this tensor has less time overhead. Conversely, it may take
    * more time if we try to extract those cross-stream input vars from
@@ -1235,7 +1235,7 @@ void PirInterpreter::CalculateLastLiveOps() {
   }
   VLOG(4) << "shrink the last_live_ops list for all vars in skip_gc_vars";
 
-  for (auto& dep : *dependecy_count_) {
+  for (auto& dep : *dependency_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
   for (size_t i = 0; i < value_exe_info_->GetVarList().size(); ++i) {
@@ -1246,8 +1246,8 @@ void PirInterpreter::CalculateLastLiveOps() {
 }
 
 void PirInterpreter::ConstructEventForJitInput() {
-  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if ((*dependecy_count_)[i] == 0) {
+  for (size_t i = 0; i < dependency_count_->size(); ++i) {
+    if ((*dependency_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
       if (inst->Name() == "pd_op.memcpy_d2h" &&
           platform::is_gpu_place(place_)) {
@@ -1514,8 +1514,8 @@ void PirInterpreter::TraceRunInstructionList(
     }
   }
 
-  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if ((*dependecy_count_)[i] == 0) {
+  for (size_t i = 0; i < dependency_count_->size(); ++i) {
+    if ((*dependency_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i).get());
     }
@@ -1571,8 +1571,8 @@ void PirInterpreter::MultiThreadRunInstructionList(
     }
   }
 
-  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
-    if ((*dependecy_count_)[i] == 0) {
+  for (size_t i = 0; i < dependency_count_->size(); ++i) {
+    if ((*dependency_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i).get());
       if (FLAGS_new_executor_serial_run) {
@@ -1794,7 +1794,7 @@ void PirInterpreter::PreAnalysis() {
   BuildInstructionDependences();
   VLOG(4) << "Done BuildInstructionDependences";
 
-  ir_stream_analyzer_.SetForceEventsToWaitInfo(force_evnets_to_wait_);
+  ir_stream_analyzer_.SetForceEventsToWaitInfo(force_events_to_wait_);
   ir_stream_analyzer_.ConstructEvents(vec_instruction_base_);
   VLOG(4) << "Done ConstructEvents";
 
