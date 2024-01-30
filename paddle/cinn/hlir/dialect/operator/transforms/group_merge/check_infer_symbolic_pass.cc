@@ -31,7 +31,18 @@ namespace ir {
 
 namespace {
 
-void PrintProgram(pir::ModuleOp m, std::string mgs) {
+std::string SprintShape(const std::vector<std::int64_t>& shape) {
+  std::string str = "[";
+  for (std::int64_t value : shape) {
+    str += std::to_string(value);
+    if (value != shape.back()) {
+      str += ", ";
+    }
+  }
+  return str + "]";
+}
+
+void PrintProgram(pir::ModuleOp m, const std::string& mgs) {
   std::ostringstream print_stream;
   print_stream << "\n\n";
   m.program()->Print(print_stream);
@@ -40,74 +51,72 @@ void PrintProgram(pir::ModuleOp m, std::string mgs) {
           << print_stream.str();
 }
 
-std::vector<std::int64_t> GetOriginValueShape(pir::Value value) {
+std::vector<std::int64_t> GetStaticValueShape(pir::Value value) {
   const auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
   return ::common::vectorize(dim);
 }
 
-std::optional<std::vector<std::int64_t>> GetTargetValueShape(
+std::optional<std::vector<std::int64_t>> GetDynamicValueShape(
     pir::Value value, const pir::ShapeConstraintIRAnalysis& shape_analysis) {
   if (!shape_analysis.HasShapeOrDataForValue(value)) {
     return std::nullopt;
   }
-  const auto& dynamic_shapes =
+  const auto& dim_expr_dynamic_shapes =
       shape_analysis.GetShapeOrDataForValue(value).shape();
-  std::vector<std::int64_t> target_shapes{};
-  for (const auto& dim_expr_shape : dynamic_shapes) {
+  std::vector<std::int64_t> dynamic_shapes{};
+  for (const auto& dim_expr_shape : dim_expr_dynamic_shapes) {
     CHECK(dim_expr_shape.Has<std::int64_t>());
-    target_shapes.push_back(dim_expr_shape.Get<std::int64_t>());
+    dynamic_shapes.push_back(dim_expr_shape.Get<std::int64_t>());
   }
-  return std::make_optional<std::vector<std::int64_t>>(target_shapes);
+  return dynamic_shapes;
 }
 
-void CompareOriginAndTargetValueShape(
+void CompareStaticAndDynamicValueShape(
     pir::Value value,
     const pir::ShapeConstraintIRAnalysis& shape_analysis,
-    const unsigned int count_op) {
-  std::vector<std::int64_t> static_value_shape = GetOriginValueShape(value);
-  std::vector<std::int64_t> dynamic_value_shape;
-  std::optional<std::vector<std::int64_t>> dynamic_value_shape_opt =
-      GetTargetValueShape(value, shape_analysis);
-  if (dynamic_value_shape_opt.has_value()) {
-    dynamic_value_shape = dynamic_value_shape_opt.value();
-  }
-  CHECK(static_value_shape.size() == dynamic_value_shape.size())
-      << "in the above program, the " << count_op
-      << "th op : the shape size is not equal\nthe static shape is: "
-      << static_value_shape.size()
-      << ", and the dynamic shape is: " << dynamic_value_shape.size();
-  for (int i = 0; i < static_value_shape.size(); ++i) {
-    CHECK(static_value_shape[i] == dynamic_value_shape[i])
-        << "in the above program, the " << count_op
-        << "th op : static shape is not equal to dynamic shape\nthe static "
-           "shape["
-        << i << "] is: " << static_value_shape[i] << ", and the dynamic shape["
-        << i << "] is: " << dynamic_value_shape[i];
+    int op_index,
+    pir::ModuleOp module_op) {
+  std::vector<std::int64_t> static_value_shape = GetStaticValueShape(value);
+  std::optional<std::vector<std::int64_t>> opt_dynamic_value_shape =
+      GetDynamicValueShape(value, shape_analysis);
+  if (opt_dynamic_value_shape.has_value()) {
+    if (static_value_shape != opt_dynamic_value_shape.value()) {
+      VLOG(4) << "CheckInferSymbolic failed, in the fellowing program, the "
+              << op_index
+              << "th op : the shape is not equal\nthe static shape is: "
+              << SprintShape(static_value_shape)
+              << ", and the dynamic shape is: "
+              << SprintShape(opt_dynamic_value_shape.value());
+      PrintProgram(module_op, "CheckInferSymbolic");
+    }
+  } else {
+    VLOG(4) << "CheckInferSymbolic failed, in the fellowing program, the "
+            << op_index << "th op infer symbolic failed";
+    PrintProgram(module_op, "CheckInferSymbolic");
   }
 }
 
 void CheckInferSymbolic(pir::ModuleOp module_op) {
-  VLOG(4) << "CheckInferSymbolic Start!";
-  PrintProgram(module_op, "CheckInferSymbolic");
-  unsigned int count_op = 0;
+  VLOG(4) << "CheckInferSymbolic start";
+  int op_index = 0;
   const auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (const auto& block : module_op->region(i)) {
       for (const auto& op : block) {
-        count_op++;
         for (std::size_t j = 0; j < op.num_operands(); ++j) {
-          CompareOriginAndTargetValueShape(
-              op.operand_source(j), shape_analysis, count_op);
+          CompareStaticAndDynamicValueShape(
+              op.operand_source(j), shape_analysis, op_index, module_op);
         }
         for (std::size_t j = 0; j < op.num_results(); ++j) {
-          CompareOriginAndTargetValueShape(
-              op.result(j), shape_analysis, count_op);
+          CompareStaticAndDynamicValueShape(
+              op.result(j), shape_analysis, op_index, module_op);
         }
+        op_index++;
       }
     }
   }
-  VLOG(4) << "CheckInferSymbolic Succeed!";
+  VLOG(4) << "CheckInferSymbolic end";
 }
 
 class CheckInferSymbolicPass : public pir::Pass {
