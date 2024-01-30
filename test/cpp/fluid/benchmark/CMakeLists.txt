@@ -1,16 +1,8 @@
-cc_test(
+paddle_test(
   op_tester
   SRCS op_tester.cc
-  DEPS timer
-       framework_proto
-       proto_desc
-       lod_tensor
-       op_registry
-       device_context
-       scope
-       ${GLOB_OP_LIB}
+  DEPS ${GLOB_OP_LIB}
        ${GLOB_OPERATOR_DEPS}
-       phi
        common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
