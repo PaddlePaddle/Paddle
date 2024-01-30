@@ -113,6 +113,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
+  VLOG(0) << "##### lower group : \n" << *group;
   std::vector<ir::Expr> func_bodies =
       LowerOps(group,
                ops,
@@ -743,15 +744,20 @@ ir::Tensor OpLowererImpl::GetTensorSymbolic(const GroupPtr& group,
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   auto ForEachDimExpr = [&](const auto& DoEach) {
-    if (!group->value_to_shape_or_data_exprs.empty()) {
+    const auto& dims = type_info.dims();
+    VLOG(0) << "###### value: " << value.defining_op()->name() << " @"
+            << value.impl();
+    VLOG(0) << "####### input dims : " << dims;
+    if (::common::contain_unknown_dim(dims)) {  // dynamic shape
       const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      VLOG(0) << "####### input sym_vec : "
+              << group->GetShapeOrDataExprs(value);
       for (const auto& dim_expr : sym_vec) {
         DoEach(dim_expr);
       }
-    } else {
-      auto in_shape = ::common::vectorize<int64_t>(type_info.dims());
-      for (int64_t dim : in_shape) {
-        DoEach(::symbol::DimExpr{dim});
+    } else {  // static shape
+      for (int i = 0; i < dims.size(); ++i) {
+        DoEach(symbol::DimExpr{dims[i]});
       }
     }
   };
@@ -834,19 +840,23 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
 
     auto ForEachDimExpr = [&](const auto& DoEach) {
-      if (!group->value_to_shape_or_data_exprs.empty()) {
-        auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+      const auto& dims = type_info.dims();
+      VLOG(0) << "###### op " << op->name() << " dims: " << dims;
+      if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+        const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+        VLOG(0) << " ###### sym_vec: " << group->GetShapeOrDataExprs(out_value);
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
-      } else {
-        auto out_shape = ::common::vectorize<int64_t>(type_info.dims());
+      } else {  // static shape
+        auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});
         }
       }
     };
+    VLOG(0) << "####### out value : @" << out_value.impl();
     std::vector<ir::Dim> sym_shape;
     ForEachDimExpr(
         [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });

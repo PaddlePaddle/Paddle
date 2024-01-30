@@ -483,8 +483,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     sym_shape.push_back(dim_expr);
   }
 
-  VLOG(0) << "##### operand_shape_or_data: " << operand_shape_or_data;
-
   std::vector<symbol::DimExpr> out_data;
   if (operand_shape_or_data.data().has_value()) {
     for (int64_t i = start; i < end; i++) {
@@ -990,10 +988,16 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const int64_t axis = GetAttrInt64Value("axes");
 
   const pir::Value operand_source = op->operand_source(0);
+  const auto &dims =
+      operand_source.type().dyn_cast<pir::DenseTensorType>().dims();
   const auto &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
   std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
-  out_sym_shape[axis] = end - start;
+  if (end == std::numeric_limits<int>::max()) {
+    out_sym_shape[axis] = out_sym_shape[axis] - start;
+  } else {
+    out_sym_shape[axis] = end - start;
+  }
 
   symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
   if (operand_shape_or_data.data().has_value()) {

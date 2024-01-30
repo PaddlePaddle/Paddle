@@ -99,6 +99,16 @@ struct Group {
     return value_to_shape_or_data_exprs.at(value);
   }
 
+  void SetShapeOrDataExprs(const ::pir::Value& value,
+                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    auto iter = value_to_shape_or_data_exprs.find(value);
+    if (iter == value_to_shape_or_data_exprs.end()) {
+      value_to_shape_or_data_exprs.emplace(value, shape_or_data);
+    } else {
+      iter->second = shape_or_data;
+    }
+  }
+
   // distance to last group.
   int depth{0};
   int max_depth{0};
@@ -312,6 +322,15 @@ struct Group {
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
 };
+
+static std::ostream& operator<<(std::ostream& os, const Group& group) {
+  ::pir::IrPrinter printer(os);
+  for (auto* op : group.ops) {
+    printer.PrintOperation(op);
+    os << "\n";
+  }
+  return os;
+}
 
 }  // namespace pir
 }  // namespace framework

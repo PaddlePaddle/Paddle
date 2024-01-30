@@ -240,6 +240,9 @@ class SplitGenerateShapeIntoShapeOps
         GetOutReplacement(op, &rewriter);
     if (!out_replacement.has_value()) return false;
     rewriter.ReplaceAllUsesWith(op->result(0), out_replacement.value());
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
     return true;
   }
 
@@ -377,7 +380,7 @@ pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
 }
 
 bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return op->num_regions() > 0;
 }
 
 }  // namespace ir

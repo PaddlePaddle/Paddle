@@ -311,8 +311,8 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
   CHECK_GT(attrs.attr_store.count("broadcast_axes"), 0);
   broadcast_axes =
       absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
+  VLOG(0) << "broadcast out shape: " << utils::Join(out_shape, ", ");
+  VLOG(0) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
 
   framework::CINNCompute broadcast_to_compute([=](lang::Args args,
                                                   lang::RetValue *ret) {
