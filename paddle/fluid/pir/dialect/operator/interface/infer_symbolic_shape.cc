@@ -267,8 +267,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 
   std::vector<symbol::DimExpr> out_dims;
   std::vector<symbol::DimExpr> out_dims_data;
-  VLOG(1) << "shape_data_list.size(): " << shape_data_list.size();
-  for (int i = 0; i < shape_data_list.size(); ++i) {
+  for (size_t i = 0; i < shape_data_list.size(); ++i) {
     // For 0-Dim tensor case.
     if (shape_data_list[i].data().has_value() && axis == 0) {
       out_dims_data.emplace_back(shape_data_list[i].data().value()[0]);
