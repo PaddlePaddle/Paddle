@@ -215,15 +215,43 @@ void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
 }
 
 void IfInstruction::Run() {
-  DeviceContext().Wait();
-  if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+  bool cond = true;
+  if (cond_var_->IsType<phi::DenseTensor>()) {
+    auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
+    if (paddle::platform::is_cpu_place(cond_tensor.place())) {
+      cond = cond_tensor.data<bool>()[0];
+    } else {
+      // when platform::is_gpu_place(cond.place()) or
+      // platform::is_xpu_place(cond.place()) is true
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+      DeviceContext().Wait();
+      phi::DenseTensor cpu_cond;
+      paddle::framework::TensorCopySync(
+          cond_tensor, platform::CPUPlace(), &cpu_cond);
+      cond = cpu_cond.data<bool>()[0];
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "This version of PaddlePaddle does NOT support GPU/XPU but got "
+          "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+          "WITH_XPU option."));
+#endif
+    }
+  } else if (cond_var_->IsType<VariableRefArray>()) {
+    auto& cond_array = cond_var_->Get<VariableRefArray>();
+    cond = std::all_of(
+        cond_array.begin(), cond_array.end(), [](const Variable* t) {
+          return t->Get<phi::DenseTensor>().numel() != 0;
+        });
+  }
+  if (cond) {
     true_branch_inter_->Run({}, false);
     CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
-  // copy ouptut
+  // copy output
 }
 
 }  // namespace framework

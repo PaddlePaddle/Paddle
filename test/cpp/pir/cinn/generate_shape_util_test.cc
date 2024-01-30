@@ -76,7 +76,10 @@ TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
   using ShapeSymbolBinding = cinn::dialect::GenerateShapeOp::ShapeSymbolBinding;
   symbol_bindings.emplace_back(ShapeSymbolBinding{"Symbol", 0, 0});
   const auto& dim_expr = CreateExampleDimExpr();
-  const auto& shape_or_data_dim_exprs = symbol::ShapeOrDataDimExprs({dim_expr});
+
+  const auto& shape_or_data_dim_exprs = symbol::ShapeOrDataDimExprs(
+      symbol::TensorShapeOrDataDimExprs({dim_expr}));
+
   const auto& DimExpr4SymbolName = MakeGetterDimExpr4SymbolName(
       symbol_bindings,
       [&](int in_tensor_idx) -> const symbol::ShapeOrDataDimExprs& {

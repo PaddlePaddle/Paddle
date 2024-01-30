@@ -78,7 +78,7 @@ class TestCummaxOp(OpTest):
         self.python_api = paddle.cummax
         self.dtype = np.float64
         self.axis = -1
-        self.indices_type = 3
+        self.indices_type = paddle.int64
         self.input_data = np.random.random((10, 10)).astype(self.dtype)
         self.set_attrs()
 
@@ -111,7 +111,7 @@ class TestCummaxOpAxis2(TestCummaxOp):
 
 class TestCummaxOpIndexType(TestCummaxOp):
     def set_attrs(self):
-        self.indices_type = 2
+        self.indices_type = paddle.int32
 
 
 class TestCummaxAPI(unittest.TestCase):

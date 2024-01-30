@@ -17,10 +17,8 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/concat_grad_kernel.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/stack_grad_kernel.h"
 #include "paddle/phi/kernels/stack_kernel.h"
 
 namespace phi {
@@ -99,18 +97,6 @@ void ArrayToTensorKernel(const Context& dev_ctx,
                                    "but the received is %d",
                                    n));
 
-  auto out_dims = x[0].dims();
-  size_t in_zero_dims_size = out_dims.size();
-  for (size_t i = 1; i < n; i++) {
-    for (size_t j = 0; j < in_zero_dims_size; j++) {
-      if (j == static_cast<size_t>(axis)) {
-        out_dims[axis] += x[i].dims()[static_cast<int>(j)];
-      }
-    }
-  }
-  auto vec = common::vectorize<int>(out_dims);
-  vec.insert(vec.begin() + axis, x.size());  // NOLINT
-  out->Resize(common::make_ddim(vec));
   std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
 
@@ -126,8 +112,22 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
 
   if (use_stack) {
+    auto vec = common::vectorize<int>(x[0].dims());
+    vec.insert(vec.begin() + axis, x.size());  // NOLINT
+    out->Resize(common::make_ddim(vec));
     StackKernel<T, Context>(dev_ctx, inputs, axis, out);
   } else {
+    auto out_dims = x[0].dims();
+    size_t in_zero_dims_size = out_dims.size();
+    for (size_t i = 1; i < n; i++) {
+      for (size_t j = 0; j < in_zero_dims_size; j++) {
+        if (j == static_cast<size_t>(axis)) {
+          out_dims[axis] += x[i].dims()[static_cast<int>(j)];
+        }
+      }
+    }
+    auto vec = common::vectorize<int>(out_dims);
+    out->Resize(common::make_ddim(vec));
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 
@@ -136,29 +136,23 @@ void ArrayToTensorKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void TensorToArrayKernel(const Context& dev_ctx,
-                         const TensorArray& x,
-                         const DenseTensor& out_grad,
-                         int axis,
-                         bool use_stack,
-                         TensorArray* x_grad) {
-  std::vector<DenseTensor> tmp_inputs(x.size());
-  std::vector<const DenseTensor*> inputs;
-
-  std::vector<DenseTensor*> inputs_grad(x.size());
-
-  for (size_t i = 0; i < x.size(); i++) {
-    tmp_inputs[i].ShareDataWith(x[i]);
-    inputs.push_back(&tmp_inputs[i]);
-    x_grad->at(i).Resize(x[i].dims());
-    inputs_grad[i]->ShareDataWith(x_grad->at(i));
+void ArrayPopKernel(const Context& dev_ctx,
+                    const TensorArray& array,
+                    int index,
+                    TensorArray* array_out,
+                    DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      array.size(),
+      0,
+      phi::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                   "but the received is %d",
+                                   array.size()));
+  if (index < 0) {
+    index += array.size();
   }
 
-  if (use_stack) {
-    StackGradKernel<T, Context>(dev_ctx, out_grad, axis, inputs_grad);
-  } else {
-    ConcatGradKernel<T, Context>(dev_ctx, inputs, out_grad, axis, inputs_grad);
-  }
+  out->ShareDataWith(array[index]);
+  array_out->pop(static_cast<size_t>(index));
 }
 
 }  // namespace phi
@@ -326,30 +320,32 @@ PD_REGISTER_KERNEL(array_to_tensor,
                    phi::dtype::complex<double>) {}
 #endif
 
-PD_REGISTER_KERNEL(tensor_to_array,
+PD_REGISTER_KERNEL(array_pop,
                    CPU,
                    ALL_LAYOUT,
-                   phi::TensorToArrayKernel,
+                   phi::ArrayPopKernel,
                    bool,
                    int,
                    int64_t,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(tensor_to_array,
+PD_REGISTER_KERNEL(array_pop,
                    GPU,
                    ALL_LAYOUT,
-                   phi::TensorToArrayKernel,
+                   phi::ArrayPopKernel,
                    bool,
                    int,
                    int64_t,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif

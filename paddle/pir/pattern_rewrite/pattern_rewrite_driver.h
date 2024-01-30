@@ -16,10 +16,10 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/region.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace pir {
+
+class FrozenRewritePatternSet;
 
 /// This enum will control which ops will be added to the worklist during the
 /// match rewrite process
@@ -73,20 +73,9 @@ ApplyPatternsGreedily(Region& region,  // NOLINT
                       GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
-inline IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
+IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
-    GreedyRewriteConfig config = GreedyRewriteConfig()) {
-  bool sum_converged = true;
-  int64_t sum_num_rewrites = 0;
-  for (uint32_t i = 0; i < op->num_regions(); ++i) {
-    Region& region = op->region(i);
-    auto [converged, num_rewrites] =
-        ApplyPatternsGreedily(region, patterns, config);
-    sum_converged &= converged;
-    sum_num_rewrites += num_rewrites;
-  }
-  return std::make_pair(sum_converged, sum_num_rewrites);
-}
+    GreedyRewriteConfig config = GreedyRewriteConfig());
 
 }  // namespace pir

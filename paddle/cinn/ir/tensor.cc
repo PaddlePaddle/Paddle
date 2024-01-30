@@ -227,12 +227,28 @@ isl::set _Tensor_::GenerateIslDomain() const {
     auto _axis_with_reduce = axis_with_reduce();
     for (int i = 0; i < domain.size(); i++) {
       auto dim = domain[i];
-      if (dim.is_constant()) {
-        dims.emplace_back(_axis_with_reduce[i]->name, 0, dim.as_int32() - 1);
+      if (dim.type() == type_of<int64_t>()) {
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<int64_t>(0),
+                            static_cast<int64_t>(dim.as_int64() - 1));
+        } else {
+          dims.emplace_back(
+              _axis_with_reduce[i]->name,
+              Expr(static_cast<int64_t>(0)),
+              Sub::Make(dim,
+                        cinn::common::make_const(static_cast<int64_t>(1))));
+        }
       } else {
-        dims.emplace_back(_axis_with_reduce[i]->name,
-                          Expr(0),
-                          Sub::Make(dim, cinn::common::make_const(1)));
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<uint32_t>(0),
+                            dim.as_int32() - 1);
+        } else {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            Expr(0),
+                            Sub::Make(dim, cinn::common::make_const(1)));
+        }
       }
     }
   }
@@ -541,7 +557,9 @@ std::vector<Expr> _Tensor_::domain_with_reduce_axis() const {
   if (reduce_axis.empty()) return domain;
   auto res = domain;
   for (const Var &axis : reduce_axis) {
-    CHECK(axis->upper_bound.type().is_int(32)) << axis->upper_bound;
+    CHECK(axis->upper_bound.type().is_int(32) ||
+          axis->upper_bound.type().is_int(64))
+        << axis->upper_bound;
     res.push_back(axis->upper_bound);
   }
   return res;
