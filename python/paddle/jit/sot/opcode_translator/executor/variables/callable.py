@@ -533,7 +533,7 @@ class PaddleLayerVariable(LayerVariable):
     def call_function(self, /, *args, **kwargs):
         self.graph.add_global_guarded_variable(self)
         # when layer is created in forward function, we use strong ref because it can't have
-        # weigths and buffers, see PaddleLayerClassVariable for details.
+        # weights and buffers, see PaddleLayerClassVariable for details.
         weak_ref = not isinstance(self.tracker, CreateLayerTracker)
         return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
