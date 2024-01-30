@@ -52,7 +52,7 @@ class InterpreterCore {
       bool enable_job_schedule_profiler = false,
       bool switch_stream = false);
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+  TEST_API paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
                                    bool enable_job_schedule_profiler = false,
                                    bool enable_op_profiling = false,
@@ -68,7 +68,7 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
-  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+  TEST_API void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
   const std::set<std::string>& JitInputVars() const;
 
@@ -94,7 +94,7 @@ class InterpreterCore {
   std::tuple<double, double> InterpreterRunTime();
 
   // Only for debug
-  Variable* DebugVar(const std::string& name) const;
+  TEST_API Variable* DebugVar(const std::string& name) const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
