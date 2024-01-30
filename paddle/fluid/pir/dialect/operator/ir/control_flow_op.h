@@ -74,13 +74,13 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
-  static void Build(pir::Builder &builder,             // NOLINT
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
                     const std::vector<pir::Value> &inputs,
                     bool construct_body = true);
   TEST_API pir::Block &body();
-  pir::Value cond();
+  TEST_API pir::Value cond();
   const pir::Block::ArgListType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
