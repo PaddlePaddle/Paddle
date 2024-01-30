@@ -197,7 +197,7 @@ def prune_by_mp_pp_history(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
     use_recompute = cur_cfg.get("recompute", None)
 
     if mp_degree is None or pp_degree is None or use_recompute is None:
-        return False, None
+        return False
 
     history_cfgs.extend(pruned_cfgs)
     cfgs = same_cfgs_beside(["mp_degree", "pp_degree"], cur_cfg, history_cfgs)
@@ -217,9 +217,9 @@ def prune_by_mp_pp_history(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
                 pruned_reason = f"mp_degree {mp_degree}, pp_degree {pp_degree} may cause oom because {cfg['mp_degree']}, {cfg['pp_degree']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["max_mem_usage"] = "OOM"
-                return True, cur_cfg
+                return True
 
-    return False, None
+    return False
 
 
 @register_prune
@@ -274,7 +274,7 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
 def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     vpp_degree = cur_cfg.get("vpp_degree", None)
     if vpp_degree is None:
-        return False, None
+        return False
 
     history_cfgs.extend(pruned_cfgs)
 
@@ -296,7 +296,7 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 cur_cfg["max_mem_usage"] = "OOM"
                 return True, cur_cfg
 
-    return False, None
+    return False
 
 
 @register_prune
@@ -354,7 +354,7 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=[]):
 def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     if micro_batch_size is None:
-        return False, None
+        return False
 
     history_cfgs.extend(pruned_cfgs)
 
@@ -385,7 +385,7 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 cur_cfg["max_mem_usage"] = "OOM"
                 return True, cur_cfg
 
-    return False, None
+    return False
 
 
 @register_prune
@@ -441,11 +441,11 @@ def prune_by_sharding_history(
 ):
     sharding_degree = cur_cfg.get("sharding_degree", None)
     if sharding_degree is None:
-        return False, None
+        return False
 
     sharding_stage = cur_cfg.get("sharding_stage", None)
     if sharding_stage is None:
-        return False, None
+        return False
 
     history_cfgs.extend(pruned_cfgs)
 
@@ -471,7 +471,7 @@ def prune_by_sharding_history(
                 cur_cfg["max_mem_usage"] = "OOM"
                 return True, cur_cfg
 
-    return False, None
+    return False
 
 
 @register_prune
@@ -542,7 +542,7 @@ def prune_by_recompute_history(
     recompute_level = get_config_recompute_level(cur_cfg)
 
     if recompute_level is None:
-        return False, None
+        return False
 
     history_cfgs.extend(pruned_cfgs)
 
@@ -578,7 +578,7 @@ def prune_by_recompute_history(
                 cur_cfg["max_mem_usage"] = "OOM"
                 return True, cur_cfg
 
-    return False, None
+    return False
 
 
 @register_prune
@@ -714,7 +714,7 @@ def prune_by_sharding_overlap(
             tuner_cfg, cur_cfg, history_cfgs
         )
         if not result:
-            return True, None
+            return True
         if not result[tuner_cfg['metric_cfg']['name']]:
-            return True, None
-    return False, None
+            return True
+    return False

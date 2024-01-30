@@ -39,10 +39,10 @@ class SearchAlgo(ABC):
 
     def prune(self, tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
         for func in _PRUNE_HISTORY_FUNC:
-            result, _ = func(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs)
+            result = func(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs)
             if result:
-                return True, _
-        return False, _
+                return True
+        return False
 
 
 class GridSearch(SearchAlgo):
@@ -58,12 +58,11 @@ class GridSearch(SearchAlgo):
             if self.idx < len(self.all_tasks):
                 new_cfg = self.all_tasks[self.idx]
                 self.idx += 1
-                stop, pruned_cfg = self.prune(
+                stop = not self.prune(
                     self.tuner_cfg, new_cfg, history_cfgs, self.pruned_cfgs
                 )
-                stop = not stop
-                if pruned_cfg is not None:
-                    self.pruned_cfgs.append(pruned_cfg)
+                if stop:
+                    self.pruned_cfgs.append(new_cfg)
             else:
                 return None
         return new_cfg
