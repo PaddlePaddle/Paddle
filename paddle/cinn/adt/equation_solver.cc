@@ -163,7 +163,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
-    ListGetItem<Value, DimExpr> list_get_item{index_undot, idx};
+    ListGetItem<Value, DimExpr> list_get_item{
+        Value{index_undot}, DimExpr(static_cast<std::int64_t>(idx))};
     ret.emplace(out_iters.value()->at(idx), list_get_item);
   }
   return ret;

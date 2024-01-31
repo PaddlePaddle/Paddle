@@ -556,7 +556,7 @@ GroupList CheckFusionAccuracyPass::Apply() {
       continue;
     }
 
-    // split orign group and create group for each node
+    // split origin group and create group for each node
     const auto& ordered_nodes = TopologicalOrder(group_nodes);
     VLOG(4) << "Check the accuracy of group "
             << graph_->DebugGroupedGraph(ordered_nodes);

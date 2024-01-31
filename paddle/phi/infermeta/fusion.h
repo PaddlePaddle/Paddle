@@ -144,6 +144,7 @@ void GenerateSequenceXPUInferMeta(const MetaTensor& x,
 
 void MultiEncoderXPUInferMeta(
     const MetaTensor& x,
+    const std::vector<const MetaTensor*>& fc_input_max,
     const std::vector<const MetaTensor*>& fc_weight,
     const std::vector<const MetaTensor*>& fc_weight_max,
     const std::vector<const MetaTensor*>& fc_bias,
@@ -161,6 +162,7 @@ void MultiEncoderXPUInferMeta(
     int act_type,
     int relative_type,
     int slice_idx,
+    bool is_per_channel,
     MetaTensor* out,
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);

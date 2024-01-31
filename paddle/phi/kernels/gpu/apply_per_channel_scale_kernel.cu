@@ -106,8 +106,11 @@ __global__ void apply_per_channel_scale(
   for (int i = 0; i < kProcessRows; ++i) {
     *reinterpret_cast<AccessType*>(act_vec) =
         reinterpret_cast<const AccessType*>(act + i * cols)[col_offset];
-    if constexpr (kElems % 2 == 0 && (std::is_same_v<T, half> ||
-                                      std::is_same_v<T, __nv_bfloat16>)) {
+    if constexpr (kElems % 2 == 0 && (std::is_same<T, half>::value
+#ifdef PADDLE_CUDA_BF16
+                                      || std::is_same<T, __nv_bfloat16>::value
+#endif
+                                      )) {
 #pragma unroll
       for (int j = 0; j < kElems; j += 2) {
         *reinterpret_cast<HALF_2_TYPE*>(act_vec + j) =

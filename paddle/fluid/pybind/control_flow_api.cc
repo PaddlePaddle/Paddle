@@ -243,7 +243,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       body_block.arg(arg_index).ReplaceAllUsesWith(
           operand_source(operand_index));
-      body_block.EraseArgument(arg_index);
+      body_block.EraseArg(arg_index);
       no_change = false;
       res[operand_index - 1u] = operand_source(operand_index);
     } else {

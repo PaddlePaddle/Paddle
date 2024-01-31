@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from paddle.base import unique_name
-from paddle.jit.dy2static.utils import index_in_list
 from paddle.utils import gast
 
 from .base import BaseTransformer, ForNodeVisitor
-from .utils import BaseNodeVisitor, create_bool_node
+from .utils import BaseNodeVisitor, create_bool_node, index_in_list
 
 __all__ = []
 
