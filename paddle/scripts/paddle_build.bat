@@ -89,6 +89,7 @@ if not defined TEST_INFERENCE set TEST_INFERENCE=ON
 
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
+set UPLOAD_TP_CODE=OFF
 
 set error_code=0
 type %cache_dir%\error_code.txt
@@ -111,6 +112,10 @@ if "%WITH_PYTHON%" == "ON" (
     where pip
     python -m pip install --upgrade pip
     python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
+    if !ERRORLEVEL! NEQ 0 (
+        echo pip install compile_requirements.txt failed!
+        exit /b 5
+    )
     python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
@@ -353,9 +358,17 @@ set PreferredToolArchitecture=x64
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.2
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2
 set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%
 
+@ECHO ON
+if "%WITH_GPU%"=="ON" (
+    set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
+    if "!cuda_version!"=="12.0" (
+        set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64;%PATH%"
+    )
+) 
+echo %PATH%
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
 set TENSORRT_ROOT=%TENSORRT_ROOT:\=/%
 set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
@@ -429,6 +442,11 @@ if !ERRORLEVEL! EQU 0 (
     )
 ) else (
     git submodule update --init --recursive
+    if !errorlevel! EQU 0 (
+        set UPLOAD_TP_CODE=ON
+    )
+)
+if "%UPLOAD_TP_CODE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-new (
