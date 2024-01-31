@@ -231,11 +231,16 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                                                        bool trans_x,
                                                        bool trans_y,
                                                        std::string activation) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attribute_map = {
+      {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
+      {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
+      {"activation", pir::StrAttribute::get(ctx, activation)}};
   auto fused_gemm_epilogue_op =
       ApiBuilder::Instance()
           .GetBuilder()
           ->Build<paddle::dialect::FusedGemmEpilogueOp>(
-              x, y, bias, trans_x, trans_y, activation);
+              x, y, bias, attribute_map);
   return std::make_tuple(fused_gemm_epilogue_op.result(0),
                          fused_gemm_epilogue_op.result(1));
 }
