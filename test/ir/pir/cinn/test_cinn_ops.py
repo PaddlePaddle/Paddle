@@ -57,7 +57,7 @@ class TestAddOp(TestOpsBase):
     def prepare_info(self):
         self.fn = paddle.add
         self.expected_fuison_number = 1
-        self.expected_fuison_structure = {"fusion": 1}
+        self.expected_fuison_structure = {utils.FUSION_KEY_STR: 1}
 
     def test_eval(self):
         self.check_eval()
@@ -67,7 +67,7 @@ class TestIsCloseOp(TestOpsBase):
     def prepare_info(self):
         self.fn = paddle.isclose
         self.expected_fuison_number = 1
-        self.expected_fuison_structure = {"fusion": 1}
+        self.expected_fuison_structure = {utils.FUSION_KEY_STR: 1}
 
     def test_eval(self):
         self.check_eval()

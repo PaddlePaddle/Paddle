@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 
+FUSION_KEY_STR = "fusion_number"
 __FUSION_KERNEL_NAME = "cinn_runtime.jit_kernel"
 __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
@@ -73,7 +74,7 @@ def get_fusion_structure_helper(block, map_info):
     for op in block.ops:
         op_name = op.name()
         if op_name == __FUSION_KERNEL_NAME:
-            map_info["fusion"] += 1
+            map_info[FUSION_KEY_STR] += 1
         elif op_name == __IF_OP_NAME:
             true_key = f"if_{if_op_idx}"
             map_info[true_key] = {}
@@ -101,22 +102,22 @@ def check_fusion_structure(static_fn, expected_structure):
     Check whether fuse subgraph structre in Program is same with expected_structure.
     For examaple:
     expected_structure = {
-        "fusion": 3,
+        FUSION_KEY_STR: 3,
         "if_0": {
-            "fusion": 1
+            FUSION_KEY_STR: 1
         }
         "else_0": {
-            "fusion": 1
+            FUSION_KEY_STR: 1
         }
          "if_1": {
-            "fusion": 0
+            FUSION_KEY_STR: 0
         }
         "else_1": {
-            "fusion": 0
+            FUSION_KEY_STR: 0
         }
 
         "while_0":{
-            "fusion" 2
+            FUSION_KEY_STR: 2
         }
     }
     """

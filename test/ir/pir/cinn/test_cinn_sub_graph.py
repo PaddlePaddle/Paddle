@@ -134,7 +134,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def check_fusion_info(self, static_fn):
         utils.check_fusion_number(static_fn, 1)
-        utils.check_fusion_structure(static_fn, {'fusion': 1})
+        utils.check_fusion_structure(static_fn, {utils.FUSION_KEY_STR: 1})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
