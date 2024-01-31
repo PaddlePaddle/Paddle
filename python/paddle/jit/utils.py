@@ -155,6 +155,45 @@ class OrderedSet(Generic[T]):
         self._data = {item: None for item in self if item not in other}
         return self
 
+    def __xor__(self, other: OrderedSet[T]) -> OrderedSet[T]:
+        """
+        Symmetric difference of two sets.
+
+        Args:
+            other: Another set to be xor'ed.
+
+        Returns:
+            The symmetric difference of two sets.
+
+        Examples:
+            >>> s1 = OrderedSet([1, 2, 3])
+            >>> s2 = OrderedSet([2, 3, 4])
+            >>> s1 ^ s2
+            OrderedSet(1, 4)
+        """
+        return OrderedSet(
+            [item for item in self if item not in other]
+        ) | OrderedSet([item for item in other if item not in self])
+
+    def __ixor__(self, other: OrderedSet[T]):
+        """
+        Symmetric difference of two sets in place.
+
+        Args:
+            other: Another set to be xor'ed.
+
+        Examples:
+            >>> s1 = OrderedSet([1, 2, 3])
+            >>> s2 = OrderedSet([2, 3, 4])
+            >>> s1 ^= s2
+            >>> s1
+            OrderedSet(1, 4)
+        """
+        self._data = {item: None for item in self if item not in other} | {
+            item: None for item in other if item not in self
+        }
+        return self
+
     def add(self, item: T):
         """
         Add an item to the set.
