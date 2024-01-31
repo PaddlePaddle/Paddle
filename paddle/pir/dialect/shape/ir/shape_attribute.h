@@ -30,7 +30,12 @@ class IR_API SymbolAttribute : public Attribute {
 
   static SymbolAttribute get(IrContext* ctx,
                              const symbol::ShapeOrDataDimExprs& value);
+
+  static const char attr_name[];
 };
+
+void SetShapeAttrForOp(pir::Operation* op,
+                       const symbol::ShapeOrDataDimExprs& shape_data);
 
 }  // namespace pir::shape
 
