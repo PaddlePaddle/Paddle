@@ -1196,6 +1196,7 @@
     func : GraphKhopSamplerInferMeta
   kernel :
     func : graph_khop_sampler
+    data_type : row
   optional : eids
 
 - op : grid_sample
