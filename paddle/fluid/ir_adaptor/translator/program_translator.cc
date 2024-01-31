@@ -501,7 +501,7 @@ void ProgramTranslator::TranslateWhileOperation(
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    body_block_context->PushValue(loop_var, body_block->AddArgument(val_type));
+    body_block_context->PushValue(loop_var, body_block->AddArg(val_type));
   }
 
   pir::Operation* while_op =
