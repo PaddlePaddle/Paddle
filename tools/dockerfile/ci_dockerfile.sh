@@ -91,9 +91,8 @@ function make_unbuntu20_cu12_dockerfile(){
     pip3.10 install -r requirements.txt \&\& \
     pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
     pip3.10 install -r csrc/requirements.txt \&\& \
-    python3.10 setup.py install \&\& \
-    cd csrc \&\& python3.10 setup_cuda.py install \&\& \
-    pip3.10 install pytest-timeout" ${dockerfile_name}
+    pip3.10 install pytest-timeout \&\& \
+    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
 
