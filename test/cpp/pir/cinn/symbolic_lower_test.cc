@@ -34,7 +34,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 

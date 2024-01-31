@@ -50,7 +50,7 @@ class SearchSpace {
   /**
    * \brief Generate sketch as initial population of evolutionary search.
    * @param num The number of sketches to generate.
-   * @param strategy The strategy to generate sketchs,
+   * @param strategy The strategy to generate sketches,
    *        Current optional strategies are "rule_prune" or "random_prune" or
    * "random".
    * - "rule_prune": will use rules to prune and generate sketches as
@@ -61,7 +61,7 @@ class SearchSpace {
    * - "random": will randomly select a block and a rule to apply and repeat
    * this step several times, however, each rule can only be used on one
    * SearchState at most once.
-   * @return  Generated sketchs.
+   * @return  Generated sketches.
    */
   virtual std::vector<SearchState> GenerateSketches(
       int num, const std::string& strategy);
@@ -73,7 +73,7 @@ class SearchSpace {
   // mutate by sketch rules randomly
   SearchState RandomScheduleMutate(const SearchState& state);
 
-  // Generate num sketchs, each with several rounds of SketchMutate
+  // Generate num sketches, each with several rounds of SketchMutate
   std::vector<SearchState> InitSketchWithRandomStrategy(int num);
 
   // Generate sketch pruned randomly as initial population of evolutionary
