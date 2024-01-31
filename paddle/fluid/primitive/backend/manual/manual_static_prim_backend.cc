@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
+#include "paddle/fluid/primitive/backend/manual/manual_prim_backend.h"
 #include "paddle/fluid/primitive/primitive/manual_primitive.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
 
 namespace paddle {
 namespace primitive {
+namespace backend {
 
-using IntArray = paddle::experimental::IntArray;
-std::vector<std::vector<paddle::Tensor>> add_n_vjp(
-    const std::vector<paddle::Tensor>& x,
-    const Tensor& out_grad,
-    const std::vector<std::vector<bool>>& stop_gradients);
+template <>
+Tensor full<LazyTensor>(const IntArray& shape,
+                        const Scalar& value,
+                        DataType dtype,
+                        Place place) {
+  auto op_res =
+      paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  return out;
+}
 
-std::vector<std::vector<paddle::Tensor>> reshape_vjp(
-    const Tensor& xshape,
-    const Tensor& out_grad,
-    const std::vector<std::vector<bool>>& stop_gradients);
-
+}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

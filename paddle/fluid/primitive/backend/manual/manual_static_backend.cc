@@ -16,6 +16,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/primitive/backend/generated/generated_backend.h"
 #include "paddle/fluid/primitive/backend/manual/manual_backend.h"
+#include "paddle/fluid/primitive/primitive/manual_primitive.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
@@ -56,17 +57,6 @@ Tensor embedding_grad<LazyTensor>(const Tensor& x,
       std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
   auto op_res = paddle::dialect::embedding_grad(
       x_res, weight_res, out_grad_res, padding_idx, sparse);
-  Tensor out(std::make_shared<LazyTensor>(op_res));
-  return out;
-}
-
-template <>
-Tensor full<LazyTensor>(const IntArray& shape,
-                        const Scalar& value,
-                        DataType dtype,
-                        Place place) {
-  auto op_res =
-      paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
 }

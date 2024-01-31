@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,31 +14,21 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/fluid/primitive/backend/backend.h"
 
 namespace paddle {
 namespace primitive {
-namespace backend {
 
 using Tensor = paddle::Tensor;
-using Scalar = phi::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = phi::DataType;
 
 template <typename T>
-std::vector<Tensor> add_n_grad(const std::vector<Tensor>& x,
-                               const Tensor& out_grad);
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            DataType dtype = DataType::FLOAT32,
+            Place place = Place()) {
+  return backend::full<T>(shape, value, dtype, place);
+}
 
-template <typename T>
-Tensor embedding_grad(const Tensor& x,
-                      const Tensor& weight,
-                      const Tensor& out_grad,
-                      int64_t padding_idx = -1,
-                      bool sparse = false);
-
-}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

@@ -12,27 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
-#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace primitive {
 namespace backend {
 
-template <>
-Tensor full<Tensor>(const IntArray& shape,
-                    const Scalar& value,
-                    DataType dtype,
-                    Place place) {
-  VLOG(4) << "Eager Prim API full_ad_func call";
-  if (place.GetType() == AllocationType::UNDEFINED) {
-    return ::full_ad_func(shape, value, dtype, CPUPlace());
-  } else {
-    return ::full_ad_func(shape, value, dtype, place);
-  }
-}
+template <typename T>
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            DataType dtype = DataType::FLOAT32,
+            Place place = Place());
 
 }  // namespace backend
 }  // namespace primitive
