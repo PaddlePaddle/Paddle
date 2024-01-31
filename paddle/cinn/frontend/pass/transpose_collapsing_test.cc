@@ -196,7 +196,7 @@ TEST(TransposeCollapsing, RemoveUselessTranspose) {
   }
 }
 
-TEST(TransposeCollapsing, ReplaceUselessTransposeWithIndentity) {
+TEST(TransposeCollapsing, ReplaceUselessTransposeWithIdentity) {
   NetBuilder builder("net_builder");
   auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
   auto out = builder.Transpose(x, {0, 1, 2});
