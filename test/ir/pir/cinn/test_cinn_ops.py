@@ -44,7 +44,7 @@ class TestOpsBase(unittest.TestCase):
         self.y.stop_gradient = False
 
     def check_eval(self):
-        static_fn = utils.apply_to_static(self.fn)
+        static_fn = utils.apply_to_static(self.fn, use_cinn=True)
         cinn_out = static_fn(self.x, self.y)
         dy_out = self.fn(self.x, self.y)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
