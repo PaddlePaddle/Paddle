@@ -152,10 +152,19 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            # The input program has 4 OPs: feed + cast + cast + fetch
+            # Paddle-TRT will not offload cast OPs onto TensorRT if the following if-condition is true
             if not dynamic_shape and (
                 self.has_bool_dtype or self.dims == 1 or self.dims == 0
             ):
-                return 0, 4
+                if attrs[1]['in_dtype'] == attrs[1]['out_dtype']:
+                    # The IR pass identity_op_clean_pass will remove useless OP such as cast with same in_dtype and out_dtype.
+                    # But if the input of cast OP is feed, the IR pass will skip to remove this cast OP.
+                    # So there are three Paddle OPs remaining: feed + cast + fetch (the second cast is removed)
+                    return 0, 3
+                else:
+                    return 0, 4
+            # Paddle-TRT fuses two casts OP into one TensorRT OP, so there is one TRT OP and two Paddle OP (feed + fetch)
             return 1, 2
 
         attrs = [
