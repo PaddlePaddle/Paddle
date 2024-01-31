@@ -59,7 +59,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     }
 
     symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
-
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 

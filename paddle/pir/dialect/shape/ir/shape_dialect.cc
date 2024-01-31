@@ -32,7 +32,6 @@ void ShapeDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
   if (attr.isa<SymbolAttribute>()) {
     SymbolAttribute symbol_attr = attr.dyn_cast<SymbolAttribute>();
     if (symbol_attr.data().isa<symbol::TensorListShapeOrDataDimExprs>()) return;
-
     os << "(shape_data)";
     os << "[";
     for (size_t i = 0; i < symbol_attr.data().shape().size(); ++i) {
