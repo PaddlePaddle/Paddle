@@ -74,17 +74,25 @@ class Controller {
   std::string GetPythonStack() { return tracer_->GetPythonStack(); }
 
   bool HasGrad() const { return tracer_->HasGrad(); }
+
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }
+
   std::string GenerateUniqueName(std::string key = "eager_in_tmp") {
     return tracer_->GenerateUniqueName(key);
   }
+
   const std::shared_ptr<paddle::imperative::Tracer>& GetCurrentTracer() {
     return tracer_;
   }
+
   void SetCurrentTracer(
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
     tracer_ = tracer;
     VLOG(6) << "Set current tracer for Controller: " << tracer_;
+  }
+
+  const std::shared_ptr<paddle::imperative::AMPState>& GetCurrentAMPState() {
+    return paddle::imperative::GetCurrentAMPState();
   }
 
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&

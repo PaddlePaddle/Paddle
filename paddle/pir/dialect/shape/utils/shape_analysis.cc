@@ -14,6 +14,7 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include <string>
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace pir {
 
@@ -163,7 +164,8 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   for (int i : rhs_dim_idxs) {
     rhs_product = rhs_product * rhs_shape_data.shape()[i];
   }
-  return lhs_product == rhs_product;
+  return symbol::SimplifyDimExpr(lhs_product) ==
+         symbol::SimplifyDimExpr(rhs_product);
 }
 
 bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,

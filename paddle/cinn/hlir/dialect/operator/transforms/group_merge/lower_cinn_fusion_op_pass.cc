@@ -40,7 +40,7 @@
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -133,7 +133,9 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
-      generate_shape_op->Erase();
+      if (generate_shape_op->use_empty()) {
+        generate_shape_op->Erase();
+      }
     }
   }
 }
