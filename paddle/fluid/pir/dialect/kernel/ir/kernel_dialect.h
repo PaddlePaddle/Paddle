@@ -21,7 +21,7 @@ namespace dialect {
 
 class KernelDialect : public pir::Dialect {
  public:
-  explicit KernelDialect(pir::IrContext* context);
+  TEST_API explicit KernelDialect(pir::IrContext* context);
 
   static const char* name() { return "pd_kernel"; }
 

@@ -563,8 +563,9 @@ if is_compiled_with_cinn():
 
 if is_compiled_with_cuda():
     import os
+    import platform
 
-    if os.name == 'posix':
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
         package_dir = os.path.dirname(os.path.abspath(__file__))
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
