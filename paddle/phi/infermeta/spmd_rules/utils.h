@@ -63,6 +63,9 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 // null.
 TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 
+TensorDistAttr CopyTensorDistAttrWithPartialForOutput(
+    const TensorDistAttr& src_dist_attr);
+
 TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
                                  std::vector<int64_t> dims);
 

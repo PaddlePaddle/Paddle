@@ -20,9 +20,10 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import _C_ops, nn
+from paddle import nn
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.base import unique_name
+from paddle.base.dygraph import to_variable
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import (
     EagerParamBase,
@@ -837,7 +838,8 @@ def shard_scaler(scaler):
             )
         elif optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError("unscale_() is being called after step().")
-
+        src_mesh = optimizer._parameter_list[0].grad.process_mesh
+        print("+++ src_mesh: ", src_mesh)
         param_grads = []
         param_grads_bf16 = []
         param_grads_fp16 = []
@@ -867,60 +869,71 @@ def shard_scaler(scaler):
                         else:
                             param_grads_fp32.append(tgt_grad)
         else:
-            param_grads = [
-                param._grad_ivar()
-                for param in optimizer._parameter_list
-                if param._grad_ivar() is not None and param._is_initialized()
-            ]
-            param_grads_fp16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP16
-            ]
-            param_grads_bf16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.BF16
-            ]
-            param_grads_fp32 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP32
-            ]
-        self._found_inf = self._temp_found_inf_value_false
-        if len(param_grads_fp16):
-            _C_ops.check_finite_and_unscale_(
-                param_grads_fp16,
-                self._scale,
-                param_grads_fp16,
-                self._temp_found_inf_fp16,
-            )
+            process_meshs = []
+            current_process_mesh = None
+            for param in optimizer._parameter_list:
+                if param.grad.process_mesh not in process_meshs:
+                    if (
+                        current_process_mesh is None
+                        and param.grad._is_initialized()
+                    ):
+                        current_process_mesh = param.grad.process_mesh
+                    process_meshs.append(param.grad.process_mesh)
+            for pm in process_meshs:
+                print("++++ process_mesh set: ", pm)
+            print("++++ current_process_mesh: ", current_process_mesh)
+            all_param_grads = []
+            self._found_inf = to_variable(np.array([0]).astype(np.bool_))
 
-            self._found_inf = _C_ops.bitwise_or(
-                self._found_inf, self._temp_found_inf_fp16
-            )
-        if len(param_grads_bf16):
-            _C_ops.check_finite_and_unscale_(
-                param_grads_bf16,
-                self._scale,
-                param_grads_bf16,
-                self._temp_found_inf_bf16,
-            )
-            self._found_inf = _C_ops.bitwise_or(
-                self._found_inf, self._temp_found_inf_bf16
-            )
-        if len(param_grads_fp32):
-            _C_ops.check_finite_and_unscale_(
-                param_grads_fp32,
-                self._scale,
-                param_grads_fp32,
-                self._temp_found_inf_fp32,
-            )
-            self._found_inf = _C_ops.bitwise_or(
-                self._found_inf, self._temp_found_inf_fp32
-            )
-        dist.all_reduce(self._found_inf, op=dist.ReduceOp.MAX, group=None)
-        self._found_inf = self._found_inf.cast("bool")
+            for ps in process_meshs:
+                temp_grads = []
+                for param in optimizer._parameter_list:
+                    if param.grad.process_mesh == ps:
+                        temp_grads.append(param._grad_ivar())
+                all_param_grads.append(temp_grads)
+
+            # for param_grads in all_param_grads:
+            #     temp_param_grads_bf16 = []
+            #     temp_param_grads_fp16 = []
+            #     temp_param_grads_fp32 = []
+            #     temp_found_inf = to_variable(np.array([0]).astype(np.bool_))
+            #     temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+            #     temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+            #     if self._scale.is_dist():
+            #         temp_scale = self._scale._local_value()
+            #     else:
+            #         temp_scale = self._scale
+            #     for grad in param_grads:
+            #         if grad.dtype in [
+            #             core.VarDesc.VarType.FP16,
+            #             paddle.float16,]:
+            #             temp_param_grads_fp16.append(grad)
+            #         else:
+            #             temp_param_grads_fp32.append(grad)
+            #     if len(temp_param_grads_fp16):
+            #         _, temp_found_inf_fp16 = _C_ops.check_finite_and_unscale_(
+            #             temp_param_grads_fp16,
+            #             temp_scale,
+            #         )
+            #         temp_found_inf = _C_ops.bitwise_or(
+            #             temp_found_inf, temp_found_inf_fp16
+            #         )
+            #     if len(temp_param_grads_fp32):
+            #         _, temp_found_inf_fp32 = _C_ops.check_finite_and_unscale_(
+            #             temp_param_grads_fp32,
+            #             temp_scale,
+            #         )
+            #         temp_found_inf = _C_ops.bitwise_or(
+            #             temp_found_inf, temp_found_inf_fp32
+            #         )
+            #     # temp_found_inf = dist.reshard(temp_found_inf, src_mesh, temp_found_inf.placements)
+            #     # self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
+
+            # if self._found_inf.process_mesh == current_process_mesh:
+            #     _ = dist.reshard(self._found_inf, process_meshs[1], self._found_inf.placements)
+            # else:
+            #     self._found_inf = dist.reshard(self._found_inf, process_meshs[1], self._found_inf.placements)
+            print(f"+++ self._found_inf: {self._found_inf}")
         optimizer_state["state"] = OptimizerState.UNSCALED
 
     scaler._unscale = MethodType(unscale_method, scaler)
