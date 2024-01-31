@@ -59,17 +59,8 @@ struct CombineOpInferSymbolicShapeInterfaceModel
               .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
     }
 
-    if (operand_source_1st_data.has_value()) {
-      std::vector<symbol::DimExpr> tmp_shape{int64_t(out_dims.size())};
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims));
-    } else {
-      // TODO(zhangbopd): use op->result(0) to infer the shape
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
-    }
-
+    symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 
