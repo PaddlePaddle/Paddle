@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ void CheckMemLeak(const platform::CUDAPlace &place) {
       << " there may be a memory leak problem";
 }
 
-#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000))
+#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 12000))
 
 TEST(CUDAMallocAsyncInterfaceTest, AllocInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();

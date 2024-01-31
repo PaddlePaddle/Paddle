@@ -281,7 +281,6 @@ class RecordedGpuMallocHelper {
              << " MB result = " << result << " stream = " << stream;
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
@@ -352,7 +351,6 @@ class RecordedGpuMallocHelper {
     if (err != cudaErrorCudartUnloading) {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
