@@ -381,7 +381,7 @@ void CholeskySolveInferMeta(const MetaTensor& x,
       x_dims[x_dims_n - 2],
       y_dims[y_dims_n - 2],
       phi::errors::InvalidArgument("the first dim of Matrix X must be equal to "
-                                   "the fisrt dim of Matrix Y,"
+                                   "the first dim of Matrix Y,"
                                    "But Got %ld and %ld",
                                    x_dims[x_dims_n - 2],
                                    y_dims[y_dims_n - 2]));
@@ -564,7 +564,7 @@ void ConvInferMeta(const MetaTensor& input,
           "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
-          "difference of input's dimention and Attr(strides)'s length = %u.",
+          "difference of input's dimension and Attr(strides)'s length = %u.",
           in_dims.size(),
           in_dims,
           strides.size(),
@@ -1540,7 +1540,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           bool transpose_y,
                           const float matmul_alpha,
                           const std::string& fuse_activation,
-                          const float fuse_lapha,
+                          const float fuse_alpha,
                           const float fuse_beat,
                           const float fused_output_scale,
                           const std::vector<int>& fused_reshape_X,
@@ -2279,12 +2279,12 @@ void MatmulInferMeta(const MetaTensor& x,
                     0UL,
                     phi::errors::InvalidArgument(
                         "The Input(x) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
+                        " but received dims size is 0. "));
   PADDLE_ENFORCE_GT(ndims_y,
                     0UL,
                     phi::errors::InvalidArgument(
                         "The Input(y) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
+                        " but received dims size is 0. "));
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
@@ -2463,7 +2463,7 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
             "The 2nd dimension of Input(BBoxes) must be equal to "
             "last dimension of Input(Scores), which represents the "
             "predicted bboxes."
-            "But received box_dims[1](%s) != socre_dims[2](%s)",
+            "But received box_dims[1](%s) != score_dims[2](%s)",
             box_dims[1],
             score_dims[2]));
   }
@@ -2688,24 +2688,24 @@ void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
+inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratio,
                                bool flip,
-                               std::vector<float>* output_aspect_ratior) {
+                               std::vector<float>* output_aspect_ratio) {
   constexpr float epsilon = 1e-6;
-  output_aspect_ratior->clear();
-  output_aspect_ratior->push_back(1.0f);
-  for (auto ar : input_aspect_ratior) {
+  output_aspect_ratio->clear();
+  output_aspect_ratio->push_back(1.0f);
+  for (auto ar : input_aspect_ratio) {
     bool already_exist = false;
-    for (auto item : *output_aspect_ratior) {
+    for (auto item : *output_aspect_ratio) {
       if (fabs(ar - item) < epsilon) {
         already_exist = true;
         break;
       }
     }
     if (!already_exist) {
-      output_aspect_ratior->push_back(ar);
+      output_aspect_ratio->push_back(ar);
       if (flip) {
-        output_aspect_ratior->push_back(1.0f / ar);
+        output_aspect_ratio->push_back(1.0f / ar);
       }
     }
   }
@@ -3112,13 +3112,13 @@ void LstsqInferMeta(const MetaTensor& x,
       x_rank,
       2,
       phi::errors::InvalidArgument("Expects input tensor x to be not less than "
-                                   "2 dimentions, but got dimention %d",
+                                   "2 dimensions, but got dimension %d",
                                    x_rank));
   PADDLE_ENFORCE_GE(
       y_rank,
       2,
       phi::errors::InvalidArgument("Expects input tensor y to be not less than "
-                                   "2 dimentions, but got dimention %d",
+                                   "2 dimensions, but got dimension %d",
                                    y_rank));
 
   PADDLE_ENFORCE_EQ(
@@ -3126,7 +3126,7 @@ void LstsqInferMeta(const MetaTensor& x,
       y_rank,
       phi::errors::InvalidArgument(
           "Expects input tensor x and y to have the same dimension "
-          "but got x's dimention [%d] and y's dimention [%d]",
+          "but got x's dimension [%d] and y's dimension [%d]",
           x_rank,
           y_rank));
 
@@ -3136,8 +3136,8 @@ void LstsqInferMeta(const MetaTensor& x,
                       y_dims[i],
                       phi::errors::InvalidArgument(
                           "Expects input tensor x and y to have the same batch "
-                          "dimension, but got x's batch dimention [%d] and "
-                          "y's batch dimention [%d] in %d-th dim",
+                          "dimension, but got x's batch dimension [%d] and "
+                          "y's batch dimension [%d] in %d-th dim",
                           x_dims[i],
                           y_dims[i],
                           i));
@@ -3150,7 +3150,7 @@ void LstsqInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "Expects input tensor x and y to have the same row dimension "
           "of the inner-most 2-dims matrix, "
-          "but got x's row dimention [%d] and y's row dimention [%d]",
+          "but got x's row dimension [%d] and y's row dimension [%d]",
           m,
           y_dims[y_rank - 2]));
 

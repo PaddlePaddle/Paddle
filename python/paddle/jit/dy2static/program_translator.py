@@ -350,7 +350,11 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
         # TODO(chenzhuo): Remove this after lowering prim into C++
-        if input_spec is not None and prim_is_enabled():
+        if (
+            input_spec is not None
+            and prim_is_enabled()
+            and not core._enable_prim_dynamic_shape()
+        ):
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
