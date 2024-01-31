@@ -90,12 +90,12 @@ pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
     return [](pir::Operation *op, pir::IrPrinter &printer) {
       auto group_op = op->dyn_cast<GroupOp>();
       group_op.Print(printer);
-    }
+    };
   } else if (auto fusion_op = op->dyn_cast<FusionOp>()) {
     return [](pir::Operation *op, pir::IrPrinter &printer) {
       auto fusion_op = op->dyn_cast<FusionOp>();
       fusion_op.Print(printer);
-    }
+    };
   }
   return nullptr;
 }
