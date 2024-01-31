@@ -75,17 +75,18 @@ def get_fusion_structure_helper(block, map_info):
         if op_name == __FUSION_KERNEL_NAME:
             map_info["fusion"] += 1
         elif op_name == __IF_OP_NAME:
-            true_key = f"if_{if_op_idx}_true"
+            true_key = f"if_{if_op_idx}"
             map_info[true_key] = {}
             get_fusion_structure_helper(op.true_block(), map_info[true_key])
 
-            false_key = f"if_{if_op_idx}_false"
+            false_key = f"else_{if_op_idx}"
             get_fusion_structure_helper(op.true_block(), map_info[false_key])
             if_op_idx += 1
         elif op.name() == __WHILE_OP_NAME:
             key = f"while_{while_op_idx}"
             map_info[key] = {}
             get_fusion_structure_helper(op.body(), map_info[key])
+            while_op_idx += 1
 
 
 def get_fusion_structure(static_fn):
@@ -101,16 +102,16 @@ def check_fusion_structure(static_fn, expected_structure):
     For examaple:
     expected_structure = {
         "fusion": 3,
-        "if_0_true": {
+        "if_0": {
             "fusion": 1
         }
-        "if_0_false": {
+        "else_0": {
             "fusion": 1
         }
-         "if_1_true": {
+         "if_1": {
             "fusion": 0
         }
-        "if_1_false": {
+        "else_1": {
             "fusion": 0
         }
 
