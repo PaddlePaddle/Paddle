@@ -123,8 +123,8 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
   static constexpr const char **attributes_name = nullptr;
 
   TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value container);
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value container);
   void VerifySig();
   pir::Value input() { return operand_source(0); }
   pir::Value out() { return result(0); }
