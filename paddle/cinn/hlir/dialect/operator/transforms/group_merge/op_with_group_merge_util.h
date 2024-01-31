@@ -355,7 +355,7 @@ inline std::vector<int64_t> GetBroadcastAxes(
     }
     return broadcast_axes;
   } else {
-    LOG(FATAL) << "Not support broadcast op: " << bcast_op->name();
+    IR_THROW("Not support broadcast op: %s", bcast_op->name());
   }
 }
 
@@ -377,7 +377,6 @@ inline bool reduce_fuse_broadcast(
   const auto& rinput_shape =
       shape_analysis.GetShapeOrDataForValue(producer->operand_source(0))
           .shape();
-  // ::common::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "dim");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
@@ -388,18 +387,6 @@ inline bool reduce_fuse_broadcast(
       axis += rinput_shape.size();
     }
   }
-
-  // int reduce_size = rinput_shape.back();
-  // for (auto idx = reduce_axes.size() - 1; idx >= 1; --idx) {
-  //   if (reduce_axes[idx] != reduce_axes[idx - 1] + 1) {
-  //     return false;
-  //   }
-  //   reduce_size *= rinput_shape[idx - 1];
-  // }
-
-  // if (reduce_size > helper->target_.max_num_threads()) {
-  //   return false;
-  // }
 
   auto find_reducer =
       [&](::pir::Operation* op,
@@ -427,10 +414,8 @@ inline bool reduce_fuse_broadcast(
         return false;
       };
 
-  auto routput_shape =
-      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
+  const auto& routput_shape = GetValueShape(producer->result(0));
   for (auto op : consumer->ops_set) {
-    VLOG(0) << "######## consumer op : " << op->name();
     if (hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
         OpPatternKind::kBroadcast) {
       continue;
@@ -439,9 +424,7 @@ inline bool reduce_fuse_broadcast(
     if (!find_reducer(op, producer, consumer->ops_set)) {
       continue;
     }
-    VLOG(0) << "######## find_reducer is true";
 
-    // const auto& broadcast_shape = GetValueShape(op->result(0));
     const auto& broadcast_shape =
         shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
     auto broadcast_axes = GetBroadcastAxes(op, shape_analysis);

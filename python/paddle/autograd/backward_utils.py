@@ -246,7 +246,7 @@ def _check_vjp_dynamic_shape(op, inputs):
 def dynamic_shape_prim_vjp_guard(op, inputs):
     skip_prim = (
         core._is_bwd_prim_enabled()
-        and core._enable_prim_dynamic_shape()
+        and core._enable_prim_skip_dynamic_shape()
         and _check_vjp_dynamic_shape(op, inputs)
     )
     try:
@@ -379,7 +379,7 @@ def inverse_sort_op(ops):
     return sorted_list
 
 
-def inplace_net(op_list):
+def is_inplace_net(op_list):
     '''
     when program has inpalce op , it's difficult to find the actual pending_count.
     '''
@@ -388,7 +388,7 @@ def inplace_net(op_list):
             return True
         if is_control_flow(op):
             for block in op.blocks():
-                if inplace_net(block.ops):
+                if is_inplace_net(block.ops):
                     return True
 
     return False
@@ -452,3 +452,61 @@ def parent_total_ops(block):
     total_ops += block.ops
 
     return total_ops
+
+
+# only for control_flow to find corresponding value or value_list
+def return_map_value(value, map):
+    output = value
+    while output in map:
+        output = map[output]
+    return output
+
+
+def return_map_value_list(value, map):
+    output = []
+    for i in range(len(value)):
+        if value[i] in map:
+            output.append(map[value[i]])
+        else:
+            output.append(value[i])
+    return output
+
+
+def argument_to_value(while_op):
+    '''
+    return while op's relationship of (block_argument to input value) and (input value to block_argument).
+    '''
+    if while_op.name() != "pd_op.while":
+        return ValueDict(), ValueDict()
+
+    assert len(while_op.as_while_op().block_arguments()) + 1 == len(
+        while_op.operands_source()
+    ), "while op's block_arguments size + 1 should same to while op's operands_source size"
+    arg_to_value_map = ValueDict()
+    value_to_arg_map = ValueDict()
+    for arg, value in zip(
+        while_op.as_while_op().block_arguments(),
+        while_op.operands_source()[1:],
+    ):
+        arg_to_value_map[arg] = value
+        value_to_arg_map[value] = arg
+    return arg_to_value_map, value_to_arg_map
+
+
+def get_grad_semantic_info(op):
+    '''
+    return whether op's inputs has grad, usually handled from yaml.
+    some op has uncertain inputs need special handling.
+    '''
+    if op.name() in [
+        "builtin.combine",
+        "pd_op.if",
+        "pd_op.while",
+        "cf.tuple_push",
+    ]:
+        grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
+        if op.name() == "pd_op.if":
+            grad_semantic_info[0] = False
+    else:
+        grad_semantic_info = op.get_input_grad_semantics()
+    return grad_semantic_info

@@ -138,7 +138,7 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
             }
             continue;
           } else {
-            // invlid folding op, skip
+            // invalid folding op, skip
             continue;
           }
 

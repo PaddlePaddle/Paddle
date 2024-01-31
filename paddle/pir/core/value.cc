@@ -31,11 +31,12 @@
 
 namespace pir {
 bool Value::operator==(const Value &other) const {
-  return impl_ == other.impl_;
+  return impl_ == other.impl_ &&
+         (impl_ == nullptr || impl_->id() == other.impl_->id());
 }
 
 bool Value::operator!=(const Value &other) const {
-  return impl_ != other.impl_;
+  return !(operator==(other));
 }
 
 bool Value::operator!() const { return impl_ == nullptr; }

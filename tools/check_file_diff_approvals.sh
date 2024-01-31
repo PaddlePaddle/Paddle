@@ -276,6 +276,12 @@ if [[ ${IF_USE_SUBPROCESS} ]]; then
     check_approval 1 wanghuancoder
 fi
 
+IF_USE_EVAL=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "eval([^()]*[a-zA-Z0-9_])" || true`
+if [[ ${IF_USE_EVAL} ]]; then
+    echo_line="You must have one RD wanghuancoder approval for using eval, which may cause security problem.\n"
+    check_approval 1 wanghuancoder
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
