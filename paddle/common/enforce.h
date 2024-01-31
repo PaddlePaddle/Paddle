@@ -121,7 +121,7 @@ using CommonType2 = typename std::add_lvalue_reference<
   do {                                                                  \
     HANDLE_THE_ERROR                                                    \
     throw common::CommonNotMetException(                                \
-        paddle::string::Sprintf("Error occured at: %s:%d :\n%s",        \
+        paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
                                 __FILE__,                               \
                                 __LINE__,                               \
                                 paddle::string::Sprintf(__VA_ARGS__))); \
@@ -210,7 +210,7 @@ class IrNotMetException : public std::exception {
   do {                                                                    \
     try {                                                                 \
       throw pir::IrNotMetException(                                       \
-          paddle::string::Sprintf("Error occured at: %s:%d :\n%s",        \
+          paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
                                   __FILE__,                               \
                                   __LINE__,                               \
                                   paddle::string::Sprintf(__VA_ARGS__))); \
@@ -226,7 +226,7 @@ class IrNotMetException : public std::exception {
     if (UNLIKELY(is_error(__cond__))) {                                     \
       try {                                                                 \
         throw pir::IrNotMetException(                                       \
-            paddle::string::Sprintf("Error occured at: %s:%d :\n%s",        \
+            paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
                                     __FILE__,                               \
                                     __LINE__,                               \
                                     paddle::string::Sprintf(__VA_ARGS__))); \

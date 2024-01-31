@@ -13,6 +13,12 @@
 // limitations under the License.
 #include "paddle/pir/core/value_impl.h"
 
+namespace {
+uint64_t GenerateId() {
+  static std::atomic<std::uint64_t> uid{0};
+  return ++uid;
+}
+}  // namespace
 namespace pir {
 
 namespace detail {
@@ -40,7 +46,7 @@ std::string ValueImpl::PrintUdChain() {
   result << "nullptr";
   return result.str();
 }
-ValueImpl::ValueImpl(Type type, uint32_t kind) {
+ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
   if (kind > BLOCK_ARG_IDX) {
     LOG(FATAL) << "The kind of value_impl(" << kind
                << "), is bigger than BLOCK_ARG_IDX(7)";

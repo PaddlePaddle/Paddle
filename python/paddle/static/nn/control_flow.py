@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
 from functools import cached_property, partial, reduce
 
@@ -750,13 +752,31 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
+        from paddle.jit.dy2static.utils import UndefinedVar
+
+        def create_fake_value_for_undefined_var():
+            # Create a fake value for create WhileOp, it's type will be reset after body is executed.
+            return paddle.full(shape=[], fill_value=0)
+
+        flattened_loop_vars = flatten(loop_vars)
+
+        undefined_var_mapping = {
+            idx: create_fake_value_for_undefined_var()
+            for idx, var in enumerate(flattened_loop_vars)
+            if isinstance(var, UndefinedVar)
+        }
+        unified_loop_vars = [
+            undefined_var_mapping[idx] if isinstance(var, UndefinedVar) else var
+            for idx, var in enumerate(flattened_loop_vars)
+        ]
+        while_op = build_while_op(pre_cond, unified_loop_vars)
         with while_op.body() as cur_block:
             args = pack_sequence_as(loop_vars, cur_block.args())
             next_vars = body(*args)
+
             try:
                 assert_same_structure(
-                    flatten(next_vars), flatten(loop_vars), check_types=False
+                    flatten(next_vars), unified_loop_vars, check_types=False
                 )
             except ValueError as e:
                 raise ValueError(
@@ -767,8 +787,60 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 next_vars = [next_vars]
             next_cond = cond(*next_vars)
             next_cond.stop_gradient = True
-            cf_yield([next_cond, *flatten(next_vars)])
-        return pack_sequence_as(loop_vars, while_op.optimize_update())
+
+            # Filter out the constants from next_vars, we only pass the variables (Value) into cf_yield.
+            # And pass the original fake value directly to constants position.
+            flattened_next_vars = flatten(next_vars)
+            (
+                variable_next_var_indices,
+                constant_next_var_indices,
+            ) = get_indices_by_discriminator(
+                flattened_next_vars,
+                lambda x: isinstance(x, paddle.pir.Value),
+            )
+            variable_next_vars, constant_next_vars = select_by_indices(
+                flattened_next_vars,
+                variable_next_var_indices,
+                constant_next_var_indices,
+            )
+            (fake_constant_next_vars,) = select_by_indices(
+                cur_block.args(), constant_next_var_indices
+            )
+            unified_next_vars = create_container_by_items_and_indices(
+                (variable_next_vars, variable_next_var_indices),
+                (fake_constant_next_vars, constant_next_var_indices),
+            )
+            cf_yield([next_cond, *unified_next_vars])
+
+            # Reset type of UndefinedVar from next_vars
+            for idx, value in undefined_var_mapping.items():
+                if idx in constant_next_var_indices:
+                    continue
+                value_new_type = flatten(next_vars)[idx].type()
+                value.set_type(value_new_type)
+                cur_block.args()[idx].set_type(value_new_type)
+                while_op.as_operation().results()[idx].set_type(value_new_type)
+
+        # Restore the outputs by variable and constants
+        optimized_results = while_op.optimize_update()
+        (optimized_variable_results,) = select_by_indices(
+            optimized_results, variable_next_var_indices
+        )
+        # Prune unused fake values
+        for fake_value in undefined_var_mapping.values():
+            if fake_value.use_empty():
+                fake_value_def_op = fake_value.get_defining_op()
+                fake_value_def_op.get_parent_block().remove_op(
+                    fake_value_def_op
+                )
+
+        return pack_sequence_as(
+            loop_vars,
+            create_container_by_items_and_indices(
+                (optimized_variable_results, variable_next_var_indices),
+                (constant_next_vars, constant_next_var_indices),
+            ),
+        )
 
     if in_dygraph_mode():
         now_cond = pre_cond.item()
@@ -1170,6 +1242,40 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     return final_fn()
 
 
+def get_indices_by_discriminator(container, *discriminators):
+    buckets = [[] for _ in range(len(discriminators) + 1)]
+    for idx, item in enumerate(container):
+        for i, cond in enumerate(discriminators):
+            if cond(item):
+                buckets[i].append(idx)
+                break
+        else:
+            buckets[-1].append(idx)
+    return buckets
+
+
+def select_by_indices(container, *index_groups):
+    buckets = [[] for _ in range(len(index_groups))]
+    for idx, item in enumerate(container):
+        for i, indices in enumerate(index_groups):
+            if idx in indices:
+                buckets[i].append(item)
+                break
+    return buckets
+
+
+def create_container_by_items_and_indices(*items_indices_pairs):
+    total_length = reduce(
+        lambda acc, pair: acc + len(pair[0]), items_indices_pairs, 0
+    )
+    container = [None for _ in range(total_length)]
+    for partial_container, indices in items_indices_pairs:
+        assert len(partial_container) == len(indices)
+        for idx, item in zip(indices, partial_container):
+            container[idx] = item
+    return container
+
+
 class OutputSelector:
     def __init__(
         self, if_op, flattened_true_output, flattened_false_output, names
@@ -1186,7 +1292,6 @@ class OutputSelector:
     def unified_output(self):
         unified_true_output = []
         unified_false_output = []
-        variable_indices = []
         for true_out, false_out, name in zip(
             self.true_output, self.false_output, self.names
         ):
@@ -1200,14 +1305,9 @@ class OutputSelector:
                 ],
                 name,
             )
-            if isinstance(true_out, paddle.pir.Value):
-                assert isinstance(
-                    false_out, paddle.pir.Value
-                ), "true_out and false_out should be both paddle.pir.Value"
-                variable_indices.append(len(unified_true_output))
             unified_true_output.append(true_out)
             unified_false_output.append(false_out)
-        return unified_true_output, unified_false_output, variable_indices
+        return unified_true_output, unified_false_output
 
     @property
     def unified_true_output(self):
@@ -1219,7 +1319,18 @@ class OutputSelector:
 
     @property
     def variable_indices(self):
-        return self.unified_output[2]
+        true_variable_indices, _ = get_indices_by_discriminator(
+            self.unified_true_output,
+            lambda x: isinstance(x, paddle.pir.Value),
+        )
+        false_variable_indices, _ = get_indices_by_discriminator(
+            self.unified_false_output,
+            lambda x: isinstance(x, paddle.pir.Value),
+        )
+        assert (
+            true_variable_indices == false_variable_indices
+        ), "true_variable_indices and false_variable_indices should be same"
+        return true_variable_indices
 
     @property
     def constant_indices(self):
@@ -1230,47 +1341,31 @@ class OutputSelector:
         ]
 
     def get_variable_outputs(self):
-        variable_true_output = self.select_by_indices(
+        (variable_true_output,) = select_by_indices(
             self.unified_true_output,
             self.variable_indices,
         )
-        variable_false_output = self.select_by_indices(
+        (variable_false_output,) = select_by_indices(
             self.unified_false_output,
             self.variable_indices,
         )
         return variable_true_output, variable_false_output
 
     def restore_outputs_by_variable_results(self, variable_results):
-        constant_output = self.select_by_indices(
+        (constant_output,) = select_by_indices(
             self.unified_true_output,
             self.constant_indices,
         )
-        restored_output = [None for _ in range(self.num_output)]
-        self.fill_to_indices(
-            restored_output,
-            variable_results,
-            self.variable_indices,
-        )
-        self.fill_to_indices(
-            restored_output,
-            constant_output,
-            self.constant_indices,
+
+        restored_output = create_container_by_items_and_indices(
+            (variable_results, self.variable_indices),
+            (constant_output, self.constant_indices),
         )
         return restored_output
 
     @staticmethod
-    def select_by_indices(unified_args, indices):
-        return [unified_args[i] for i in indices]
-
-    @staticmethod
-    def fill_to_indices(outputs, partial_outputs, partial_indices):
-        for i, out in zip(partial_indices, partial_outputs):
-            outputs[i] = out
-        return outputs
-
-    @staticmethod
     def constant_to_variable_promotion(out_with_blocks, name):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+        from paddle.jit.dy2static.convert_operators import to_static_variable
 
         promotion_builtin_types = (bool, int, float)
         outs, _ = zip(*out_with_blocks)
@@ -1461,8 +1556,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         return None
     true_output = None
     false_output = None
-    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-    check_type(name, "name", (str, type(None)), "base.layers.cond")
+    check_variable_and_dtype(pred, "pred", ['bool'], "paddle.static.nn.cond")
+    check_type(name, "name", (str, type(None)), "paddle.static.nn.cond")
     if in_pir_mode():
         if_op = build_if_op(pred)
         if true_fn is not None:
@@ -1774,8 +1869,8 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
+    from paddle.jit.dy2static.convert_operators import to_static_variable
     from paddle.jit.dy2static.utils import UndefinedVar
-    from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
     false_var, true_var = inputs
 

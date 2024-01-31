@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
 
 #pragma once
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-namespace cinn::common {
+namespace pir {
 
-symbol::DimExpr SimplifyDimExpr(const symbol::DimExpr&);
+class Pass;
 
-}
+IR_API std::unique_ptr<Pass> CreateFusedEmbeddingEltwiseLayerNormPass();
+
+}  // namespace pir
