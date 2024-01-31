@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -423,4 +423,6 @@ PD_REGISTER_KERNEL(graph_khop_sampler,
                    ALL_LAYOUT,
                    phi::GraphKhopSamplerKernel,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
