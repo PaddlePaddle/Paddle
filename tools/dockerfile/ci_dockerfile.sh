@@ -87,7 +87,7 @@ function make_unbuntu20_cu12_dockerfile(){
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
 
   sed -i "${dockerfile_line}i WORKDIR /home \n \
-    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP.git \&\& \
+    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
     pip3.10 install -r requirements.txt \&\& \
     pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
     pip3.10 install -r csrc/requirements.txt \&\& \
@@ -120,10 +120,10 @@ function make_ubuntu20_cu112_dockerfile(){
 }
 
 function main() {
-  #make_cpu_dockerfile
-  #make_ce_framework_dockcerfile
+  make_cpu_dockerfile
+  make_ce_framework_dockcerfile
   make_unbuntu20_cu12_dockerfile
-  #make_ubuntu20_cu112_dockerfile
+  make_ubuntu20_cu112_dockerfile
 }
 
 main "$@"
