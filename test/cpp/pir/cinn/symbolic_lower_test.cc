@@ -108,7 +108,7 @@ BuildGroupProgramForLowering() {
   value_to_shape_data.emplace(exp.result(0), value_to_shape_data.at(x));
   value_to_shape_data.emplace(reshape.result(0), value_to_shape_data.at(y));
   value_to_shape_data.emplace(sub.result(0), value_to_shape_data.at(y));
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }
@@ -206,7 +206,7 @@ BuildBroadcastGroupProgramForLowering() {
       sub.result(0),
       symbol::ShapeOrDataDimExprs(
           symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }
