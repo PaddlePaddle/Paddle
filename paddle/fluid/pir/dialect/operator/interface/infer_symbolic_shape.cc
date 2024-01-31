@@ -77,8 +77,8 @@ bool InferSymbolicShapeElementWiseBinary(
   auto x_shapeordata =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> shape_0;
-  // for ElementWiseBinary ops, if input tensor is from full op, the value of
-  // fullop is useless, only need the shape to do broadcast
+  // For ElementWiseBinary ops, if the input tensor is from full op, the value
+  // of fullop is useless, only the shape need doing broadcast
   bool x_from_fullop =
       op->operand_source(0).defining_op()->isa<paddle::dialect::FullOp>();
   if (!x_from_fullop && x_shapeordata.data().has_value()) {
@@ -150,8 +150,8 @@ bool Abs_OpInferSymbolicShape(pir::Operation *op,
 
 bool DataOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto attributes = op->attributes();
-  pir::Attribute attr = attributes["shape"];
+  const auto &attributes = op->attributes();
+  pir::Attribute attr = attributes.at("shape");
   std::vector<int64_t> dims =
       attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 
@@ -264,32 +264,34 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
 
-  auto attributes = op->attributes();
-  int axis = attributes["axis"].dyn_cast<pir::Int32Attribute>().data();
+  const auto &attributes = op->attributes();
+  int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  symbol::TensorListShapeOrDataDimExprs shape_data_list =
+  const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       shape_analysis->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  std::vector<symbol::DimExpr> out_dims;
-  std::vector<symbol::DimExpr> out_dims_data;
-  for (int i = 0; i < shape_data_list.size(); ++i) {
-    // For 0-Dim tensor case.
-    if (shape_data_list[i].data().has_value() && axis == 0) {
-      out_dims_data.emplace_back(shape_data_list[i].data().value()[0]);
-      if (i == shape_data_list.size() - 1) {
-        out_dims.emplace_back(
-            static_cast<std::int64_t>(shape_data_list.size()));
+  const auto &out_shape_data_exprs = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    std::vector<symbol::DimExpr> out_dims_data;
+    for (size_t i = 0; i < shape_data_list.size(); ++i) {
+      // For 0-Dim tensor case.
+      if (shape_data_list[i].data().has_value() && axis == 0) {
+        out_dims_data.emplace_back(shape_data_list[i].data().value()[0]);
+        if (i == shape_data_list.size() - 1) {
+          out_dims.emplace_back(
+              static_cast<std::int64_t>(shape_data_list.size()));
+        }
+      } else {
+        // TODO(zhangbopd): else branch is not implemented yet.
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
       }
-    } else {
-      // TODO(zhangbopd): else branch is not implemented yet.
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
     }
-  }
+    return symbol::TensorShapeOrDataDimExprs(out_dims, out_dims_data);
+  }();
 
-  symbol::ShapeOrDataDimExprs shape_data(
-      symbol::TensorShapeOrDataDimExprs(out_dims, out_dims_data));
+  symbol::ShapeOrDataDimExprs shape_data(out_shape_data_exprs);
 
   op->set_attribute(
       "symbolic_shape",
@@ -365,8 +367,8 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   VLOG(1) << "SumOpInferSymbolicShape begin";
 
-  auto attributes = op->attributes();
-  bool keepdim = attributes["keepdim"].dyn_cast<pir::BoolAttribute>().data();
+  const auto &attributes = op->attributes();
+  bool keepdim = attributes.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
   bool reduce_all = false;
 
@@ -422,8 +424,8 @@ bool Reshape_OpInferSymbolicShape(
 
 bool FullIntArrayOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto attributes = op->attributes();
-  pir::Attribute attr_value = attributes["value"];
+  const auto &attributes = op->attributes();
+  pir::Attribute attr_value = attributes.at("value");
   const auto &vec = attr_value.dyn_cast<pir::ArrayAttribute>().AsVector();
 
   std::vector<symbol::DimExpr> data;
@@ -509,8 +511,8 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 
 bool FullOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto attributes = op->attributes();
-  pir::Attribute attr_shape = attributes["shape"];
+  const auto &attributes = op->attributes();
+  pir::Attribute attr_shape = attributes.at("shape");
   const auto &shape_vec =
       attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
           .data()
@@ -573,22 +575,24 @@ bool ConcatOpInferSymbolicShape(
   pir::Value operand_source = op->operand_source(0);
   // int axis = op->operand_source(1).type().dyn_cast<pir::Int32Type>();
 
-  symbol::TensorListShapeOrDataDimExprs shape_data_list =
+  const auto &shape_data_list =
       shape_analysis->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
-
-  int axis = shape_data_list[0].shape().size() - 1;
-
-  // TODO(zhangbopd): Dim size of non-axis dims may be infered out.
-  for (int i = 0; i < shape_data_list.size(); ++i) {
-    if (i != axis) continue;
-    out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
-  }
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
+    int axis = shape_data_list[0].shape().size() - 1;
+    // TODO(zhangbopd): Dim size of non-axis dims may be infered out.
+    for (size_t i = 0; i < shape_data_list.size(); ++i) {
+      if (i != axis) continue;
+      out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
+    }
+    return out_dims;
+  }();
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
+
   op->set_attribute(
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
