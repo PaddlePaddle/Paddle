@@ -71,7 +71,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasInputs("ShapeTensor")) {
-      // top prority shape
+      // top priority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
       PADDLE_ENFORCE_GT(
           ShapeTensor.size(),
