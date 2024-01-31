@@ -189,8 +189,14 @@ class OrderedSet(Generic[T]):
             >>> s1
             OrderedSet(1, 4)
         """
-        self._data = {item: None for item in self if item not in other} | {
-            item: None for item in other if item not in self
+        # TODO(Python3.8-cleanup): Use dict union syntax when Python 3.9 is
+        # minimum supported version.
+        # self._data = {item: None for item in self if item not in other} | {
+        #     item: None for item in other if item not in self
+        # }
+        self._data = {
+            **{item: None for item in self if item not in other},
+            **{item: None for item in other if item not in self},
         }
         return self
 
