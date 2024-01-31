@@ -277,7 +277,7 @@ class IR_API alignas(8) Operation final
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
-  const uint64_t id_ = 0;
+  const uint64_t id_;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};

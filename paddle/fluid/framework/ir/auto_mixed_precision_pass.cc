@@ -99,9 +99,9 @@ inline bool VarNodeHasDtype(Node* var_node) {
          (type == VarType::VOCAB);
 }
 
-inline bool IsFP32AndFP64(VarType::Type type) {
-  return (type == VarType::FP64) || (type == VarType::FP32);
-}
+inline bool IsFP32(VarType::Type type) { return type == VarType::FP32; }
+
+inline bool IsFP64(VarType::Type type) { return type == VarType::FP64; }
 
 inline bool IsFP16AndBFP16(VarType::Type type) {
   return (type == VarType::FP16) || (type == VarType::BF16);
@@ -373,7 +373,7 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
-        if (IsFP32AndFP64(static_cast<VarType::Type>(dtype))) {
+        if (IsFP32(static_cast<VarType::Type>(dtype))) {
           op_node->Op()->SetAttr(
               "dtype",
               static_cast<int>(framework::TransToProtoVarType(low_precision_)));
@@ -383,7 +383,7 @@ void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
         }
       } else if (op_node->Op()->HasAttr("out_dtype")) {
         auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
-        if (IsFP32AndFP64(static_cast<VarType::Type>(out_dtype))) {
+        if (IsFP32(static_cast<VarType::Type>(out_dtype))) {
           op_node->Op()->SetAttr(
               "out_dtype",
               static_cast<int>(framework::TransToProtoVarType(low_precision_)));
@@ -423,14 +423,13 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
         if (op_node->Op()->HasAttr("dtype") &&
             !check_dtype_op_blacklist.count(GetOpOriginalType(op_type))) {
           auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
-          support_low_precision =
-              support_low_precision &&
-              IsFP32AndFP64(static_cast<VarType::Type>(dtype));
+          support_low_precision = support_low_precision &&
+                                  IsFP32(static_cast<VarType::Type>(dtype));
         } else if (op_node->Op()->HasAttr("out_dtype")) {
           auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
           support_low_precision =
               support_low_precision &&
-              (IsFP32AndFP64(static_cast<VarType::Type>(out_dtype)) ||
+              (IsFP32(static_cast<VarType::Type>(out_dtype)) ||
                out_dtype == -1);
         }
 
@@ -510,6 +509,11 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           var_input_ops[var_node->Var()->Name()].push_back(op_node);
           VLOG(4) << "var input ops: " << var_node->Var()->Name()
                   << " is output of " << op_type;
+          if (IsFP64(var_node->Var()->GetDataType())) {
+            // All op involving float64 precision must not run in low precision
+            // mode.
+            vars_should_not_low_precision.insert(var_node->Var()->Name());
+          }
         }
 
         // the select_input op's input var should not convert to low
@@ -761,7 +765,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
           auto in_var_name = real_in_var_node->Var()->Name();
 
-          if (!IsFP32AndFP64(real_in_var_node->Var()->GetDataType())) continue;
+          if (!IsFP32(real_in_var_node->Var()->GetDataType())) continue;
           if (!VarNodeHasDtype(real_in_var_node)) continue;
           if (InputVarsNotConvert(op_node, in_var_name)) continue;
           // Judge the real tensor is same to variable, Paddle-Slim weight use
@@ -794,7 +798,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           auto* real_out_var_node = real_vars_.at(out_var_node->Var()->Name());
           auto out_var_name = real_out_var_node->Var()->Name();
 
-          if (!IsFP32AndFP64(real_out_var_node->Var()->GetDataType())) continue;
+          if (!IsFP32(real_out_var_node->Var()->GetDataType())) continue;
           if (!VarNodeHasDtype(real_out_var_node)) continue;
           if (OutputVarsNotConvert(op_node, out_var_name)) continue;
 
@@ -914,8 +918,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         VLOG(4) << "process var: " << real_in_var_node->Var()->Name()
                 << " with type " << in_var_type;
 
-        if (IsFP32AndFP64(in_var_type) &&
-            op_run_low_precision_.count(op_type)) {
+        if (IsFP32(in_var_type) && op_run_low_precision_.count(op_type)) {
           auto to_type = framework::TransToProtoVarType(low_precision_);
           auto* prev_op =
               in_var_node->inputs.empty() ? nullptr : in_var_node->inputs[0];
