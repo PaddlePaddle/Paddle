@@ -3,8 +3,6 @@ paddle_test(
   SRCS
   op_tester.cc
   DEPS
-  ${GLOB_OP_LIB}
-  ${GLOB_OPERATOR_DEPS}
   common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
