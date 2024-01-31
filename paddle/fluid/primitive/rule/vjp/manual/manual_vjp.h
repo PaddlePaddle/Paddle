@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/primitive/primitive/generated_primitive.h"
 #include "paddle/fluid/primitive/primitive/manual_primitive.h"
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/pir/core/value.h"

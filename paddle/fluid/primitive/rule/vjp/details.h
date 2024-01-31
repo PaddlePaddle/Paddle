@@ -21,8 +21,8 @@
 #include <math.h>
 #include <vector>
 
+#include "paddle/fluid/primitive/primitive/generated_primitive.h"
 #include "paddle/fluid/primitive/primitive/manual_primitive.h"
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
