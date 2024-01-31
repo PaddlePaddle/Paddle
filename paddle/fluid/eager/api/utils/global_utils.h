@@ -152,4 +152,13 @@ class Controller {
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 
+class EagerBackwardStateGuard {
+ public:
+  EagerBackwardStateGuard() { Controller::GetInstance().SetIsInBackward(true); }
+
+  ~EagerBackwardStateGuard() {
+    Controller::GetInstance().SetIsInBackward(false);
+  }
+};
+
 }  // namespace egr
