@@ -40,7 +40,7 @@
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -174,7 +174,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     return shape_analysis.GetShapeOrDataForValue(value);
   };
 
-  std::vector<pir::Value> lhs_minial_inputs;
+  std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
@@ -182,11 +182,11 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {lhs_expr},
                                                   group_inputs,
-                                                  &lhs_minial_inputs,
+                                                  &lhs_minimal_inputs,
                                                   &lhs_output_dim_expr_attrs,
                                                   &lhs_symbol_bindings);
   CHECK(success);
-  std::vector<pir::Value> rhs_minial_inputs;
+  std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
@@ -194,20 +194,22 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {rhs_expr},
                                                   group_inputs,
-                                                  &rhs_minial_inputs,
+                                                  &rhs_minimal_inputs,
                                                   &rhs_output_dim_expr_attrs,
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
   auto lhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              lhs_minial_inputs, lhs_output_dim_expr_attrs, lhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
+                                                 lhs_output_dim_expr_attrs,
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              rhs_minial_inputs, rhs_output_dim_expr_attrs, rhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
+                                                 rhs_output_dim_expr_attrs,
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder
@@ -656,14 +658,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       value2id[group->output_values[i]] = i;
     }
 
-    auto yeild_op = fusion_op.GetOperators().back();
+    auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(
           fusion_op.result(i),
-          complied_op->result(value2id[yeild_op->operand_source(i)]));
+          complied_op->result(value2id[yield_op->operand_source(i)]));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            complied_op->result(value2id[yeild_op->operand_source(i)]),
+            complied_op->result(value2id[yield_op->operand_source(i)]),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "
@@ -714,9 +716,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild output_ops and input_ops of the group
-    auto yeild_op = fusion_op.GetOperators().back();
-    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-      group->output_ops.insert(yeild_op->operand_source(i).defining_op());
+    auto yield_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      group->output_ops.insert(yield_op->operand_source(i).defining_op());
     }
 
     // Rebuild other informations

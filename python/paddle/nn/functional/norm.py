@@ -14,9 +14,8 @@
 
 import numbers
 
-# TODO: define normalization api
 import paddle
-from paddle import _C_ops, base, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
@@ -83,7 +82,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = base.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        eps = paddle.to_tensor([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
