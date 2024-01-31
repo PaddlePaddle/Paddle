@@ -90,7 +90,9 @@ class TrtConvertSolve(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), 1e-5
 
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-3
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
+
 
     def test(self):
         self.run_test()
