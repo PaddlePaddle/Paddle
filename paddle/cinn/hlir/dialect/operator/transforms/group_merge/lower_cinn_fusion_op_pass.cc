@@ -133,7 +133,9 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
-      generate_shape_op->Erase();
+      if (generate_shape_op->use_empty()) {
+        generate_shape_op->Erase();
+      }
     }
   }
 }
