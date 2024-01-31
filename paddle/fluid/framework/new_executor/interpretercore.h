@@ -32,15 +32,16 @@ class InterpreterCore {
 
  public:
   InterpreterCore(const platform::Place& place,
-                           const BlockDesc& block,
-                           Scope* scope,
-                           const ExecutionConfig& execution_config = ExecutionConfig());
-  // This constructor is for New IR.
-  TEST_API InterpreterCore(const platform::Place& place,
-                  const std::vector<std::string>& fetch_var_names,
-                  const ::pir::Block* ir_prog,
+                  const BlockDesc& block,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
+  // This constructor is for New IR.
+  TEST_API InterpreterCore(
+      const platform::Place& place,
+      const std::vector<std::string>& fetch_var_names,
+      const ::pir::Block* ir_prog,
+      Scope* scope,
+      const ExecutionConfig& execution_config = ExecutionConfig());
   TEST_API ~InterpreterCore();
 
   const InterpreterBaseImpl* Impl() const { return impl_.get(); }
@@ -52,11 +53,12 @@ class InterpreterCore {
       bool enable_job_schedule_profiler = false,
       bool switch_stream = false);
 
-  TEST_API paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true,
-                                   bool enable_job_schedule_profiler = false,
-                                   bool enable_op_profiling = false,
-                                   bool switch_stream = false);
+  TEST_API paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false,
+      bool enable_op_profiling = false,
+      bool switch_stream = false);
 
   void RunProfile(const std::vector<std::string>& feed_names);
 
