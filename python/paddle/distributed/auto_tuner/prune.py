@@ -542,7 +542,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
         "--vocab_size",
         str(model_cfg['vocab_size']),
         "--intermediate_size",
-        str(model_cfg['intermediate_size'])
+        str(model_cfg['intermediate_size']),
     ]
     result = subprocess.run(
         memory_estimation_cmd,
