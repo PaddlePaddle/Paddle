@@ -34,7 +34,7 @@ def exp_sub(x):
     return z
 
 
-class CINNSubGraphNet(paddle.nn.Layer):
+class CheckInferSymbolicNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.fn = exp_sub
@@ -44,7 +44,7 @@ class CINNSubGraphNet(paddle.nn.Layer):
         return out
 
 
-class TestCinnSubGraphBase(unittest.TestCase):
+class TestCheckInferSymbolic(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -60,7 +60,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def eval(self, use_cinn):
         paddle.seed(2022)
-        net = CINNSubGraphNet()
+        net = CheckInferSymbolicNet()
         if use_cinn:
             net = apply_to_static(net, use_cinn)
         net.eval()
