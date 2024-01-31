@@ -579,7 +579,7 @@ bool ConcatOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
-    int axis = shape_data_list[0].shape().size() - 1;
+    size_t axis = static_cast<size_t>(shape_data_list[0].shape().size() - 1);
     // TODO(zhangbopd): Dim size of non-axis dims may be infered out.
     for (size_t i = 0; i < shape_data_list.size(); ++i) {
       if (i != axis) continue;
