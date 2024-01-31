@@ -267,27 +267,27 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  symbol::TensorListShapeOrDataDimExprs shape_data_list =
+  const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       shape_analysis->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  std::vector<symbol::DimExpr> out_dims;
-  std::vector<symbol::DimExpr> out_dims_data;
-  for (size_t i = 0; i < shape_data_list.size(); ++i) {
-    // For 0-Dim tensor case.
-    if (shape_data_list[i].data().has_value() && axis == 0) {
-      out_dims_data.emplace_back(shape_data_list[i].data().value()[0]);
-      if (i == shape_data_list.size() - 1) {
-        out_dims.emplace_back(
-            static_cast<std::int64_t>(shape_data_list.size()));
+  // TODO(zhangbopd): Only For 0-Dim tensor case, and else branch is not
+  // implemented yet.
+  const auto &GetDimTensorExprs = [&]() -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> dim_exprs;
+    for (size_t i = 0; i < shape_data_list.size(); ++i) {
+      if (shape_data_list[i].data().has_value() && axis == 0) {
+        dim_exprs.emplace_back(shape_data_list[i].data().value()[0]);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
       }
-    } else {
-      // TODO(zhangbopd): else branch is not implemented yet.
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
     }
-  }
-
+    return dim_exprs;
+  };
+  const std::vector<symbol::DimExpr> out_dims{
+      static_cast<std::int64_t>(shape_data_list.size())};
+  const std::vector<symbol::DimExpr> out_dims_data = GetDimTensorExprs();
   symbol::ShapeOrDataDimExprs shape_data(
       symbol::TensorShapeOrDataDimExprs(out_dims, out_dims_data));
 
@@ -968,18 +968,21 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const pir::Value operand_source = op->operand_source(0);
   const auto &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
-  std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
-  out_sym_shape[axis] = end - start;
 
-  symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
-  if (operand_shape_or_data.data().has_value()) {
-    std::vector<symbol::DimExpr> out_data;
-    for (int64_t i = start; i < end; i++) {
-      out_data.push_back(operand_shape_or_data.data().value()[i]);
+  const auto GetOutDimExprs = [&]() -> symbol::TensorShapeOrDataDimExprs {
+    std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
+    out_sym_shape[axis] = end - start;
+    symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
+    if (operand_shape_or_data.data().has_value()) {
+      std::vector<symbol::DimExpr> out_data;
+      for (int64_t i = start; i < end; i++) {
+        out_data.push_back(operand_shape_or_data.data().value()[i]);
+      }
+      shape_dim_expr.SetData(out_data);
     }
-    shape_dim_expr.SetData(out_data);
-  }
-  symbol::ShapeOrDataDimExprs shape_data{shape_dim_expr};
+    return shape_dim_expr;
+  };
+  symbol::ShapeOrDataDimExprs shape_data{GetOutDimExprs()};
 
   op->set_attribute(
       "symbolic_shape",
@@ -1016,17 +1019,20 @@ bool ConcatOpInferSymbolicShape(
           " [%s] op must have at least one input, but received %d.",
           op->name(),
           input_size));
-  // TODO(dev): Need support GetShapeOrDataForValue().data() case.
-  std::vector<symbol::DimExpr> out_dims =
-      shape_analysis->GetShapeOrDataForValue(input_values[0]).shape();
-  for (size_t i = 1; i < input_size; ++i) {
-    const auto &operand_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(input_values[i]);
-    out_dims[axis] = out_dims[axis] + operand_shape_or_data.shape()[axis];
-  }
+  // TODO(zhangbopd): Need support GetShapeOrDataForValue().data() case.
+  const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> out_dims =
+        shape_analysis->GetShapeOrDataForValue(input_values[0]).shape();
+    for (size_t i = 1; i < input_size; ++i) {
+      const auto &operand_shape_or_data =
+          shape_analysis->GetShapeOrDataForValue(input_values[i]);
+      out_dims[axis] = out_dims[axis] + operand_shape_or_data.shape()[axis];
+    }
+    return out_dims;
+  };
 
   symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+      symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
 
   op->set_attribute(
       "symbolic_shape",
