@@ -694,6 +694,13 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
       cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
 
+      for (size_t i = 0; i < it->first->num_operands(); ++i) {
+        if (!align_info.count(it->first->operand_source(i).defining_op())) {
+          std::cerr << "is first broadcast " << it->first->name() << std::endl;
+          info.first_broadcast = true;
+          break;
+        }
+      }
       auto op_out = it->first->result(0);
       broadcast_info[ValueName(op_out)] = info;
 

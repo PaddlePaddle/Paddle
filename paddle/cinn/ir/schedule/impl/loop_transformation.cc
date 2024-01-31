@@ -469,7 +469,8 @@ void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 void DyScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& axes,
                                const std::vector<int64_t>& factors,
-                               bool add_check) {
+                               bool add_check,
+                               bool first_broadcast) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::cerr << "broadcast axes " << axes[0] << std::endl;
   if (axes[0] >= all_loops.size()) {
@@ -700,8 +701,10 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
 void StScheduleImpl::Broadcast(const std::string& block_name,
                                const std::vector<int64_t>& axes,
                                const std::vector<int64_t>& factors,
-                               bool add_check) {
+                               bool add_check,
+                               bool first_broadcast) {
   std::cerr << "step in broadcast\n";
+  std::cerr << "axes .size " << axes.size() << std::endl;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::cerr << "broadcast axes " << axes[0] << std::endl;
   if (axes[0] >= all_loops.size()) {
@@ -745,7 +748,38 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
     loop_temp->extent = Expr(extent);
 
     std::cerr << "loop temp  loop var " << loop_temp->loop_var << std::endl;
+    std::cerr << "axis " << axis << "\t" << schedule_realize->iter_values.size()
+              << std::endl;
+
     schedule_realize->iter_values[axis] = loop_temp->loop_var;
+  }
+
+  if (first_broadcast) {
+    std::cerr << "first broadcat\n";
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+        schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
+
+    for (auto expr : exprs) {
+      auto load = expr.As<ir::Load>();
+      if (load->indices.size() == schedule_realize->iter_values.size()) {
+        std::cerr << "load axis size " << load->indices.size() << std::endl;
+        for (size_t i = 0; i < axes.size(); ++i) {
+          load->indices[axes[i]] = Expr(0);
+        }
+      } else if (load->indices.size() == 1u) {
+        // only one element
+        // replace t zeros
+        for (size_t i = 0; i < axes.size(); ++i) {
+          ReplaceExpr(&load->indices[0],
+                      {schedule_block->iter_vars[axes[i]]},
+                      {Expr(0)});
+        }
+      } else {
+        throw std::runtime_error("not support yet");
+      }
+
+      std::cerr << "after load " << expr << std::endl;
+    }
   }
 
   // auto exprs = ir::ir_utils::CollectIRNodesInOrder(
@@ -762,7 +796,7 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
 
   // std::cerr << "broadcast loop\n" << broadcast_loop->body << std::endl;
 
-  // std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
+  std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
 }
 
 std::vector<Expr> StScheduleImpl::Split(const Expr& loop,

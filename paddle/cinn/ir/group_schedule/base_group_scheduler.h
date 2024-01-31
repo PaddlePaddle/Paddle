@@ -29,6 +29,7 @@ struct BroadcastInfo {
   std::vector<int64_t> output_shape;
 
   bool with_constrain{false};
+  bool first_broadcast{false};
 };
 struct GroupTileInfo {
   GroupTileInfo() {}

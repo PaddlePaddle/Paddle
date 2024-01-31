@@ -118,7 +118,8 @@ class OpTransInfo {
                                                     "gather_nd",
                                                     "split",
                                                     "pool2d",
-                                                    "arange"};
+                                                    "arange",
+                                                    "gather"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,

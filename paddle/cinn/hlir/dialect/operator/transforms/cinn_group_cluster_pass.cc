@@ -531,6 +531,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
 
       cluster_node.group_kind = cinn::hlir::framework::kBroadcast;
     } else {
+      std::cerr << "cluter node " << op->name() << std::endl;
       throw std::runtime_error("not support op kind yet");
     }
 

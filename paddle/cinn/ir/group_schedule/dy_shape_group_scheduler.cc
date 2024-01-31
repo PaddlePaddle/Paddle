@@ -313,10 +313,12 @@ void DynamicShapeGroupScheduler::LoopReorderAligment() {
       //   std::cerr << "dim " << s << std::endl;
       // }
 
-      ir_sch_->Broadcast(name,
-                         group_tile_info_->broadcast_info[name].broadcast_axes,
-                         group_tile_info_->broadcast_info[name].output_shape,
-                         group_tile_info_->broadcast_info[name].with_constrain);
+      ir_sch_->Broadcast(
+          name,
+          group_tile_info_->broadcast_info[name].broadcast_axes,
+          group_tile_info_->broadcast_info[name].output_shape,
+          group_tile_info_->broadcast_info[name].with_constrain,
+          group_tile_info_->broadcast_info[name].first_broadcast);
     }
 
     if (group_tile_info_->broadcast_to_elementwise.count(name)) {
