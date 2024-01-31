@@ -1,9 +1,11 @@
 paddle_test(
   op_tester
-  SRCS op_tester.cc
-  DEPS ${GLOB_OP_LIB}
-       ${GLOB_OPERATOR_DEPS}
-       common)
+  SRCS
+  op_tester.cc
+  DEPS
+  ${GLOB_OP_LIB}
+  ${GLOB_OPERATOR_DEPS}
+  common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
