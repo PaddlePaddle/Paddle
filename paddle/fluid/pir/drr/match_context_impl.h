@@ -104,23 +104,23 @@ class MatchContextImpl final {
   void BindIrOperation(const OpCall* op_call, pir::Operation* op) {
     operation_map_.emplace(op_call, op);
     const auto& attrs = op_call->attributes();
-    for (const auto& [attr_name, attr] : attrs) {
+    for (const auto& kv : attrs) {
       std::visit(
           [&](auto&& arg) {
             if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
                                          NormalAttribute>) {
               PADDLE_ENFORCE(
-                  op->HasAttribute(attr_name),
+                  op->HasAttribute(kv.first),
                   phi::errors::NotFound(
                       "Not found attribute [%s] in Op [%s], please check the "
                       "validity of the attribute name[%s].",
-                      attr_name,
+                      kv.first,
                       op->name(),
-                      attr_name));
-              BindIrAttr(arg.name(), op->attribute(attr_name));
+                      kv.first));
+              BindIrAttr(arg.name(), op->attribute(kv.first));
             }
           },
-          attr);
+          kv.second);
     }
   }
 
