@@ -23,11 +23,14 @@ __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
 
 
-def apply_to_static(fn, use_cinn=True):
+def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
     return paddle.jit.to_static(
-        fn, build_strategy=build_strategy, full_graph=True
+        net,
+        input_spec=input_spec,
+        build_strategy=build_strategy,
+        full_graph=True,
     )
 
 
@@ -117,5 +120,4 @@ def check_fusion_structure(static_fn, expected_structure):
     }
     """
     map_info = get_fusion_structure(static_fn)
-    print(map_info)
     np.testing.assert_equal(map_info, expected_structure)
