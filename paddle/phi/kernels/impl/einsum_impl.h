@@ -329,14 +329,14 @@ inline static std::vector<int> perm_moveto(int n, int from, int to) {
   if (from < 0) from = n + from;
   if (to < 0) to = n + to;
   std::vector<int> res(n);
-  for (size_t i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
     res[i] = i;
   }
   res[to] = from;
   auto offset = from > to ? -1 : 1;
   auto start = from > to ? to + 1 : from;
   auto end = from > to ? from : to - 1;
-  for (size_t i = start; i <= end; ++i) {
+  for (int i = start; i <= end; ++i) {
     res[i] += offset;
   }
   return res;
@@ -659,7 +659,7 @@ void EinsumKernel(const Context& dev_ctx,
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer
   // to BuildPhiKernelContext for details.
   int diff = inputs.size() - cache.size();
-  for (size_t i = 0; i < diff; ++i) {
+  for (int i = 0; i < diff; ++i) {
     cache.push_back(nullptr);
   }
   EinsumKernelImpl<T, Context>(
