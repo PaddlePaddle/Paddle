@@ -42,20 +42,23 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* seed_offset);
 
 template <typename T, typename Context>
-void FlashAttnKernel(const Context& ctx,
-                     const DenseTensor& q,
-                     const DenseTensor& k,
-                     const DenseTensor& v,
-                     const paddle::optional<DenseTensor>& fixed_seed_offset,
-                     const paddle::optional<DenseTensor>& attn_mask,
-                     float dropout,
-                     bool causal,
-                     bool return_softmax,
-                     bool is_test,
-                     const std::string& rng_name,
-                     DenseTensor* out,
-                     DenseTensor* softmax,
-                     DenseTensor* softmax_lse,
-                     DenseTensor* seed_offset);
+void FlashAttnKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    int attn_mask_start_row,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset);
 
 }  // namespace phi

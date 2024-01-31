@@ -108,12 +108,14 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
-                None,
+                None,  # attn_mask
+                None,  # attn_mask_start_row_indices
                 dropout,
                 causal,
                 return_softmax,
                 not training,
                 rng_name,
+                0,
             )
         return result_attention, result_softmax if return_softmax else None
 
@@ -307,6 +309,8 @@ def flash_attention_with_mask(
     key,
     value,
     attn_mask=None,
+    attn_mask_start_row_indices=None,
+    attn_mask_start_row=0,
     dropout=0.0,
     causal=False,
     training=True,
@@ -363,22 +367,40 @@ def flash_attention_with_mask(
             >>> print(output)
             >>> # doctest: -SKIP
     """
-    if attn_mask is None:
+    if attn_mask is None and attn_mask_start_row_indices is None:
         out, _ = flash_attention(query, key, value, dropout, causal)
     else:
+        assert not (
+            attn_mask is not None and attn_mask_start_row_indices is not None
+        ), (
+            f"attn_mask and attn_mask_start_row_indices cannot be the same at the same time. "
+            f"attn_mask is not None ({attn_mask is not None}), attn_mask_start_row_indices is not None ({attn_mask_start_row_indices is not None})"
+        )
         fixed_seed_offset = None
         return_softmax = False
         rng_name = ""
+        if attn_mask_start_row_indices is not None:
+            assert (
+                causal is True
+            ), f"causal must be True when attn_mask_start_row_indices is not None, but got {causal}"
+            assert isinstance(
+                attn_mask_start_row, int
+            ), f"attn_mask_start_row must be int, but got {type(attn_mask_start_row)}"
+            assert (
+                attn_mask_start_row >= 0
+            ), f"Should set attn_mask_start_row >=0 when attn_mask_start_row_indices is not None, but got {attn_mask_start_row}"
         out, _, _, _ = _C_ops.flash_attn(
             query,
             key,
             value,
             fixed_seed_offset,
             attn_mask,
+            attn_mask_start_row_indices,
             dropout,
             causal,
             return_softmax,
             not training,
             rng_name,
+            attn_mask_start_row,
         )
     return out

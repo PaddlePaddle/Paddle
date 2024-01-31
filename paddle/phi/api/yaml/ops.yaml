@@ -687,9 +687,9 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, Tensor attn_mask_start_row_indices, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", int attn_mask_start_row = 0)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : fixed_seed_offset, attn_mask
+  optional : fixed_seed_offset, attn_mask, attn_mask_start_row_indices
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]

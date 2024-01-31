@@ -90,8 +90,10 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                            dropout,
                            scale,
                            causal,
+                           0,
                            q.dtype(),
                            attn_mask,
+                           nullptr,
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
@@ -140,20 +142,23 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnGradKernel(const Context& ctx,
-                         const DenseTensor& q,
-                         const DenseTensor& k,
-                         const DenseTensor& v,
-                         const DenseTensor& out,
-                         const DenseTensor& softmax_lse,
-                         const DenseTensor& seed_offset,
-                         const paddle::optional<DenseTensor>& attn_mask,
-                         const DenseTensor& dout,
-                         float dropout,
-                         bool causal,
-                         DenseTensor* dq,
-                         DenseTensor* dk,
-                         DenseTensor* dv) {
+void FlashAttnGradKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    const DenseTensor& dout,
+    float dropout,
+    bool causal,
+    int attn_mask_start_row,
+    DenseTensor* dq,
+    DenseTensor* dk,
+    DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
 
@@ -192,8 +197,10 @@ void FlashAttnGradKernel(const Context& ctx,
                            dropout,
                            scale,
                            causal,
+                           attn_mask_start_row,
                            q.dtype(),
                            attn_mask,
+                           attn_mask_start_row_indices,
                            seed_offset.data<int64_t>());
 
   ctx.template Alloc<T>(dq);
@@ -254,7 +261,12 @@ void FlashAttnGradKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.mask_dims.data(),
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_tensor->data()
+          : nullptr,
+      params.attn_mask_start_row_indices_dims.data(),
+      params.attn_mask_start_row);
   CheckFlashAttnStatus(succ);
 
   if (!is_mha) {
