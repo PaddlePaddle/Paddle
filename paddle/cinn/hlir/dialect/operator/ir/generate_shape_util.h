@@ -19,7 +19,7 @@
 #include <vector>
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/core/builder.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace cinn::dialect {
 
@@ -49,7 +49,7 @@ bool MakeGenerateShapeOpAttribute(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<symbol::DimExpr>& out_dim_exprs,
     const std::vector<pir::Value>& origin_inputs,
-    std::vector<pir::Value>* minial_inputs,
+    std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings);
 
