@@ -552,7 +552,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
             >>> import paddle
             >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
             >>> print(x)
-            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[-12., -11., -10., -9. ],
               [-8. , -7. , -6. , -5. ],
               [-4. , -3. , -2. , -1. ]],
@@ -562,27 +562,27 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
 
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=2,axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [15.75858021, 14.97979641, 14.69693565, 14.97979069])
 
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='fro',axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
-            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=np.inf,axis=[1,2],keepdim=False)
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=float('inf'),axis=[1,2],keepdim=False)
             >>> print(out_matrix_norm)
-            Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [42., 38.])
 
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=-1,axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [12., 12., 12., 12.])
 
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='nuc',axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [23.21962929, 22.82873917, 22.69693565, 22.82873344])
 
     """

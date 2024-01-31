@@ -454,15 +454,9 @@ def check_fro_static(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
             np_input, axis=axis, keepdims=keep_dim
         )
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
-    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
     if keep_dim and check_dim:
-        self.assertEqual(
-            (
-                np.abs(np.array(result.shape) - np.array(expected_result.shape))
-                < 1e-6
-            ).all(),
-            True,
-        )
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def check_fro_dygraph(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
@@ -516,15 +510,9 @@ def check_linalg_norm_static(
             np_input, porder=p, axis=axis, keepdims=keep_dim
         ).astype(dtype)
         (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
-    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
     if keep_dim and check_dim:
-        self.assertEqual(
-            (
-                np.abs(np.array(result.shape) - np.array(expected_result.shape))
-                < 1e-6
-            ).all(),
-            True,
-        )
+        np.testing.assert_equal(result.shape, expected_result.shape)
 
 
 def check_linalg_norm_dygraph(
