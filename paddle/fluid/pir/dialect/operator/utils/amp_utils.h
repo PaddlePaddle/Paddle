@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace dialect {
@@ -29,10 +30,27 @@ pir::Value Cast(const pir::Value& input, const phi::DataType& dst_dtype);
 
 bool NeedCast(const pir::Value& value, const phi::DataType& dst_dtype);
 
-pir::Value AmpAutoCast(const std::string& input_name,
-                       const pir::Value& input,
-                       const phi::DataType& dst_dtype,
-                       const std::string& op_name);
+pir::Value PirAmpAutoCast(const std::string& input_name,
+                          const pir::Value& input,
+                          const phi::DataType& dst_dtype,
+                          const std::string& op_name);
+
+paddle::optional<pir::Value> PirAmpAutoCast(
+    const std::string& input_name,
+    const paddle::optional<pir::Value>& input,
+    const phi::DataType& dst_dtype,
+    const std::string& op_name);
+
+std::vector<pir::Value> PirAmpAutoCast(const std::string& inputs_name,
+                                       const std::vector<pir::Value>& inputs,
+                                       const phi::DataType& dst_dtype,
+                                       const std::string& op_name);
+
+paddle::optional<std::vector<pir::Value>> PirAmpAutoCast(
+    const std::string& inputs_name,
+    const paddle::optional<std::vector<pir::Value>>& inputs,
+    const phi::DataType& dst_dtype,
+    const std::string& op_name);
 
 phi::DataType GetAmpDestDtype(
     const std::string& op_name,

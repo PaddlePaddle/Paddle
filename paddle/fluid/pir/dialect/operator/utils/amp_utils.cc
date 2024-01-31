@@ -36,7 +36,7 @@ phi::DataType GetPromoteType(
     return dst_type;
   }
 
-  if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
+  if (egr::Controller::Instance().GetCurrentAMPState()->GetAmpDtype() ==
       "float16") {
     if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_values_vector.size(); i++) {
@@ -75,7 +75,7 @@ phi::DataType GetPromoteType(
 
 pir::Value Cast(const pir::Value& input, const phi::DataType& dst_dtype) {
   paddle::imperative::AutoCastGuard guard(
-      egr::Controller::Instance().GetCurrentTracer(),
+      egr::Controller::Instance().GetCurrentAMPState(),
       paddle::imperative::AmpLevel::O0);
   return paddle::dialect::cast(input, dst_dtype);
 }
@@ -91,10 +91,10 @@ bool NeedCast(const pir::Value& value, const phi::DataType& dst_dtype) {
   return false;
 }
 
-pir::Value AmpAutoCast(const std::string& input_name,
-                       const pir::Value& input,
-                       const phi::DataType& dst_dtype,
-                       const std::string& op_name) {
+pir::Value PirAmpAutoCast(const std::string& input_name,
+                          const pir::Value& input,
+                          const phi::DataType& dst_dtype,
+                          const std::string& op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
@@ -123,18 +123,58 @@ pir::Value AmpAutoCast(const std::string& input_name,
   return input;
 }
 
+paddle::optional<pir::Value> PirAmpAutoCast(
+    const std::string& input_name,
+    const paddle::optional<pir::Value>& input,
+    const phi::DataType& dst_dtype,
+    const std::string& op_name) {
+  if (input) {
+    return PirAmpAutoCast(input_name, *input, dst_dtype, op_name);
+  }
+  return paddle::none;
+}
+
+std::vector<pir::Value> PirAmpAutoCast(const std::string& inputs_name,
+                                       const std::vector<pir::Value>& inputs,
+                                       const phi::DataType& dst_dtype,
+                                       const std::string& op_name) {
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " inputs(" << inputs_name << ") dst_dtype("
+          << phi::DataTypeToString(dst_dtype) << ").";
+  std::vector<pir::Value> inputs_casted;
+  for (auto& input : inputs) {
+    if (NeedCast(input, dst_dtype)) {
+      inputs_casted.emplace_back(std::move(Cast(input, dst_dtype)));
+    } else {
+      inputs_casted.emplace_back(input);
+    }
+  }
+  return inputs_casted;
+}
+
+paddle::optional<std::vector<pir::Value>> PirAmpAutoCast(
+    const std::string& inputs_name,
+    const paddle::optional<std::vector<pir::Value>>& inputs,
+    const phi::DataType& dst_dtype,
+    const std::string& op_name) {
+  if (inputs) {
+    return PirAmpAutoCast(inputs_name, *inputs, dst_dtype, op_name);
+  }
+  return paddle::optional<std::vector<pir::Value>>();
+}
+
 phi::DataType GetAmpDestDtype(
     const std::string& op_name,
     const std::vector<std::vector<pir::Value>>& amp_values_vector) {
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   auto amp_setting_dtype =
-      egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
+      egr::Controller::Instance().GetCurrentAMPState()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
 
   bool use_promote = true;
   if (amp_level == paddle::imperative::AmpLevel::O2) {
     use_promote =
-        egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
+        egr::Controller::Instance().GetCurrentAMPState()->GetUsePromote();
   }
 
   if (use_promote) {
