@@ -21,7 +21,7 @@ namespace ir {
 void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
   // TODO(BiynXu): Create schedule config and bucket info based on hardware
-  // information, and get the config here. naive strategy
+  // information, and get the config here. now it is a naive strategy.
   auto GetFirstFactor = [](int64_t num) -> int64_t {
     if (num == 1) return 1;
     int factor = 1;
@@ -31,12 +31,22 @@ void TileTactic::Init(ScheduleContext* context) {
       }
     }
   };
-  auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> ir::Expr {
+  auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
     if (total_rb_extent.is_constant()) {
       int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
-      return ir::Expr(GetFirstFactor(extent));
+      return GetFirstFactor(extent);
     }
-    return ir::Expr(context_->bucket_info.rb_lower_bound);
+    return context_->bucket_info.rb_lower_bound;
+  };
+  auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
+    // When designing the tile config, we can further subdivided.
+    if (lower_bound >= 1024) {
+      return 256;
+    } else if (lower_bound >= 256) {
+      return 32;
+    } else {
+      return 4;
+    }
   };
 
   bool has_rb_iter = !context_->iter_space_info.rb_space.empty();
@@ -46,20 +56,29 @@ void TileTactic::Init(ScheduleContext* context) {
   context_->iter_space_info.rb_space.clear();
   context_->iter_space_info.sp_space.clear();
 
+  // naive strategy
   if (has_rb_iter) {
+    // If there is a reduce dimension.
+    // Bind all spatial axis on cuda block.
     context_->iter_space_info.sp_space.emplace_back(
         context_->iter_space_info.total_sp_extent,
         IterativeSpaceInfo::AxisType::kCudaBlockX);
+    // Bind first part of reduce axis on cuda thread to do tree form reduction.
     context_->iter_space_info.rb_space.emplace_back(
-        GetTreeReduceSize(context_->iter_space_info.total_rb_extent),
+        ir::Expr(GetTreeReduceSize(context_->iter_space_info.total_rb_extent)),
         IterativeSpaceInfo::AxisType::kCudaThreadX);
+    // The rest part of reduce axis will be executed serially.
     context_->iter_space_info.rb_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
   } else {
+    // If there is no reduce dimension.
+    // Divide the spatial space into two parts, one bound to cuda block and the
+    // other bound to cuda thread.
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kCudaBlockX);
     context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(512), IterativeSpaceInfo::AxisType::kCudaThreadX);
+        ir::Expr(GetNumThreadPerBlock(context_->bucket_info.rb_upper_bound)),
+        IterativeSpaceInfo::AxisType::kCudaThreadX);
   }
   VLOG(6) << context_->iter_space_info.PrintIterSpace();
 }

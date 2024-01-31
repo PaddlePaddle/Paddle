@@ -321,8 +321,10 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
       } else if (r_arg.as_var()->type().is_cpp_handle()) {
         CHECK(global_args.count(r_arg.as_var()->name));
         call_args.push_back(global_args[r_arg.as_var()->name]);
+      } else if (r_arg.as_var()->type().is_int()) {
+        call_args.push_back(GetVar(r_arg.as_var()->name, false));
       } else {
-        call_args.push_back(CodeGenLLVM::Visit(&r_arg));
+        CINN_NOT_IMPLEMENTED;
       }
     } else {
       if (r_arg.type().is_bool()) {
