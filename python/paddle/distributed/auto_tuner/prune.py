@@ -294,7 +294,7 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 pruned_reason = f"vpp_degree {vpp_degree} may cause oom because { cfg['vpp_degree']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["max_mem_usage"] = "OOM"
-                return True, cur_cfg
+                return True
 
     return False
 
@@ -358,10 +358,14 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
 
     history_cfgs.extend(pruned_cfgs)
 
-    cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
+    cfgs = same_cfgs_beside(
+        ["micro_batch_size", "acc_steps"], cur_cfg, history_cfgs
+    )
     if cur_cfg.get("sharding_degree") == 1:
         cfgs = same_cfgs_beside(
-            ["micro_batch_size", "sharding_satge"], cur_cfg, history_cfgs
+            ["micro_batch_size", "sharding_satge", "acc_steps"],
+            cur_cfg,
+            history_cfgs,
         )
 
     if cfgs:
@@ -373,8 +377,7 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 pruned_reason = f"micro_batch_size {micro_batch_size} may be slower because {cfg['micro_batch_size']} has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["time"] = cfg["time"]
-                return True, cur_cfg
-
+                return True
             # memory prune
             if (
                 cfg["micro_batch_size"] < micro_batch_size
@@ -383,8 +386,7 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 pruned_reason = f"micro_batch_size {micro_batch_size} may cause oom because {cfg['micro_batch_size']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["max_mem_usage"] = "OOM"
-                return True, cur_cfg
-
+                return True
     return False
 
 
@@ -459,7 +461,7 @@ def prune_by_sharding_history(
                 pruned_reason = f"sharding_stage {sharding_stage} may be slower because {cfg['sharding_stage'] } has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["time"] = cfg["time"]
-                return True, cur_cfg
+                return True
 
             # memory prune
             if (
@@ -469,7 +471,7 @@ def prune_by_sharding_history(
                 pruned_reason = f"sharding_stage {sharding_stage} may cause oom because {cfg['sharding_stage']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["max_mem_usage"] = "OOM"
-                return True, cur_cfg
+                return True
 
     return False
 
@@ -567,7 +569,7 @@ def prune_by_recompute_history(
                 pruned_reason = f"use_recompute may be slower because {cfg['use_recompute']} has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["time"] = cfg["time"]
-                return True, cur_cfg
+                return True
 
             if (
                 cfg["recompute_level"] > recompute_level
@@ -576,7 +578,7 @@ def prune_by_recompute_history(
                 pruned_reason = f"use_recompute may cause oom because {cfg['use_recompute']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
                 cur_cfg["max_mem_usage"] = "OOM"
-                return True, cur_cfg
+                return True
 
     return False
 

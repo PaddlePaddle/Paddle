@@ -61,8 +61,7 @@ class GridSearch(SearchAlgo):
                 stop = not self.prune(
                     self.tuner_cfg, new_cfg, history_cfgs, self.pruned_cfgs
                 )
-                if stop:
-                    self.pruned_cfgs.append(new_cfg)
+                self.pruned_cfgs.append(new_cfg)
             else:
                 return None
         return new_cfg
