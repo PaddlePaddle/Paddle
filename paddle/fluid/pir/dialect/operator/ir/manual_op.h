@@ -46,8 +46,8 @@ class AddNOp : public pir::Op<AddNOp,
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
   TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs);
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value inputs);
 
   void VerifySig();
   pir::Value inputs() { return operand_source(0); }
