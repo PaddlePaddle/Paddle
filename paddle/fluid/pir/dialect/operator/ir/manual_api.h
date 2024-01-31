@@ -87,5 +87,12 @@ pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
 
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation);
+
 }  // namespace dialect
 }  // namespace paddle

@@ -225,5 +225,20 @@ pir::Value assign(const pir::Value& x) {
   }
 }
 
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation) {
+  auto fused_gemm_epilogue_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::FusedGemmEpilogueOp>(
+              x, y, bias, trans_x, trans_y, activation);
+  return std::make_tuple(fused_gemm_epilogue_op.result(0),
+                         fused_gemm_epilogue_op.result(1));
+}
+
 }  // namespace dialect
 }  // namespace paddle

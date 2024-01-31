@@ -588,17 +588,11 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        out1 = fused_linear_activation(
-            x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'none'
-        )
+        out1 = fused_linear_activation(x, y, bias, False, False, 'none')
 
-        out2 = fused_linear_activation(
-            x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'relu'
-        )
+        out2 = fused_linear_activation(x, y, bias, False, False, 'relu')
 
-        out3 = fused_linear_activation(
-            x, y, bias, 'trans_x', False, 'trans_y', False, 'activation', 'gelu'
-        )
+        out3 = fused_linear_activation(x, y, bias, False, False, 'gelu')
 
         out_np1 = get_output(x_np, y_np, bias_np, 'none')
         out_np2 = get_output(x_np, y_np, bias_np, 'relu')
