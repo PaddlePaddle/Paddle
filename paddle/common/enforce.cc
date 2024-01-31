@@ -52,7 +52,20 @@ std::string SimplifyDemangleStr(std::string str) {
 
 namespace common {
 namespace enforce {
+TEST_API int GetCallStackLevel() { return 1; }
 
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
+  std::ostringstream sout;
+  size_t type_end_pos = str.find(':', 0);
+  if (type_end_pos == std::string::npos) {
+    sout << str;
+  } else {
+    // Remove "Error:", add "()""
+    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
+         << str.substr(type_end_pos + 1);
+  }
+  return sout.str();
+}
 bool RegisterLogSimplyStr(const std::string& type_name,
                           const std::string& simply_name) {
   return GetLogStrSimplyMap()
