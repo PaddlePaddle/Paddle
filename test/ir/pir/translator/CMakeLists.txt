@@ -8,8 +8,6 @@ set(DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_prod_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
-     test_distributed_push_sparse_translator)
-list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_lookup_table_translate)
 
 if(NOT WITH_DISTRIBUTE)
