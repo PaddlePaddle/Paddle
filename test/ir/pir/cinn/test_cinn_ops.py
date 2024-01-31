@@ -33,7 +33,7 @@ class TestOpsBase(unittest.TestCase):
     def prepare_info(self):
         self.fn = None
         self.expected_fuison_number = 1
-        self.expected_fuison_structure = {"fusion": 1}
+        self.expected_fuison_structure = {utils.JIT_KERNEL_NAME: 1}
 
     def prepare_data(self):
         self.shape = [64, 128]
@@ -49,15 +49,17 @@ class TestOpsBase(unittest.TestCase):
         dy_out = self.fn(self.x, self.y)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
-        utils.check_fusion_number(static_fn, self.expected_fuison_number)
-        utils.check_fusion_structure(static_fn, self.expected_fuison_structure)
+        utils.check_jit_kernel_number(static_fn, self.expected_fuison_number)
+        utils.check_jit_kernel_structure(
+            static_fn, self.expected_fuison_structure
+        )
 
 
 class TestAddOp(TestOpsBase):
     def prepare_info(self):
         self.fn = paddle.add
         self.expected_fuison_number = 1
-        self.expected_fuison_structure = {utils.FUSION_KEY_STR: 1}
+        self.expected_fuison_structure = {utils.JIT_KERNEL_NAME: 1}
 
     def test_eval(self):
         self.check_eval()
@@ -67,7 +69,7 @@ class TestIsCloseOp(TestOpsBase):
     def prepare_info(self):
         self.fn = paddle.isclose
         self.expected_fuison_number = 1
-        self.expected_fuison_structure = {utils.FUSION_KEY_STR: 1}
+        self.expected_fuison_structure = {utils.JIT_KERNEL_NAME: 1}
 
     def test_eval(self):
         self.check_eval()

@@ -54,7 +54,7 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         net.eval()
         out = net(self.hidden_states)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
@@ -110,7 +110,7 @@ class TestRotaryPosEmb(TestCinnSubGraphBase):
         net.eval()
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
@@ -149,10 +149,10 @@ class TestRepeatKV(TestCinnSubGraphBase):
         self.hidden_states.stop_gradient = False
         self.n_rep = 4
 
-    def check_fusion_info(self, static_fn):
-        utils.check_fusion_number(static_fn, 2)
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 2)
         # pd_op.tile is not fused into GroupOp
-        utils.check_fusion_structure(static_fn, {'fusion': 2})
+        utils.check_jit_kernel_structure(static_fn, {'jit_kernel': 2})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
@@ -161,7 +161,7 @@ class TestRepeatKV(TestCinnSubGraphBase):
         net.eval()
         out = net(self.hidden_states, self.n_rep)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

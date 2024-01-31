@@ -18,8 +18,7 @@ import numpy as np
 
 import paddle
 
-FUSION_KEY_STR = "fusion_number"
-__FUSION_KERNEL_NAME = "cinn_runtime.jit_kernel"
+JIT_KERNEL_NAME = "jit_kernel"
 __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
 
@@ -41,85 +40,87 @@ def get_pir_program(static_fn):
     return runnable_program.forward_program
 
 
-def get_fusion_number(block):
-    fusion_number = 0
+def get_jit_kernel_number(block):
+    jit_kernel_number = 0
     for op in block.ops:
         op_name = op.name()
-        if op_name == __FUSION_KERNEL_NAME:
-            fusion_number += 1
+        if JIT_KERNEL_NAME in op_name:
+            jit_kernel_number += 1
         elif op_name == __IF_OP_NAME:
-            fusion_number = (
-                fusion_number
-                + get_fusion_number(op.true_block())
-                + get_fusion_number(op.false_block())
+            jit_kernel_number = (
+                jit_kernel_number
+                + get_jit_kernel_number(op.true_block())
+                + get_jit_kernel_number(op.false_block())
             )
         elif op_name == __WHILE_OP_NAME:
-            fusion_number += get_fusion_number(op.body())
+            jit_kernel_number += get_jit_kernel_number(op.body())
 
-    return fusion_number
+    return jit_kernel_number
 
 
-def check_fusion_number(static_fn, expected_number):
+def check_jit_kernel_number(static_fn, expected_number):
     """
-    Check whether total number of __FUSION_KERNEL_NAME in Program
+    Check whether total number of JIT_KERNEL_NAME in Program
     is equal to expected_number.
     """
     program = get_pir_program(static_fn)
-    fusion_number = get_fusion_number(program.global_block())
-    np.testing.assert_equal(fusion_number, expected_number)
+    jit_kernel_number = get_jit_kernel_number(program.global_block())
+    np.testing.assert_equal(jit_kernel_number, expected_number)
 
 
-def get_fusion_structure_helper(block, map_info):
+def get_jit_kernel_structure_helper(block, map_info):
     if_op_idx, while_op_idx = 0, 0
     for op in block.ops:
         op_name = op.name()
-        if op_name == __FUSION_KERNEL_NAME:
-            map_info[FUSION_KEY_STR] += 1
+        if JIT_KERNEL_NAME in op_name:
+            map_info[JIT_KERNEL_NAME] += 1
         elif op_name == __IF_OP_NAME:
             true_key = f"if_{if_op_idx}"
             map_info[true_key] = {}
-            get_fusion_structure_helper(op.true_block(), map_info[true_key])
+            get_jit_kernel_structure_helper(op.true_block(), map_info[true_key])
 
             false_key = f"else_{if_op_idx}"
-            get_fusion_structure_helper(op.true_block(), map_info[false_key])
+            get_jit_kernel_structure_helper(
+                op.true_block(), map_info[false_key]
+            )
             if_op_idx += 1
         elif op.name() == __WHILE_OP_NAME:
             key = f"while_{while_op_idx}"
             map_info[key] = {}
-            get_fusion_structure_helper(op.body(), map_info[key])
+            get_jit_kernel_structure_helper(op.body(), map_info[key])
             while_op_idx += 1
 
 
-def get_fusion_structure(static_fn):
+def get_jit_kernel_structure(static_fn):
     program = get_pir_program(static_fn)
     map_info = defaultdict(int)
-    get_fusion_structure_helper(program.global_block(), map_info)
+    get_jit_kernel_structure_helper(program.global_block(), map_info)
     return dict(map_info)
 
 
-def check_fusion_structure(static_fn, expected_structure):
+def check_jit_kernel_structure(static_fn, expected_structure):
     """
     Check whether fuse subgraph structre in Program is same with expected_structure.
     For examaple:
     expected_structure = {
-        FUSION_KEY_STR: 3,
+        JIT_KERNEL_NAME: 3,
         "if_0": {
-            FUSION_KEY_STR: 1
+            JIT_KERNEL_NAME: 1
         }
         "else_0": {
-            FUSION_KEY_STR: 1
+            JIT_KERNEL_NAME: 1
         }
          "if_1": {
-            FUSION_KEY_STR: 0
+            JIT_KERNEL_NAME: 0
         }
         "else_1": {
-            FUSION_KEY_STR: 0
+            JIT_KERNEL_NAME: 0
         }
 
         "while_0":{
-            FUSION_KEY_STR: 2
+            JIT_KERNEL_NAME: 2
         }
     }
     """
-    map_info = get_fusion_structure(static_fn)
+    map_info = get_jit_kernel_structure(static_fn)
     np.testing.assert_equal(map_info, expected_structure)

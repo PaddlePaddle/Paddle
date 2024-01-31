@@ -46,9 +46,9 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
-    def check_fusion_info(self, static_fn):
-        utils.check_fusion_number(static_fn, 1)
-        utils.check_fusion_structure(static_fn, {utils.FUSION_KEY_STR: 1})
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
@@ -57,7 +57,7 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         net.eval()
         out = net(self.hidden_states)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

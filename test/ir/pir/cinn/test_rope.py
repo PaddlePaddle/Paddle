@@ -61,9 +61,9 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
         self.position_ids.stop_gradient = False
 
-    def check_fusion_info(self, static_fn):
-        utils.check_fusion_number(static_fn, 1)
-        utils.check_fusion_structure(static_fn, {utils.FUSION_KEY_STR: 1})
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
@@ -72,7 +72,7 @@ class TestRotaryPosEmb(unittest.TestCase):
         net.eval()
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

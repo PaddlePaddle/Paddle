@@ -132,9 +132,9 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
-    def check_fusion_info(self, static_fn):
-        utils.check_fusion_number(static_fn, 1)
-        utils.check_fusion_structure(static_fn, {utils.FUSION_KEY_STR: 1})
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
@@ -143,7 +143,7 @@ class TestCinnSubGraphBase(unittest.TestCase):
         net.eval()
         out = net(self.x)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
 
         return out
 
@@ -162,7 +162,7 @@ class TestCinnSoftmax(TestCinnSubGraphBase):
         loss = out.mean()
         loss.backward()
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_forward(self):
@@ -199,7 +199,7 @@ class TestAddDropoutLayerNorm(TestCinnSubGraphBase):
         bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
         out = net(self.x, self.x, weight, bias)
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_forward(self):
@@ -221,7 +221,7 @@ class TestCinnDropout(TestCinnSubGraphBase):
         loss = out.mean()
         loss.backward()
         if use_cinn:
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_forward(self):
@@ -256,7 +256,7 @@ class TestCinnEvalPrim(TestCinnSubGraphBase):
             assert (
                 "pd_op.exp" in ops
             ), f"after prim, pd_op.softmax should not exist, but got {ops}"
-            self.check_fusion_info(net.forward)
+            self.check_jit_kernel_info(net.forward)
 
         return out
 
