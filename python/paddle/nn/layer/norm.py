@@ -1054,6 +1054,7 @@ class BatchNorm(Layer):
         self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
+        self.training = not self._is_test
 
     def forward(self, input):
         if in_dynamic_mode():

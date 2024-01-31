@@ -296,7 +296,7 @@ struct Program {
    * Concat tensors.
    * @param input_vars The input tensors.
    * @param axis The axis specified to do the concat operation.
-   * @return The concated output tensor.
+   * @return The concatenated output tensor.
    */
   Variable concat(const std::vector<Variable>& input_vars, int axis = 0);
 

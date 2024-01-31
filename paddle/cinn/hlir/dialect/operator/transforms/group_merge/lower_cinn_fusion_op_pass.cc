@@ -40,7 +40,7 @@
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -172,7 +172,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     return shape_analysis.GetShapeOrDataForValue(value);
   };
 
-  std::vector<pir::Value> lhs_minial_inputs;
+  std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
@@ -180,11 +180,11 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {lhs_expr},
                                                   group_inputs,
-                                                  &lhs_minial_inputs,
+                                                  &lhs_minimal_inputs,
                                                   &lhs_output_dim_expr_attrs,
                                                   &lhs_symbol_bindings);
   CHECK(success);
-  std::vector<pir::Value> rhs_minial_inputs;
+  std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
@@ -192,20 +192,22 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {rhs_expr},
                                                   group_inputs,
-                                                  &rhs_minial_inputs,
+                                                  &rhs_minimal_inputs,
                                                   &rhs_output_dim_expr_attrs,
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
   auto lhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              lhs_minial_inputs, lhs_output_dim_expr_attrs, lhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
+                                                 lhs_output_dim_expr_attrs,
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              rhs_minial_inputs, rhs_output_dim_expr_attrs, rhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
+                                                 rhs_output_dim_expr_attrs,
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder

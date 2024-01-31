@@ -13,10 +13,19 @@
 # limitations under the License.
 import unittest
 
-from test_cinn_sub_graph import TestCinnSubGraphBase, apply_to_static
-
 import paddle
 from paddle import nn
+
+
+def apply_to_static(net, use_cinn, input_spec=None):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(
+        net,
+        input_spec=input_spec,
+        build_strategy=build_strategy,
+        full_graph=True,
+    )
 
 
 class RotaryPosEmb(nn.Layer):
@@ -40,12 +49,16 @@ class RotaryPosEmb(nn.Layer):
         return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
 
 
-class TestRotaryPosEmb(TestCinnSubGraphBase):
+class TestRotaryPosEmb(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2022)
+        self.prepare_data()
+
     def prepare_data(self):
-        self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.q = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.q.stop_gradient = False
 
-        self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.k = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.k.stop_gradient = False
 
         self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
