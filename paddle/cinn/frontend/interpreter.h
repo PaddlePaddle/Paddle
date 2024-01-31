@@ -32,8 +32,9 @@ namespace frontend {
  */
 class Interpreter final {
  public:
-  TEST_API Interpreter(const std::vector<std::string>& input_names,
-              const std::vector<hlir::framework::shape_t>& input_shapes);
+  TEST_API Interpreter(
+      const std::vector<std::string>& input_names,
+      const std::vector<hlir::framework::shape_t>& input_shapes);
 
   /**
    * Load a Paddle model.
