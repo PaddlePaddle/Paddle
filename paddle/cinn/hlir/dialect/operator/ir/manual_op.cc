@@ -16,7 +16,6 @@
 
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
@@ -27,6 +26,7 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
@@ -126,6 +126,12 @@ void FusionOp::Print(pir::IrPrinter& printer) {
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
+}
+
+bool ConcatOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
+  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
@@ -427,15 +433,15 @@ bool GenerateShapeOp::InferSymbolicShape(
     for (const auto& attr_dim_expr : attr_dim_exprs) {
       const auto& substituted =
           SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
-      const auto& simplified = common::SimplifyDimExpr(substituted);
+      const auto& simplified = symbol::SimplifyDimExpr(substituted);
       dim_exprs.push_back(simplified);
     }
     return dim_exprs;
   }();
 
   // TODO(HongyuJia): use op->result(0) to infer the shape
-  std::vector<symbol::DimExpr> shape(
-      std::int64_t(substituted_dim_exprs.size()));
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
   symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
       symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 

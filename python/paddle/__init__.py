@@ -563,28 +563,30 @@ if is_compiled_with_cinn():
 
 if is_compiled_with_cuda():
     import os
+    import platform
 
-    package_dir = os.path.dirname(os.path.abspath(__file__))
-    cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
-    set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+        package_dir = os.path.dirname(os.path.abspath(__file__))
+        cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
+        set_flags({"FLAGS_cublas_dir": cublas_lib_path})
 
-    cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
-    set_flags({"FLAGS_cudnn_dir": cudnn_lib_path})
+        cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
+        set_flags({"FLAGS_cudnn_dir": cudnn_lib_path})
 
-    curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
-    set_flags({"FLAGS_curand_dir": curand_lib_path})
+        curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
+        set_flags({"FLAGS_curand_dir": curand_lib_path})
 
-    cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
-    set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
+        cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
+        set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
 
-    cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
-    set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
+        cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
+        set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
 
-    nccl_lib_path = package_dir + "/.." + "/nvidia/nccl/lib"
-    set_flags({"FLAGS_nccl_dir": nccl_lib_path})
+        nccl_lib_path = package_dir + "/.." + "/nvidia/nccl/lib"
+        set_flags({"FLAGS_nccl_dir": nccl_lib_path})
 
-    cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
-    set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+        cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
+        set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
 
 disable_static()

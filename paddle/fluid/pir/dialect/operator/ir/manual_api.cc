@@ -62,6 +62,11 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
                                                                   name);
 }
 
+void shadow_output(const pir::Value& persist_value, const std::string& name) {
+  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
+                                                                  name);
+}
+
 pir::Value embedding_grad(const pir::Value& x,
                           const pir::Value& weight,
                           const pir::Value& out_grad,
@@ -222,6 +227,18 @@ pir::Value assign(const pir::Value& x) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently, assign only supports DenseTensorType and "
         "DenseTensorArrayType."));
+  }
+}
+
+pir::Value array_pop(pir::Value input, int index) {
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::ArrayPopOp array_pop_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayPopOp>(
+            input, index);
+    return array_pop_op.result(1);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "pop only supports DenseTensorArrayType."));
   }
 }
 

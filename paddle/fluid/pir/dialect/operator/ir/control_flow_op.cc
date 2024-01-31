@@ -282,8 +282,8 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
   VLOG(6) << "Prepare outputs for if_grad";
 
   std::vector<pir::Type> output_types;
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    if (!stop_gradients[i][0]) {
+  for (size_t i = 1; i < inputs_.size(); ++i) {
+    if (!stop_gradients[i - 1][0]) {
       output_types.push_back(inputs_[i][0].type());
     }
   }
@@ -291,11 +291,11 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
   auto if_grad = ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
       cond_val, std::move(output_types));
 
-  std::vector<std::vector<pir::Value>> res{inputs_.size()};
-  for (size_t i = 0, j = 0; i < inputs_.size(); ++i) {
-    res[i].resize(1);
-    if (!stop_gradients[i][0]) {
-      res[i][0] = if_grad->result(j++);
+  std::vector<std::vector<pir::Value>> res{inputs_.size() - 1};
+  for (size_t i = 1, j = 0; i < inputs_.size(); ++i) {
+    res[i - 1].resize(1);
+    if (!stop_gradients[i - 1][0]) {
+      res[i - 1][0] = if_grad->result(j++);
     }
   }
   return res;
@@ -313,7 +313,7 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
     auto &body = argument.AddRegion().emplace_back();
     for (auto val : inputs) {
       argument.AddOutput(val.type());
-      auto arg = body.AddArgument(val.type());
+      auto arg = body.AddArg(val.type());
       auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
       outs_stop_gradient.push_back(bool_attr ? bool_attr
                                              : builder.bool_attr(false));

@@ -73,7 +73,7 @@ TEST(CastCollapsing, FuseThreeCast) {
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
-TEST(CastCollapsing, ReplaceUselessCastWithIndentity) {
+TEST(CastCollapsing, ReplaceUselessCastWithIdentity) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }

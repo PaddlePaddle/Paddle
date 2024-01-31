@@ -89,7 +89,7 @@ void CustomKernelInstruction::BuildCustomContext(
         input_ptrs_.emplace_back(nullptr);
         custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
     auto in_var_name = value_exec_info_.GetVarName(ptr);
@@ -285,7 +285,7 @@ void CustomKernelInstruction::BuildCustomContext(
       cache_out_ptrs_.emplace_back(nullptr);
       custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
 
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 
