@@ -21,6 +21,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
 
@@ -41,8 +42,7 @@ class IR_API ShapeConstraintIRAnalysis {
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
-  // Returns true if shape_or_data is first inserted.
-  bool SetShapeOrDataForValue(Value val,
+  void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
   symbol::DimExprBuilder CreateDimExprBuilder();

@@ -17,7 +17,7 @@
 #include <functional>
 
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
 
