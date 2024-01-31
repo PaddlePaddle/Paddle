@@ -993,6 +993,23 @@ bool ReduceSumOpInferSymbolicShape(
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  std::vector<std::int64_t> shape = GetVectorAttr(op, "shape");
+
+  std::vector<symbol::DimExpr> out_dims;
+  for (std::int64_t dim : shape) {
+    out_dims.emplace_back(dim);
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  return true;
+}
+
 }  // namespace cinn::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)
