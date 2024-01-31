@@ -1209,6 +1209,7 @@
     func : GraphSampleNeighborsInferMeta
   kernel :
     func : graph_sample_neighbors
+    data_type : row
   optional : eids, perm_buffer
 
 - op : grid_sample
