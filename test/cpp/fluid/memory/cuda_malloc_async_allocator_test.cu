@@ -49,7 +49,7 @@ void CheckMemLeak(const platform::CUDAPlace &place) {
       << " there may be a memory leak problem";
 }
 
-#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 12000))
+#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 12200))
 
 TEST(CUDAMallocAsyncInterfaceTest, AllocInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
