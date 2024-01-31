@@ -389,6 +389,30 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool ProdOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto attributes = op->attributes();
+  bool keepdim = attributes["keep_dim"].dyn_cast<pir::BoolAttribute>().data();
+
+  bool reduce_all =
+      attributes["reduce_all"].dyn_cast<pir::BoolAttribute>().data();
+
+  auto axis_gen_op = op->operand_source(1).defining_op();
+  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+    std::vector<int64_t> axis = GetVectorAttr(
+        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    return ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
+  } else {
+    // TODO(lanxianghit): deal with other source: pir::VectorType,
+    // paddle::dialect::DenseTensorType
+    PADDLE_THROW(
+        phi::errors::Unimplemented("ProdOpInferSymbolicShape: 'axis' only "
+                                   "support FullIntArrayOp's result now."));
+  }
+
+  return true;
+}
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source_shape = op->operand_source(1);
