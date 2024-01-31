@@ -81,7 +81,7 @@ def get_jit_kernel_structure_helper(block, map_info):
 
             false_key = f"else_{if_op_idx}"
             get_jit_kernel_structure_helper(
-                op.true_block(), map_info[false_key]
+                op.false_block(), map_info[false_key]
             )
             if_op_idx += 1
         elif op.name() == __WHILE_OP_NAME:
