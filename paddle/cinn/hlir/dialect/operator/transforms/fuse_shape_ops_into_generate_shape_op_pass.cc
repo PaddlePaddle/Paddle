@@ -26,6 +26,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -37,14 +38,6 @@ namespace dialect {
 namespace ir {
 
 namespace {
-// helper type for the visitor
-template <class... Ts>
-struct Overloaded : Ts... {
-  using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template <class... Ts>
-Overloaded(Ts...) -> Overloaded<Ts...>;
 
 using ShapeOrDataDimExprs4ValueT =
     std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
@@ -66,13 +59,13 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(owner->operand_source(i));
         }
       };
-  const auto& IsDimTensorOrListDimExpr =
-      Overloaded{[](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
-                   return dim_expr.data().has_value();
-                 },
-                 [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
-                   return true;
-                 }};
+  const auto& IsDimTensorOrListDimExpr = symbol::Overloaded{
+      [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
+        return dim_expr.data().has_value();
+      },
+      [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
+        return true;
+      }};
   // For TensorListShapeOrDataDimExprs case, we should recursivly visit its
   // each dim_expr, which is automatically in next step.
   const auto& NeedTrackUpstream = [&](pir::Value value) -> bool {
