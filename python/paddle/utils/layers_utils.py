@@ -475,7 +475,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             new_list_tensor.append(ele)
         else:
             assert isinstance(ele, int)
-            temp_out = fill_constant([], dtype, ele, force_cpu=True)
+            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
 
