@@ -84,12 +84,6 @@ struct CombineOpInferSymbolicShapeInterfaceModel
           op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
     }
 
-    op->set_attribute(
-        "symbolic_shape",
-        pir::shape::SymbolAttribute::get(
-            pir::IrContext::Instance(),
-            shape_analysis->GetShapeOrDataForValue(op->result(0))));
-
     return true;
   }
 
@@ -123,10 +117,6 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(sym_shape)};
 
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
-
     shape_analysis->SetShapeOrDataForValue(res0, shape_data);
 
     return true;
@@ -145,9 +135,8 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
         shape_analysis->GetShapeOrDataForValue(operand_source);
 
     symbol::ShapeOrDataDimExprs shape_data = input_shapeordata;
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
+    pir::shape::SetShapeAttrForOp(op, shape_data);
+
     return true;
   }
 

@@ -179,7 +179,7 @@ class LlamaRMSNorm(paddle.nn.Layer):
 
         axis_rst = -1
         # 1.1 decomp pow -> elementwise_pow
-        pow_tensor = paddle.full([1], axis_rst, hidden_states.dtype)
+        pow_tensor = paddle.full([1], 2, hidden_states.dtype)
         pow_rst = paddle.pow(hidden_states, pow_tensor)
 
         # 1.2 decomp mean -> sum & div
@@ -210,6 +210,7 @@ class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
             self.hidden_states_shape, dtype="float32"
         )
         self.hidden_states.stop_gradient = False
+        self.expected_output_sym_shape = 'shape[S0, S1, 4096]'
 
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
@@ -219,7 +220,23 @@ class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
         ]
         net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
+
+        forward_program = net.forward.get_concrete_program(*input_spec)[
+            1
+        ].infer_program.forward_program
+        shadow_output_ops = []
+        for op in forward_program.global_block().ops:
+            if op.name() == 'builtin.shadow_output':
+                shadow_output_ops.append(op.attrs()['sym_shape_str'])
+        np.testing.assert_equal(len(shadow_output_ops), 1)
+        np.testing.assert_equal(
+            shadow_output_ops[0].find(self.expected_output_sym_shape),
+            0,
+            'output shape is not expected!',
+        )
+
         out = net(self.hidden_states)
+
         return out
 
     def test_eval_symbolic(self):

@@ -313,7 +313,7 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
     auto &body = argument.AddRegion().emplace_back();
     for (auto val : inputs) {
       argument.AddOutput(val.type());
-      auto arg = body.AddArgument(val.type());
+      auto arg = body.AddArg(val.type());
       auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
       outs_stop_gradient.push_back(bool_attr ? bool_attr
                                              : builder.bool_attr(false));
