@@ -16,8 +16,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/primitive/backend/generated/generated_backend.h"
 #include "paddle/fluid/primitive/backend/manual/manual_prim_backend.h"
-#include "paddle/fluid/primitive/primitive/generated_primitive.h"
-#include "paddle/fluid/primitive/primitive/manual_primitive.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
 namespace paddle {
