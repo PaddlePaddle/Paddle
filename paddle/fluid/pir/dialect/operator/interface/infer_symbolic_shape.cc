@@ -631,7 +631,7 @@ bool Pow_OpInferSymbolicShape(pir::Operation *op,
 
 bool RsqrtOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return SameOperandsAndResultShape(op, pow);
+  return SameOperandsAndResultShape(op, shape_analysis);
 }
 bool Rsqrt_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
