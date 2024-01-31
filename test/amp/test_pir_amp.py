@@ -40,6 +40,8 @@ class TestAMPState(unittest.TestCase):
 
 class TestPirAMPProgram(unittest.TestCase):
     def test_linear_amp_o1(self):
+        if not core.is_compiled_with_cuda():
+            return
         with paddle.pir_utils.IrGuard():
             startup = paddle.static.Program()
             main = paddle.static.Program()
