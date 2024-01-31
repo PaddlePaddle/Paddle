@@ -1,9 +1,4 @@
-paddle_test(
-  op_tester
-  SRCS
-  op_tester.cc
-  DEPS
-  common)
+paddle_test(op_tester SRCS op_tester.cc DEPS common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
