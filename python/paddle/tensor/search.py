@@ -1239,7 +1239,7 @@ def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     Args:
         x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
         ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
-            it is the cumulative probalitity threshold to limit low probality input.
+            it is the cumulative probability threshold to limit low probability input.
         threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
             it is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
         seed(int, optional): the random seed,

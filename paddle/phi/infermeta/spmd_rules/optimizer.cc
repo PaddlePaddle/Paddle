@@ -51,7 +51,7 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
   // Do spmd infer on param and grad in case of the param and grad
   // has different dist attr. This difference may be caused by other spmd.
   // No need do the spmd infer on the two momentum, since they are
-  // seperated from the forward backward computation.
+  // separated from the forward backward computation.
   SpmdInfo param_grad_spmd = ElementwiseBinaryInferSpmd(param, grad);
   TensorDistAttr param_dist_attr_spmd =
       PADDLE_GET(TensorDistAttr, param_grad_spmd.first[0]);

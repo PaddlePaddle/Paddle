@@ -71,6 +71,8 @@ class alignas(8) ValueImpl {
     return T::classof(*this);
   }
 
+  uint64_t id() const { return id_; }
+
  protected:
   ///
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
@@ -92,6 +94,8 @@ class alignas(8) ValueImpl {
   /// outline output(OpOutlineResultImpl); (3) index = 7 is reserved.
   ///
   OpOperandImpl *first_use_offseted_by_kind_ = nullptr;
+
+  const uint64_t id_ = 0;
 };
 
 }  // namespace detail

@@ -57,6 +57,7 @@
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -85,15 +86,23 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#endif
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -128,6 +137,7 @@ USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
+USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
@@ -136,7 +146,12 @@ USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 
+#ifdef PADDLE_WITH_DNNL
+USE_PIR_PASS(batch_norm_act_fuse_pass);
+#endif
+
 PHI_DECLARE_bool(print_ir);
+PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
@@ -300,7 +315,8 @@ void BindProgram(py::module *m) {
           },
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
-          });
+          })
+      .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -362,6 +378,7 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
+      .def("num_ops", [](Block &self) { return self.num_ops(); })
       .def(
           "__enter__",
           [](Block &self) -> Block & {
@@ -1554,43 +1571,66 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   bool has_dynamic_shape = false;
   // HasDynamicShape(forward_program);
 
-  auto shape_analysis =
-      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
-                        : nullptr;
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(
-        std::make_unique<
-            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
-    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-  }
-
-  // pass_manager->EnableIRPrinting();
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::RemoveUnchangedReshapePass>());
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(
+        std::make_unique<
+            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   // if (has_dynamic_shape) {
   //   pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
   // }
 
-  auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
+  // <<<<<<< HEAD
+  //   auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
+  //   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  //   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  //   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+
+  //   pass_manager->EnableIRPrinting();
+  //   pass_manager->Run(&program);
+  //   VLOG(3) << "after BuildCinnPass, forward_program:\n" << program;
+
+  // =======
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  bool force_static_shape = false;
+  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+    force_static_shape = true;
+  }
+  if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+  }
+
+  if (has_dynamic_shape && !force_static_shape) {
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-
-  pass_manager->EnableIRPrinting();
-  pass_manager->Run(&program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << program;
-
+  pass_manager->AddPass(
+      std::make_unique<
+          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1603,7 +1643,7 @@ void InferSymbolicShapePass(
     Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program)) {
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
@@ -1655,7 +1695,9 @@ void BindPassManager(pybind11::module *m) {
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
       .def("empty", &PassManager::empty)
-      .def("clear", &PassManager::clear);
+      .def("clear", &PassManager::clear)
+      .def("enable_ir_printing",
+           [](PassManager &self) { self.EnableIRPrinting(); });
 }
 
 void BindPir(pybind11::module *module) {

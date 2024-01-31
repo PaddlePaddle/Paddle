@@ -40,7 +40,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -157,7 +157,6 @@ PyObject* ToPyObject(const paddle::framework::Vocab& value);
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 PyObject* ToPyObject(const pir::Value& value);
 PyObject* ToPyObject(const std::vector<pir::Value>& value);
-PyObject* ToPyObject(const std::vector<pir::OpResult>& value);
 
 class PyTensorHook : public egr::TensorHook {
  public:

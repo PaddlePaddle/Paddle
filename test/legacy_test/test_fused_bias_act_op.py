@@ -54,10 +54,10 @@ def fake_dequant(values, dequant_scales):
 
 
 def fake_quant(
-    values, shift, smooth, quant_sacle, max_bound, min_bound, round_type
+    values, shift, smooth, quant_scale, max_bound, min_bound, round_type
 ):
     values_tmp = (values + shift) * smooth
-    values_tmp = max_bound * quant_sacle * values_tmp
+    values_tmp = max_bound * quant_scale * values_tmp
     if round_type == 0:
         values_tmp = np.rint(values_tmp)
     elif round_type == 1:

@@ -61,36 +61,7 @@ struct Group {
 
   std::shared_ptr<Group> Clone(::pir::Block* target_block,
                                ::pir::IrMapping& ir_mapping,
-                               const Options& option = Options()) const {
-    CHECK_EQ(option.OnlyCloneOps(), true)
-        << "Only Support Clone Group ops information.";
-    std::vector<::pir::Operation*> new_ops;
-    // Mapper from original to new ops.
-    std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-    auto clone_options = ::pir::CloneOptions(false, true, false);
-    for (auto* op : ops) {
-      VLOG(4) << "clone op :" << op->name();
-      auto* new_op = op->Clone(ir_mapping, clone_options);
-      // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
-      // will lead memory-leak.
-      target_block->insert(target_block->end(), new_op);
-      new_ops.push_back(new_op);
-      ops_mapper[op] = new_op;
-    }
-    // Construct Base information for new Group
-    auto new_group = std::make_shared<Group>(new_ops);
-    for (auto& iter : this->input_ops) {
-      new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
-    }
-    for (auto* op : this->output_ops) {
-      new_group->output_ops.insert(ops_mapper.at(op));
-    }
-    for (const auto& output_value : this->output_values) {
-      new_group->output_values.push_back(output_value);
-    }
-
-    return new_group;
-  }
+                               const Options& option = Options()) const;
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
@@ -199,7 +170,7 @@ struct Group {
           continue;
         }
 
-        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+        if (!ops_set.count(value.defining_op())) {
           // if the input value owner op is not in OpSet, it's the group's input
           group_inputs.insert(value);
           continue;
@@ -318,6 +289,8 @@ struct Group {
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

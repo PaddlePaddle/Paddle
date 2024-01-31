@@ -600,7 +600,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   CHECK_EQ(op->alloc_output_buffer_exprs.size(),
            op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocaton expressions is not match";
+      << "the count of allocation and deallocation expressions is not match";
 
   std::vector<Expr> new_body;
 

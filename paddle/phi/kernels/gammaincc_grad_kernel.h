@@ -1,3 +1,4 @@
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +15,14 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/dim_expr.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace cinn::adt {
+namespace phi {
 
-inline DimExpr SimplifyDimExpr(const DimExpr& dim_expr) {
-  return cinn::common::SimplifyDimExpr(dim_expr);
-}
-
-}  // namespace cinn::adt
+template <typename T, typename Context>
+void GammainccGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& d_out,
+                         DenseTensor* d_y);
+}  // namespace phi

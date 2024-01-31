@@ -82,12 +82,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
 
-    if type(ele) is int:
-        return True
-    elif isinstance(ele, Variable):
+    if isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.Value):
@@ -154,7 +152,7 @@ def _setitem_for_tensor_array(var, item, value):
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+        from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -284,10 +282,9 @@ def parse_index(x, indices):
     dim = 0
     for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
-        if is_integer_or_scalar_tensor(slice_item):
+        if type(slice_item) is int:
             if (
                 not is_tensor_array
-                and isinstance(slice_item, int)
                 and x.shape[dim] is not None
                 and x.shape[dim] >= 0
                 and slice_item >= x.shape[dim]
@@ -307,6 +304,13 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
+        elif is_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1
             dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
@@ -761,6 +765,8 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
+                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
@@ -773,7 +779,16 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st), False
+                        if len(decrease_axes) > 0:
+                            return (
+                                paddle._pir_ops.slice_array_dense(x, st),
+                                False,
+                            )
+                        else:
+                            return (
+                                paddle._pir_ops.slice_array(x, st, end),
+                                False,
+                            )
                 out = paddle._C_ops.slice(
                     x,
                     axes,

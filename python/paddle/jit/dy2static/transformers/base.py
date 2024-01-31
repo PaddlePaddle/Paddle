@@ -14,17 +14,20 @@
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
+    ORIGI_INFO,
+    ast_to_source_code,
+)
+from paddle.utils import gast
+
+from .utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
     FOR_ITER_TARGET_PREFIX,
     FOR_ITER_VAR_LEN_PREFIX,
     FOR_ITER_VAR_NAME_PREFIX,
     FOR_ITER_ZIP_TO_LIST_PREFIX,
-    ORIGI_INFO,
-    ast_to_source_code,
     create_assign_node,
 )
-from paddle.utils import gast
 
 __all__ = []
 
