@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/common/target.h"
+#include <optional>
 
 namespace cinn {
 namespace runtime {
@@ -25,6 +26,16 @@ class BackendAPI {
     HostToDevice,
     DeviceToHost,
     DeviceToDevice,
+  };
+  enum class DeviceProperty : int{
+    MaxGridDims=0,
+    MaxBlockDims,
+    MultiProcessorCount,
+    MaxThreadsPerSM,
+    MaxThreadsPerBlock,
+    MaxBlocksPerSM,
+    WarpSize,
+    MaxSharedMemoryPerBlock,
   };
   /*!
    * \brief Get BackendAPI by target.
@@ -48,6 +59,15 @@ class BackendAPI {
    * \param device_ids
    */
   //virtual void set_active_devices(std::vector<int> device_ids) =0;
+    /*!
+   * \brief Get device property
+   * \param device_property
+   * \param device_id optional, default is now device which set by set_device.
+   * \return result value
+   */
+  virtual int get_device_property(
+      DeviceProperty device_property,
+      std::optional<int> device_id = std::nullopt) = 0;
   /*!
    * \brief malloc memory in the idth device
    * \param numBytes

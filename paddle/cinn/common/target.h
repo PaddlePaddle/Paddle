@@ -92,7 +92,10 @@ struct Target {
   bool defined() const {
     return os != OS::Unk && arch != Arch::Unk && bits != Bit::Unk;
   }
-
+  // gpu use SIMT
+  bool arch_is_gpu() const;
+  // xpu use vector/metric intrinsics
+  bool arch_is_xpu() const;
   //! Get the Runtime architecture, it is casted to integer to avoid header file
   //! depending.
   int runtime_arch() const;
@@ -124,6 +127,8 @@ const Target& DefaultHostTarget();
 const Target& DefaultNVGPUTarget();
 
 const Target& SYCLTarget(Target::Arch arch=Target::Arch::Unk);
+
+const Target& DefaultROCMTarget();
 
 const Target& DefaultTarget();
 

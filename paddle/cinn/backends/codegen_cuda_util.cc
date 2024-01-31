@@ -21,13 +21,13 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace backends {
 
-std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module) {
+std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module, Target target) {
   if (FLAGS_cinn_bucket_compile) {
-    detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name);
+    detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name, target);
     Expr expr(module);
     return visitor(&expr);
   }
-  detail::CollectHostFunctionVisitor visitor(module->name);
+  detail::CollectHostFunctionVisitor visitor(module->name, target);
   Expr expr(module);
   return visitor(&expr);
 }
@@ -88,9 +88,17 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // process host func
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
+  const char* call_kernel;
+  if (target_ == common::DefaultNVGPUTarget()) {
+    call_kernel = runtime::intrinsic::call_cuda_kernel;
+  } else if (target_.language == common::Target::Language::sycl) {
+    call_kernel = runtime::intrinsic::call_sycl_kernel;
+  } else if (target_.language == common::Target::Language::hip) {
+    // const char* call_kernel = runtime::intrinsic::call_hip_kernel;
+  }
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
-                     runtime::intrinsic::call_cuda_kernel,
+                     call_kernel,
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,

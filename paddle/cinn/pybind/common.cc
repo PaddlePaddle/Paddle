@@ -62,6 +62,7 @@ void BindTarget(py::module *m) {
 
   m->def("DefaultHostTarget", &common::DefaultHostTarget)
       .def("DefaultNVGPUTarget", &common::DefaultNVGPUTarget)
+      .def("DefaultROCMTarget", &common::DefaultROCMTarget)
       .def("DefaultTarget", &common::DefaultTarget);
 
   m->def("get_target", &cinn::runtime::CurrentTarget::GetCurrentTarget);

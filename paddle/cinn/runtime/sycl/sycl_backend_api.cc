@@ -90,6 +90,52 @@ void SYCLBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
+int SYCLBackendAPI::get_device_property(DeviceProperty device_property,
+                            std::optional<int> device_id) {
+  int index = device_id ? device_id.value() : this->now_device_id;
+  int rv = -1;
+  switch (device_property) {
+    case DeviceProperty::MaxBlockDims: {
+      LOG(FATAL) << "Not supported device property!";
+      break;
+    }
+    case DeviceProperty::MaxGridDims: {
+      LOG(FATAL) << "Not supported device property!";
+      break;
+    }
+    case DeviceProperty::MaxSharedMemoryPerBlock: {
+      rv = this->devices[index].get_info<sycl::info::device::local_mem_size>();
+      break;
+    }
+    case DeviceProperty::MaxThreadsPerBlock: {
+      rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
+      break;
+    }
+    case DeviceProperty::MaxThreadsPerSM: {
+      LOG(FATAL) << "SYCL Not supported device property : MaxThreadsPerSM !";
+      // rv = this->devices[index].get_info<sycl::info::device::max_work_group_size>();
+      break;
+    }
+    case DeviceProperty::MultiProcessorCount: {
+      rv = this->devices[index].get_info<sycl::info::device::max_compute_units>();
+      break;
+    }
+    case DeviceProperty:: MaxBlocksPerSM: {
+      LOG(FATAL) << "SYCL Not supported device property : MaxBlocksPerSM !";
+      break;
+    }
+    case DeviceProperty::WarpSize: {
+      std::vector<size_t> sub_group_sizes = this->devices[index].get_info<sycl::info::device::sub_group_sizes>();
+      size_t max_sub_group_size = *max_element(std::begin(sub_group_sizes), std::end(sub_group_sizes));
+      rv = static_cast<int>(max_sub_group_size);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Not supported device property!";
+  }
+  return rv;
+}
+
 void* SYCLBackendAPI::malloc(size_t numBytes) {
   if (now_device_id == -1) set_device(0);
   VLOG(3) << "sycl malloc";

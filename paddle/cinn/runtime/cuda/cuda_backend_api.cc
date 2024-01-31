@@ -1,4 +1,5 @@
 #include "paddle/cinn/runtime/cuda/cuda_backend_api.h"
+#include <glog/logging.h>
 namespace cinn {
 namespace runtime {
 namespace cuda {
@@ -9,6 +10,50 @@ CUDABackendAPI* CUDABackendAPI::Global() {
 
 void CUDABackendAPI::set_device(int device_id) {
   CUDA_CALL(cudaSetDevice(device_id));
+  this->now_device_id = device_id;
+}
+
+int CUDABackendAPI::get_device_property(DeviceProperty device_property,
+                            std::optional<int> device_id) {
+  int index = device_id ? device_id.value() : this->now_device_id;
+  int rv = -1;
+  switch (device_property) {
+    case DeviceProperty::MaxBlockDims: {
+      LOG(FATAL) << "Not supported device property!";
+      break;
+    }
+    case DeviceProperty::MaxGridDims: {
+      LOG(FATAL) << "Not supported device property!";
+      break;
+    }
+    case DeviceProperty::MaxSharedMemoryPerBlock: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxSharedMemoryPerBlock, index));
+      break;
+    }
+    case DeviceProperty::MaxThreadsPerBlock: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerBlock, index));
+      break;
+    }
+    case DeviceProperty::MaxThreadsPerSM: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, index));
+      break;
+    }
+    case DeviceProperty::MultiProcessorCount: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, index));
+      break;
+    }
+    case DeviceProperty:: MaxBlocksPerSM: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, index));
+      break;
+    }
+    case DeviceProperty::WarpSize: {
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrWarpSize, index));
+      break;
+    }
+    default:
+      LOG(FATAL) << "Not supported device property!";
+  }
+  return rv;
 }
 
 void* CUDABackendAPI::malloc(size_t numBytes){

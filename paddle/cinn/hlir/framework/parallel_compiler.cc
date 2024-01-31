@@ -35,7 +35,6 @@
 
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
-#include "paddle/cinn/backends/sycl/codegen_sycl_util.h"
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
@@ -246,7 +245,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
   auto ir_module = builder.Build();
   if (context->target == common::DefaultNVGPUTarget() && context->target.language == Target::Language::cuda) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitCudaAndHostModule(ir_module);
+    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
     auto hmodule = std::get<0>(splited_module);
     auto dmodule = std::get<1>(splited_module);
 
@@ -294,7 +293,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
 #endif
   } else if (context->target.language == Target::Language::sycl){
 #ifdef CINN_WITH_SYCL
-    auto splited_module = backends::SplitSyclAndHostModule(ir_module);
+    auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
     auto host_module        = std::get<0>(splited_module);
     auto device_module      = std::get<1>(splited_module);
     backends::CodeGenSYCL_Dev codegen(context->target);

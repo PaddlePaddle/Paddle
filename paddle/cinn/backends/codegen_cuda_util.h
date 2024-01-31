@@ -41,15 +41,16 @@ namespace backends {
  * - replace the original kernel function with a Call node and add it to the
  * first module, add a device kernel function to the second module.
  */
-std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
+std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module, Target target);
 
 namespace detail {
 
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {
-  explicit CollectHostFunctionVisitor(const std::string& module_name)
+  explicit CollectHostFunctionVisitor(const std::string& module_name, Target target)
       : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
-        device_module_builder(module_name + "_gpu_device",
-                              common::DefaultNVGPUTarget()) {}
+        device_module_builder(module_name + "_gpu_device", target) {
+  target_ = target;
+}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -65,13 +66,15 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
       if (!op->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
-      auto host_func = CreateHostFunctionGivenDeviceKernel(op);
+      auto host_func = CreateHostFunctionGivenDeviceKernel(op, target_);
       host_module_builder.AddFunctionWithoutOptim(
           host_func.as_lowered_func_ref());
       device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
   }
+  private:
+   Target target_;
 
   /**
    * Create a wrapper function for a kernel.
@@ -91,7 +94,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
    * }
    * \endcode
    */
-  Expr CreateHostFunctionGivenDeviceKernel(const ir::_LoweredFunc_* func) {
+  Expr CreateHostFunctionGivenDeviceKernel(const ir::_LoweredFunc_* func, Target target) {
     // std::vector<Expr> args;
     // NOTE the suffix `__ptr` makes this argument lower to a pointer in LLVM
     // backend. args.push_back(Var("args__ptr", type_of<cinn_pod_value_t*>()));
@@ -101,9 +104,17 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
+    const char* call_kernel;
+    if(target == common::DefaultNVGPUTarget()){
+      call_kernel = runtime::intrinsic::call_cuda_kernel;
+    }else if(target.language == common::Target::Language::sycl){
+      call_kernel = runtime::intrinsic::call_sycl_kernel;
+    }else if(target.language == common::Target::Language::hip){
+      //const char* call_kernel = runtime::intrinsic::call_hip_kernel;
+    }
     auto call_extern_api =
         ir::Call::Make(Void(),
-                       runtime::intrinsic::call_cuda_kernel,
+                       call_kernel,
                        {kernel_ptr,
                         kernel_args,
                         kernel_args_num,
@@ -145,11 +156,13 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
 struct CollectBucketStrategyHostFunctionVisitor
     : public CollectHostFunctionVisitor {
   explicit CollectBucketStrategyHostFunctionVisitor(
-      const std::string& module_name)
-      : CollectHostFunctionVisitor(module_name),
+      const std::string& module_name, Target target)
+      : CollectHostFunctionVisitor(module_name, target),
         kernel_args_(KERNEL_ARGS, type_of<void*>()),
         kernel_args_num_(KERNEL_ARGS_NUM, type_of<int>()),
-        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {}
+        kernel_stream_(KERNEL_STREAM, type_of<void*>()) {
+          target_ = target;
+        }
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -192,6 +205,7 @@ struct CollectBucketStrategyHostFunctionVisitor
                                          ir::Expr predicate);
 
  private:
+  Target target_;
   std::vector<ir::Expr> buckets_;
   std::vector<ir::Expr> arg_defs_;
 

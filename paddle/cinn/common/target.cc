@@ -48,18 +48,18 @@ Target::Target(OS o,
     }
 
 bool Target::operator==(const Target &other) const {
-  // set SYCLTarget to NVGPUTarget temporary
-  if(language == Target::Language::cuda || language == Target::Language::sycl){
-    if(other.language==Target::Language::cuda || other.language==Target::Language::sycl){
-      return true;
-    }
-  }
-
   return os == other.os &&            //
          arch == other.arch &&        //
          language == other.language && //
          bits == other.bits &&        //
          features == other.features;
+}
+
+bool Target::arch_is_gpu() const {
+  return (arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU);
+}
+bool Target::arch_is_xpu() const {
+  return (arch == Arch::CambrianMLU);
 }
 
 int Target::runtime_arch() const {
@@ -77,54 +77,27 @@ int Target::runtime_arch() const {
 }
 
 int Target::max_num_threads() const {
-  switch (arch) {
-    case Arch::NVGPU:
-      return 1024;
-    case Target::Arch::AMDGPU:
-      return 1024;
-    case Target::Arch::IntelGPU:
-      return 1024;
-    case Target::Arch::HygonDCU:
-      return 1024;
-    case Target::Arch::CambrianMLU:
-      LOG(FATAL) << "The target (" << arch << ") cannot get max number of threads.";
-    default:
-      LOG(FATAL) << "The target (" << arch << ") cannot get max number of threads.";
-  }
-  return -1;
+  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
+      << "The target cannot get MaxThreadsPerBlock";
+  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerBlock);
 }
 
 int Target::get_multi_processor_count() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get multi processor count";
-  int num_sm = 0;
-#ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(
-      &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
-#endif
-  return num_sm;
+  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
+      << "The target cannot get multi processor count";
+  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MultiProcessorCount);
 }
 
 int Target::get_max_threads_per_sm() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max threads per stream processor";
-  int max_thread = 0;
-#ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(
-      &max_thread, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
-#endif
-  return max_thread;
+  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
+      << "The target cannot get max threads per stream processor";
+  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerSM);
 }
 
 int Target::get_max_blocks_per_sm() const {
-  CHECK(arch == Arch::NVGPU)
-      << "The target is not NVGPU! Cannot get max blocks per stream processor";
-  int max_blocks = 1;
-#ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(
-      &max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
-#endif
-  return max_blocks;
+  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
+      << "The target cannot get max blocks per stream processor";
+  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxBlocksPerSM);
 }
 
 std::vector<Target::Lib> Target::get_target_libs() const { return libs; }
@@ -270,6 +243,12 @@ const Target &SYCLTarget(Target::Arch arch) {
   static Target target(
       Target::OS::Linux, arch, Target::Language::sycl, Target::Bit::k64, {}, {});
   //BackendAPI::get_backend(target);
+  return target;
+}
+
+const Target& DefaultROCMTarget(){
+  static Target target(
+      Target::OS::Linux, Target::Arch::AMDGPU, Target::Language::hip, Target::Bit::k64, {}, {});
   return target;
 }
 
