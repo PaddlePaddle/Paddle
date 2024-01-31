@@ -144,6 +144,13 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      array.dtype(),
+      x.dtype(),
+      phi::errors::InvalidArgument("The dtype (%s) of input x shall be same as "
+                                   "dtype (%d) of array.",
+                                   x.dtype(),
+                                   array.dtype()));
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
 }
