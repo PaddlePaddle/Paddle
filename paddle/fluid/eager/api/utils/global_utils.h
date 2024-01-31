@@ -154,11 +154,9 @@ class Controller {
 
 class EagerBackwardStateGuard {
  public:
-  EagerBackwardStateGuard() { Controller::GetInstance().SetIsInBackward(true); }
+  EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(true); }
 
-  ~EagerBackwardStateGuard() {
-    Controller::GetInstance().SetIsInBackward(false);
-  }
+  ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
 };
 
 }  // namespace egr
