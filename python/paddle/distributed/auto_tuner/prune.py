@@ -528,47 +528,62 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     micro_batch_size = cur_cfg['micro_batch_size']
     recompute_granularity = cur_cfg['recompute_granularity']
 
-    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {dp_degree} --mp_degree {mp_degree} \
-                                --pp_degree {pp_degree} --vpp_degree {vpp_degree} \
-                                --sharding_degree {sharding_degree} --sharding_stage {sharding_stage} \
-                                --use_recompute {use_recompute} --micro_batch_size {micro_batch_size} \
-                                --recompute_granularity {recompute_granularity}"
+    memory_estimation_cmd = [
+        "python",
+        memory_estimation_tool,
+        "--dp_degree",
+        str(dp_degree),
+        "--mp_degree",
+        str(mp_degree),
+        "--pp_degree",
+        str(pp_degree),
+        "--vpp_degree",
+        str(vpp_degree),
+        "--sharding_degree",
+        str(sharding_degree),
+        "--sharding_stage",
+        str(sharding_stage),
+        "--use_recompute",
+        str(use_recompute),
+        "--micro_batch_size",
+        str(micro_batch_size),
+        "--recompute_granularity",
+        str(recompute_granularity),
+    ]
 
     # get model config
     hidden_size = model_cfg.get('hidden_size', None)
-    memory_estimation_cmd += (
-        f" --hidden_size {hidden_size}" if hidden_size is not None else ""
-    )
+    if hidden_size is not None:
+        memory_estimation_cmd.extend(["--hidden_size", str(hidden_size)])
+
     num_attention_heads = model_cfg.get('num_attention_heads', None)
-    memory_estimation_cmd += (
-        f" --num_attention_heads {num_attention_heads}"
-        if num_attention_heads is not None
-        else ""
-    )
+    if num_attention_heads is not None:
+        memory_estimation_cmd.extend(
+            ["--num_attention_heads", str(num_attention_heads)]
+        )
+
     num_layers = model_cfg.get('num_layers', None)
-    memory_estimation_cmd += (
-        f" --num_layers {num_layers}" if num_layers is not None else ""
-    )
+    if num_layers is not None:
+        memory_estimation_cmd.extend(["--num_layers", str(num_layers)])
+
     max_sequence_length = model_cfg.get('max_sequence_length', None)
-    memory_estimation_cmd += (
-        f" --max_sequence_length {max_sequence_length}"
-        if max_sequence_length is not None
-        else ""
-    )
+    if max_sequence_length is not None:
+        memory_estimation_cmd.extend(
+            ["--max_sequence_length", str(max_sequence_length)]
+        )
+
     vocab_size = model_cfg.get('vocab_size', None)
-    memory_estimation_cmd += (
-        f" --vocab_size {vocab_size}" if vocab_size is not None else ""
-    )
+    if vocab_size is not None:
+        memory_estimation_cmd.extend(["--vocab_size", str(vocab_size)])
+
     intermediate_size = model_cfg.get('intermediate_size', None)
-    memory_estimation_cmd += (
-        f" --intermediate_size {intermediate_size}"
-        if intermediate_size is not None
-        else ""
-    )
+    if intermediate_size is not None:
+        memory_estimation_cmd.extend(
+            ["--intermediate_size", str(intermediate_size)]
+        )
 
     result = subprocess.run(
         memory_estimation_cmd,
-        shell=True,
         capture_output=True,
         text=True,
     )

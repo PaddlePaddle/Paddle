@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -133,9 +134,16 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
         return false;
       }
+      // 6. next op should not be a while op
+      for (auto it = op->result(i).use_begin(); it != op->result(i).use_end();
+           ++it) {
+        if (it.owner()->isa<paddle::dialect::WhileOp>()) {
+          return false;
+        }
+      }
     }
 
-    // 6. maybe affect performence
+    // 7. maybe affect performence
     if (op->isa<paddle::dialect::FullOp>()) {
       auto next_ops = pir::GetUseOpsForOutput(op, 0);
       for (auto [next_op, _] : next_ops) {

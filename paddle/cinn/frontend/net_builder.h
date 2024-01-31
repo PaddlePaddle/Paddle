@@ -293,7 +293,7 @@ class NetBuilder {
 
   /**
    * @brief This OP is used to sum one or more variable of the input.
-   * @param x A Varaible list. The shape and data type of the list elements
+   * @param x A Variable list. The shape and data type of the list elements
    * should be consistent.
    * @return The sum of input `x`. its shape and data types are consistent with
    * `x`.
