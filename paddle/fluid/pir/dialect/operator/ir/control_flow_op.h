@@ -35,10 +35,10 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
                              std::vector<pir::Type> &&output_types);
 
   TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                                            pir::OperationArgument &argument,  // NOLINT
-                                            pir::Value cond,
-                                            std::unique_ptr<pir::Block> &&true_block,
-                    std::unique_ptr<pir::Block> &&false_block);
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value cond,
+                             std::unique_ptr<pir::Block> &&true_block,
+                             std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
   TEST_API pir::Block &true_block();
@@ -75,10 +75,10 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
   static constexpr const char **attributes_name = nullptr;
 
   TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value cond,
-                    const std::vector<pir::Value> &inputs,
-                    bool construct_body = true);
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value cond,
+                             const std::vector<pir::Value> &inputs,
+                             bool construct_body = true);
   TEST_API pir::Block &body();
   TEST_API pir::Value cond();
   const pir::Block::ArgsType &block_args() { return body().args(); }
