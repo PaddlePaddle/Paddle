@@ -161,7 +161,7 @@ phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value& value) {
+const phi::DDim& GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -295,7 +295,7 @@ class OpFusionPassHelper {
         // use current op as master op for schedule
         group->master_ops.insert(op);
 
-        // get opration unique id
+        // get operation unique id
         group->group_id = "id_" + std::to_string(index++);
         fusion_groups_[op] = group;
       }
@@ -492,7 +492,7 @@ class OpFusionPassHelper {
                return true;
              }
 
-             // NOTE, original code is below, if produer is not output op,
+             // NOTE, original code is below, if producer is not output op,
              // result always be true
              // !helper->output_ops_set_.count(producer);
              return true;
@@ -642,7 +642,7 @@ class OpFusionPassHelper {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
