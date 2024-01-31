@@ -240,5 +240,17 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                          fused_gemm_epilogue_op.result(1));
 }
 
+pir::Value array_pop(pir::Value input, int index) {
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::ArrayPopOp array_pop_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayPopOp>(
+            input, index);
+    return array_pop_op.result(1);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "pop only supports DenseTensorArrayType."));
+  }
+}
+
 }  // namespace dialect
 }  // namespace paddle

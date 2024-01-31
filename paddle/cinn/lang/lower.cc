@@ -319,7 +319,7 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
     const std::vector<Tensor>& tensor_args) {
   std::set<ir::Tensor> res;
   for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
-    for (const ir::Tensor& t : tensor_group->GetCrtlDepTensors(a->name)) {
+    for (const ir::Tensor& t : tensor_group->GetCtrlDepTensors(a->name)) {
       res.emplace(t);
     }
   }

@@ -32,9 +32,6 @@ void ComputeInlineTactic::Init(ScheduleContext* context) {
 
 void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
-  VLOG(5) << "[Start DoComputeInline] func body: "
-          << sch->GetModule().GetExprs().front();
-
   // TODO(LiuYang): Compute of ops will be rewrited so that we
   // don't use it in dynamic group_schedule rules temporarily.
   // if (IsProhibitScheduleExternCallBlock(node->Block())) {

@@ -14,13 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/dim_expr.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 
-namespace cinn::adt {
+namespace symbol {
 
-inline DimExpr SimplifyDimExpr(const DimExpr& dim_expr) {
-  return cinn::common::SimplifyDimExpr(dim_expr);
-}
+IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
 
-}  // namespace cinn::adt
+}  // namespace symbol
