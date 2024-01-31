@@ -596,7 +596,7 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
 
 // This function is used in Reorder schedule primitive. Since input loop
 // Expr(s) of Reorder doesn't give original for loop order, we have to
-// find the top (most outter) loop and bottom (most inner) among loop Expr(s)
+// find the top (most outer) loop and bottom (most inner) among loop Expr(s)
 std::pair<Expr, Expr> GetBoundaryOfReorderRange(
     const std::set<Expr, CompExpr>& loop_set) {
   Expr top = *loop_set.begin();
