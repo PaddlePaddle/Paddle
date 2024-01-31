@@ -345,13 +345,11 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
     }
   };
 
-  std::vector<std::string> trt_enter_var_names = {};
-  std::vector<std::string> trt_exclude_var_names = {};
   framework::ir::SubGraphFuser fuser(
       graph,
       teller,
-      trt_enter_var_names,
-      trt_exclude_var_names,
+      {},
+      {},
       Get<int>("min_subgraph_size") /*min subgraph size*/,
       "dlnne_engine");
   fuser();

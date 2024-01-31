@@ -865,15 +865,18 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::Exp_disableTensorRTNode(
+void AnalysisConfig::Specify_tensorrt_subgraph(
     const std::vector<std::string> &var_name_into_trt,
     const std::vector<std::string> &var_name_not_trt) {
-  trt_enter_var_names_.insert(trt_enter_var_names_.end(),
-                              var_name_into_trt.begin(),
-                              var_name_into_trt.end());
-  trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
-                                var_name_not_trt.begin(),
-                                var_name_not_trt.end());
+  if (!trt_enter_var_names_.empty()) {
+    trt_enter_var_names_.insert(trt_enter_var_names_.end(),
+                                var_name_into_trt.begin(),
+                                var_name_into_trt.end());
+  } else {
+    trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
+                                  var_name_not_trt.begin(),
+                                  var_name_not_trt.end());
+  }
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
