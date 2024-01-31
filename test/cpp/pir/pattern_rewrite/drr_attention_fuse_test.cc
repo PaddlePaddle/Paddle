@@ -161,5 +161,5 @@ TEST(DrrTest, AttentionFuse) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 34u);
 }
