@@ -890,14 +890,9 @@ def _getitem_static(x, indices):
                 adjusted_advanced_index
             )
 
-            if len(adjusted_advanced_index) > 1:
-                advanced_index_tensor = paddle.stack(
-                    adjusted_advanced_index, axis=-1
-                )
-            else:
-                # fast path for single bool tensor, since stack is much slower than unsuqeeze
-                advanced_index_tensor = adjusted_advanced_index[0].unsqueeze(-1)
-
+            advanced_index_tensor = paddle.stack(
+                adjusted_advanced_index, axis=-1
+            )
             out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
 
         if pos_of_new_dim != 0:
