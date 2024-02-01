@@ -4273,6 +4273,11 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 std::vector<symbol::DimExpr> ComputeBroadcastShape(
     const std::vector<symbol::DimExpr> &large_shape,
     const std::vector<symbol::DimExpr> &small_shape) {
+  IR_ENFORCE(large_shape.size() >= small_shape.size(),
+             "Size of large_shape is expected to be greater or equal size of "
+             "small_shape, but got [%d] >= [%d].",
+             large_shape.size(),
+             small_shape.size());
   std::vector<symbol::DimExpr> output_data;
   output_data.reserve(large_shape.size());
   auto rank_gap = large_shape.size() - small_shape.size();

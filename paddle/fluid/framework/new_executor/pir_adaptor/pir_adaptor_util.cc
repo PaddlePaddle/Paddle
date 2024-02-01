@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
+#include "glog/logging.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
@@ -38,6 +39,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
@@ -45,8 +47,6 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_type.h"
-
-#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -553,6 +553,14 @@ void HandleForSpecialOp(pir::Operation* op,
                         .AsString();
 
     auto value = op->operand_source(0);
+    Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
+    if (value.defining_op()->HasAttribute(kAttrIsPersisable) &&
+        value.attribute<pir::BoolAttribute>(kAttrIsPersisable).data()) {
+      VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+              << var_name;
+      scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+    }
+
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
@@ -563,12 +571,11 @@ void HandleForSpecialOp(pir::Operation* op,
     if (value_exe_info->HasVar(var_name)) {
       value_exe_info->UpdateValue2VarName(value, var_name);
     } else {
-      if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
-        const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
+      if (scope->FindVar(var_name) != nullptr) {
+        scope->EraseVars({var_name});
         VLOG(1) << "var " << var_name << " has been removed from scope";
       }
-      const_cast<Scope*>(value_exe_info->GetScope())
-          ->Rename(orig_name, var_name);
+      scope->Rename(orig_name, var_name);
       VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
       value_exe_info->Rename(var_name, orig_name);
     }

@@ -304,5 +304,22 @@ class TestDy2STWithSetValue(AmpTestBase):
         )
 
 
+class TestAMPState(unittest.TestCase):
+    def test_pir_amp_state(self):
+        with paddle.pir_utils.IrGuard():
+            amp_state = core._get_amp_state()
+            amp_state._use_promote = True
+            amp_state._amp_level = core.AmpLevel.O2
+            amp_state._amp_dtype = 'float16'
+            np.testing.assert_equal(core._get_amp_state()._use_promote, True)
+            np.testing.assert_equal(
+                core._get_amp_state()._amp_level, core.AmpLevel.O2
+            )
+            np.testing.assert_equal(core._get_amp_state()._amp_dtype, 'float16')
+            amp_state._use_promote = False
+            amp_state._amp_level = core.AmpLevel.O0
+            amp_state._amp_dtype = 'float32'
+
+
 if __name__ == '__main__':
     unittest.main()

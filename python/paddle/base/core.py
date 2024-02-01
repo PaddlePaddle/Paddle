@@ -291,6 +291,7 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
+        _get_amp_state,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
