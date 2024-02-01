@@ -26,6 +26,8 @@ void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
                                  std::move(interface));
 }
 
+OpPrintFn Dialect::PrintOperation(Operation *op) const { return nullptr; }
+
 DialectInterface::~DialectInterface() = default;
 
 IrContext *DialectInterface::ir_context() const {

@@ -41,13 +41,14 @@ void TestDialect::initialize() {
               SameOperandsAndResultTypeTraitOp3>();
 }
 
-void TestDialect::PrintOperation(pir::Operation *op,
-                                 pir::IrPrinter &printer) const {
-  printer.PrintOpResult(op);
-  printer.os << " =";
+pir::OpPrintFn TestDialect::PrintOperation(pir::Operation *op) const {
+  return [](pir::Operation *op, pir::IrPrinter &printer) {
+    printer.PrintOpResult(op);
+    printer.os << " =";
 
-  printer.os << " \"" << op->name() << "\"";
-  printer.PrintOpOperands(op);
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+  };
 }
 }  // namespace test
 IR_DEFINE_EXPLICIT_TYPE_ID(test::TestDialect)

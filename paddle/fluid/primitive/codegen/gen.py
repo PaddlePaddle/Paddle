@@ -51,6 +51,7 @@ BACKENDS_BLACK_LIST = [
     "assert",
     "embedding_sparse_grad",
     "embedding_grad",
+    "full",
 ]
 
 # prim op with one input and one output, with no attribute

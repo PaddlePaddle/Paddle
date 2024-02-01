@@ -50,10 +50,18 @@ need_export_symbol_op_list = [
     'AbsOp',
     'FullOp',
     'UniformOp',
+    'ScaleOp',
+    'AddOp',
     'Conv2dOp',
     'BatchNormOp',
     'FetchOp',
+    'MatmulOp',
+    'SoftmaxOp',
+    'ReshapeOp',
     'TransposeOp',
+    'LessThanOp',
+    'AddGradOp',
+    'MatmulGradOp',
 ]
 
 # =====================================

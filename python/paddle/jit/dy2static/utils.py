@@ -35,6 +35,7 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
 from .ast_utils import ast_to_source_code
@@ -479,9 +480,9 @@ class GetterSetterHelper:
 
     def __init__(self, getter_func, setter_func, *name_lists):
         name_lists = ([] if x is None else x for x in name_lists)
-        name_sets = (set(x) for x in name_lists)
+        name_sets = (OrderedSet(x) for x in name_lists)
         self._union = list(
-            functools.reduce(lambda x, y: x | y, name_sets, set())
+            functools.reduce(lambda x, y: x | y, name_sets, OrderedSet())
         )
         self._union.sort()
         self.getter = getter_func
