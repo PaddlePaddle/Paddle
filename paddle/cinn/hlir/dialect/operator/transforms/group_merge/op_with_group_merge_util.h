@@ -181,7 +181,6 @@ inline bool reduce_fuse_reduce(
 
 inline bool is_horizontal_relation(::pir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
-  VLOG(0) << "#### is_horizontal_relation ######";
   auto check_depency = [&](::pir::Operation* op) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
@@ -424,7 +423,6 @@ inline bool reduce_fuse_broadcast(
     if (!find_reducer(op, producer, consumer->ops_set)) {
       continue;
     }
-
     const auto& broadcast_shape =
         shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
     auto broadcast_axes = GetBroadcastAxes(op, shape_analysis);
