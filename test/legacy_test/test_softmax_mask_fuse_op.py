@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base, incubate
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -51,10 +52,12 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X"], "Out", check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -72,10 +75,12 @@ class TestSoftmaxMaskFuseOp0(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -93,18 +98,23 @@ class TestSoftmaxMaskFuseOp01(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+        )
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestDropoutBiasFuseOp3(unittest.TestCase):
+    @test_with_pir_api
     def test_static_result(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_x = paddle.static.data(
                 name="x", shape=[1, 1, 8, 32], dtype="float32"
             )
@@ -120,7 +130,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
 
             exe = base.Executor(base.CUDAPlace(0))
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": x_in_np, "mask": mask_in_np},
                 fetch_list=[rst],
             )

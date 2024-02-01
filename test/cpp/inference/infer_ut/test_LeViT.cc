@@ -53,11 +53,11 @@ TEST(gpu_tester_LeViT, analysis_gpu_bz1) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
   // get infer results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   std::cout << "finish test" << std::endl;
@@ -84,11 +84,11 @@ TEST(tensorrt_tester_LeViT, trt_fp32_bz2) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
   // get infer results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   std::cout << "finish test" << std::endl;
@@ -123,10 +123,10 @@ TEST(tensorrt_tester_LeViT, serial_diff_batch_trt_fp32) {
         truth_output_data;
     // get groudtruth by disbale ir
     SingleThreadPrediction(
-        pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+        pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
     // get infer results
     SingleThreadPrediction(
-        pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+        pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
     // check outputs
     CompareRecord(&truth_output_data, &infer_output_data);
   }
@@ -155,14 +155,14 @@ TEST(tensorrt_tester_LeViT, multi_thread4_trt_fp32_bz2) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i),
+                         pred_pool.Retrieve(i),
                          &my_input_data_map,
                          &infer_output_data,
                          10);
@@ -209,7 +209,7 @@ TEST(tensorrt_tester_LeViT, multi_stream_thread4_trt_fp32_bz2) {
 
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
