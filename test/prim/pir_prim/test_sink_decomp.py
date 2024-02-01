@@ -198,7 +198,7 @@ class TestHardSwishSink(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [8, 16, 32, 64]
-        self.x = np.random.random(self.shape_x).astype("float16")
+        self.x = np.random.random(self.shape_x).astype("float32")
         self.prog = None
 
     def base_net(self, flag=None):
@@ -210,7 +210,7 @@ class TestHardSwishSink(unittest.TestCase):
             core._set_prim_all_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data('x', self.shape_x, dtype='float16')
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
             x.stop_gradient = False
             sum_out = F.hardswish(x)
             [new_out] = decompose(main_program, [sum_out])
