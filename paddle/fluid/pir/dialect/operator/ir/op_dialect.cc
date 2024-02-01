@@ -46,49 +46,20 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    std::vector<symbol::DimExpr> out_dims;
+    symbol::TensorListShapeOrDataDimExprs shape_data_list{};
 
-    // Currently for all operand : type.dims == 1u
     for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto type =
-          op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(type, "Currently only support DenseTensorType.");
-      IR_ENFORCE(type.dims().size() == 0u,
-                 "Currently CombineOp only support 0-d DenseTensorType for "
-                 "InferSymbolicShape. But the dims of the %d-th "
-                 "DenseTensorType is %d.",
-                 i,
-                 type.dims().size());
+      IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
+                 "Currently InferSymbolicShape of CombineOp only support "
+                 "DenseTensorType.");
+
+      shape_data_list.emplace_back(
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
+              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
     }
 
-    auto operand_source_1st_data =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
-    if (operand_source_1st_data.has_value()) {
-      for (auto operand_source : op->operands_source()) {
-        auto source_data =
-            shape_analysis->GetShapeOrDataForValue(operand_source)
-                .data()
-                .value();
-        out_dims.push_back(source_data[0]);
-      }
-    }
-
-    // TODO(zhangbopd): use op->result(0) to infer the shape
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs(out_dims)};
-
-    if (operand_source_1st_data.has_value()) {
-      std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
-      symbol::ShapeOrDataDimExprs temp_shape_data{
-          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims)};
-      shape_data = temp_shape_data;
-    }
-
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
-    auto res = op->result(0);
-    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 
@@ -122,16 +93,30 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(sym_shape)};
 
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
-
     shape_analysis->SetShapeOrDataForValue(res0, shape_data);
 
     return true;
   }
 
   ParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct ShadowOutputOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Value operand_source = op->operand_source(0);
+    auto input_shapeordata =
+        shape_analysis->GetShapeOrDataForValue(operand_source);
+
+    symbol::ShapeOrDataDimExprs shape_data = input_shapeordata;
+    pir::shape::SetShapeAttrForOp(op, shape_data);
+
+    return true;
+  }
+
+  ShadowOutputOpInferSymbolicShapeInterfaceModel()
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
@@ -152,6 +137,12 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(std::move(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                ParameterOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+  info.AttachInterface(
+      std::move(pir::InterfaceValue::Get<
+                InferSymbolicShapeInterface,
+                ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {

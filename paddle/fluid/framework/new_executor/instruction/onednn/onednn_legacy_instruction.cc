@@ -226,6 +226,11 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
           op_normalizer.GetLegacyArgName(fluid_op_name, input_name));
     }
   }
+
+  // Step3: Mark is_run_mkldnn_kernel=true
+  phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
+  new_config.is_run_mkldnn_kernel = true;
+  infer_meta_context_.SetMetaConfig(new_config);
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {

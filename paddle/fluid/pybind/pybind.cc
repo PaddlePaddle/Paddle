@@ -2241,7 +2241,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
-  BindVarDsec(&m);
+  BindVarDesc(&m);
   BindOpDesc(&m);
   BindCostModel(&m);
   BindConstValue(&m);

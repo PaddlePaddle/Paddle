@@ -166,6 +166,16 @@
     func : c_allreduce_max
   inplace : (x -> out)
 
+- op : c_allreduce_min
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_min
+  inplace : (x -> out)
+
 - op : c_allreduce_prod
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
@@ -375,6 +385,15 @@
     func : distribute_fpn_proposals
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
+
+- op : distributed_lookup_table
+  args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
+  output : Tensor[](outputs){ids.size()}
+  infer_meta :
+    func : DistributeLookupTableInferMeta
+  kernel :
+    func : distributed_lookup_table
+    data_type : dtype
 
 - op : divide
   args : (Tensor x, Tensor y)
@@ -1022,6 +1041,7 @@
   kernel :
     func : prod
   backward : prod_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)

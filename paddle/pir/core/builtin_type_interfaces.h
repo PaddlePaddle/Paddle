@@ -103,7 +103,7 @@ class IR_API ShapedTypeInterface
   ///
   /// \brief Check whether shape has any size indicating a dynamic dimension.
   ///
-  bool HasStaticShape() const { return (*this).HasRank() && !IsDynamicShape(); }
+  bool IsStaticShape() const { return (*this).HasRank() && !IsDynamicShape(); }
 
   ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for

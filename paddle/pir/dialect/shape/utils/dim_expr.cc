@@ -126,14 +126,6 @@ bool DimExpr::operator!=(const DimExpr& other) const {
 }
 
 namespace {
-template <class... Ts>
-struct Overloaded : Ts... {
-  using Ts::operator()...;
-};
-
-template <class... Ts>
-Overloaded(Ts...) -> Overloaded<Ts...>;
-
 std::string ListDimExprToString(const List<DimExpr>& dim_exprs,
                                 const std::string& delim = ", ") {
   std::string ret;
@@ -182,67 +174,17 @@ std::ostream& operator<<(std::ostream& stream, const DimExpr& dim_expr) {
 }
 
 std::ostream& operator<<(std::ostream& stream,
-                         const ShapeOrDataDimExprs& shape_or_data) {
-  std::string result;
-  auto lambdas = Overloaded{
-      [&result](const TensorShapeOrDataDimExprs& tensor_shape_data) {
-        result += "shape[";
-        for (size_t i = 0; i < tensor_shape_data.shape().size(); ++i) {
-          result += ToString(tensor_shape_data.shape()[i]);
-          if (i < tensor_shape_data.shape().size() - 1) {
-            result += ", ";
-          }
-        }
-        result += "]";
-        if (tensor_shape_data.data()) {
-          result += ", data[";
-          for (size_t i = 0; i < tensor_shape_data.data()->size(); ++i) {
-            result += ToString(tensor_shape_data.data()->at(i));
-            if (i < tensor_shape_data.data()->size() - 1) {
-              result += ", ";
-            }
-          }
-          result += "]";
-        } else {
-          result += ", data[NULL]";
-        }
-      },
-      [&result](const TensorListShapeOrDataDimExprs& tensor_list_shape_data) {
-        for (size_t i = 0; i < tensor_list_shape_data.size(); ++i) {
-          result += "shape[";
-          for (size_t i = 0; i < tensor_list_shape_data[i].shape().size();
-               ++i) {
-            result += ToString(tensor_list_shape_data[i].shape()[i]);
-            if (i < tensor_list_shape_data[i].shape().size() - 1) {
-              result += ", ";
-            }
-          }
-          result += "]";
-          if (tensor_list_shape_data[i].data()) {
-            result += ", data[";
-            for (size_t i = 0; i < tensor_list_shape_data[i].data()->size();
-                 ++i) {
-              result += ToString(tensor_list_shape_data[i].data()->at(i));
-              if (i < tensor_list_shape_data[i].data()->size() - 1) {
-                result += ", ";
-              }
-            }
-            result += "]";
-          } else {
-            result += ", data[NULL]";
-          }
-
-          if (i < tensor_list_shape_data.size() - 1) {
-            result += ", ";
-          }
-        }
-      }};
-
-  std::visit(lambdas, shape_or_data.variant());
-
-  stream << result;
-
-  return stream;
+                         const std::vector<DimExpr>& dim_exprs) {
+  std::stringstream ss;
+  ss << "[";
+  for (size_t i = 0; i < dim_exprs.size(); ++i) {
+    ss << ToString(dim_exprs[i]);
+    if (i < dim_exprs.size() - 1) {
+      ss << ", ";
+    }
+  }
+  ss << "]";
+  return stream << ss.str();
 }
 
 namespace {

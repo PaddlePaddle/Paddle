@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -83,7 +84,9 @@ def group_norm_wrapper(
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "comp"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.float64
@@ -119,9 +122,14 @@ class TestGroupNormOp(OpTest):
         inplace_atol = 0
         place = core.CPUPlace()
 
-        self.check_output_with_place(place, atol=atol, check_pir=True)
+        check_prim_output = True if self.data_format == "NCHW" else False
+        self.check_output_with_place(
+            place, atol=atol, check_pir=True, check_prim_pir=check_prim_output
+        )
 
         if core.is_compiled_with_cuda():
+            self.fw_comp_atol = 1e-13
+            self.fw_comp_rtol = 1e-13
             place = core.CUDAPlace(0)
             # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
             # computation order when multiple threads write the same address. So the
@@ -132,7 +140,11 @@ class TestGroupNormOp(OpTest):
             # relative error is 1e-05 in numpy.allclose by default.
             # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol, check_pir=True
+                place,
+                atol=atol,
+                inplace_atol=inplace_atol,
+                check_pir=True,
+                check_prim_pir=check_prim_output,
             )
 
     def do_compare_between_place(self):
@@ -168,14 +180,26 @@ class TestGroupNormOp(OpTest):
             self.do_compare_between_place()
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+
+        self.rev_comp_atol = 1e-12
+        self.rev_comp_rtol = 1e-12
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+                place,
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_pir=True,
+                check_prim_pir=check_prim_grad,
             )
 
     def init_test_case(self):
@@ -192,6 +216,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         atol = 1e-3
         inplace_atol = 1e-3
 
+        check_prim_output = True if self.data_format == "NCHW" else False
         place = core.CUDAPlace(0)
         # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
         # computation order when multiple threads write the same address. So the
@@ -201,15 +226,24 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_prim_pir=check_prim_output
+        )
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
@@ -224,7 +258,9 @@ class TestGroupNormFP16OP(TestGroupNormOp):
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.prim_op_type = "comp"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NCHW"
         self.dtype = np.uint16
@@ -259,6 +295,7 @@ class TestGroupNormBF16Op(OpTest):
         atol = 1e-2
         inplace_atol = 1e-2
 
+        check_prim_output = True if self.data_format == "NCHW" else False
         place = core.CUDAPlace(0)
         # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
         # computation order when multiple threads write the same address. So the
@@ -268,15 +305,29 @@ class TestGroupNormBF16Op(OpTest):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_prim_pir=check_prim_output
+        )
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        # prim bf16 has diff in windows
+        if sys.platform == "win32":
+            self.rev_comp_atol = 1e-1
+            self.rev_comp_rtol = 1e-1
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
@@ -341,6 +392,8 @@ class TestGroupNormOpLargeData(TestGroupNormOp):
         self.shape = (2, 32, 64, 64)
         self.attrs['groups'] = 8
         self.compare_between_place = True
+        self.fw_comp_atol = 1e-10
+        self.fw_comp_rtol = 1e-10
 
 
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):

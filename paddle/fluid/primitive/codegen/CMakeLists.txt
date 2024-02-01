@@ -11,6 +11,12 @@ set(update_fwd_pd_op_path
 set(rev_pd_op_path
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops_backward.parsed.yaml
 )
+set(fused_op_path
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+)
+set(fused_rev_op_path
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+)
 set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
@@ -25,8 +31,9 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${scripts} --fwd_path ${fwd_path} --rev_path
     ${rev_path} --fwd_pd_op_path ${fwd_pd_op_path} --update_fwd_pd_op_path
     ${update_fwd_pd_op_path} --rev_pd_op_path ${rev_pd_op_path} --prim_path
-    ${prim_path} --templates_dir ${templates_dir} --compat_path ${compat_path}
-    --destination_dir ${destination_dir}
+    ${prim_path} --fused_op_path ${fused_op_path} --fused_rev_op_path
+    ${fused_rev_op_path} --templates_dir ${templates_dir} --compat_path
+    ${compat_path} --destination_dir ${destination_dir}
   RESULT_VARIABLE _result)
 if(${_result})
   message(

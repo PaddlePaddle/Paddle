@@ -187,6 +187,47 @@ std::vector<std::vector<pir::Value>> Increment_Op::Vjp(
   return res;
 }
 
+std::vector<std::vector<pir::Value>> AssignOut_Op::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "assign_out_ op's inputs size should be 2, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      platform::errors::InvalidArgument(
+          "assign_out_ op's outputs size should be 1, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of assign_out__grad";
+
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of assign_out__grad";
+
+  VLOG(6) << "Vjp prepare call assign_out_'s vjp interface";
+
+  VLOG(6) << "Vjp prepare stop gradient of assign_out__grad";
+
+  std::vector<std::vector<pir::Value>> res(2);
+  res[0].resize(1);
+  if (!stop_gradients[0][0]) {
+    res[0][0] = out_grads[0][0];
+  }
+  res[1].resize(1);
+  if (!stop_gradients[1][0]) {
+    res[1][0] = paddle::dialect::zeros_like(inputs_[1][0]);
+  }
+  return res;
+}
+
 std::vector<std::vector<pir::Value>> ArrayWrite_Op::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,

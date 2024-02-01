@@ -56,8 +56,8 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        # Setting "FLAGS_cinn_convert_dynamic_to_static_dim=S0:64" can convert S0 to 64
-        # "FLAGS_cinn_convert_dynamic_to_static_dim=S0:64,S1:96" can change S0 and S1 at the same time
+        # Setting "FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:64" can convert S0 to 64
+        # "FLAGS_cinn_convert_dynamic_dim_to_static_dim=S0:64,S1:96" can change S0 and S1 at the same time
         self.shape = [64, 96]
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
