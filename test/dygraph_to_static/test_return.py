@@ -326,8 +326,7 @@ class TestReturnIf(Dy2StTestBase):
         else:
             self.assertEqual(dygraph_res, static_res)
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
-    @test_legacy_only
+    @test_with_pir_api
     @test_ast_only
     def test_transformed_static_result(self):
         self.init_dygraph_func()
@@ -429,8 +428,7 @@ class TestReturnIfElse(Dy2StTestBase):
         else:
             self.assertEqual(dygraph_res, static_res)
 
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
-    @test_legacy_only
+    @test_with_pir_api
     @test_ast_only
     def test_transformed_static_result(self):
         self.init_dygraph_func()

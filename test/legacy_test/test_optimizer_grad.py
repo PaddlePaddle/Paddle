@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base.backward import _append_grad_suffix_
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -248,6 +249,7 @@ class TestOptimizer(unittest.TestCase):
     not base.core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestSGDOptimizer(TestOptimizer):
+    @test_with_pir_api
     def test_optimizer_multiblock_except(self):
         with self.assertRaisesRegex(
             ValueError, "var param_y not in this block"
