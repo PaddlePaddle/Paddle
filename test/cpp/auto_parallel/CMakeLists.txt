@@ -1,19 +1,13 @@
-cc_test(device_mesh_test SRCS device_mesh_test.cc)
+paddle_test(device_mesh_test SRCS device_mesh_test.cc)
 
-cc_test(process_mesh_test SRCS process_mesh_test.cc)
+paddle_test(process_mesh_test SRCS process_mesh_test.cc)
 
-cc_test(
-  dist_attr_test
-  SRCS dist_attr_test.cc
-  DEPS proto_desc)
+paddle_test(dist_attr_test SRCS dist_attr_test.cc)
 
 if(WITH_DISTRIBUTE)
   cc_library(spmd_rule_test_util SRCS spmd_rule_test_util.cc)
   add_dependencies(spmd_rule_test_util spmd_rules)
-  cc_test(
-    dist_tensor_test
-    SRCS dist_tensor_test.cc
-    DEPS phi common)
+  paddle_test(dist_tensor_test SRCS dist_tensor_test.cc DEPS common)
 
   paddle_test(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rule_test_util
               spmd_rules)
