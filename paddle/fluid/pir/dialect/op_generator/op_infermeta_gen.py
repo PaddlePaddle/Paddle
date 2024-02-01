@@ -98,6 +98,9 @@ def get_infermeta_inputs_str(
     infermeta_inputs_str += "\n"
 
     infermeta_inputs_str += '  VLOG(4) << "Builder construction outputs";\n'
+    infermeta_inputs_str += (
+        '  bool is_from_tensor = false; (void) is_from_tensor;\n'
+    )
     # Prepare input type
     for idx in range(len(op_input_name_list)):
         if op_input_name_list[idx] not in inuse_infer_meta_args:
@@ -250,35 +253,9 @@ def GenBuildOutputsPart2(
 
 """
 
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-                          {name}_.defining_op()
-                          ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attribute("value"))));
-  }} else if ({name}_.type().isa<pir::VectorType>()) {{
-    size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
-    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
-    {name}.SetFromTensor(true);
-  }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
-    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    size_t {name}_size = common::product({name}_dim);
-    if (common::contain_unknown_dim({name}_dim)) {{
-      {name}_size = 1;
-    }}
-    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
-    {name}.SetFromTensor(true);
-  }} else if ({name}_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {{
-    common::DDim {name}_dim = {name}_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims();
-    size_t {name}_size = common::product({name}_dim);
-    if (common::contain_unknown_dim({name}_dim)) {{
-      {name}_size = 1;
-    }}
-    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
-    {name}.SetFromTensor(true);
-  }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType or AllocatedDenseTensorType"));
-  }}\n"""
+    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  is_from_tensor = false;
+  phi::IntArray {name} = std::move(phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor)));
+  if (is_from_tensor) {name}.SetFromTensor(true);\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
   if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{

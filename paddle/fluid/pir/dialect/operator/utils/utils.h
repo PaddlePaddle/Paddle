@@ -162,5 +162,8 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
 
 std::string GetValueDataType(const pir::Value& value);
 
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
+
 }  // namespace dialect
 }  // namespace paddle
