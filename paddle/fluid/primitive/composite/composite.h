@@ -778,6 +778,27 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   return std::make_tuple(out, mean_out, var_out);
 }
 
+template <typename T>
+Tensor square_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor two;
+  two = full<T>(empty_shape, 2, x_cast.dtype());
+
+  auto ans = elementwise_pow<T>(x_cast, two);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
