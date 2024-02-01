@@ -72,7 +72,6 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
     return std::visit(IsDimTensorOrListDimExpr, sym_shape.variant());
   };
-
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;

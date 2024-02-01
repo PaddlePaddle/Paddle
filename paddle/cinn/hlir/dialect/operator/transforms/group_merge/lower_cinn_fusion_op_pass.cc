@@ -603,7 +603,8 @@ CreateGroupShapeOrDataExprs(
   for (auto* op : group->ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
-      if (operand && shape_analysis.HasShapeOrDataForValue(operand)) {
+      if (operand && value2shape.find(result) == value2shape.end() &&
+          shape_analysis.HasShapeOrDataForValue(operand)) {
         value2shape.insert(
             {operand, shape_analysis.GetShapeOrDataForValue(operand)});
       }
@@ -652,7 +653,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     pir::Operation* complied_op =
         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
 
-    auto yeild_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i), complied_op->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
