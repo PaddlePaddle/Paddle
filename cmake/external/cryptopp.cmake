@@ -15,6 +15,7 @@
 include(ExternalProject)
 
 set(CRYPTOPP_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cryptopp)
+set(CRYPTOPP_CMAKE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cryptopp-cmake)
 set(CRYPTOPP_PREFIX_DIR ${THIRD_PARTY_PATH}/cryptopp)
 set(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
 set(CRYPTOPP_INCLUDE_DIR
@@ -67,12 +68,12 @@ ExternalProject_Add(
   SOURCE_DIR ${CRYPTOPP_SOURCE_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND
-  COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
-  COMMAND git clone ${GIT_URL}/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
-  COMMAND cd "<SOURCE_DIR>/cmake" && git checkout tags/${CRYPTOPP_TAG} -b
-          ${CRYPTOPP_TAG}
-  COMMAND ${CMAKE_COMMAND} -E copy_directory "<SOURCE_DIR>/cmake/"
-          "<SOURCE_DIR>/"
+  COMMAND ${CMAKE_COMMAND} -E copy "${CRYPTOPP_CMAKE_SOURCE_DIR}/CMakeLists.txt"
+          "<SOURCE_DIR>/CMakeLists.txt"
+  COMMAND
+    ${CMAKE_COMMAND} -E copy
+    "${CRYPTOPP_CMAKE_SOURCE_DIR}/cryptopp-config.cmake"
+    "<SOURCE_DIR>/cryptopp-config.cmake"
   COMMAND ${CRYPTOPP_PATCH_COMMAND}
   INSTALL_DIR ${CRYPTOPP_INSTALL_DIR}
   CMAKE_ARGS ${CRYPTOPP_CMAKE_ARGS}
