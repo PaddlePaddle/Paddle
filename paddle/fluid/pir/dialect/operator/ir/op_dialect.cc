@@ -48,7 +48,6 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
     symbol::TensorListShapeOrDataDimExprs shape_data_list{};
 
-    // Currently for all operand : type.dims == 1u
     for (size_t i = 0; i < op->num_operands(); ++i) {
       IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
                  "Currently InferSymbolicShape of CombineOp only support "
