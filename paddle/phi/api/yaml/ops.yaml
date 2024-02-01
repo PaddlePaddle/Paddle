@@ -1202,6 +1202,16 @@
     data_type : anchors
   optional : rpn_rois_num
 
+- op : graph_khop_sampler
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
+  output : Tensor(out_src), Tensor(out_dst), Tensor(sample_index), Tensor(reindex_x), Tensor(out_eids)
+  infer_meta :
+    func : GraphKhopSamplerInferMeta
+  kernel :
+    func : graph_khop_sampler
+    data_type : row
+  optional : eids
+
 - op : graph_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
   output : Tensor(out), Tensor(out_count), Tensor(out_eids)
