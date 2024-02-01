@@ -13,6 +13,7 @@
 # limitations under the License.
 import unittest
 
+import numpy as np
 import utils
 
 import paddle
@@ -77,13 +78,12 @@ class TestRotaryPosEmb(unittest.TestCase):
 
     def test_eval(self):
         cinn_outs = self.eval(use_cinn=True)
-        # dy_outs = self.eval(use_cinn=False)
+        dy_outs = self.eval(use_cinn=False)
 
-        # TODO(phlrain): Need to check result
-        # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
-        #     np.testing.assert_allclose(
-        #         cinn_out.numpy(), dy_out.numpy(), atol=1e-8
-        #     )
+        for cinn_out, dy_out in zip(cinn_outs, dy_outs):
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-8
+            )
 
 
 if __name__ == '__main__':
