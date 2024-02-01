@@ -24,6 +24,18 @@ PD_DECLARE_int32(cinn_error_message_level);
 namespace cinn {
 namespace ir {
 
+struct BroadcastInfo {
+  // BroadcastInfo( coststd::vector<int64_t> broadcast_axes,
+  // std::vector<int64_t> output_shape )
+  std::vector<int64_t> broadcast_axes;
+  std::vector<int64_t> output_shape;
+
+  bool with_constrain{false};
+  bool first_broadcast{false};
+  bool full_broadcast{false};
+  std::string op_name;
+};
+
 /**
  * A struct representing a module that contains Expr. This struct is only used
  * in Schedule process.
@@ -97,6 +109,13 @@ class ScheduleBase {
   virtual Expr GetBlock(const std::string& block_name) const = 0;
   virtual std::vector<Expr> Split(const Expr& loop,
                                   const std::vector<int>& factors) = 0;
+
+  virtual void Broadcast(const std::string& block_name,
+                         const cinn::ir::BroadcastInfo& info) = 0;
+
+  virtual void BroadcastToElementwise(const std::string& block_name,
+                                      const std::vector<int64_t>& axes) = 0;
+
   virtual std::vector<Expr> Split(const Expr& loop,
                                   const std::vector<Expr>& factors) = 0;
   virtual std::vector<Expr> SamplePerfectTile(
