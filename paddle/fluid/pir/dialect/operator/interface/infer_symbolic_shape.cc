@@ -20,6 +20,15 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
+// This file implements the infer_symbolic_shape interface for both paddle and
+// cinn operators.
+
+// Add `interfaces : paddle::dialect::InferSymbolicShapeInterface` in relative
+// yaml file to conresponding op.
+
+// Since necessary checks have been done in the Op's `InferMeta` and `VeriySig`,
+// no more repetitive work here.
+
 namespace paddle::dialect {
 
 bool InferSymbolicShapeInterface::InferSymbolicShape(
@@ -248,6 +257,16 @@ bool ShapeSrOpInferSymbolicShape(
   return ShapeOpInferSymbolicShape(op, shape_analysis);
 }
 
+void BuildCstrEqForTensorListAlongAxis(
+    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    symbol::TensorListShapeOrDataDimExprs shape_data_list,
+    int axis) {
+  for (size_t i = 1; i < shape_data_list.size(); ++i) {
+    shape_analysis->CreateDimExprBuilder().CstrEq(
+        shape_data_list[0].shape()[axis], shape_data_list[i].shape()[axis]);
+  }
+}
+
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -259,25 +278,33 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
       shape_analysis->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  // TODO(zhangbopd): Only For 0-Dim tensor case, and else branch is not
-  // implemented yet.
-  const auto &GetDimTensorExprs = [&]() -> std::vector<symbol::DimExpr> {
-    std::vector<symbol::DimExpr> dim_exprs;
+  int rank = shape_data_list[0].shape().size();
+  if (axis < 0) axis += rank + 1;
+
+  const symbol::ShapeOrDataDimExprs shape_data = [&] {
+    std::vector<symbol::DimExpr> shape_dim_exprs;
+    std::vector<symbol::DimExpr> data_dim_exprs;
     for (size_t i = 0; i < shape_data_list.size(); ++i) {
       if (shape_data_list[i].data().has_value() && axis == 0) {
-        dim_exprs.emplace_back(shape_data_list[i].data().value()[0]);
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "StackOpInferSymbolicShape is now only support 0-Dim tensor."));
+        data_dim_exprs.emplace_back(shape_data_list[i].data().value()[0]);
       }
     }
-    return dim_exprs;
-  };
-  const std::vector<symbol::DimExpr> out_dims{
-      static_cast<std::int64_t>(shape_data_list.size())};
-  const std::vector<symbol::DimExpr> out_dims_data = GetDimTensorExprs();
-  symbol::ShapeOrDataDimExprs shape_data(
-      symbol::TensorShapeOrDataDimExprs(out_dims, out_dims_data));
+
+    if (!data_dim_exprs.empty()) {
+      shape_dim_exprs.emplace_back(
+          static_cast<std::int64_t>(shape_data_list.size()));
+    } else {
+      for (size_t i = 0; i < rank; ++i) {
+        if (i == static_cast<size_t>(axis)) continue;
+        BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
+      }
+      shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
+                             static_cast<std::int64_t>(shape_data_list.size()));
+    }
+
+    return symbol::ShapeOrDataDimExprs(
+        symbol::TensorShapeOrDataDimExprs(shape_dim_exprs, data_dim_exprs));
+  }();
 
   op->set_attribute(
       "symbolic_shape",
@@ -293,14 +320,10 @@ bool ReduceInferDim(pir::Operation *op,
                     bool keep_dim,
                     bool reduce_all) {
   auto x = op->operand_source(0);
-  std::vector<int64_t> x_dims =
-      common::vectorize(x.type().dyn_cast<pir::DenseTensorType>().dims());
-  int x_rank = x_dims.size();
+  int x_rank = x.type().dyn_cast<pir::DenseTensorType>().dims().size();
 
   std::vector<int64_t> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
-    // we always assume the value in axis are valid, since it has been checked
-    // in Op's InferMeta
     if (axis[i] < 0) {
       formated_axis[i] = axis[i] + x_rank;
     }
@@ -351,8 +374,6 @@ bool ReduceInferDim(pir::Operation *op,
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(1) << "SumOpInferSymbolicShape begin";
-
   const auto &attributes = op->attributes();
   bool keepdim = attributes.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
 
