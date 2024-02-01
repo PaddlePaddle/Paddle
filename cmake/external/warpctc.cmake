@@ -112,7 +112,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
-             -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
+             -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DWITH_TORCH=OFF
              -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
              -DBUILD_SHARED=ON

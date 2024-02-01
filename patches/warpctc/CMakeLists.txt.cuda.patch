@@ -1,6 +1,6 @@
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -63,44 +63,54 @@
+--- old/CMakeLists.txt	2024-02-01 02:29:51.187155924 +0000
++++ new/CMakeLists.txt	2024-02-01 02:45:09.949217730 +0000
+@@ -63,44 +63,6 @@
      add_definitions(-DCTC_DISABLE_OMP)
  endif()
  
@@ -18,15 +18,13 @@
 -set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_52,code=sm_52")
 -
 -IF (CUDA_VERSION VERSION_GREATER "7.6")
-+if(${CUDA_ARCH_NAME} STREQUAL "Pascal")
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60")
 -    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
 -    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_62,code=sm_62")
 -ENDIF()
 -
 -IF ((CUDA_VERSION VERSION_GREATER "9.0") OR (CUDA_VERSION VERSION_EQUAL "9.0"))
-+elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
 -ENDIF()
 -
 -IF ((CUDA_VERSION VERSION_GREATER "10.0") OR (CUDA_VERSION VERSION_EQUAL "10.0"))
@@ -34,8 +32,7 @@
 -ENDIF()
 -
 -IF ((CUDA_VERSION VERSION_GREATER "11.0") OR (CUDA_VERSION VERSION_EQUAL "11.0"))
-+elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
 -ENDIF()
 -
 -IF ((CUDA_VERSION VERSION_GREATER "11.2") OR (CUDA_VERSION VERSION_EQUAL "11.2"))
@@ -43,49 +40,8 @@
 -ENDIF()
 -
 -IF ((CUDA_VERSION VERSION_GREATER "11.8") OR (CUDA_VERSION VERSION_EQUAL "11.8"))
-+elseif(${CUDA_ARCH_NAME} STREQUAL "Hopper")
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
 -ENDIF()
-+else()
-+    # need to be at least 30 or __shfl_down in reduce wont compile
-+    IF (CUDA_VERSION VERSION_LESS "11.0")
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_30,code=sm_30")
-+    ENDIF()
-+    
-+    # sm35 is deprecated after cuda 12.0
-+    IF (CUDA_VERSION VERSION_LESS "12.0")
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_35,code=sm_35")
-+    ENDIF()
-+    
-+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_50,code=sm_50")
-+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_52,code=sm_52")
-+    
-+    IF (CUDA_VERSION VERSION_GREATER "7.6")
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60")
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_62,code=sm_62")
-+    ENDIF()
-+    
-+    IF ((CUDA_VERSION VERSION_GREATER "9.0") OR (CUDA_VERSION VERSION_EQUAL "9.0"))
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_70,code=sm_70")
-+    ENDIF()
-+    
-+    IF ((CUDA_VERSION VERSION_GREATER "10.0") OR (CUDA_VERSION VERSION_EQUAL "10.0"))
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
-+    ENDIF()
-+    
-+    IF ((CUDA_VERSION VERSION_GREATER "11.0") OR (CUDA_VERSION VERSION_EQUAL "11.0"))
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80")
-+    ENDIF()
-+    
-+    IF ((CUDA_VERSION VERSION_GREATER "11.2") OR (CUDA_VERSION VERSION_EQUAL "11.2"))
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_86,code=sm_86")
-+    ENDIF()
-+    
-+    IF ((CUDA_VERSION VERSION_GREATER "11.8") OR (CUDA_VERSION VERSION_EQUAL "11.8"))
-+        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
-+    ENDIF()
-+endif()
  
  IF(NOT APPLE AND NOT WIN32)
      set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
