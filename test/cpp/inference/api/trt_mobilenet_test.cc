@@ -29,7 +29,7 @@ TEST(PredictorPool, use_gpu) {
   config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
 
-  auto predictor = pred_pool.Retrive(0);
+  auto predictor = pred_pool.Retrieve(0);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
   std::vector<int> in_shape = {1, 3, 224, 224};
@@ -55,7 +55,7 @@ TEST(PredictorPool, use_trt_cuda_graph) {
   config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
 
-  auto predictor = pred_pool.Retrive(0);
+  auto predictor = pred_pool.Retrieve(0);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
   std::vector<int> in_shape = {1, 3, 224, 224};

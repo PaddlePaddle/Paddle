@@ -51,9 +51,9 @@ class IR_API IrPrinter : public BasicIrPrinter {
   /// @brief dispatch to custom printer function or PrintGeneralOperation
   void PrintOperation(Operation* op);
   /// @brief print operation itself without its regions
-  void PrintGeneralOperation(Operation* op);
+  void PrintOperationWithNoRegion(Operation* op);
   /// @brief print operation and its regions
-  void PrintFullOperation(Operation* op);
+  void PrintGeneralOperation(Operation* op);
 
   void PrintRegion(const Region& Region);
   void PrintBlock(const Block& block);
@@ -72,9 +72,15 @@ class IR_API IrPrinter : public BasicIrPrinter {
 
   void AddValueAlias(Value value, const std::string& alias);
 
+  void AddIndentation();
+  void DecreaseIndentation();
+  std::string indentation() { return cur_indentation_; }
+
  private:
   size_t cur_result_number_{0};
   size_t cur_block_argument_number_{0};
+  size_t cur_indentation_level_{0};
+  std::string cur_indentation_;
   std::unordered_map<const void*, std::string> aliases_;
 };
 

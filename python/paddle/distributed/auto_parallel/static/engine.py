@@ -304,6 +304,8 @@ class Engine:
                     DistrubutedInputSpec.from_dtensor(item, name)
                 )
 
+        inputs_spec = self._validate_spec(inputs_spec)
+        labels_spec = self._validate_spec(labels_spec)
         return inputs_spec, labels_spec
 
     def _prepare_data_spec(self, data, split, batch_size):
@@ -1835,9 +1837,11 @@ class Engine:
         specs = auto_utils.to_list(specs)
         if specs is not None:
             for i, spec in enumerate(specs):
-                if not isinstance(spec, InputSpec):
+                if not isinstance(spec, InputSpec) and not isinstance(
+                    spec, DistrubutedInputSpec
+                ):
                     raise TypeError(
-                        "'spec' must be object of class `paddle.static.InputSpec`."
+                        "'spec' must be object of class `paddle.static.InputSpec` or `DistrubutedInputSpec`."
                     )
                 if spec.name is None:
                     raise ValueError(

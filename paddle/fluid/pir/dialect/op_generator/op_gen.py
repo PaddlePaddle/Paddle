@@ -59,6 +59,9 @@ need_export_symbol_op_list = [
     'SoftmaxOp',
     'ReshapeOp',
     'TransposeOp',
+    'LessThanOp',
+    'AddGradOp',
+    'MatmulGradOp',
 ]
 
 # =====================================
