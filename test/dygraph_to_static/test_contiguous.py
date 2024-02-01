@@ -25,7 +25,7 @@ from paddle.jit.api import to_static
 
 
 def func_test_to_static():
-    x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+    x = paddle.arange(12, dtype="float32").reshape([2, 3, 2])
     x = x.transpose([1, 0, 2])
     x = x.contiguous()
     assert x.is_contiguous()
