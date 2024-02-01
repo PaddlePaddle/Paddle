@@ -138,7 +138,7 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
         config.enable_new_executor()
         config.enable_low_precision_io(low_precision_io)
         config.exp_disable_tensorrt_ops(["flatten_contiguous_range"])
-        config.specify_tensorrt_subgraph(["pool2d_2.tmp_0"], [" "])
+        config.specify_tensorrt_subgraph([" "], ["pool2d_2.tmp_0"])
         # config.switch_ir_debug(True)
         config.disable_glog_info()
         predictor = create_predictor(config)
