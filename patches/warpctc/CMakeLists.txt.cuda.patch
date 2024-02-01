@@ -1,6 +1,6 @@
---- old/CMakeLists.txt	2024-02-01 02:29:51.187155924 +0000
-+++ new/CMakeLists.txt	2024-02-01 02:45:09.949217730 +0000
-@@ -63,44 +63,6 @@
+--- old/CMakeLists.txt	2024-02-01 11:53:42.097376899 +0000
++++ new/CMakeLists.txt	2024-02-01 11:56:50.069653973 +0000
+@@ -63,50 +63,13 @@
      add_definitions(-DCTC_DISABLE_OMP)
  endif()
  
@@ -42,6 +42,16 @@
 -IF ((CUDA_VERSION VERSION_GREATER "11.8") OR (CUDA_VERSION VERSION_EQUAL "11.8"))
 -    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
 -ENDIF()
- 
+-
  IF(NOT APPLE AND NOT WIN32)
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA} --std=c++11")
+     if(WITH_OMP)
+-        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fopenmp")
++        set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA} -Xcompiler -fopenmp")
+     endif()
++ELSE(NOT APPLE AND NOT WIN32)
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA}")
+ ENDIF()
+ 
+ IF (APPLE)

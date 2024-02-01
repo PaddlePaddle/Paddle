@@ -1,9 +1,10 @@
---- old/CMakeLists.txt	2024-02-01 03:06:12.104571851 +0000
-+++ new/CMakeLists.txt	2024-02-01 03:06:58.018600474 +0000
-@@ -72,45 +72,6 @@
+--- old/CMakeLists.txt	2024-02-01 12:01:53.589574744 +0000
++++ new/CMakeLists.txt	2024-02-01 12:05:03.708426912 +0000
+@@ -71,49 +71,10 @@
+     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fopenmp")
  endif()
  
- 
+-
 -# need to be at least 30 or __shfl_down in reduce wont compile
 -IF (CUDA_VERSION VERSION_LESS "11.0")
 -    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_30,code=sm_30")
@@ -43,6 +44,13 @@
 -    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_90,code=sm_90")
 -ENDIF()
 -
- if (NOT APPLE)
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
-     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
+-if (NOT APPLE)
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
+-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
++if (NOT APPLE AND NOT WIN32)
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA} --std=c++11")
++ELSE(NOT APPLE AND NOT WIN32)
++    set(CUDA_NVCC_FLAGS "${NVCC_FLAGS_EXTRA}")
+ ENDIF()
+ 
+ IF (APPLE)
