@@ -3100,8 +3100,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
-    # @test_with_pir_api
-    # TODO: fix frexp DrRyanHuang https://github.com/PaddlePaddle/Paddle/pull/61087
+    @test_with_pir_api
     @prog_scope()
     def test_frexp(self):
         x = paddle.rand([])
@@ -6362,7 +6361,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         self.assertEqual(res.shape, (5, 2, 2))
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_strided_slice(self):
         starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
         ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
@@ -6385,7 +6384,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_arange(self):
         start = paddle.full([], 1.0)
         stop = paddle.full([], 6.0)
@@ -6411,6 +6410,25 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    """
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6416, in test_rand
+        out2 = paddle.rand(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 1497, in rand
+        return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 933, in uniform
+        shape = paddle.utils.get_int_tensor_list(
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 403, in get_int_tensor_list
+        temp_out = paddle.full(
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 913, in fill_constant
+        out = _C_ops.full(shape, value, dtype, place)
+    TypeError: (InvalidType) full(): argument (position 2) must be double, but got Variable (at /home/aistudio/Paddle/paddle/fluid/pybind/op_function_common.cc:244)
+    """
+
     # @test_with_pir_api
     def test_rand(self):
         out1 = paddle.rand([])
@@ -6421,6 +6439,36 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
+
+    """
+    ======================================================================
+    ERROR: test_randn (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6446, in test_randn
+        out2 = paddle.randn(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 680, in randn
+        return standard_normal(shape, dtype, name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 616, in standard_normal
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 487, in gaussian
+        shape = paddle.utils.convert_shape_to_list(shape)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in convert_shape_to_list
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in <listcomp>
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 231, in fun
+        args, kw = fix(args, kw, sig)
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 203, in fix
+        ba = sig.bind(*args, **kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 3037, in bind
+        return self._bind(args, kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 2958, in _bind
+        raise TypeError('too many positional arguments') from None
+    TypeError: too many positional arguments
+    """
 
     # @test_with_pir_api
     def test_randn(self):
@@ -6454,7 +6502,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_randint_like(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -6469,6 +6517,34 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
 
+    """
+    ======================================================================
+    ERROR: test_standard_normal (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6523, in test_standard_normal
+        out2 = paddle.standard_normal(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 616, in standard_normal
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 487, in gaussian
+        shape = paddle.utils.convert_shape_to_list(shape)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in convert_shape_to_list
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in <listcomp>
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 231, in fun
+        args, kw = fix(args, kw, sig)
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 203, in fix
+        ba = sig.bind(*args, **kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 3037, in bind
+        return self._bind(args, kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 2958, in _bind
+        raise TypeError('too many positional arguments') from None
+    TypeError: too many positional arguments
+    """
+
     # @test_with_pir_api
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
@@ -6480,6 +6556,26 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
+    """
+    ======================================================================
+    ERROR: test_uniform (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6561, in test_uniform
+        out2 = paddle.uniform(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/random.py", line 933, in uniform
+        shape = paddle.utils.get_int_tensor_list(
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 403, in get_int_tensor_list
+        temp_out = paddle.full(
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 913, in fill_constant
+        out = _C_ops.full(shape, value, dtype, place)
+    TypeError: (InvalidType) full(): argument (position 2) must be double, but got Variable (at /home/aistudio/Paddle/paddle/fluid/pybind/op_function_common.cc:244)
+    """
+
     # @test_with_pir_api
     def test_uniform(self):
         out1 = paddle.uniform([])
@@ -6490,6 +6586,32 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
+
+    """
+    ======================================================================
+    ERROR: test_empty_and_empty_like (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6592, in test_empty_and_empty_like
+        out3 = paddle.empty(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 2111, in empty
+        shape = paddle.utils.convert_shape_to_list(shape)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in convert_shape_to_list
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 488, in <listcomp>
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 231, in fun
+        args, kw = fix(args, kw, sig)
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 203, in fix
+        ba = sig.bind(*args, **kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 3037, in bind
+        return self._bind(args, kwargs)
+    File "/usr/lib/python3.8/inspect.py", line 2958, in _bind
+        raise TypeError('too many positional arguments') from None
+    TypeError: too many positional arguments
+    """
 
     # @test_with_pir_api
     def test_empty_and_empty_like(self):
@@ -6503,6 +6625,28 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
+
+    """
+    ======================================================================
+    ERROR: test_full_and_full_like (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6630, in test_full_and_full_like
+        out3 = paddle.full(self.shape, 0.5)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 906, in fill_constant
+        shape = paddle.utils.get_int_tensor_list(shape, place)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 403, in get_int_tensor_list
+        temp_out = paddle.full(
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 913, in fill_constant
+        out = _C_ops.full(shape, value, dtype, place)
+    TypeError: (InvalidType) full(): argument (position 2) must be double, but got Variable (at /home/aistudio/Paddle/paddle/fluid/pybind/op_function_common.cc:244)
+    """
 
     # @test_with_pir_api
     def test_full_and_full_like(self):
@@ -6520,6 +6664,28 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 3, 4))
         self.assertEqual(res[3].shape, (2, 3, 4))
 
+    """
+    ======================================================================
+    ERROR: test_ones_and_ones_like (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6667, in test_ones_and_ones_like
+        out3 = paddle.ones(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1031, in ones
+        return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 906, in fill_constant
+        shape = paddle.utils.get_int_tensor_list(shape, place)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 403, in get_int_tensor_list
+        temp_out = paddle.full(
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 913, in fill_constant
+        out = _C_ops.full(shape, value, dtype, place)
+    TypeError: (InvalidType) full(): argument (position 2) must be double, but got Variable (at /home/aistudio/Paddle/paddle/fluid/pybind/op_function_common.cc:244)
+    """
+
     # @test_with_pir_api
     def test_ones_and_ones_like(self):
         out1 = paddle.ones([])
@@ -6533,6 +6699,27 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
 
+    """
+    ERROR: test_zeros_and_zeros_like (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6701, in test_zeros_and_zeros_like
+        out3 = paddle.zeros(self.shape)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1115, in zeros
+        return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 906, in fill_constant
+        shape = paddle.utils.get_int_tensor_list(shape, place)
+    File "/home/aistudio/Paddle/build/python/paddle/utils/layers_utils.py", line 403, in get_int_tensor_list
+        temp_out = paddle.full(
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 1292, in full
+        return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
+    File "/home/aistudio/Paddle/build/python/paddle/tensor/creation.py", line 913, in fill_constant
+        out = _C_ops.full(shape, value, dtype, place)
+    TypeError: (InvalidType) full(): argument (position 2) must be double, but got Variable (at /home/aistudio/Paddle/paddle/fluid/pybind/op_function_common.cc:244)
+    """
+
     # @test_with_pir_api
     def test_zeros_and_zeros_like(self):
         out1 = paddle.zeros([])
@@ -6545,6 +6732,22 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, (2, 3, 4))
+
+    """
+    ======================================================================
+    ERROR: test_embedding (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6733, in test_embedding
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+    File "/home/aistudio/Paddle/build/python/paddle/pir/math_op_patch.py", line 266, in astype
+        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+    File "/home/aistudio/Paddle/build/python/paddle/pir/core.py", line 82, in convert_np_dtype_to_dtype_
+        dtype = np.dtype(np_dtype)
+    TypeError: Cannot interpret '<VarType.FP32: 5>' as a data type
+    """
 
     # @test_with_pir_api
     def test_embedding(self):
@@ -6561,6 +6764,83 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         result = [5.0, 6.0]
         for i in range(len(res)):
             self.assertEqual(res[0][i], result[i])
+
+    """
+    ======================================================================
+    ERROR: test_static_embedding (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6764, in test_static_embedding
+        emb = paddle.static.nn.embedding(ids, (20, 3))
+    File "/usr/local/lib/python3.8/dist-packages/decorator.py", line 232, in fun
+        return caller(func, *(extras + args), **kw)
+    File "/home/aistudio/Paddle/build/python/paddle/base/wrapped_decorator.py", line 26, in __impl__
+        return wrapped_func(*args, **kwargs)
+    File "/home/aistudio/Paddle/build/python/paddle/base/framework.py", line 623, in __impl__
+        return func(*args, **kwargs)
+    File "/home/aistudio/Paddle/build/python/paddle/static/nn/common.py", line 3799, in embedding
+        tmp = helper.create_variable_for_type_inference(dtype)
+    File "/home/aistudio/Paddle/build/python/paddle/base/layer_helper_base.py", line 474, in create_variable_for_type_inference
+        return self.main_program.current_block().create_var(
+    File "/home/aistudio/Paddle/build/python/paddle/base/framework.py", line 4326, in create_var
+        var = Variable(block=self, *args, **kwargs)
+    File "/home/aistudio/Paddle/build/python/paddle/base/framework.py", line 1580, in __init__
+        self.desc.set_dtype(dtype)
+    TypeError: set_dtype(): incompatible function arguments. The following argument types are supported:
+        1. (self: paddle.base.libpaddle.VarDesc, arg0: paddle::framework::proto::VarType_Type) -> None
+
+    Invoked with: <paddle.base.libpaddle.VarDesc object at 0x7f57ee12b530>, <DataType.FLOAT32: 10>
+
+    ======================================================================
+    ERROR: test_strided_slice (__main__.TestNoBackwardAPIStatic)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 6371, in test_strided_slice
+        res = self.exe.run(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1764, in run
+        res = self._run_pir_impl(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 2076, in _run_pir_impl
+        ) = self._executor_cache.get_pir_program_and_executor(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1110, in get_pir_program_and_executor
+        return self._get_cached_program_and_executor_pir_mode(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1139, in _get_pir_program_and_executor
+        new_exe = _StandaloneExecutor(place, plan, scope)
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 815, in __init__
+        self._new_exe = self._create_new_executor()
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 851, in _create_new_executor
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
+    RuntimeError: (NotFound) Cannot find embedding_1.w_0 in scope.
+    [Hint: var should not be null.] (at /home/aistudio/Paddle/paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.cc:68)
+
+
+    ======================================================================
+    ERROR: test_while_loop (__main__.TestSundryAPI)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 2772, in test_while_loop
+        out_i, out_x, di, dx = exe.run(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1764, in run
+        res = self._run_pir_impl(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 2076, in _run_pir_impl
+        ) = self._executor_cache.get_pir_program_and_executor(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1110, in get_pir_program_and_executor
+        return self._get_cached_program_and_executor_pir_mode(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1139, in _get_pir_program_and_executor
+        new_exe = _StandaloneExecutor(place, plan, scope)
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 815, in __init__
+        self._new_exe = self._create_new_executor()
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 851, in _create_new_executor
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
+    RuntimeError: (NotFound) Cannot find embedding_1.w_0 in scope.
+    [Hint: var should not be null.] (at /home/aistudio/Paddle/paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.cc:68)
+
+    """
 
     # @test_with_pir_api
     def test_static_embedding(self):
@@ -6582,6 +6862,31 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
 
+    """
+    ======================================================================
+    ERROR: test_while_loop (__main__.TestSundryAPI)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 2772, in test_while_loop
+        out_i, out_x, di, dx = exe.run(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1764, in run
+        res = self._run_pir_impl(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 2116, in _run_pir_impl
+        ret = new_exe.run(list(feed.keys()), return_numpy)
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 829, in run
+        tensors = self._new_exe.run(
+    ValueError: In user code:
+
+
+        InvalidArgumentError: The type of data we are trying to retrieve (float32) does not match the type of data (int64) currently contained in the container.
+        [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():9 != phi::CppTypeToDataType<T>::Type():10.] (at /home/aistudio/Paddle/paddle/phi/core/dense_tensor.cc:161)
+        [operator < pd_kernel.phi_kernel > error]
+
+    ----------------------------------------------------------------------
+    """
+
     # @test_with_pir_api
     def test_unique_consecutive(self):
         x = paddle.rand([])
@@ -6597,6 +6902,31 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (1,))
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[2].shape, (1,))
+
+    """
+    ======================================================================
+    ERROR: test_while_loop (__main__.TestSundryAPI)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+    File "/home/aistudio/Paddle/build/python/paddle/pir_utils.py", line 115, in impl
+        func(*args, **kwargs)
+    File "/home/aistudio/Paddle/test/legacy_test/test_zero_dim_tensor.py", line 2772, in test_while_loop
+        out_i, out_x, di, dx = exe.run(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 1764, in run
+        res = self._run_pir_impl(
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 2116, in _run_pir_impl
+        ret = new_exe.run(list(feed.keys()), return_numpy)
+    File "/home/aistudio/Paddle/build/python/paddle/base/executor.py", line 829, in run
+        tensors = self._new_exe.run(
+    ValueError: In user code:
+
+
+        InvalidArgumentError: The type of data we are trying to retrieve (float32) does not match the type of data (int64) currently contained in the container.
+        [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():9 != phi::CppTypeToDataType<T>::Type():10.] (at /home/aistudio/Paddle/paddle/phi/core/dense_tensor.cc:161)
+        [operator < pd_kernel.phi_kernel > error]
+
+    ----------------------------------------------------------------------
+    """
 
     # @test_with_pir_api
     def test_unique(self):
