@@ -36,6 +36,8 @@ pir::Value parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 
+void shadow_output(const pir::Value& persist_value, const std::string& name);
+
 pir::Value embedding_grad(const pir::Value& x,
                           const pir::Value& weight,
                           const pir::Value& out_grad,
@@ -86,6 +88,14 @@ pir::Value slice_array(pir::Value input, pir::Value starts, pir::Value ends);
 pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
+
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation);
+pir::Value array_pop(pir::Value input, int index);
 
 }  // namespace dialect
 }  // namespace paddle

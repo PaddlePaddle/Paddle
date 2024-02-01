@@ -455,7 +455,7 @@ class Optimizer:
                         )
                         init_result.persistable = True
                         set_parameter(init_result, lr_name)
-                    main_program.move_parameters_from(startup_program)
+                    main_program.set_parameters_from(startup_program)
 
                     if not isinstance(lr_var, paddle.pir.Value):
                         self._learning_rate._var_name = lr_name
@@ -509,11 +509,10 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle.pir.core.create_parameter(
+                        ] = paddle.pir.core.create_persistable_value(
                             dtype=_lr_dtype,
                             shape=[],
                             name=unique_name.generate("learning_rate"),
-                            trainable=False,
                             initializer=paddle.nn.initializer.ConstantInitializer(
                                 value=float(self._learning_rate)
                             ),
@@ -897,7 +896,7 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.pir.core.create_parameter(
+            var = paddle.pir.core.create_persistable_value(
                 dtype or param.dtype,
                 shape,
                 var_name,

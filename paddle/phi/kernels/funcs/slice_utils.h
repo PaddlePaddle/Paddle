@@ -19,8 +19,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(set_to_1d);
-
 namespace phi {
 
 namespace funcs {
@@ -204,11 +202,6 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       if (decrease_flag[i] == 0) {
         new_shape.push_back(decreased_dims[i]);
       }
-    }
-    if (FLAGS_set_to_1d && new_shape.size() == 0) {
-      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
-      // slice. This will remove in release 2.6.
-      new_shape.push_back(1);
     }
     decreased_dims = common::make_ddim(new_shape);
   }
