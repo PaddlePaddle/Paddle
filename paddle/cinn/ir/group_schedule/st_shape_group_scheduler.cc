@@ -251,12 +251,7 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
         std::cerr << "after split\n " << loops[0] << std::endl;
       }
 
-      ir_sch_->Broadcast(name,
-                         group_tile_info_->broadcast_info[name].broadcast_axes,
-                         group_tile_info_->broadcast_info[name].output_shape,
-                         group_tile_info_->broadcast_info[name].with_constrain,
-                         group_tile_info_->broadcast_info[name].first_broadcast,
-                         group_tile_info_->broadcast_info[name].full_broadcast);
+      ir_sch_->Broadcast(name, group_tile_info_->broadcast_info[name]);
     }
 
     std::cerr << "fin broadcast " << name << std::endl;

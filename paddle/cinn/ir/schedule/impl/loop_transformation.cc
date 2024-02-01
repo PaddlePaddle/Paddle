@@ -467,11 +467,8 @@ void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 }
 
 void DyScheduleImpl::Broadcast(const std::string& block_name,
-                               const std::vector<int64_t>& axes,
-                               const std::vector<int64_t>& factors,
-                               bool add_check,
-                               bool first_broadcast,
-                               bool full_broadcast) {
+                               const BroadcastInfo& info) {
+  auto axes = info.broadcast_axes;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::cerr << "broadcast axes " << axes[0] << std::endl;
   if (axes[0] >= all_loops.size()) {
@@ -513,6 +510,7 @@ void DyScheduleImpl::Broadcast(const std::string& block_name,
     ReplaceExpr(&expr, {schedule_block->iter_vars[axes[0]]}, {Expr(0)});
   }
 
+  auto factors = info.output_shape;
   int factor = factors[0];
   Expr new_extent(factor);
 
@@ -701,12 +699,9 @@ void StScheduleImpl::BroadcastToElementwise(const std::string& block_name,
 }
 
 void StScheduleImpl::Broadcast(const std::string& block_name,
-                               const std::vector<int64_t>& axes,
-                               const std::vector<int64_t>& factors,
-                               bool add_check,
-                               bool first_broadcast,
-                               bool full_broadcast) {
+                               const BroadcastInfo& info) {
   std::cerr << "step in broadcast\n";
+  auto axes = info.broadcast_axes;
   std::cerr << "axes .size " << axes.size() << std::endl;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::cerr << "broadcast axes " << axes[0] << std::endl;
@@ -743,6 +738,9 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
     std::cerr << "22 " << expr << std::endl;
   }
 
+  auto factors = info.output_shape;
+  auto full_broadcast = info.full_broadcast;
+  auto first_broadcast = info.first_broadcast;
   for (size_t i = 0; i < axes.size(); ++i) {
     // new_extent
     auto axis = axes[i];
@@ -758,13 +756,14 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
       schedule_realize->iter_values[axis] = loop_temp->loop_var;
     }
 
-    if (add_check) {
+    if (info.with_constrain) {
       auto check = ir::EQ::Make(loop_temp->loop_var, Expr(0));
       schedule_block->body = ir::IfThenElse::Make(check, schedule_block->body);
     }
   }
 
-  if (first_broadcast && !full_broadcast) {
+  if (first_broadcast && !full_broadcast &&
+      (info.op_name != "cinn_op.reshape")) {
     std::cerr << "first broadcat\n";
     auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });

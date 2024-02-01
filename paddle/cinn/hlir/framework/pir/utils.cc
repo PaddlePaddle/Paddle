@@ -91,7 +91,10 @@ class OpTransInfo {
                                                     "concat",
                                                     "gather_nd",
                                                     "pool2d",
-                                                    "split"};
+                                                    "split",
+                                                    "matmul",
+                                                    "matmul_grad",
+                                                    "transpose"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,

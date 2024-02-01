@@ -721,6 +721,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
       auto op_out = it->first->result(0);
       std::cerr << "var name " << ValueName(op_out) << std::endl;
+      info.op_name = it->first->name();
       broadcast_info[ValueName(op_out)] = info;
 
       // if( op_out.use_count() > 1 )

@@ -22,16 +22,6 @@ namespace ir {
 
 using SymbolicPredicate = Expr;
 
-struct BroadcastInfo {
-  // BroadcastInfo( coststd::vector<int64_t> broadcast_axes,
-  // std::vector<int64_t> output_shape )
-  std::vector<int64_t> broadcast_axes;
-  std::vector<int64_t> output_shape;
-
-  bool with_constrain{false};
-  bool first_broadcast{false};
-  bool full_broadcast{false};
-};
 struct GroupTileInfo {
   GroupTileInfo() {}
 
