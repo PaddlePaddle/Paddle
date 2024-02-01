@@ -157,10 +157,10 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
     AddOutput("Out",
-              "(phi::DenseTensor) The output vairable, which contains padded "
+              "(phi::DenseTensor) The output variable, which contains padded "
               "sequences.");
     AddOutput("Length",
-              "(phi::DenseTensor) The output vairable, which contains the "
+              "(phi::DenseTensor) The output variable, which contains the "
               "actual length of "
               "sequences before padding.");
     AddAttr<int>(

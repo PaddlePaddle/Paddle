@@ -24,9 +24,10 @@ import weakref
 from typing import Any, Callable
 
 import paddle
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
-from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
+from ..utils import NameGenerator, Singleton, flatten_extend
 
 
 class Reference:  # to unify weak_ref and strong_ref
@@ -267,7 +268,7 @@ class StatementIR:
 
     def __str__(self):
         strs = []
-        strs.append("StatmentIR: %s" % self.name)
+        strs.append("StatementIR: %s" % self.name)
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"

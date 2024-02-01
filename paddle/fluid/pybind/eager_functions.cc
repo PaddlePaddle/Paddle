@@ -1350,6 +1350,16 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager__is_run_in_backward(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+
+  return ToPyObject(egr::Controller::Instance().GetIsInBackward());
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
@@ -1421,6 +1431,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_is_run_in_backward",
+     (PyCFunction)(void (*)())eager__is_run_in_backward,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 /**sparse functions**/

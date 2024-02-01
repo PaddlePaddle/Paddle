@@ -26,6 +26,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/special_ops_fusion_rule.h"
 #include "paddle/phi/core/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
@@ -63,6 +64,9 @@ class FuseHelper {
   virtual bool HorizontalWithInjective(const OpGroupPtr& src,
                                        const OpGroupPtr& dst) const = 0;
 
+  virtual bool InjectiveFuseInjective(const OpGroupPtr& src,
+                                      const OpGroupPtr& dst) const = 0;
+
   virtual bool ElementwiseFuseReduce(const OpGroupPtr& src,
                                      const OpGroupPtr& dst) const = 0;
 
@@ -76,6 +80,9 @@ class FuseHelper {
                                      const OpGroupPtr& dst) const = 0;
 
   virtual bool ReduceFuseBroadcast(const OpGroupPtr& src,
+                                   const OpGroupPtr& dst) const = 0;
+
+  virtual bool ReduceFuseInjective(const OpGroupPtr& src,
                                    const OpGroupPtr& dst) const = 0;
 
   virtual bool ReduceFuseReduce(const OpGroupPtr& src,
@@ -121,10 +128,16 @@ class GraphGroupFuseHelper final : public FuseHelper {
   bool InjectiveHorizontalWithReduce(const OpGroupPtr& src,
                                      const OpGroupPtr& dst) const override;
 
+  bool InjectiveFuseInjective(const OpGroupPtr& src,
+                              const OpGroupPtr& dst) const override;
+
   bool ReduceFuseElementwise(const OpGroupPtr& src,
                              const OpGroupPtr& dst) const override;
 
   bool ReduceFuseBroadcast(const OpGroupPtr& src,
+                           const OpGroupPtr& dst) const override;
+
+  bool ReduceFuseInjective(const OpGroupPtr& src,
                            const OpGroupPtr& dst) const override;
 
   bool ReduceFuseReduce(const OpGroupPtr& src,
@@ -358,6 +371,12 @@ bool GraphGroupFuseHelper<FusePassCtxT>::HorizontalWithInjective(
 }
 
 template <typename FusePassCtxT>
+bool GraphGroupFuseHelper<FusePassCtxT>::InjectiveFuseInjective(
+    const OpGroupPtr& src, const OpGroupPtr& dst) const {
+  return true;
+}
+
+template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ElementwiseFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
   return elementwise_fuse_reduce(src.GetGroup(), dst.GetGroup());
@@ -385,6 +404,21 @@ template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseBroadcast(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
   return reduce_fuse_broadcast(src.GetGroup(), dst.GetGroup());
+}
+
+template <typename FusePassCtxT>
+bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseInjective(
+    const OpGroupPtr& src, const OpGroupPtr& dst) const {
+  bool can_all_special_ops_fused = false;
+  dst.WalkOpNodes([&](const OpNode& op) {
+    can_all_special_ops_fused =
+        can_all_special_ops_fused &&
+        SpecialOpsFusionRule::GetInstance().ConsumerOpAllowsFusion(
+            op.node(), OpPatternKind::kReduction);
+  });
+
+  return can_all_special_ops_fused &&
+         horizontal_with_injective(src.GetGroup(), dst.GetGroup());
 }
 
 template <typename FusePassCtxT>
@@ -790,7 +824,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         {{OpPatternKind::kInjective, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::IsSameSize},
         {{OpPatternKind::kInjective, OpPatternKind::kInjective},
-         &DefaultVerticalFusePass::HorizontalWithInjective},
+         &DefaultVerticalFusePass::InjectiveFuseInjective},
         {{OpPatternKind::kInjective, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::InjectiveHorizontalWithReduce},
 
@@ -799,7 +833,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         {{OpPatternKind::kReduction, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::ReduceFuseBroadcast},
         {{OpPatternKind::kReduction, OpPatternKind::kInjective},
-         &DefaultVerticalFusePass::HorizontalWithInjective},
+         &DefaultVerticalFusePass::ReduceFuseInjective},
         {{OpPatternKind::kReduction, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::ReduceFuseReduce},
     };
@@ -821,6 +855,12 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
                                       const OpGroupPtr& src,
                                       const OpGroupPtr& dst) {
     return ctx->fuse_helper().HorizontalWithInjective(src, dst);
+  }
+
+  static bool InjectiveFuseInjective(LightwareFusePassCtx* ctx,
+                                     const OpGroupPtr& src,
+                                     const OpGroupPtr& dst) {
+    return ctx->fuse_helper().InjectiveFuseInjective(src, dst);
   }
 
   static bool ElementwiseFuseReduce(LightwareFusePassCtx* ctx,
@@ -851,6 +891,12 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
                                   const OpGroupPtr& src,
                                   const OpGroupPtr& dst) {
     return ctx->fuse_helper().ReduceFuseBroadcast(src, dst);
+  }
+
+  static bool ReduceFuseInjective(LightwareFusePassCtx* ctx,
+                                  const OpGroupPtr& src,
+                                  const OpGroupPtr& dst) {
+    return ctx->fuse_helper().ReduceFuseInjective(src, dst);
   }
 
   static bool ReduceFuseReduce(LightwareFusePassCtx* ctx,
