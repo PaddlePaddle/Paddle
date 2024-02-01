@@ -321,6 +321,7 @@ def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
 
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import numpy as np
             >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
@@ -937,10 +938,21 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
     Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm) of a given tensor.
 
+    Whether the function calculates the vector norm or the matrix norm is determined as follows:
+
+    - If axis is of type int, calculate the vector norm.
+
+    - If axis is a two-dimensional array, calculate the matrix norm.
+
+    - If axis is None, x is compressed into a one-dimensional vector and the vector norm is calculated.
+
     Paddle supports the following norms:
+
     +----------------+--------------------------------+--------------------------------+
     |     porder     |        norm for matrices       |        norm for vectors        |
     +================+================================+================================+
+    |  None(default) |         frobenius norm         |            2_norm              |
+    +----------------+--------------------------------+--------------------------------+
     |       fro      |         frobenius norm         |          not support           |
     +----------------+--------------------------------+--------------------------------+
     |       nuc      |          nuclear norm          |          not support           |
