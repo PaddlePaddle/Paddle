@@ -1539,6 +1539,21 @@ PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
 
+/**
+ * Apply check infer symbolic pass FLAG
+ * Name: check_infer_symbolic_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, will apply check_infer_symbolic pass.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    check_infer_symbolic,
+    false,
+    "Whether to use check_infer_symbolic_pass. This pass can check "
+    "the symbolic inference accuracy by comparing the the value "
+    "shape between dynamic shape and static shape.");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",

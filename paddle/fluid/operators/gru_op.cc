@@ -135,7 +135,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         "the update gate and reset gate with shape (D x 2D), and the second "
         "part are weights of output candidate with shape (D x D).");
     AddInput("Bias",
-             "(Tensor, optional) Bias vector with shape (1 x 3D) concating "
+             "(Tensor, optional) Bias vector with shape (1 x 3D) concatenating "
              "bias of the update gate, reset gate and output candidate.")
         .AsDispensable();
     AddOutput(
@@ -407,7 +407,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NOT_NULL(
           packed_gate,
           platform::errors::NotFound(
-              "The caculation result of packed_gate by "
+              "The calculation result of packed_gate by "
               "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix,
                      CblasNoTrans,
@@ -425,7 +425,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NOT_NULL(
           packed_state,
           platform::errors::NotFound(
-              "The caculation result of packed_state by "
+              "The calculation result of packed_state by "
               "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix,
                      CblasNoTrans,

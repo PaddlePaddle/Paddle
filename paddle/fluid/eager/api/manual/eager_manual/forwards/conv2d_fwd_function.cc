@@ -53,7 +53,7 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAMPState(),
           paddle::imperative::AmpLevel::O0);
       return conv2d_ad_func(new_input,
                             new_filter,

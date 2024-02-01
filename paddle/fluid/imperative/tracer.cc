@@ -48,15 +48,12 @@ thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
-thread_local bool Tracer::use_promote_ = true;
-
 thread_local bool Tracer::use_layout_autotune_ = false;
 
-thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
-
-thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
-
 static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
+
+static thread_local std::shared_ptr<AMPState> g_current_amp_state =
+    std::make_shared<AMPState>();
 
 TEST_API void Tracer::DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 TEST_API void Tracer::EnableLayoutAutoTune() {
@@ -90,6 +87,10 @@ const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   g_current_tracer = tracer;
   VLOG(6) << "Set current tracer: " << g_current_tracer;
+}
+
+const std::shared_ptr<AMPState>& GetCurrentAMPState() {
+  return g_current_amp_state;
 }
 
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
@@ -275,22 +276,24 @@ void Tracer::TraceOpImpl(const std::string& type,
                               : attr_checker->GetDefaultAttrMap();
 
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
-  if (amp_level_ == AmpLevel::O1) {
-    if (amp_dtype_ == phi::DataType::FLOAT16) {
+  if (GetCurrentAMPState()->GetAmpLevel() == AmpLevel::O1) {
+    if (GetCurrentAMPState()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastInputs<VarType>(type, ins));
-    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAMPState()->GetAmpPhiDtype() ==
+               phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastBF16Inputs<VarType>(type, ins));
     }
-  } else if (amp_level_ == AmpLevel::O2) {
-    if (amp_dtype_ == phi::DataType::FLOAT16) {
+  } else if (GetCurrentAMPState()->GetAmpLevel() == AmpLevel::O2) {
+    if (GetCurrentAMPState()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureFp16Inputs<VarType>(type, ins));
-    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAMPState()->GetAmpPhiDtype() ==
+               phi::DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureBf16Inputs<VarType>(type, ins));
@@ -557,17 +560,21 @@ TEST_API void Tracer::SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
 TEST_API void Tracer::SetUsePromote(bool use_promote) {
   VLOG(4) << "set use_promote to " << use_promote;
-  use_promote_ = use_promote;
+  g_current_amp_state->SetUsePromote(use_promote);
 }
 
-TEST_API bool Tracer::GetUsePromote() const { return use_promote_; }
+TEST_API bool Tracer::GetUsePromote() const {
+  return g_current_amp_state->GetUsePromote();
+}
 
 TEST_API void Tracer::SetAmpLevel(AmpLevel level) {
   VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
-  amp_level_ = level;
+  g_current_amp_state->SetAmpLevel(level);
 }
 
-TEST_API AmpLevel Tracer::GetAmpLevel() const { return amp_level_; }
+TEST_API AmpLevel Tracer::GetAmpLevel() const {
+  return g_current_amp_state->GetAmpLevel();
+}
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
                                  const NameVarBaseMap& outs,
@@ -597,26 +604,17 @@ bool Tracer::IsProgramDescTracingEnabled() const {
 
 void Tracer::SetAmpDtype(std::string amp_dtype) {
   VLOG(4) << "set amp_dtype to " << amp_dtype;
-  if (amp_dtype == "float16") {
-    amp_dtype_ = phi::DataType::FLOAT16;
-  } else if (amp_dtype == "bfloat16") {
-    amp_dtype_ = phi::DataType::BFLOAT16;
-  } else {
-    amp_dtype_ = phi::DataType::FLOAT32;
-  }
+  g_current_amp_state->SetAmpDtype(amp_dtype);
 }
 
 std::string Tracer::GetAmpDtype() const {
-  if (amp_dtype_ == phi::DataType::FLOAT16) {
-    return std::string("float16");
-  } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
-    return std::string("bfloat16");
-  } else {
-    return std::string("float32");
-  }
+  return g_current_amp_state->GetAmpDtype();
 }
 
-phi::DataType Tracer::GetAmpPhiDtype() const { return amp_dtype_; }
+phi::DataType Tracer::GetAmpPhiDtype() const {
+  return g_current_amp_state->GetAmpPhiDtype();
+}
+
 bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
                                  const NameTensorMap& outs,
                                  bool trace_backward) {

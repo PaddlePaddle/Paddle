@@ -39,7 +39,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
       common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -91,7 +91,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         out_size_dim.size(),
         1,
         platform::errors::InvalidArgument(
-            "OutSize's dimension size must be 1, but got dimention = %d .",
+            "OutSize's dimension size must be 1, but got dimension = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
         out_size_dim[0],
@@ -128,7 +128,7 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
@@ -223,7 +223,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
-    // top prority size
+    // top priority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
         inputs_name.size(),
