@@ -25,7 +25,6 @@ import paddle
 from paddle.static import InputSpec
 
 
-<<<<<<< HEAD
 def get_sym_shape_str_for_op(net, input_spec, op_name):
     forward_program = net.forward.get_concrete_program(*input_spec)[
         1
@@ -38,19 +37,6 @@ def get_sym_shape_str_for_op(net, input_spec, op_name):
     return all_sym_shape_str
 
 
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
-
-
-=======
->>>>>>> 9d8233076e... [PIR+CINN]All CINN Subgraph UT Support CheckJitKernelInfo
 def exp_sub(x):
     y = paddle.exp(x)
     z = y - x
@@ -337,6 +323,8 @@ class TestCinnDyShapeRepeatKV(TestCinnSubGraphBase):
         )
 
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval_symbolic(self):
