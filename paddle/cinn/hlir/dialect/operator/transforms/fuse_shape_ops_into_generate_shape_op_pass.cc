@@ -26,6 +26,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -40,24 +41,6 @@ namespace {
 
 using ShapeOrDataDimExprs4ValueT =
     std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
-
-bool IsDimOnDataExpr(const symbol::TensorShapeOrDataDimExprs& shape_exprs) {
-  return shape_exprs.data().has_value();
-}
-
-bool IsDimOnDataExpr(const symbol::TensorListShapeOrDataDimExprs& shape_exprs) {
-  for (const auto& expr : shape_exprs) {
-    if (!IsDimOnDataExpr(expr)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool IsDimOnDataExpr(const symbol::ShapeOrDataDimExprs& shape_exprs) {
-  return std::visit([&](const auto& exprs) { return IsDimOnDataExpr(exprs); },
-                    shape_exprs.variant());
-}
 
 std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     pir::Value shape,
@@ -76,15 +59,25 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(owner->operand_source(i));
         }
       };
-  const auto& IsDimTensor = [&](pir::Value value) -> bool {
-    return IsDimOnDataExpr(ShapeOrDataDimExprs4Value(value));
+  const auto& IsDimTensorOrListDimExpr = symbol::Overloaded{
+      [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
+        return dim_expr.data().has_value();
+      },
+      [](const symbol::TensorListShapeOrDataDimExprs& dim_expr) {
+        return true;
+      }};
+  // For TensorListShapeOrDataDimExprs case, we should recursivly visit its
+  // each dim_expr, which is automatically in next step.
+  const auto& NeedTrackUpstream = [&](pir::Value value) -> bool {
+    const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
+    return std::visit(IsDimTensorOrListDimExpr, sym_shape.variant());
   };
 
   const auto& ForEachInputDimTensor =
       [&](pir::Value value, const std::function<void(pir::Value)>& Visit) {
         // find input dimension tensor;
         ForEachInputValue(value, [&](pir::Value input) {
-          if (IsDimTensor(input)) {
+          if (NeedTrackUpstream(input)) {
             Visit(input);
           }
         });
@@ -94,7 +87,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     size_t input_cnt = 0;
     ForEachInputValue(value, [&](pir::Value input) {
       ++input_cnt;
-      if (IsDimTensor(input)) return;
+      if (NeedTrackUpstream(input)) return;
       Emplace(input);
     });
     if (input_cnt == 0) {

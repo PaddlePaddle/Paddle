@@ -296,14 +296,21 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
-      .def("move_parameters_from",
+      .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
-             self->set_parameters(std::move(other->parameters()));
+             self->set_parameters(other->parameters());
            })
       .def(
           "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "clone",
+          [](std::shared_ptr<Program> self) {
+            pir::IrMapping mapper;
+            return self->Clone(mapper);
+          },
           return_value_policy::reference)
       .def(
           "global_block",
@@ -432,7 +439,8 @@ void BindBlock(py::module *m) {
            [](Block &self) -> py::list {
              py::list param_list;
              for (auto &op : self) {
-               if (op.HasAttribute(kAttrIsPersisable)) {
+               if (op.name() == "builtin.parameter" &&
+                   op.HasAttribute(kAttrIsPersisable)) {
                  auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
@@ -490,6 +498,7 @@ void BindOperation(py::module *m) {
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
+      .def("has_attr", &Operation::HasAttribute)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;

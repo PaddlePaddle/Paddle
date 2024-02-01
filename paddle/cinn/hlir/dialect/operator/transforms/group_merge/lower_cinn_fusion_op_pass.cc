@@ -244,13 +244,13 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
               std::vector<symbol::DimExpr>{shape_dim_expr.size()},
               shape_dim_expr)});
     } else {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(shape_dim_expr)});
@@ -642,8 +642,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    group->value_to_shape_or_data_exprs =
-        CreateGroupShapeOrDataExprs(group, shape_analysis);
+    group->set_value_to_shape_or_data_exprs(
+        CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }

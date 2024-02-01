@@ -76,6 +76,30 @@ static PyObject *static_api_set_parameter(PyObject *self,
   }
 }
 
+static PyObject *static_api_set_persistable_value(PyObject *self,
+                                                  PyObject *args,
+                                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add shadow_output op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get OpResult from args
+    PyObject *persist_value_obj = PyTuple_GET_ITEM(args, 0);
+    auto persist_value = CastPyArg2Value(persist_value_obj, "persist_value", 0);
+
+    // Parse Attributes
+    PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
+    std::string name = CastPyArg2String(name_obj, "name", 1);
+    // Call ir static api
+    paddle::dialect::shadow_output(persist_value, name);
+
+    Py_RETURN_NONE;
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   try {
     VLOG(6) << "Add full op into program";
@@ -783,6 +807,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_set_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for set_parameter."},
+    {"set_persistable_value",
+     (PyCFunction)(void (*)(void))static_api_set_persistable_value,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for set_persistable_value."},
     {"parameter",
      (PyCFunction)(void (*)(void))static_api_parameter,
      METH_VARARGS | METH_KEYWORDS,

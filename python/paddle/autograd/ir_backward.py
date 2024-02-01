@@ -1137,9 +1137,15 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             )
 
     else:
-        parameter_list = (
-            loss.get_defining_op().get_parent_block().all_parameters()
-        )
+        ops = loss.get_defining_op().get_parent_block().ops
+        parameter_list = []
+        for op in ops:
+            if not op.has_attr("is_persisable"):
+                continue
+            persist_value = [
+                result for result in op.results() if result.persistable
+            ]
+            parameter_list.extend(persist_value)
 
     if no_grad_set is None:
         no_grad_set_ = ValueSet()
