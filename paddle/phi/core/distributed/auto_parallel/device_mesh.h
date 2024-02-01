@@ -251,7 +251,7 @@ class DeviceMesh {
     return machines_.at(machine_id);
   }
 
-  int64_t size() const;
+  TEST_API int64_t size() const;
   int64_t ndim() const { return shape_.size(); }
 
   int64_t dim_size(int64_t dim) const {
@@ -270,15 +270,15 @@ class DeviceMesh {
   }
 
   bool empty() const { return (shape_.empty() || device_ids_.empty()); }
-  bool contains(int64_t device_id) const;
+  TEST_API bool contains(int64_t device_id) const;
 
-  void add_device(const Device& device);
-  void add_link(const Link& link);
+  TEST_API void add_device(const Device& device);
+  TEST_API void add_link(const Link& link);
 
   // DeviceMesh from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
-  static DeviceMesh from_proto(const DeviceMeshProto& proto);
+  TEST_API static DeviceMesh from_proto(const DeviceMeshProto& proto);
   void to_proto(DeviceMeshProto* proto) const;
 
  private:
