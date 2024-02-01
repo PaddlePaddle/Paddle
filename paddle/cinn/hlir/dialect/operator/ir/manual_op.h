@@ -14,6 +14,7 @@
 
 #pragma once
 #include <variant>
+#include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -42,14 +43,10 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     std::unique_ptr<pir::Block> &&block);
 
-  static void Build(
-      pir::Builder &builder,             // NOLINT
-      pir::OperationArgument &argument,  // NOLINT
-      const std::vector<pir::Type> &output_types,
-      const std::unordered_map<
-          ::pir::Operation *,
-          std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
-          &alignment_schedule_info);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
@@ -77,8 +74,7 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-class IR_API ConcatOp
-    : public pir::Op<ConcatOp, paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API ConcatOp : public pir::Op<ConcatOp> {
  public:
   using Op::Op;
 
@@ -94,8 +90,6 @@ class IR_API ConcatOp
                     int axis);
 
   void VerifySig() const {}
-
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class IR_API SplitOp : public pir::Op<SplitOp> {

@@ -44,19 +44,13 @@ void GroupOp::Build(pir::Builder& builder,
   argument.output_types = output_types;
 }
 
-void GroupOp::Build(
-    pir::Builder& builder,             // NOLINT
-    pir::OperationArgument& argument,  // NOLINT
-    const std::vector<pir::Type>& output_types,
-    const std::unordered_map<
-        ::pir::Operation*,
-        std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>&
-        alignment_schedule_info) {
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<pir::Type>& output_types,
+                    const cinn::dialect::GroupInfo& group_info) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
 
-  cinn::dialect::GroupInfo group_info({});
-  group_info.alignment_schedule_info = alignment_schedule_info;
   argument.AddAttribute("group_info",
                         cinn::dialect::GroupInfoAttribute::get(
                             pir::IrContext::Instance(), group_info));
@@ -145,12 +139,6 @@ void FusionOp::Print(pir::IrPrinter& printer) {
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
-}
-
-bool ConcatOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
-  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
