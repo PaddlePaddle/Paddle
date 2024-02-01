@@ -937,7 +937,7 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
     Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm) of a given tensor.
 
-    **Paddle 支持以下范数:**
+    Paddle supports the following norms:
     +----------------+--------------------------------+--------------------------------+
     |     porder     |        norm for matrices       |        norm for vectors        |
     +================+================================+================================+
