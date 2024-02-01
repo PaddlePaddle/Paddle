@@ -95,7 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const Device& obj) {
   return os;
 }
 
-bool operator==(const Device& lhs, const Device& rhs);
+TEST_API bool operator==(const Device& lhs, const Device& rhs);
 
 inline bool operator!=(const Device& lhs, const Device& rhs) {
   return !operator==(lhs, rhs);
