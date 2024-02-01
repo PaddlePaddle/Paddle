@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 #include <string>
-
 #include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace pir {
