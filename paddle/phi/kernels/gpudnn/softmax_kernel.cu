@@ -31,7 +31,7 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
   const int rank = x.dims().size();
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, 1.0);
+    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
 

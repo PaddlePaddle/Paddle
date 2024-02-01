@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/arange_kernel.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
@@ -34,11 +34,11 @@ __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
 }
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType start_value =
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
@@ -47,7 +47,7 @@ void ArangeKernel(const Context& dev_ctx,
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -66,9 +66,13 @@ void ArangeNullaryKernel(const Context& dev_ctx,
                          const T end_value,
                          const T step_value,
                          DenseTensor* out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value_mpt = static_cast<MPType>(start_value);
+  MPType end_value_mpt = static_cast<MPType>(end_value);
+  MPType step_value_mpt = static_cast<MPType>(step_value);
   int64_t size = 0;
-  phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  phi::funcs::GetSize(start_value_mpt, end_value_mpt, step_value_mpt, &size);
+  out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -77,7 +81,21 @@ void ArangeNullaryKernel(const Context& dev_ctx,
     return;
   }
   int64_t grid = (size + block - 1) / block;
-  Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
+  Range<MPType, T><<<grid, block, 0, stream>>>(
+      start_value_mpt, step_value_mpt, size, out_data);
+}
+
+template <typename T, typename Context>
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out) {
+  T start_value = start.to<T>();
+  T end_value = end.to<T>();
+  T step_value = step.to<T>();
+  ArangeNullaryKernel<T, Context>(
+      dev_ctx, start_value, end_value, step_value, out);
 }
 
 template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
@@ -86,10 +104,10 @@ template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
     ArangeNullaryKernel;
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arange,
+PD_REGISTER_KERNEL(arange_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ArangeKernel,
+                   phi::ArangeTensorKernel,
                    float,
                    double,
                    int64_t,
@@ -100,3 +118,14 @@ PD_REGISTER_KERNEL(arange,
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
 }
+
+PD_REGISTER_KERNEL(arange,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArangeKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

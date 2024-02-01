@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import static
-from paddle.fluid import dygraph
+from paddle.base import dygraph
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -43,12 +44,13 @@ class TestViewAsComplexOp(OpTest):
         self.outputs = {'Out': out_ref}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir=True,
         )
 
 
@@ -64,12 +66,13 @@ class TestViewAsRealOp(OpTest):
         self.python_api = paddle.as_real
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir=True,
         )
 
 
@@ -84,6 +87,7 @@ class TestViewAsComplexAPI(unittest.TestCase):
             out_np = paddle.as_complex(x).numpy()
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
@@ -107,6 +111,7 @@ class TestViewAsRealAPI(unittest.TestCase):
             out_np = paddle.as_real(x).numpy()
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):

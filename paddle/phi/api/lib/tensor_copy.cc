@@ -24,7 +24,11 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 namespace paddle {
 namespace experimental {
 
@@ -40,7 +44,45 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetMutable(
       target_place.GetType() == place.GetType() ? place : target_place);
+#ifdef PADDLE_WITH_DISTRIBUTE
+  bool run_auto_parallel = AllInputsAreDistTensor(src);
+  bool rank_is_in_current_mesh = false;
+  if (run_auto_parallel) {
+    auto mesh =
+        std::static_pointer_cast<phi::distributed::DistTensor>(src.impl())
+            ->dist_attr()
+            .process_mesh();
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
+    auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
+
+    auto dist_out = SetKernelDistOutput(dst, meta_dist_input_x.dist_attr());
+    auto dense_out = dist_out->unsafe_mutable_value();
+    if (!rank_is_in_current_mesh) {
+      *dense_out =
+          phi::DenseTensor(std::make_shared<phi::Allocation>(
+                               nullptr, 0, phi::distributed::GetDefaultPlace()),
+                           phi::DenseTensorMeta());
+    }
+
+    phi::MetaTensor meta_dist_out(dist_out);
+    phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl())), &meta_dist_out);
+
+    if (rank_is_in_current_mesh) {
+      auto dist_input_x =
+          static_cast<phi::distributed::DistTensor*>(src.impl().get());
+
+      auto input_x = &dist_input_x->value();
+
+      phi::MetaTensor meta_dense_out(dense_out);
+      phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
+
+      phi::Copy(*dev_ctx, *input_x, place, blocking, dense_out);
+    }
+    VLOG(6) << "copy finished. ";
+    return;
+  }
+#endif
   auto dense_x = TensorToDenseTensor(src);
 
   auto kernel_out = SetKernelOutput(dst);

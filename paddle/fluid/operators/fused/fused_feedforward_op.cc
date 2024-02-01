@@ -31,7 +31,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return phi::make_ddim({1, x_dim[0]});
+  return common::make_ddim({1, x_dim[0]});
 }
 
 class FusedFeedForwardOp : public framework::OperatorWithKernel {
@@ -97,7 +97,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     framework::DDim mean_dim =
-        phi::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+        common::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
     bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
     if (pre_layer_norm) {
       OP_INOUT_CHECK(context->HasOutput("Ln1Mean"),

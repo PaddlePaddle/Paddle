@@ -16,7 +16,8 @@ import unittest
 import warnings
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core, in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -143,6 +144,7 @@ class TestDeviceGuard(unittest.TestCase):
 
         execute(main_program, startup_program)
 
+    @test_with_pir_api
     def test_without_kernel_op(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -158,15 +160,16 @@ class TestDeviceGuard(unittest.TestCase):
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
                         paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
-
-        warning = "The Op(while) is not support to set device."
-        warning_num = get_vaild_warning_num(warning, w)
-        assert warning_num == 1
+        if not in_pir_mode():
+            warning = "The Op(while) is not support to set device."
+            warning_num = get_vaild_warning_num(warning, w)
+            assert warning_num == 1
 
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         for op in all_ops:
-            if op.type == 'while':
+            op_name = op.name() if in_pir_mode() else op.type
+            if op_name == 'while':
                 self.assertEqual(op.desc.attr(device_attr_name), "")
 
         execute(main_program, startup_program)

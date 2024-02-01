@@ -17,15 +17,12 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
@@ -149,7 +146,9 @@ class TestLogcumsumexp(unittest.TestCase):
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
     def run_static(self, use_gpu=False):
-        with fluid.program_guard(fluid.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             data_np = np.random.random((5, 4)).astype(np.float32)
             x = paddle.static.data('X', [5, 4])
             y = paddle.logcumsumexp(x)
@@ -158,17 +157,17 @@ class TestLogcumsumexp(unittest.TestCase):
             y4 = paddle.logcumsumexp(x, dtype='float64')
             y5 = paddle.logcumsumexp(x, axis=-2)
 
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
             out = exe.run(
+                main,
                 feed={'X': data_np},
                 fetch_list=[
-                    y.name,
-                    y2.name,
-                    y3.name,
-                    y4.name,
-                    y5.name,
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                    y5,
                 ],
             )
 
@@ -182,39 +181,43 @@ class TestLogcumsumexp(unittest.TestCase):
             z = np_logcumsumexp(data_np, axis=-2)
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
 
+    @test_with_pir_api
     def test_cpu(self):
-        paddle.disable_static(paddle.fluid.CPUPlace())
+        paddle.disable_static(paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
         self.run_static()
 
+    @test_with_pir_api
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
-        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])
             y = paddle.logcumsumexp(x, name='out')
             self.assertTrue('out' in y.name)
 
+    @test_with_pir_api
     def test_type_error(self):
-        with fluid.program_guard(fluid.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             with self.assertRaises(TypeError):
                 data_np = np.random.random((100, 100), dtype=np.int32)
                 x = paddle.static.data('X', [100, 100], dtype='int32')
                 y = paddle.logcumsumexp(x)
 
-                place = fluid.CUDAPlace(0)
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
-                out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
+                place = base.CUDAPlace(0)
+                exe = base.Executor(place)
+                out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
 
 
 def logcumsumexp_wrapper(
@@ -236,7 +239,7 @@ class BaseTestCases:
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
         def test_check_grad(self):
             self.check_grad(
@@ -249,6 +252,7 @@ class BaseTestCases:
                         **self.attrs
                     )
                 ],
+                check_pir=True,
             )
 
         def input_and_attrs(self):
@@ -299,6 +303,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         paddle.enable_static()
         return y_np, x_g_np
 
+    @test_with_pir_api
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -336,7 +341,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         place = core.CUDAPlace(0)
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
+            checker=self.verify_output, place=place, check_pir=True
         )
 
     def verify_output(self, outs):
@@ -356,7 +361,12 @@ class TestLogcumsumexpBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', numeric_grad_delta=0.5, max_relative_error=0.5
+            place,
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.5,
+            max_relative_error=0.5,
+            check_pir=True,
         )
 
 

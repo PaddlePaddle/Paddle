@@ -16,10 +16,11 @@
 
 #include <glog/logging.h>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule_block_graph.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -31,7 +32,7 @@ bool IsSpatialLoop(const ir::For* for_node) {
   const auto& loop_var = for_node->loop_var;
   // collect cases where the loop_var used in one of reduce axis in underneath
   // ScheduleBlock
-  auto used_for_reduce_axis = ir::CollectIRNodesWithoutTensor(
+  auto used_for_reduce_axis = ir::ir_utils::CollectIRNodesWithoutTensor(
       for_node->body, [&loop_var](const Expr* x) {
         const auto* block_realize = x->As<ir::ScheduleBlockRealize>();
         if (!block_realize) return false;
@@ -46,7 +47,7 @@ bool IsSpatialLoop(const ir::For* for_node) {
           const ir::Expr& binding = block_realize->iter_values[i];
           if (iter_var->is_reduce_axis ||
               iter_var->name.substr(0, 6) == "reduce") {
-            auto used_exprs = ir::CollectIRNodesWithoutTensor(
+            auto used_exprs = ir::ir_utils::CollectIRNodesWithoutTensor(
                 binding, [&loop_var](const Expr* x) {
                   const ir::_Var_* var = x->As<ir::_Var_>();
                   if (var &&
@@ -94,6 +95,8 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
   auto all_loops = ir_schedule->GetLoops(block_name);
   CHECK_LE(num_loops_to_bind, all_loops.size())
       << "The number of loops to be bind is greater than size of all_loops";
+  CHECK_GE(num_loops_to_bind, 0)
+      << "The number of loops to be bind should be greater than 0";
   // check whether it is the case that threadIdx has been binded but blockIdx
   // not, the threadIdx can only be binded in the first loop after
   // num_loops_to_bind loops because we has excluded other cases in
@@ -101,6 +104,17 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
   bool gpu_thread_has_binded =
       num_loops_to_bind < all_loops.size() &&
       all_loops[num_loops_to_bind].As<ir::For>()->is_gpu_thread_binded();
+  ir::BlockOrderConstructor block_order_constructor;
+  std::map<std::vector<int>, ir::Expr> blocks_order_with_ctrl_stmt =
+      block_order_constructor(&all_loops[num_loops_to_bind - 1]);
+  for (auto& pair : blocks_order_with_ctrl_stmt) {
+    if (pair.first.size() == 2) {
+      ir::Expr stmt = pair.second;
+      if (stmt.As<ir::For>() && stmt.As<ir::For>()->is_gpu_thread_binded()) {
+        gpu_thread_has_binded = true;
+      }
+    }
+  }
   Expr fused_loop = ir_schedule->Fuse(
       {all_loops.begin(), all_loops.begin() + num_loops_to_bind});
   int32_t extent = fused_loop.As<ir::For>()->extent.as_int32();
@@ -179,6 +193,19 @@ std::vector<SearchState> AutoBind::ApplyOnBlock(SearchState state,
                kMaxBlocks,
                target_->max_num_threads());
   return {new_state};
+}
+
+void AutoBind::Apply(ir::IRSchedule* ir_schedule,
+                     const std::string& block_name) {
+  int num_loop_can_bind =
+      CountLoopCanBinded(ir_schedule->GetLoops(block_name)[0].As<ir::For>());
+  if (num_loop_can_bind > 0) {
+    BindGPUIndex(ir_schedule,
+                 block_name,
+                 num_loop_can_bind,
+                 kMaxBlocks,
+                 target_->max_num_threads());
+  }
 }
 
 }  // namespace auto_schedule

@@ -39,7 +39,6 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
       "fetch",
       "recurrent",
       "go",
-      "rnn_memory_helper_grad",
       "conditional_block",
       "while",
       "send",
@@ -82,7 +81,7 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
   std::vector<framework::OpDesc *> all_ops = block->AllOps();
 
   for (size_t i = 0; i < block->OpSize(); i++) {
-    // the output_shape of bilinear_interp_v2 cannot be inferd by input shape,
+    // the output_shape of bilinear_interp_v2 cannot be inferred by input shape,
     // it also need the value of input tensor, so when call OpDesc->InferShape,
     // the output_shape of bilinear_interp_v2 is still dynamic, here we try to
     // infer the output_shape of bilinear_interp_v2 infer shape for

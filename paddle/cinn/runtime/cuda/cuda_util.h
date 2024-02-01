@@ -95,6 +95,9 @@ void cinn_call_cuda_memcpy(void* v_args,
                            size_t count,
                            void* stream = nullptr);
 
+int64_t cinn_get_value_in_cuda_kernel_args(void* v_args, int idx);
+void infer_shape_set_value(int row, int col, int64_t value, int64_t** v);
+
 /**
  * Call a CUDA compiled kernel.
  *
@@ -148,12 +151,13 @@ void cinn_call_batched_cublas(void* v_args,
                               void* stream);
 
 #ifdef CINN_WITH_CUDNN
-void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int>& attr,
-                           cinn_buffer_t* x,
-                           cinn_buffer_t* w,
-                           cinn_buffer_t* y,
-                           cudaStream_t stream = nullptr,
-                           common::Layout target = common::Layout::kNCHW);
+void cinn_gpu_cudnn_conv2d(
+    const absl::flat_hash_map<std::string, int>& attr,
+    cinn_buffer_t* x,
+    cinn_buffer_t* w,
+    cinn_buffer_t* y,
+    cudaStream_t stream = nullptr,
+    cinn::common::Layout target = cinn::common::Layout::kNCHW);
 
 void cinn_gpu_cudnn_conv2d_backward_data(
     const absl::flat_hash_map<std::string, int>& attr,

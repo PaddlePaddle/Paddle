@@ -17,19 +17,16 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def cast_wrapper(x, out_dtype=None):
-    return paddle.cast(x, paddle.dtype(out_dtype))
+    return paddle.cast(x, out_dtype)
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -39,8 +36,8 @@ class TestCastOpFp32ToFp64(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP64),
+            'in_dtype': paddle.float32,
+            'out_dtype': paddle.float64,
         }
         self.op_type = 'cast'
         self.prim_op_type = "prim"
@@ -51,10 +48,16 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):
@@ -68,8 +71,8 @@ class TestCastOpFp16ToFp32(OpTest):
         self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP16),
-            'out_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': paddle.float16,
+            'out_dtype': paddle.float32,
         }
         self.op_type = 'cast'
         self.prim_op_type = "prim"
@@ -77,10 +80,16 @@ class TestCastOpFp16ToFp32(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpFp32ToFp16(OpTest):
@@ -89,8 +98,8 @@ class TestCastOpFp32ToFp16(OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP16),
+            'in_dtype': paddle.float32,
+            'out_dtype': paddle.float16,
         }
         self.op_type = 'cast'
         self.prim_op_type = "prim"
@@ -98,10 +107,16 @@ class TestCastOpFp32ToFp16(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -114,8 +129,8 @@ class TestCastOpBf16ToFp32(OpTest):
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.BF16),
-            'out_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': paddle.bfloat16,
+            'out_dtype': paddle.float32,
         }
         self.op_type = 'cast'
         self.prim_op_type = "prim"
@@ -127,10 +142,16 @@ class TestCastOpBf16ToFp32(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -143,8 +164,8 @@ class TestCastOpFp32ToBf16(OpTest):
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_float_to_uint16(ipt)}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.BF16),
+            'in_dtype': paddle.float32,
+            'out_dtype': paddle.bfloat16,
         }
         self.op_type = 'cast'
         self.prim_op_type = "prim"
@@ -156,25 +177,34 @@ class TestCastOpFp32ToBf16(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.cast, x1, 'int32')
+        paddle.disable_static()
 
 
 class TestCastOpEager(unittest.TestCase):
     def test_eager(self):
-        with paddle.fluid.dygraph.base.guard():
+        with paddle.base.dygraph.base.guard():
             x = paddle.ones([2, 2], dtype="float16")
             x.stop_gradient = False
             out = paddle.cast(x, "float32")
@@ -190,6 +220,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -210,17 +241,19 @@ class TestCastDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+        paddle.disable_static()
 
 
 class TestCastTripleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -241,13 +274,28 @@ class TestCastTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+        paddle.disable_static()
+
+
+class TestCastInplaceContinuous(unittest.TestCase):
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+            target = x.cast("uint8")
+            x.cast_("uint8")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+            target = x.cast("float32")
+            x.cast_("float32")
+            np.testing.assert_array_equal(target.numpy(), x.numpy())
+
+        run(paddle.CPUPlace())
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

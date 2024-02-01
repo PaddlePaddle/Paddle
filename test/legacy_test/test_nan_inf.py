@@ -21,6 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNanInfBase(unittest.TestCase):
@@ -117,7 +119,7 @@ class TestNanInf(TestNanInfBase):
         self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
         # Test on GPU.
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             cmd = f"{self._python_interp} {filepath} --use_cuda --check_nan_inf_level {self.check_nan_inf_level}"
             self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
@@ -233,7 +235,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 0}
         )
         _check_num_nan_inf(use_cuda=False)
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
     def run_check_nan_inf_level(self, use_cuda, dtype, level):
@@ -257,7 +259,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float32", level=level
             )
@@ -267,7 +269,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float16", level=level
             )
@@ -279,7 +281,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
         x_np, y_np = self.generate_inputs(shape, "float32")
 
         device_list = ["cpu"]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             device_list.append("gpu:0")
 
         for device in device_list:
@@ -299,6 +301,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         shape = [8, 8]
@@ -310,16 +313,22 @@ class TestCheckNumericsAPI(TestNanInfBase):
             x = paddle.static.data(name='x', shape=[8, 8], dtype="float32")
             y = paddle.static.data(name='y', shape=[8, 8], dtype="float32")
             out = paddle.add(x, y)
-            paddle.amp.debugging.check_numerics(
-                tensor=out,
-                op_type="elementwise_add",
-                var_name=out.name,
-                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
-            )
+            if in_pir_mode():
+                paddle.amp.debugging.check_numerics(
+                    tensor=out,
+                    op_type="elementwise_add",
+                    var_name=out.id,
+                    debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+                )
+            else:
+                paddle.amp.debugging.check_numerics(
+                    tensor=out,
+                    op_type="elementwise_add",
+                    var_name=out.name,
+                    debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+                )
         exe = paddle.static.Executor(paddle.CPUPlace())
-        exe.run(
-            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out.name]
-        )
+        exe.run(main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out])
         paddle.disable_static()
 
 

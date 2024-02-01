@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
@@ -26,16 +27,30 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
+struct BucketLoweredFuncsWrapper {
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+      predicate2funcs;
+  ir::LoweredFunc infer_shape_func;
+};
+
 template <typename T>
 class OpLowererImplBase {
  public:
   OpLowererImplBase() = default;
   ~OpLowererImplBase() = default;
 
-  virtual std::vector<ir::LoweredFunc> Lower(
+  virtual std::vector<ir::LoweredFunc> Lower(const T& group,
+                                             bool apply_op_schedule = true,
+                                             bool apply_group_schedule = true,
+                                             bool apply_pass = true) = 0;
+
+  virtual BucketLoweredFuncsWrapper BucketLower(
       const T& group,
-      bool apply_op_schedule = true,
-      bool apply_group_schedule = true) = 0;
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) = 0;
+
+  virtual void InsertNameGeneToScope(std::shared_ptr<Scope> scope) = 0;
 };
 
 }  // namespace framework

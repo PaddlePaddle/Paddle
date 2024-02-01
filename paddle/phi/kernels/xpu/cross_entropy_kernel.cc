@@ -43,7 +43,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(loss);
   const int n = phi::funcs::SizeToAxis(axis, logits.dims());
   const int d = phi::funcs::SizeFromAxis(axis, logits.dims());
-  std::vector<int> logits_dims = phi::vectorize<int>(logits.dims());
+  std::vector<int> logits_dims = common::vectorize<int>(logits.dims());
 
   int t = logits_dims[axis];
 

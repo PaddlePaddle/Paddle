@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -23,5 +24,19 @@ void ReduceScatterKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int nranks,
                          DenseTensor* out);
+
+template <typename T, typename Context>
+void ReduceScatter(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int nranks,
+                   DenseTensor* out) {
+  MetaTensor out_meta(*out);
+  MetaTensor* out_meta_ptr = &out_meta;
+
+  ReduceScatterInferMeta(phi::MetaTensor(x), nranks, out_meta_ptr);
+  if (x.initialized()) {
+    ReduceScatterKernel<T, Context>(dev_ctx, x, nranks, out);
+  }
+}
 
 }  // namespace phi

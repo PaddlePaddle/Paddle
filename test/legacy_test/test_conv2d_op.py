@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def conv2d_forward_naive(
@@ -467,14 +467,14 @@ class TestConv2DOp(OpTest):
                 'Filter': convert_float_to_uint16(filter),
             }
             self.inputs_fp32 = {
-                'Input': OpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': OpTest.np_dtype_to_base_dtype(input),
+                'Filter': OpTest.np_dtype_to_base_dtype(filter),
             }
         else:
             output = output.astype(self.dtype)
             self.inputs = {
-                'Input': OpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': OpTest.np_dtype_to_base_dtype(input),
+                'Filter': OpTest.np_dtype_to_base_dtype(filter),
             }
 
         self.attrs = {
@@ -499,7 +499,10 @@ class TestConv2DOp(OpTest):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+            place,
+            atol=1e-5,
+            check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -515,6 +518,7 @@ class TestConv2DOp(OpTest):
             'Output',
             max_relative_error=0.02,
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -531,6 +535,7 @@ class TestConv2DOp(OpTest):
             max_relative_error=0.02,
             no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -546,6 +551,7 @@ class TestConv2DOp(OpTest):
             'Output',
             no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_test_case(self):
@@ -725,8 +731,8 @@ class TestConv2DOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input of conv2d must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.static.nn.conv2d(x1, 1, 1)
 
@@ -798,8 +804,8 @@ class TestConv2DOp_v2(OpTest):
         output = output.astype(self.dtype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,
@@ -824,7 +830,10 @@ class TestConv2DOp_v2(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
+            place,
+            atol=1e-5,
+            check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -838,6 +847,7 @@ class TestConv2DOp_v2(OpTest):
             'Output',
             max_relative_error=0.02,
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -852,6 +862,7 @@ class TestConv2DOp_v2(OpTest):
             max_relative_error=0.02,
             no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -865,6 +876,7 @@ class TestConv2DOp_v2(OpTest):
             'Output',
             no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def init_test_case(self):

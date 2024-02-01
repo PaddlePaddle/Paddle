@@ -27,12 +27,12 @@ using cinn::hlir::framework::Node;
 using cinn::hlir::op::ExternalApiRegistry;
 
 TEST(ExternalApiRegistry, Has) {
-  ASSERT_TRUE(ExternalApiRegistry::Global()->Has("matmul",
-                                                 common::DefaultNVGPUTarget()));
-  ASSERT_TRUE(ExternalApiRegistry::Global()->Has("cholesky",
-                                                 common::DefaultHostTarget()));
+  ASSERT_TRUE(ExternalApiRegistry::Global()->Has(
+      "matmul", cinn::common::DefaultNVGPUTarget()));
+  ASSERT_TRUE(ExternalApiRegistry::Global()->Has(
+      "cholesky", cinn::common::DefaultHostTarget()));
   ASSERT_FALSE(ExternalApiRegistry::Global()->Has(
-      "op_doesn't_exist", common::DefaultNVGPUTarget()));
+      "op_doesn't_exist", cinn::common::DefaultNVGPUTarget()));
 }
 
 TEST(ExternalApiRegistry, GetExternalApi) {
@@ -41,13 +41,13 @@ TEST(ExternalApiRegistry, GetExternalApi) {
   node->attrs.attr_store["original_op"] = std::string("matmul");
   ASSERT_EQ("cinn_call_cublas",
             ExternalApiRegistry::Global()->GetExternalApi(
-                node.get(), common::DefaultNVGPUTarget()));
+                node.get(), cinn::common::DefaultNVGPUTarget()));
 #ifdef CINN_WITH_CUDNN
   node->attrs.attr_store["conv_type"] = std::string("backward_data");
   node->attrs.attr_store["original_op"] = std::string("conv2d");
   ASSERT_EQ("cinn_call_cudnn_conv2d_backward_data",
             ExternalApiRegistry::Global()->GetExternalApi(
-                node.get(), common::DefaultNVGPUTarget()));
+                node.get(), cinn::common::DefaultNVGPUTarget()));
 #endif
 }
 

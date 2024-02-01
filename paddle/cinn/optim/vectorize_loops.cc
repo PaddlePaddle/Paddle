@@ -25,22 +25,21 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/utils/functional.h"
 
 namespace cinn {
 namespace optim {
 using namespace ir;  // NOLINT
-using common::make_const;
-using common::make_one;
-using common::make_zero;
+using cinn::common::make_const;
+using cinn::common::make_one;
+using cinn::common::make_zero;
 
 //! Widen an expression to the given number of lanes.
 Expr Widen(Expr e, int lanes) {
@@ -63,7 +62,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   TensorVectorizeTeller(
       const Var &iter_var,
       const int factor,
-      const absl::flat_hash_map<std::string, common::CasInterval>
+      const absl::flat_hash_map<std::string, cinn::common::CasInterval>
           *var_intervals)
       : iter_var_(iter_var), factor_(factor), var_intervals_(var_intervals) {}
 
@@ -79,7 +78,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   const Var
       iter_var_;  // loop var of new for-loop split from the vectorized loop
   const int factor_;
-  const absl::flat_hash_map<std::string, common::CasInterval> *var_intervals_;
+  const absl::flat_hash_map<std::string, cinn::common::CasInterval>
+      *var_intervals_;
   // save (tensor name) -> (bool flag) to indentify whether tensors can be
   // vectorized or not
   std::unordered_map<std::string, bool> tensor2flag_;
@@ -130,7 +130,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val must appear in the last index
     if (indices.empty() ||
-        ir::CollectIRNodes(indices.back(), find_matched_var_fn).empty()) {
+        ir::ir_utils::CollectIRNodes(indices.back(), find_matched_var_fn)
+            .empty()) {
       VLOG(5) << "Loop var:" << iter_var_->name
               << " is not used in the last index";
       return false;
@@ -138,7 +139,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val can't appear in mulitple indices
     for (int i = 0; i < indices.size() - 1; ++i) {
-      auto repeat_found = ir::CollectIRNodes(indices[i], find_matched_var_fn);
+      auto repeat_found =
+          ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
       if (!repeat_found.empty()) {
         VLOG(5) << "Loop var:" << iter_var_->name
                 << " is used at more than last index, current:" << i;
@@ -147,13 +149,15 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
     }
 
     // check tensor accessed sequentially by comparing index one by one
-    Expr first_idx = optim::IRCopy(indices.back());
-    optim::IrReplace(&first_idx, Expr(iter_var_), Expr(0));
+    Expr first_idx = ir::ir_utils::IRCopy(indices.back());
+    cinn::ir::ir_utils::IrReplaceVarBroadcast(
+        &first_idx, Expr(iter_var_), Expr(0));
     const auto &interval = var_intervals_->at(iter_var_->name);
     for (int i = 1; i < interval.r; ++i) {
-      Expr next_idx = optim::IRCopy(indices.back());
-      optim::IrReplace(&next_idx, Expr(iter_var_), Expr(i));
-      auto gap = common::AutoSimplify(Expr(next_idx - first_idx));
+      Expr next_idx = ir::ir_utils::IRCopy(indices.back());
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &next_idx, Expr(iter_var_), Expr(i));
+      auto gap = cinn::common::AutoSimplify(Expr(next_idx - first_idx));
       if (!gap.As<IntImm>() || gap.as_int32() != i) {
         VLOG(5) << "Tensor:" << tensor->name
                 << " is not accessed sequentially, next:" << next_idx
@@ -185,7 +189,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   const Var iter_var_;  // the loop var of the vecotrized loop
   const int factor_;    // the factor for vectorize
 
-  TensorWriteTeller write_teller_;
+  std::set<std::string> write_teller_;
   TensorVectorizeTeller vectorized_teller_;
 
   absl::flat_hash_map<std::string, Var> tensor2vectorized_vars_;
@@ -194,10 +198,11 @@ class CudaVectorizer : public IRMutator<Expr *> {
 
  public:
   static constexpr int CudaVectorTypeMaxLanes = 8;
-  CudaVectorizer(const Var &iter_var,
-                 const int factor,
-                 const absl::flat_hash_map<std::string, common::CasInterval>
-                     *var_intervals)
+  CudaVectorizer(
+      const Var &iter_var,
+      const int factor,
+      const absl::flat_hash_map<std::string, cinn::common::CasInterval>
+          *var_intervals)
       : iter_var_(iter_var),
         factor_(factor),
         vectorized_teller_(iter_var, factor, var_intervals) {
@@ -215,7 +220,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    write_teller_.Collect(expr);
+    write_teller_ = ir::ir_utils::CollectTensorNeedsWrite(expr);
     vectorized_teller_.Collect(expr);
     IRMutator<Expr *>::Visit(expr, expr);
   }
@@ -267,7 +272,8 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   std::string GetVectorTypeName(Type type) {
-    std::string name_prefix = common::customized_type::kcuda_builtin_vector_t;
+    std::string name_prefix =
+        cinn::common::customized_type::kcuda_builtin_vector_t;
 #define GET_CUDA_VECTOR_TYPE_NAME(pred_expr, scalar_name)       \
   if (pred_expr) {                                              \
     return name_prefix + scalar_name + std::to_string(factor_); \
@@ -289,7 +295,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
                   const std::vector<Expr> &indices,
                   bool is_store) {
     auto *node = tensor.As<ir::_Tensor_>();
-    bool is_const = !write_teller_.IsWrite(node->name);
+    bool is_const = !write_teller_.count(node->name);
 
     // generate the corresponding vector type
     Type scalar_type = tensor->type().ElementOf();
@@ -309,7 +315,8 @@ class CudaVectorizer : public IRMutator<Expr *> {
 
     // generate a get_addr expr to get the address of the tensor
     Expr converted_tensor = Load::Make(tensor, indices);
-    optim::IrReplace(&converted_tensor, iter_var_, Expr(int32_t(0)));
+    cinn::ir::ir_utils::IrReplaceVarBroadcast(
+        &converted_tensor, iter_var_, Expr(int32_t(0)));
     auto get_addr = ir::intrinsics::GetAddr::Make(converted_tensor);
 
     // generate a let expression to cast the tensor into the local vector
@@ -357,7 +364,7 @@ class Vectorizer : public IRMutator<Expr *> {
 
   Expr ramp_;
 
-  absl::flat_hash_map<std::string, common::CasInterval> var_intervals_;
+  absl::flat_hash_map<std::string, cinn::common::CasInterval> var_intervals_;
 
   //! A suffix to attach to widened variables.
   std::string widen_suffix;
@@ -365,7 +372,7 @@ class Vectorizer : public IRMutator<Expr *> {
  public:
   Vectorizer(const Var &var,
              int lanes,
-             const absl::flat_hash_map<std::string, common::CasInterval>
+             const absl::flat_hash_map<std::string, cinn::common::CasInterval>
                  &var_intervals = {})
       : var(var), lanes_(lanes), var_intervals_(var_intervals) {
     // the identity ramp.
@@ -573,10 +580,10 @@ class Vectorizer : public IRMutator<Expr *> {
     std::map<const ir::_Var_ *, Expr> var_map;
     var_map[var.As<ir::_Var_>()] = idx;
 
-    common::Substitute(expr, var_map);
+    cinn::common::Substitute(expr, var_map);
     *expr = ir::For::Make(idx,
-                          common::make_const(0),
-                          common::make_const(lanes_),
+                          cinn::common::make_const(0),
+                          cinn::common::make_const(lanes_),
                           ForType::Serial,
                           DeviceAPI::Host,
                           *expr);
@@ -664,7 +671,7 @@ class Vectorizer : public IRMutator<Expr *> {
 
 struct VectorizeLoops_ : public IRMutator<Expr *> {
   const Target &target;
-  absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
+  absl::flat_hash_map<std::string, cinn::common::CasInterval> var_intervals;
   bool vectorizable_ = true;
 
   explicit VectorizeLoops_(const Target &t) : target(t) {}
@@ -678,7 +685,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     bool is_changed = false;
     // simplify the complicated index from poly in the format of div/mod
     for (int i = 0; i < indices.size(); i++) {
-      node->indices[i] = common::AutoSimplify(node->indices[i], var_intervals);
+      node->indices[i] =
+          cinn::common::AutoSimplify(node->indices[i], var_intervals);
       Simplify(&node->indices[i]);
       if (!node->indices[i].same_as(indices[i])) {
         is_changed = true;
@@ -698,7 +706,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     bool is_changed = false;
     // simplify the complicated index from poly in the format of div/mod
     for (int i = 0; i < indices.size(); i++) {
-      node->indices[i] = common::AutoSimplify(node->indices[i], var_intervals);
+      node->indices[i] =
+          cinn::common::AutoSimplify(node->indices[i], var_intervals);
       Simplify(&node->indices[i]);
       if (!node->indices[i].same_as(indices[i])) {
         is_changed = true;
@@ -721,10 +730,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     auto loopvar_name = forloop->loop_var->name;
     if (forloop->extent.As<IntImm>()) {
       var_intervals.emplace(
-          loopvar_name, common::CasInterval{0, forloop->extent.as_int32() - 1});
+          loopvar_name,
+          cinn::common::CasInterval{static_cast<int64_t>(0),
+                                    forloop->extent.as_int64() - 1});
     } else {
-      var_intervals.emplace(loopvar_name,
-                            common::CasInterval{Expr(0), forloop->extent - 1});
+      var_intervals.emplace(
+          loopvar_name,
+          cinn::common::CasInterval{Expr(0), forloop->extent - 1});
     }
     // the extent the forloops marked as Vectorized should be int constant
     if (forloop->is_vectorized()) {
@@ -733,7 +745,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       CHECK_GT(forloop->vectorize_info().factor, 0);
 
       CHECK(is_zero(forloop->min));
-      Expr for_extent = common::AutoSimplify(forloop->extent);
+      Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
       Simplify(&for_extent);
       node->extent = for_extent;
       auto *extent_min = for_extent.As<Min>();
@@ -742,7 +754,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (target == common::DefaultNVGPUTarget()) {
+      if (target == cinn::common::DefaultNVGPUTarget()) {
         if (!forloop->extent.As<IntImm>() ||
             forloop->extent.as_int32() % forloop->vectorize_info().factor !=
                 0) {
@@ -792,13 +804,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
 
-      if (target == common::DefaultNVGPUTarget()) {
+      if (target == cinn::common::DefaultNVGPUTarget()) {
         CudaVectorizer cuda_vectorizer(
             new_forloop->loop_var, factor, &var_intervals);
         cuda_vectorizer.Visit(&new_forloop->body);
         // unroll the new forloop to compute each element of the vector
         // iteratively
-        auto copied_loop = optim::IRCopy(_new_forloop);
+        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
         copied_loop.As<ir::For>()->set_unrolled();
         optim::UnrollLoop(&copied_loop);
         // add cast exprs of vector type in the front of vectorized forloop,
@@ -839,7 +851,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   bool UnrollCmpFor(For *outer_for, For *inner_for, Expr *expr) {
     CHECK(outer_for);
     CHECK(inner_for);
-    Expr inner_for_extent = common::AutoSimplify(inner_for->extent);
+    Expr inner_for_extent = cinn::common::AutoSimplify(inner_for->extent);
     Simplify(&inner_for_extent);
     auto *extent_min = inner_for_extent.As<Min>();
     if (extent_min) {
@@ -853,7 +865,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       auto b_int = a.As<IntImm>();
       if (a_int || b_int) {
         condition =
-            common::SolveInequality(LE::Make(a, b), outer_for->loop_var);
+            cinn::common::SolveInequality(LE::Make(a, b), outer_for->loop_var);
         Simplify(&condition);
       }
       if (condition.defined()) {
@@ -868,7 +880,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      DeviceAPI::UNK,
                                      inner_for->body,
                                      inner_for->vectorize_info())});
-          Expr new_extent_a = common::AutoSimplify(le_n->b() + 1);
+          Expr new_extent_a = cinn::common::AutoSimplify(le_n->b() + 1);
           Expr out_for_a = For::Make(outer_for->loop_var,
                                      outer_for->min,
                                      new_extent_a,
@@ -877,17 +889,18 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      inner_for_a,
                                      outer_for->vectorize_info());
           Var new_iterator_inner(
-              common::UniqName(inner_for->loop_var->name + "_s"));
+              cinn::common::UniqName(inner_for->loop_var->name + "_s"));
           Var new_iterator_outer(
-              common::UniqName(outer_for->loop_var->name + "_s"));
+              cinn::common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b = Block::Make({For::Make(new_iterator_inner,
-                                                    inner_for->min,
-                                                    b,
-                                                    ForType::Serial,
-                                                    DeviceAPI::UNK,
-                                                    IRCopy(inner_for->body))});
-          optim::IrReplace(
+          Expr inner_for_b =
+              Block::Make({For::Make(new_iterator_inner,
+                                     inner_for->min,
+                                     b,
+                                     ForType::Serial,
+                                     DeviceAPI::UNK,
+                                     ir::ir_utils::IRCopy(inner_for->body))});
+          cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 
           Expr out_for_b = For::Make(new_iterator_outer,
@@ -897,7 +910,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      outer_for->device_api,
                                      inner_for_b,
                                      outer_for->vectorize_info());
-          optim::IrReplace(
+          cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &out_for_b, outer_for->loop_var, Expr(new_iterator_outer));
           *expr = Block::Make({out_for_a, out_for_b});
           VLOG(2) << *expr;
@@ -925,10 +938,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       int extent_trunc = extent_int / factor;
       int extent_times =
           extent_int % factor == 0 ? extent_trunc : extent_trunc + 1;
-      times = common::make_const(forloop->extent->type(), extent_times);
+      times = cinn::common::make_const(forloop->extent->type(), extent_times);
     } else {
-      times =
-          common::AutoSimplify(Div::Make(forloop->extent, make_const(factor)));
+      times = cinn::common::AutoSimplify(
+          Div::Make(forloop->extent, make_const(factor)));
       Simplify(&times);
     }
 
@@ -940,26 +953,28 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (times_int && forloop->extent.as_int32() >= 1) {
       var_intervals.emplace(
           forloop->loop_var->name,
-          common::CasInterval{0, forloop->extent.as_int32() - 1});
+          cinn::common::CasInterval{0, forloop->extent.as_int32() - 1});
     } else {
       var_intervals.erase(forloop->loop_var->name);
-      var_intervals.emplace(forloop->loop_var->name,
-                            common::CasInterval{Expr(0), forloop->extent - 1});
+      var_intervals.emplace(
+          forloop->loop_var->name,
+          cinn::common::CasInterval{Expr(0), forloop->extent - 1});
     }
 
     // create the new forloop
     {
       Var new_iterator(Context::Global().NewName("vi"));
       var_intervals.emplace(new_iterator->name,
-                            common::CasInterval{0, factor - 1});
+                            cinn::common::CasInterval{0, factor - 1});
       // eliminate for 1
       Expr new_index;
-      if (common::is_zero(times - 1)) {
+      if (cinn::common::is_zero(times - 1)) {
         new_index = Expr(new_iterator);
       } else {
         new_index = Expr(forloop->loop_var) * factor + Expr(new_iterator);
       }
-      optim::IrReplace(&forloop->body, forloop->loop_var, new_index);
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &forloop->body, forloop->loop_var, new_index);
       auto new_forloop = For::Make(new_iterator,
                                    forloop->min,
                                    make_const(factor),

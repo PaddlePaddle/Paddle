@@ -18,7 +18,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
@@ -151,7 +151,15 @@ struct XPUContext::Impl {
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
-    context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
+    // Setup XPU GM Buffer
+    if (std::getenv("XPUAPI_DEFAULT_SIZE") != nullptr) {
+      context_->set_option("XPUAPI_DEFAULT_SIZE",
+                           std::getenv("XPUAPI_DEFAULT_SIZE"));
+    } else {
+      // Optimization described in
+      // https://github.com/PaddlePaddle/Paddle/pull/54674
+      context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
+    }
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
@@ -192,6 +200,9 @@ struct XPUContext::Impl {
               << tname << " currently " << context_map_.size()
               << " contexts existing";
       xpu::Context* ctx_t = xpu::create_context();
+      // DataLoader does not require a pre-allocated GM buffer
+      // to avoid xpu_wait calls
+      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "1");
       context_map_[tname] = ctx_t;
     }
   }

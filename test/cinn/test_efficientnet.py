@@ -22,7 +22,7 @@ import numpy as np
 from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import Interpreter
 
-from paddle import fluid
+from paddle import base
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -40,13 +40,13 @@ class TestLoadEfficientNetModel(unittest.TestCase):
         self.input_tensor = 'image'
 
     def get_paddle_inference_result(self, model_dir, data):
-        config = fluid.core.AnalysisConfig(
+        config = base.core.AnalysisConfig(
             model_dir + '/__model__', model_dir + '/params'
         )
         config.disable_gpu()
         config.switch_ir_optim(False)
-        self.paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(data)
+        self.paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(data)
         results = self.paddle_predictor.run([data])
         get_tensor = self.paddle_predictor.get_output_tensor(
             self.target_tensor

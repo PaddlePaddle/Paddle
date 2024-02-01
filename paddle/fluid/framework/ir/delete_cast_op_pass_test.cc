@@ -53,6 +53,7 @@ VarDesc* AddWriteToArray(BlockDesc* block,
   OpDesc* op = block->AppendOp();
   op->SetType("write_to_array");
   std::vector<std::string> x_names;
+  x_names.reserve(x.size());
   for (auto k : x) {
     x_names.push_back(k->Name());
   }

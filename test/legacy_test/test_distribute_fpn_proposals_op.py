@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def distribute_fpn_proposals_wrapper(
@@ -142,7 +143,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir=False)
 
 
 class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
@@ -200,6 +201,7 @@ class TestDistributeFpnProposalsAPI(unittest.TestCase):
         self.rois_np = np.random.rand(10, 4).astype('float32')
         self.rois_num_np = np.array([4, 6]).astype('int32')
 
+    @test_with_pir_api
     def test_dygraph_with_static(self):
         paddle.enable_static()
         rois = paddle.static.data(name='rois', shape=[10, 4], dtype='float32')

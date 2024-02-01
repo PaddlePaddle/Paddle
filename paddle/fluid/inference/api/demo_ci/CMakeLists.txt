@@ -6,6 +6,8 @@ option(WITH_STATIC_LIB
        "Compile demo with static/shared library, default use static." ON)
 option(USE_TENSORRT "Compile demo with TensorRT." OFF)
 option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
+option(WITH_SHARED_PHI "Compile demo with phi shared lib" ON)
+option(CUSTOM_OPERATOR_FILES "List of file names for custom operators" "")
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -205,6 +207,10 @@ if(NOT WIN32)
       cryptopp
       utf8proc
       ${EXTERNAL_LIB})
+  if(WITH_SHARED_PHI)
+    set(DEPS ${DEPS}
+             ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX})
+  endif()
 else()
   set(DEPS
       ${DEPS}
@@ -236,7 +242,7 @@ if(WITH_GPU)
                ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
       set(DEPS ${DEPS}
                ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
-      if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+      if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
         set(DEPS ${DEPS}
                  ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_STATIC_LIBRARY_SUFFIX})
       endif()
@@ -245,6 +251,18 @@ if(WITH_GPU)
     set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX})
     set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX})
   endif()
+endif()
+
+if(CUSTOM_OPERATOR_FILES)
+  if(WITH_GPU AND NOT APPLE)
+    add_definitions("-DPADDLE_WITH_CUDA")
+    enable_language(CUDA)
+    find_package(CUDA REQUIRED)
+    include_directories("${CUDA_INCLUDE_DIRS}")
+  endif()
+  add_library(pd_infer_custom_op SHARED ${CUSTOM_OPERATOR_FILES})
+  target_link_libraries(pd_infer_custom_op ${DEPS})
+  set(DEPS ${DEPS} pd_infer_custom_op)
 endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
@@ -267,7 +285,7 @@ if(WIN32)
         ${CMAKE_COMMAND} -E copy
         ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
         ${LIB_PATH})
-    if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+    if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
       add_custom_command(
         TARGET ${DEMO_NAME}
         POST_BUILD

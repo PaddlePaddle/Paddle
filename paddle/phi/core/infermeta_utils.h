@@ -19,11 +19,11 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
@@ -41,32 +41,32 @@ class InferMetaContext {
   const MetaConfig& GetMetaConfig() const;
 
   void EmplaceBackInput(MetaTensor input);
-  void EmplaceBackOutput(MetaTensor output);
-  void EmplaceBackAttr(Attribute attr);
+  TEST_API void EmplaceBackOutput(MetaTensor output);
+  TEST_API void EmplaceBackAttr(Attribute attr);
 
   void EmplaceBackInputs(
       paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs);
   void EmplaceBackOutputs(
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
-  virtual const MetaTensor& InputAt(size_t idx) const;
+  TEST_API virtual const MetaTensor& InputAt(size_t idx) const;
 
-  virtual std::vector<const MetaTensor*> InputsBetween(size_t start,
-                                                       size_t end) const;
-  virtual paddle::optional<std::vector<const MetaTensor*>>
+  TEST_API virtual std::vector<const MetaTensor*> InputsBetween(
+      size_t start, size_t end) const;
+  TEST_API virtual paddle::optional<std::vector<const MetaTensor*>>
   OptionalInputsBetween(size_t start, size_t end) const;
 
-  virtual MetaTensor* MutableOutputAt(size_t idx);
-  virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
-                                                        size_t end);
+  TEST_API virtual MetaTensor* MutableOutputAt(size_t idx);
+  TEST_API virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
+                                                                 size_t end);
 
   template <typename AttrType>
-  const AttrType& AttrAt(size_t idx) const;
+  TEST_API const AttrType& AttrAt(size_t idx) const;
 
-  const Attribute& AttrAt(size_t idx) const;
+  TEST_API const Attribute& AttrAt(size_t idx) const;
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
-  const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+  TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   virtual ~InferMetaContext() = default;
 

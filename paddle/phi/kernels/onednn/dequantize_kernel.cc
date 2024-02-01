@@ -44,7 +44,7 @@ void DeQuantKernel(const Context& dev_ctx,
 
   const bool with_shift = q_shift != 0;
 
-  auto x_tz = phi::vectorize<int64_t>(x.dims());
+  auto x_tz = common::vectorize<int64_t>(x.dims());
   auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
   auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
 

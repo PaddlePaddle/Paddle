@@ -94,7 +94,7 @@ struct UnionFind {
     return res;
   }
 
-  std::vector<common::Shared<UnionFindNode>> nodes;
+  std::vector<cinn::common::Shared<UnionFindNode>> nodes;
 };
 
 }  // namespace common

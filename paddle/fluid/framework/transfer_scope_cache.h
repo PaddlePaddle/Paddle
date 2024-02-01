@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -27,9 +28,9 @@ namespace framework {
 class OpKernelType;
 class Scope;
 
-std::unordered_map<size_t, Scope*>& global_transfer_data_cache();
+TEST_API std::unordered_map<size_t, Scope*>& global_transfer_data_cache();
 
-std::unordered_set<Scope*>& global_transfer_scope_cache();
+TEST_API std::unordered_set<Scope*>& global_transfer_scope_cache();
 
 std::unordered_map<const Scope*, std::unordered_set<size_t>>&
 global_transfer_scope_key();

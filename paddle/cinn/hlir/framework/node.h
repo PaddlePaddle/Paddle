@@ -32,7 +32,7 @@ namespace framework {
 class Node;
 class NodeData;
 
-using NodePtr = common::Shared<Node>;
+using NodePtr = cinn::common::Shared<Node>;
 using AttrType = utils::Attribute;
 using AttrMapType = utils::AttributeMap;
 
@@ -65,7 +65,7 @@ std::ostream &operator<<(std::ostream &os, const NodeAttr &node_attr);
 /**
  * \brief Node represents an operation in a computation graph.
  */
-class Node : public common::GraphNode {
+class Node : public cinn::common::GraphNode {
  public:
   Node() = default;
   Node(const Operator *op, const std::string &name, std::string id = {}) {
@@ -74,7 +74,8 @@ class Node : public common::GraphNode {
     this->id_ = std::move(id);
   }
   const char *type_info() const override { return __type_info__; }
-  std::tuple<common::GraphEdge *, common::GraphEdge *> LinkTo(NodeData *other);
+  std::tuple<cinn::common::GraphEdge *, cinn::common::GraphEdge *> LinkTo(
+      NodeData *other);
 
   // This node determines another node, which means the other node depeneds on
   // this node.
@@ -92,11 +93,13 @@ class Node : public common::GraphNode {
 
   //! Get the input tensors in order to match tensors correctly. If do refresh,
   //! we will update the links.
-  std::vector<common::Shared<common::GraphEdge>> inlinks_in_order() const;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> inlinks_in_order()
+      const;
 
   //! Get the output tensors in order to match tensors correctly. If do refresh,
   //! we will update the links.
-  std::vector<common::Shared<common::GraphEdge>> outlinks_in_order() const;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> outlinks_in_order()
+      const;
 
   inline const Operator *op() const { return this->attrs.op; }
 
@@ -123,7 +126,7 @@ class Node : public common::GraphNode {
 
   template <class... Args>
   static NodePtr Create(Args &&...args) {
-    return common::Shared<Node>(new Node(std::forward<Args>(args)...));
+    return cinn::common::Shared<Node>(new Node(std::forward<Args>(args)...));
   }
 
   static constexpr char *__type_info__ = "hlir_framework_node";
@@ -138,7 +141,7 @@ class Node : public common::GraphNode {
 /**
  * \brief NodeData represents the output data from an operator.
  */
-class NodeData : public common::GraphNode {
+class NodeData : public cinn::common::GraphNode {
   using attr_t = AttrType;
 
  public:
@@ -155,7 +158,8 @@ class NodeData : public common::GraphNode {
 
   NodeData() : source_node(), output_index(), version(), id_(), is_const_() {}
 
-  std::tuple<common::GraphEdge *, common::GraphEdge *> LinkTo(Node *other);
+  std::tuple<cinn::common::GraphEdge *, cinn::common::GraphEdge *> LinkTo(
+      Node *other);
 
   // This node determines another node, which means the other node depeneds on
   // this node.
@@ -219,13 +223,13 @@ class NodeData : public common::GraphNode {
 };
 
 // insert op_node after input_data
-NodeData *InsertGraphOpNodeAfter(common::Graph *graph,
+NodeData *InsertGraphOpNodeAfter(cinn::common::Graph *graph,
                                  Node *insert_node,
                                  NodeData *input_nodedata,
                                  Node *dst_node,
                                  int pos);
 // insert op_node before out_data
-NodeData *InsertGraphOpNodeBefore(common::Graph *graph,
+NodeData *InsertGraphOpNodeBefore(cinn::common::Graph *graph,
                                   Node *insert_node,
                                   Node *input_node,
                                   NodeData *dst_data,

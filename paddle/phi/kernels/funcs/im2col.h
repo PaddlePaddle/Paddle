@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/layout.h"
+#include "paddle/common/errors.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace phi {
 namespace funcs {

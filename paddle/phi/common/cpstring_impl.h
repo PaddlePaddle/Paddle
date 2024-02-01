@@ -24,7 +24,7 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 
 #if (defined(__NVCC__) || defined(__HIPCC__))
 #define HOSTDEVICE __host__ __device__

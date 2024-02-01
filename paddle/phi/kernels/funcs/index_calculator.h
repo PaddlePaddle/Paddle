@@ -34,8 +34,7 @@ constexpr int kMaxRank = phi::DDim::kMaxRank;
 namespace details {
 // Convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline phi::Array<T, ElementCount> VectorToArray(
-    const VectorLikeType& vec) {
+static inline Array<T, ElementCount> VectorToArray(const VectorLikeType& vec) {
   PADDLE_ENFORCE_LE(
       vec.size(),
       ElementCount,
@@ -44,7 +43,7 @@ static inline phi::Array<T, ElementCount> VectorToArray(
                                    vec.size(),
                                    ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  phi::Array<T, ElementCount> ret;
+  Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {
     ret[i] = vec[i];
   }
@@ -99,11 +98,11 @@ struct IndexCalculator {
   }
 
   int dim;
-  phi::Array<int, kMaxRank> dims;
-  phi::Array<int, kMaxRank> strides;
-  phi::Array<int, kMaxRank> reduce_strides;
+  Array<int, kMaxRank> dims;
+  Array<int, kMaxRank> strides;
+  Array<int, kMaxRank> reduce_strides;
 #ifndef PADDLE_WITH_XPU_KP
-  phi::Array<kps::details::FastDivMod, kMaxRank> divmoders;
+  Array<kps::details::FastDivMod, kMaxRank> divmoders;
 #endif
 };
 

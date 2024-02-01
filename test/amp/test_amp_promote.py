@@ -18,7 +18,7 @@ import numpy as np
 from amp_base_models import AmpTestBase, build_conv_model
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import amp
 
 
@@ -138,7 +138,7 @@ class TestEagerAmpPromoteStats(AmpTestBase):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_stats = paddle.fluid.core.get_low_precision_op_list()
+        op_stats = paddle.base.core.get_low_precision_op_list()
 
         self._check_op_calls(
             op_stats,

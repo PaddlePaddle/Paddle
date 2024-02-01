@@ -23,7 +23,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -61,8 +61,35 @@ std::string Domain::__str__() const {
 }
 
 isl::set Domain::to_isl() const {
+  // TODO(6clc): will be removed in future
   VLOG(3) << "isl::set " << __str__();
-  isl::set x(common::Context::isl_ctx(), __str__());
+  auto replace_substr = [](std::string& s,
+                           std::string const& toReplace,
+                           std::string const& replaceWith) {
+    std::string buf;
+    std::size_t pos = 0;
+    std::size_t prevPos = -1;
+
+    // Reserves rough estimate of final size of string.
+    buf.reserve(s.size());
+
+    while (true) {
+      prevPos = pos;
+      pos = s.find(toReplace, pos);
+      if (pos == std::string::npos) break;
+      buf.append(s, prevPos, pos - prevPos);
+      buf += replaceWith;
+      pos += toReplace.size();
+    }
+
+    buf.append(s, prevPos, s.size() - prevPos);
+    s.swap(buf);
+  };
+
+  std::string isl_string = __str__();
+  replace_substr(isl_string, "(ll)", "");
+  replace_substr(isl_string, "ll", "");
+  isl::set x(cinn::common::Context::isl_ctx(), isl_string);
   return x;
 }
 
@@ -70,8 +97,8 @@ void Domain::ExtractParams() {
   std::unordered_set<std::string> var_names;
   auto collect_param_fn = [&](Expr& e) {
     if (!e.is_constant()) {
-      auto vars =
-          ir::CollectIRNodes(e, [](const Expr* e) { return e->is_var(); });
+      auto vars = ir::ir_utils::CollectIRNodes(
+          e, [](const Expr* e) { return e->is_var(); });
       for (auto& var : vars) var_names.insert(var.As<ir::_Var_>()->name);
     }
   };

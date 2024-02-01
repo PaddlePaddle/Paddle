@@ -17,9 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
+@test_with_pir_api
 class TestDiagFlatError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -68,22 +70,29 @@ class TestDiagFlatAPI(unittest.TestCase):
         y = paddle.diagflat(x, offset=-1)
         np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
-        x2 = paddle.static.data(name='input2', shape=[20], dtype='float64')
-        result0 = paddle.diagflat(x)
-        result3 = paddle.diagflat(x2)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float64'
+            )
+            x2 = paddle.static.data(name='input2', shape=[20], dtype='float64')
+            result0 = paddle.diagflat(x)
+            result3 = paddle.diagflat(x2)
 
-        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        res0, res3 = exe.run(
-            feed={"input": self.input_np, 'input2': self.input_np2},
-            fetch_list=[result0, result3],
-        )
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            res0, res3 = exe.run(
+                main,
+                feed={"input": self.input_np, 'input2': self.input_np2},
+                fetch_list=[result0, result3],
+            )
 
-        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
-        np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
+            np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+            np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
@@ -104,8 +113,9 @@ class TestDiagFlatAPI(unittest.TestCase):
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
 
+    @test_with_pir_api
     def test_fp16_with_gpu(self, use_gpu=False):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

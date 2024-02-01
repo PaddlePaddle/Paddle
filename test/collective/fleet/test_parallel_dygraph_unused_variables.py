@@ -22,7 +22,7 @@ from parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
 from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
-from paddle import fluid
+from paddle import base
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -34,7 +34,7 @@ class TestParallelDygraphUnusedVar(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
                     "../../legacy_test/parallel_dygraph_unused_variables.py"
@@ -55,7 +55,7 @@ class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
 
 class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
     def test_mnist_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestSparseEmbeddingUnusedVars, delta=1e-5
             )
@@ -68,7 +68,7 @@ class TestParallelDygraphNoVar(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
                     "../../legacy_test/parallel_dygraph_none_var.py"
@@ -86,7 +86,7 @@ class TestParallelDygraphSharedUnusedVariables(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
                     "../../legacy_test/parallel_dygraph_shared_unused_var.py"

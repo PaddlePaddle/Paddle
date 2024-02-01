@@ -28,7 +28,7 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
 
       : OneDNNHandlerNoCachingT<T, dnnl::sum>(engine, cpu_place),
         num_inputs_(0) {
-    auto dst_tz = vectorize<int64_t>(out->dims());
+    auto dst_tz = common::vectorize<int64_t>(out->dims());
     auto src_tz = dst_tz;
 
     std::vector<dnnl::memory::desc> srcs_md;

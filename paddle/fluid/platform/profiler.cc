@@ -139,8 +139,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
   }
 
   if (type == TracerMemEventType::Allocate) {
-    uint64_t current_allocated;
-    uint64_t peak_allocated;
+    uint64_t current_allocated = 0;
+    uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
@@ -223,8 +223,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                         peak_allocated,
                                                         peak_reserved);
   } else if (type == TracerMemEventType::ReservedAllocate) {
-    uint64_t current_reserved;
-    uint64_t peak_reserved;
+    uint64_t current_reserved = 0;
+    uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
@@ -306,8 +306,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                         peak_allocated,
                                                         peak_reserved);
   } else if (type == TracerMemEventType::Free) {
-    uint64_t current_allocated;
-    uint64_t peak_allocated;
+    uint64_t current_allocated = 0;
+    uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
@@ -389,8 +389,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                        peak_allocated,
                                                        peak_reserved);
   } else if (type == TracerMemEventType::ReservedFree) {
-    uint64_t current_reserved;
-    uint64_t peak_reserved;
+    uint64_t current_reserved = 0;
+    uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
     if (platform::is_cpu_place(place) ||
@@ -859,9 +859,8 @@ std::string PrintHostEvents() {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
       oss << "{ " << evt.name << " | " << evt.start_ns << "ns | " << evt.end_ns
-          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000
-          << "us }"  // NOLINT
-          << std::endl;
+          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000  // NOLINT
+          << "us }" << std::endl;
     }
   }
   return oss.str();

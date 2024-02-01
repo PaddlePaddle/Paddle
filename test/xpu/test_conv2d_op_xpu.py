@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_forward_naive(
@@ -232,8 +232,8 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             output = output.astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -392,8 +392,8 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             output = output.astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,

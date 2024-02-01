@@ -16,7 +16,7 @@ import numpy as np
 from legacy_test.test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 paddle.enable_static()
@@ -25,10 +25,6 @@ DTYPE = "float32"
 MODEL_PARALLEL_SIZE = 2
 IN_SIZE = 2 * MODEL_PARALLEL_SIZE
 OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
-
-# Fix seed for test
-# fluid.default_startup_program().random_seed = 1
-# fluid.default_main_program().random_seed = 1
 
 
 def get_param_attr(weight, bias):
@@ -80,7 +76,7 @@ class TestModelParallel(TestDistRunnerBase):
         )
 
         if dist_strategy:
-            data_loader = fluid.io.DataLoader.from_generator(
+            data_loader = base.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,

@@ -649,7 +649,7 @@ std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {
   for (int i = 1; i < new_dims.size(); i++) {
     new_dims[i] = dims[i + 1];
   }
-  input->Resize(phi::make_ddim(new_dims));
+  input->Resize(common::make_ddim(new_dims));
   return input->Split(1, 0);
 }
 

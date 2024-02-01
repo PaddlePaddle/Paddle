@@ -44,7 +44,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     int64_t n_worker = ctx->Attrs().Get<int64_t>("n_worker");
 
     int64_t expert_count_num_ele = 1;
-    for (int64_t i = 0; i < expert_count_dims.size(); i++) {
+    for (int i = 0; i < static_cast<int>(expert_count_dims.size()); i++) {
       expert_count_num_ele *= expert_count_dims[i];
     }
 

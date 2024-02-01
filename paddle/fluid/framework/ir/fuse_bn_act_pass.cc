@@ -41,7 +41,7 @@ void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseBatchNormAct(graph, act_types);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
-  graph = FuseBatchNormActGrad(graph, act_grad_types);
+  graph = FuseBatchNormActGrad(graph, act_grad_types);  // NOLINT
 #endif
 #endif
 }
@@ -326,8 +326,8 @@ void FuseBatchNormActPass::ReLinkNodes(Graph *graph,
     IR_OP_VAR_LINK(fused_op, out);
   }
 
-  nodes2delete.insert(std::move(op_1));
-  nodes2delete.insert(std::move(op_2));
+  nodes2delete.insert(op_1);
+  nodes2delete.insert(op_2);
 
   GraphSafeRemoveNodes(graph, nodes2delete);
 }

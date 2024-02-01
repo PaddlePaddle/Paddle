@@ -66,8 +66,8 @@ class DataNormOp : public framework::OperatorWithKernel {
     }
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
                       true,
@@ -130,7 +130,7 @@ class DataNormOp : public framework::OperatorWithKernel {
 
       bool check = true;
       if ((!ctx->IsRuntime()) &&
-          (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+          (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
         check = false;
       }
 
@@ -272,7 +272,7 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -280,10 +280,10 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
         x_dims.size(),
         2,
         platform::errors::InvalidArgument("The Input dim size should be 2"));
-    const int N = x_dims[0];
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const int N = static_cast<int>(x_dims[0]);
+    const int C = static_cast<int>(data_layout == DataLayout::kNCHW
+                                       ? x_dims[1]
+                                       : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_LT(0,
                       N,
@@ -327,7 +327,7 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
         // to check if show number is zero, if so, skip normalization.
         if (slot_dim > 0 && N > 0 &&
             (!ctx.Attr<bool>("enable_scale_and_shift"))) {
-          const int item_size = x->numel() / N;
+          const int item_size = static_cast<int>(x->numel() / N);
           // location of show number in one embedding
           int offset = 0;
           for (int k = 0; k < N; ++k) {
@@ -371,7 +371,7 @@ class DataNormKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
                 new_bias;
 
           } else {
-            const int item_size = x->numel() / N;
+            const int item_size = static_cast<int>(x->numel() / N);
             const auto *scale_w = ctx.Input<phi::DenseTensor>("scale_w");
             const auto *bias = ctx.Input<phi::DenseTensor>("bias");
             const T *scale_w_data = scale_w->data<T>();
@@ -452,11 +452,11 @@ class DataNormGradOp : public framework::OperatorWithKernel {
                    "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+    const int C = static_cast<int>(data_layout == DataLayout::kNCHW
+                                       ? x_dims[1]
+                                       : x_dims[x_dims.size() - 1]);
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -495,8 +495,6 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     const phi::DenseTensor *t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -518,7 +516,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
     const auto *means = ctx.Input<phi::DenseTensor>("Means");
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -527,10 +525,10 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
         x_dims.size(),
         2,
         platform::errors::InvalidArgument("The Input dim size should be 2"));
-    const int N = x_dims[0];
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const int N = static_cast<int>(x_dims[0]);
+    const int C = static_cast<int>(data_layout == DataLayout::kNCHW
+                                       ? x_dims[1]
+                                       : x_dims[x_dims.size() - 1]);
     // init output
     phi::DenseTensor *d_x = nullptr;
     if (ctx.HasOutput(framework::GradVarName("X"))) {
@@ -627,7 +625,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
               }
             } else {
               int offset = 0;
-              const int item_size = x->numel() / N;
+              const int item_size = static_cast<int>(x->numel() / N);
               T *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
               T *d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
               T *d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
@@ -663,7 +661,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
           // if slot_dim is set and batch size is larger than zero, we choose
           // to check if show number is zero, if so, skip update statistics.
           int offset = 0;
-          const int item_size = x->numel() / N;
+          const int item_size = static_cast<int>(x->numel() / N);
           for (int k = 0; k < N; ++k) {
             for (int i = 0; i < item_size; i += slot_dim) {
               if (!(x_data[offset + i] > -min_precision &&

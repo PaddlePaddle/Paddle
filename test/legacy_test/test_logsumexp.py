@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -87,7 +88,7 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -95,6 +96,7 @@ class TestLogsumexp(OpTest):
             ['Out'],
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
+            check_pir=True,
         )
 
     def calc_grad(self):
@@ -125,7 +127,7 @@ class TestLogsumexp_axis_all(TestLogsumexp):
         self.axis = [0, 1, 2, 3]
 
     def set_attrs_addition(self):
-        if paddle.fluid.core.is_compiled_with_rocm():
+        if paddle.base.core.is_compiled_with_rocm():
             self.user_defined_grads = [self.calc_grad()]
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
@@ -140,7 +142,7 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
         self.reduce_all = True
 
     def set_attrs_addition(self):
-        if paddle.fluid.core.is_compiled_with_rocm():
+        if paddle.base.core.is_compiled_with_rocm():
             self.user_defined_grads = [self.calc_grad()]
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
@@ -212,11 +214,11 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def set_attrs(self):
         pass
@@ -226,6 +228,7 @@ class TestLogsumexpBF16Op(TestLogsumexp):
 
 
 class TestLogsumexpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
@@ -239,7 +242,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -258,6 +261,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api(self):
         self.api_case()
         self.api_case(2)
@@ -281,7 +285,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 # Test logsumexp bug
 class TestLogZeroError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_size():
                 array = np.array([], dtype=np.float32)

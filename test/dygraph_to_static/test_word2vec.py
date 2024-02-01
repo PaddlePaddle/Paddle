@@ -17,11 +17,14 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import fluid
-from paddle.jit.api import to_static
+from paddle import base
 from paddle.nn import Embedding
 
 
@@ -226,7 +229,7 @@ class SkipGram(paddle.nn.Layer):
         self.embedding = Embedding(
             self.vocab_size,
             self.embedding_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
@@ -238,7 +241,7 @@ class SkipGram(paddle.nn.Layer):
         self.embedding_out = Embedding(
             self.vocab_size,
             self.embedding_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_out_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
@@ -247,7 +250,6 @@ class SkipGram(paddle.nn.Layer):
             ),
         )
 
-    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -274,23 +276,19 @@ learning_rate = 1e-3
 total_steps = len(dataset) * epoch_num // batch_size
 
 
-def train(to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train():
     random.seed(0)
     np.random.seed(0)
 
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 1000
-        fluid.default_main_program().random_seed = 1000
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 1000
+        base.default_main_program().random_seed = 1000
 
-        skip_gram_model = SkipGram(
-            "skip_gram_model", vocab_size, embedding_size
+        skip_gram_model = paddle.jit.to_static(
+            SkipGram("skip_gram_model", vocab_size, embedding_size)
         )
         adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
@@ -302,9 +300,9 @@ def train(to_static):
         for center_words, target_words, label, eval_words in build_batch(
             dataset, batch_size, epoch_num
         ):
-            center_words_var = fluid.dygraph.to_variable(center_words)
-            target_words_var = fluid.dygraph.to_variable(target_words)
-            label_var = fluid.dygraph.to_variable(label)
+            center_words_var = base.dygraph.to_variable(center_words)
+            target_words_var = base.dygraph.to_variable(target_words)
+            label_var = base.dygraph.to_variable(label)
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )
@@ -320,11 +318,13 @@ def train(to_static):
         return np.array(ret)
 
 
-class TestWord2Vec(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestWord2Vec(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        dygraph_loss = train(to_static=False)
-        static_loss = train(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train()
+
+        static_loss = train()
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 

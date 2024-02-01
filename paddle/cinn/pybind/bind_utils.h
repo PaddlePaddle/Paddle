@@ -22,17 +22,17 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace py = pybind11;
 
 namespace cinn::pybind {
-using common::CINNValue;
-using common::Shared;
-using common::Type;
+using cinn::common::CINNValue;
+using cinn::common::Shared;
+using cinn::common::Type;
 using ir::Expr;
 using ir::ExprNode;
 

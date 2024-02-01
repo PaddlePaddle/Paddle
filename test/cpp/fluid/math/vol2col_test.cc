@@ -91,7 +91,7 @@ void testVol2col() {
 
   std::array<float, 16> vol_2_col = {
       0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
-  float* out_cfo_ptr;
+  float* out_cfo_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
@@ -116,7 +116,7 @@ void testVol2col() {
   phi::funcs::Col2VolFunctor<DeviceContext, float> col2vol;
   col2vol(*context, output, dilations, strides, paddings, &input);
 
-  float* in_ptr;
+  float* in_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {

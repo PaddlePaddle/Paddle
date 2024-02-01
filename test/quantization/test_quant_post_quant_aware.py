@@ -109,9 +109,7 @@ class TestQuantPostQuantAwareCase1(StaticCase):
                 iter += 1
                 if iter % 100 == 0:
                     logging.info(
-                        'train iter={}, avg loss {}, acc_top1 {}'.format(
-                            iter, cost, top1
-                        )
+                        f'train iter={iter}, avg loss {cost}, acc_top1 {top1}'
                     )
 
         def test(program):
@@ -124,16 +122,12 @@ class TestQuantPostQuantAwareCase1(StaticCase):
                 iter += 1
                 if iter % 100 == 0:
                     logging.info(
-                        'eval iter={}, avg loss {}, acc_top1 {}'.format(
-                            iter, cost, top1
-                        )
+                        f'eval iter={iter}, avg loss {cost}, acc_top1 {top1}'
                     )
                 result[0].append(cost)
                 result[1].append(top1)
             logging.info(
-                ' avg loss {}, acc_top1 {}'.format(
-                    np.mean(result[0]), np.mean(result[1])
-                )
+                f' avg loss {np.mean(result[0])}, acc_top1 {np.mean(result[1])}'
             )
             return np.mean(result[1])
 

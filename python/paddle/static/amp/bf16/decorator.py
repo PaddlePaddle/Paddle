@@ -16,7 +16,7 @@ import types
 import warnings
 
 import paddle
-from paddle.fluid import core, default_main_program, program_guard, unique_name
+from paddle.base import core, default_main_program, program_guard, unique_name
 
 from .amp_lists import AutoMixedPrecisionListsBF16
 from .amp_utils import (
@@ -45,8 +45,6 @@ class OptimizerWithMixedPrecision:
 
     def __init__(self, optimizer, amp_lists, use_pure_bf16, use_bf16_guard):
         self._optimizer = optimizer
-        if optimizer.type == 'sgd':
-            optimizer._use_mkldnn = True
         self._amp_lists = amp_lists
         self._param_grads = None
         self._train_program = None

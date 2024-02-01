@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def call_MultiLabelSoftMarginLoss_layer(
@@ -96,7 +97,7 @@ def test_static(
 def test_dygraph(
     place, input_np, label_np, weight=None, reduction='mean', functional=False
 ):
-    with paddle.fluid.dygraph.base.guard():
+    with paddle.base.dygraph.base.guard():
         input = paddle.to_tensor(input_np)
         label = paddle.to_tensor(label_np)
         if weight is not None:
@@ -139,6 +140,7 @@ def calc_multilabel_margin_loss(
 
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
+    @test_with_pir_api
     def test_MultiLabelSoftMarginLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
@@ -209,6 +211,7 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_MultiLabelSoftMarginLoss_weights(self):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)

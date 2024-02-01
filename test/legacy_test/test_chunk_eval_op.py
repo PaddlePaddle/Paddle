@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class Segment:
@@ -25,11 +25,7 @@ class Segment:
         self.end_idx = end_idx
 
     def __str__(self):
-        return '(Segment: {}, {}, {})'.format(
-            self.chunk_type,
-            self.start_idx,
-            self.end_idx,
-        )
+        return f'(Segment: {self.chunk_type}, {self.start_idx}, {self.end_idx})'
 
     __repr__ = __str__
 

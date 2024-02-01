@@ -31,9 +31,9 @@ if os.name == 'nt' and os.path.isfile(file):
     run_cmd(cmd, True)
 
 if os.name == 'nt':
-    test_include = "..\\python\\paddle\\fluid\\tests\\custom_op"
+    test_include = "..\\python\\paddle\\base\\tests\\custom_op"
 else:
-    test_include = "../python/paddle/fluid/tests/custom_op"
+    test_include = "../python/paddle/base/tests/custom_op"
 paddle_includes.append(test_include)
 
 custom_ops = load(
@@ -116,9 +116,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
         np.testing.assert_array_equal(
             out,
             pd_out,
-            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                name, out, name, pd_out
-            ),
+            err_msg=f'custom op {name}: {out},\n paddle api {name}: {pd_out}',
         )
 
     def test_dynamic(self):

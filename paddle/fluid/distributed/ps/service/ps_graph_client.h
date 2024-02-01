@@ -28,6 +28,7 @@ struct RpcMessageHead;
 
 struct SparsePassValues {
   paddle::framework::WaitGroup wg;
+  std::mutex *shard_mutex;
   SparseShardValues *values;
 };
 class PsGraphClient : public PsLocalClient {
@@ -37,6 +38,7 @@ class PsGraphClient : public PsLocalClient {
     uint32_t shard_num;
     std::mutex pass_mutex;
     SparseFeasReferedMap refered_feas;
+    paddle::framework::Semaphore sem_wait;
   };
 
  public:
@@ -44,24 +46,39 @@ class PsGraphClient : public PsLocalClient {
   virtual ~PsGraphClient();
   virtual int32_t Initialize();
   virtual void FinalizeWorker();
-  virtual ::std::future<int32_t> PullSparsePtr(int shard_id,
-                                               char **select_values,
-                                               size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num,
-                                               uint16_t pass_id,
-                                               const uint16_t &dim_id = 0);
+  virtual ::std::future<int32_t> PullSparsePtr(
+      int shard_id,
+      char **select_values,
+      size_t table_id,
+      const uint64_t *keys,
+      size_t num,
+      uint16_t pass_id,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> &keys2rank_vec,
+      const uint16_t &dim_id = 0);
+
+  virtual ::std::future<int32_t> PullSparseKey(
+      int shard_id,
+      size_t table_id,
+      const uint64_t *keys,
+      size_t num,
+      uint16_t pass_id,
+      const std::vector<std::unordered_map<uint64_t, uint32_t>> &keys2rank_vec,
+      const uint16_t &dim_id = 0);
+
   virtual std::shared_ptr<SparseShardValues> TakePassSparseReferedValues(
       const size_t &table_id, const uint16_t &pass_id, const uint16_t &dim_id);
 
  public:
   void request_handler(const simple::RpcMessageHead &head,
                        paddle::framework::BinaryArchive &iar);  // NOLINT
+  void request_key_handler(const simple::RpcMessageHead &head,
+                           paddle::framework::BinaryArchive &iar);  // NOLINT
   SparseTableInfo &get_table_info(const size_t &table_id);
 
  private:
   std::map<uint32_t, std::shared_ptr<SparseTableInfo>> _table_info;
   void *_service = nullptr;
+  void *_partition_key_service = nullptr;
   int _rank_id = 0;
   int _rank_num = 0;
   std::vector<std::shared_ptr<framework::ThreadPool>> _thread_pools;

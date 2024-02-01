@@ -63,23 +63,23 @@ void XPUFlattenUniqueKernelImpl(const Context& dev_ctx,
                        unique_len_xpu,
                        sizeof(int64_t));
   }
-  out->Resize(phi::make_ddim({unique_len_cpu}));
+  out->Resize(common::make_ddim({unique_len_cpu}));
   auto* out_data = dev_ctx.template Alloc<T>(out);
   IndexT* indices_data = nullptr;
   if (return_index) {
-    indices->Resize(phi::make_ddim({unique_len_cpu}));
+    indices->Resize(common::make_ddim({unique_len_cpu}));
     indices_data = dev_ctx.template Alloc<IndexT>(indices);
   }
 
   IndexT* inverse_data = nullptr;
   if (return_inverse) {
-    index->Resize(phi::make_ddim({x_len}));
+    index->Resize(common::make_ddim({x_len}));
     inverse_data = dev_ctx.template Alloc<IndexT>(index);
   }
 
   IndexT* counts_data = nullptr;
   if (return_counts) {
-    counts->Resize(phi::make_ddim({unique_len_cpu}));
+    counts->Resize(common::make_ddim({unique_len_cpu}));
     counts_data = dev_ctx.template Alloc<IndexT>(counts);
   }
   if (x_len == 0) {
@@ -124,7 +124,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   permute[axis] = 0;
   permute[0] = axis;
   if (axis != 0) {
-    auto x_shape = vectorize<int>(x.dims());
+    auto x_shape = common::vectorize<int>(x.dims());
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x_data),
                                 x_trans_data,
@@ -142,10 +142,10 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   DDim x_trans_dims = x.dims();
   x_trans_dims[0] = x.dims()[axis];
   x_trans_dims[axis] = x.dims()[0];
-  DDim x_trans_flat_dims = phi::flatten_to_2d(x_trans_dims, 1);
+  DDim x_trans_flat_dims = common::flatten_to_2d(x_trans_dims, 1);
   int64_t axis_len = x_trans_flat_dims[0];
   int64_t slice_size = x_trans_flat_dims[1];
-  auto x_trans_flat_dims_vec = vectorize<int>(x_trans_flat_dims);
+  auto x_trans_flat_dims_vec = common::vectorize<int>(x_trans_flat_dims);
 
   auto* sorted_axis_idx = RAII_GUARD.alloc_l3_or_gm<IndexT>(axis_len);
   auto* sort_in_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(axis_len);
@@ -284,7 +284,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
   DDim out_trans_dims = x_trans_dims;
   out_trans_dims[0] = unique_len;
-  auto out_trans_dims_vec = vectorize<int>(out_trans_dims);
+  auto out_trans_dims_vec = common::vectorize<int>(out_trans_dims);
   if (axis != 0) {
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 out_trans_data,

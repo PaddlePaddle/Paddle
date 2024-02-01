@@ -30,6 +30,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,7 +38,6 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/core/ddim.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -423,7 +423,7 @@ class DlnneEngineOp : public framework::OperatorBase {
         // convert input and copy to Dlnne engine's buffer
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
 
-        auto t_shape = phi::vectorize<int64_t>(t.dims());
+        auto t_shape = common::vectorize<int64_t>(t.dims());
         std::vector<int64_t> runtime_input_shape(t_shape.begin(),
                                                  t_shape.end());
         const int bind_index = index;
@@ -484,7 +484,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       }
       input_buffers[bind_index] = buffer;
 
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
       std::vector<int64_t> runtime_input_shape(t_shape.begin(), t_shape.end());
       for (auto &size : t_shape) {
         data_bytes = data_bytes * size;
@@ -562,7 +562,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       VLOG(4) << bind_index << ": out_shapes[bind_index] dim:"
               << out_shapes[bind_index].size();
-      fluid_t->Resize(phi::make_ddim(out_shapes[bind_index]));
+      fluid_t->Resize(common::make_ddim(out_shapes[bind_index]));
 
       dl::nne::DataType dl_type = out_types[bind_index];
       if (dlnne_log_flag_) {
@@ -678,7 +678,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       // TODO(pei.jiang): refine this code, because when run dlnne create
       // engine, there is same code
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
       std::vector<int64_t> input_shape(t_shape.begin(), t_shape.end());
       calib_data_shape_map.emplace(x, input_shape);
       std::string data_type = inference::ConvertType(t.type());

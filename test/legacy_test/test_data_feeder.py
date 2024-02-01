@@ -15,75 +15,110 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestDataFeeder(unittest.TestCase):
+    @test_with_pir_api
     def test_lod_level_0_converter(self):
-        img = paddle.static.data(name='image', shape=[-1, 1, 28, 28])
-        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([img, label], fluid.CPUPlace())
-        result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            img = paddle.static.data(name='image', shape=[-1, 1, 28, 28])
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            feeder = base.DataFeeder([img, label], base.CPUPlace())
+            result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
 
-        self.assertEqual(result['image'].shape(), [2, 1, 28, 28])
-        self.assertEqual(result['label'].shape(), [2, 1])
-        self.assertEqual(result['image'].recursive_sequence_lengths(), [])
-        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
+            self.assertEqual(result['image'].shape(), [2, 1, 28, 28])
+            self.assertEqual(result['label'].shape(), [2, 1])
+            self.assertEqual(result['image'].recursive_sequence_lengths(), [])
+            self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
-        try:
-            result = feeder.feed([([0] * 783, [9]), ([1] * 783, [1])])
-            self.assertTrue(False)
-        except ValueError:
-            self.assertTrue(True)
+            try:
+                result = feeder.feed([([0] * 783, [9]), ([1] * 783, [1])])
+                self.assertTrue(False)
+            except ValueError:
+                self.assertTrue(True)
 
+    @test_with_pir_api
     def test_lod_level_1_converter(self):
-        # lod_level = 1
-        # each sentence has a different number of words
-        sentences = paddle.static.data(
-            name='sentences', shape=[-1, 1], dtype='int64', lod_level=1
-        )
-        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # lod_level = 1
+            # each sentence has a different number of words
+            sentences = paddle.static.data(
+                name='sentences', shape=[-1, 1], dtype='int64', lod_level=1
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            feeder = base.DataFeeder([sentences, label], base.CPUPlace())
 
-        # lod = [[0, 3, 5, 9]]
-        # data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
-        # label = [1] * len(data)
-        result = feeder.feed(
-            [([1, 2, 3], [1]), ([4, 5], [1]), ([6, 7, 8, 9], [1])]
-        )
+            # lod = [[0, 3, 5, 9]]
+            # data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
+            # label = [1] * len(data)
+            result = feeder.feed(
+                [([1, 2, 3], [1]), ([4, 5], [1]), ([6, 7, 8, 9], [1])]
+            )
 
-        self.assertEqual(result['sentences'].shape(), [9, 1])
-        self.assertEqual(result['label'].shape(), [3, 1])
-        self.assertEqual(
-            result['sentences'].recursive_sequence_lengths(), [[3, 2, 4]]
-        )
-        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
+            self.assertEqual(result['sentences'].shape(), [9, 1])
+            self.assertEqual(result['label'].shape(), [3, 1])
+            self.assertEqual(
+                result['sentences'].recursive_sequence_lengths(), [[3, 2, 4]]
+            )
+            self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
+    @test_with_pir_api
     def test_lod_level_2_converter(self):
-        # lod_level = 2
-        # paragraphs -> sentences -> words
-        paragraphs = paddle.static.data(
-            name='paragraphs', shape=[-1, 1], dtype='int64', lod_level=2
-        )
-        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
-        feeder = fluid.DataFeeder([paragraphs, label], fluid.CPUPlace())
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # lod_level = 2
+            # paragraphs -> sentences -> words
+            paragraphs = paddle.static.data(
+                name='paragraphs', shape=[-1, 1], dtype='int64', lod_level=2
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            feeder = base.DataFeeder([paragraphs, label], base.CPUPlace())
 
-        # lod = [[0, 2, 3], [0, 3, 5, 9]]
-        # data = [[[1, 2, 3], [4, 5]], [[6, 7, 8, 9]]]
-        # label = [1] * len(data)
-        result = feeder.feed(
-            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])]
-        )
+            # lod = [[0, 2, 3], [0, 3, 5, 9]]
+            # data = [[[1, 2, 3], [4, 5]], [[6, 7, 8, 9]]]
+            # label = [1] * len(data)
+            result = feeder.feed(
+                [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])]
+            )
 
-        self.assertEqual(result['paragraphs'].shape(), [9, 1])
-        self.assertEqual(result['label'].shape(), [2, 1])
-        self.assertEqual(
-            result['paragraphs'].recursive_sequence_lengths(),
-            [[2, 1], [3, 2, 4]],
-        )
-        self.assertEqual(result['label'].recursive_sequence_lengths(), [])
+            self.assertEqual(result['paragraphs'].shape(), [9, 1])
+            self.assertEqual(result['label'].shape(), [2, 1])
+            self.assertEqual(
+                result['paragraphs'].recursive_sequence_lengths(),
+                [[2, 1], [3, 2, 4]],
+            )
+            self.assertEqual(result['label'].recursive_sequence_lengths(), [])
+
+    def test_errors(self):
+        def pir_mode_not_supported_str_feed():
+            with paddle.pir_utils.IrGuard():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    img = paddle.static.data(
+                        name='image', shape=[-1, 1, 28, 28]
+                    )
+                    label = paddle.static.data(
+                        name='label', shape=[-1, 1], dtype='int64'
+                    )
+                    feeder = base.DataFeeder(['image', label], base.CPUPlace())
+
+        self.assertRaises(ValueError, pir_mode_not_supported_str_feed)
 
 
 if __name__ == '__main__':

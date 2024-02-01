@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/solve_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/squeeze_kernel.h"
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 
@@ -33,7 +34,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename Context, typename T>
-struct ReduceSumForSolvelGrad {
+struct ReduceSumForSolveGrad {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
@@ -42,7 +43,7 @@ struct ReduceSumForSolvelGrad {
 };
 
 template <typename T>
-struct ReduceSumForSolvelGrad<CPUContext, T> {
+struct ReduceSumForSolveGrad<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
@@ -57,14 +58,14 @@ struct ReduceSumForSolvelGrad<CPUContext, T> {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-struct ReduceSumForSolvelGrad<GPUContext, T> {
+struct ReduceSumForSolveGrad<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims,
                   bool keep_dims) {
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims);
+    phi::SumKernel<T, GPUContext>(
+        dev_ctx, input, reduce_dims, output->dtype(), keep_dims, output);
   }
 };
 #endif
@@ -99,17 +100,17 @@ void SolveGradKernel(const Context& dev_ctx,
       get_broadcast_dims(tmp_x, tmp_y);
   // tmp_dx
   DenseTensor tmp_dx;
-  tmp_dx.Resize(phi::make_ddim(x_broadcast_dims));
+  tmp_dx.Resize(common::make_ddim(x_broadcast_dims));
   dev_ctx.template Alloc<T>(&tmp_dx);
 
   // tmp_dy
   DenseTensor tmp_dy;
-  tmp_dy.Resize(phi::make_ddim(y_broadcast_dims));
+  tmp_dy.Resize(common::make_ddim(y_broadcast_dims));
   dev_ctx.template Alloc<T>(&tmp_dy);
 
   DenseTensor tmp_input(x.dtype());
   const auto& new_dims_vec = phi::funcs::getNewDimsVec(x.dims());
-  tmp_input.Resize(phi::make_ddim(new_dims_vec));
+  tmp_input.Resize(common::make_ddim(new_dims_vec));
   dev_ctx.template Alloc<T>(&tmp_input);
 
   phi::funcs::TransposeNormal<Context, T> trans;
@@ -173,9 +174,9 @@ void SolveGradKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
 
     // get dims
-    std::vector<std::int64_t> x_dims = vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = vectorize(y.dims());
-    std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
+    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
+    std::vector<std::int64_t> dout_dims = common::vectorize(dout.dims());
 
     if (is_vector_rhs(x, y)) {
       dout_dims.push_back(1);
@@ -184,7 +185,8 @@ void SolveGradKernel(const Context& dev_ctx,
     int y_ndim = y_dims.size();
     int ndim = dout_dims.size();
 
-    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
+    const std::vector<std::int64_t> dy_help_dims =
+        common::vectorize(dy_help.dims());
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
 
     std::fill(
@@ -208,7 +210,7 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dy_help.dims().size() != dy->dims().size()) {
           keep_dim = false;
         }
-        ReduceSumForSolvelGrad<Context, T>()(
+        ReduceSumForSolveGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims, keep_dim);
       }
       dy->Resize(y.dims());
@@ -223,13 +225,14 @@ void SolveGradKernel(const Context& dev_ctx,
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
     phi::Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
     // get dims
-    std::vector<std::int64_t> x_dims = vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = vectorize(y.dims());
+    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
 
     int x_ndim = x_dims.size();
     int ndim = x_broadcast_dims.size();
 
-    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dx_help_dims =
+        common::vectorize(dx_help.dims());
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::fill(
         dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);
@@ -254,7 +257,7 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dx_help.dims().size() != dx->dims().size()) {
           keep_dim = false;
         }
-        ReduceSumForSolvelGrad<Context, T>()(
+        ReduceSumForSolveGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims, keep_dim);
       }
       dx->Resize(x.dims());

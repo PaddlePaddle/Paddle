@@ -129,7 +129,8 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   int bytes = sizeof(int) * anchors.size();
   DenseTensor tmp_anchors;
-  tmp_anchors.Resize(phi::make_dim(anchors.size()));
+  using common::make_dim;
+  tmp_anchors.Resize(make_dim(anchors.size()));
   int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = phi::CPUPlace();

@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def test_static_layer(
@@ -152,12 +153,13 @@ def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
 
 
 class TestBCELoss(unittest.TestCase):
+    @test_with_pir_api
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -185,6 +187,7 @@ class TestBCELoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_BCELoss_weight(self):
         input_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
@@ -194,9 +197,9 @@ class TestBCELoss(unittest.TestCase):
         )
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         for reduction in ['sum', 'mean', 'none']:
             static_result = test_static_layer(
@@ -262,10 +265,10 @@ class TestBceLossOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.shape = [10, 10]
@@ -286,17 +289,20 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFP16(TestBceLossOp):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_dtype(self):
         self.dtype = np.float16
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
+        if not core.is_compiled_with_cuda():
+            return
         paddle.enable_static()
         shape = [2, 3, 20]
         x_data = np.random.uniform(0.1, 0.8, shape).astype("float16")

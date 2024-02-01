@@ -23,10 +23,25 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
+from paddle.base import core
 from paddle.tensor import random
+
+typeid_dict = {
+    'int32': int(core.VarDesc.VarType.INT32),
+    'int64': int(core.VarDesc.VarType.INT64),
+    'float32': int(core.VarDesc.VarType.FP32),
+    'float16': int(core.VarDesc.VarType.FP16),
+    'bfloat16': int(core.VarDesc.VarType.BF16),
+    'bool': int(core.VarDesc.VarType.BOOL),
+    'int8': int(core.VarDesc.VarType.INT8),
+    'uint8': int(core.VarDesc.VarType.UINT8),
+    'float64': int(core.VarDesc.VarType.FP64),
+}
+
+from op_test import convert_uint16_to_float
 
 
 class XPUTestGaussianRandomOp(XPUOpTestWrapper):
@@ -52,6 +67,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 "std": self.std,
                 "seed": 10,
                 "use_mkldnn": self.use_mkldnn,
+                "dtype": typeid_dict[self.in_type_str],
             }
             paddle.seed(10)
 
@@ -67,6 +83,10 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             )
 
         def verify_output(self, outs):
+            # special for bf16
+            if self.in_type_str == "bfloat16":
+                outs = convert_uint16_to_float(outs)
+
             self.assertEqual(outs[0].shape, (123, 92))
             hist, _ = np.histogram(outs[0], range=(-3, 5))
             hist = hist.astype("float32")
@@ -100,6 +120,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'std': self.std,
                 'seed': self.seed,
                 'use_mkldnn': self.use_mkldnn,
+                "dtype": typeid_dict[self.in_type_str],
             }
 
             self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -165,6 +186,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'std': self.std,
                 'seed': self.seed,
                 'use_mkldnn': self.use_mkldnn,
+                "dtype": typeid_dict[self.in_type_str],
             }
             self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}
 
@@ -234,9 +256,9 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        exe = fluid.Executor(place=fluid.XPUPlace(0))
+        exe = base.Executor(place=base.XPUPlace(0))
         res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([2000, 500]).astype("int32"),
                 "shape_tensor_int64": np.array([2000, 500]).astype("int64"),
@@ -263,21 +285,27 @@ class TestGaussianRandomAPI(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+
+        def test_default_bf16():
+            paddle.framework.set_default_dtype('bfloat16')
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.BF16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
         test_default_fp64()
         test_default_fp32()
         test_default_fp16()
+        test_default_bf16()
 
         paddle.enable_static()
 
@@ -289,21 +317,27 @@ class TestStandardNormalDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+
+        def test_default_bf16():
+            paddle.framework.set_default_dtype('bfloat16')
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.BF16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
         test_default_fp64()
         test_default_fp32()
         test_default_fp16()
+        test_default_bf16()
 
         paddle.enable_static()
 

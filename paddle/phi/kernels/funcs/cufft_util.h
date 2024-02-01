@@ -15,8 +15,8 @@
 #pragma once
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/cufft.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_key.h"
@@ -84,8 +84,8 @@ class FFTConfig {
   // sizes are full signal, including batch size and always two-sided
   FFTConfig(const std::vector<int64_t>& sizes,
             FFTTransformType fft_type,
-            DataType precison)
-      : fft_type_(fft_type), precision_(precison) {
+            DataType precision)
+      : fft_type_(fft_type), precision_(precision) {
     const auto batch_size = static_cast<plan_size_type>(sizes[0]);
     std::vector<plan_size_type> signal_sizes(sizes.cbegin() + 1, sizes.cend());
     const int signal_ndim = sizes.size() - 1;
@@ -93,11 +93,11 @@ class FFTConfig {
     cudaDataType itype, otype, exec_type;
     const bool complex_input = has_complex_input(fft_type);
     const bool complex_output = has_complex_output(fft_type);
-    if (precison == DataType::FLOAT32) {
+    if (precision == DataType::FLOAT32) {
       itype = complex_input ? CUDA_C_32F : CUDA_R_32F;
       otype = complex_output ? CUDA_C_32F : CUDA_R_32F;
       exec_type = CUDA_C_32F;
-    } else if (precison == DataType::FLOAT64) {
+    } else if (precision == DataType::FLOAT64) {
       itype = complex_input ? CUDA_C_64F : CUDA_R_64F;
       otype = complex_output ? CUDA_C_64F : CUDA_R_64F;
       exec_type = CUDA_C_64F;

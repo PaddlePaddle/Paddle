@@ -5,7 +5,7 @@ set(ABSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/absl)
 set(ABSL_PREFIX_DIR ${THIRD_PARTY_PATH}/absl)
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
-set(ABSL_REPOSITORY "https://github.com/abseil/abseil-cpp.git")
+set(ABSL_REPOSITORY "${GIT_URL}/abseil/abseil-cpp.git")
 set(ABSL_TAG "20210324.2")
 
 set(OPTIONAL_ARGS

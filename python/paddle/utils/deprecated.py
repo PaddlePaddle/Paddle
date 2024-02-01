@@ -16,12 +16,25 @@ decorator to deprecate a function or class
 """
 
 import functools
+import inspect
 import sys
 import warnings
 
 import paddle
 
 __all__ = []
+
+
+class VisibleDeprecationWarning(UserWarning):
+    """Visible deprecation warning.
+
+    Since Python 3.7, Python only show the DeprecationWarning if the module
+    is __main__. So we use this warning to make the deprecation warning visible.
+
+    See more details from https://peps.python.org/pep-0565/
+    """
+
+    ...
 
 
 def deprecated(update_to="", since="", reason="", level=0):
@@ -47,15 +60,13 @@ def deprecated(update_to="", since="", reason="", level=0):
     """
 
     def decorator(func):
-        # TODO(zhiqiu): temporally disable the warnings
-        return func
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
         assert isinstance(reason, str), 'type of "reason" must be str.'
         assert isinstance(level, int) and level >= 0 and level < 3, (
             'type of "level" must be int and must be one of 0, 1, 2. But '
-            'received: {}.'.format(level)
+            f'received: {level}.'
         )
 
         _since = since.strip()
@@ -75,9 +86,11 @@ def deprecated(update_to="", since="", reason="", level=0):
             )
             msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
-            msg += f"\nreason: {_reason}"
+            msg += f"\n    Reason: {_reason}"
         if func.__doc__:
-            func.__doc__ = ('\n\nWarning: ' + msg + '\n') + func.__doc__
+            func.__doc__ = (
+                '\n\nWarning:\n    ' + msg + '\n\n'
+            ) + inspect.cleandoc(func.__doc__)
 
         if level == 0:
             return func
@@ -92,9 +105,7 @@ def deprecated(update_to="", since="", reason="", level=0):
 
             if level == 2:
                 raise RuntimeError(
-                    'API "{}.{}" has been deprecated.'.format(
-                        func.__module__, func.__name__
-                    )
+                    f'API "{func.__module__}.{func.__name__}" has been deprecated.'
                 )
 
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
@@ -112,7 +123,7 @@ def deprecated(update_to="", since="", reason="", level=0):
                 or v_current >= v_since
             ):
                 warnings.warn(
-                    warningmsg, category=DeprecationWarning, stacklevel=2
+                    warningmsg, category=VisibleDeprecationWarning, stacklevel=2
                 )
 
             return func(*args, **kwargs)

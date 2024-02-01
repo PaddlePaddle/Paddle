@@ -91,7 +91,7 @@ void Conv3dInferMeta(const MetaTensor& x,
 
   int rank = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(rank, 1);
-  DDim out_dims = make_ddim(out_dims_vec);
+  DDim out_dims = common::make_ddim(out_dims_vec);
 
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
@@ -164,7 +164,7 @@ void SparseCooTensorInferMeta(const MetaTensor& values,
                               const MetaTensor& indices,
                               const std::vector<int64_t>& shape,
                               MetaTensor* out) {
-  out->set_dims(phi::make_ddim(shape));
+  out->set_dims(common::make_ddim(shape));
   out->set_dtype(values.dtype());
   out->set_layout(values.layout());
 }

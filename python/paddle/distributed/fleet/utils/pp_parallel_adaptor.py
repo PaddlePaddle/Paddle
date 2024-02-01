@@ -232,7 +232,7 @@ class PipeLineModelAdaptor:
         def priority(elem):
             layer_name = elem[0]
             if "shared_layers" in layer_name:
-                return -float(0.5)
+                return -0.5
             match = re.search(
                 r"^_layers((\.\d+)+|(\.shared_layers\.[^\.]+))", layer_name
             )
@@ -544,9 +544,9 @@ def parse_args():
     if args.dst_pp is None:
         args.dst_pp = args.src_pp
 
-    assert args.src_mp == args.dst_mp, "src mp {} dst mp {}".format(
-        args.src_mp, args.dst_mp
-    )
+    assert (
+        args.src_mp == args.dst_mp
+    ), f"src mp {args.src_mp} dst mp {args.dst_mp}"
 
     assert args.method in [
         'peek_model',

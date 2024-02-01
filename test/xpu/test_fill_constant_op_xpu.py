@@ -16,12 +16,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle

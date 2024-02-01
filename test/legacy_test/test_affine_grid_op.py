@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -133,10 +133,12 @@ class TestAffineGridOp(OpTest):
             }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Theta'], 'Output', no_grad_set=['OutputShape'])
+        self.check_grad(
+            ['Theta'], 'Output', no_grad_set=['OutputShape'], check_pir=True
+        )
 
     def initTestCase(self):
         self.theta_shape = (17, 2, 3)
@@ -152,7 +154,7 @@ class TestAffineGridOpCase1(TestAffineGridOp):
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
         self.use_cudnn = True
-        if paddle.fluid.core.is_compiled_with_rocm():
+        if paddle.base.core.is_compiled_with_rocm():
             self.use_cudnn = (
                 False  # ROCM platform do not have MIOPEN kernel for affine_grid
             )

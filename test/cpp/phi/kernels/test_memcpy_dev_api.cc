@@ -37,7 +37,7 @@ TEST(DEV_API, memcpy_d2h) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor x_cpu(cpu_alloc.get(),
                          phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                              phi::make_ddim({3, 2, 2, 3}),
+                                              common::make_ddim({3, 2, 2, 3}),
                                               phi::DataLayout::NCHW));
   auto& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = pool.GetByPlace(phi::CPUPlace());

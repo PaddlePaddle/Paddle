@@ -43,20 +43,21 @@ void XPUDealWithIndices(const Context& dev_ctx,
       expanded_index = casted_index;
     } else {
       expanded_index.Resize(bd_dim);
-      ExpandKernel<int64_t, Context>(dev_ctx,
-                                     casted_index,
-                                     IntArray(vectorize<int64_t>(bd_dim)),
-                                     &expanded_index);
+      ExpandKernel<int64_t, Context>(
+          dev_ctx,
+          casted_index,
+          IntArray(common::vectorize<int64_t>(bd_dim)),
+          &expanded_index);
     }
 
     tmp_indices_v.emplace_back(expanded_index);
   }
 
-  auto bd_dim_vec = vectorize<int64_t>(bd_dim);
+  auto bd_dim_vec = common::vectorize<int64_t>(bd_dim);
   std::vector<int64_t> stacked_dim_vec(bd_dim.size() + 1);
   std::copy(bd_dim_vec.begin(), bd_dim_vec.end(), stacked_dim_vec.begin());
   stacked_dim_vec.back() = int_indices_v.size();
-  out->Resize(make_ddim(stacked_dim_vec));
+  out->Resize(common::make_ddim(stacked_dim_vec));
 
   std::vector<const DenseTensor*> tmp_indices_ptr(tmp_indices_v.size(),
                                                   nullptr);
@@ -109,13 +110,13 @@ void IndexPutKernel(const Context& dev_ctx,
   DenseTensor res_indices(DataType::INT64);
   // Broadcast and merge indices
   XPUDealWithIndices<Context>(dev_ctx, int_indices_v, bd_dims, &res_indices);
-  auto index_shape = vectorize<int64_t>(res_indices.dims());
-  auto x_shape = vectorize<int64_t>(x.dims());
+  auto index_shape = common::vectorize<int64_t>(res_indices.dims());
+  auto x_shape = common::vectorize<int64_t>(x.dims());
 
   const T* value_data = value.data<T>();
 
   // Broadcast value
-  auto value_shape = vectorize<int64_t>(value.dims());
+  auto value_shape = common::vectorize<int64_t>(value.dims());
   int64_t value_rank = bd_dims.size() + (x_shape.size() - int_indices_v.size());
   std::vector<int64_t> value_shape_bd(value_rank);
   std::copy(index_shape.begin(), index_shape.end() - 1, value_shape_bd.begin());
@@ -126,7 +127,7 @@ void IndexPutKernel(const Context& dev_ctx,
   DenseTensor value_bd(value.dtype());
 
   if (value_shape != value_shape_bd) {
-    value_bd.Resize(make_ddim(value_shape_bd));
+    value_bd.Resize(common::make_ddim(value_shape_bd));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(value_shape_bd), &value_bd);
     value_data = value_bd.data<T>();

@@ -74,7 +74,7 @@ std::vector<T> CopyToVector(const hlir::framework::Tensor tensor) {
 
 class PassTest {
  public:
-  PassTest() { target_ = common::DefaultTarget(); }
+  PassTest() { target_ = cinn::common::DefaultTarget(); }
 
   int RunAndCheck(NetBuilder* builder,
                   const std::vector<std::string>& program_passes,

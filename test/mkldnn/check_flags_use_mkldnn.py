@@ -16,9 +16,9 @@ import os
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base.framework import _global_flags
+from paddle.base.layer_helper import LayerHelper
 
 
 def check():
@@ -27,15 +27,15 @@ def check():
         _global_flags()["FLAGS_use_mkldnn"],
     )
     print(
-        "check: fluid.get_flags('FLAGS_use_mkldnn')=",
-        fluid.get_flags(['FLAGS_use_mkldnn']),
+        "check: base.get_flags('FLAGS_use_mkldnn')=",
+        base.get_flags(['FLAGS_use_mkldnn']),
     )
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
-    helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+    helper = LayerHelper(base.unique_name.generate("test"), act="relu")
     func = helper.append_activation
-    with fluid.dygraph.guard(fluid.core.CPUPlace()):
-        a = fluid.dygraph.to_variable(a_np)
+    with base.dygraph.guard(base.core.CPUPlace()):
+        a = base.dygraph.to_variable(a_np)
         res1 = func(a)
         res2 = np.maximum(a_np, 0)
     np.testing.assert_array_equal(res1.numpy(), res2)

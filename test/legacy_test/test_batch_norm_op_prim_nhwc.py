@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import _set_use_system_allocator
+from op_test import _set_use_system_allocator
 from test_batch_norm_op_prim_nchw import TestBatchNormOp
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -124,6 +124,7 @@ class TestBatchNormOpNHWCFp64(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        self.check_prim_pir = True
 
 
 class TestBatchNormOpNHWCFp16(TestBatchNormOp):

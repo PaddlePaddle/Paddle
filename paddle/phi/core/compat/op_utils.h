@@ -18,10 +18,10 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "glog/logging.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 

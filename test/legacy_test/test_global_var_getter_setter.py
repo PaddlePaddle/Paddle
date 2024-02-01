@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class VarInfo:
@@ -31,7 +31,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
             VarInfo("FLAGS_eager_delete_tensor_gb", float, True),
         ]
 
-        g = fluid.core.globals()
+        g = base.core.globals()
         for var in var_infos:
             self.assertTrue(var.name in g)
             self.assertTrue(var.name in g.keys())

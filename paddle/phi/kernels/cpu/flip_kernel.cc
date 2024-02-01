@@ -38,7 +38,7 @@ void FlipKernel(const Context& dev_ctx,
     }
     dim_bitset[dim] = true;
   }
-  auto x_strides = phi::stride(x_dims);
+  auto x_strides = common::stride(x_dims);
   auto numel = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);

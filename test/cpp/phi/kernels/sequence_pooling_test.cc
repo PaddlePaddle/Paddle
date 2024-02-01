@@ -31,7 +31,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
   // construct out_grad's tensor in cpu
   const size_t out_first_dim = lod[0].size() - 1;
   auto out_dims =
-      phi::make_ddim({static_cast<int64_t>(out_first_dim), second_dim});
+      common::make_ddim({static_cast<int64_t>(out_first_dim), second_dim});
 
   cpu_out_grad.mutable_data<T>(out_dims, phi::CPUPlace());
   for (int64_t i = 0; i < cpu_out_grad.numel(); ++i) {
@@ -49,7 +49,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
   // construct in_grad
   in_grad.set_lod(lod);
   auto in_dims =
-      phi::make_ddim({static_cast<int64_t>(lod[0].back()), second_dim});
+      common::make_ddim({static_cast<int64_t>(lod[0].back()), second_dim});
   in_grad.mutable_data<T>(in_dims, place);
 
   // check tensor contruction result
@@ -92,8 +92,8 @@ void TestSequencePoolingSum(const DeviceContext &context,
 
   if (place == phi::CPUPlace()) {
     for (size_t i = 0; i < in_grad.lod()[0].size() - 1; ++i) {
-      int64_t begin = in_grad.lod()[0][i];
-      int64_t end = in_grad.lod()[0][i + 1];
+      int64_t begin = static_cast<int64_t>(in_grad.lod()[0][i]);
+      int64_t end = static_cast<int64_t>(in_grad.lod()[0][i + 1]);
       phi::DenseTensor tmp = in_grad.Slice(begin, end);
       for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {
@@ -104,8 +104,8 @@ void TestSequencePoolingSum(const DeviceContext &context,
     }
   } else {
     for (size_t i = 0; i < cpu_in_grad.lod()[0].size() - 1; ++i) {
-      int64_t begin = cpu_in_grad.lod()[0][i];
-      int64_t end = cpu_in_grad.lod()[0][i + 1];
+      int64_t begin = static_cast<int64_t>(cpu_in_grad.lod()[0][i]);
+      int64_t end = static_cast<int64_t>(cpu_in_grad.lod()[0][i + 1]);
       phi::DenseTensor tmp = cpu_in_grad.Slice(begin, end);
       for (int64_t j = 0; j != tmp.numel() / second_dim; ++j) {
         for (int64_t m = 0; m != second_dim; ++m) {

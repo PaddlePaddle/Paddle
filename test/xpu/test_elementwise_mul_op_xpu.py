@@ -15,11 +15,14 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
+)
+from op_test import (
+    convert_float_to_uint16,
+    skip_check_grad_ci,
 )
 from op_test_xpu import XPUOpTest
 
@@ -40,12 +43,33 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = 'elementwise_mul'
             self.use_xpu = True
+            self.cal_x = None
+            self.cal_y = None
             self.dtype = self.in_type
             self.axis = -1
-            self.init_dtype()
+            self.init_data()
+            self.gen_output()
             self.init_input_output()
             self.init_kernel_type()
             self.init_axis()
+
+        def gen_output(self):
+            if self.cal_x is None:
+                self.cal_x = self.x
+            if self.cal_y is None:
+                self.cal_y = self.y
+            if self.dtype == np.uint16:
+                self.out = np.multiply(self.cal_x, self.cal_y)
+            else:
+                self.out = np.multiply(
+                    self.cal_x.astype(self.dtype), self.cal_y.astype(self.dtype)
+                )
+
+        def gen_data_depend_on_dtype(self, shape):
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                return np.random.randint(1, 100, size=shape)
+            else:
+                return np.random.uniform(0.1, 1, size=shape)
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
@@ -84,158 +108,109 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     check_dygraph=False,
                 )
 
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([13, 17])
+            self.y = self.gen_data_depend_on_dtype([13, 17])
+
         def init_input_output(self):
-            self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-            self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-            self.out = np.multiply(self.x, self.y)
+            if self.dtype == np.uint16:
+                self.x = convert_float_to_uint16(self.x)
+                self.y = convert_float_to_uint16(self.y)
+            else:
+                self.x = self.x.astype(self.dtype)
+                self.y = self.y.astype(self.dtype)
+
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+                'X': self.x,
+                'Y': self.y,
             }
             self.outputs = {'Out': self.out}
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-
-        def init_dtype(self):
-            pass
 
         def init_axis(self):
             pass
 
     class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([])
+            self.y = self.gen_data_depend_on_dtype([])
 
     class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([13, 17])
+            self.y = self.gen_data_depend_on_dtype([])
 
     class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([])
+            self.y = self.gen_data_depend_on_dtype([13, 17])
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseMulOp_scalar(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 3, 4).astype(self.dtype),
-                'Y': np.random.rand(1).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 3, 4])
+            self.y = self.gen_data_depend_on_dtype([1])
 
     class TestElementwiseMulOp_Vector(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.random((100,)).astype(self.dtype),
-                'Y': np.random.random((100,)).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': np.multiply(self.inputs['X'], self.inputs['Y'])
-            }
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([100])
+            self.y = self.gen_data_depend_on_dtype([100])
 
     class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(100, 2, 3).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': self.inputs['X'] * self.inputs['Y'].reshape(100, 1, 1)
-            }
-            self.attrs = {'axis': 0}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([100, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([100])
+            self.cal_y = self.y.reshape(100, 1, 1)
+            self.axis = 0
 
     class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 100, 1)
-            }
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 100, 3])
+            self.y = self.gen_data_depend_on_dtype([100])
+            self.cal_y = self.y.reshape(1, 100, 1)
+            self.axis = 1
 
     class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-
-            self.outputs = {
-                'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 100)
-            }
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 3, 100])
+            self.y = self.gen_data_depend_on_dtype([100])
+            self.cal_y = self.y.reshape(1, 1, 100)
 
     class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
-                'Y': np.random.rand(10, 12).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
-            }
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 10, 12, 3])
+            self.y = self.gen_data_depend_on_dtype([10, 12])
+            self.cal_y = self.y.reshape(1, 10, 12, 1)
+            self.axis = 1
 
     class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 2, 11).astype(self.dtype),
-                'Y': np.random.rand(10, 1, 11).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 2, 11])
+            self.y = self.gen_data_depend_on_dtype([10, 1, 11])
 
     class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 4, 2, 3).astype(self.dtype),
-                'Y': np.random.rand(10, 4, 1, 3).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 4, 2, 3])
+            self.y = self.gen_data_depend_on_dtype([10, 4, 1, 3])
 
     class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(1, 1, 100).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([2, 3, 100])
+            self.y = self.gen_data_depend_on_dtype([1, 1, 100])
 
     class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(30, 3, 1, 5).astype(self.dtype),
-                'Y': np.random.rand(30, 1, 4, 1).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([30, 3, 1, 5])
+            self.y = self.gen_data_depend_on_dtype([30, 1, 4, 1])
 
     class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 10).astype(self.dtype),
-                'Y': np.random.rand(2, 2, 10, 10).astype(self.dtype),
-            }
-
-            self.attrs = {'axis': 2}
-
-            self.outputs = {
-                'Out': self.inputs['X'].reshape(1, 1, 10, 10) * self.inputs['Y']
-            }
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([10, 10])
+            self.y = self.gen_data_depend_on_dtype([2, 2, 10, 10])
+            self.cal_x = self.x.reshape(1, 1, 10, 10)
+            self.axis = 2
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')

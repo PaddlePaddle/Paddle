@@ -27,7 +27,7 @@ PD_DECLARE_string(cinn_check_fusion_accuracy_pass);
 namespace cinn {
 namespace runtime {
 
-using common::Target;
+using cinn::common::Target;
 using hlir::framework::Shape;
 using hlir::framework::Tensor;
 
@@ -104,7 +104,7 @@ bool MemcpyToHost(void* dst,
                   size_t bytes,
                   const Target& input_target,
                   void* stream = nullptr) {
-  if (input_target == common::DefaultNVGPUTarget()) {
+  if (input_target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     const auto& cuda_stream = static_cast<cudaStream_t>(stream);
     cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cuda_stream);
@@ -116,7 +116,7 @@ bool MemcpyToHost(void* dst,
     return false;
 #endif
   }
-  if (input_target == common::DefaultHostTarget()) {
+  if (input_target == cinn::common::DefaultHostTarget()) {
     memcpy(dst, src, bytes);
     return true;
   }
@@ -132,14 +132,14 @@ bool MemcpyToDevice(void* dst,
                     const Target& input_target,
                     void* stream = nullptr) {
 #ifdef CINN_WITH_CUDA
-  if (input_target == common::DefaultNVGPUTarget()) {
+  if (input_target == cinn::common::DefaultNVGPUTarget()) {
     cudaMemcpyAsync(dst,
                     src,
                     bytes,
                     cudaMemcpyDeviceToDevice,
                     static_cast<cudaStream_t>(stream));
     return true;
-  } else if (input_target == common::DefaultHostTarget()) {
+  } else if (input_target == cinn::common::DefaultHostTarget()) {
     cudaMemcpyAsync(dst,
                     src,
                     bytes,
@@ -223,7 +223,7 @@ void cinn_assert_true(void* v_args,
 
   Tensor cpu_tensor;
   cpu_tensor->Resize(Shape(shape));
-  bool* dst = cpu_tensor->mutable_data<bool>(common::DefaultHostTarget());
+  bool* dst = cpu_tensor->mutable_data<bool>(cinn::common::DefaultHostTarget());
 
   // copy data from gpu to cpu
   const bool* src = reinterpret_cast<const bool*>(x->memory);
@@ -236,7 +236,7 @@ void cinn_assert_true(void* v_args,
                   utils::AssertTrueMsgTool::GetInstance()->GetMsg(msg),
                   target);
 
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     utils::MemcpyToDevice(
         output->memory, x->memory, numel * sizeof(bool), target, stream);
   } else {

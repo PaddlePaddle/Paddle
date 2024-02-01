@@ -33,8 +33,9 @@ paddle::Tensor CreateInputTensor() {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::INT64, phi::make_ddim({3, 4}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::INT64,
+                           common::make_ddim({3, 4}),
+                           phi::DataLayout::NCHW));
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
   auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x.get());

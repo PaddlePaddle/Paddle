@@ -11,11 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import os
+from functools import wraps
+
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import _dygraph_guard
+from paddle import base, get_flags, set_flags, static
+from paddle.base import core
+from paddle.base.framework import _dygraph_guard
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -86,7 +92,7 @@ def _is_equal_program(prog1, prog2):
 def load_dygraph_vars_to_scope(model_path, scope, place):
     def load_dict_to_scope(scope, dictionary):
         if scope is None:
-            scope = fluid.global_scope()
+            scope = base.global_scope()
 
         for k, v in dictionary.items():
             dst_t = scope.var(k).get_tensor()
@@ -119,3 +125,85 @@ class DyGraphProgramDescTracerTestHelper:
 
         for v1, v2 in zip(out_dygraph, out_static_graph):
             self.unittest_obj.assertTrue(func(v1.numpy(), v2))
+
+
+@signature_safe_contextmanager
+def dygraph_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if not in_dygraph_outside:
+            paddle.disable_static()
+        yield
+    finally:
+        if not in_dygraph_outside:
+            paddle.enable_static()
+
+
+@signature_safe_contextmanager
+def static_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if in_dygraph_outside:
+            paddle.enable_static()
+        yield
+    finally:
+        if in_dygraph_outside:
+            paddle.disable_static()
+
+
+@signature_safe_contextmanager
+def pir_executor_guard():
+    tmp_env = os.environ.get("FLAGS_enable_pir_in_executor")
+    tmp_cpp = get_flags("FLAGS_enable_pir_in_executor")[
+        "FLAGS_enable_pir_in_executor"
+    ]
+    try:
+        os.environ["FLAGS_enable_pir_in_executor"] = 'True'
+        set_flags({"FLAGS_enable_pir_in_executor": True})
+        yield
+    finally:
+        if tmp_env is None:
+            del os.environ["FLAGS_enable_pir_in_executor"]
+        else:
+            os.environ["FLAGS_enable_pir_in_executor"] = tmp_env
+        set_flags({"FLAGS_enable_pir_in_executor": tmp_cpp})
+
+
+def to_pir_pt_test(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        ir_outs = None
+        if os.environ.get('FLAGS_use_stride_kernel', False):
+            return
+        with static.scope_guard(static.Scope()):
+            with static.program_guard(static.Program()):
+                pir_flag = 'FLAGS_enable_pir_in_executor'
+                try:
+                    os.environ[pir_flag] = 'True'
+                    set_flags({pir_flag: True})
+                    ir_outs = fn(*args, **kwargs)
+                finally:
+                    del os.environ[pir_flag]
+                    set_flags({pir_flag: False})
+        return ir_outs
+
+    return impl
+
+
+def compare_legacy_with_pt(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        outs = fn(*args, **kwargs)
+        if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+            return outs
+        ir_outs = to_pir_pt_test(fn)(*args, **kwargs)
+        np.testing.assert_equal(
+            outs,
+            ir_outs,
+            err_msg=f'Dy2St Unittest Check ({fn.__name__}) has diff \n'
+            + f'Expect {outs}\n'
+            + f'But Got {ir_outs}',
+        )
+        return outs
+
+    return impl

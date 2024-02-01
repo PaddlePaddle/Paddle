@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 paddle.enable_static()
 
@@ -89,7 +89,7 @@ class TestYoloBoxPass(unittest.TestCase):
             )
         graph = core.Graph(program.desc)
         core.get_pass("yolo_box_fuse_pass").apply(graph)
-        graph = paddle.fluid.framework.IrGraph(graph)
+        graph = paddle.base.framework.IrGraph(graph)
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             op_type = op_node.op().type()

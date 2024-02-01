@@ -33,7 +33,7 @@ class InterpolateOneDNNHandler
                            phi::DenseTensor* out)
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto dst_tz = phi::vectorize(out->dims());
+    const auto dst_tz = common::vectorize(out->dims());
     const auto dst_md = memory::desc(
         dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
@@ -49,7 +49,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     const auto& in_dims = x->dims();
 
     const framework::DDim in_dhw_dims =
-        phi::slice_ddim(in_dims, 2, in_dims.size());
+        common::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
     out_dims.reserve(5);
@@ -102,7 +102,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
       if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
           scale[2] > 0.0f) {
         int j = 0;
-        std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
+        std::vector<int64_t> in_dhw_vec = common::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(),
             in_dhw_vec.end(),
@@ -138,7 +138,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
                                      : dnnl::algorithm::resampling_linear;
 
     const auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = phi::make_ddim(out_dims_vec);
+    framework::DDim dim_out = common::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(

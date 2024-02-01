@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/phi/core/utils/dim.h"
+#include "paddle/common/dim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

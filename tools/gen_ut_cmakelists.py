@@ -195,11 +195,11 @@ def _norm_dirs(dirs):
 
 def _process_run_type(run_type):
     rt = run_type.strip()
-    # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
+    # completely match one of the strings: 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'HYBRID', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'
     assert re.compile(
-        "^(NIGHTLY|EXCLUSIVE|CINN|DIST|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$"
+        "^(NIGHTLY|EXCLUSIVE|CINN|DIST|HYBRID|GPUPS|INFER|EXCLUSIVE:NIGHTLY|DIST:NIGHTLY)$"
     ).search(rt), (
-        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'"""
+        f""" run_type must be one of 'NIGHTLY', 'EXCLUSIVE', 'CINN', 'DIST', 'HYBRID', 'GPUPS', 'INFER', 'EXCLUSIVE:NIGHTLY' and 'DIST:NIGHTLY'"""
         f"""but the run_type is {rt}"""
     )
     return rt
@@ -275,7 +275,7 @@ class DistUTPortManager:
                 assert re.compile("^test_[0-9a-zA-Z_]+").search(
                     name
                 ), f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
-                    at line {k-1}, in file {cmake_file_name}
+                    at line {k - 1}, in file {cmake_file_name}
                     '''
                 self.gset_port(name, port)
 
@@ -559,7 +559,7 @@ class CMakeGenerator:
                     print("===============PARSE LINE ERRORS OCCUR==========")
                     print(e)
                     print(f"[ERROR FILE]: {current_work_dir}/testslist.csv")
-                    print(f"[ERROR LINE {i+1}]: {line.strip()}")
+                    print(f"[ERROR LINE {i + 1}]: {line.strip()}")
                     sys.exit(1)
 
         for sub in sub_dirs:

@@ -16,9 +16,9 @@
 
 #include <algorithm>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -48,17 +48,6 @@ struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
-  }
-};
-
-template <typename T>
-struct DivFunctor {
-  const T norm_;
-  HOSTDEVICE inline DivFunctor(const T norm) : norm_(norm) {}
-
-  HOSTDEVICE inline T operator()(T loss) {
-    loss /= norm_;
-    return loss;
   }
 };
 

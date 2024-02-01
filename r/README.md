@@ -12,7 +12,7 @@ docker build -t paddle-rapi:latest .
 ```
 
 ### Local installation
-First, make sure `Python` is installed, assuming that the path is `/opt/python3.7`.
+First, make sure `Python` is installed, assuming that the path is `/opt/python3.8`.
 
 ``` bash
 python -m pip install paddlepaddle # CPU version
@@ -31,8 +31,8 @@ First, load PaddlePaddle in R.
 library(reticulate)
 library(RcppCNPy)
 
-use_python("/opt/python3.7/bin/python3.7")
-paddle <- import("paddle.fluid.core")
+use_python("/opt/python3.8/bin/python3.8")
+paddle <- import("paddle.base.core")
 ```
 
 Create an `AnalysisConfig`, which is the configuration of the paddle inference engine.

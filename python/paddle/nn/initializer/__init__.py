@@ -13,39 +13,44 @@
 # limitations under the License.
 
 # TODO: define the initializers to create a Parameter in neural network
-from ...fluid.initializer import set_global_initializer  # noqa: F401
+from ...base.initializer import set_global_initializer
+from .assign import (
+    Assign,
+    NumpyArrayInitializer,  # noqa: F401
+)
+from .Bilinear import Bilinear
+from .constant import (
+    Constant,
+    ConstantInitializer,  # noqa: F401
+)
+from .dirac import Dirac
+from .initializer import (
+    Initializer,  # noqa: F401
+    calculate_gain,
+)
+from .kaiming import (
+    KaimingNormal,
+    KaimingUniform,
+    MSRAInitializer,  # noqa: F401
+)
+from .normal import (
+    Normal,
+    NormalInitializer,  # noqa: F401
+    TruncatedNormal,
+    TruncatedNormalInitializer,  # noqa: F401
+)
+from .orthogonal import Orthogonal
+from .uniform import (
+    Uniform,
+    UniformInitializer,  # noqa: F401
+)
+from .xavier import (
+    XavierInitializer,  # noqa: F401
+    XavierNormal,
+    XavierUniform,
+)
 
-from .Bilinear import Bilinear  # noqa: F401
-
-from .constant import Constant  # noqa: F401
-
-from .kaiming import KaimingNormal  # noqa: F401
-from .kaiming import KaimingUniform  # noqa: F401
-
-from .xavier import XavierNormal  # noqa: F401
-from .xavier import XavierUniform  # noqa: F401
-
-from .assign import Assign  # noqa: F401
-
-from .normal import Normal  # noqa: F401
-from .normal import TruncatedNormal  # noqa: F401
-
-from .uniform import Uniform  # noqa: F401
-
-from .orthogonal import Orthogonal  # noqa: F401
-
-from .dirac import Dirac  # noqa: F401
-
-from .initializer import Initializer, calculate_gain  # noqa: F401
-from .uniform import UniformInitializer  # noqa: F401
-from .constant import ConstantInitializer  # noqa: F401
-from .normal import NormalInitializer  # noqa: F401
-from .normal import TruncatedNormalInitializer  # noqa: F401
-from .xavier import XavierInitializer  # noqa: F401
-from .kaiming import MSRAInitializer  # noqa: F401
-from .assign import NumpyArrayInitializer  # noqa: F401
-
-__all__ = [  # noqa
+__all__ = [
     'Bilinear',
     'Constant',
     'KaimingUniform',

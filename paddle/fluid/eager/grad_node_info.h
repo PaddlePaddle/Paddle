@@ -20,6 +20,9 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 /**
@@ -158,17 +161,43 @@ class GradSlotMeta {
   Edge& GetMutableEdge() { return adj_edge_; }
   const Edge& GetEdge() const { return adj_edge_; }
 
+  const phi::distributed::TensorDistAttr& DistAttr() const {
+    return dist_attr_;
+  }
+
+  void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    dist_attr_ = dist_attr;
+    is_dist_meta_ = true;
+  }
+
+  const phi::DDim& DistTensorGlobalDims() const {
+    return dist_tensor_global_dims_;
+  }
+
+  void SetDistTensorGlobalDims(const phi::DDim& dims) {
+    dist_tensor_global_dims_ = dims;
+    is_dist_meta_ = true;
+  }
+
+  bool IsDistMeta() const { return is_dist_meta_; }
+
  private:
   bool stop_gradient_{false};
   phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
   Edge adj_edge_;
+  // For dygraph semi-auto parallel
+  // Save the dist attr of the forward input Tensor for proper resharding
+  // operation when compute the input Tensor's gradient
+  phi::distributed::TensorDistAttr dist_attr_;
+  phi::DDim dist_tensor_global_dims_;
+  bool is_dist_meta_{false};
 };
 
 class GradNodeBase {
  public:
   GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
-  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
+  TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
@@ -203,12 +232,14 @@ class GradNodeBase {
 
   /**
    * Get Input Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  InputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  OutputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      OutputMeta() const;
 
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
@@ -232,7 +263,7 @@ class GradNodeBase {
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
    * **/
-  void SetDefaultGradInOutMeta();
+  TEST_API void SetDefaultGradInOutMeta();
   /**
    * Register GradientHook
    * **/
@@ -253,6 +284,8 @@ class GradNodeBase {
 
   std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
 
+  uintptr_t GetPtr() const;
+
   /**
    * Apply GradientHook
    * **/
@@ -260,14 +293,14 @@ class GradNodeBase {
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
   GetGradientHookFuntions() {
-    VLOG(7) << "GetGradientHookFuntions ";
+    VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
-    VLOG(7) << "SetGradientHookFuntions ";
+    VLOG(7) << "SetGradientHookFunctions ";
     gradient_hooks_ = hooks;
   }
 
@@ -298,6 +331,14 @@ class GradNodeBase {
 
   std::string GetForwardTrace() { return forward_trace_; }
 
+  /**
+   * The following interfaces are designed for auto parallel
+   * **/
+  bool IsRunAutoParallel() const { return is_run_auto_parallel_; }
+  void SetIsRunAutoParallel(bool is_run_auto_parallel) {
+    is_run_auto_parallel_ = is_run_auto_parallel;
+  }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -325,6 +366,10 @@ class GradNodeBase {
   bool is_tensor_wrappers_cleared_ = false;
   // The trace of forward function
   std::string forward_trace_ = "";
+
+  // With this flag, short-circuit the backward traversal of Tensor and
+  // set the DistAttr to reduce the impact on scheduling performance
+  bool is_run_auto_parallel_{false};
 };
 
 }  // namespace egr

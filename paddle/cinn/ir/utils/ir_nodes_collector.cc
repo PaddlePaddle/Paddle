@@ -15,14 +15,16 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include <glog/logging.h>
 
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {
 
+namespace ir_utils {
 namespace {
-
 struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
   using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
@@ -71,8 +73,71 @@ struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
     }                                  \
   }
 
-  NODETY_FORALL(__m)
+  NODETY_FORALL_EXCEPT_INTRINSIC(__m)
 #undef __m
+
+  void Visit(const ir::IntrinsicOp* op) {
+    switch (op->getKind()) {
+#define __(x)                                     \
+  case ir::IntrinsicKind::k##x:                   \
+    Visit(llvm::dyn_cast<ir::intrinsics::x>(op)); \
+    break;
+
+      INTRINSIC_KIND_FOR_EACH(__)
+#undef __
+    }
+  }
+
+  void Visit(const ir::intrinsics::GetAddr* x) {
+    if (x->data.defined()) {
+      Visit(&(x->data));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferGetDataHandle* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferGetDataConstHandle* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::PodValueToX* x) {
+    if (x->pod_value_ptr.defined()) {
+      Visit(&(x->pod_value_ptr));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferCreate* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::ArgsConstruct* x) {
+    if (x->var.defined()) {
+      Expr convert = Expr(x->var);
+      Visit(&convert);
+    }
+    for (int i = 0; i < x->args.size(); ++i) {
+      if (x->args[i].defined()) {
+        Visit(&(x->args[i]));
+      }
+    }
+  }
+
+  void Visit(const ir::intrinsics::BuiltinIntrin* x) {
+    for (int i = 0; i < x->args.size(); ++i) {
+      if (x->args[i].defined()) {
+        Visit(&(x->args[i]));
+      }
+    }
+  }
+
   std::set<void*> visited_;
 };
 
@@ -207,5 +272,116 @@ std::set<Expr> CollectReferencedTensors(
   return ts0;
 }
 
+std::vector<std::string> CollectUndefinedVars(const Expr* e) {
+  struct Mutator : public ir::IRMutator<const Expr*> {
+    using ir::IRMutator<const Expr*>::Visit;
+    std::vector<std::string> undefined_vars;
+    std::set<std::string> defined_vars;
+    std::set<std::string> used_vars;
+
+    void CollectVarDef(const std::string& var) {
+      CHECK(!defined_vars.count(var))
+          << "var " << var << " has been defined, please check";
+      CHECK(!used_vars.count(var))
+          << "var " << var << " is wrongly used before definition";
+      defined_vars.insert(var);
+    }
+
+    void ClearVar(const std::string& var) {
+      defined_vars.erase(var);
+      used_vars.erase(var);
+    }
+
+    void CollectVarUse(const std::string& var) {
+      used_vars.insert(var);
+      if (defined_vars.count(var) == 0) {
+        undefined_vars.push_back(var);
+      }
+    }
+
+    void Visit(const ir::Let* op, const Expr* expr) override {
+      Expr symbol = op->symbol;
+      auto var = symbol.as_var_ref();
+      CHECK(var.defined());
+      CollectVarDef(var->name);
+      auto* node = expr->As<ir::Let>();
+      Visit(&node->body, &node->body);
+    }
+
+    void Visit(const ir::For* op, const Expr* expr) override {
+      CollectVarDef(op->loop_var->name);
+      auto* node = expr->As<ir::For>();
+      Visit(&node->min, &node->min);
+      Visit(&node->extent, &node->extent);
+      Visit(&node->body, &node->body);
+      ClearVar(op->loop_var->name);
+    }
+
+    void Visit(const ir::Load* op, const Expr* expr) override {
+      auto tensor = op->tensor.as_tensor_ref();
+      CollectVarUse(tensor->name);
+      auto* node = expr->As<ir::Load>();
+      for (auto& idx : node->indices) Visit(&idx, &idx);
+    }
+
+    void Visit(const ir::Store* op, const Expr* expr) override {
+      auto tensor = op->tensor.as_tensor_ref();
+      CollectVarUse(tensor->name);
+      auto* node = expr->As<ir::Store>();
+      for (auto& idx : node->indices) Visit(&idx, &idx);
+      Visit(&node->value, &node->value);
+    }
+
+    void Visit(const ir::_Var_* op, const Expr* expr) override {
+      CollectVarUse(op->name);
+      auto* node = expr->As<ir::_Var_>();
+      if (node->lower_bound.defined()) {
+        Visit(&node->lower_bound, &node->lower_bound);
+      }
+      if (node->upper_bound.defined()) {
+        Visit(&node->upper_bound, &node->upper_bound);
+      }
+    }
+
+    void Visit(const ir::Reduce* op, const Expr* expr) override {
+      for (auto& axis : op->reduce_axis) {
+        CollectVarDef(axis->name);
+      }
+      auto* node = expr->As<ir::Reduce>();
+      if (node->init.defined()) Visit(&node->init, &node->init);
+      Visit(&node->body, &node->body);
+    }
+  };
+
+  Mutator mutator;
+  mutator.Visit(e, e);
+  return mutator.undefined_vars;
+}
+
+std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
+  std::set<std::string> tensor_written;
+  IrNodesCollector::handler_t handler = [&](const Expr* x) {
+    if (x->As<ir::Store>()) {
+      tensor_written.insert(
+          x->As<ir::Store>()->tensor.As<ir::_Tensor_>()->name);
+    }
+    if (x->As<ir::_Tensor_>()) {
+      tensor_written.insert(x->As<ir::_Tensor_>()->name);
+    }
+  };
+  IrNodesCollector::teller_t teller = [](const Expr* x) {
+    if (x->As<ir::Store>() && x->As<ir::Store>()->tensor.As<ir::_Tensor_>()) {
+      return true;
+    }
+    if (x->As<ir::_Tensor_>() && x->As<ir::_Tensor_>()->is_call_node()) {
+      return true;
+    }
+    return false;
+  };
+  IrNodesCollector collector(std::move(teller), std::move(handler), false);
+  collector.Visit(e);
+  return tensor_written;
+}
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

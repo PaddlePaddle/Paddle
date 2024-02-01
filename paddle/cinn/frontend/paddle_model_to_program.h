@@ -43,7 +43,7 @@ class PaddleModelToProgram {
   explicit PaddleModelToProgram(
       hlir::framework::Scope* scope,
       std::unordered_map<std::string, std::vector<int>> input_shape_map,
-      const common::Target& target)
+      const cinn::common::Target& target)
       : scope_(scope),
         input_shape_map_(input_shape_map),
         target_(target),
@@ -145,7 +145,7 @@ class PaddleModelToProgram {
   // map from var in Paddle model to var name in program.
   absl::flat_hash_map<std::string, std::string> var_model_to_program_map_;
   hlir::framework::Scope* scope_{};
-  common::Target target_;
+  cinn::common::Target target_;
 };
 
 }  // namespace frontend

@@ -120,4 +120,5 @@ PD_REGISTER_KERNEL(slice,
                    float,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}

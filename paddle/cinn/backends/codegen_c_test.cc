@@ -19,6 +19,7 @@
 #include <sstream>
 #include <tuple>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/module.h"
@@ -65,8 +66,10 @@ TEST(CodeGenC, module) {
   target.os = Target::OS ::Linux;
   Module::Builder builder("module1", target);
 
-  auto stages = CreateStages({A, B, C});
-  auto func = Lower("add1", stages, {A, B, C});
+  ast_gen_ius::TensorGroup tensor_group({A, B, C});
+  auto func = lang::LowerToAst("add1", {A, B, C}, &tensor_group);
+
+  LOG(INFO) << "Func to codegen: " << func << std::endl;
 
   builder.AddFunction(func);
 
@@ -74,7 +77,7 @@ TEST(CodeGenC, module) {
     CodeGenC codegen(target);
     codegen.SetInlineBuiltinCodes(false);
     auto out = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
-    std::cout << "codegen C:" << std::endl << out << std::endl;
+    LOG(INFO) << "codegen C:" << std::endl << out << std::endl;
 
     std::string target_str = R"ROC(
 #include <cinn_runtime.h>
@@ -283,7 +286,7 @@ TEST(CodeGenC, matmul_tile) {
   // Code gen
   auto func = Lower("matmul", stages, {A, B, C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Module::Builder builder("module1", target);
   builder.AddFunction(func);
@@ -370,7 +373,7 @@ TEST(CodeGenC, matmul_packed) {
   // Code gen
   auto func = Lower("matmul_with_packing", stages, {A, B, packedB, C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Module::Builder builder("module1", target);
   builder.AddFunction(func);
@@ -442,10 +445,10 @@ TEST(CodeGenC, call_extern) {
 
   auto yexpr = Lower("yy", stages, {y});
 
-  Module::Builder builder("module0", common::DefaultHostTarget());
+  Module::Builder builder("module0", cinn::common::DefaultHostTarget());
   builder.AddFunction(yexpr);
 
-  CodeGenC codegen(common::DefaultHostTarget());
+  CodeGenC codegen(cinn::common::DefaultHostTarget());
   codegen.SetInlineBuiltinCodes(false);
   auto out = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   std::cout << "codegen C:" << std::endl << out << std::endl;

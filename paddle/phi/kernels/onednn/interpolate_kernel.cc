@@ -33,7 +33,7 @@ KernelKey InterpolateGetKernelTypeForVar(
       (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = StringToDataLayout(data_layout);
+    auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != DataLayout::kAnyLayout) {
@@ -62,7 +62,7 @@ class InterpolateOneDNNHandler
                            DenseTensor* out)
       : OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(engine,
                                                              cpu_place) {
-    const auto dst_tz = vectorize(out->dims());
+    const auto dst_tz = common::vectorize(out->dims());
     const auto dst_md = dnnl::memory::desc(
         dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
@@ -126,7 +126,7 @@ std::vector<int> ComputeOutputShape(
     if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
         scale[2] > 0.0f) {
       int j = 0;
-      std::vector<int64_t> in_dhw_vec = vectorize(in_dhw_dims);
+      std::vector<int64_t> in_dhw_vec = common::vectorize(in_dhw_dims);
       std::transform(
           in_dhw_vec.begin(),
           in_dhw_vec.end(),
@@ -176,7 +176,7 @@ void InterpolateKernel(
                                                out_h,
                                                out_w,
                                                scale);
-  DDim dim_out = make_ddim(out_dims_vec);
+  DDim dim_out = common::make_ddim(out_dims_vec);
   out->Resize(dim_out);
 
   funcs::InterpolateOneDNNHandler<T> handler(

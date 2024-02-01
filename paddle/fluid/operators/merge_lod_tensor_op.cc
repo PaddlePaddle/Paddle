@@ -82,20 +82,20 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     platform::Place place = dev_place;
     int64_t batch_size = in_true.dims()[0] + in_false.dims()[0];
     auto data_type = in_true.IsInitialized() ? in_true.type() : in_false.type();
-    int rank;
+    int rank = 0;
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
       rank = in_true.dims().size();
-      in_dims = phi::slice_ddim(in_true.dims(), 1, rank);
+      in_dims = common::slice_ddim(in_true.dims(), 1, rank);
     } else {
       rank = in_false.dims().size();
-      in_dims = phi::slice_ddim(in_false.dims(), 1, rank);
+      in_dims = common::slice_ddim(in_false.dims(), 1, rank);
     }
 
-    auto in_dim_vec = phi::vectorize(in_dims);
+    auto in_dim_vec = common::vectorize(in_dims);
     in_dim_vec.insert(in_dim_vec.begin(), batch_size);
 
-    framework::DDim out_dims = phi::make_ddim(in_dim_vec);
+    framework::DDim out_dims = common::make_ddim(in_dim_vec);
     out->Resize(out_dims);
 
     out->mutable_data(place, data_type);
@@ -138,9 +138,11 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       if (len == 0) {
         continue;
       }
-      auto slice = out->Slice(out_offset, out_offset + len);
-      framework::TensorCopy(
-          input->Slice(start_offset, end_offset), place, dev_ctx, &slice);
+      auto slice = out->Slice(out_offset, out_offset + len);         // NOLINT
+      framework::TensorCopy(input->Slice(start_offset, end_offset),  // NOLINT
+                            place,
+                            dev_ctx,
+                            &slice);
       out_offset += len;
       (*in_idx) += 1;
     }

@@ -62,5 +62,6 @@ PD_REGISTER_KERNEL(divide_raw,
                    double,
                    int,
                    int64_t,
+                   bool,
                    complex64,
                    complex128) {}

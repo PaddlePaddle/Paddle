@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -21,18 +22,17 @@
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
 template <>
-Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                         phi::DataType dtype,
-                         const paddle::Place& place) {
+TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
+                                  phi::DataType dtype,
+                                  const paddle::Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
-          std::move(StaticCompositeContext::Instance().GenerateUniqueName()));
+          StaticCompositeContext::Instance().GenerateUniqueName());
   new_var->SetShape(shape.GetData());
   new_var->SetDataType(framework::TransToProtoVarType(dtype));
   // Place is not supported in static mode

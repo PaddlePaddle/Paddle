@@ -25,6 +25,9 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle import base, core
+from paddle.framework import in_dynamic_mode
+from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -2673,6 +2676,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(x2.grad.numpy(), 0.25)
 
+    @test_with_pir_api
     def test_while_loop(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -2684,20 +2688,43 @@ class TestSundryAPI(unittest.TestCase):
 
         i = paddle.full([], 1.0, dtype='float32')
         i.stop_gradient = False
+        i.persistable = True
         eleven = paddle.full([], 11, dtype='float32')
         x = paddle.full([], 0.0, dtype='float32')
         x.stop_gradient = False
+        x.persistable = True
         out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
-        out_x.backward()
 
-        self.assertEqual(out_i.shape, [])
+        if in_dynamic_mode():
+            out_x.backward()
+            di = i.grad
+            dx = x.grad
+        else:
+            grad_list = paddle.static.append_backward(out_x)
+            for p, g in grad_list:
+                if p.is_same(i):
+                    di = g
+                elif p.is_same(x):
+                    dx = g
+            place = (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
+            exe = base.Executor(place)
+            main_program = paddle.static.default_main_program()
+            out_i, out_x, di, dx = exe.run(
+                main_program, feed={}, fetch_list=[out_i, out_x, di, dx]
+            )
+
+        self.assertEqual(np.asarray(out_i).shape, ())
         np.testing.assert_allclose(out_i, np.array(11))
-        self.assertEqual(out_x.shape, [])
+        self.assertEqual(np.asarray(out_x).shape, ())
         np.testing.assert_allclose(out_x, np.array(55))
-        self.assertEqual(i.grad.shape, [])
-        np.testing.assert_allclose(i.grad, np.array(10))
-        self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, np.array(1.0))
+        self.assertEqual(np.asarray(di).shape, ())
+        np.testing.assert_allclose(di, np.array(10))
+        self.assertEqual(np.asarray(dx).shape, ())
+        np.testing.assert_allclose(dx, np.array(1.0))
 
     def test_to_tensor(self):
         out1 = paddle.to_tensor(1)
@@ -4564,23 +4591,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4], 1.0)
         self.assertEqual(res[5], 1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def test_argsort(self):
-        # have no backward
-        x1 = paddle.rand([])
-        out1 = paddle.argsort(x1, axis=-1)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # have no backward
+            x1 = paddle.rand([])
+            out1 = paddle.argsort(x1, axis=-1)
 
-        x2 = paddle.rand([])
-        x2.stop_gradient = False
-        out2 = paddle.argsort(x2, axis=0)
+            x2 = paddle.rand([])
+            x2.stop_gradient = False
+            out2 = paddle.argsort(x2, axis=0)
 
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, out2])
+            prog = paddle.static.default_main_program()
+            res = self.exe.run(prog, fetch_list=[out1, out2])
 
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[0], 0.0)
-        self.assertEqual(res[1], 0.0)
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[1].shape, ())
+            self.assertEqual(res[0], 0.0)
+            self.assertEqual(res[1], 0.0)
 
     @prog_scope()
     def test_lerp(self):
@@ -4921,7 +4952,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         value = paddle.to_tensor(1000, dtype=paddle.int64).squeeze()
         out = paddle.static.nn.sequence_pad(x, value)
 
-        x_tensor = paddle.fluid.create_lod_tensor(
+        x_tensor = paddle.base.create_lod_tensor(
             np.arange(20).astype(np.int64).reshape(-1, 2),
             [[3, 3, 4]],
             place=self.exe.place,
@@ -5020,6 +5051,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[0], np.array(1))
         np.testing.assert_allclose(res[1], np.array(1))
 
+    @test_with_pir_api
     @prog_scope()
     def test_while_loop(self):
         def cond(i, x):
@@ -5034,20 +5066,34 @@ class TestSundryAPIStatic(unittest.TestCase):
         with paddle.static.program_guard(main_program, paddle.static.Program()):
             i = paddle.static.data(name='i', shape=[], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             eleven = paddle.full([], 11, 'float32')
             x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
+            x.persistable = True
             out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
-            paddle.static.append_backward(out_x)
+            grad_list = paddle.static.append_backward(out_x)
 
-        res = self.exe.run(
-            main_program,
-            feed={
-                'i': np.array(1.0, dtype='float32'),
-                'x': np.array(0.0, dtype='float32'),
-            },
-            fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
-        )
+        feed = {
+            'i': np.array(1.0, dtype='float32'),
+            'x': np.array(0.0, dtype='float32'),
+        }
+        if paddle.framework.in_pir_mode():
+            fetch_list = [out_i, out_x]
+            for _, g in grad_list:
+                fetch_list.append(g)
+            res = self.exe.run(
+                main_program,
+                feed=feed,
+                fetch_list=fetch_list,
+            )
+        else:
+            res = self.exe.run(
+                main_program,
+                feed=feed,
+                fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
+            )
+
         self.assertEqual(res[0].shape, ())
         np.testing.assert_allclose(res[0], np.array(11))
         self.assertEqual(res[1].shape, ())
@@ -5808,17 +5854,41 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    def test_randint_and_randint_like(self):
-        out1 = paddle.randint(-10, 10, [])
-        out2 = paddle.randint_like(out1, -10, 10)
-        out3 = paddle.randint(-10, 10, self.shape)
+    @test_with_pir_api
+    def test_randint(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.randint(-10, 10, [])
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
+            shape = [
+                paddle.full([], 2, 'int32'),
+                paddle.full([], 3, 'int32'),
+                paddle.full([], 4, 'int32'),
+            ]
+            out2 = paddle.randint(-10, 10, shape)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    @test_with_pir_api
+    def test_randint_like(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.rand([])
+            out2 = paddle.randint_like(out1, -10, 10)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
 
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
@@ -5914,6 +5984,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[emb])
         self.assertEqual(res[0].shape, (3,))
 
+    @test_with_pir_api
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
@@ -5956,50 +6027,62 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (1,))
         self.assertEqual(res[3].shape, (1,))
 
-    @prog_scope()
+    @test_with_pir_api
     def test_static_matrix_rank(self):
         # 2D : OUTPUT 0D
-        x = paddle.eye(10)
-        x.stop_gradient = False
-        out = paddle.linalg.matrix_rank(x)
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
-        self.assertEqual(res[0].shape, ())
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.eye(10)
+            x.stop_gradient = False
+            out = paddle.linalg.matrix_rank(x)
+            exe = paddle.static.Executor()
+            res = exe.run(fetch_list=[out])
+            self.assertEqual(res[0].shape, ())
 
         # 3D : OUTPUT 1D
-        c = paddle.ones(shape=[3, 4, 5])
-        c.stop_gradient = False
-        out_c = paddle.linalg.matrix_rank(c)
-        prog = paddle.static.default_main_program()
-        self.exe.run(paddle.static.default_startup_program())
-        res = self.exe.run(prog, fetch_list=[out_c])
-        self.assertEqual(res[0].shape, (3,))
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            c = paddle.ones(shape=[3, 4, 5])
+            c.stop_gradient = False
+            out_c = paddle.linalg.matrix_rank(c)
+            exe = paddle.static.Executor()
+            res = exe.run(fetch_list=[out_c])
+            self.assertEqual(res[0].shape, (3,))
 
         # 2D, tol->float : OUTPUT 0D
-        x_tol = paddle.eye(10)
-        x_tol.stop_gradient = False
-        out_tol = paddle.linalg.matrix_rank(x_tol, tol=0.1)
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_tol])
-        self.assertEqual(res[0].shape, ())
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_tol = paddle.eye(10)
+            x_tol.stop_gradient = False
+            out_tol = paddle.linalg.matrix_rank(x_tol, tol=0.1)
+            exe = paddle.static.Executor()
+            res = exe.run(fetch_list=[out_tol])
+            self.assertEqual(res[0].shape, ())
 
         # 3D, tol->float : OUTPUT 1D
-        c_tol = paddle.ones(shape=[3, 4, 5])
-        c_tol.stop_gradient = False
-        out_c_tol = paddle.linalg.matrix_rank(c_tol, tol=0.1)
-        prog = paddle.static.default_main_program()
-        self.exe.run(paddle.static.default_startup_program())
-        res = self.exe.run(prog, fetch_list=[out_c_tol])
-        self.assertEqual(res[0].shape, (3,))
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            c_tol = paddle.ones(shape=[3, 4, 5])
+            c_tol.stop_gradient = False
+            out_c_tol = paddle.linalg.matrix_rank(c_tol, tol=0.1)
+            exe = paddle.static.Executor()
+            res = exe.run(fetch_list=[out_c_tol])
+            self.assertEqual(res[0].shape, (3,))
 
-        tol_2 = paddle.randn([2])
         # 2D, tol->Tensor[1,2] : OUTPUT 1D
-        d = paddle.eye(10)
-        out_d = paddle.linalg.matrix_rank(d, tol=tol_2)
-        prog = paddle.static.default_main_program()
-        self.exe.run(paddle.static.default_startup_program())
-        res = self.exe.run(prog, fetch_list=[out_d])
-        self.assertEqual(res[0].shape, (2,))
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            tol_2 = paddle.randn([2])
+            d = paddle.eye(10)
+            out_d = paddle.linalg.matrix_rank(d, tol=tol_2)
+            exe = paddle.static.Executor()
+            res = exe.run(fetch_list=[out_d])
+            self.assertEqual(res[0].shape, (2,))
 
 
 unary_apis_with_complex_input = [

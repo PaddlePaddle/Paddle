@@ -140,3 +140,41 @@ class ETCDClient:
 
         if times >= self.retry_times:
             raise ValueError(f"Lease failed after {self.retry_times} times.")
+
+    def add_watch_prefix_callback(self, key_prefix, callback, **kwargs):
+        times = 0
+        while times < self.retry_times:
+            try:
+                return self.client.add_watch_prefix_callback(
+                    key_prefix, callback, **kwargs
+                )
+                break
+            except Exception as e:
+                times += 1
+                logging.info(
+                    f"Add watch prefix callback failed with exception {e}, retry after 1 second."
+                )
+                time.sleep(1)
+
+        if times >= self.retry_times:
+            raise ValueError(
+                f"Add watch prefix callback failed after {self.retry_times} times."
+            )
+
+    def cancel_watch(self, watch_id):
+        times = 0
+        while times < self.retry_times:
+            try:
+                return self.client.cancel_watch(watch_id)
+                break
+            except Exception as e:
+                times += 1
+                logging.info(
+                    f"Cancel watch failed with exception {e}, retry after 1 second."
+                )
+                time.sleep(1)
+
+        if times >= self.retry_times:
+            raise ValueError(
+                f"Cancel watch failed after {self.retry_times} times."
+            )

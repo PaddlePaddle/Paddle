@@ -203,9 +203,9 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
 // (seq_len, shape) -> return [seq_len] + list(shape)
 framework::DDim RecurrentBase::PrependDims(size_t seq_len,
                                            const framework::DDim &src) {
-  auto dims = phi::vectorize(src);
+  auto dims = common::vectorize(src);
   dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
-  return phi::make_ddim(dims);
+  return common::make_ddim(dims);
 }
 
 RecurrentOp::RecurrentOp(const std::string &type,
@@ -245,18 +245,18 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 
     // Link outside::input --> inside::input
     //   inside::input = outside::input[seq_offset: seq_offset+1]
-    LinkTensorWithCallback(
-        scope,
-        Inputs(kInputs),
-        &cur_scope,
-        Inputs(kInputs),
-        [&seq_offset](const phi::DenseTensor &outside,
-                      phi::DenseTensor *inside) {
-          inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = phi::vectorize(inside->dims());
-          dims.erase(dims.begin());
-          inside->Resize(phi::make_ddim(dims));
-        });
+    LinkTensorWithCallback(scope,
+                           Inputs(kInputs),
+                           &cur_scope,
+                           Inputs(kInputs),
+                           [&seq_offset](const phi::DenseTensor &outside,
+                                         phi::DenseTensor *inside) {
+                             inside->ShareDataWith(outside.Slice(
+                                 seq_offset, seq_offset + 1));  // NOLINT
+                             auto dims = common::vectorize(inside->dims());
+                             dims.erase(dims.begin());
+                             inside->Resize(common::make_ddim(dims));
+                           });
 
     if (has_state) {
       if (i == 0) {
@@ -277,7 +277,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
 
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
-    executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
+    executor.CreateVariables(
+        ctx->prog_, &cur_scope, static_cast<int>(ctx->block_id_));
 
     // Linked now, execute!
     executor.RunPreparedContext(ctx.get(),
@@ -297,7 +298,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
             dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
             dst_tensor->mutable_data(place, src_tensor.dtype());
 
-            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            auto dst_out =
+                dst_tensor->Slice(seq_offset, seq_offset + 1);  // NOLINT
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
@@ -310,7 +312,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
           Outputs(kOutputs),
           [&](const phi::DenseTensor &src_tensor,
               phi::DenseTensor *dst_tensor) {
-            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            auto dst_out =
+                dst_tensor->Slice(seq_offset, seq_offset + 1);  // NOLINT
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
     }
@@ -378,10 +381,11 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         &cur_scope,
         Inputs(kOutputGrads),
         [&](const phi::DenseTensor &outside, phi::DenseTensor *inside) {
-          inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-          auto dims = phi::vectorize(inside->dims());
+          inside->ShareDataWith(
+              outside.Slice(seq_offset, seq_offset + 1));  // NOLINT
+          auto dims = common::vectorize(inside->dims());
           dims.erase(dims.begin());
-          inside->Resize(phi::make_ddim(dims));
+          inside->Resize(common::make_ddim(dims));
         },
         true /*is_backward*/);
     auto og_set = List2Set(Inputs(kOutputGrads));
@@ -429,7 +433,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
 
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
-    executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
+    executor.CreateVariables(
+        ctx->prog_, &cur_scope, static_cast<int>(ctx->block_id_));
     if (step_id > 0) {
       LinkTensorWithCallback(
           scope,
@@ -443,7 +448,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
               return;
             }
             phi::DenseTensor src_slice =
-                src_tensor.Slice(seq_offset, seq_offset + 1);
+                src_tensor.Slice(seq_offset, seq_offset + 1);  // NOLINT
             dst_tensor->ShareDataWith(src_slice);
           },
           true /*is_backward*/);
@@ -490,7 +495,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           framework::AttributeMap attrs;
           attrs["dtype"] =
               framework::TransToProtoVarType(inside_tensor.dtype());
-          attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
+          attrs["shape"] = common::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 
           auto zero_op =
@@ -532,7 +537,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             outside->Resize(PrependDims(seq_len, inside.dims()));
             outside->mutable_data(place, inside.dtype());
 
-            auto dst = outside->Slice(seq_offset, seq_offset + 1);
+            auto dst = outside->Slice(seq_offset, seq_offset + 1);  // NOLINT
             framework::TensorCopy(inside, place, dev_ctx, &dst);
           },
           true /*is_backward*/);

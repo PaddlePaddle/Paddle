@@ -23,7 +23,6 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
@@ -39,7 +38,7 @@ using cinn::common::float16;
 const char *kCKeywordRestrict = "__restrict__";
 
 void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
@@ -121,10 +120,11 @@ std::string CodeGenC::GetTypeName(Type type) {
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(customized_name,
-                          common::customized_type::kcuda_builtin_vector_t)) {
+    if (utils::Startswith(
+            customized_name,
+            cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(
-          0, strlen(common::customized_type::kcuda_builtin_vector_t));
+          0, strlen(cinn::common::customized_type::kcuda_builtin_vector_t));
     }
     return customized_name;
   }
@@ -286,31 +286,13 @@ void CodeGenC::Visit(const ir::Select *op) {
 void CodeGenC::Visit(const ir::IfThenElse *op) {
   str_ += "if (";
   IrPrinter::Visit(op->condition);
-  str_ += ") {\n";
+  str_ += ") ";
 
-  if (!op->true_case.As<ir::Block>()) IncIndent();
-  DoIndent();
   IrPrinter::Visit(op->true_case);
-  if (!op->true_case.As<ir::Block>()) str_ += ";";
-  str_ += "\n";
-
-  if (!op->true_case.As<ir::Block>()) DecIndent();
-
-  DoIndent();
-  str_ += "}";
 
   if (op->false_case.defined()) {
-    str_ += " else {\n";
-
-    if (!op->true_case.As<ir::Block>()) IncIndent();
-    DoIndent();
+    str_ += " else ";
     IrPrinter::Visit(op->false_case);
-    if (!op->false_case.As<ir::Block>()) str_ += ";";
-    str_ += "\n";
-    if (!op->true_case.As<ir::Block>()) DecIndent();
-
-    DoIndent();
-    str_ += "}";
   }
 }
 void CodeGenC::Visit(const ir::Block *op) {
@@ -645,7 +627,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::RemoveNestedBlock(&func_body);
+  optim::SimplifyBlocks(&func_body);
 
   IrPrinter::Visit(func_body);
 }
@@ -672,7 +654,7 @@ void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
     DoIndent();
     auto buffer_ptr_type =
         Type()
-            .set_customized_type(common::customized_type::kbuffer_t)
+            .set_customized_type(cinn::common::customized_type::kbuffer_t)
             .set_cpp_handle();
     Var variable = ir::_Var_::Make(buffer->name, buffer_ptr_type);
     auto expr = ir::intrinsics::BufferCreate::Make(buffer);
@@ -766,6 +748,7 @@ void CodeGenC::Visit(const ir::ScheduleBlock *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::ScheduleBlockRealize *op) {
   CINN_NOT_IMPLEMENTED
 }
+void CodeGenC::Visit(const ir::_Dim_ *op) { CINN_NOT_IMPLEMENTED }
 
 void CodeGenC::Visit(const ir::IntrinsicOp *op) {
   switch (op->getKind()) {

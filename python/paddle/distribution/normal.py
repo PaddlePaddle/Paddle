@@ -18,9 +18,9 @@ from collections.abc import Iterable
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -99,13 +99,29 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
 
@@ -135,7 +151,6 @@ class Normal(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = scale.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = paddle.cast(self.loc, dtype=self.dtype)
@@ -144,7 +159,7 @@ class Normal(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of multinomial distribuion.
+        """Mean of normal distribuion.
 
         Returns:
             Tensor: mean value.
@@ -153,7 +168,7 @@ class Normal(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of lognormal distribution.
+        """Variance of normal distribution.
 
         Returns:
             Tensor: variance value.

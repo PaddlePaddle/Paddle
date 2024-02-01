@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -176,8 +176,8 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
         def test_errors(self):
             with program_guard(Program(), Program()):
                 # the input of instance_norm must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.XPUPlace(0)
                 )
                 self.assertRaises(TypeError, paddle.static.nn.instance_norm, x1)
 

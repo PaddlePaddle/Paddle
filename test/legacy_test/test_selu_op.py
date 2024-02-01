@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_selu(
@@ -79,10 +80,10 @@ class SeluTest(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class SeluTestFP16OP(SeluTest):
@@ -100,10 +101,12 @@ class SeluTestBF16OP(SeluTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 class TestSeluAPI(unittest.TestCase):
@@ -121,6 +124,7 @@ class TestSeluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
@@ -144,15 +148,17 @@ class TestSeluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
+    @test_with_pir_api
+    def test_base_api(self):
+        with base.program_guard(base.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out = F.selu(x, self.scale, self.alpha)
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
@@ -170,10 +176,11 @@ class TestSeluAPI(unittest.TestCase):
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[12, 10], dtype='float16'
-            )
-            F.selu(x_fp16)
+            if paddle.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[12, 10], dtype='float16'
+                )
+                F.selu(x_fp16)
 
 
 if __name__ == "__main__":

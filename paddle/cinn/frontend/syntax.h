@@ -41,9 +41,9 @@ namespace frontend {
 struct Program;
 struct Variable;
 
-struct _Variable_ : public common::Object {
+struct _Variable_ : public cinn::common::Object {
   std::string id;
-  common::Type type;
+  cinn::common::Type type;
   std::vector<int> shape;
   bool is_const = false;
 
@@ -54,17 +54,18 @@ struct _Variable_ : public common::Object {
 /**
  * Variable represents the variable in a computation.
  */
-struct Variable : public common::Shared<_Variable_> {
+struct Variable : public cinn::common::Shared<_Variable_> {
   /**
    * Constructor.
    * @param id_hint The identifier of the variable, if null, a random ID will be
    * assigned.
    */
   explicit Variable(const std::string& id_hint = "")
-      : common::Shared<_Variable_>(common::make_shared<_Variable_>()) {
+      : cinn::common::Shared<_Variable_>(
+            cinn::common::make_shared<_Variable_>()) {
     if (!id_hint.empty()) CheckVarNameValid(id_hint);
-    get()->id =
-        id_hint.empty() ? common::Context::Global().NewName("var") : id_hint;
+    get()->id = id_hint.empty() ? cinn::common::Context::Global().NewName("var")
+                                : id_hint;
   }
 
   void set_id(const std::string& id) { operator->()->id = id; }
@@ -85,13 +86,14 @@ class Placeholder {
    * @param shape Shape of the fed
    * @param id ID of the fed
    */
-  Placeholder(const common::Type& type,
+  Placeholder(const cinn::common::Type& type,
               const std::vector<int>& shape,
               absl::string_view id_hint = "",
               bool is_const = false) {
     if (!id_hint.empty()) CheckVarNameValid(std::string(id_hint));
-    id_ = id_hint.empty() ? common::Context::Global().NewName("placeholder")
-                          : (std::string)id_hint;
+    id_ = id_hint.empty()
+              ? cinn::common::Context::Global().NewName("placeholder")
+              : (std::string)id_hint;
     var_ = Variable(id_);
     var_->shape = shape;
     var_->type = type;
@@ -124,7 +126,7 @@ class Placeholder {
 /**
  * Data of a Instruction.
  */
-struct _Instruction_ : public common::Object {
+struct _Instruction_ : public cinn::common::Object {
   using attr_t = hlir::framework::AttrType;
 
   std::string op_type;
@@ -145,7 +147,7 @@ struct _Instruction_ : public common::Object {
  * Instruction is the basic computational unit of a Program, similar to the
  * operator concept in a DNN platform.
  */
-struct Instruction : public common::Shared<_Instruction_> {
+struct Instruction : public cinn::common::Shared<_Instruction_> {
   explicit Instruction(absl::string_view op_type,
                        const std::vector<Variable>& inputs = {},
                        Program* parent = nullptr);
@@ -528,12 +530,13 @@ std::tuple<std::unique_ptr<Program>,
            absl::flat_hash_map<std::string, Variable>,
            absl::flat_hash_map<std::string, std::string>,
            absl::flat_hash_set<std::string>>
-LoadPaddleProgram(const std::string& model_dir,
-                  hlir::framework::Scope* scope,
-                  std::unordered_map<std::string, std::vector<int>>&
-                      input_shape_map,  // NOLINT
-                  bool is_combined,
-                  const common::Target& target = common::DefaultHostTarget());
+LoadPaddleProgram(
+    const std::string& model_dir,
+    hlir::framework::Scope* scope,
+    std::unordered_map<std::string, std::vector<int>>&
+        input_shape_map,  // NOLINT
+    bool is_combined,
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 std::ostream& operator<<(std::ostream& os, const Variable& x);
 std::ostream& operator<<(std::ostream& os, const Instruction& instr);

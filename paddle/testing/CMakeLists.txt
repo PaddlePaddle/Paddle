@@ -5,8 +5,9 @@ if(WITH_TESTING)
       device_context
       gtest
       phi
+      common
       init
-      memory
+      allocator
       phi_utils
       proto_desc)
 

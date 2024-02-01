@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/imperative/data_loader.h"
 
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cstdlib>
 
 #include <csignal>
 
@@ -45,7 +45,7 @@ void EraseLoadProcessPIDs(int64_t key) {
             << ")";
     load_process_pids.erase(it);
   } else {
-    VLOG(3) << "Dygraph Data Loader: The dygrph loader (id: " << key
+    VLOG(3) << "Dygraph Data Loader: The dygraph loader (id: " << key
             << ") you want erase does not exist.";
   }
 }
@@ -128,9 +128,9 @@ void SetLoadProcessSignalHandler() {
 }
 
 void ThrowErrorIfLoadProcessFailed() {
-  int error;
-  std::set<pid_t> *pids_set;
-  pid_t process_pid;
+  int error = 0;
+  std::set<pid_t> *pids_set = nullptr;
+  pid_t process_pid = 0;
   siginfo_t infop;
 
   for (auto &p : load_process_pids) {

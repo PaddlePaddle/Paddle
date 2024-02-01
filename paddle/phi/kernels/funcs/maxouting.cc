@@ -43,7 +43,7 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
       int new_cindex = fea_size * c;
       for (int f = 0; f < fea_size; ++f) {
         T ele = static_cast<T>(-FLT_MAX);
-        int input_idx, output_idx;
+        int input_idx = 0, output_idx = 0;
         for (int ph = 0; ph < groups; ++ph) {
           if (axis == 1) {
             input_idx = (new_bindex + new_cindex) * groups + ph * fea_size + f;
@@ -89,7 +89,7 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
     for (int c = 0; c < output_channels; ++c) {
       int clen = fea_size * c;
       for (int f = 0; f < fea_size; ++f) {
-        int input_idx0, output_idx;
+        int input_idx0 = 0, output_idx = 0;
         bool continue_match = true;
         if (axis == 1) {
           input_idx0 = (blen + clen) * groups + f;

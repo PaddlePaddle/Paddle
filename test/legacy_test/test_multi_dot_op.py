@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.linalg import multi_dot
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -43,11 +44,11 @@ class TestMultiDotOp(OpTest):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
 
 
 class TestMultiDotFP16Op(TestMultiDotOp):
@@ -86,14 +87,14 @@ class TestMultiDotBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['x0'], 'Out', numeric_grad_delta=0.01
+            self.place, ['x0'], 'Out', numeric_grad_delta=0.01, check_pir=True
         )
         self.check_grad_with_place(
-            self.place, ['x1'], 'Out', numeric_grad_delta=0.01
+            self.place, ['x1'], 'Out', numeric_grad_delta=0.01, check_pir=True
         )
 
 
@@ -107,9 +108,9 @@ class TestMultiDotOp3Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
 
 
 # A*(B*C)
@@ -122,9 +123,9 @@ class TestMultiDotOp3Mat2(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
 
 
 class TestMultiDotOp4Mat(TestMultiDotOp):
@@ -144,10 +145,10 @@ class TestMultiDotOp4Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
+        self.check_grad(['x3'], 'Out', check_pir=True)
 
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
@@ -201,9 +202,9 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
 
 
 class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
@@ -259,6 +260,7 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 
 # python API test
 class TestMultiDotOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -299,6 +301,7 @@ class TestMultiDotOpError(unittest.TestCase):
 
 
 class APITestMultiDot(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -318,9 +321,7 @@ class APITestMultiDot(unittest.TestCase):
             expected_result,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='two value is            {}\n{}, check diff!'.format(
-                np_res, expected_result
-            ),
+            err_msg=f'two value is            {np_res}\n{expected_result}, check diff!',
         )
 
     def test_dygraph_without_out(self):

@@ -1,8 +1,7 @@
 cc_test(
   op_tester
   SRCS op_tester.cc
-  DEPS memory
-       timer
+  DEPS timer
        framework_proto
        proto_desc
        lod_tensor
@@ -11,7 +10,8 @@ cc_test(
        scope
        ${GLOB_OP_LIB}
        ${GLOB_OPERATOR_DEPS}
-       phi)
+       phi
+       common)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

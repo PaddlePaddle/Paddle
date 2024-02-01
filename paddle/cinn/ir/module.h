@@ -36,7 +36,7 @@ class Module : public ir::IrNodeRef {
  public:
   struct Builder {
     Builder(const std::string& name, const Target& target)
-        : module_(common::make_shared<ir::_Module_>()) {
+        : module_(cinn::common::make_shared<ir::_Module_>()) {
       module_->name = name;
       module_->target = target;
     }
@@ -44,7 +44,10 @@ class Module : public ir::IrNodeRef {
     void AddFunction(ir::LoweredFunc func);
     void AddFunctionWithoutOptim(const ir::LoweredFunc& func);
     void AddBuffer(ir::Buffer buffer);
+    void AddPredicate(ir::Expr predicate);
+    void SetInferShapeFunc(ir::Expr infer_shape_func);
     void Clear();
+    Target::Arch GetTargetArch();
 
     Module Build();
 

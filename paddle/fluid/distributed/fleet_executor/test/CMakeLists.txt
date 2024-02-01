@@ -7,10 +7,10 @@
 #   interceptor_ping_pong_test.cc PROPERTIES COMPILE_FLAGS
 #                                            ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(interceptor_ping_pong_test SRCS interceptor_ping_pong_test.cc
+#   paddle_test(interceptor_ping_pong_test SRCS interceptor_ping_pong_test.cc
 #               DEPS fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(
+#   paddle_test(
 #     interceptor_ping_pong_test
 #     SRCS
 #     interceptor_ping_pong_test.cc
@@ -25,10 +25,10 @@
 #                                          ${DISTRIBUTE_COMPILE_FLAGS})
 
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
+#   paddle_test(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
 #               fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
+#   paddle_test(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
 #               ${paddle_lib} python)
 # endif()
 
@@ -36,20 +36,20 @@
 #   source_interceptor_test.cc PROPERTIES COMPILE_FLAGS
 #                                         ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(source_interceptor_test SRCS source_interceptor_test.cc DEPS
+#   paddle_test(source_interceptor_test SRCS source_interceptor_test.cc DEPS
 #               fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(source_interceptor_test SRCS source_interceptor_test.cc DEPS
+#   paddle_test(source_interceptor_test SRCS source_interceptor_test.cc DEPS
 #               ${paddle_lib} python)
 # endif()
 
 # set_source_files_properties(
 #   sink_interceptor_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
+#   paddle_test(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
 #               fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
+#   paddle_test(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
 #               ${paddle_lib} python)
 # endif()
 
@@ -57,11 +57,11 @@
 #   interceptor_pipeline_short_path_test.cc
 #   PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(
+#   paddle_test(
 #     interceptor_pipeline_short_path_test SRCS
 #     interceptor_pipeline_short_path_test.cc DEPS fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(interceptor_pipeline_short_path_test SRCS
+#   paddle_test(interceptor_pipeline_short_path_test SRCS
 #               interceptor_pipeline_short_path_test.cc DEPS ${paddle_lib} python)
 # endif()
 
@@ -69,11 +69,11 @@
 #   interceptor_pipeline_long_path_test.cc PROPERTIES COMPILE_FLAGS
 #                                                     ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(
+#   paddle_test(
 #     interceptor_pipeline_long_path_test SRCS
 #     interceptor_pipeline_long_path_test.cc DEPS fleet_executor ${BRPC_DEPS})
 # else()
-#   cc_test_old(interceptor_pipeline_long_path_test SRCS
+#   paddle_test(interceptor_pipeline_long_path_test SRCS
 #               interceptor_pipeline_long_path_test.cc DEPS ${paddle_lib} python)
 # endif()
 
@@ -81,7 +81,7 @@
 #   compute_interceptor_run_op_test.cc PROPERTIES COMPILE_FLAGS
 #                                                 ${DISTRIBUTE_COMPILE_FLAGS})
 # if(WIN32 AND WITH_TESTING)
-#   cc_test_old(
+#   paddle_test(
 #     compute_interceptor_run_op_test
 #     SRCS
 #     compute_interceptor_run_op_test.cc
@@ -95,7 +95,7 @@
 #     device_context
 #     ${BRPC_DEPS})
 # else()
-#   cc_test_old(
+#   paddle_test(
 #     compute_interceptor_run_op_test
 #     SRCS
 #     compute_interceptor_run_op_test.cc
@@ -111,11 +111,11 @@
 #     interceptor_ping_pong_with_brpc_test.cc
 #     PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 #   if(WIN32 AND WITH_TESTING)
-#     cc_test_old(
+#     paddle_test(
 #       interceptor_ping_pong_with_brpc_test SRCS
 #       interceptor_ping_pong_with_brpc_test.cc DEPS fleet_executor ${BRPC_DEPS})
 #   else()
-#     cc_test_old(
+#     paddle_test(
 #       interceptor_ping_pong_with_brpc_test SRCS
 #       interceptor_ping_pong_with_brpc_test.cc DEPS ${paddle_lib} python)
 #   endif()

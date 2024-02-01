@@ -36,7 +36,6 @@ NEED_TO_FIX_OP_LIST = [
     'sequence_scatter',
     'sequence_slice',
     'sequence_softmax',
-    'sequence_topk_avg_pooling',
     'sequence_unpad',
 ]
 

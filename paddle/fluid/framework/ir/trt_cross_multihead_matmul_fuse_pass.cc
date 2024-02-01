@@ -327,7 +327,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     auto* wv_data = wv_tensor->data<float>();
     // combined_w_dims = [in,2,out]
     auto combined_w_kv_dims =
-        phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
+        common::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
     VLOG(5) << "trt cross attention trt wk_dim in:" << wk_tensor->dims()[0]
             << "trt cross attention trt wk_dim out:" << wk_tensor->dims()[1];
     auto* combined_w_kv_desc = mul1_w->Var();

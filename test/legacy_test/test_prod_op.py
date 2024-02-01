@@ -18,6 +18,7 @@ import numpy as np
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestProdOp(unittest.TestCase):
@@ -70,33 +71,35 @@ class TestProdOp(unittest.TestCase):
             dy_result.numpy(), expected_result, rtol=1e-05
         )
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[10, 10, 5], dtype='float32'
-        )
-        result0 = paddle.prod(input)
-        result1 = paddle.prod(input, axis=1)
-        result2 = paddle.prod(input, axis=-1)
-        result3 = paddle.prod(input, axis=[0, 1])
-        result4 = paddle.prod(input, axis=1, keepdim=True)
-        result5 = paddle.prod(input, axis=1, dtype='int64')
-        result6 = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            result0 = paddle.prod(input)
+            result1 = paddle.prod(input, axis=1)
+            result2 = paddle.prod(input, axis=-1)
+            result3 = paddle.prod(input, axis=[0, 1])
+            result4 = paddle.prod(input, axis=1, keepdim=True)
+            result5 = paddle.prod(input, axis=1, dtype='int64')
+            result6 = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
 
-        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input},
-            fetch_list=[
-                result0,
-                result1,
-                result2,
-                result3,
-                result4,
-                result5,
-                result6,
-            ],
-        )
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            static_result = exe.run(
+                feed={"input": self.input},
+                fetch_list=[
+                    result0,
+                    result1,
+                    result2,
+                    result3,
+                    result4,
+                    result5,
+                    result6,
+                ],
+            )
 
         expected_result = np.prod(self.input)
         np.testing.assert_allclose(
@@ -134,19 +137,17 @@ class TestProdOp(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(paddle.static.Program()):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
+        if not paddle.base.core.is_compiled_with_cuda():
             return
 
         paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(paddle.static.Program()):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
 
 class TestProdOpError(unittest.TestCase):
@@ -158,13 +159,13 @@ class TestProdOpError(unittest.TestCase):
             bool_x = paddle.static.data(
                 name='bool_x', shape=[2, 2, 4], dtype='bool'
             )
-            # The argument x shoule be a Tensor
+            # The argument x should be a Tensor
             self.assertRaises(TypeError, paddle.prod, [1])
 
             # The data type of x should be float32, float64, int32, int64
             self.assertRaises(TypeError, paddle.prod, bool_x)
 
-            # The argument axis's type shoule be int ,list or tuple
+            # The argument axis's type should be int ,list or tuple
             self.assertRaises(TypeError, paddle.prod, x, 1.5)
 
             # The argument dtype of prod_op should be float32, float64, int32 or int64.

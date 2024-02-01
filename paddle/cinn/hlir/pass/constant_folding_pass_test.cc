@@ -40,7 +40,7 @@ std::unordered_map<std::string, std::vector<float>> RunModelTest(
     const std::vector<std::string>&& passes,
     const std::unordered_map<std::string, std::vector<float>>& input_data,
     const std::unordered_set<std::string>& fetch_ids) {
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   auto graph =
       std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   hlir::framework::ApplyPasses(graph.get(), passes);

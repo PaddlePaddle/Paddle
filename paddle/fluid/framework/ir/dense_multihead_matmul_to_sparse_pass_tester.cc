@@ -121,12 +121,12 @@ TEST(DenseMultiHeadMatmulToSparsePass, basic) {
 
   if (fuse_pass.get() == nullptr || sparse_pass.get() == nullptr)
     LOG(INFO) << "asdfasdf";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(fuse_pass->Apply(graph.release()));
   graph.reset(sparse_pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "sparse_multihead_matmul");
   VLOG(3) << DebugString(graph);
 

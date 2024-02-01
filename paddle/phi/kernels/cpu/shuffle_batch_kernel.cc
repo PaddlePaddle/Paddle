@@ -83,7 +83,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   // std::shuffle(idx_vec.begin(), idx_vec.end(), engine);
 
   // ShuffleIdx record shuffle order
-  shuffleidx->Resize(phi::make_ddim({(int64_t)idx_vec.size()}));
+  shuffleidx->Resize(common::make_ddim({(int64_t)idx_vec.size()}));
   auto* shuffleidx_data = dev_ctx.template HostAlloc<int64_t>(shuffleidx);
 
   for (size_t i = 0; i < idx_vec.size(); i++) {
@@ -99,7 +99,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
            x_embed_size * sizeof(T));
   }
   // set new seed
-  seed_out->Resize(phi::make_ddim({1}));
+  seed_out->Resize(common::make_ddim({1}));
   auto* seed_out_data = dev_ctx.template HostAlloc<int64_t>(seed_out);
   *seed_out_data = engine();
 }

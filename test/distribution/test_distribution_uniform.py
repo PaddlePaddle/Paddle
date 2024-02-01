@@ -18,7 +18,7 @@ import numpy as np
 from test_distribution import DistributionNumpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distribution import Uniform
 
 np.random.seed(2022)
@@ -56,10 +56,10 @@ class UniformTest(unittest.TestCase):
     def setUp(self, use_gpu=False, batch_size=5, dims=6):
         self.use_gpu = use_gpu
         if not use_gpu:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
             self.gpu_id = -1
         else:
-            self.place = fluid.CUDAPlace(0)
+            self.place = base.CUDAPlace(0)
             self.gpu_id = 0
 
         self.init_numpy_data(batch_size, dims)
@@ -68,8 +68,8 @@ class UniformTest(unittest.TestCase):
         self.init_dynamic_data(batch_size, dims)
 
         paddle.enable_static()
-        self.test_program = fluid.Program()
-        self.executor = fluid.Executor(self.place)
+        self.test_program = base.Program()
+        self.executor = base.Executor(self.place)
         self.init_static_data(batch_size, dims)
 
     def init_numpy_data(self, batch_size, dims):
@@ -86,7 +86,7 @@ class UniformTest(unittest.TestCase):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
@@ -111,7 +111,7 @@ class UniformTest(unittest.TestCase):
 
     def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
         paddle.enable_static()
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             uniform = Uniform(self.static_low, self.static_high)
             sample = uniform.sample([sample_shape])
             entropy = uniform.entropy()
@@ -125,7 +125,7 @@ class UniformTest(unittest.TestCase):
             'values': self.values_np,
         }
 
-        self.executor.run(fluid.default_startup_program())
+        self.executor.run(base.default_startup_program())
         fetch_list = self.executor.run(
             program=self.test_program, feed=feed_vars, fetch_list=fetch_list
         )
@@ -168,7 +168,7 @@ class UniformTest3(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -186,7 +186,7 @@ class UniformTest4(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -209,7 +209,7 @@ class UniformTest5(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
@@ -230,7 +230,7 @@ class UniformTest6(UniformTest):
         self.dynamic_values = paddle.to_tensor(self.values_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float32'
             )
@@ -257,7 +257,7 @@ class UniformTest7(UniformTest):
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float64'
             )
@@ -284,7 +284,7 @@ class UniformTest8(UniformTest):
         self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float32')
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_low = paddle.static.data(
                 name='low', shape=[-1, dims], dtype='float64'
             )
@@ -309,7 +309,7 @@ class UniformTest9(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -331,7 +331,7 @@ class UniformTest10(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -353,7 +353,7 @@ class UniformTest11(UniformTest):
     def init_static_data(self, batch_size, dims):
         self.static_low = self.low_np
         self.static_high = self.high_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )

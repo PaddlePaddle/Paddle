@@ -15,7 +15,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
 
 
 def fused_layer_norm(
@@ -58,14 +58,15 @@ def fused_layer_norm(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
-            paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
-            paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
-            epsilon = 1e-6
-            paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
+            >>> paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
+            >>> paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
+            >>> paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
+            >>> epsilon = 1e-6
+            >>> paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
 
     if in_dynamic_mode():
@@ -83,6 +84,22 @@ def fused_layer_norm(
             quant_max_bound,
             quant_min_bound,
         )
+    elif in_pir_mode():
+        out, residual_out, _, _ = _C_ops.fused_bias_residual_layernorm(
+            x,
+            bias,
+            residual,
+            norm_weight,
+            norm_bias,
+            epsilon,
+            residual_alpha,
+            begin_norm_axis,
+            quant_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+        )
+        return (out, residual_out) if residual is not None else out
 
     helper = LayerHelper('fused_layernorm', **locals())
     out = None

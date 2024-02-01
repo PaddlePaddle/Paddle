@@ -22,8 +22,8 @@ namespace transformer_tester {
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+  if (!use_mkldnn) {
+    cfg.DisableMKLDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

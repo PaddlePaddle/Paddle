@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/distributed/fleet_executor/cond_interceptor.h"
 #include <algorithm>
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -58,7 +58,7 @@ bool CondInterceptor::GetCondResult() {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         cur_scope_id_));
   auto* cond_var =

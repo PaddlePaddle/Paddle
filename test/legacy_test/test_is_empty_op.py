@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestEmpty(OpTest):
@@ -28,7 +29,7 @@ class TestEmpty(OpTest):
         self.outputs = {'Out': np.array(False)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestNotEmpty(TestEmpty):
@@ -40,6 +41,7 @@ class TestNotEmpty(TestEmpty):
 
 
 class TestIsEmptyOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

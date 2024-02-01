@@ -1,3 +1,4 @@
+add_definitions(-DPADDLE_DLL_EXPORT)
 add_subdirectory(api)
 add_subdirectory(common)
 add_subdirectory(core)

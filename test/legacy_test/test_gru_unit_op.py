@@ -16,9 +16,9 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle import fluid
+from paddle import base
 
 
 class GRUActivationType(OpTest):
@@ -118,7 +118,7 @@ class TestGRUUnitOp(OpTest):
 
     def setUp(self):
         self.dtype = (
-            'float32' if fluid.core.is_compiled_with_rocm() else 'float64'
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
         )
         self.set_inputs()
         self.set_outputs()
@@ -136,7 +136,7 @@ class TestGRUUnitOp(OpTest):
 class TestGRUUnitOpOriginMode(TestGRUUnitOp):
     def setUp(self):
         self.dtype = (
-            'float32' if fluid.core.is_compiled_with_rocm() else 'float64'
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
         )
         self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)
@@ -176,7 +176,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
 class TestGRUUnitOpWithBiasOriginMode(TestGRUUnitOpWithBias):
     def setUp(self):
         self.dtype = (
-            'float32' if fluid.core.is_compiled_with_rocm() else 'float64'
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
         )
         self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)

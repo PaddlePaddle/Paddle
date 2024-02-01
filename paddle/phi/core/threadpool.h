@@ -24,8 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace phi {
 

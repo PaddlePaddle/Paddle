@@ -15,16 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
-
-/* @jim19930609: Move to MKLDNN_Tensor in the future
- */
-#ifdef PADDLE_WITH_DNNL
-#include "dnnl.hpp"  // NOLINT
-#endif
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -38,8 +34,8 @@ class DistTensor;
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
 /// metadata are set unchanged.
-class DenseTensor : public TensorBase,
-                    public TypeInfoTraits<TensorBase, DenseTensor> {
+class TEST_API DenseTensor : public TensorBase,
+                             public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.
@@ -74,7 +70,7 @@ class DenseTensor : public TensorBase,
   DenseTensor();
 
   /// \brief Destroy the tensor object and release exclusive resources.
-  virtual ~DenseTensor() = default;
+  virtual ~DenseTensor();
 
  public:
   /// \brief Returns the name of the class for type traits.
@@ -287,18 +283,6 @@ class DenseTensor : public TensorBase,
  protected:
   std::shared_ptr<InplaceVersion> inplace_version_counter_ =
       std::make_shared<InplaceVersion>();
-
-/* @jim19930609: This is a hack
-In general, it is badly designed to fuse MKLDNN-specific objects into a
-generic Tensor.
-We temporarily leave them here to unblock Tensor Unification progress.
-In the final state, we should come up with a MKLDNN_Tensor and move the
-following codes there.
-*/
-#ifdef PADDLE_WITH_DNNL
-  /// \brief memory descriptor of tensor which have layout set as kMKLDNN
-  dnnl::memory::desc mem_desc_;
-#endif
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"

@@ -17,8 +17,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
@@ -63,7 +63,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
           IndexT src = s_index[i];
           IndexT dst = d_index[i];
@@ -105,7 +106,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -153,7 +155,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
           IndexT src = s_index[i];
           IndexT dst = d_index[i];
@@ -196,7 +199,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -256,7 +260,7 @@ void CalculateEGrad(const T* out_grad_data,
       for (int64_t j = 0; j < bcast.out_len; j++) {
         int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
         int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-        if (message_op == "ADD") {
+        if (message_op == "ADD") {  // NOLINT
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif
@@ -283,7 +287,7 @@ void CalculateEGrad(const T* out_grad_data,
       for (int64_t j = 0; j < bcast.out_len; j++) {
         int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
         int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
-        if (message_op == "ADD") {
+        if (message_op == "ADD") {  // NOLINT
 #ifdef PADDLE_WITH_MKLML
 #pragma omp atomic
 #endif

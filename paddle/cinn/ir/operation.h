@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/tensor.h"
 
@@ -30,6 +31,8 @@ namespace ir {
  * @brief A placeholder op represents an input placeholder.
  */
 struct PlaceholderOp : public _Operation_ {
+  //! The symbolic shape of the input.
+  std::vector<Dim> sym_shape;
   //! The shape of the input.
   std::vector<Expr> shape;
   //! The data type of the input.
@@ -37,6 +40,10 @@ struct PlaceholderOp : public _Operation_ {
 
   static Operation Make(const std::string &name,
                         const std::vector<Expr> &shape,
+                        Type dtype);
+
+  static Operation Make(const std::string &name,
+                        const std::vector<Dim> &sym_shape,
                         Type dtype);
 
   const char *func_type() const override;
@@ -105,6 +112,8 @@ struct BufferShareOp : public _Operation_ {
  */
 struct ComputeOp : public _Operation_ {
   using handle_t = std::function<Expr(const std::vector<Expr> &)>;
+  //! Var on each dimension
+  std::vector<Var> axis;
   //! Var on each reduction axis, if the body is a Reduction.
   std::vector<Var> reduce_axis;
   //! Shape of the output.

@@ -15,33 +15,31 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestHistogramOpAPI(unittest.TestCase):
     """Test histogram api."""
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             inputs = paddle.static.data(
                 name='input', dtype='int64', shape=[2, 3]
             )
             output = paddle.histogram(inputs, bins=5, min=1, max=5)
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(startup_program)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-            res = exe.run(
-                train_program, feed={'input': img}, fetch_list=[output]
-            )
+            res = exe.run(feed={'input': img}, fetch_list=[output])
             actual = np.array(res[0])
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
@@ -50,9 +48,9 @@ class TestHistogramOpAPI(unittest.TestCase):
             )
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-            inputs = fluid.dygraph.to_variable(inputs_np)
+            inputs = base.dygraph.to_variable(inputs_np)
             actual = paddle.histogram(inputs, bins=5, min=1, max=5)
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
@@ -73,13 +71,14 @@ class TestHistogramOpError(unittest.TestCase):
     """Test histogram op error."""
 
     def run_network(self, net_func):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             net_func()
-            exe = fluid.Executor()
+            exe = base.Executor()
             exe.run(main_program)
 
+    @test_with_pir_api
     def test_bins_error(self):
         """Test bins should be greater than or equal to 1."""
 
@@ -92,6 +91,7 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
+    @test_with_pir_api
     def test_min_max_error(self):
         """Test max must be larger or equal to min."""
 
@@ -104,6 +104,7 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
+    @test_with_pir_api
     def test_min_max_range_error(self):
         """Test range of min, max is not finite"""
 
@@ -116,8 +117,9 @@ class TestHistogramOpError(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.run_network(net_func)
 
+    @test_with_pir_api
     def test_type_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(
                 TypeError, paddle.histogram, 1, bins=5, min=1, max=5
@@ -154,7 +156,7 @@ class TestHistogramOp(OpTest):
         self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestHistogramOp_ZeroDim(TestHistogramOp):

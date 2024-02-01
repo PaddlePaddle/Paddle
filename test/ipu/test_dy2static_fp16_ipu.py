@@ -34,7 +34,7 @@ class SimpleLayer(paddle.nn.Layer):
         x = paddle.flatten(x, 1, -1)
         if target is not None:
             x = paddle.nn.functional.softmax(x)
-            loss = paddle.paddle.nn.functional.cross_entropy(
+            loss = paddle.nn.functional.cross_entropy(
                 x, target, reduction='none', use_softmax=False
             )
             if self.use_ipu:
@@ -102,7 +102,7 @@ class TestBase(IPUD2STest):
             result.append(loss)
 
         if use_ipu:
-            paddle.fluid.core.IpuBackend.get_instance().weights_to_host()
+            paddle.base.core.IpuBackend.get_instance().weights_to_host()
 
         paddle.save(model.state_dict(), model_path)
         paddle.save(optim.state_dict(), optim_path)

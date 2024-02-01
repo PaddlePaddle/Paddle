@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version, is_compiled_with_rocm
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -31,7 +36,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     output feature map.
 
     Args:
-        theta (Tensor) - A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
+        theta (Tensor): A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
                            The data type can be float32 or float64.
         out_shape (Tensor | list | tuple): Type can be a 1-D Tensor, list, or tuple. It is used to represent the shape of the output in an affine transformation, in the format ``[N, C, H, W]`` or ``[N, C, D, H, W]``.
                                            When the format is ``[N, C, H, W]``, it represents the batch size, number of channels, height and width. When the format is ``[N, C, D, H, W]``, it represents the batch size, number of channels, depth, height and width.
@@ -68,8 +73,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [ 0.03333333,  1.83333337],
                [-0.43333334,  2.23333335]]]])
     """
-    if not isinstance(theta, Variable):
-        raise ValueError("The theta should be a Tensor.")
+    if not isinstance(theta, (Variable, paddle.pir.Value)):
+        raise TypeError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
@@ -102,29 +107,35 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             "use_cudnn",
             use_cudnn,
         )
-
-    helper = LayerHelper('affine_grid')
-    check_variable_and_dtype(
-        theta, 'theta', ['float32', 'float64'], 'affine_grid'
-    )
-    out = helper.create_variable_for_type_inference(theta.dtype)
-    ipts = {'Theta': theta}
-    attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
-    if isinstance(out_shape, Variable):
-        ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(
-            out_shape, 'out_shape', ['int32'], 'affine_grid'
+    elif in_pir_mode():
+        return _C_ops.affine_grid(
+            theta,
+            out_shape,
+            align_corners,
         )
     else:
-        attrs['output_shape'] = out_shape
+        helper = LayerHelper('affine_grid', **locals())
+        check_variable_and_dtype(
+            theta, 'theta', ['float32', 'float64'], 'affine_grid'
+        )
+        out = helper.create_variable_for_type_inference(dtype=theta.dtype)
+        ipts = {'Theta': theta}
+        attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
+        if isinstance(out_shape, Variable):
+            ipts['OutputShape'] = out_shape
+            check_variable_and_dtype(
+                out_shape, 'out_shape', ['int32'], 'affine_grid'
+            )
+        else:
+            attrs['output_shape'] = out_shape
 
-    helper.append_op(
-        type='affine_grid',
-        inputs=ipts,
-        outputs={'Output': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
+        helper.append_op(
+            type='affine_grid',
+            inputs=ipts,
+            outputs={'Output': out},
+            attrs=None if len(attrs) == 0 else attrs,
+        )
+        return out
 
 
 def grid_sample(
@@ -267,9 +278,7 @@ def grid_sample(
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
-            "The mode of grid sample function should be in {}, but got: {}".format(
-                _modes, mode
-            )
+            f"The mode of grid sample function should be in {_modes}, but got: {mode}"
         )
     if padding_mode not in _padding_modes:
         raise ValueError(
@@ -280,9 +289,7 @@ def grid_sample(
 
     if not isinstance(align_corners, bool):
         raise ValueError(
-            "The align corners should be bool, but got: {}".format(
-                align_corners
-            )
+            f"The align corners should be bool, but got: {align_corners}"
         )
 
     cudnn_version = get_cudnn_version()
@@ -302,7 +309,7 @@ def grid_sample(
     if len(grid.shape) == 5:
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
         attrs = (
@@ -342,7 +349,7 @@ def grid_sample(
 def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
-    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelSuffle>` .
+    See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
 
 
     Parameters:
@@ -371,7 +378,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But receive Attr(data_format): {data_format} "
         )
     if in_dygraph_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
@@ -396,7 +403,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
-    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnSuffle>` .
+    See more details in :ref:`PixelUnShuffle <api_paddle_nn_PixelUnshuffle>` .
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
@@ -419,9 +426,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     if not isinstance(downscale_factor, int):
@@ -433,7 +438,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But receive Attr(data_format): {data_format} "
         )
 
     if in_dygraph_mode():
@@ -461,7 +466,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.
-    See more details in :ref:`api_nn_vision_ChannelShuffle`.
+    See more details in :ref:`api_paddle_nn_ChannelShuffle`.
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
@@ -499,9 +504,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
 
     if not isinstance(groups, int):
@@ -513,10 +516,10 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format)
+            f"But receive Attr(data_format): {data_format} "
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())

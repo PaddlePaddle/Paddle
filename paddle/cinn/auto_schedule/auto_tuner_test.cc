@@ -48,9 +48,9 @@ using ::cinn::hlir::framework::Scope;
 class TestAutoTuner : public ::testing::Test {
  public:
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   std::shared_ptr<Graph> graph;

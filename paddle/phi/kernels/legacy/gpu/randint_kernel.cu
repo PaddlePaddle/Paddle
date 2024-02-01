@@ -31,7 +31,7 @@ void RandintWithSeedKernel(const Context& dev_ctx,
                            DataType dtype,
                            int seed,
                            DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   funcs::uniform_distribution<uint32_t> dist;
   funcs::uniform_int_transform<T, uint32_t> trans(low, high);

@@ -17,10 +17,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/small_vector.h"
 

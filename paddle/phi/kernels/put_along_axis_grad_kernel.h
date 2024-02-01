@@ -24,9 +24,12 @@ template <typename T, typename Context>
 void PutAlongAxisGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& index,
+                            const DenseTensor& value,
+                            const DenseTensor& out,
                             const DenseTensor& out_grad,
                             int axis,
                             const std::string& reduce,
+                            bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad);
 

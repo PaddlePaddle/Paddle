@@ -19,6 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -34,17 +35,26 @@ void TransposeStridedKernel(const Context& dev_ctx,
                             DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Transpose(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const std::vector<int>& axis) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
+void Transpose(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int>& axis,
+               DenseTensor* dense_out) {
+  MetaTensor meta_out(dense_out);
   TransposeInferMeta(x, axis, &meta_out);
 
   // do not call TransposeStridedKernel, because some other kernels call
   // Transpose directly
-  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  if (x.initialized()) {
+    TransposeKernel<T, Context>(dev_ctx, x, axis, dense_out);
+  }
+}
 
+template <typename T, typename Context>
+DenseTensor Transpose(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int>& axis) {
+  DenseTensor dense_out;
+  Transpose<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
 

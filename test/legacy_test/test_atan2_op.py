@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(0)
@@ -45,10 +46,12 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out', check_cinn=self.check_cinn)
+        self.check_grad(
+            ['X1', 'X2'], 'Out', check_cinn=self.check_cinn, check_pir=True
+        )
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -69,6 +72,7 @@ class TestAtan2_float(TestAtan2):
                     1 / self.inputs['X1'].size,
                 ),
                 check_cinn=self.check_cinn,
+                check_pir=True,
             )
 
 
@@ -100,6 +104,7 @@ class TestAtan2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -154,16 +159,23 @@ class TestAtan2BF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            place, check_cinn=self.check_cinn, check_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X1', 'X2'], 'Out', check_cinn=self.check_cinn
+            place,
+            ['X1', 'X2'],
+            'Out',
+            check_cinn=self.check_cinn,
+            check_pir=True,
         )
 
 
 class TestAtan2Error(unittest.TestCase):
+    @test_with_pir_api
     def test_mismatch(self):
         paddle.enable_static()
 

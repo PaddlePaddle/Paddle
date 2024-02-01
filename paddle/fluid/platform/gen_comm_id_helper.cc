@@ -19,8 +19,8 @@ limitations under the License. */
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <sys/socket.h>
+#include <cstdlib>
 
 #include <algorithm>
 #include <array>
@@ -321,7 +321,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
       CloseSocket(sock);
     }
-    sock = -1;
+    sock = -1;  // NOLINT
     CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
     // unmatched link, retry after 80ms
     std::this_thread::sleep_for(std::chrono::milliseconds(80));
@@ -419,7 +419,7 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
   // connect with server
   std::vector<int> connects;
-  for (auto server : servers) {
+  for (auto const& server : servers) {
     VLOG(3) << "connecting endpoint: " << server;
     int conn = ConnectAddr(server, head);
     connects.push_back(conn);

@@ -44,7 +44,7 @@ void close_socket(SocketType socket) {
                           const std::string port,
                           int ai_flags,
                           int family) {
-  ::addrinfo hints{}, *res;
+  ::addrinfo hints{}, *res = nullptr;
   hints.ai_flags = ai_flags;
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
@@ -52,7 +52,7 @@ void close_socket(SocketType socket) {
   const char* node = host.empty() ? nullptr : host.c_str();
   const char* port_cstr = port.empty() ? nullptr : port.c_str();
 
-  int n;
+  int n = 0;
   n = ::getaddrinfo(node, port_cstr, &hints, &res);
   const char* gai_err = ::gai_strerror(n);
   const char* proto = (family == AF_INET    ? "IPv4"
@@ -216,7 +216,7 @@ void send_string(SocketType socket, const std::string& s) {
 }
 
 std::string receive_string(SocketType socket) {
-  std::string::size_type size;
+  std::string::size_type size = 0;
   receive_bytes<std::string::size_type>(socket, &size, 1);
   std::vector<char> v(size);
   receive_bytes<char>(socket, v.data(), size);

@@ -29,8 +29,8 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_custom_place(place) ||
       paddle::platform::is_cpu_place(place)) {
-    // CudaPinndePlace is added for varbase created by dataloader
-    // Cpu place is for differnt place tensor, when input1 is cpu and input2 is
+    // CudaPinnedPlace is added for varbase created by dataloader
+    // Cpu place is for different place tensor, when input1 is cpu and input2 is
     // gpu
     if ((data_type == phi::DataType::FLOAT32 ||
          data_type == phi::DataType::FLOAT16 ||
@@ -90,7 +90,7 @@ inline paddle::Tensor EagerAmpAutoCast(const std::string& input_name,
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
   if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm") &&
+       op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
       input_name != "x") {
     return input;
   }

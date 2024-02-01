@@ -14,12 +14,12 @@
 
 import unittest
 
-from eager_op_test import OpTestTool
+from op_test import OpTestTool
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import IrGraph, Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import IrGraph, Program, program_guard
 from paddle.static.quantization import QuantizationTransformPass
 
 paddle.enable_static()
@@ -78,9 +78,9 @@ class TestQuantizationSubGraph(unittest.TestCase):
 
     def test_quant_sub_graphs(self, use_cuda=False):
         graph, sub_graphs = self.build_graph_with_sub_graph()
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
         transform_pass = QuantizationTransformPass(
-            scope=fluid.global_scope(),
+            scope=base.global_scope(),
             place=place,
             activation_quantize_type='abs_max',
             weight_quantize_type='range_abs_max',

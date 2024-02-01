@@ -26,9 +26,11 @@
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/io/save_paddle2cinn_varmap.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -42,11 +44,13 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
@@ -73,6 +77,15 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       [](const auto& name_view) { return std::string(name_view.data()); });
   // build name map between the original variables and compiled ones
   BuildVarNameMap(compiled_obj.paddle2cinn_varmap, cinn_argument_names_);
+  if (FLAGS_save_static_runtime_data) {
+    auto graph_compilation_key =
+        std::hash<const framework::ir::Graph*>()((&graph));
+    paddle::framework::save_paddle2cinn_varmap(
+        paddle2cinn_varmap_,
+        graph_compilation_key,
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+  }
 
   const auto& input_var_names =
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kInputVars);
@@ -186,7 +199,7 @@ void CinnLaunchContext::BuildVarNameMap(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
       platform::errors::PreconditionNotMet(
-          "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
+          "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
 }
@@ -267,12 +280,12 @@ void CinnLaunchContext::CheckTensorEquivalent(
                         "Variable(%s) not applied in cinn", var_name));
   // check dimension
   auto cinn_tensor = GetCinnTensorOfVar(var_name);
-  auto cinn_dims = phi::make_ddim(cinn_tensor->shape().data());
+  auto cinn_dims = common::make_ddim(cinn_tensor->shape().data());
   if (paddle_tensor.dims().size() == 0) {
     // VLOG when paddle inputs 0D-Tensor
     VLOG(4) << "Paddle inputs 0D-Tensor, CINN changes 0D-Tensor " << var_name
             << " to 1D-Tensor";
-    PADDLE_ENFORCE_EQ(phi::make_ddim({1}),
+    PADDLE_ENFORCE_EQ(common::make_ddim({1}),
                       cinn_dims,
                       phi::errors::PreconditionNotMet(
                           "Tensor's shape of variable(%s) are not consistent, "
@@ -413,7 +426,7 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   to the new VarDesc.
   //   (2) For all variables, the shape, data type of their VarDescs
   //   are set by values of the corresponding compiled tensors,
-  //   including the in/out variables where the equiality between their tensors
+  //   including the in/out variables where the equality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);

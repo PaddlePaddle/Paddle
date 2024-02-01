@@ -24,6 +24,7 @@ namespace ir {
 
 std::vector<std::string> GetNodeNames(const std::vector<Node *> &node_vector) {
   std::vector<std::string> out_vector;
+  out_vector.reserve(node_vector.size());
   for (auto i : node_vector) {
     out_vector.emplace_back(i->Name());
   }
@@ -102,7 +103,8 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
       i++;
     }
 
-    fuse_adamw_op_desc.SetInput("LearningRate", {config.first_lr->Name()});
+    fuse_adamw_op_desc.SetInput("LearningRate",
+                                {config.first_lr->Name()});  // NOLINT
     if (config.use_skip_update) {
       fuse_adamw_op_desc.SetInput("SkipUpdate",
                                   {config.first_skip_update->Name()});
@@ -110,7 +112,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
       fuse_adamw_op_desc.SetInput("SkipUpdate", {});
     }
 
-    for (auto &name : config.repalce_outputs_name) {
+    for (auto &name : config.replace_outputs_name) {
       fuse_adamw_op_desc.SetOutput(name, GetNodeNames(inout_node_vectors[i]));
       i++;
     }
@@ -149,7 +151,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
         IR_NODE_LINK_TO(inout_node_vectors[j][k], fuse_adamw_node);
       }
       for (; j < config.replace_inputs_name.size() +
-                     config.repalce_outputs_name.size();
+                     config.replace_outputs_name.size();
            j++) {
         IR_NODE_LINK_TO(fuse_adamw_node, inout_node_vectors[j][k]);
       }
@@ -245,7 +247,7 @@ void FuseAdamWPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseAdamWFun(graph, true, true);
   graph = FuseAdamWFun(graph, true, false);
   graph = FuseAdamWFun(graph, false, true);
-  graph = FuseAdamWFun(graph, false, false);
+  graph = FuseAdamWFun(graph, false, false);  // NOLINT
 }
 
 ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
@@ -306,7 +308,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
 
   VLOG(4) << "replace adamw with fuse_adamw";
 
-  AddStatis(found_adamw_count);
+  AddStatis(static_cast<int>(found_adamw_count));
   return graph;
 }
 

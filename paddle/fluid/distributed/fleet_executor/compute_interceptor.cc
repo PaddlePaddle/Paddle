@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/jit/serializer.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -52,7 +52,7 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         scope_id));
   auto* scope = microbatch_scopes_[scope_id];
@@ -76,7 +76,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         cur_scope_id_));
   auto* scope = microbatch_scopes_[cur_scope_id_];
@@ -85,7 +85,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  for (auto iter : node_->vars_to_dtype()) {
+  for (auto const& iter : node_->vars_to_dtype()) {
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;
     vars->set_name(var_name);
@@ -346,6 +346,16 @@ void ComputeInterceptor::Run() {
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
     ReplyCompletedToUpStream();
+    // clear TensorArray
+    auto vars_names = microbatch_scopes_[cur_scope_id_]->LocalVarNames();
+    for (auto var_name : vars_names) {
+      if (var_name == "feed" || var_name == "fetch") continue;
+      auto* var = microbatch_scopes_[cur_scope_id_]->Var(var_name);
+      if (var != nullptr && var->IsType<framework::LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<framework::LoDTensorArray>();
+        lod_tensor_arr->clear();
+      }
+    }
   }
 }
 

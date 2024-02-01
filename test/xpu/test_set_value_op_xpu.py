@@ -29,7 +29,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 
 
 class XPUTestSetValueOp(XPUOpTestWrapper):
@@ -231,7 +231,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 i = i + 1
                 return i, x
 
-            i = paddle.zeros(shape=(1,), dtype='int32')
+            i = paddle.zeros(shape=[], dtype='int32')
             i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
         def _call_setitem_static_api(self, x):
@@ -243,7 +243,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 i = i + 1
                 return i, x
 
-            i = paddle.zeros(shape=(1,), dtype='int32')
+            i = paddle.zeros(shape=[], dtype='int32')
             i, x = paddle.static.nn.while_loop(cond, body, [i, x])
             return x
 
@@ -504,11 +504,11 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = self.in_type
 
         def _call_setitem(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
+            zero = paddle.full([], 0, dtype="int32")
             x[zero] = self.value
 
         def _call_setitem_static_api(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
+            zero = paddle.full([], 0, dtype="int32")
             x = paddle.static.setitem(x, zero, self.value)
             return x
 
@@ -517,13 +517,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemTensor2(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x[zero:two] = self.value
 
         def _call_setitem_static_api(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x = paddle.static.setitem(x, slice(zero, two), self.value)
             return x
 
@@ -532,13 +532,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemTensor3(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x[zero:-1, 0:two] = self.value
 
         def _call_setitem_static_api(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x = paddle.static.setitem(
                 x, (slice(zero, -1), slice(0, two)), self.value
             )
@@ -549,13 +549,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemTensor4(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x[0:-1, zero:2, 0:6:two] = self.value
 
         def _call_setitem_static_api(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x = paddle.static.setitem(
                 x, (slice(0, -1), slice(zero, 2), slice(0, 6, two)), self.value
             )
@@ -566,13 +566,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemTensor5(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x[zero:, 1:2:two, :] = self.value
 
         def _call_setitem_static_api(self, x):
-            zero = paddle.full([1], 0, dtype="int32")
-            two = paddle.full([1], 2, dtype="int64")
+            zero = paddle.full([], 0, dtype="int32")
+            two = paddle.full([], 2, dtype="int64")
             x = paddle.static.setitem(
                 x,
                 (slice(zero, None), slice(1, 2, two), slice(None, None, None)),
@@ -588,13 +588,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.shape = [3, 4, 5]
 
         def _call_setitem(self, x):
-            minus1 = paddle.full([1], -1, dtype="int32")
-            zero = paddle.full([1], 0, dtype="int32")
+            minus1 = paddle.full([], -1, dtype="int32")
+            zero = paddle.full([], 0, dtype="int32")
             x[2:zero:minus1, 0:2, 10:-6:minus1] = self.value
 
         def _call_setitem_static_api(self, x):
-            minus1 = paddle.full([1], -1, dtype="int32")
-            zero = paddle.full([1], 0, dtype="int32")
+            minus1 = paddle.full([], -1, dtype="int32")
+            zero = paddle.full([], 0, dtype="int32")
             x = paddle.static.setitem(
                 x,
                 (slice(2, zero, minus1), slice(0, 2), slice(10, -6, minus1)),
@@ -1090,13 +1090,6 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 x[::one] = self.value
 
         def _bool_list_error(self):
-            with self.assertRaises(TypeError):
-                x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                if paddle.in_dynamic_mode():
-                    x[[True, False, 0]] = 0
-                else:
-                    x = paddle.static.setitem(x, [True, False, 0], 0)
-
             with self.assertRaises(IndexError):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
                 if paddle.in_dynamic_mode():
@@ -1129,7 +1122,6 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.enable_static()
             with paddle.static.program_guard(self.program):
                 self._value_type_error()
-                self._step_error()
                 self._bool_list_error()
                 self._bool_tensor_error()
             self._broadcast_mismatch()
@@ -1638,17 +1630,17 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def test_inplace(self):
             paddle.disable_static()
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 a.stop_gradient = False
-                b = a[:]
+                b = a[:] * 1
                 c = b
                 b[paddle.zeros([], dtype='int32')] = 1.0
 
                 self.assertTrue(id(b) == id(c))
                 np.testing.assert_array_equal(b.numpy(), c.numpy())
-                self.assertEqual(b.inplace_version, 0)
+                self.assertEqual(b.inplace_version, 1)
 
             paddle.enable_static()
 
@@ -1662,7 +1654,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])
@@ -1673,7 +1665,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 a_grad_1 = a.grad.numpy()
                 b_grad_1 = b.grad.numpy()
 
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])

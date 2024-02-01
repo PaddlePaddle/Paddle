@@ -34,7 +34,7 @@ void IndexSelectKernel(const Context& ctx,
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;

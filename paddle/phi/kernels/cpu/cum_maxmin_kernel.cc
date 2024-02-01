@@ -59,7 +59,7 @@ void ComputeImp(const DenseTensor& x,
   int64_t x_stride = compute_stride<int64_t>(axis, x.dims());
   int64_t values_stride = compute_stride<int64_t>(axis, out->dims());
   int64_t indices_stride = compute_stride<int64_t>(axis, indices->dims());
-  auto x_dim_vec = phi::vectorize<int>(x.dims());
+  auto x_dim_vec = common::vectorize<int>(x.dims());
   int x_dim_size = x_dim_vec[axis];
   BinaryFunction op;
 
@@ -149,14 +149,13 @@ template <typename T, typename Context>
 void CummaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  auto indices_type = phi::TransToPhiDataType(dtype);
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(
         dev_ctx, x, axis, out, indices);
-  } else if (indices_type == DataType::INT64) {
+  } else if (dtype == DataType::INT64) {
     ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(
         dev_ctx, x, axis, out, indices);
   }
@@ -166,14 +165,13 @@ template <typename T, typename Context>
 void CumminKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  auto indices_type = phi::TransToPhiDataType(dtype);
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(
         dev_ctx, x, axis, out, indices);
-  } else if (indices_type == DataType::INT64) {
+  } else if (dtype == DataType::INT64) {
     ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(
         dev_ctx, x, axis, out, indices);
   }

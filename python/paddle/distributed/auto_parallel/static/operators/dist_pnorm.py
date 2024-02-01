@@ -166,21 +166,15 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
@@ -219,6 +213,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         # set allgather_out tensor dist_attr
         allgather_out_dist_attr = TensorDistAttr()
         allgather_out_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_out_dist_attr.chunk_id = op_dist_attr.chunk_id
         allgather_out_dist_attr.dims_mapping = [
             -1 for i in range(len(allgather_out.shape))
         ]
@@ -239,6 +234,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         # set c_allgather op dist_attr
         allgather_op_dist_attr = OperatorDistAttr()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_op_dist_attr.chunk_id = op_dist_attr.chunk_id
         allgather_op_dist_attr.set_input_dims_mapping(
             X_var.name, in_dims_mapping
         )
@@ -279,21 +275,15 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 backward_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in backward_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 backward_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         X_var = main_block._var_recursive(kwargs['X'][0])
         X_grad_var = main_block._var_recursive(kwargs['X@GRAD'][0])
@@ -378,6 +368,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         )
         slice_op_dist_attr = OperatorDistAttr()
         slice_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        slice_op_dist_attr.chunk_id = op_dist_attr.chunk_id
         slice_op_dist_attr.set_input_dims_mapping(
             new_X_grad.name, new_X_var_dist_attr.dims_mapping
         )

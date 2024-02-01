@@ -106,7 +106,7 @@ void SerializeLodTensor(framework::Variable* var,
   }
   var_msg->set_data_type(static_cast<VarMsg::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
-  for (auto& dim : phi::vectorize(tensor->dims())) {
+  for (auto& dim : common::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
   // IO Buffer
@@ -153,7 +153,7 @@ void SerializeSelectedRows(framework::Variable* var,
   memcpy(data_ptr, &((*rows)[0]), rows->size() * sizeof(int64_t));
   var_msg->set_data_type(static_cast<VarMsg::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
-  for (auto& dim : phi::vectorize(tensor->dims())) {
+  for (auto& dim : common::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
   // IO Buffer
@@ -232,7 +232,7 @@ void DeserializeLodTensor(framework::Variable* var,
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(phi::make_ddim(vec_dim));
+  tensor->Resize(common::make_ddim(vec_dim));
 
   framework::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
@@ -288,7 +288,7 @@ void DeserializeSelectedRows(
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(phi::make_ddim(vec_dim));
+  tensor->Resize(common::make_ddim(vec_dim));
   void* tensor_data = tensor->mutable_data(
       place,
       framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));

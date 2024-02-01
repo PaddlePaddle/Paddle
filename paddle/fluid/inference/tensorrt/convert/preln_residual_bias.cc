@@ -53,10 +53,10 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     float* ele_bias =
         has_bias ? get_persistable_data("Bias", &ele_bias_dims) : nullptr;
 
-    int bias_size = phi::product(bias_dims);
+    int bias_size = common::product(bias_dims);
 
-    int scale_size = phi::product(scale_dims);
-    int ele_bias_size = has_bias ? phi::product(ele_bias_dims) : 0;
+    int scale_size = common::product(scale_dims);
+    int ele_bias_size = has_bias ? common::product(ele_bias_dims) : 0;
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("ln_epsilon"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == phi::DataType::INT8) {

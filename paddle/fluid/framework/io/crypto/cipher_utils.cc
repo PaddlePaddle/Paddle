@@ -49,7 +49,7 @@ std::string CipherUtils::GenKeyToFile(int length, const std::string& filename) {
                         "Failed to open file : %s, "
                         "make sure input filename is available.",
                         filename));
-  fout.write(rng.c_str(), rng.size());
+  fout.write(rng.c_str(), rng.size());  // NOLINT
   fout.close();
   return rng;
 }
@@ -72,7 +72,7 @@ std::unordered_map<std::string, std::string> CipherUtils::LoadConfig(
                         "make sure input filename is available.",
                         config_file));
   std::unordered_map<std::string, std::string> ret;
-  char c;
+  char c = 0;
   std::string line;
   std::istringstream iss;
   while (std::getline(fin, line)) {

@@ -68,7 +68,7 @@ std::string axis_name(int level) {
 std::vector<ir::Var> GenDefaultAxis(int naxis) {
   std::vector<ir::Var> axis;
   for (int i = 0; i < naxis; i++) {
-    axis.emplace_back(common::axis_name(i));
+    axis.emplace_back(cinn::common::axis_name(i));
     CHECK(axis.back()->type().valid());
   }
   return axis;

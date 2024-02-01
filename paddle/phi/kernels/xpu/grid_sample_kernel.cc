@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/grid_sample_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -31,7 +31,7 @@ void GridSampleKernel(const Context& dev_ctx,
   // attrs
   // paddle.nn.functional.grid_sample(x, grid, mode='bilinear',
   // padding_mode='zeros', align_corners=True, name=None)
-  const std::string data_format = phi::DataLayoutToString(x.layout());
+  const std::string data_format = common::DataLayoutToString(x.layout());
 
   // attr to real param
   bool is_nearest_bool;
@@ -85,7 +85,7 @@ void GridSampleKernel(const Context& dev_ctx,
           data_format));
     }
 
-    out->Resize(make_ddim({n, c, out_h, out_w}));
+    out->Resize(common::make_ddim({n, c, out_h, out_w}));
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample(dev_ctx.x_context(),
@@ -111,7 +111,7 @@ void GridSampleKernel(const Context& dev_ctx,
     int out_h = grid.dims()[2];
     int out_w = grid.dims()[3];
 
-    out->Resize(make_ddim({n, c, out_d, out_h, out_w}));
+    out->Resize(common::make_ddim({n, c, out_d, out_h, out_w}));
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample3d(dev_ctx.x_context(),

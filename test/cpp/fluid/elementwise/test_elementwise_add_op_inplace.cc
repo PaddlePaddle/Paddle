@@ -62,7 +62,7 @@ bool TestMain(const platform::Place &place,
   y->Resize(dims);
   z->Resize(dims);
 
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
 
   auto x_ptr = x->mutable_data<T>(place);
   auto y_ptr = y->mutable_data<T>(place);

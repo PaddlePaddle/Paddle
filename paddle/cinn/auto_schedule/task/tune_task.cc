@@ -63,7 +63,8 @@ std::string TuneTask::SerializeToString(
   // local function to print dtype,shape of out/in variables of the specified
   // node
   auto print_node_links_fn =
-      [&](const std::vector<common::Shared<common::GraphEdge>>& links,
+      [&](const std::vector<cinn::common::Shared<cinn::common::GraphEdge>>&
+              links,
           bool is_input) {
         int printed_num = 0;
         for (auto&& edge : links) {

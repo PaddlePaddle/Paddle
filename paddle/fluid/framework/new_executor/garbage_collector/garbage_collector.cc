@@ -17,31 +17,9 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/event_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/no_event_garbage_collector.h"
-#include "paddle/phi/core/flags.h"
-
-PHI_DECLARE_bool(fast_eager_deletion_mode);
-PHI_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
 namespace framework {
-
-bool IsInterpretercoreFastGCEnabled() {
-  // When using cuda graph, fast GC must be used. Because
-  // `EventQuery` method in event GC cannot be used in
-  // cuda graph.
-  PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
-                                .IsStreamSafeCUDAAllocatorUsed() == false &&
-                        FLAGS_new_executor_use_cuda_graph,
-                    false,
-                    platform::errors::InvalidArgument(
-                        "When FLAGS_new_executor_use_cuda_graph is true, "
-                        "IsStreamSafeCUDAAllocatorUsed must be true, but "
-                        "got false."));
-  return (memory::allocation::AllocatorFacade::Instance()
-              .IsStreamSafeCUDAAllocatorUsed() &&
-          FLAGS_fast_eager_deletion_mode) ||
-         FLAGS_new_executor_use_cuda_graph;
-}
 
 InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   garbages_ = std::make_unique<GarbageQueue>();

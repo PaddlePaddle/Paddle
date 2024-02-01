@@ -14,15 +14,15 @@
 
 import contextlib
 
-from paddle import fluid
+from paddle import base, static
 
 
 @contextlib.contextmanager
 def new_program_scope(main=None, startup=None, scope=None):
-    prog = main if main else fluid.Program()
-    startup_prog = startup if startup else fluid.Program()
-    scope = scope if scope else fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            with fluid.unique_name.guard():
+    prog = main if main else static.Program()
+    startup_prog = startup if startup else static.Program()
+    scope = scope if scope else base.core.Scope()
+    with static.scope_guard(scope):
+        with static.program_guard(prog, startup_prog):
+            with base.unique_name.guard():
                 yield

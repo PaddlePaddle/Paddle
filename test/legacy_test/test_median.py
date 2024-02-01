@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.static import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 DELTA = 1e-6
 
@@ -32,10 +32,10 @@ class TestMedian(unittest.TestCase):
         paddle.enable_static()
         x, axis, keepdims = lis_test
         res_np = np.median(x, axis=axis, keepdims=keepdims)
-        main_program = Program()
-        startup_program = Program()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
         exe = paddle.static.Executor()
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
             y = paddle.median(x_in, axis, keepdims)
             [res_pd] = exe.run(feed={'x': x}, fetch_list=[y])
@@ -48,6 +48,7 @@ class TestMedian(unittest.TestCase):
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
         self.check_numpy_res(res_pd.numpy(False), res_np)
 
+    @test_with_pir_api
     def test_median_static(self):
         h = 3
         w = 4

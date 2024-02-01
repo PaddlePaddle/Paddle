@@ -42,7 +42,7 @@ inline DenseTensor MatMul(const Context& ctx,
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
 
   DenseTensor matrix_c;
-  phi::DDim c_dim = phi::make_ddim({a_dim[0], b_dim[1]});
+  phi::DDim c_dim = common::make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
   ctx.template Alloc<T>(&matrix_c);
 
@@ -69,7 +69,7 @@ inline DenseTensor MatMul(const Context& ctx,
  * ins_dims: the shape of ins after reshape
  * order: the optimal order
  * i: the left of sub chain
- * j: the righe of sub chain
+ * j: the right of sub chain
  * save_result: set true by backward
  * results: save the intermediate result during backward
  */
@@ -175,9 +175,9 @@ inline void GetDims(const std::vector<const DenseTensor*>& ins,
   for (size_t i = 0; i < n; i++) {
     (*ins_dims)[i] = ins[i]->dims();
     if (i == 0 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = phi::make_ddim({1, (*ins_dims)[i][0]});
+      (*ins_dims)[i] = common::make_ddim({1, (*ins_dims)[i][0]});
     } else if (i == n - 1 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = phi::make_ddim({(*ins_dims)[i][0], 1});
+      (*ins_dims)[i] = common::make_ddim({(*ins_dims)[i][0], 1});
     }
   }
 }
@@ -212,7 +212,7 @@ void MultiDotKernel(const Context& ctx,
     auto mat_dim_c = phi::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
     if (cost1 < cost2) {
       DenseTensor tmp_out;
-      phi::DDim tmp_dim = phi::make_ddim({Ma, Nb});
+      phi::DDim tmp_dim = common::make_ddim({Ma, Nb});
       tmp_out.Resize(tmp_dim);
       ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
@@ -221,7 +221,7 @@ void MultiDotKernel(const Context& ctx,
       blas.MatMul(tmp_out, mat_dim_tmp, *ins[2], mat_dim_c, scale, out, T(0));
     } else {
       DenseTensor tmp_out;
-      phi::DDim tmp_dim = phi::make_ddim({Ka, Nc});
+      phi::DDim tmp_dim = common::make_ddim({Ka, Nc});
       tmp_out.Resize(tmp_dim);
       ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
@@ -272,8 +272,8 @@ void CalcGrad(const Context& ctx,
  * ins_dims: the shape of ins after reshape
  * order: the optimal order
  * i: the left of sub chain
- * j: the righe of sub chain
- * results: the intermediate result of farward
+ * j: the right of sub chain
+ * results: the intermediate result of forward
  */
 template <typename Context, typename T>
 void MatChainMulGrad(const Context& ctx,
@@ -357,14 +357,14 @@ void MultiDotGradKernel(const Context& ctx,
 
   phi::DDim dout_dim = dout.dims();
   if (ins[0]->dims().size() == 1 && ins[n - 1]->dims().size() == 1) {
-    dout_dim = phi::make_ddim({1, 1});
+    dout_dim = common::make_ddim({1, 1});
   } else if (ins[0]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = phi::make_ddim({1, dout_dim[0]});
+      dout_dim = common::make_ddim({1, dout_dim[0]});
     }
   } else if (ins[n - 1]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = phi::make_ddim({dout_dim[0], 1});
+      dout_dim = common::make_ddim({dout_dim[0], 1});
     }
   }
 

@@ -102,10 +102,10 @@ TEST(Broadcast, add) {
   size_t times = 10;
 
   do {
-    auto dim1 = phi::make_ddim({1, 2048, 3584});
-    auto dim2 = phi::make_ddim({1, 2048, 1});
-    auto dim3 = phi::make_ddim({1, 1, 3584});
-    auto dim_out = phi::make_ddim({1, 2048, 3584});
+    auto dim1 = common::make_ddim({1, 2048, 3584});
+    auto dim2 = common::make_ddim({1, 2048, 1});
+    auto dim3 = common::make_ddim({1, 1, 3584});
+    auto dim_out = common::make_ddim({1, 2048, 3584});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_1<float>());
     TestCase<phi::dtype::float16>(*dev_ctx,
@@ -122,13 +122,29 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_1<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_1<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_1<phi::dtype::complex<double>>());
   } while (0);
 
   do {
-    auto dim1 = phi::make_ddim({1, 256, 4, 256, 256});
-    auto dim2 = phi::make_ddim({1, 256, 1, 1, 256});
-    auto dim3 = phi::make_ddim({1, 1, 4, 256, 256});
-    auto dim_out = phi::make_ddim({1, 256, 4, 256, 256});
+    auto dim1 = common::make_ddim({1, 256, 4, 256, 256});
+    auto dim2 = common::make_ddim({1, 256, 1, 1, 256});
+    auto dim3 = common::make_ddim({1, 1, 4, 256, 256});
+    auto dim_out = common::make_ddim({1, 256, 4, 256, 256});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_2<float>());
     TestCase<phi::dtype::float16>(*dev_ctx,
@@ -145,13 +161,29 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_2<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_2<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_2<phi::dtype::complex<double>>());
   } while (0);
 
   do {
-    auto dim1 = phi::make_ddim({1, 256, 256});
-    auto dim2 = phi::make_ddim({1, 1, 256});
-    auto dim3 = phi::make_ddim({1, 256, 1});
-    auto dim_out = phi::make_ddim({1, 256, 256});
+    auto dim1 = common::make_ddim({1, 256, 256});
+    auto dim2 = common::make_ddim({1, 1, 256});
+    auto dim3 = common::make_ddim({1, 256, 1});
+    auto dim_out = common::make_ddim({1, 256, 256});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_3<float>());
     TestCase<phi::dtype::float16>(*dev_ctx,
@@ -168,6 +200,22 @@ TEST(Broadcast, add) {
                                    dim_out,
                                    times,
                                    AddTernary_3<phi::dtype::bfloat16>());
+    TestCase<phi::dtype::complex<float>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_3<phi::dtype::complex<float>>());
+    TestCase<phi::dtype::complex<double>>(
+        *dev_ctx,
+        dim1,
+        dim2,
+        dim3,
+        dim_out,
+        times,
+        AddTernary_3<phi::dtype::complex<double>>());
   } while (0);
 #endif
 }

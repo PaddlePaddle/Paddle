@@ -18,8 +18,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/thread_data_registry.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/os_info.h"
 
 namespace phi {

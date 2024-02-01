@@ -20,7 +20,7 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -31,12 +31,12 @@ LABEL_SHAPE = [1]
 
 
 def get_place_string(p):
-    if isinstance(p, (fluid.CPUPlace or fluid.CUDAPlace)):
-        tmp = fluid.core.Place()
+    if isinstance(p, (base.CPUPlace or base.CUDAPlace)):
+        tmp = base.core.Place()
         tmp.set_place(p)
         p = tmp
 
-    if p._type() == fluid.CPUPlace()._type():
+    if p._type() == base.CPUPlace()._type():
         return 'CPUPlace()'
     else:
         return 'CUDAPlace()'
@@ -83,9 +83,9 @@ class DatasetLoaderTestBase(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def build_network(self):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        with fluid.program_guard(main_prog, startup_prog):
+        main_prog = base.Program()
+        startup_prog = base.Program()
+        with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
                 name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
             )
@@ -105,14 +105,14 @@ class DatasetLoaderTestBase(unittest.TestCase):
             dataset = paddle.distributed.InMemoryDataset()
         dataset._set_batch_size(BATCH_SIZE)
 
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             use_cuda = False
         else:
             file_num = 1
-            places = [fluid.CUDAPlace(0)]
+            places = [base.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -140,11 +140,11 @@ class DatasetLoaderTestBase(unittest.TestCase):
         if self.dataset_name == 'InMemoryDataset':
             dataset.load_into_memory()
 
-        dataloader = fluid.io.DataLoader.from_dataset(
+        dataloader = base.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog)
-        exe = fluid.Executor(place)
+        prog = base.CompiledProgram(main_prog)
+        exe = base.Executor(place)
 
         exe.run(startup_prog)
 
@@ -199,19 +199,19 @@ class DatasetLoaderTestBase(unittest.TestCase):
             self.assertTrue(has_complete_batch)
 
     def get_all_places(self):
-        p = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            p.append(fluid.CUDAPlace(0))
+        p = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            p.append(base.CUDAPlace(0))
         return p
 
     def test_batch_number_with_same_length_files(self):
         for p in self.get_all_places():
-            with fluid.scope_guard(fluid.Scope()):
+            with base.scope_guard(base.Scope()):
                 self.check_batch_number(place=p, randomize_batch_num=False)
 
     def test_batch_number_with_different_length_files(self):
         for p in self.get_all_places():
-            with fluid.scope_guard(fluid.Scope()):
+            with base.scope_guard(base.Scope()):
                 self.check_batch_number(place=p, randomize_batch_num=True)
 
 

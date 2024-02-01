@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import _C_ops, fluid
-from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops, base
+from paddle.base import core
+from paddle.base.framework import in_dygraph_mode
 
 
 # hack method for test p_norm final state
@@ -80,8 +80,21 @@ def numpy_frobenius_norm(x, axis=None, keepdims=False):
     return r
 
 
+def numpy_nuclear_norm(x, axis=None, keepdims=False):
+    if isinstance(axis, list):
+        axis = tuple(axis)
+    r = np.linalg.norm(x, ord='nuc', axis=axis, keepdims=keepdims).astype(
+        x.dtype
+    )
+    return r
+
+
 def frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
+
+
+def nuclear_norm(x, dim, keep_dim, reduce_all):
+    return paddle.linalg.norm(x, p='nuc', axis=dim, keepdim=keep_dim)
 
 
 class TestFrobeniusNormOp(OpTest):
@@ -102,10 +115,10 @@ class TestFrobeniusNormOp(OpTest):
         self.outputs = {'Out': norm}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -126,7 +139,7 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestPnormOp(OpTest):
@@ -412,11 +425,11 @@ class TestPnormBF16Op(OpTest):
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
-    with fluid.program_guard(fluid.Program()):
+    with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = numpy_frobenius_norm(
             np_input, axis=axis, keepdims=keep_dim
@@ -433,12 +446,39 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
         )
 
 
-def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
-    with fluid.program_guard(fluid.Program()):
+def check_nuc_static(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+    with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        expected_result = numpy_nuclear_norm(
+            np_input, axis=axis, keepdims=keep_dim
+        )
+        (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def check_nuc_dygraph(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    expected_result = numpy_nuclear_norm(x_numpy, axis, keep_dim)
+    x_paddle = paddle.to_tensor(x_numpy)
+    result = paddle.norm(x=x_paddle, p=p, axis=axis, keepdim=keep_dim)
+    result = result.numpy()
+    np.testing.assert_allclose(result, expected_result, rtol=1e-6, atol=1e-8)
+    if keep_dim and check_dim:
+        np.testing.assert_equal(result.shape, expected_result.shape)
+
+
+def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
+    with base.program_guard(base.Program()):
+        data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
+        out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = p_norm(
             np_input, porder=p, axis=axis, keepdims=keep_dim
@@ -469,6 +509,8 @@ def run_graph(self, p, axis, shape_x, dtype):
     out_fro = paddle.norm(x, p='fro')
     out_fro = paddle.norm(x, p='fro', axis=0)
     out_fro = paddle.norm(x, p='fro', axis=[0, 1])
+    # compute nuclear norm.
+    out_nuc = paddle.norm(x, p='nuc', axis=[0, 1])
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
     out_pnorm = paddle.norm(x, p=2)
@@ -505,6 +547,15 @@ class API_NormTest(unittest.TestCase):
                 axis=[0, 1],
                 shape_x=[2, 3, 4],
                 dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_nuc_static(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype='float64',
                 keep_dim=keep,
                 check_dim=True,
             )
@@ -636,16 +687,41 @@ class API_NormTest(unittest.TestCase):
     def test_dygraph(self):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
 
+        paddle.disable_static()
+        keep_dims = {False, True}
+        for keep in keep_dims:
+            check_nuc_dygraph(
+                self,
+                p='nuc',
+                axis=[0, 1],
+                shape_x=[2, 3, 4],
+                dtype='float64',
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_nuc_dygraph(
+                self,
+                p='nuc',
+                axis=[1, 2],
+                shape_x=[2, 3, 4, 5],
+                dtype='float64',
+                keep_dim=keep,
+                check_dim=True,
+            )
+        paddle.enable_static()
+
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
+            y_3 = paddle.norm(x, p='nuc', axis=[0, 1], name='nuclear_name')
             self.assertEqual(('frobenius_name' in y_1.name), True)
             self.assertEqual(('pnorm_name' in y_2.name), True)
+            self.assertEqual(('nuclear_name' in y_3.name), True)
 
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):
                 data = paddle.static.data(shape=shape_x, dtype=xdtype)
@@ -674,7 +750,7 @@ class API_NormTest(unittest.TestCase):
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             # The size of input in Norm should not be 0.
             def test_0_size():
                 array = np.array([], dtype=np.float32)

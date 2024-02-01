@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -34,8 +35,19 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
     class XPUTestReduceSumBase(XPUOpTest):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
             self.init_case()
             self.set_case()
+
+        def gen_data_depend_on_dtype(self, shape):
+            if (
+                self.dtype == np.int32
+                or self.dtype == np.int64
+                or self.dtype == np.uint8
+            ):
+                return np.random.randint(1, 100, size=shape)
+            else:
+                return np.random.uniform(-1, 1, size=shape)
 
         def set_case(self):
             self.op_type = 'reduce_sum'
@@ -45,22 +57,35 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
                 'keep_dim': self.keep_dim,
                 'dim': self.axis,
             }
-            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
-            if self.attrs['reduce_all']:
-                self.outputs = {'Out': self.inputs['X'].sum()}
-            else:
-                self.outputs = {
-                    'Out': self.inputs['X'].sum(
+            tmp_x = self.gen_data_depend_on_dtype(self.shape)
+            if self.dtype == np.uint16:
+                tmp_out = (
+                    tmp_x.sum()
+                    if self.attrs['reduce_all']
+                    else tmp_x.sum(
                         axis=self.axis, keepdims=self.attrs['keep_dim']
                     )
-                }
+                )
+                self.outputs = {'Out': tmp_out}
+                tmp_x = convert_float_to_uint16(tmp_x)
+                self.inputs = {'X': tmp_x}
+            else:
+                tmp_x = tmp_x.astype(self.dtype)
+                self.inputs = {'X': tmp_x}
+                tmp_out = (
+                    tmp_x.sum()
+                    if self.attrs['reduce_all']
+                    else tmp_x.sum(
+                        axis=self.axis, keepdims=self.attrs['keep_dim']
+                    )
+                )
+                self.outputs = {'Out': tmp_out}
 
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = False
-            self.dtype = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(self.place)

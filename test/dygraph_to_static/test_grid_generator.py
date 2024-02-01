@@ -15,6 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle import ParamAttr, nn
@@ -36,12 +41,6 @@ class GridGenerator(nn.Layer):
             in_channels, 6, weight_attr=param_attr, bias_attr=bias_attr
         )
 
-    # @paddle.jit.to_static(
-    # input_spec=[
-    # paddle.static.InputSpec(shape=[None, 3, 32, 100], dtype='float32'),
-    # paddle.static.InputSpec(shape=[32, 100], dtype='float32'),
-    # ]
-    # )
     def forward(self, batch_C_prime, I_r_size):
         """
         Generate the grid for the grid_sampler.
@@ -131,17 +130,24 @@ class GridGenerator(nn.Layer):
         return batch_C_ex_part_tensor
 
 
-class TestGridGenerator(unittest.TestCase):
+class TestGridGenerator(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.uniform(shape=[1, 20, 2], dtype='float32')
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-
-        net = GridGenerator(40, 20)
-        ret = net(self.x, [32, 100])
+        with enable_to_static_guard(to_static):
+            net = paddle.jit.to_static(
+                GridGenerator(40, 20),
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, 3, 32, 100], dtype='float32'
+                    ),
+                ],
+            )
+            ret = net(self.x, [32, 100])
         return ret.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         st_out = self._run(to_static=True)
         dy_out = self._run(to_static=False)

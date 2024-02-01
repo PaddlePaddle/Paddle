@@ -14,12 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/uniform_kernel.h"
 
-#include <string>
-
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
 
 namespace phi {
 
@@ -31,49 +28,31 @@ void UniformKernel(const Context &dev_ctx,
                    const Scalar &max,
                    int seed,
                    DenseTensor *out) {
-  int diag_num = 0;
-  int diag_step = 0;
-  float diag_val = 0.0f;
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
-  int64_t size = out->numel();
-
-  std::unique_ptr<T[]> data_cpu(new T[size]);
-
-  std::shared_ptr<std::mt19937_64> engine;
-  if (seed) {
-    engine = std::make_shared<std::mt19937_64>();
-    engine->seed(seed);
-  } else {
-    engine = dev_ctx.GetGenerator()->GetCPUEngine();
-  }
-  UniformRealDistribution<T>(
-      data_cpu.get(), size, min.to<float>(), max.to<float>(), engine);
-  if (diag_num > 0) {
-    PADDLE_ENFORCE_GT(
-        size,
-        (diag_num - 1) * (diag_step + 1),
-        phi::errors::InvalidArgument(
-            "ShapeInvalid: the diagonal's elements is equal (num-1) "
-            "* (step-1) with num %d, step %d,"
-            "It should be smaller than %d, but received %d",
-            diag_num,
-            diag_step,
-            (diag_num - 1) * (diag_step + 1),
-            size));
-    for (int64_t i = 0; i < diag_num; ++i) {
-      int64_t pos = i * diag_step + i;
-      data_cpu[pos] = diag_val;
-    }
+  if (out->numel() == 0) {
+    return;
   }
 
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     data,
-                     phi::CPUPlace(),
-                     reinterpret_cast<void *>(data_cpu.get()),
-                     size * sizeof(T));
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  int64_t real_seed = seed != 0 ? seed : dev_ctx.GetGenerator()->Random64();
+
+  // int random(Context* ctx, T* x, int64_t len, T min, T max, int64_t seed);
+  int r = xpu::random<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<XPUType *>(data),
+                               out->numel(),
+                               static_cast<XPUType>(min.to<float>()),
+                               static_cast<XPUType>(max.to<float>()),
+                               real_seed);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "random");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform, XPU, ALL_LAYOUT, phi::UniformKernel, float) {}
+PD_REGISTER_KERNEL(uniform,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::UniformKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

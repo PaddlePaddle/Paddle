@@ -15,14 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):
@@ -67,10 +64,12 @@ class TestTopkOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestTopkOp_ZeroDim(TestTopkOp):
@@ -274,11 +273,18 @@ class TestTopkBF16Op(TestTopkOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestTopKAPI(unittest.TestCase):
@@ -288,7 +294,7 @@ class TestTopKAPI(unittest.TestCase):
         self.large_input_data = np.random.rand(2, 1030)
 
     def run_dygraph(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             input_tensor = paddle.to_tensor(self.input_data)
             large_input_tensor = paddle.to_tensor(self.large_input_data)
             # test case for basic test case 1
@@ -381,8 +387,8 @@ class TestTopKAPI(unittest.TestCase):
             result1 = paddle.topk(input_tensor, k=2)
             result2 = paddle.topk(input_tensor, k=2, axis=-1)
             result3 = paddle.topk(input_tensor, k=k_tensor, axis=1)
-            self.assertEqual(result3[0].shape, (6, -1, 8))
-            self.assertEqual(result3[1].shape, (6, -1, 8))
+            self.assertEqual(tuple(result3[0].shape), (6, -1, 8))
+            self.assertEqual(tuple(result3[1].shape), (6, -1, 8))
             result4 = paddle.topk(input_tensor, k=2, axis=1, largest=False)
             result5 = paddle.topk(input_tensor, k=2, axis=-1, largest=False)
             result6 = paddle.topk(large_input_tensor, k=1, axis=-1)
@@ -465,21 +471,28 @@ class TestTopKAPI(unittest.TestCase):
                 sort_paddle[0], numpy_result[0], rtol=1e-05
             )
 
-    def test_cases(self):
+    def test_dygraph_cases(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
             self.run_dygraph(place)
+
+    @test_with_pir_api
+    def test_static_cases(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
             self.run_static(place)
 
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
-            with self.assertRaises(BaseException):
+            with self.assertRaises(ValueError):
                 paddle.topk(x, k=-1)
 
-            with self.assertRaises(BaseException):
+            with self.assertRaises(ValueError):
                 paddle.topk(x, k=0)
 
 

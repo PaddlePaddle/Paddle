@@ -12,34 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .tensor import inverse as inv  # noqa: F401
-from .tensor.linalg import cholesky  # noqa: F401
-from .tensor.linalg import cholesky_solve  # noqa: F401
-from .tensor.linalg import cond  # noqa: F401
-from .tensor.linalg import corrcoef  # noqa: F401
-from .tensor.linalg import cov  # noqa: F401
-from .tensor.linalg import det  # noqa: F401
-from .tensor.linalg import eig  # noqa: F401
-from .tensor.linalg import eigh  # noqa: F401
-from .tensor.linalg import eigvals  # noqa: F401
-from .tensor.linalg import eigvalsh  # noqa: F401
-from .tensor.linalg import lu  # noqa: F401
-from .tensor.linalg import lu_unpack  # noqa: F401
-from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import matrix_rank  # noqa: F401
-from .tensor.linalg import multi_dot  # noqa: F401
-from .tensor.linalg import norm  # noqa: F401
-from .tensor.linalg import pca_lowrank  # noqa: F401
-from .tensor.linalg import pinv  # noqa: F401
-from .tensor.linalg import qr  # noqa: F401
-from .tensor.linalg import slogdet  # noqa: F401
-from .tensor.linalg import solve  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
-from .tensor.linalg import triangular_solve  # noqa: F401
-from .tensor.linalg import lstsq
+from .tensor import inverse as inv
+from .tensor.linalg import (
+    cholesky,
+    cholesky_solve,
+    cond,
+    corrcoef,
+    cov,
+    det,
+    eig,
+    eigh,
+    eigvals,
+    eigvalsh,
+    householder_product,
+    lstsq,
+    lu,
+    lu_unpack,
+    matrix_exp,
+    matrix_power,
+    matrix_rank,
+    multi_dot,
+    norm,
+    pca_lowrank,
+    pinv,
+    qr,
+    slogdet,
+    solve,
+    svd,
+    triangular_solve,
+)
 
 __all__ = [
-    'cholesky',  # noqa
+    'cholesky',
     'norm',
     'cond',
     'cov',
@@ -51,9 +55,11 @@ __all__ = [
     'matrix_rank',
     'svd',
     'qr',
+    'householder_product',
     'pca_lowrank',
     'lu',
     'lu_unpack',
+    'matrix_exp',
     'matrix_power',
     'det',
     'slogdet',

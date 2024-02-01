@@ -471,12 +471,12 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
         scale_tensor = paddle.static.data(
             name="scale_tensor", shape=[1], dtype="float32")
 
-        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
-        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
-        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_bilinear(
+        out1 = base.layers.resize_bilinear(x, out_shape=[12, 12])
+        out2 = base.layers.resize_bilinear(x, out_shape=[12, dim])
+        out3 = base.layers.resize_bilinear(x, out_shape=shape_tensor)
+        out4 = base.layers.resize_bilinear(
             x, out_shape=[4, 4], actual_shape=actual_size)
-        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
+        out5 = base.layers.resize_bilinear(x, scale=scale_tensor)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
@@ -485,9 +485,9 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
         scale_data = np.array([2.0]).astype("float32")
 
         place = core.XPUPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
+        results = exe.run(base.default_main_program(),
                           feed={
                               "x": x_data,
                               "dim": dim_data,

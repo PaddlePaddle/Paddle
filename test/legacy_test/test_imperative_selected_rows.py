@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -39,15 +39,15 @@ class SimpleNet(paddle.nn.Layer):
 
 class TestSimpleNet(unittest.TestCase):
     def test_selectedrows_gradient1(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
                     paddle.disable_static(place)
-                    fluid.set_flags(
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
                     # grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
@@ -78,14 +78,14 @@ class TestSimpleNet(unittest.TestCase):
                     paddle.enable_static()
 
     def test_selectedrows_gradient2(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for sort_sum_gradient in [True, False]:
-                with fluid.dygraph.guard(place):
-                    fluid.set_flags(
+                with base.dygraph.guard(place):
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
                     grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)

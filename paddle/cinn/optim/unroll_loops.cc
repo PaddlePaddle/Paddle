@@ -17,11 +17,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 namespace cinn {
 namespace optim {
@@ -65,7 +65,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
       VLOG(5) << "loop to be unrolled should have a contant extent";
       return;
     }
-    int extent = op->extent.as_int32();
+    int64_t extent = op->extent.as_int64();
 
     // predicate this for-loop can be unrolled by auto-unroll conditions
     bool unrollable =
@@ -94,8 +94,9 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     for (int i = min->value; i < extent->value; i++) {
       Expr start = op->min + i;
-      body.push_back(optim::IRCopy(op->body));
-      optim::IrReplace(&body.back(), op->loop_var, start);
+      body.push_back(ir::ir_utils::IRCopy(op->body));
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &body.back(), op->loop_var, start);
     }
 
     *expr = ir::Block::Make(body);
@@ -108,7 +109,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   int max_unroll_extent_ = 50;
 
   // the number of steps that have been unrolled or plain statement
-  int flat_step_ = 0;
+  int64_t flat_step_ = 0;
   // the number of nested loops not to be unrolled
   int not_unrolled_depth_ = 0;
 };

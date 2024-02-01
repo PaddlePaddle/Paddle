@@ -25,8 +25,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -57,8 +57,8 @@ void BatchNormInferKernel(const Context& dev_ctx,
   template void phi::BatchNormGradFunctor<dtype, ::phi::backend##Context>( \
       const ::phi::backend##Context& dev_ctx,                              \
       const DenseTensor& x,                                                \
-      const DenseTensor& scale,                                            \
-      const DenseTensor& bias,                                             \
+      const paddle::optional<DenseTensor>& scale,                          \
+      const paddle::optional<DenseTensor>& bias,                           \
       const paddle::optional<DenseTensor>& mean,                           \
       const paddle::optional<DenseTensor>& variance,                       \
       const DenseTensor& saved_mean,                                       \

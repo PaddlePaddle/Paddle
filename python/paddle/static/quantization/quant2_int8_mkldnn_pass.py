@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from ...fluid.framework import IrGraph
+from ...base.framework import IrGraph
 from ...framework import _get_paddle_place, core
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -203,7 +203,7 @@ class Quant2Int8MkldnnPass:
                 scale = np.array(
                     1.0 / self._load_param(self._scope, scale_name)[0]
                 ).astype(np.float64)
-                scale[scale == np.Inf] = 0.0
+                scale[scale == np.inf] = 0.0
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 self._add_scale_for_vars(
@@ -238,7 +238,7 @@ class Quant2Int8MkldnnPass:
                 if attr_scale == 0.0:
                     continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
-                scale[scale == np.Inf] = 0.0
+                scale[scale == np.inf] = 0.0
                 scale_lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 for output_name in op.op().outputs():
@@ -561,7 +561,7 @@ class Quant2Int8MkldnnPass:
                         ),
                         axis=axis,
                     )
-                    scales[scales == np.Inf] = 0.0
+                    scales[scales == np.inf] = 0.0
 
                     lod_tensor = self._convert_scale2tensor(scales)
                     use_unsigned_int = False

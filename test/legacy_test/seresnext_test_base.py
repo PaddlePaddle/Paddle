@@ -16,7 +16,7 @@ import numpy as np
 import seresnext_net
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestResnetBase(TestParallelExecutorBase):

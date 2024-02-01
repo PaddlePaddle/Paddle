@@ -1,12 +1,12 @@
 cc_test(
   test_math_function
   SRCS test_math_function.cc
-  DEPS phi)
+  DEPS phi common)
 if(WITH_GPU)
   nv_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS phi)
+    DEPS phi common)
   nv_test(
     test_broadcast_gpu
     SRCS test_ternary_broadcast.cu
@@ -16,56 +16,56 @@ if(WITH_ROCM)
   hip_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS phi)
+    DEPS phi common)
 endif()
 
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
-  DEPS phi)
+  DEPS phi common)
 
 # For String Kernels
 cc_test(
   test_strings_lower_upper_dev_api
   SRCS test_strings_lower_upper_dev_api.cc
-  DEPS phi)
+  DEPS phi common)
 if(WITH_GPU)
   nv_test(
     test_strings_lower_upper_dev_gpu_api
     SRCS test_strings_lower_upper_dev_api.cu
-    DEPS phi)
+    DEPS phi common)
 elseif(WITH_ROCM)
   hip_test(
     test_strings_lower_upper_dev_gpu_api
     SRCS test_strings_lower_upper_dev_api.cu
-    DEPS phi)
+    DEPS phi common)
 endif()
 
 cc_test(
   test_strings_copy_dev_api
   SRCS test_strings_copy_dev_api.cc
-  DEPS phi)
+  DEPS phi common)
 if(WITH_GPU)
   nv_test(
     test_strings_copy_dev_gpu_api
     SRCS test_strings_copy_dev_api.cu
-    DEPS phi)
+    DEPS phi common)
 elseif(WITH_ROCM)
   hip_test(
     test_strings_copy_dev_gpu_api
     SRCS test_strings_copy_dev_api.cu
-    DEPS phi)
+    DEPS phi common)
 endif()
 
 cc_test(
   test_memcpy_dev_api
   SRCS test_memcpy_dev_api.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_test(
   test_transfer_layout_dev_api
   SRCS test_transfer_layout_dev_api.cc
-  DEPS phi)
+  DEPS phi common)
 
 if(WITH_GPU)
   nv_test(
@@ -79,7 +79,7 @@ if(WITH_GPU)
   cc_test(
     test_fused_adam_kernel
     SRCS test_fused_adam_kernel.cc
-    DEPS gtest phi)
+    DEPS gtest phi common)
 elseif(WITH_ROCM)
   hip_test(
     test_gpu_timer
@@ -94,19 +94,19 @@ endif()
 cc_test(
   test_cache
   SRCS test_cache.cc
-  DEPS gtest phi)
+  DEPS gtest phi common)
 
 cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
-  DEPS phi memory)
+  DEPS phi common)
 
 cc_test(
   sequence_padding_test
   SRCS sequence_padding_test.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_test(
   sequence_pooling_test
   SRCS sequence_pooling_test.cc
-  DEPS phi)
+  DEPS phi common)

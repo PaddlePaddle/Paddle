@@ -45,6 +45,10 @@ class SimpleModel(nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
 class TestCudaGraphAttrAll(unittest.TestCase):
     def setUp(self):
         paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})

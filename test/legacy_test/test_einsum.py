@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 os.environ['FLAGS_new_einsum'] = "0"
 
@@ -179,14 +179,12 @@ class TestEinsum(unittest.TestCase):
         expected_result = np.einsum(self.sample["paradigm"], *operands)
         equation = self.sample["paradigm"]
 
-        with paddle.fluid.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
 
-        with paddle.fluid.dygraph.guard(self._get_place(force_to_use_cpu=True)):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=True)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
@@ -348,9 +346,7 @@ class TestNumpyTests(unittest.TestCase):
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
-        with paddle.fluid.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(op) for op in ops]
             actual = paddle.einsum(eqn, *pd_operands)
             self.check_output_equal(actual.numpy(), expect)
@@ -449,14 +445,14 @@ class TestNumpyTests(unittest.TestCase):
 
     def test_static_graph(self):
         paddle.enable_static()
-        fluid = paddle.fluid
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        base = paddle.base
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+            self.place = base.CPUPlace()
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             a = paddle.static.data(
                 name='a', shape=[3, None, None, None], dtype='float'
             )
@@ -479,7 +475,7 @@ class TestNumpyTests(unittest.TestCase):
             outs.append(paddle.einsum('...kj, ...ik', d, e))
             outs.append(paddle.einsum('ijk..., ikj', c, e))
             outs.append(paddle.einsum('ijk..., ikj->...ij', c, e))
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         a = np.arange(72).reshape(3, 2, 3, 4).astype('float')
         b = np.arange(48).reshape(2, 2, 3, 4).astype('float')

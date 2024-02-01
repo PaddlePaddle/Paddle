@@ -352,7 +352,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
         if (out->Name() == intermediate_out_args[0]) {
           if (out->outputs.empty()) {
             cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
-            need_removed_nodes.insert(std::move(out));
+            need_removed_nodes.insert(out);
             cur_node->Op()->SetAttr("save_intermediate_out", false);
           }
         }
@@ -373,7 +373,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
             out->outputs.empty()) {
           cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
           cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
-          need_removed_nodes.insert(std::move(out));
+          need_removed_nodes.insert(out);
         }
       }
     }
@@ -439,8 +439,8 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
     IR_OP_VAR_LINK(fused_op, out);
   }
 
-  nodes2delete.insert(std::move(op_1));
-  nodes2delete.insert(std::move(op_2));
+  nodes2delete.insert(op_1);
+  nodes2delete.insert(op_2);
 
   GraphSafeRemoveNodes(graph, nodes2delete);
 }
@@ -485,8 +485,8 @@ void FuseElewiseAddActPass::ReLinkNodes2(Graph *graph,
     IR_OP_VAR_LINK(fused_op, out);
   }
 
-  nodes2delete.insert(std::move(op_1));
-  nodes2delete.insert(std::move(op_2));
+  nodes2delete.insert(op_1);
+  nodes2delete.insert(op_2);
 
   GraphSafeRemoveNodes(graph, nodes2delete);
 }

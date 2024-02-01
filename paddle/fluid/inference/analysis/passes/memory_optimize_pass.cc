@@ -92,16 +92,15 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            //std::cout <<node->Name() << std::endl;
             CHECK_GE(i, 0);
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
                                            (int64_t)1,
                                            std::multiplies<>());
-          persis_byte +=
+          persis_byte += static_cast<double>(
               paddle::framework::SizeOfType(node->Var()->GetDataType()) *
-              var_bytes;
+              var_bytes);
           continue;
         }
         std::string var = node->Name();
@@ -156,7 +155,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     return true;
   };
 
-  // MemoryOptimizePass surppose input model is directed acyclic graph
+  // MemoryOptimizePass suppose input model is directed acyclic graph
   // although it's not always the case. so black list is the best compromise
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;
@@ -226,9 +225,9 @@ void MakeSimpleReusePlan(
   // Generating Memory Reuse Strategy Based on Greedy Way
   for (size_t i = 0; i < mem_nodes.size(); i++) {
     if (mem_nodes[i].cluster >= 0) continue;
-    int cluster_index = cluster_size->size();
+    int cluster_index = static_cast<int>(cluster_size->size());
     mem_nodes[i].cluster = cluster_index;
-    (*cluster_size)[mem_nodes[i].name] = mem_nodes[i].size;
+    (*cluster_size)[mem_nodes[i].name] = static_cast<int>(mem_nodes[i].size);
     (*node2cluster)[mem_nodes[i].name] = mem_nodes[i].name;
     std::unordered_set<std::string> cluster_adj = mem_nodes[i].adj;
     for (size_t j = i + 1; j < mem_nodes.size(); j++) {

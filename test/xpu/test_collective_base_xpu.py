@@ -24,36 +24,37 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle.fluid.unique_name as nameGen
-from paddle import fluid
-from paddle.fluid import core
+import paddle.base.unique_name as nameGen
+from paddle import base
+from paddle.base import core
+from paddle.distributed.collective import _init_parallel_env
 
 
 def DataTypeCast(date_type):
-    np_data_type = None
+    np_dtype = None
 
     if date_type == "float16":
-        np_data_type = np.float16
+        np_dtype = np.float16
     elif date_type == "float32":
-        np_data_type = np.float32
+        np_dtype = np.float32
     elif date_type == "float64":
-        np_data_type = np.float64
-    elif date_type == "int8":
-        np_data_type = np.int8
-    elif date_type == "int16":
-        np_data_type = np.int16
+        np_dtype = np.float64
+    elif date_type == "uint8":
+        np_dtype = np.uint8
     elif date_type == "int32":
-        np_data_type = np.int32
+        np_dtype = np.int32
     elif date_type == "int64":
-        np_data_type = np.int64
+        np_dtype = np.int64
+    elif date_type == "bfloat16":
+        np_dtype = np.uint16
     else:
         raise ValueError("This data type is not support!")
 
-    return np_data_type
+    return np_dtype
 
 
 class TestCollectiveRunnerBase:
-    def get_model(self, train_prog, startup_prog):
+    def get_model(self, train_prog, startup_prog, dtype=None):
         raise NotImplementedError(
             "get model should be implemented by child class."
         )
@@ -127,26 +128,29 @@ class TestCollectiveRunnerBase:
         )
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
-        )
+        if args["dynamic_static_unified_comm"]:
+            _init_parallel_env("bkcl")
+        else:
+            self.initCommunicator(
+                startup_prog, rank, nranks, True, current_endpoint, endpoints
+            )
         self.rank = rank
-        result = self.get_model(train_prog, startup_prog)
+        np_dtype = DataTypeCast(args["dtype"])
+        result = self.get_model(train_prog, startup_prog, np_dtype)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-        place = fluid.XPUPlace(device_id)
-        exe = fluid.Executor(place)
+        place = base.XPUPlace(device_id)
+        exe = base.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
-        np_data_type = DataTypeCast(args["data_type"])
         indata = np.random.uniform(
             low=-10.0, high=10.0, size=(10, 1000)
-        ).astype(np_data_type)
+        ).astype(np_dtype)
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=[result.name]
         )
@@ -162,7 +166,10 @@ def runtime_main(test_class, col_type, sub_type):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
-    args["data_type"] = os.getenv("DATA_TYPE")
+    args["dtype"] = os.getenv("DTYPE")
+    args["dynamic_static_unified_comm"] = bool(
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+    )
     model.run_trainer(args)
 
 
@@ -255,7 +262,7 @@ class TestDistBase(unittest.TestCase):
         self,
         model_file,
         col_type,
-        data_type,
+        dtype=None,
         check_error_log=False,
         need_envs={},
     ):
@@ -266,7 +273,8 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
-            "DATA_TYPE": data_type,
+            "DTYPE": dtype,
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -275,15 +283,16 @@ class TestDistBase(unittest.TestCase):
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
         )
-        np_data_type = DataTypeCast(data_type)
+        dtype = "float32" if dtype is None else dtype
+        np_dtype = DataTypeCast(dtype)
         np.random.seed(pid0)
         input1 = np.random.uniform(
             low=-10.0, high=10.0, size=(10, 1000)
-        ).astype(np_data_type)
+        ).astype(np_dtype)
         np.random.seed(pid1)
         input2 = np.random.uniform(
             low=-10.0, high=10.0, size=(10, 1000)
-        ).astype(np_data_type)
+        ).astype(np_dtype)
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             np.testing.assert_allclose(tr0_out, need_result)

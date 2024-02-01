@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def Heaviside_grad(x, y, dout, astype="float16", is_bfloat16=False):
@@ -41,16 +42,16 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestHeavisideBroadcast(unittest.TestCase):
@@ -98,6 +99,7 @@ class TestHeavisideAPI_float64(unittest.TestCase):
         self.out_np = np.heaviside(self.x_np, self.y_np)
         self.dtype = "float64"
 
+    @test_with_pir_api
     def test_static(self):
         for use_cuda in (
             [False, True] if paddle.device.is_compiled_with_cuda() else [False]
@@ -177,7 +179,7 @@ class TestHeavisideFP16Op(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -186,6 +188,7 @@ class TestHeavisideFP16Op(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
+            check_pir=True,
         )
 
 
@@ -212,7 +215,7 @@ class TestHeavisideBF16Op(OpTest):
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -226,6 +229,7 @@ class TestHeavisideBF16Op(OpTest):
                 self.np_dtype,
                 True,
             ),
+            check_pir=True,
         )
 
 

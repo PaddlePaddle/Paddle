@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -48,7 +48,7 @@ class TestQuantizeOp(OpTest):
                 'float32'
             )
 
-        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
+        self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {
             'Scale': self.scale,
             'Shift': self.shift,
@@ -65,7 +65,7 @@ class TestQuantizeOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def check_raise_error(self, msg):
         try:

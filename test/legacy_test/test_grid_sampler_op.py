@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -379,7 +379,7 @@ class TestGridSamplerOp(OpTest):
             }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -387,6 +387,7 @@ class TestGridSamplerOp(OpTest):
             'Output',
             max_relative_error=0.01,
             numeric_grad_delta=self.numeric_grad_delta,
+            check_pir=True,
         )
 
     def initTestCase(self):

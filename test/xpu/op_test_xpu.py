@@ -12,22 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 
 import numpy as np
-from eager_op_test import OpTest
 from get_test_cover_info import (
     get_xpu_op_support_types,
     is_empty_grad_op_type,
     type_dict_str_to_numpy,
 )
+
+sys.path.append("../legacy_test")
+from op_test import OpTest
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, convert_np_dtype_to_dtype_
 
 
 class XPUOpTest(OpTest):
@@ -103,8 +106,13 @@ class XPUOpTest(OpTest):
             if not core.is_float16_supported(place):
                 return
 
-        if self.dtype == np.float16:
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
+                return
+
+        if self.dtype == np.float16 or self.dtype == np.uint16:
             atol = 0.1
+
         return super().check_output_with_place(
             place,
             atol,
@@ -180,8 +188,12 @@ class XPUOpTest(OpTest):
             if not core.is_float16_supported(place):
                 return
 
-        if self.dtype == np.float16:
-            max_relative_error = 1.0
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
+                return
+
+        if self.dtype == np.float16 or self.dtype == np.uint16:
+            max_relative_error = 0.1
             return super().check_grad_with_place(
                 place,
                 inputs_to_check,
@@ -303,7 +315,7 @@ class XPUOpTest(OpTest):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if self.dtype not in mean_grad_op_types_np:
@@ -359,7 +371,7 @@ class XPUOpTest(OpTest):
             )
             fetch_list = [g for p, g in param_grad_list]
 
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             return list(
                 map(
                     np.array,

@@ -87,7 +87,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto src_tz = phi::vectorize(x->dims());
+    auto src_tz = common::vectorize(x->dims());
     PADDLE_ENFORCE_EQ(begin_norm_axis,
                       (src_tz.size() - 1),
                       platform::errors::InvalidArgument(

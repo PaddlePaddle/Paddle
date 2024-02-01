@@ -31,7 +31,7 @@ TEST(ParallelCompilerTest, Add_TEST_0) {
   auto A = builder.CreateInput(Float(32), {128, 128}, "A");
   auto B = builder.CreateInput(Float(32), {128, 128}, "B");
   auto C = builder.Add(A, B);
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = std::make_shared<Graph>(program, target);
   auto scope = BuildScope(target, graph);
@@ -49,7 +49,7 @@ TEST(ParallelCompilerTest, Conv2d_Test_0) {
   auto D = builder.Conv2d(A, B, {2, 2}, {1, 1});
   auto E = builder.Add(C, D);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -67,7 +67,7 @@ TEST(ParallelCompilerTest, Matmul_Test_0) {
   auto D = builder.Matmul(A, B);
   auto E = builder.Add(C, D);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);

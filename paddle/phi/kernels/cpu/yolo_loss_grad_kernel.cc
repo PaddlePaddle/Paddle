@@ -169,7 +169,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
-  const T* gt_score_data;
+  const T* gt_score_data = nullptr;
   DenseTensor gtscore;
   if (!(gt_score.is_initialized())) {
     gtscore.Resize({n, b});

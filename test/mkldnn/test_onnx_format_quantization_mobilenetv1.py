@@ -22,7 +22,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -164,8 +164,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 
@@ -271,8 +271,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model=False,
         onnx_format=False,
     ):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         val_reader = val()
 
         ptq = PostTrainingQuantization(

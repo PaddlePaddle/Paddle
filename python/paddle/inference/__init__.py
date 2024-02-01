@@ -12,28 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.base.core import (
+    InternalUtils,  # noqa: F401
+    PredictorPool,
+    XpuConfig,
+    _get_phi_kernel_name,
+    create_predictor,
+    get_num_bytes_of_data_type,
+    get_trt_compile_version,
+    get_trt_runtime_version,
+    get_version,
+)
+
 from .wrapper import (
     Config,
     DataType,
     PlaceType,
     PrecisionType,
-    Tensor,
     Predictor,
+    Tensor,
     convert_to_mixed_precision,
 )
 
-from paddle.fluid.core import (
-    create_predictor,
-    get_version,
-    _get_phi_kernel_name,
-    get_trt_compile_version,
-    get_trt_runtime_version,
-    get_num_bytes_of_data_type,
-    PredictorPool,
-    XpuConfig,
-)
-
-__all__ = [  # noqa
+__all__ = [
     'Config',
     'DataType',
     'PlaceType',

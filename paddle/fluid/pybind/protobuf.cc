@@ -94,7 +94,8 @@ static void DeserializeMessage(T *self, const std::string &str) {
 
 // Bind Methods
 void BindProgramDesc(pybind11::module *m) {
-  pybind11::class_<pd::ProgramDesc>(*m, "ProgramDesc", "")
+  pybind11::class_<pd::ProgramDesc, std::shared_ptr<pd::ProgramDesc>>(
+      *m, "ProgramDesc", "")
       .def(pybind11::init<>())
       .def("__init__",
            [](pd::ProgramDesc &self, const pd::ProgramDesc &other) {
@@ -191,6 +192,7 @@ void BindBlockDesc(pybind11::module *m) {
              std::string name = byte_name;
              return self.HasVarRecursive(name);
            })
+      .def("set_parent_idx", &pd::BlockDesc::SetParent)
       .def(
           "find_var",
           [](pd::BlockDesc &self, pybind11::bytes byte_name) {

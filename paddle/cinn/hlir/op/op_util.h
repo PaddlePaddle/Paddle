@@ -67,8 +67,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   }
 
   const auto &type = args.front().type();
-  CHECK_EQ(type, common::type_of<T>()) << "Cannot get " << common::type_of<T>()
-                                       << " value from " << type << " vector!";
+  CHECK_EQ(type, cinn::common::type_of<T>())
+      << "Cannot get " << cinn::common::type_of<T>() << " value from " << type
+      << " vector!";
 
   std::vector<T> shape_v;
   if (type.is_bool()) {
@@ -141,8 +142,8 @@ CINNSchedule GetInjectiveScheduleFunc(
     const Target &target,
     bool vectorizable = true);
 
-std::string GetExternFuncName(const common::Target &target,
-                              const common::Type &type,
+std::string GetExternFuncName(const cinn::common::Target &target,
+                              const cinn::common::Type &type,
                               const std::string &func_name,
                               const bool need_cinn = true,
                               const bool need_target = true,

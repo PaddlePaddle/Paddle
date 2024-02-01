@@ -81,7 +81,7 @@ class DistributedContext:
         self._serial_optimizer = None
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
-        self._lr_optimizer = None  # record the optimzier holding lr_scheduler
+        self._lr_optimizer = None  # record the optimizer holding lr_scheduler
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -134,6 +134,9 @@ class DistributedContext:
         self._up_down_streams = UpDownStream()
 
         self._json_config = json_config
+
+        # record vpp chunk size
+        self._num_model_chunks = 0
 
     @property
     def serial_main_program(self):
@@ -861,8 +864,8 @@ class DistributedContext:
             self._is_initialized
         ), "Both program and graph must be initialized."
         updated_tensors = {}
-        # all_nodes = self._serial_graph.all_nodes()
         all_nodes = self._serial_ordered_nodes
+        process_meshes = [self.process_meshes[0]]
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
                 tensor_id = self._node_id_to_tensor_id[_node_id(node)]
@@ -879,11 +882,21 @@ class DistributedContext:
                         tensor_dist_attr_for_graph
                     )
                     updated_tensors[tensor_id] = True
+                    process_mesh = tensor_dist_attr_for_graph.process_mesh
+                    if process_mesh not in process_meshes:
+                        process_meshes.append(process_mesh)
             if node.is_op() and node.op() is not None:
                 op_id = self._node_id_to_op_id[_node_id(node)]
                 op_dist_attr_for_graph = self.get_op_dist_attr_for_graph(node)
                 dist_op_for_program = self._dist_ops_for_program[op_id]
                 dist_op_for_program.dist_attr = op_dist_attr_for_graph
+                process_mesh = op_dist_attr_for_graph.process_mesh
+                if process_mesh not in process_meshes:
+                    process_meshes.append(process_mesh)
+        # NOTE(zhaoyingli):
+        # The order of process_meshes is execution order of the ops,
+        # which will help pipeline strategy to get pp_rank info.
+        self.process_meshes = copy.deepcopy(process_meshes)
         # TODO: the completion algorithm will skipped orphan tensors,
         # here we just set there process_mesh to the first one.
         for orphan_node in self._serial_orphan_tensor_nodes:
@@ -891,14 +904,12 @@ class DistributedContext:
             dist_tensor = self._dist_tensors_for_program.get(
                 serial_tensor_id, None
             )
-            if dist_tensor:
-                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
-            else:
+            if not dist_tensor:
                 serial_tensor_id = orphan_node.var().original_id()
                 dist_tensor = self._dist_tensors_for_program.get(
                     serial_tensor_id, None
                 )
-                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
+            dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():
@@ -982,7 +993,10 @@ class DistributedContext:
                     ):
                         dims_mapping[i] = -1
                 dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
-            if len(process_mesh_processes) == 1:
+            if (
+                len(process_mesh_processes) == 1
+                and dist_op.serial_op.type != "dropout"
+            ):
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0
 
@@ -1026,6 +1040,12 @@ class DistributedContext:
                             dist_op.dist_attr,
                         )
                     )
+                if (
+                    op.has_attr("op_namescope")
+                    and 'auto_parallel/rc_' in op.attr("op_namescope")
+                    and not self.strategy.recompute.enable
+                ):
+                    self.strategy.recompute.enable = True
         return True
 
     def __deepcopy__(self, memo):
@@ -1164,8 +1184,8 @@ class DistributedOperatorContext:
         for input_name in src_op.desc.input_names():
             varnames = []
             for varname in src_op.desc.input(input_name):
-                assert varname in self.varname_mapping
-                varnames.append(self.varname_mapping[varname])
+                assert varname in self.varname_mapping[src_op.block.idx]
+                varnames.append(self.varname_mapping[src_op.block.idx][varname])
             kinputs[input_name] = varnames
 
         # build output varname mapping
@@ -1173,8 +1193,8 @@ class DistributedOperatorContext:
         for output_name in src_op.desc.output_names():
             varnames = []
             for varname in src_op.desc.output(output_name):
-                assert varname in self.varname_mapping
-                varnames.append(self.varname_mapping[varname])
+                assert varname in self.varname_mapping[src_op.block.idx]
+                varnames.append(self.varname_mapping[src_op.block.idx][varname])
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
@@ -1188,9 +1208,7 @@ class BlockState:
         self.backward_to_forward_index_map = {}
 
     def parse_forward_blocks(self, program):
-        while program.current_block_idx != 0:
-            program._rollback()
-
+        program._roll_to_global_block()
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):
@@ -1206,9 +1224,9 @@ class BlockState:
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-        assert 0 in self.forward_indices, "forward block idx are{}".format(
-            self.forward_indices
-        )
+        assert (
+            0 in self.forward_indices
+        ), f"forward block idx are{self.forward_indices}"
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):

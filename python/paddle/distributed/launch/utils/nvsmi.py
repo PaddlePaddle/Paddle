@@ -16,6 +16,9 @@ import json
 import os
 import shutil
 import subprocess
+import time
+
+import paddle
 
 
 class Info:
@@ -73,6 +76,39 @@ def query_smi(query=None, query_type="gpu", index=None, dtype=None):
     return ret
 
 
+def query_rocm_smi(query=None, index=None, dtype=None, mem=32150):
+    if not has_rocm_smi():
+        return []
+
+    cmd = ["rocm-smi"]
+
+    if not isinstance(dtype, list) or len(dtype) != len(query):
+        dtype = [str] * len(query)
+
+    output = subprocess.check_output(cmd, timeout=3)
+    lines = output.decode("utf-8").split(os.linesep)
+    ret = []
+    for line in lines:
+        if not line:
+            continue
+        if len(line.split()) != 8 or "DCU" in line.split():
+            continue
+        info = Info()
+        line = line.split()
+        line = [
+            line[0],
+            line[7][: len(line[7]) - 1],
+            mem,
+            mem * float(line[6][: len(line[6]) - 1]) / 100,
+            mem - mem * float(line[6][: len(line[6]) - 1]) / 100,
+            time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        ]
+        for k, v, d in zip(query, line, dtype):
+            setattr(info, k.replace(".", "_"), d(v))
+        ret.append(info)
+    return ret
+
+
 def get_gpu_info(index=None):
     q = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode".split(
         ","
@@ -97,7 +133,8 @@ def get_gpu_util(index=None):
         if index is None or isinstance(index, list)
         else str(index).split(",")
     )
-
+    if paddle.device.is_compiled_with_rocm():
+        return query_rocm_smi(q, index=index, dtype=d)
     return query_smi(q, index=index, dtype=d)
 
 
@@ -115,6 +152,10 @@ def get_gpu_process(index=None):
 
 def has_nvidia_smi():
     return shutil.which("nvidia-smi")
+
+
+def has_rocm_smi():
+    return shutil.which("rocm-smi")
 
 
 if __name__ == '__main__':

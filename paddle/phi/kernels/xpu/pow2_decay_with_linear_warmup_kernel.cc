@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/pow2_decay_with_linear_warmup_kernel.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 

@@ -18,8 +18,7 @@ else()
            gloo_context
            gloo_wrapper
            gloo
-           fs
-           shell)
+           framework_io)
     #set_tests_properties(heter_ccl_context_test PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
   if(WITH_XPU_BKCL)
@@ -33,17 +32,11 @@ endif()
 cc_test(
   test_gradient_accmulator
   SRCS test_gradient_accmulator.cc
-  DEPS memcpy selected_rows_utils gradient_accumulator phi phi_utils)
+  DEPS selected_rows_utils gradient_accumulator phi common phi_utils)
 cc_test(
   test_layer
   SRCS test_layer.cc
-  DEPS layer
-       proto_desc
-       operator
-       op_registry
-       variable_helper
-       mul_op
-       memcpy)
+  DEPS layer proto_desc operator op_registry variable_helper mul_op)
 cc_test(
   test_prepare_op
   SRCS test_prepare_op.cc
@@ -65,8 +58,7 @@ cc_test(
        variable_helper
        mul_op
        generated_static_op
-       elementwise_add_op
-       memcpy)
+       elementwise_add_op)
 cc_test(
   test_hooks
   SRCS test_hooks.cc
@@ -78,8 +70,7 @@ cc_test(
        op_registry
        variable_helper
        mul_op
-       elementwise_add_op
-       memcpy)
+       elementwise_add_op)
 cc_test(
   test_eager
   SRCS test_eager.cc
@@ -90,5 +81,5 @@ if(WITH_NCCL
   cc_test(
     test_group
     SRCS test_group.cc
-    DEPS reducer concat_and_split memcpy)
+    DEPS reducer concat_and_split)
 endif()

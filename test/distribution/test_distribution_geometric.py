@@ -59,37 +59,37 @@ class TestGeometric(unittest.TestCase):
         self._paddle_geom = geometric.Geometric(probs)
 
     def test_mean(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.mean,
-                scipy.stats.geom.mean(self.probs),
+                scipy.stats.geom.mean(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
     def test_variance(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.variance,
-                scipy.stats.geom.var(self.probs),
+                scipy.stats.geom.var(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
     def test_stddev(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.stddev,
-                scipy.stats.geom.std(self.probs),
+                scipy.stats.geom.std(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.entropy(),
-                scipy.stats.geom.entropy(self.probs),
+                scipy.stats.geom.entropy(self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
@@ -122,21 +122,21 @@ class TestGeometric(unittest.TestCase):
             )
 
     def test_sample(self):
-        sample_shape = (80000,)
+        sample_shape = (100000,)
         samples = self._paddle_geom.sample(sample_shape)
         sample_values = samples.numpy()
         self.assertEqual(sample_values.dtype, self.probs.dtype)
 
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
-            scipy.stats.geom.mean(self.probs),
-            rtol=0.7,
+            scipy.stats.geom.mean(self.probs, loc=-1),
+            rtol=0.1,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
         np.testing.assert_allclose(
             sample_values.var(axis=0),
-            scipy.stats.geom.var(self.probs),
-            rtol=0.7,
+            scipy.stats.geom.var(self.probs, loc=-1),
+            rtol=0.1,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
 
@@ -167,21 +167,21 @@ class TestGeometric(unittest.TestCase):
 
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
-            scipy.stats.geom.mean(self.probs),
-            rtol=0.7,
+            scipy.stats.geom.mean(self.probs, loc=-1),
+            rtol=0.1,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
         np.testing.assert_allclose(
             sample_values.var(axis=0),
-            scipy.stats.geom.var(self.probs),
-            rtol=0.7,
+            scipy.stats.geom.var(self.probs, loc=-1),
+            rtol=0.1,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
 
     def test_back_rsample(self):
         sample_shape = (100000,)
 
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self._paddle_geom.probs.stop_gradient = False
 
             rs_value = self._paddle_geom.rsample(sample_shape)
@@ -236,28 +236,28 @@ class TestGeometricPMF(unittest.TestCase):
         )
 
     def test_pmf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.pmf(self.value),
-                scipy.stats.geom.pmf(self.value, self.probs),
+                scipy.stats.geom.pmf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
     def test_log_pmf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.log_pmf(self.value),
-                scipy.stats.geom.logpmf(self.value, self.probs),
+                scipy.stats.geom.logpmf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
     def test_cdf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.cdf(self.value),
-                scipy.stats.geom.cdf(self.value, self.probs),
+                scipy.stats.geom.cdf(self.value, self.probs, loc=-1),
                 rtol=RTOL.get(str(self._paddle_geom.probs.numpy().dtype)),
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )

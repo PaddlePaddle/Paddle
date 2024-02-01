@@ -56,11 +56,11 @@ int GetDriverVersion() {
 
 //! Get the version of XPU Runtime
 int GetRuntimeVersion() {
-  uint32_t rumtime_version_major = 0;
-  uint32_t rumtime_version_minor = 0;
+  uint32_t runtime_version_major = 0;
+  uint32_t runtime_version_minor = 0;
   PADDLE_ENFORCE_XPU_SUCCESS(
-      xpu_get_runtime_version(&rumtime_version_major, &rumtime_version_minor));
-  int runtime_version = rumtime_version_major * 10 + rumtime_version_minor;
+      xpu_get_runtime_version(&runtime_version_major, &runtime_version_minor));
+  int runtime_version = runtime_version_major * 10 + runtime_version_minor;
   return runtime_version;
 }
 
@@ -195,9 +195,12 @@ XPUVersion get_xpu_version(int dev_id) {
   if (v == K100 || v == K200) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
     return XPU1;
-  } else {
+  } else if (v < KL3_BEGIN) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
     return XPU2;
+  } else {
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
+    return XPU3;
   }
 }
 
@@ -211,9 +214,12 @@ int get_xpu_max_ptr_size(int dev_id) {
     case XPUVersion::XPU2:
       max_ptr_size = 6;
       break;
+    case XPUVersion::XPU3:
+      max_ptr_size = 12;
+      break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Only support get max ptr size of XPU1 or XPU2."));
+          "Only support get max ptr size of XPU1, XPU2 or XPU3."));
       break;
   }
   return max_ptr_size;

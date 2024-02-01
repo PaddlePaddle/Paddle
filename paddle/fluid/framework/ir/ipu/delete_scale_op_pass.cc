@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/framework/ir/ipu/delete_scale_op_pass.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {

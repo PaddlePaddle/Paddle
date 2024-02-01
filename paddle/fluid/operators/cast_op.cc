@@ -37,9 +37,6 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
     AddAttr<int>("in_dtype", "input data type");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddComment(R"DOC(
 Cast Operator.
 
@@ -63,7 +60,6 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
   }
 };
 
@@ -80,7 +76,7 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor *x_grad = this->GetOutputPtr(&x_grad_t);
     std::string x_grad_name = this->GetOutputName(x_grad_t);
 
-    VLOG(6) << "Runing cast_grad composite func";
+    VLOG(6) << "Running cast_grad composite func";
     prim::cast_grad<prim::DescTensor>(x, out_grad, x_grad);
 
     this->RecoverOutputName(x_grad_t, x_grad_name);

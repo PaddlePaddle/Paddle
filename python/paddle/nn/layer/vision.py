@@ -66,7 +66,7 @@ class PixelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._upscale_factor = upscale_factor
@@ -132,7 +132,7 @@ class PixelUnshuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._downscale_factor = downscale_factor
@@ -211,7 +211,7 @@ class ChannelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._groups = groups

@@ -44,9 +44,9 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -75,9 +75,9 @@ TEST(SliceAssign, SliceAssign_Op) {
   std::vector<ir::Tensor> inputs{input.tensor(), assign.tensor()};
 
 #ifdef CINN_WITH_CUDA
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
 #else
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
 #endif
   auto impl = OpStrategy::SelectImpl(
       strategy(attrs, inputs, out_type, {output_shape}, target));
@@ -85,10 +85,10 @@ TEST(SliceAssign, SliceAssign_Op) {
   std::string func_name = "slice_assign";
 
   std::string out_name = "output";
-  common::CINNValuePack cinn_input =
-      common::CINNValuePack{{common::CINNValue(input.tensor()),
-                             common::CINNValue(assign.tensor()),
-                             common::CINNValue(out_name)}};
+  cinn::common::CINNValuePack cinn_input =
+      cinn::common::CINNValuePack{{cinn::common::CINNValue(input.tensor()),
+                                   cinn::common::CINNValue(assign.tensor()),
+                                   cinn::common::CINNValue(out_name)}};
   std::vector<std::string> input_output_names{"input", "assign", out_name};
 
   auto funcs = framework::GetFuncFromImpl(

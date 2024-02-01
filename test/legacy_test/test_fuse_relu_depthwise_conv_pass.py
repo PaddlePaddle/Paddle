@@ -19,7 +19,7 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def norm(*args, **kargs):
@@ -91,7 +91,7 @@ class TestMNIST(TestParallelExecutorBase):
             return optimizer
 
         if only_forward:
-            _optimizer = None  # noqa: F811
+            _optimizer = None
 
         (
             fuse_op_first_loss,

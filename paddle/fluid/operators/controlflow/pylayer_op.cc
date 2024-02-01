@@ -51,13 +51,34 @@ void PyLayerOp::CreateInterpreter(
         dev_place, block, cur_scope, execution_config));
     VLOG(10) << "[interpreterCore] created:" << core_;
   } else {
-    // NOTE: Borrowed from
-    // `paddle/fluid/operators/controlflow/control_flow_op_helper.h`
-    // TODO(MarioLulab): Add PyLayer Helper ?
     BuildScopeForControlFlowOp(*core_, block, cur_scope);
     core_->reset_scope(cur_scope);
   }
 }
+
+class PyLayerForwardOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput(PyLayerOp::kInputs, "The input variables of the sub-block.")
+        .AsDuplicable();
+    AddOutput(PyLayerOp::kOutputs, "The output variables of the sub-block.")
+        .AsDuplicable();
+    AddOutput(
+        PyLayerOp::kScope,
+        "(std::vector<Scope*>) The scope of static pylayer block, used for "
+        "passing intermediate variables between forward and backward.");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        "blocks",
+        "The blocks of PyLayer operator where blocks[0] indicates the forward "
+        "block and blocks[1] indicates the backward block.");
+    AddComment(R"DOC(PyLayer operator
+
+The PyLayer Operator is designed to support `@to_static` for `PyLayer in Dynamic Graph`.
+
+
+)DOC");
+  }
+};
 
 class PyLayerForwardOp : public PyLayerOp {
  public:
@@ -109,7 +130,7 @@ class PyLayerForwardOp : public PyLayerOp {
 class PyLayerForwardInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    // TODO(MarioLulab): do nothing.
+    // NOTE(MarioLulab): do nothing.
   }
 };
 
@@ -234,8 +255,9 @@ class PyLayerBackwardInferVarType : public framework::VarTypeInference {
                           "input_size and output_size should be equal for "
                           "pylayer_grad op."));
     for (size_t i = 0; i < backward_output_size; ++i) {
-      ctx->SyncTypeAndDataType(
-          PyLayerOp::kInputs, framework::GradVarName(PyLayerOp::kInputs), i);
+      ctx->SyncTypeAndDataType(PyLayerOp::kInputs,
+                               framework::GradVarName(PyLayerOp::kInputs),
+                               static_cast<int>(i));
     }
   }
 };

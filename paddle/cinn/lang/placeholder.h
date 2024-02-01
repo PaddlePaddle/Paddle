@@ -18,10 +18,11 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
@@ -38,6 +39,7 @@ class Placeholder {
  public:
   Placeholder(const std::string &name, const std::vector<int> &shape);
   Placeholder(const std::string &name, const std::vector<Expr> &shape);
+  Placeholder(const std::string &name, const std::vector<ir::Dim> &shape);
 
   //! Get a slice.
   // @{
@@ -64,6 +66,7 @@ class Placeholder {
   Expr Call(const std::vector<Expr> &indices) const;
 
   void Init(const std::string &name, const std::vector<Expr> &shape);
+  void Init(const std::string &name, const std::vector<ir::Dim> &shape);
 
   ir::Tensor tensor_;
 };
@@ -92,11 +95,21 @@ Placeholder<T>::Placeholder(const std::string &name,
   Init(name, shape);
 }
 
+template <typename T>
+Placeholder<T>::Placeholder(const std::string &name,
+                            const std::vector<ir::Dim> &shape) {
+  Init(name, shape);
+}
+
 ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
                              Type type,
                              const std::string &name);
 
 ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
+                             Type type,
+                             const std::string &name);
+
+ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
                              Type type,
                              const std::string &name);
 
@@ -112,7 +125,27 @@ void Placeholder<T>::Init(const std::string &name,
 
   std::vector<ir::Var> axis;
   for (int i = 0; i < shape.size(); i++)
-    axis.emplace_back(common::axis_name(i));
+    axis.emplace_back(cinn::common::axis_name(i));
+
+  auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
+
+  tensor_ = ir::Tensor(name, type_of<T>(), shape, shape, op, {});
+  Buffer buffer(tensor_->type());
+  tensor_->Bind(buffer);
+}
+
+template <typename T>
+void Placeholder<T>::Init(const std::string &name,
+                          const std::vector<ir::Dim> &shape) {
+  ir::Var buffer_ptr(Context::Global().NewName("buffer"));
+  buffer_ptr->set_type(type_of<T>());
+
+  std::vector<Expr> strides(shape.size(), Expr(1));
+  Expr offset(0);
+
+  std::vector<ir::Var> axis;
+  for (int i = 0; i < shape.size(); i++)
+    axis.emplace_back(cinn::common::axis_name(i));
 
   auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
 

@@ -22,7 +22,7 @@ import numpy as np
 from imperative_test_utils import ImperativeLenet
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.dataset.common import download
 from paddle.framework import set_flags
 from paddle.quantization import ImperativeQuantAware
@@ -68,8 +68,8 @@ class TestImperativeQatAmp(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 
@@ -197,7 +197,7 @@ class TestImperativeQatAmp(unittest.TestCase):
         )
         params_path += "/lenet_pretrained/lenet.pdparams"
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             model = ImperativeLenet()
             model_state_dict = paddle.load(params_path)
             model.set_state_dict(model_state_dict)

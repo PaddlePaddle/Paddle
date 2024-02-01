@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 namespace paddle {
 namespace platform {
-namespace errors = ::phi::errors;
-using error = ::phi::ErrorCode;
+namespace errors = ::common::errors;
+using error = ::common::ErrorCode;
 }  // namespace platform
 }  // namespace paddle

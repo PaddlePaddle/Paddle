@@ -64,10 +64,10 @@ struct FusedBroadcastOpHandle : public BroadcastOpHandle {
                          const std::vector<Scope *> local_scopes,
                          const std::vector<platform::Place> &places)
       : BroadcastOpHandle(node, local_scopes, places) {}
-  std::string Name() const override;
+  TEST_API std::string Name() const override;
 
  protected:
-  void RunImpl() override;
+  TEST_API void RunImpl() override;
 };
 
 }  // namespace details

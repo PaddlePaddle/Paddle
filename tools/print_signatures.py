@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.base" > signature.txt
 """
 
 import argparse
@@ -54,9 +54,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc
-            ),
+            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
 
@@ -88,7 +86,7 @@ def visit_all_module(mod):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:
@@ -319,9 +317,7 @@ def check_public_api():
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
             doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = "({}, ('document', '{}'))".format(
-                cur_name, doc_md5
-            )
+            member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
 
 
 def check_allmodule_callable():
@@ -353,7 +349,7 @@ def parse_args():
         dest='skipped',
         type=str,
         help='Skip Checking submodules',
-        default='paddle.fluid.libpaddle.eager.ops',
+        default='paddle.base.libpaddle.eager.ops',
     )
 
     if len(sys.argv) == 1:

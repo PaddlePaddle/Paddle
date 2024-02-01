@@ -50,9 +50,9 @@ Program CreateAddProgram() {
 
 TEST(TaskCreator, Basic) {
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);

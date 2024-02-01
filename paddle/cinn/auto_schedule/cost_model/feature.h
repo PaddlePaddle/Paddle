@@ -134,7 +134,7 @@ class Feature {
  public:
   Feature();
 
-  explicit Feature(const common::Target& target);
+  explicit Feature(const cinn::common::Target& target);
 
   // Convert the various-length loop block features to fixed-size vector
   std::vector<float> ToFixedSizeVector();
@@ -182,7 +182,7 @@ class Feature {
   int current_loop_block_index_;
   std::vector<int> parent_indices_;
 
-  common::Target target_;
+  cinn::common::Target target_;
 };
 
 }  // namespace auto_schedule

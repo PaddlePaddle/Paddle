@@ -49,6 +49,7 @@ PD_REGISTER_KERNEL(multiply,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    int,
                    int64_t) {}

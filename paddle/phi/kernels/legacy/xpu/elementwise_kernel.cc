@@ -121,19 +121,25 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
 PD_REGISTER_KERNEL(maximum_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaximumRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
 PD_REGISTER_KERNEL(minimum_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::MinimumRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
 PD_REGISTER_KERNEL(remainder_raw,
                    XPU,
                    ALL_LAYOUT,
@@ -147,4 +153,5 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -33,11 +33,13 @@ cinn_buffer_t *CreateBuffer(const std::vector<int> shape,
                             bool random = true,
                             int set_value = 0) {
   if (random) {
-    return common::BufferBuilder(Float(32), shape).set_random().Build();
+    return cinn::common::BufferBuilder(Float(32), shape).set_random().Build();
   } else if (set_value != 0) {
-    return common::BufferBuilder(Float(32), shape).set_val(set_value).Build();
+    return cinn::common::BufferBuilder(Float(32), shape)
+        .set_val(set_value)
+        .Build();
   }
-  return common::BufferBuilder(Float(32), shape).set_zero().Build();
+  return cinn::common::BufferBuilder(Float(32), shape).set_zero().Build();
 }
 
 TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
@@ -90,7 +92,7 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
 
   auto stages = CreateStages({call, out});
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   target.arch = Target::Arch::X86;
   ir::Module::Builder builder("module0", target);
 
@@ -109,16 +111,18 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
   // test with real data
   int o_h = (i_h - ((k_h - 1) * dilation_h + 1) + pad_h * 2) / stride_h + 1;
   int o_w = (i_w - ((k_w - 1) * dilation_w + 1) + pad_w * 2) / stride_w + 1;
-  auto *A_buf = common::BufferBuilder(Float(32), {n, c_in, i_h, i_w})
+  auto *A_buf = cinn::common::BufferBuilder(Float(32), {n, c_in, i_h, i_w})
                     .set_random()
                     .Build();
-  auto *B_buf = common::BufferBuilder(Float(32), {c_out, c_in, k_h, k_w})
+  auto *B_buf = cinn::common::BufferBuilder(Float(32), {c_out, c_in, k_h, k_w})
                     .set_random()
                     .Build();
-  auto *C_buf =
-      common::BufferBuilder(Float(32), {n, c_out, o_h, o_w}).set_zero().Build();
+  auto *C_buf = cinn::common::BufferBuilder(Float(32), {n, c_out, o_h, o_w})
+                    .set_zero()
+                    .Build();
 
-  auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
+  auto args =
+      cinn::common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
   fn_ptr(args.data(), args.size());
 

@@ -29,7 +29,7 @@ void CastKernel(const Context& dev_ctx,
   dnnl::memory::data_type in_dnnl_dtype = funcs::ToOneDNNDataType(in_dtype);
   dnnl::memory::data_type out_dnnl_dtype = funcs::ToOneDNNDataType(out_dtype);
 
-  auto x_tz = phi::vectorize(x.dims());
+  auto x_tz = common::vectorize(x.dims());
 
   funcs::ReorderOneDNNHandler reorder_handler(x_tz,
                                               in_dtype,

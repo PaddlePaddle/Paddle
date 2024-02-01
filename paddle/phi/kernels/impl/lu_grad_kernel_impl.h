@@ -109,7 +109,7 @@ void LUGradKernel(const Context& dev_ctx,
   std::vector<int64_t> axes = {xrank - 2, xrank - 1};
   std::vector<int64_t> slice_starts(2, 0);
   std::vector<int64_t> slice_ends(2, 0);
-  auto valuedims = vectorize(xdims);
+  auto valuedims = common::vectorize(xdims);
 
   DenseTensor Pmat;
   Unpack_Pivot<Context, T>(dev_ctx, pivots, &Pmat, m, k);

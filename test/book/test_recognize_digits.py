@@ -24,8 +24,8 @@ sys.path.append("../legacy_test")
 import nets
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -79,7 +79,7 @@ def train(
     params_filename=None,
     is_local=True,
 ):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
     img = paddle.static.data(name='img', shape=[-1, 1, 28, 28], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
@@ -94,14 +94,14 @@ def train(
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 
-    test_program = fluid.default_main_program().clone(for_test=True)
+    test_program = base.default_main_program().clone(for_test=True)
 
     optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
 
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
@@ -110,10 +110,10 @@ def train(
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE
     )
-    feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+    feeder = base.DataFeeder(feed_list=[img, label], place=place)
 
     def train_loop(main_program):
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -165,7 +165,7 @@ def train(
         raise AssertionError("Loss of recognize digits is too large")
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -196,11 +196,11 @@ def infer(
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
         # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
@@ -269,11 +269,11 @@ class TestRecognizeDigits(unittest.TestCase):
 
 def inject_test_method(use_cuda, parallel, nn_type, combine):
     def __impl__(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 main(use_cuda, parallel, nn_type, combine)
 
     fn = 'test_{}_{}_{}_{}'.format(

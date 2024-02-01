@@ -53,11 +53,11 @@ ir::Tensor GetTensor(
     return lang::Placeholder<double>(node_data->id(),
                                      shape_dict.at(node_data->id()));
   } else if (dtype.is_bfloat16()) {
-    return lang::Placeholder<common::bfloat16>(node_data->id(),
-                                               shape_dict.at(node_data->id()));
+    return lang::Placeholder<cinn::common::bfloat16>(
+        node_data->id(), shape_dict.at(node_data->id()));
   } else if (dtype.is_float16()) {
-    return lang::Placeholder<common::float16>(node_data->id(),
-                                              shape_dict.at(node_data->id()));
+    return lang::Placeholder<cinn::common::float16>(
+        node_data->id(), shape_dict.at(node_data->id()));
   } else if (dtype.is_bool()) {
     return lang::Placeholder<bool>(node_data->id(),
                                    shape_dict.at(node_data->id()));
@@ -546,7 +546,7 @@ bool WithoutLastDimInReduce(const std::vector<int>& shape,
 void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
                            const std::string& block_name,
                            const std::vector<int>& axes,
-                           const common::Target& target,
+                           const cinn::common::Target& target,
                            const bool just_reorder = false) {
   // reorder none-last reduce axis to last.
   // like: shape = [16,16,16,16,16],axes = [1,3] -> new order = [0, 2, 4, 1, 3].
@@ -597,7 +597,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                  const std::string& block_name,
                                  const std::vector<int>& inshape,
                                  const std::vector<int>& axes,
-                                 const common::Target& target) {
+                                 const cinn::common::Target& target) {
   int tail = 0;
   bool bound = true;
   auto shape = pe::GetFirstStepReduceShape(inshape, axes, bound, tail);
@@ -711,11 +711,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
                               const std::string& block_name,
                               const std::vector<int>& inshape,
                               const std::vector<int>& axes,
-                              const common::Target& target) {
+                              const cinn::common::Target& target) {
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -1046,7 +1046,7 @@ void LoopAssignReduce(
     auto first_reduce_loop = rloops.front();
     // collect if
     auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
-    auto if_set = ir::CollectIRNodesWithoutTensor(
+    auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(
         first_reduce_loop.As<ir::For>()->body, if_checker);
     std::string reduce_block_name = reducer_data->id();
     for (auto if_expr : if_set) {
@@ -1056,10 +1056,11 @@ void LoopAssignReduce(
                        ->schedule_block.As<ir::ScheduleBlock>()
                        ->name == reduce_block_name;
       };
-      auto blocks_in_if = ir::CollectIRNodesWithoutTensor(if_expr, checker);
+      auto blocks_in_if =
+          ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker);
       if (!blocks_in_if.empty()) {
         ir::Expr condition = if_expr.As<ir::IfThenElse>()->condition;
-        auto indices_in_if = ir::CollectIRNodesWithoutTensor(
+        auto indices_in_if = ir::ir_utils::CollectIRNodesWithoutTensor(
             condition, [](const Expr* x) { return x->As<ir::_Var_>(); });
         for (int i = 0; i < rloops.size(); ++i) {
           std::string var_name = rloops[i].As<ir::For>()->loop_var->name;
@@ -1536,8 +1537,8 @@ void MergeReduceLoop(
     auto dst_loops = ir_sch.GetLoops(tensor_->name);
     auto src_loops = ir_sch.GetLoops(tensor__->name);
     int index = -1;
-    while (src_loops[index + 1].As<ir::For>()->extent.as_int32() ==
-           dst_loops[index + 1].As<ir::For>()->extent.as_int32()) {
+    while (src_loops[index + 1].As<ir::For>()->extent.as_int64() ==
+           dst_loops[index + 1].As<ir::For>()->extent.as_int64()) {
       ++index;
       if (src_loops.size() == index + 1 || dst_loops.size() == index + 1) {
         break;
@@ -1660,8 +1661,8 @@ void LoopComputeAt(
   int index = std::min(node_loops.size(), master_loops.size()) - 1;
   do {
     // if loop range is not equal.
-    if (node_loops[index].As<ir::For>()->extent.as_int32() !=
-        master_loops[index].As<ir::For>()->extent.as_int32()) {
+    if (node_loops[index].As<ir::For>()->extent.as_int64() !=
+        master_loops[index].As<ir::For>()->extent.as_int64()) {
       continue;
     }
     MergeLoops(

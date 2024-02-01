@@ -28,7 +28,7 @@ void GaussianKernel(const Context& ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T* data = ctx.template Alloc<T>(out);
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t real_seed = seed != 0 ? seed : ctx.GetGenerator()->Random64();
@@ -50,4 +50,5 @@ PD_REGISTER_KERNEL(gaussian,
                    ALL_LAYOUT,
                    phi::GaussianKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

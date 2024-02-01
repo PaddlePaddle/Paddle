@@ -14,15 +14,12 @@
 
 import sys
 
-from paddle import fluid
+from paddle import base
 
-print("compile with cuda:", fluid.core.is_compiled_with_cuda())
-print("get_cuda_device_count:", fluid.core.get_cuda_device_count())
+print("compile with cuda:", base.core.is_compiled_with_cuda())
+print("get_cuda_device_count:", base.core.get_cuda_device_count())
 
-if (
-    fluid.core.is_compiled_with_cuda()
-    and fluid.core.get_cuda_device_count() > 0
-):
+if base.core.is_compiled_with_cuda() and base.core.get_cuda_device_count() > 0:
     sys.exit(0)
 else:
     sys.exit(1)

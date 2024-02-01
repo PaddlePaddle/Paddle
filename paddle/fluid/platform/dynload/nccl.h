@@ -31,6 +31,7 @@ namespace dynload {
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
@@ -42,6 +43,7 @@ namespace dynload {
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
+  __macro(ncclCommGetAsyncError);       \
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)

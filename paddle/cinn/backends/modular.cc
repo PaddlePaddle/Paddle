@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/backends/modular.h"
 
-#include "paddle/cinn/ir/utils/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace backends {

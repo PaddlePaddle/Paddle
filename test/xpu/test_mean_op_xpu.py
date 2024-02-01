@@ -18,7 +18,7 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import Program, program_guard
+from paddle.base import Program, program_guard
 
 np.random.seed(10)
 

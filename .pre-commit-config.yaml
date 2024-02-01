@@ -36,7 +36,7 @@ repos:
         # Exclude some unit test files that require tabs.
         exclude: |
             (?x)^(
-                test/dygraph_to_static/test_error.py
+                test/dygraph_to_static/test_legacy_error.py
             )$
 -   repo: local
     hooks:
@@ -56,28 +56,16 @@ repos:
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
--   repo: https://github.com/pycqa/isort
-    rev: 5.11.5
-    hooks:
-    -   id: isort
 -   repo: https://github.com/PyCQA/flake8
     rev: 5.0.4
     hooks:
     -   id: flake8
         args: ["--config=.flake8"]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.272
+    rev: v0.1.5
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
--   repo: local
-    hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
 # For C++ files
 -   repo: local
     hooks:
@@ -94,9 +82,9 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
-            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
         # Exclude third-party libraries
@@ -155,8 +143,18 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
--   repo: https://github.com/cmake-lint/cmake-lint
-    rev: 1.4.2
+-   repo: https://github.com/PFCCLab/cmake-lint-paddle
+    rev: v1.5.1
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
+# Others
+-   repo: local
+    hooks:
+    -   id: sort-txt-file
+        name: sort-txt-file
+        description: Sorts each line string in a text file
+        entry: python ./tools/codestyle/sort_txt_file.py
+        language: python
+        files: test/white_list/pir_op_test_white_list
+        args: []

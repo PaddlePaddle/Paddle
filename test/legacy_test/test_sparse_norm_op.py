@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, sparse
+from paddle import base, sparse
 from paddle.sparse import nn
 
 
@@ -157,8 +157,8 @@ class TestSyncBatchNorm(unittest.TestCase):
             nn.BatchNorm(5),
             nn.BatchNorm(
                 5,
-                weight_attr=fluid.ParamAttr(name='bn.scale'),
-                bias_attr=fluid.ParamAttr(name='bn.bias'),
+                weight_attr=base.ParamAttr(name='bn.scale'),
+                bias_attr=base.ParamAttr(name='bn.bias'),
             ),
         )
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -72,8 +73,8 @@ static int CalculateInvVar(xpu::Context *ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         const DenseTensor &scale,
-                         const DenseTensor &bias,
+                         const paddle::optional<DenseTensor> &scale,
+                         const paddle::optional<DenseTensor> &bias,
                          const paddle::optional<DenseTensor> &mean,
                          const paddle::optional<DenseTensor> &variance,
                          const DenseTensor &saved_mean,
@@ -98,7 +99,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                         "But recevived 'data_layout' is [%s].",
                         data_layout));
 
-  const auto data_layout_val = phi::StringToDataLayout(data_layout);
+  const auto data_layout_val = common::StringToDataLayout(data_layout);
 
   use_global_stats = is_test || use_global_stats;
 
@@ -133,9 +134,27 @@ void BatchNormGradKernel(const Context &dev_ctx,
 
   W = W * D;
 
+  auto *Scale = scale.get_ptr();
+  auto *Bias = bias.get_ptr();
+
+  phi::DenseTensor new_scale;
+  phi::DenseTensor new_bias;
+
+  if (Scale) {
+    new_scale = scale.get();
+  } else {
+    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+  }
+
+  if (Bias) {
+    new_bias = bias.get();
+  } else {
+    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+  }
+
   const auto *x_data = reinterpret_cast<const XPUType *>(x.data<T>());
   const auto *d_y_data = reinterpret_cast<const XPUType *>(y_grad.data<T>());
-  const auto *scale_data = scale.data<float>();
+  const auto *scale_data = new_scale.data<float>();
 
   // init output
   XPUType *x_grad_data = nullptr;
@@ -151,22 +170,22 @@ void BatchNormGradKernel(const Context &dev_ctx,
   }
 
   PADDLE_ENFORCE_EQ(
-      scale.dims().size(),
+      new_scale.dims().size(),
       1UL,
       phi::errors::InvalidArgument(
           "The size of scale's dimensions must equal to 1. But received: "
           "the size of scale's dimensions is [%d], the dimensions of scale "
           "is [%s].",
-          scale.dims().size(),
-          scale.dims()));
+          new_scale.dims().size(),
+          new_scale.dims()));
   PADDLE_ENFORCE_EQ(
-      scale.dims()[0],
+      new_scale.dims()[0],
       C,
       phi::errors::InvalidArgument(
           "The first dimension of scale must equal to Channels[%d]. But "
           "received: the first dimension of scale is [%d]",
           C,
-          scale.dims()[0]));
+          new_scale.dims()[0]));
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
@@ -203,8 +222,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                        : saved_mean.data<float>();
     r = CalculateInvBNY(dev_ctx.x_context(),
                         x_fp32_data,
-                        scale.data<float>(),
-                        bias.data<float>(),
+                        new_scale.data<float>(),
+                        new_bias.data<float>(),
                         mean_data,
                         inv_std_data,
                         N,

@@ -32,11 +32,14 @@ limitations under the License. */
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 
 // original custom op headers
 #include "paddle/phi/api/ext/dispatch.h"
-#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/ext/tensor_compat.h"
+
+// common headers
+#include "paddle/common/ddim.h"
+#include "paddle/common/exception.h"
+#include "paddle/common/layout.h"

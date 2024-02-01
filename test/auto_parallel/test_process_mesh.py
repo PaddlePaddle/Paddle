@@ -135,7 +135,7 @@ class TestProcessMesh(unittest.TestCase):
         with ProcessMesh(mesh, ["d"]):
             out = mlp(input)
 
-        default_program = paddle.fluid.default_main_program()
+        default_program = paddle.base.default_main_program()
         default_dist_context = get_default_distributed_context()
 
         for block in default_program.blocks:
@@ -196,11 +196,11 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
 
         merged_process_mesh = merge_process_meshes(
-            [process_mesh1, paddle.fluid.core.ProcessMesh()]
+            [process_mesh1, paddle.base.core.ProcessMesh()]
         )
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
         merged_process_mesh = merge_process_meshes(
-            [paddle.fluid.core.ProcessMesh(), process_mesh1]
+            [paddle.base.core.ProcessMesh(), process_mesh1]
         )
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
 
@@ -223,6 +223,20 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(
             merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
         )
+
+    def test_get_rank_and_dim_size(self):
+        mesh = ProcessMesh([[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"])
+        self.assertEqual(mesh.get_dim_size("x"), 2)
+        self.assertEqual(mesh.get_dim_size(0), 2)
+        self.assertEqual(mesh.get_dim_size("y"), 3)
+        self.assertEqual(mesh.get_dim_size(1), 3)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id(None, 0), 0)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id(None, 8), -1)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id('x', 2), 0)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id(0, 4), 1)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id('y', 3), 0)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id('y', 4), 1)
+        self.assertEqual(mesh.get_rank_by_dim_and_process_id(1, 5), 2)
 
 
 if __name__ == "__main__":

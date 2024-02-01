@@ -19,13 +19,13 @@
 #include <string>
 #include <utility>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
-#include "paddle/phi/common/layout.h"
 
 namespace paddle {
 namespace imperative {

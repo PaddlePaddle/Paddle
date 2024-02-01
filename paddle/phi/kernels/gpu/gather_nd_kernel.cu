@@ -18,7 +18,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
 
 namespace phi {
 
@@ -29,6 +28,7 @@ void GatherNdKernel(const Context &ctx,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
   if (x.numel() == 0) return;
+  if (index.dims()[0] == 0 && index.numel() == 0) return;
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
@@ -53,11 +53,15 @@ PD_REGISTER_KERNEL(gather_nd,
                    GPU,
                    ALL_LAYOUT,
                    phi::GatherNdKernel,
+                   bool,
                    float,
                    double,
-                   int64_t,
                    int,
+                   int8_t,
+                   int64_t,
                    int16_t,
-                   bool,
+                   uint8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

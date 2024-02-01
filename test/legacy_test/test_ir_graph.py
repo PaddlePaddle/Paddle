@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestIRGraph(unittest.TestCase):
@@ -51,23 +51,23 @@ class TestIRGraph(unittest.TestCase):
         self.assertFalse(graph.has("test"))
 
     def test_create_var_node(self):
-        prog = fluid.core.ProgramDesc()
+        prog = base.core.ProgramDesc()
         block = prog.block(0)
         shape = [10, 20]
         x1 = block.var(b'x1')
-        x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_type(base.core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
-        graph = fluid.core.Graph(prog)
+        graph = base.core.Graph(prog)
         node = graph.create_var_node(x1)
-        self.assertTrue(node.node_type() == fluid.core.Node.Type.Variable)
+        self.assertTrue(node.node_type() == base.core.Node.Type.Variable)
 
     def test_create_op_node(self):
-        prog = fluid.core.ProgramDesc()
+        prog = base.core.ProgramDesc()
         block = prog.block(0)
         sum_op_desc = block.append_op()
-        graph = fluid.core.Graph(prog)
+        graph = base.core.Graph(prog)
         node = graph.create_op_node(sum_op_desc)
-        self.assertTrue(node.node_type() == fluid.core.Node.Type.Operation)
+        self.assertTrue(node.node_type() == base.core.Node.Type.Operation)
 
     def test_create_control_dep_var(self):
         graph = build_graph()
@@ -76,11 +76,11 @@ class TestIRGraph(unittest.TestCase):
         self.assertTrue(node.name() == name)
 
     def test_create_empty_node(self):
-        prog = fluid.core.ProgramDesc()
-        graph = fluid.core.Graph(prog)
-        n1 = graph.create_empty_node('x', fluid.core.Node.Type.Operation)
+        prog = base.core.ProgramDesc()
+        graph = base.core.Graph(prog)
+        n1 = graph.create_empty_node('x', base.core.Node.Type.Operation)
         self.assertTrue(n1.name() == 'x')
-        n2 = graph.create_empty_node('y', fluid.core.Node.Type.Variable)
+        n2 = graph.create_empty_node('y', base.core.Node.Type.Variable)
         self.assertTrue(n2.name() == 'y')
 
     def test_release_nodes(self):
@@ -117,21 +117,21 @@ class TestIRGraph(unittest.TestCase):
 
 
 def build_graph():
-    prog = fluid.core.ProgramDesc()
+    prog = base.core.ProgramDesc()
     block = prog.block(0)
 
     shape = [10, 20]
 
     # prepare input/output
     x1 = block.var(b'x1')
-    x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+    x1.set_type(base.core.VarDesc.VarType.LOD_TENSOR)
     x1.set_shape(shape)
     x2 = block.var(b'x2')
-    x2.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+    x2.set_type(base.core.VarDesc.VarType.LOD_TENSOR)
     x2.set_shape(shape)
 
     out = block.var(b'out')
-    out.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
+    out.set_type(base.core.VarDesc.VarType.LOD_TENSOR)
 
     sum_op_desc = block.append_op()
     sum_op_desc.set_type("sum")
@@ -140,7 +140,7 @@ def build_graph():
 
     sum_op_desc.check_attrs()
     sum_op_desc.infer_shape(block)
-    graph = fluid.core.Graph(prog)
+    graph = base.core.Graph(prog)
     return graph
 
 

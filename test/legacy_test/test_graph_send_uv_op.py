@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def compute_graph_send_uv(inputs, attributes):
@@ -63,10 +64,10 @@ class TestGraphSendUVOp(OpTest):
         self.outputs = {'out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out')
+        self.check_grad(['x', 'y'], 'out', check_pir=True)
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -194,6 +195,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
                 ),
             )
 
+    @test_with_pir_api
     def test_compute_all_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

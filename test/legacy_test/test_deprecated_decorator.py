@@ -19,22 +19,19 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
 from paddle.utils import deprecated
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 
 # custom paddle version
-paddle.version.major = '1'
-paddle.version.minor = '8'
+paddle.version.major = '0'
+paddle.version.minor = '0'
 paddle.version.patch = '0'
 paddle.version.rc = '0'
-paddle.__version__ = '1.8.0'
-paddle.version.full_version = '1.8.0'
+paddle.__version__ = '0.0.0'
+paddle.version.full_version = '0.0.0'
 print("current paddle version: ", paddle.__version__)
-
-paddle.disable_static()
 
 
 def get_warning_index(api):
@@ -49,22 +46,25 @@ def get_warning_index(api):
         index (int): the index of the Warinng information in its doc string if exists.
     """
 
-    doc_lst = api.__doc__.splitlines()
-    for idx, val in enumerate(doc_lst):
+    doc_list = api.__doc__.splitlines()
+    if len(doc_list) < 2:
+        return ERROR_WARNING_POSTION
+    for idx, (current_line, next_line) in enumerate(
+        zip(doc_list[:-1], doc_list[1:])
+    ):
         if (
-            val.startswith("Warning: ")
-            and val.endswith(" instead.")
-            and "and will be removed in future versions." in val
+            current_line == "Warning:"
+            and next_line.endswith(" instead.")
+            and "and will be removed in future versions." in next_line
         ):
             return idx
     return ERROR_WARNING_POSTION
 
 
-class TestDeprecatedDocorator(unittest.TestCase):
+class TestDeprecatedDecorator(unittest.TestCase):
     """
-    tests for paddle's Deprecated Docorator.
+    tests for paddle's deprecated decorator.
     test_new_multiply: test for new api, which should not insert warning information.
-    test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
 
     def test_new_multiply(self):
@@ -87,26 +87,15 @@ class TestDeprecatedDocorator(unittest.TestCase):
         # testting
         self.assertLess(expected, captured)
 
-    def test_ops_elementwise_mul(self):
-        """
-        Test for new C++ elementwise_op, expected result should be True,
-        because not matter what fluid.layers.elementwise_mul is deprecated.
-        """
-
-        a = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        b = np.random.uniform(0.1, 1, [51, 76]).astype(np.float32)
-        x = paddle.to_tensor(a)
-        y = paddle.to_tensor(b)
-        res = _legacy_C_ops.elementwise_mul(x, y)
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(paddle.multiply)
-
-        # testting
-        self.assertGreater(expected, captured)
+    def test_indent_level(self):
+        # test for different indent_level
+        dataset = paddle.base.DatasetFactory().create_dataset("InMemoryDataset")
+        with warnings.catch_warnings(record=True):
+            dataset.set_merge_by_lineid()
+            assert (
+                '\nSet merge by'
+                in paddle.base.InMemoryDataset.set_merge_by_lineid.__doc__
+            )
 
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
@@ -118,7 +107,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             grad = x.gradient()
             assert (
-                'API "paddle.fluid.dygraph.tensor_patch_methods.gradient" is '
+                'API "paddle.base.dygraph.tensor_patch_methods.gradient" is '
                 'deprecated since 2.1.0'
             ) in str(w[-1].message)
 

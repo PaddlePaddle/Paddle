@@ -13,10 +13,10 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

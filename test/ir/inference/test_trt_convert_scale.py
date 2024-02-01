@@ -113,6 +113,9 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                                             )
                                         },
                                         outputs=["scale_out"],
+                                        no_cast_list=["scale_input"]
+                                        if is_int
+                                        else [],
                                     )
 
                                     yield program_config

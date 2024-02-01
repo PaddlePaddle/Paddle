@@ -17,21 +17,24 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Executor, append_backward
 from paddle.static.nn.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
     def test_forward(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             data.stop_gradient = False
             cond = ConditionalBlock(inputs=[data])
-            out = paddle.tensor.create_tensor(dtype='float32')
+            out = paddle.tensor.fill_constant(
+                [10, 10], dtype='float32', value=0.0
+            )
+            out.stop_gradient = False
             with cond.block():
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 paddle.assign(hidden, out)
@@ -43,7 +46,6 @@ class ConditionalBlockTest(unittest.TestCase):
             x = np.random.random(size=(10, 1)).astype('float32')
 
             outs = exe.run(main_program, feed={'X': x}, fetch_list=[out])[0]
-            print(outs)
             loss = paddle.mean(out)
             append_backward(loss=loss)
             outs = exe.run(
@@ -51,14 +53,13 @@ class ConditionalBlockTest(unittest.TestCase):
                 feed={'X': x},
                 fetch_list=[main_program.block(0).var(data.name + "@GRAD")],
             )[0]
-            print(outs)
 
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):
     def test_infer_shape(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             global_block = main_program.global_block()
             sub_block = main_program._create_block()
             main_program._rollback()

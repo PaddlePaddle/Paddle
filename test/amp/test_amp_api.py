@@ -20,7 +20,7 @@ from amp_base_models import AmpTestBase
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import amp
 
 
@@ -162,7 +162,7 @@ class TestGradScaler(AmpTestBase):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
 
         self.assertEqual(scaler._enable, False)
         self.assertEqual(scaler._use_dynamic_loss_scaling, False)
@@ -176,7 +176,7 @@ class TestGradScaler(AmpTestBase):
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestFp16Guard(AmpTestBase):
-    def test_fp16_gurad(self):
+    def test_fp16_guard(self):
         paddle.enable_static()
 
         def run_example_code():
@@ -221,7 +221,7 @@ class TestFp16Guard(AmpTestBase):
                     use_dynamic_loss_scaling=True,
                     use_pure_fp16=True,
                 )
-                # If you don't use the default_startup_program(), you sholud pass
+                # If you don't use the default_startup_program(), you should pass
                 # your defined `startup_program` into `minimize`.
                 optimizer.minimize(loss)
 
@@ -281,7 +281,7 @@ class SimpleModelIncludeSetValue(nn.Layer):
 class TestDy2STWithSetValue(AmpTestBase):
     def test_op_called_as_expected(self):
         expected_fp16_calls = {
-            "cast": 0,
+            "cast": 1,
             "layer_norm": 1,
             "scale": 3,
             "set_value": 1,
@@ -289,7 +289,7 @@ class TestDy2STWithSetValue(AmpTestBase):
 
         func = SimpleModelIncludeSetValue()
         func = paddle.amp.decorate(func, level='O2')
-        func = paddle.jit.to_static(func)
+        func = paddle.jit.to_static(func, full_graph=True)
         input = paddle.randn((2, 3))
 
         with paddle.amp.auto_cast(level='O2'):

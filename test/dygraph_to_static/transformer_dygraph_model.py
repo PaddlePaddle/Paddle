@@ -16,9 +16,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.jit.api import dygraph_to_static_func
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.nn import Layer, Linear
 
 
@@ -29,9 +28,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )
@@ -58,10 +55,10 @@ class PrePostProcessLayer(Layer):
                         "layer_norm_%d" % len(list(self.children())),
                         paddle.nn.LayerNorm(
                             normalized_shape=d_model,
-                            weight_attr=fluid.ParamAttr(
+                            weight_attr=base.ParamAttr(
                                 initializer=paddle.nn.initializer.Constant(1.0)
                             ),
-                            bias_attr=fluid.ParamAttr(
+                            bias_attr=base.ParamAttr(
                                 initializer=paddle.nn.initializer.Constant(0.0)
                             ),
                         ),
@@ -104,25 +101,25 @@ class MultiHeadAttention(Layer):
             in_features=d_model,
             out_features=d_key * n_head,
             bias_attr=False,
-            weight_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=base.ParamAttr(initializer=param_initializer),
         )
         self.k_fc = Linear(
             in_features=d_model,
             out_features=d_key * n_head,
             bias_attr=False,
-            weight_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=base.ParamAttr(initializer=param_initializer),
         )
         self.v_fc = Linear(
             in_features=d_model,
             out_features=d_value * n_head,
             bias_attr=False,
-            weight_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=base.ParamAttr(initializer=param_initializer),
         )
         self.proj_fc = Linear(
             in_features=d_value * n_head,
             out_features=d_model,
             bias_attr=False,
-            weight_attr=fluid.ParamAttr(initializer=param_initializer),
+            weight_attr=base.ParamAttr(initializer=param_initializer),
         )
 
     def forward(self, queries, keys, values, attn_bias, cache=None):
@@ -289,7 +286,7 @@ class Embedder(Layer):
         self.word_embedder = paddle.nn.Embedding(
             vocab_size,
             emb_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
@@ -324,7 +321,7 @@ class WrapEncoder(Layer):
         self.pos_encoder = paddle.nn.Embedding(
             max_length,
             self.emb_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -516,7 +513,7 @@ class WrapDecoder(Layer):
         self.pos_encoder = paddle.nn.Embedding(
             max_length,
             self.emb_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -681,7 +678,6 @@ class Transformer(Layer):
         self.d_key = d_key
         self.d_value = d_value
 
-    @dygraph_to_static_func
     def forward(
         self,
         src_word,
@@ -698,7 +694,6 @@ class Transformer(Layer):
         )
         return predict
 
-    @dygraph_to_static_func
     def beam_search(
         self,
         src_word,

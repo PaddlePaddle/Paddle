@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 
 
 def apply_to_static(net, use_cinn):

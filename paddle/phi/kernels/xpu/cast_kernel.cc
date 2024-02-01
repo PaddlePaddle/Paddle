@@ -33,11 +33,41 @@ void CastXPUKernelImpl(const Context& dev_ctx,
     return;
   }
 
+  if (std::is_same<InT, OutT>::value) {
+    int ret = xpu::copy(dev_ctx.x_context(),
+                        reinterpret_cast<const int8_t*>(in_data),
+                        reinterpret_cast<int8_t*>(out_data),
+                        x.numel() * phi::SizeOf(x.dtype()));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+    return;
+  }
+
+  if (std::is_same<InT, dtype::bfloat16>::value &&
+          !std::is_same<OutT, float>::value ||
+      !std::is_same<InT, float>::value &&
+          std::is_same<OutT, dtype::bfloat16>::value) {
+    // bfloat -> non float, or non float -> bfloat, use float buffer
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    float* cast_buffer = RAII_GUARD.alloc_l3_or_gm<float>(numel);
+    // step 1: InT to float
+    int r = xpu::cast<XPUInT, float>(dev_ctx.x_context(),
+                                     reinterpret_cast<const XPUInT*>(in_data),
+                                     cast_buffer,
+                                     numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    // step 2: float to OutT
+    r = xpu::cast<float, XPUOutT>(dev_ctx.x_context(),
+                                  cast_buffer,
+                                  reinterpret_cast<XPUOutT*>(out_data),
+                                  numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  }
+
   int r = xpu::cast<XPUInT, XPUOutT>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUInT*>(in_data),
                                      reinterpret_cast<XPUOutT*>(out_data),
                                      numel);
-
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 }
 
@@ -55,6 +85,9 @@ void CastKernel(const Context& dev_ctx,
       break;
     case DataType::FLOAT16:
       CastXPUKernelImpl<T, dtype::float16, Context>(dev_ctx, x, out);
+      break;
+    case DataType::BFLOAT16:
+      CastXPUKernelImpl<T, dtype::bfloat16, Context>(dev_ctx, x, out);
       break;
     case DataType::INT64:
       CastXPUKernelImpl<T, int64_t, Context>(dev_ctx, x, out);
@@ -85,6 +118,7 @@ PD_REGISTER_KERNEL(cast,
                    int32_t,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t,
                    bool,
                    int8_t,

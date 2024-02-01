@@ -30,7 +30,7 @@ static DenseTensor Fill(const Context& ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(common::make_ddim(shape));
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
@@ -53,7 +53,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out;
   out.ShareDataWith(x);
-  std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+  std::vector<int> out_shape = common::vectorize<int>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -61,7 +61,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(phi::make_ddim(out_shape));
+  out.Resize(common::make_ddim(out_shape));
   return out;
 }
 

@@ -16,10 +16,10 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -48,6 +48,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.init_fuse_activation()
         self.init_fuse_residual()
         self.init_data_type()
+        self.check_pir_onednn = True
 
         conv2d_param = {
             'stride': self.stride,
@@ -148,11 +149,11 @@ class TestConv2DInt8Op(TestConv2DOp):
         output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input.astype(self.srctype)),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         if self.fuse_residual:
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
 
@@ -184,7 +185,10 @@ class TestConv2DInt8Op(TestConv2DOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         # the atol for integer tests should be 1
         self.check_output_with_place(
-            core.CPUPlace(), atol=1, check_dygraph=False
+            core.CPUPlace(),
+            atol=1,
+            check_dygraph=False,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):

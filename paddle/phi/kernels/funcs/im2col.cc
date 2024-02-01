@@ -137,7 +137,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
-            int im_offset;
+            int im_offset = 0;
             if (data_layout != DataLayout::kNHWC) {
               im_offset =
                   (c_im * im_height + im_row_idx) * im_width + im_col_idx;
@@ -160,12 +160,24 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::CPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -331,11 +343,23 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<float>>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::CPUContext,
+                             phi::dtype::complex<double>>;
 }  // namespace funcs
 }  // namespace phi

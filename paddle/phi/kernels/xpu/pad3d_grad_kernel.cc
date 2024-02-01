@@ -34,7 +34,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
 
   auto* d_out = &out_grad;
   auto* d_in = x_grad;
-  auto d_in_dims = vectorize<int>(d_in->dims());
+  auto d_in_dims = common::vectorize<int>(d_in->dims());
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
 

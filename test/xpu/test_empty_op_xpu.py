@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()
 
@@ -58,6 +58,7 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
                 'uint8',
                 'float16',
                 'int16',
+                'uint16',
             ]:
                 max_value = np.nanmax(outs[0])
                 min_value = np.nanmin(outs[0])

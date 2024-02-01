@@ -17,8 +17,10 @@ import logging
 from abc import ABC, abstractmethod
 
 from ..utils import get_logger, is_recompute_op
-from .trial import OptimizationTunerTrial as Trial
-from .trial import TrialStatus
+from .trial import (
+    OptimizationTunerTrial as Trial,
+    TrialStatus,
+)
 
 
 class AlgorithmBase(ABC):
@@ -199,9 +201,7 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
                 new_strategy = copy.deepcopy(self._config.dist_strategy)
                 recompute = new_strategy.recompute
                 recompute.no_recompute_segments.extend(new_no_recompute)
-                name = "trial-recompute-part-segments-idx{}".format(
-                    self._trial_idx
-                )
+                name = f"trial-recompute-part-segments-idx{self._trial_idx}"
                 return Trial(new_strategy, name, self.changed_configs)
         else:
             return Trial(None, None, None, status=TrialStatus.STOPPED)

@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestUnStackOpBase(OpTest):
@@ -60,10 +61,10 @@ class TestUnStackOpBase(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names())
+        self.check_grad(['X'], self.get_y_names(), check_pir=True)
 
 
 class TestUnStackFP16Op(TestUnStackOpBase):
@@ -112,6 +113,54 @@ class TestStackOp5(TestUnStackOpBase):
 
 class TestStackOp6(TestUnStackOpBase):
     def initParameters(self):
+        self.axis = 2
+
+
+class TestStackOp3_Complex64(TestStackOp3):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = -1
+
+
+class TestStackOp4_complex64(TestStackOp4):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = -3
+
+
+class TestStackOp5_complex64(TestStackOp5):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = 1
+
+
+class TestStackOp6_complex64(TestStackOp6):
+    def initParameters(self):
+        self.dtype = np.complex64
+        self.axis = 2
+
+
+class TestStackOp3_Complex128(TestStackOp3):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = -1
+
+
+class TestStackOp4_complex128(TestStackOp4):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = -3
+
+
+class TestStackOp5_complex128(TestStackOp5):
+    def initParameters(self):
+        self.dtype = np.complex128
+        self.axis = 1
+
+
+class TestStackOp6_complex128(TestStackOp6):
+    def initParameters(self):
+        self.dtype = np.complex128
         self.axis = 2
 
 
@@ -164,10 +213,10 @@ class TestUnStackBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(self.inputs['X'])
             x.stop_gradient = False
             y = paddle.unstack(
@@ -181,17 +230,35 @@ class TestUnStackBF16Op(OpTest):
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
+    @test_with_pir_api
     def unstack_zero_input_static(self):
         paddle.enable_static()
 
-        array = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
-        paddle.unstack(x, axis=1)
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                data = np.random.random([0]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.random([0]) + 1j * np.random.random([0])
+                    ).astype(dtype)
+                x = paddle.static.data(shape=[0], dtype=dtype, name='x')
+                paddle.unstack(x, axis=1)
 
     def unstack_zero_input_dynamic(self):
-        array = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
-        paddle.unstack(x, axis=1)
+        paddle.disable_static()
+        dtypes = ['float32', 'complex64', 'complex128']
+        for dtype in dtypes:
+            with base.dygraph.guard():
+                data = np.random.random([0]).astype(dtype)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.random([0]) + 1j * np.random.random([0])
+                    ).astype(dtype)
+                x = base.dygraph.to_variable(data)
+                paddle.unstack(x, axis=1)
 
     def test_type_error(self):
         paddle.disable_static()

@@ -15,11 +15,11 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
@@ -86,7 +86,7 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(phi::make_ddim(output_shape));
+    output_.Resize(common::make_ddim(output_shape));
   }
   void PrepareShapeInput(const std::vector<int> &input) {
     paddle::framework::TensorFromVector(input, *ctx_, &shape_);
@@ -131,10 +131,13 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   std::vector<int> shape_v = {8, 8, 4};
   PrepareInputOutput(x_v, {8, 8, 4});
   PrepareShapeInput(shape_v);
+#if IS_TRT_VERSION_GE(8500)
+  engine_->context()->setInputShape("input", nvinfer1::Dims2{8, 32});
+#else
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims2{8, 32});
   engine_->context()->setBindingDimensions(1, shape_dim);
   engine_->context()->setInputShapeBinding(1, shape_v.data());
-
+#endif
   auto *x_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
   auto *shape_gpu_data = shape_.mutable_data<int>(ctx_->GetPlace());
   auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
@@ -142,14 +145,31 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   buffers[0] = reinterpret_cast<void *>(x_gpu_data);
   buffers[1] = reinterpret_cast<void *>(shape_gpu_data);
   buffers[2] = reinterpret_cast<void *>(y_gpu_data);
+#if IS_TRT_VERSION_GE(8500)
+  for (size_t i = 0; i < buffers.size(); i++) {
+    auto name = engine_->engine()->getBindingName(i);
+    if (engine_->engine()->isShapeBinding(i) &&
+        engine_->engine()->bindingIsInput(i)) {
+      engine_->context()->setTensorAddress(name, shape_v.data());
+    } else {
+      engine_->context()->setTensorAddress(name, buffers[i]);
+    }
+  }
+#endif
 
   engine_->Execute(-1, &buffers, ctx_->stream());
   cudaStreamSynchronize(ctx_->stream());
+
   std::vector<float> y_cpu;
   GetOutput(&y_cpu);
   ASSERT_EQ(y_cpu[0], 0);
   ASSERT_EQ(y_cpu[1], 1);
+#if IS_TRT_VERSION_GE(8500)
+  const char *name1 = engine_->engine()->getBindingName(2);
+  auto dims = engine_->context()->getTensorShape(name1);
+#else
   auto dims = engine_->context()->getBindingDimensions(2);
+#endif
   ASSERT_EQ(dims.nbDims, 3);
   ASSERT_EQ(dims.d[0], 8);
   ASSERT_EQ(dims.d[1], 8);
@@ -202,7 +222,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float16> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &input_);
-    output_.Resize(phi::make_ddim(output_shape));
+    output_.Resize(common::make_ddim(output_shape));
   }
 
   void GetOutput(std::vector<float> *output) {
@@ -377,7 +397,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
       paddle::framework::TensorFromVector(inputs[i], *ctx_, &inputs_[i]);
     }
     for (int i = 0; i < num_outputs; ++i) {
-      outputs_[i].Resize(phi::make_ddim(output_shapes[i]));
+      outputs_[i].Resize(common::make_ddim(output_shapes[i]));
     }
   }
 
@@ -573,7 +593,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
       paddle::framework::TensorFromVector(inputs[i], *ctx_, &inputs_[i]);
     }
     for (int i = 0; i < num_outputs; ++i) {
-      outputs_[i].Resize(phi::make_ddim(output_shapes[i]));
+      outputs_[i].Resize(common::make_ddim(output_shapes[i]));
     }
   }
 

@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.framework import in_dynamic_mode
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -282,11 +283,12 @@ def pool3d_wrapper_not_use_cudnn(
     adaptive=False,
     padding_algorithm="EXPLICIT",
 ):
-    tmp = X._use_gpudnn(False)
+    if in_dynamic_mode():
+        X = X._use_gpudnn(False)
     if data_format == "AnyLayout":
         data_format = "NCDHW"
     return paddle._C_ops.pool3d(
-        tmp,
+        X,
         ksize,
         strides,
         paddings,
@@ -363,7 +365,7 @@ class TestPool3D_Op(OpTest):
             self.padding_algorithm,
         ).astype(self.dtype)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -392,9 +394,9 @@ class TestPool3D_Op(OpTest):
     def test_check_output(self):
         if self.has_cudnn():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_pir=True)
         else:
-            self.check_output()
+            self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if (
@@ -403,15 +405,17 @@ class TestPool3D_Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
-                    place, {'X'}, 'Out', max_relative_error=1e-2
+                    place, {'X'}, 'Out', max_relative_error=1e-2, check_pir=True
                 )
             else:
-                self.check_grad_with_place(place, {'X'}, 'Out')
+                self.check_grad_with_place(place, {'X'}, 'Out', check_pir=True)
         elif self.pool_type != "max":
             if core.is_compiled_with_rocm():
-                self.check_grad({'X'}, 'Out', max_relative_error=1e-2)
+                self.check_grad(
+                    {'X'}, 'Out', max_relative_error=1e-2, check_pir=True
+                )
             else:
-                self.check_grad({'X'}, 'Out')
+                self.check_grad({'X'}, 'Out', check_pir=True)
 
     def init_data_format(self):
         self.data_format = "NCDHW"
@@ -535,9 +539,13 @@ def create_test_cudnn_fp16_class(parent):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     if core.is_compiled_with_rocm():
-                        self.check_output_with_place(place, atol=1e-2)
+                        self.check_output_with_place(
+                            place, atol=1e-2, check_pir=True
+                        )
                     else:
-                        self.check_output_with_place(place, atol=1e-3)
+                        self.check_output_with_place(
+                            place, atol=1e-3, check_pir=True
+                        )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -557,7 +565,9 @@ def create_test_fp16_class(parent):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=1e-2)
+                    self.check_output_with_place(
+                        place, atol=1e-2, check_pir=True
+                    )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name
@@ -577,7 +587,7 @@ def create_test_cudnn_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBf16Op")
     TestCUDNNBf16Case.__name__ = cls_name
@@ -597,7 +607,7 @@ def create_test_bf16_class(parent):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
     TestBf16Case.__name__ = cls_name
@@ -908,10 +918,12 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X'}, 'Out', max_relative_error=1.00
+                place, {'X'}, 'Out', max_relative_error=1.00, check_pir=True
             )
         elif self.pool_type == "max":
-            self.check_grad({'X'}, 'Out', max_relative_error=1.00)
+            self.check_grad(
+                {'X'}, 'Out', max_relative_error=1.00, check_pir=True
+            )
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):

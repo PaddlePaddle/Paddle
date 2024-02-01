@@ -43,7 +43,7 @@ TEST(API, strings_empty) {
   auto dense_shape = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
-          phi::DataType::INT64, phi::make_ddim({2}), phi::DataLayout::NCHW));
+          phi::DataType::INT64, common::make_ddim({2}), phi::DataLayout::NCHW));
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
   auto* shape_data = dev_ctx->template Alloc<int64_t>(dense_shape.get());

@@ -20,16 +20,16 @@
 
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace ir {
 
-using common::make_shared;
+using cinn::common::make_shared;
 
 Expr Cast::Make(Type t, Expr v) {
   CHECK(!t.is_unk());
@@ -58,6 +58,7 @@ Add::Add(Expr a, Expr b) : BinaryOpNode<Add>(a.type(), a, b) {}
 void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
   CHECK(a.defined());
   CHECK(b.defined());
+  TryElevateInt32ToInt64({a, b});
   CHECK_EQ(a.type(), b.type())
       << "The operands' types of the node [" << ir_name << "] don't match";
 }
@@ -72,9 +73,7 @@ Expr Sub::Make(Expr a, Expr b) {
 void Sub::Verify() const { BinaryNodeVerify(a(), b(), "Sub"); }
 
 Expr Mul::Make(Expr a, Expr b) {
-  CHECK(a.defined());
-  CHECK(b.defined());
-  CHECK_EQ(a.type(), b.type()) << "a=" << a << ", b=" << b;
+  BinaryNodeVerify(a, b, "Mul");
   auto node = make_shared<Mul>(a, b);
   return Expr(node);
 }
@@ -203,6 +202,7 @@ void Let::Verify() const {
   CHECK(symbol.defined());
   // The default value(contained in body) is not required.
   if (body.defined()) {
+    TryElevateInt32ToInt64({symbol, body});
     CHECK_EQ(symbol.type(), body.type());
   }
 }
@@ -217,11 +217,13 @@ Expr _Var_::Make(const std::string &name, const Type &type) {
 Expr _Var_::Make(Expr lower_bound,
                  Expr upper_bound,
                  const std::string &name,
-                 bool is_reduce_axis) {
+                 bool is_reduce_axis,
+                 bool is_symbolic_constant) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_symbolic_constant = is_symbolic_constant;
   n->name = name;
   n->set_type(lower_bound.type());
   return Expr(n);
@@ -257,7 +259,7 @@ Expr For::Make(Var loop_var,
   node->min = min;
   node->extent = extent;
   node->device_api = device_api;
-  node->body = body;
+  node->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   node->set_for_type(for_type);
   node->set_vectorize_info(vector_info);
   node->set_bind_info(bind_info);
@@ -346,6 +348,10 @@ std::vector<const Expr *> ScheduleBlockRealize::expr_fields() const {
 }
 
 Expr IfThenElse::Make(Expr condition, Expr true_case, Expr false_case) {
+  if (true_case.defined() && (!true_case.As<Block>()))
+    true_case = ir::Block::Make({true_case});
+  if (false_case.defined() && (!false_case.As<Block>()))
+    false_case = ir::Block::Make({false_case});
   auto node = make_shared<IfThenElse>(condition, true_case, false_case);
   return Expr(node);
 }
@@ -385,7 +391,7 @@ Expr Store::index() const {
   if (indices.size() == 1) {
     return indices[0];
   }
-  Expr res = common::IndiceToAbsOffset(tensor_n->shape, indices);
+  Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
   optim::Simplify(&res);
   return res;
 }
@@ -473,7 +479,7 @@ Expr Call::Make(Type type,
     CHECK(read_args[i].defined());
   }
 
-  auto node = common::make_shared<Call>(type);
+  auto node = cinn::common::make_shared<Call>(type);
   node->name = name;
   node->read_args = read_args;
   node->write_args = write_args;
@@ -513,7 +519,7 @@ Expr PolyFor::Make(Var iterator,
   n->condition = condition;
   n->inc = inc;
   n->device_api = device_api;
-  n->body = body;
+  n->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   n->set_for_type(for_type);
   n->set_vectorize_info(vectorize_info);
   n->set_bind_info(bind_info);
@@ -531,7 +537,7 @@ std::vector<const Expr *> PolyFor::expr_fields() const {
 }
 
 Expr PolyFor::ExtractExtent() const {
-  auto nodes = CollectIRNodes(condition, [&](const Expr *e) {
+  auto nodes = ir::ir_utils::CollectIRNodes(condition, [&](const Expr *e) {
     return e->As<NE>() ||   //
            e->As<EQ>() ||   //
            e->As<Min>() ||  //
@@ -579,7 +585,11 @@ Var &Var::operator=(const _Var_ *x) {
 Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
   CHECK(tensor->type().valid());
   CHECK(!indices.empty());
-  for (auto &idx : indices) CHECK_EQ(idx.type().ElementOf(), Int(32));
+  TryElevateInt32ToInt64(indices);
+  for (auto &idx : indices) {
+    CHECK(idx.type().ElementOf() == Int(64) ||
+          idx.type().ElementOf() == Int(32));
+  }
   auto node = make_shared<Load>();
   node->tensor = tensor;
   node->indices = indices;
@@ -619,7 +629,7 @@ Expr Load::index() const {
     if (indices.size() == 1) {
       return indices[0];
     }
-    Expr res = common::IndiceToAbsOffset(tensor_n->shape, indices);
+    Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
     VLOG(3) << "Begin Load::index Simplify";
     optim::Simplify(&res);
     return res;
@@ -691,8 +701,13 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
   if (vs.size() == 1) return vs.front();
 
   auto *n = make_shared<Sum>();
+  TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
-  for (auto &v : vs) CHECK_EQ(v.type(), type) << vs.front() << " " << v;
+  for (auto &v : vs) {
+    CHECK_EQ(v.type(), type) << "The operands' types of the node ["
+                             << n->node_type() << "] don't match: "
+                             << "(" << v << " vs " << vs.front() << ")";
+  }
 
   n->operands() = vs;
 
@@ -705,6 +720,7 @@ Expr Product::Make(const std::vector<Expr> &vs) {
   CHECK_GE(vs.size(), 1);
 
   auto *n = make_shared<Product>();
+  TryElevateInt32ToInt64(vs);
   auto type = vs.front().type();
   for (auto &v : vs) CHECK_EQ(v.type(), type);
 
@@ -743,7 +759,7 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
                   const std::vector<Var> &reduce_aixs) {
   CHECK(body.defined());
   CHECK(init.defined());
-  auto n = common::make_shared<Reduce>();
+  auto n = cinn::common::make_shared<Reduce>();
   n->init = init;
   n->body = body;
   n->reduce_type = reduce_type;

@@ -59,7 +59,7 @@ void ExpandGradKernel(const Context& ctx,
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
     return;
   }
-  auto vec_in_dims = phi::vectorize<int>(x_dims);
+  auto vec_in_dims = common::vectorize<int>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   // 1. reshape_dims_vec is the broadcast parameter.

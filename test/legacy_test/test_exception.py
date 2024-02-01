@@ -17,8 +17,8 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestException(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestExceptionNoCStack(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         # test no C++ stack format
-        fluid.set_flags({'FLAGS_call_stack_level': 1})
+        base.set_flags({'FLAGS_call_stack_level': 1})
 
     def test_exception_in_static_mode(self):
         x = paddle.static.data(name='X', shape=[-1, 13], dtype='float32')
@@ -65,26 +65,26 @@ class TestExceptionNoCStack(unittest.TestCase):
 
         paddle.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         x = numpy.random.random(size=(8, 12)).astype('float32')
         y = numpy.random.random(size=(8, 1)).astype('float32')
 
         with self.assertRaises(ValueError):
             exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'X': x, 'Y': y},
                 fetch_list=[avg_loss.name],
             )
 
     def test_exception_in_dynamic_mode(self):
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             x = numpy.random.random(size=(10, 2)).astype('float32')
             linear = paddle.nn.Linear(1, 10)
-            data = fluid.dygraph.to_variable(x)
+            data = base.dygraph.to_variable(x)
             with self.assertRaises(ValueError):
                 res = linear(data)
 

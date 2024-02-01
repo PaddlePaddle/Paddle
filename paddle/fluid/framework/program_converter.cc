@@ -16,6 +16,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -30,23 +31,23 @@ namespace framework {
 using paddle::experimental::ExtractPlainVector;
 using paddle::experimental::WrapAsScalars;
 
-std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
+static std::unordered_set<std::string> needConvertedOperators = {
+    "assign_value", "set_value", "set_value_grad"};
+
+std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
     ProgramDesc* program) {
   bool is_legacy_program = false;
-  std::unordered_map<std::string, uint32_t> legacy_op_versions;
-  std::unordered_map<std::string, uint32_t> current_op_versions;
+  std::unordered_multimap<std::string, OpDesc*> legacy_op_map;
   std::unordered_map<std::string, uint32_t> program_op_versions;
+  std::unordered_map<std::string, uint32_t> legacy_op_versions;
 
   // get *all kinds* of formats of op versions and op version map to a unified
   // representation before comparison can be done in a neat way
   if (!program->HasOpVersionMap()) {
     is_legacy_program = true;
   } else {
-    for (const auto& pair :
-         paddle::framework::compatible::get_op_version_map()) {
-      current_op_versions.insert(
-          std::make_pair(pair.first, pair.second.version_id()));
-    }
+    legacy_op_versions =
+        paddle::framework::compatible::pb::GetLegacyOpVersions();
 
     const auto* _op_version_map = program->OpVersionMap();
     for (int i = 0; i < _op_version_map->pair_size(); ++i) {
@@ -57,23 +58,32 @@ std::pair<bool, std::unordered_map<std::string, uint32_t>> DetectLegacyOps(
       program_op_versions.insert(pair);
     }
 
-    for (const auto& pair : program_op_versions) {
-      uint32_t program_op_version = pair.second;
-      if (!current_op_versions.count(pair.first)) {
-        // this means program_op_versions is more upated than
-        // current_op_versions it is loading a program from future versions of
-        // paddle
-        continue;
-      }
-      uint32_t current_op_version = current_op_versions.at(pair.first);
-      if (program_op_version < current_op_version) {
-        is_legacy_program = true;
-        legacy_op_versions.insert(
-            std::make_pair(pair.first, program_op_version));
+    const size_t num_blocks = program->Size();
+    for (size_t i = 0; i < num_blocks; i++) {
+      BlockDesc* block = program->MutableBlock(i);
+      const size_t num_ops = block->OpSize();
+      for (size_t j = 0; j < num_ops; j++) {
+        OpDesc* op = block->Op(static_cast<int>(j));
+        const std::string& op_type = op->Type();
+        if (needConvertedOperators.find(op_type) !=
+            needConvertedOperators.end()) {
+          // If an operator (program_op) is in the needConvertedOperators set,
+          // it indicates that the operator may need to be converted.
+          // Further judgement: if the operator does not exist in the
+          // program_op_version_map, the operator needs to be converted.
+          // Moreover, if the operator does exist and its program_op_version_
+          // is less than or equal legacy_op_version, the operator also needs to
+          // be converted.
+          if (!program_op_versions.count(op_type) ||
+              program_op_versions[op_type] <= legacy_op_versions[op_type]) {
+            is_legacy_program = true;
+            legacy_op_map.insert(std::make_pair(op_type, op));
+          }
+        }
       }
     }
   }
-  return std::make_pair(is_legacy_program, legacy_op_versions);
+  return std::make_pair(is_legacy_program, legacy_op_map);
 }
 
 namespace no_scalar {
@@ -117,6 +127,41 @@ void ConvertSetValueOp(OpDesc* op) {
   }
 }
 
+void ConvertAssignValueOp(OpDesc* op) {
+  std::vector<paddle::experimental::Scalar> values = PADDLE_GET_CONST(
+      std::vector<paddle::experimental::Scalar>, op->GetAttr("values", false));
+  op->RemoveAttr("values");
+  op->SetAttr("bool_values", std::vector<int>());
+  op->SetAttr("fp32_values", std::vector<float>());
+  op->SetAttr("int32_values", std::vector<int>());
+  op->SetAttr("int64_values", std::vector<int64_t>());
+
+  phi::DataType dtype = phi::DataType::FLOAT32;
+  if (values.size()) {
+    dtype = values.at(0).dtype();
+  }
+
+  switch (dtype) {
+    case phi::DataType::BOOL:
+      op->SetAttr("bool_values", ExtractPlainVector<int>(values));
+      break;
+    case phi::DataType::FLOAT32:
+      op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
+      break;
+    case phi::DataType::FLOAT64:
+      op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
+      break;
+    case phi::DataType::INT32:
+      op->SetAttr("int32_values", ExtractPlainVector<int>(values));
+      break;
+    case phi::DataType::INT64:
+      op->SetAttr("int64_values", ExtractPlainVector<int64_t>(values));
+      break;
+    default:
+      PD_THROW("Invalid data type `", dtype, "`.");
+  }
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -139,10 +184,13 @@ void ConvertProgram(ProgramDesc* program) {
     BlockDesc* block = program->MutableBlock(i);
     const size_t num_ops = block->OpSize();
     for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
+      OpDesc* op = block->Op(static_cast<int>(j));
       const std::string op_type = op->Type();
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      }
+      if (op_type == "assign_value") {
+        ConvertAssignValueOp(op);
       }
     }
   }
@@ -204,6 +252,45 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("values", values);
 }
 
+void ConvertAssignValueOp(OpDesc* op) {
+  VLOG(3) << "convert old assign value op to new";
+  std::vector<paddle::experimental::Scalar> values;
+
+  if (op->HasAttr("bool_values")) {
+    std::vector<int> bool_values =
+        PADDLE_GET_CONST(std::vector<int>, op->GetAttr("bool_values", false));
+    if (bool_values.size()) {
+      values = WrapAsScalars(bool_values);
+    }
+    op->RemoveAttr("bool_values");
+  }
+  if (op->HasAttr("fp32_values")) {
+    std::vector<float> fp32_values =
+        PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp32_values", false));
+    if (fp32_values.size()) {
+      values = WrapAsScalars(fp32_values);
+    }
+    op->RemoveAttr("fp32_values");
+  }
+  if (op->HasAttr("int32_values")) {
+    std::vector<int> int32_values =
+        PADDLE_GET_CONST(std::vector<int>, op->GetAttr("int32_values", false));
+    if (int32_values.size()) {
+      values = WrapAsScalars(int32_values);
+    }
+    op->RemoveAttr("int32_values");
+  }
+  if (op->HasAttr("int64_values")) {
+    std::vector<int64_t> int64_values = PADDLE_GET_CONST(
+        std::vector<int64_t>, op->GetAttr("int64_values", false));
+    if (int64_values.size()) {
+      values = WrapAsScalars(int64_values);
+    }
+    op->RemoveAttr("int64_values");
+  }
+  op->SetAttr("values", values);
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -211,9 +298,10 @@ void ConvertProgram(ProgramDesc* program) {
 
   auto legacy_op_results = DetectLegacyOps(program);
   bool is_legacy_program = legacy_op_results.first;
-  const std::unordered_map<std::string, uint32_t>& legacy_op_versions =
+  const std::unordered_multimap<std::string, OpDesc*>& legacy_ops =
       legacy_op_results.second;
 
+  VLOG(3) << "is_legacy_program : " << is_legacy_program;
   if (!is_legacy_program) return;
 
   VLOG(3) << "Updating Program Version and OpVersionMap";
@@ -225,20 +313,15 @@ void ConvertProgram(ProgramDesc* program) {
 
   VLOG(3) << "Converting program from old(no scalar attributes) to new(with "
              "scalar attributes)";
-  const size_t num_blocks = program->Size();
-  for (size_t i = 0; i < num_blocks; i++) {
-    BlockDesc* block = program->MutableBlock(i);
-    const size_t num_ops = block->OpSize();
-    for (size_t j = 0; j < num_ops; j++) {
-      OpDesc* op = block->Op(j);
-      const std::string op_type = op->Type();
-      if (!legacy_op_versions.count(op_type)) {
-        continue;
-      }
 
-      if (op_type == "set_value" || op_type == "set_value_grad") {
-        ConvertSetValueOp(op);
-      }
+  for (const auto& pair : legacy_ops) {
+    const std::string op_type = pair.first;
+    VLOG(3) << "Converting program from old to new, op_type=" << op_type;
+    if (op_type == "set_value" || op_type == "set_value_grad") {
+      ConvertSetValueOp(pair.second);
+    }
+    if (op_type == "assign_value") {
+      ConvertAssignValueOp(pair.second);
     }
   }
 }

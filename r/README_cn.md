@@ -2,12 +2,12 @@
 在 R 中使用 PaddlePaddle
 
 ## 环境安装
-首先确保已安装Python，假设路径为`/opt/python3.7`
+首先确保已安装Python，假设路径为`/opt/python3.8`
 
 使用Python安装Paddle
 ``` bash
-/opt/python3.7/bin/python3.7 -m pip install paddlepaddle # CPU
-/opt/python3.7/bin/python3.7 -m pip install paddlepaddle-gpu # GPU
+/opt/python3.8/bin/python3.8 -m pip install paddlepaddle # CPU
+/opt/python3.8/bin/python3.8 -m pip install paddlepaddle-gpu # GPU
 ```
 
 安装r运行paddle预测所需要的库
@@ -20,9 +20,9 @@ install.packages("reticulate") # 调用Paddle
 
 ``` r
 library(reticulate)
-use_python("/opt/python3.7/bin/python")
+use_python("/opt/python3.8/bin/python")
 
-paddle <- import("paddle.fluid.core")
+paddle <- import("paddle.base.core")
 ```
 
 创建一个AnalysisConfig，用于设置预测引擎的各选项

@@ -90,8 +90,8 @@ inline BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims,
 inline std::vector<int> InferBroadcastShape(const phi::DDim& x_dims,
                                             const phi::DDim& e_dims,
                                             const std::string& type = "x") {
-  auto x_dims1 = phi::vectorize<int>(x_dims);
-  auto e_dims1 = phi::vectorize<int>(e_dims);
+  auto x_dims1 = common::vectorize<int>(x_dims);
+  auto e_dims1 = common::vectorize<int>(e_dims);
   std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
   std::vector<int> e_dims2(e_dims1.begin() + 1, e_dims1.end());
   int max_dim = std::max(x_dims2.size(), e_dims2.size());
@@ -100,8 +100,8 @@ inline std::vector<int> InferBroadcastShape(const phi::DDim& x_dims,
   std::vector<int> e_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
-  phi::funcs::GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
-                                     phi::make_ddim(e_dims2),
+  phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
+                                     common::make_ddim(e_dims2),
                                      x_dims_array.data(),
                                      e_dims_array.data(),
                                      out_dims_array.data(),
@@ -117,7 +117,7 @@ inline std::vector<int> InferBroadcastShape(const phi::DDim& x_dims,
 
 inline bool ReduceGrad(const phi::DDim& out_grad_dims,
                        const phi::DDim& x_dims,
-                       std::vector<int64_t>& axis) {
+                       std::vector<int64_t>& axis) {  // NOLINT
   // We must ensure the ndim of out_grad and x are the same.
   bool reduce = false;
   for (int i = 1; i < out_grad_dims.size(); i++) {

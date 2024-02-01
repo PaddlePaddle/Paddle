@@ -24,7 +24,7 @@ namespace operators {
 
 using dnnl::memory;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -49,7 +49,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
-    auto x_tz = phi::vectorize<int64_t>(x->dims());
+    auto x_tz = common::vectorize<int64_t>(x->dims());
 
     const bool is_negative_input = ctx.Attr<bool>("is_negative_input");
     const bool bfloat16 = ctx.Attr<bool>("bfloat16");
@@ -125,7 +125,5 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(quantize,
-                   MKLDNN,
-                   ::phi::CPUPlace,
-                   ops::QuantOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(quantize, OneDNN, ONEDNN, ops::QuantOpKernel, float) {
+}

@@ -20,8 +20,8 @@ from legacy_test.test_dist_base import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 from paddle.optimizer.lr import NoamDecay
 
@@ -64,7 +64,7 @@ class ModelHyperParams:
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
     src_vocab_size = 10000
-    # size of target word dictionay
+    # size of target word dictionary
     trg_vocab_size = 10000
     # index for <bos> token
     bos_idx = 0
@@ -107,7 +107,7 @@ class ModelHyperParams:
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
 batch_size = -1
-# The placeholder for squence length in compile time.
+# The placeholder for sequence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
 # The shapes here act as placeholder and are set to pass the infer-shape in
@@ -160,7 +160,7 @@ input_descs = {
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_word": [(batch_size * seq_len, 1), "int64"],
-    # This input is used to mask out the loss of paddding tokens.
+    # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, 1), "float32"],
@@ -215,9 +215,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )
@@ -245,10 +243,10 @@ class PrePostProcessLayer(Layer):
             if cmd == "n":
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    weight_attr=fluid.ParamAttr(
+                    weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(1.0)
                     ),
-                    bias_attr=fluid.ParamAttr(
+                    bias_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
@@ -352,11 +350,11 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = paddle.nn.functional.dropout(
+            weights_dropped = paddle.nn.functional.dropout(
                 weights,
                 p=self._dropout_rate,
             )
-            out = paddle.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_dropped, transpose_v)
         else:
             out = paddle.matmul(weights, transpose_v)
 
@@ -513,7 +511,7 @@ class PrepareEncoderDecoderLayer(Layer):
             src_vocab_size,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=word_emb_param_name,
                 initializer=paddle.nn.initializer.Normal(
                     0.0, src_emb_dim**-0.5
@@ -529,7 +527,7 @@ class PrepareEncoderDecoderLayer(Layer):
             self._src_max_len,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
@@ -628,7 +626,7 @@ class DecoderSubLayer(Layer):
         super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
-        self._prepostprcess_dropout = prepostprocess_dropout
+        self._prepostprocess_dropout = prepostprocess_dropout
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -672,7 +670,7 @@ class DecoderSubLayer(Layer):
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
         pre_process_rlt = self._pre_process_layer(
-            None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout
+            None, dec_input, self._preprocess_cmd, self._prepostprocess_dropout
         )
         slf_attn_output = self._multihead_attention_layer(
             pre_process_rlt, None, None, slf_attn_bias
@@ -681,13 +679,13 @@ class DecoderSubLayer(Layer):
             dec_input,
             slf_attn_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt2 = self._pre_process_layer2(
             None,
             slf_attn_output_pp,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias
@@ -696,20 +694,20 @@ class DecoderSubLayer(Layer):
             slf_attn_output_pp,
             enc_attn_output_pp,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt3 = self._pre_process_layer3(
             None,
             enc_attn_output,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         ffd_output = self._positionwise_feed_forward_layer(pre_process_rlt3)
         dec_output = self._post_process_layer3(
             enc_attn_output,
             ffd_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         return dec_output
 

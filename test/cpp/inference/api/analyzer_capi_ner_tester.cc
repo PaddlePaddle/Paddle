@@ -31,7 +31,6 @@ void SetConfig(PD_AnalysisConfig *config) {
   PD_SetModel(config,
               (model_dir + "/__model__").c_str(),
               (model_dir + "/param").c_str());
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_DisableGpu(config);
 }

@@ -56,7 +56,7 @@ class LRNKernel : public framework::OpKernel<T> {
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const phi::DataLayout data_layout =
-        phi::StringToDataLayout(data_layout_str);
+        common::StringToDataLayout(data_layout_str);
     // NCHW
     int N = x_dims[0];
     int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
@@ -147,7 +147,7 @@ class LRNGradKernel : public framework::OpKernel<T> {
     const phi::DenseTensor& mid = *ctx.Input<phi::DenseTensor>("MidOut");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const phi::DataLayout data_layout =
-        phi::StringToDataLayout(data_layout_str);
+        common::StringToDataLayout(data_layout_str);
 
     auto x_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());

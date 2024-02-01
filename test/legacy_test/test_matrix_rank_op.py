@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base, static
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 SEED = 2049
@@ -45,7 +46,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
@@ -165,14 +166,15 @@ class TestMatrixRankAPI(unittest.TestCase):
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol, hermitian=False)
         np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with static.program_guard(static.Program(), static.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 tol_np = np.random.random([3, 4]).astype(np.float32)
                 x_pd = paddle.static.data(
@@ -185,41 +187,38 @@ class TestMatrixRankAPI(unittest.TestCase):
                 rank_pd = paddle.linalg.matrix_rank(
                     x_pd, tol_pd, hermitian=False
                 )
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
                     feed={"X": x_np, "TolTensor": tol_np},
                     fetch_list=[rank_pd],
                 )
                 np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with static.program_guard(static.Program(), static.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 x_pd = paddle.static.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
                 rank_pd = paddle.linalg.matrix_rank(x_pd, hermitian=True)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
                     feed={"X": x_np},
                     fetch_list=[rank_pd],
                 )
                 np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with static.program_guard(static.Program(), static.Program()):
                 x_np = np.random.rand(3, 4, 7, 7).astype(np.float64)
                 x_pd = paddle.static.data(
                     name="X", shape=[3, 4, 7, 7], dtype='float64'
                 )
                 rank_np = np.linalg.matrix_rank(x_np, 0.1, hermitian=False)
                 rank_pd = paddle.linalg.matrix_rank(x_pd, 0.1, hermitian=False)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
                     feed={"X": x_np},
                     fetch_list=[rank_pd],
                 )

@@ -16,12 +16,13 @@ import sys
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 CUDA_BLOCK_SIZE = 32
 
@@ -394,7 +395,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -404,6 +405,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
+                check_pir=True,
             )
         else:
             self.check_grad(
@@ -411,6 +413,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
+                check_pir=True,
             )
 
 
@@ -516,17 +519,22 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Loss", check_pir=True)
 
 
 class TestWarpCTCOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
             logits = paddle.static.data(
                 name='logits', shape=[5, 16, 6], dtype='float32'
             )
@@ -660,7 +668,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
     def test_eager_ctcloss(self):
-        def test_functinal_api():
+        def test_functional_api():
             self.batch_size = 4
             self.num_classes = CUDA_BLOCK_SIZE + 2
             self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
@@ -730,7 +738,7 @@ class TestCTCLossAPICase(unittest.TestCase):
                 loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
             )
 
-        test_functinal_api()
+        test_functional_api()
 
 
 if __name__ == "__main__":

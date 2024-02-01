@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -43,7 +43,7 @@ class TestBitwiseAnd(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -150,7 +150,7 @@ class TestBitwiseOr(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -258,7 +258,7 @@ class TestBitwiseXor(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -363,7 +363,7 @@ class TestBitwiseNot(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         pass

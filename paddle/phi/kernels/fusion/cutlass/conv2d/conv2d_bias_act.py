@@ -225,6 +225,6 @@ if __name__ == "__main__":
         sm_versions, SupportedAct, UnderScoreName, CamelName
     )
     all_code += CommonTail
-    with open("generated/conv2d_bias_act.cu", "w") as f:
+    with open("generated_tmp/conv2d_bias_act.cu", "w") as f:
         f.write(all_code)
         f.close()

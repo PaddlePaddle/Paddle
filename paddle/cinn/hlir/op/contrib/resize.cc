@@ -39,26 +39,26 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValuePack;
+using cinn::common::CINNValuePack;
 
 #define __get_pixel(input, h, w, n, c, y, x)                         \
   input({n,                                                          \
          c,                                                          \
-         common::AutoSimplify(                                       \
+         cinn::common::AutoSimplify(                                 \
              ir::Max::Make(ir::Min::Make(y, h - Expr(1)), Expr(0))), \
-         common::AutoSimplify(                                       \
+         cinn::common::AutoSimplify(                                 \
              ir::Max::Make(ir::Min::Make(x, w - Expr(1)), Expr(0)))})
 
 ir::Tensor Resize(const ir::Tensor &input,
-                  const common::Target &target,
+                  const cinn::common::Target &target,
                   const std::vector<int> &out_shape,
                   const std::string &mode,
                   const std::string &output_name) {
   std::string func_name;
 
-  if (target.arch == common::Target::Arch::NVGPU) {
+  if (target.arch == cinn::common::Target::Arch::NVGPU) {
     func_name.assign("cinn_cuda_resize_");
-  } else if (target.arch == common::Target::Arch::X86) {
+  } else if (target.arch == cinn::common::Target::Arch::X86) {
     func_name.assign("cinn_host_resize_");
   } else {
     LOG(FATAL) << "Resize only supports X86 and NVGPU ! Please Check.\n";
@@ -85,14 +85,16 @@ ir::Tensor Resize(const ir::Tensor &input,
         Expr value;
 
         if (mode == "nearest") {
-          Expr in_y = ir::Cast::Make(common::F32(), in_h) /
-                      ir::Cast::Make(common::F32(), out_h) *
-                      ir::Cast::Make(common::F32(), out_y);
-          Expr in_x = ir::Cast::Make(common::F32(), in_w) /
-                      ir::Cast::Make(common::F32(), out_w) *
-                      ir::Cast::Make(common::F32(), out_x);
-          Expr in_y_int = ir::Cast::Make(common::Int(32), lang::Floor(in_y));
-          Expr in_x_int = ir::Cast::Make(common::Int(32), lang::Floor(in_x));
+          Expr in_y = ir::Cast::Make(cinn::common::F32(), in_h) /
+                      ir::Cast::Make(cinn::common::F32(), out_h) *
+                      ir::Cast::Make(cinn::common::F32(), out_y);
+          Expr in_x = ir::Cast::Make(cinn::common::F32(), in_w) /
+                      ir::Cast::Make(cinn::common::F32(), out_w) *
+                      ir::Cast::Make(cinn::common::F32(), out_x);
+          Expr in_y_int =
+              ir::Cast::Make(cinn::common::Int(32), lang::Floor(in_y));
+          Expr in_x_int =
+              ir::Cast::Make(cinn::common::Int(32), lang::Floor(in_x));
           std::vector<Expr> in_indices = {
               indices[0], indices[1], in_y_int, in_x_int};
           value = input(in_indices);
@@ -126,7 +128,7 @@ ir::Tensor Resize(const ir::Tensor &input,
 
         return value;
       },
-      common::UniqName(output_name));
+      cinn::common::UniqName(output_name));
 
   return res;
 }
@@ -209,19 +211,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
 
     ir::Tensor out = Resize(tensor_A, target, out_shape, mode, tensor_name);
 
-    std::vector<common::CINNValue> res;
+    std::vector<cinn::common::CINNValue> res;
     auto stages = CreateStages({tensor_A});
     stages->InsertLazily(out);
-    res.push_back(common::CINNValue(out));
-    res.push_back(common::CINNValue(stages));
-    *ret = common::CINNValuePack{res};
+    res.push_back(cinn::common::CINNValue(out));
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   framework::CINNSchedule resize_schedule([=](lang::Args args,
                                               lang::RetValue *ret) {
     CHECK(!args.empty())
         << "The input argument of resize schedule is empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -244,9 +246,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
     }
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

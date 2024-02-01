@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestIdentityLossOp(OpTest):
@@ -48,12 +49,12 @@ class TestIdentityLossOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
         paddle.disable_static()
 
     def initTestCase(self):
@@ -114,7 +115,7 @@ class TestIdentityLossAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.place = fluid.CPUPlace()
+        self.place = base.CPUPlace()
 
     def identity_loss_ref(self, input, reduction):
         if reduction == 0 or reduction == "sum":
@@ -124,6 +125,7 @@ class TestIdentityLossAPI(unittest.TestCase):
         else:
             return input
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

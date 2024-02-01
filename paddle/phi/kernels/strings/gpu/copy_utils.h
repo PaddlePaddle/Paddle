@@ -112,7 +112,7 @@ void SerializeOnCPU(const Context& dev_ctx,
   for (int64_t i = 0; i < numel; ++i) {
     num += src_str[i].length() + 1;
   }
-  dst->Resize(phi::make_ddim({num}));
+  dst->Resize(common::make_ddim({num}));
   uint8_t* strings_data = dev_ctx.template HostAlloc<uint8_t>(dst);
   auto* strings_offset = reinterpret_cast<int*>(strings_data);
   int start_offset = sizeof(int) * (numel + 1);
@@ -137,7 +137,7 @@ void DeserializeOnCPU(const Context& dev_ctx,
   auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
   auto* strings_offset = reinterpret_cast<const int*>(strings_data);
   int numel = strings_offset[0] / sizeof(int) - 1;
-  dst->Resize(phi::make_ddim({numel}));
+  dst->Resize(common::make_ddim({numel}));
   dtype::pstring* dst_str = dev_ctx.template HostAlloc<dtype::pstring>(dst);
   for (int i = 0; i < numel; ++i) {
     // -1 not include '\0'
@@ -156,7 +156,7 @@ void SerializeOnGPU(const phi::GPUContext& dev_ctx,
   auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
   strings_size += sizeof(int32_t) * (numel + 1);
 
-  dst->Resize(phi::make_ddim({strings_size}));
+  dst->Resize(common::make_ddim({strings_size}));
   uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
   auto* strings_offset = reinterpret_cast<int*>(strings_data);
 
@@ -184,7 +184,7 @@ void DeserializeOnGPU(const phi::GPUContext& dev_ctx,
       &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
 #endif
   numel = numel / sizeof(int) - 1;
-  dst->Resize(phi::make_ddim({numel}));
+  dst->Resize(common::make_ddim({numel}));
   dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
 
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -33,8 +33,8 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.y = np.random.random((2, 5)).astype(np.float32)
         self.out = np.add(self.x, self.y)
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "elementwise_add"
@@ -47,8 +47,8 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         self.y = np.random.random((5, 2)).astype(np.float32)
         self.out = np.dot(self.x, self.y)
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.op_type = "mul"
@@ -57,9 +57,9 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         return outs
 
     def test_executor_run_twice(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for parallel in [True, False]:
@@ -78,8 +78,8 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         x = paddle.ones(shape=[3, 3], dtype='float32')
         y = paddle.ones(shape=[3, 3], dtype='float32')
         out = paddle.add(x=x, y=y)
-        program = fluid.default_main_program()
-        exe = fluid.Executor(place)
+        program = base.default_main_program()
+        exe = base.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
 
@@ -87,15 +87,15 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         x = paddle.ones(shape=[2, 2], dtype='float32')
         y = paddle.ones(shape=[2, 2], dtype='float32')
         out = paddle.subtract(x=x, y=y)
-        program = fluid.default_main_program()
-        exe = fluid.Executor(place)
+        program = base.default_main_program()
+        exe = base.Executor(place)
         out = exe.run(program, fetch_list=[out], return_numpy=False)
         return out
 
     def test_executor_run_twice(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             add_out = self.calc_add_out(place)

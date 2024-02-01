@@ -189,7 +189,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       const {
     if (params_grads.empty()) return true;
     auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
-    for (auto p_g : params_grads) {
+    for (auto const &p_g : params_grads) {
       auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
       if (next_dtype != dtype) {
         return false;

@@ -14,14 +14,14 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
@@ -70,7 +70,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         auto* in_accum = context.Input<phi::DenseTensor>("InAccum");
         auto* in_state = context.Input<phi::DenseTensor>("InState");
         phi::DenseTensor tmp_scale;
-        tmp_scale.Resize(phi::make_dim(1));
+        tmp_scale.Resize(common::make_dim(1));
         T* cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
         FindAbsMaxFunctor<DeviceContext, T>()(
@@ -126,75 +126,6 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
               dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
         }
       }
-    }
-  }
-};
-
-template <typename T, typename DeviceContext>
-class DeQuantizeLinearKernel : public framework::OpKernel<T> {
- public:
-  template <typename D>
-  void ComputeImpl(const framework::ExecutionContext& context) const {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto* in = context.Input<phi::DenseTensor>("X");
-
-    auto in_tmp = phi::Cast<T>(
-        static_cast<const typename paddle::framework::ConvertToPhiContext<
-            DeviceContext>::TYPE&>(dev_ctx),
-        *in,
-        phi::CppTypeToDataType<D>::Type());
-
-    auto* scale = context.Input<phi::DenseTensor>("Scale");
-    auto* out = context.Output<phi::DenseTensor>("Y");
-    int bit_length = context.Attr<int>("bit_length");
-    auto quant_axis = context.Attr<int>("quant_axis");
-    dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
-    bool only_observer = context.Attr<bool>("only_observer");
-
-    if (only_observer) {
-      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
-      return;
-    }
-
-    if (quant_axis < 0) {
-      float max_range = (std::pow(2, bit_length - 1) - 1);
-      DequantizeFunctor<DeviceContext, D>()(
-          dev_ctx, &in_tmp, scale, static_cast<D>(max_range), out);
-    } else {
-      PADDLE_ENFORCE_EQ(
-          scale->numel(),
-          in_tmp.dims()[quant_axis],
-          platform::errors::PreconditionNotMet(
-              "The number of first scale values must be the same with "
-              "quant_axis dimension value of Input(X) when the `scale` has "
-              "only one element, but %ld != %ld here.",
-              scale->numel(),
-              in_tmp.dims()[quant_axis]));
-      int max_range = (std::pow(2, bit_length - 1) - 1);
-
-      ChannelDequantizeFunctorV2<DeviceContext, D>()(
-          dev_ctx, &in_tmp, scale, static_cast<D>(max_range), quant_axis, out);
-    }
-  }
-
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* scale = context.Input<phi::DenseTensor>("Scale");
-    switch (scale->dtype()) {
-      case phi::DataType::FLOAT64:
-        ComputeImpl<double>(context);
-        break;
-      case phi::DataType::FLOAT32:
-        ComputeImpl<float>(context);
-        break;
-      case phi::DataType::FLOAT16:
-        ComputeImpl<paddle::platform::float16>(context);
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "In DeQuantizeLinearKernel, "
-            "data type %d for scale/output is not supported ",
-            scale->dtype()));
-        break;
     }
   }
 };

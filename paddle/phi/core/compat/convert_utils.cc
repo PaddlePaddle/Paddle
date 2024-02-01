@@ -67,7 +67,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_DNNL
-    case phi::Backend::ONEDNN:
+    case phi::Backend::ONEDNN:  // NOLINT
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

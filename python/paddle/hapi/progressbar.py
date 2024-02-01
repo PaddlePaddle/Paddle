@@ -96,9 +96,9 @@ class ProgressBar:
         if time_per_unit >= 1 or time_per_unit == 0:
             fps = f' - {time_per_unit:.0f}s/{self.name}'
         elif time_per_unit >= 1e-3:
-            fps = ' - {:.0f}ms/{}'.format(time_per_unit * 1e3, self.name)
+            fps = f' - {time_per_unit * 1e3:.0f}ms/{self.name}'
         else:
-            fps = ' - {:.0f}us/{}'.format(time_per_unit * 1e6, self.name)
+            fps = f' - {time_per_unit * 1e6:.0f}us/{self.name}'
 
         info = ''
         if self._verbose == 1:

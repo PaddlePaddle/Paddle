@@ -78,12 +78,12 @@ def quanter(class_name):
     Annotation to declare a factory class for quanter.
 
     Args:
-        class_name (str) - The name of factory class to be declared.
+        class_name (str): The name of factory class to be declared.
 
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('need 2 file to run example')
             >>> # Given codes in ./customized_quanter.py
             >>> from paddle.quantization import quanter
             >>> from paddle.quantization import BaseQuanter

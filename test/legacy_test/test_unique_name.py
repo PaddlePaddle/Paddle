@@ -14,40 +14,40 @@
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestUniqueName(unittest.TestCase):
     def test_guard(self):
-        with fluid.unique_name.guard():
-            name_1 = fluid.unique_name.generate('')
+        with base.unique_name.guard():
+            name_1 = base.unique_name.generate('')
 
-        with fluid.unique_name.guard():
-            name_2 = fluid.unique_name.generate('')
+        with base.unique_name.guard():
+            name_2 = base.unique_name.generate('')
 
         self.assertEqual(name_1, name_2)
 
-        with fluid.unique_name.guard("A"):
-            name_1 = fluid.unique_name.generate('')
+        with base.unique_name.guard("A"):
+            name_1 = base.unique_name.generate('')
 
-        with fluid.unique_name.guard('B'):
-            name_2 = fluid.unique_name.generate('')
+        with base.unique_name.guard('B'):
+            name_2 = base.unique_name.generate('')
 
         self.assertNotEqual(name_1, name_2)
 
     def test_generate(self):
-        with fluid.unique_name.guard():
-            name1 = fluid.unique_name.generate('fc')
-            name2 = fluid.unique_name.generate('fc')
-            name3 = fluid.unique_name.generate('tmp')
+        with base.unique_name.guard():
+            name1 = base.unique_name.generate('fc')
+            name2 = base.unique_name.generate('fc')
+            name3 = base.unique_name.generate('tmp')
             self.assertNotEqual(name1, name2)
             self.assertEqual(name1[-2:], name3[-2:])
 
 
 class TestImperativeUniqueName(unittest.TestCase):
     def test_name_generator(self):
-        with fluid.dygraph.guard():
-            tracer = fluid.framework._dygraph_tracer()
+        with base.dygraph.guard():
+            tracer = base.framework._dygraph_tracer()
             tmp_var_0 = tracer._generate_unique_name()
             self.assertEqual(tmp_var_0, "dygraph_tmp_0")
 

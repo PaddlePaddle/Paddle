@@ -50,7 +50,7 @@ def to_tensor(pic, data_format='CHW'):
     else:
         img = paddle.to_tensor(pic)
 
-    if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+    if paddle.base.data_feeder.convert_dtype(img.dtype) == 'uint8':
         return paddle.cast(img, np.float32) / 255.0
     else:
         return img
@@ -245,7 +245,7 @@ def center_crop(img, output_size):
         img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
             it is used for both directions
-        backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+        backend (str, optional): The image process backend type. Options are `pil`, `cv2`. Default: 'pil'.
 
     Returns:
         np.array: Cropped image.
@@ -269,7 +269,7 @@ def hflip(img):
         img (np.array): Image to be flipped.
 
     Returns:
-        np.array:  Horizontall flipped image.
+        np.array:  Horizontally flipped image.
 
     """
     cv2 = try_import('cv2')
@@ -681,7 +681,7 @@ def to_grayscale(img, num_output_channels=1):
 
 
 def normalize(img, mean, std, data_format='CHW', to_rgb=False):
-    """Normalizes a ndarray imge or image with mean and standard deviation.
+    """Normalizes a ndarray image or image with mean and standard deviation.
 
     Args:
         img (np.array): input data to be normalized.

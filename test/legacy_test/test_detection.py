@@ -18,22 +18,23 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph import base
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph import base as imperative_base
+from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 @contextlib.contextmanager
 def new_program_scope(main=None, startup=None, scope=None):
-    prog = main if main else fluid.Program()
-    startup_prog = startup if startup else fluid.Program()
-    scope = scope if scope else fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            with fluid.unique_name.guard():
+    prog = main if main else base.Program()
+    startup_prog = startup if startup else base.Program()
+    scope = scope if scope else base.core.Scope()
+    with base.scope_guard(scope):
+        with base.program_guard(prog, startup_prog):
+            with base.unique_name.guard():
                 yield
 
 
@@ -58,17 +59,17 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            base.default_startup_program().random_seed = self.seed
+            base.default_main_program().random_seed = self.seed
             yield
 
     def get_static_graph_result(
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
-        exe = fluid.Executor(self._get_place(force_to_use_cpu))
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(self._get_place(force_to_use_cpu))
+        exe.run(paddle.static.default_startup_program())
         return exe.run(
-            fluid.default_main_program(),
+            paddle.static.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -76,11 +77,11 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        with fluid.dygraph.guard(
+        with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            base.default_startup_program().random_seed = self.seed
+            base.default_main_program().random_seed = self.seed
             yield
 
 
@@ -137,11 +138,11 @@ class TestGenerateProposals(LayerTest):
             )
 
         with self.dynamic_graph():
-            scores_dy = base.to_variable(scores_np)
-            bbox_deltas_dy = base.to_variable(bbox_deltas_np)
-            im_info_dy = base.to_variable(im_info_np)
-            anchors_dy = base.to_variable(anchors_np)
-            variances_dy = base.to_variable(variances_np)
+            scores_dy = imperative_base.to_variable(scores_np)
+            bbox_deltas_dy = imperative_base.to_variable(bbox_deltas_np)
+            im_info_dy = imperative_base.to_variable(im_info_np)
+            anchors_dy = imperative_base.to_variable(anchors_np)
+            variances_dy = imperative_base.to_variable(variances_np)
             rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
                 scores_dy,
                 bbox_deltas_dy,
@@ -183,9 +184,7 @@ class TestMulticlassNMS2(unittest.TestCase):
 
 
 class TestDistributeFpnProposals(LayerTest):
-    def test_distribute_fpn_proposals(self):
-        rois_np = np.random.rand(10, 4).astype('float32')
-        rois_num_np = np.array([4, 6]).astype('int32')
+    def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():
             rois = paddle.static.data(
                 name='rois', shape=[10, 4], dtype='float32'
@@ -216,10 +215,12 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = np.array(output)
                 if len(output_np) > 0:
                     output_stat_np.append(output_np)
+        return output_stat_np
 
+    def dynamic_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.dynamic_graph():
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
+            rois_dy = imperative_base.to_variable(rois_np)
+            rois_num_dy = imperative_base.to_variable(rois_num_np)
             (
                 multi_rois_dy,
                 restore_ind_dy,
@@ -239,6 +240,19 @@ class TestDistributeFpnProposals(LayerTest):
                 output_np = output.numpy()
                 if len(output_np) > 0:
                     output_dy_np.append(output_np)
+        return output_dy_np
+
+    @test_with_pir_api
+    def test_distribute_fpn_proposals(self):
+        rois_np = np.random.rand(10, 4).astype('float32')
+        rois_num_np = np.array([4, 6]).astype('int32')
+
+        output_stat_np = self.static_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
+        output_dy_np = self.dynamic_distribute_fpn_proposals(
+            rois_np, rois_num_np
+        )
 
         for res_stat, res_dy in zip(output_stat_np, output_dy_np):
             np.testing.assert_array_equal(res_stat, res_dy)

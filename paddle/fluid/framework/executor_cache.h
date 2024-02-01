@@ -30,11 +30,13 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -163,11 +165,14 @@ PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc& program_desc,
                                           int64_t end_op_index,
                                           framework::Scope* scope);
 
+int64_t hash_with_seed(int64_t value, int64_t seed);
+
 class InterpreterCoreInfo {
  public:
   struct CacheValue {
     std::shared_ptr<InterpreterCore> core_{nullptr};
     std::set<std::string> skip_eager_delete_vars_;
+    std::unique_ptr<::pir::Program> ir_prog_{nullptr};
   };
 
   bool IsAvailable(bool is_grad) {
@@ -188,10 +193,15 @@ class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
 
-  bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
-      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
-      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+  bool Has(int64_t program_id,
+           const framework::Scope* scope,
+           const int64_t& place_hash_key,
+           bool is_grad,
+           bool in_pir_mode) {
+    if (in_pir_mode) {
+      int64_t scope_i = reinterpret_cast<int64_t>(scope);
+      program_id = hash_with_seed(program_id, scope_i);
+      program_id = hash_with_seed(program_id, place_hash_key);
     }
     return info_map_.find(program_id) != info_map_.end() &&
            info_map_[program_id].IsAvailable(is_grad);
@@ -199,26 +209,35 @@ class InterpreterCoreInfoCache {
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
                                               const framework::Scope* scope,
-                                              bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
-      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
-      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+                                              const int64_t& place_hash_key,
+                                              bool is_grad,
+                                              bool in_pir_mode) {
+    if (in_pir_mode) {
+      int64_t scope_i = reinterpret_cast<int64_t>(scope);
+      program_id = hash_with_seed(program_id, scope_i);
+      program_id = hash_with_seed(program_id, place_hash_key);
     }
     return info_map_[program_id].GetMutable(is_grad);
   }
 
   void UpdateSkipEagerDeleteVars(int64_t program_id,
                                  const framework::Scope* scope,
+                                 const int64_t& place_hash_key,
                                  bool is_grad,
+                                 bool in_pir_mode,
                                  const std::set<std::string>& skip_vars) {
-    auto& cached_value = GetMutable(program_id, scope, is_grad);
+    auto& cached_value =
+        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
   }
 
   std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
                                                 const framework::Scope* scope,
+                                                const int64_t& place_hash_key,
+                                                bool in_pir_mode,
                                                 bool is_grad) {
-    auto& cached_value = GetMutable(program_id, scope, is_grad);
+    auto& cached_value =
+        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
     return cached_value.skip_eager_delete_vars_;
   }
 
@@ -240,28 +259,36 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope* scope);
+    framework::Scope* scope,
+    const int64_t& place_hash_key);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
-    std::unique_ptr<::ir::Program> ir_prog,
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
+    std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope* scope);
+    framework::Scope* scope,
+    const int64_t& place_hash_key);
 
-std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
+                                            phi::Place place);
+
+std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string>& output_names,
     const std::vector<paddle::Tensor>& x,
-    const std::vector<paddle::Tensor>& params);
+    const std::vector<std::string>& x_names,
+    const std::vector<paddle::Tensor>& params,
+    const phi::Place& place);
 
-std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
     const std::vector<paddle::Tensor*>& params_grad,
-    const paddle::framework::Scope* scope);
+    const paddle::framework::Scope* scope,
+    const phi::Place& place);
 
 }  // namespace framework
 }  // namespace paddle

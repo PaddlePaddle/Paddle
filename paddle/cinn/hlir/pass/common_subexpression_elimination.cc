@@ -31,8 +31,8 @@ using framework::Graph;
 using framework::Node;
 using framework::NodeData;
 
-using common::GraphEdge;
-using common::GraphNode;
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 
 using InputToNodeMap =
     std::unordered_map<std::string, std::unordered_set<Node*>>;
@@ -99,7 +99,7 @@ bool IsSameSubexpression(Node* op1,
       bool op1_equal_op2 = std::any_of(
           op2_in_edges.begin(),
           op2_in_edges.end(),
-          [&](common::Shared<GraphEdge>& edge) {
+          [&](cinn::common::Shared<GraphEdge>& edge) {
             auto* op2_source_node = edge->source()->safe_as<NodeData>();
             CHECK(op2_source_node);
             if (op1_source_node->id() == op2_source_node->id()) {

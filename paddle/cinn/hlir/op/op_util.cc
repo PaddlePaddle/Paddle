@@ -31,7 +31,7 @@ CINNSchedule GetElementwiseScheduleFunc(
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
                             "empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     CHECK_GT(arg_pack.size(), 0U)
         << "arg_pack.size() must contains at least one element.";
     std::vector<Expr> vec_ast;
@@ -46,9 +46,9 @@ CINNSchedule GetElementwiseScheduleFunc(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     pe::IRElementwiseSchedule(ir_sch, output_shapes.front(), target);
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 }
 
@@ -59,7 +59,7 @@ CINNSchedule GetInjectiveScheduleFunc(
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
                             "empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -78,14 +78,14 @@ CINNSchedule GetInjectiveScheduleFunc(
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
     vectorizable);
     }*/
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 }
 
-std::string GetExternFuncName(const common::Target& target,
-                              const common::Type& type,
+std::string GetExternFuncName(const cinn::common::Target& target,
+                              const cinn::common::Type& type,
                               const std::string& func_name,
                               const bool need_cinn,
                               const bool need_target,
@@ -95,9 +95,9 @@ std::string GetExternFuncName(const common::Target& target,
     func_proto_name.append("cinn_");
   }
   if (need_target) {
-    if (target.arch == common::Target::Arch::NVGPU) {
+    if (target.arch == cinn::common::Target::Arch::NVGPU) {
       func_proto_name.append("nvgpu_");
-    } else if (target.arch == common::Target::Arch::X86) {
+    } else if (target.arch == cinn::common::Target::Arch::X86) {
       func_proto_name.append("host_");
     } else {
       LOG(FATAL) << func_name

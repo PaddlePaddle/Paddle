@@ -36,7 +36,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   auto input_stride = input.strides();
 
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
-    output_dims = phi::vectorize<int64_t>(out->dims());
+    output_dims = common::vectorize<int64_t>(out->dims());
     if (axes.empty()) {
       for (int i = input_stride.size() - 1; i > 0; --i) {
         if (input_stride[i] != input_stride[i - 1]) {
@@ -111,6 +111,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 template <typename Context>

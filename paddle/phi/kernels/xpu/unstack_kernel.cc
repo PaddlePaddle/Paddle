@@ -29,7 +29,7 @@ void UnStackKernel(const Context &dev_ctx,
   auto x_dims = x.dims();
 
   if (axis < 0) axis += x_dims.size();
-  auto x_shape = phi::vectorize<int>(x_dims);
+  auto x_shape = common::vectorize<int>(x_dims);
 
   std::vector<int> dx_dims_list(outs.size(), 1);
   std::vector<XPUType *> dx_lists;

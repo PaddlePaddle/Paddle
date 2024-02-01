@@ -18,7 +18,7 @@ import unittest
 from legacy_test.test_dist_base import TestDistBase
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
@@ -33,10 +33,10 @@ class TestPipeline(TestDistBase):
         self._nccl_comm_num = 1
 
     def need_envs(self):
-        return {}
+        return {"FLAGS_new_executor_micro_batching": "0"}
 
     def test_dist_train(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             # TODO (sandyhouse) fix the delta value.
             # Now pipeline only gets the loss value of the last
             # microbatch, so it is not consistable with the
@@ -50,7 +50,7 @@ class TestPipeline(TestDistBase):
             )
 
     def test_dist_train_multi_device(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "pipeline_mnist_multi_device.py",
                 check_error_log=True,
@@ -60,12 +60,15 @@ class TestPipeline(TestDistBase):
             )
 
     def test_dist_train_one_device(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "pipeline_mnist_one_device.py",
                 check_error_log=True,
                 log_name=flag_name,
-                need_envs={"PADDLE_MANUAL_PIPELINE_STAGE": "0"},
+                need_envs={
+                    "PADDLE_MANUAL_PIPELINE_STAGE": "0",
+                    "FLAGS_new_executor_micro_batching": "0",
+                },
             )
 
 

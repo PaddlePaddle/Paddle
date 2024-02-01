@@ -17,8 +17,8 @@
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_cache.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -150,7 +150,7 @@ void exec_fft(const phi::GPUContext& ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_input_shape_.push_back(in_sizes[axes[i]]);
   }
-  phi::DDim collapsed_input_shape = phi::make_ddim(collapsed_input_shape_);
+  phi::DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
@@ -162,7 +162,7 @@ void exec_fft(const phi::GPUContext& ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_output_shape_.push_back(out_sizes[axes[i]]);
   }
-  phi::DDim collapsed_output_shape = phi::make_ddim(collapsed_output_shape_);
+  phi::DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   ctx.Alloc<To>(&collapsed_output);
@@ -267,7 +267,7 @@ struct FFTC2CFunctor<phi::GPUContext, Ti, To> {
       }
     }
 
-    std::vector<int64_t> out_dims = phi::vectorize(x.dims());
+    std::vector<int64_t> out_dims = common::vectorize(x.dims());
     detail::exec_normalization<To>(
         ctx, *out, out, normalization, out_dims, axes);
   }
@@ -281,7 +281,7 @@ struct FFTC2RFunctor<phi::GPUContext, Ti, To> {
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
-    std::vector<int64_t> out_dims = phi::vectorize(out->dims());
+    std::vector<int64_t> out_dims = common::vectorize(out->dims());
 
     if (detail::use_optimized_fft_path(axes)) {
       DenseTensor x_copy = Assign(ctx, x);
@@ -325,7 +325,7 @@ struct FFTR2CFunctor<phi::GPUContext, Ti, To> {
                    forward);
     }
 
-    const auto in_dims = phi::vectorize(x.dims());
+    const auto in_dims = common::vectorize(x.dims());
     detail::exec_normalization<To>(
         ctx, *out, out, normalization, in_dims, axes);
   }

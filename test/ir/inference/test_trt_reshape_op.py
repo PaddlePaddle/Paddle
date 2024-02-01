@@ -18,9 +18,9 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 from paddle.static import nn
 
 
@@ -35,7 +35,7 @@ class TRTReshapeTest(InferencePassTest):
             self.input_shape[1],
             self.input_shape[2],
         ]
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
@@ -73,7 +73,7 @@ class TRTReshapeTest1(TRTReshapeTest):
             self.input_shape[1],
             self.input_shape[2],
         ]
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
@@ -100,7 +100,7 @@ class TRTReshapeTest2(TRTReshapeTest):
             self.input_shape[1],
             self.input_shape[2],
         ]
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
@@ -127,7 +127,7 @@ class TRTReshapeTest3(TRTReshapeTest):
             self.input_shape[1],
             self.input_shape[2],
         ]
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )

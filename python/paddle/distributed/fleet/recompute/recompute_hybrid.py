@@ -112,9 +112,7 @@ class _HPRecomputeFunction(PyLayer):
             or 'xpu:' in paddle.get_device()
             or cur_device.split(':')[0]
             in paddle.device.get_all_custom_device_type()
-        ), "Recompute with RNG is not support current device: {}.".format(
-            cur_device
-        )
+        ), f"Recompute with RNG is not support current device: {cur_device}."
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -152,7 +150,7 @@ class _HPRecomputeFunction(PyLayer):
 
                 # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
                 #  which is inplace operating. When the inputs' stop_gradient is True, an
-                #  error will occurs because the stop_gradient=True and inpalce-op are not
+                #  error will occurs because the stop_gradient=True and inplace-op are not
                 #  supported in the same time. The solution is to mark the inputs non_differentiable
                 #  if its stop_gradient is True.
                 # Note:
@@ -175,7 +173,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices

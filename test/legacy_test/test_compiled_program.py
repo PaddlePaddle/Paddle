@@ -19,8 +19,8 @@ from simple_nets import simple_fc_net
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestCompiledProgram(unittest.TestCase):
@@ -34,17 +34,17 @@ class TestCompiledProgram(unittest.TestCase):
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             loss = simple_fc_net()
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
 
             (loss_data,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"image": self.img, "label": self.label},
                 fetch_list=[loss.name],
             )
@@ -55,15 +55,15 @@ class TestCompiledProgram(unittest.TestCase):
             paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             loss = simple_fc_net()
-            exe.run(fluid.default_startup_program())
-            compiled_prog = fluid.CompiledProgram(fluid.default_main_program())
+            exe.run(base.default_startup_program())
+            compiled_prog = base.CompiledProgram(base.default_main_program())
 
             (loss_data,) = exe.run(
                 compiled_prog,
@@ -75,7 +75,7 @@ class TestCompiledProgram(unittest.TestCase):
 
 class TestCompiledProgramError(unittest.TestCase):
     def test_program_or_graph_error(self):
-        self.assertRaises(TypeError, fluid.CompiledProgram, "program")
+        self.assertRaises(TypeError, base.CompiledProgram, "program")
 
     def build_simple_model(self):
         img = paddle.static.data(
@@ -89,14 +89,14 @@ class TestCompiledProgramError(unittest.TestCase):
         avg_loss = paddle.mean(loss)
 
     def compile_program(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             # build model
             self.build_simple_model()
             # compile program
-            program = fluid.default_main_program()
-            compiled_program = fluid.CompiledProgram(program)
-            scope = fluid.global_scope()
-            place = fluid.CPUPlace()
+            program = base.default_main_program()
+            compiled_program = base.CompiledProgram(program)
+            scope = base.global_scope()
+            place = base.CPUPlace()
             compiled_program._compile(scope, place)
             return compiled_program, scope, place
 
@@ -110,7 +110,7 @@ class TestCompiledProgramError(unittest.TestCase):
         # need create different place
         if core.is_compiled_with_cuda():
             compiled_program, scope, _ = self.compile_program()
-            new_place = fluid.CUDAPlace(0)
+            new_place = base.CUDAPlace(0)
             with self.assertRaises(ValueError):
                 compiled_program._compile(scope, new_place)
 

@@ -59,7 +59,7 @@ template <typename T>
 void SetupTensor(phi::DenseTensor* input,
                  paddle::framework::DDim dims,
                  const std::vector<T>& data) {
-  CHECK_EQ(phi::product(dims), static_cast<int64_t>(data.size()));
+  CHECK_EQ(common::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }

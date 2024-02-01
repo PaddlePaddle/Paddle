@@ -24,7 +24,7 @@ from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -102,11 +102,13 @@ class XPUTestShapeOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             for place in self.get_places():
-                if (
-                    type(place) is paddle.fluid.libpaddle.CPUPlace
-                    and self.dtype == np.float16
-                ):
-                    # fp16 not available on cpu
+                if type(
+                    place
+                ) is paddle.base.libpaddle.CPUPlace and self.dtype in [
+                    np.float16,
+                    np.uint16,
+                ]:
+                    # fp16 and bf16 not available on cpu
                     pass
                 else:
                     self.check_with_place(place)

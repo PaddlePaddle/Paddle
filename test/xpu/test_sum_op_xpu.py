@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -100,7 +100,7 @@ def create_test_sum_fp16_class(parent):
 
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
@@ -110,12 +110,12 @@ class API_Test_Add_n(unittest.TestCase):
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
-            exe = fluid.Executor(fluid.XPUPlace(0))
+            exe = base.Executor(base.XPUPlace(0))
             result = exe.run(fetch_list=[sum_value])
 
             self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input0 = paddle.ones(shape=[2, 3], dtype='float32')
             expected_result = np.empty((2, 3))
             expected_result.fill(2)
@@ -193,12 +193,12 @@ class TestRaiseSumsError(unittest.TestCase):
 class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([None])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)

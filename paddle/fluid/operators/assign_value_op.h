@@ -110,6 +110,9 @@ class AssignValueKernel : public framework::OpKernel<T> {
       case framework::proto::VarType::FP32:
         value_name = "fp32_values";
         break;
+      case framework::proto::VarType::FP64:
+        value_name = "fp64_values";
+        break;
       case framework::proto::VarType::INT64:
         value_name = "int64_values";
       case framework::proto::VarType::INT8:
@@ -118,12 +121,12 @@ class AssignValueKernel : public framework::OpKernel<T> {
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported data type(code %d) for AssignValue operator, only "
-            "supports bool, int32, float32, int8 and int64.",
+            "supports bool, int32, float32, float64, int8 and int64.",
             dtype));
         break;
     }
     CopyVectorToTensor<T>(value_name, out, ctx);
-    out->Resize(phi::make_ddim(shape));
+    out->Resize(common::make_ddim(shape));
   }
 };
 

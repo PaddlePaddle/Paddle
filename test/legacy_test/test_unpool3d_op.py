@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -143,10 +144,10 @@ class TestUnpool3DOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.unpool3d_forward_naive = unpool3dmax_forward_naive
@@ -284,7 +285,7 @@ class TestUnpool3DOpException(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -314,7 +315,7 @@ class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -344,7 +345,7 @@ class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
 class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
     def test_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -373,10 +374,11 @@ class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):
+    @test_with_pir_api
     def test_case(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             with paddle.static.program_guard(
@@ -412,9 +414,8 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                     output, indices, kernel_size=2, stride=None
                 )
 
-                exe = paddle.fluid.Executor(place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    paddle.fluid.default_main_program(),
                     feed={"x": input_data},
                     fetch_list=[output_unpool],
                     return_numpy=True,

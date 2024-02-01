@@ -426,6 +426,24 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 }
 
 CINN_REGISTER_HELPER(cinn_cuda_host_api) {
+  using cinn::runtime::cuda::cinn_get_value_in_cuda_kernel_args;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_get_value_in_cuda_kernel_args,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<int64_t>()
+      .AddInputType<void *>()  // args
+      .AddInputType<int>()     // index
+      .End();
+
+  using cinn::runtime::cuda::infer_shape_set_value;
+  REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<int>()
+      .AddInputType<int>()
+      .AddInputType<int64_t>()
+      .AddInputType<int64_t **>()
+      .End();
+
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel,
                               cinn::common::DefaultHostTarget())

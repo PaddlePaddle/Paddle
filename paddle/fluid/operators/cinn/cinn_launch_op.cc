@@ -25,7 +25,9 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
+#if defined(PADDLE_WITH_CUDA)
 PHI_DECLARE_bool(cudnn_deterministic);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -52,7 +54,7 @@ void DebugCinnCompiledResult(const CinnCompiledObject& result) {
   const auto& cinn_scope = *(result.scope);
   const auto& paddle2cinn_varmap = result.paddle2cinn_varmap;
 
-  VLOG(4) << "Compiled runtime_program instrunction size:["
+  VLOG(4) << "Compiled runtime_program instruction size:["
           << cinn_runtime_program->size() << "]";
 
   std::vector<std::string> infos;
@@ -84,9 +86,11 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 }
 
 void SetCinnRuntimeFlags() {
+#if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Set FLAGS_cinn_cudnn_deterministic to "
           << FLAGS_cudnn_deterministic;
   ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
+#endif
 }
 
 template <>

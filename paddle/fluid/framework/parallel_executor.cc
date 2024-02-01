@@ -693,7 +693,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
-    if (member_->build_strategy_.num_trainers_ > 1) {
+    if (member_->build_strategy_.num_trainers_ > 1) {  // NOLINT
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
     } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -936,11 +936,9 @@ void ParallelExecutor::BCastParamsToDevices(
         auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
-        if (member_->build_strategy_.async_mode_) {
-          share_memory();
-        } else if (member_->use_all_reduce_ ||
-                   member_->IsUseCUDA(member_->use_device_) ||
-                   var == "@LR_DECAY_COUNTER@") {
+        if (member_->use_all_reduce_ ||
+            member_->IsUseCUDA(member_->use_device_) ||
+            var == "@LR_DECAY_COUNTER@") {
           copy_memory();
         } else {
           share_memory();
@@ -1508,11 +1506,11 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
                       platform::errors::PreconditionNotMet(
-                          "graphs.size() shoule be %d, but received %d",
+                          "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            {member_->places_[0]},
                                            loss_var_name,
                                            {member_->local_scopes_[0]},
@@ -1530,7 +1528,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            member_->places_,
                                            loss_var_name,
                                            member_->local_scopes_,
@@ -1543,7 +1541,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,
                       platform::errors::PreconditionNotMet(
-                          "graphs.size() shoule be %d, but received %d",
+                          "graphs.size() should be %d, but received %d",
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
@@ -1610,12 +1608,12 @@ void ParallelExecutor::CreateVariableInfos(
       var_infos->size(),
       0,
       platform::errors::PreconditionNotMet(
-          "var_infos->size() shoule be 0, but received %d", var_infos->size()));
+          "var_infos->size() should be 0, but received %d", var_infos->size()));
   PADDLE_ENFORCE_EQ(
       member_->is_persistable_.size(),
       0,
       platform::errors::PreconditionNotMet(
-          "member_->is_persistable_.size() shoule be 0, but received %d",
+          "member_->is_persistable_.size() should be 0, but received %d",
           member_->is_persistable_.size()));
   for (auto &node : graph->Nodes()) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {

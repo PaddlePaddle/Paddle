@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -42,7 +43,7 @@ class TestSearchSorted(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_test_case(self):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")
@@ -102,6 +103,7 @@ class TestSearchSortedAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -154,6 +156,7 @@ class TestSearchSortedAPI(unittest.TestCase):
 
 
 class TestSearchSortedError(unittest.TestCase):
+    @test_with_pir_api
     def test_error_api(self):
         paddle.enable_static()
 
@@ -201,6 +204,8 @@ class TestSearchSortedError(unittest.TestCase):
             RuntimeError, test_searchsorted_sortedsequence_size_error
         )
 
+    @test_with_pir_api
+    def test_check_type_error(self):
         def test_sortedsequence_values_type_error():
             with paddle.static.program_guard(paddle.static.Program()):
                 sorted_sequence = paddle.static.data(

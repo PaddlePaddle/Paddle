@@ -146,7 +146,7 @@ class IterableDatasetWrapper {
           if (tensors_[i][j]->place() == places_[read_num]) {
             result[read_num].emplace(slots_[j], std::move(*tensors_[i][j]));
           } else {
-            framework::TensorCopy(std::move(*tensors_[i][j]),
+            framework::TensorCopy(*tensors_[i][j],
                                   places_[read_num],
                                   &result[read_num][slots_[j]]);
           }
@@ -292,6 +292,9 @@ void BindDataset(py::module *m) {
       .def("get_epoch_finish",
            &framework::Dataset::GetEpochFinish,
            py::call_guard<py::gil_scoped_release>())
+      .def("clear_sample_state",
+           &framework::Dataset::ClearSampleState,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_pv_data_size",
            &framework::Dataset::GetPvDataSize,
            py::call_guard<py::gil_scoped_release>())
@@ -379,6 +382,9 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("dump_walk_path",
            &framework::Dataset::DumpWalkPath,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dump_sample_neighbors",
+           &framework::Dataset::DumpSampleNeighbors,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

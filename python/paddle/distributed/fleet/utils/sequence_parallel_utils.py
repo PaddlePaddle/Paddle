@@ -17,14 +17,16 @@
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients_with_group,
 )
-from paddle.fluid import core
-from paddle.nn import Layer
-from paddle.nn import functional as F
+from paddle.nn import (
+    Layer,
+    functional as F,
+)
 
 ####################################################
 #                                                  #
@@ -258,10 +260,8 @@ class ColumnSequenceParallelLinear(Layer):
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
-            "Number of column of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                out_features, self.world_size
-            )
+            f"Number of column of the weight for linear ({out_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
         self.output_size_per_partition = out_features // self.world_size
 
@@ -380,10 +380,8 @@ class RowSequenceParallelLinear(Layer):
 
         self.is_mp = self.world_size > 1
         assert in_features % self.world_size == 0, (
-            "Number of row of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                in_features, self.world_size
-            )
+            f"Number of row of the weight for linear ({in_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
 
         self.input_size_per_partition = in_features // self.world_size

@@ -16,9 +16,9 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || \
@@ -168,7 +168,7 @@ void PRecvArrayKernel(const Context& dev_ctx,
     dev_ctx.Alloc(&out, dtype);
     comm_ctx->Recv(&out, out.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " recv "
-            << phi::product(out_dims) << " from " << peer;
+            << common::product(out_dims) << " from " << peer;
   }
 #else
   PADDLE_THROW(
@@ -190,6 +190,7 @@ PD_REGISTER_KERNEL(p_recv,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -218,6 +219,7 @@ PD_REGISTER_KERNEL(p_recv,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 

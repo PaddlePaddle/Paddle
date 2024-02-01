@@ -59,7 +59,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<phi::DenseTensor>();
-  tensor->Resize(phi::make_ddim(shape));
+  tensor->Resize(common::make_ddim(shape));
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -157,7 +157,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kUNK;
   }
 
-  *size = tensor->numel();
+  *size = static_cast<int>(tensor->numel());
   return res;
 }
 
@@ -244,16 +244,11 @@ void Tensor::CopyFromCpu(const T *data) {
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
-  } else {
+  } else if (place_ == PlaceType::kCUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto device_type_id =
-        static_cast<size_t>(place_) - static_cast<size_t>(PlaceType::kCUSTOM);
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    paddle::platform::CustomPlace custom_place(
-        phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
-            device_type_id),
-        device_);
+    paddle::platform::CustomPlace custom_place(device_type_, device_);
     auto *t_data = tensor->mutable_data<T>(custom_place);
     auto *dev_ctx = static_cast<const paddle::platform::CustomDeviceContext *>(
         pool.Get(custom_place));
@@ -264,9 +259,15 @@ void Tensor::CopyFromCpu(const T *data) {
                          ele_size,
                          dev_ctx->stream());
 #else
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with Custom place because paddle is not "
+        "compiled "
+        "with XPU."));
 #endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU, XPU and CUSTOM_DEVICE "
+        "now."));
   }
 }
 
@@ -336,7 +337,7 @@ void Tensor::ShareExternalData(const T *data,
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
   phi::DenseTensorMeta meta(
-      DataTypeInfo<T>().TYPE, phi::make_ddim(shape), LayoutConvert(layout));
+      DataTypeInfo<T>().TYPE, common::make_ddim(shape), LayoutConvert(layout));
   if (place == PlaceType::kCPU) {
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(
@@ -353,6 +354,14 @@ void Tensor::ShareExternalData(const T *data,
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(
             const_cast<T *>(data), size, paddle::platform::XPUPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kCUSTOM) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(
+            const_cast<T *>(data),
+            size,
+            paddle::platform::CustomPlace(device_type_, device_)),
         meta);
     *tensor = std::move(dtensor);
   } else {
@@ -724,18 +733,19 @@ std::vector<int> Tensor::shape() const {
     // at last nhwC, so for dim==2 these layouts are the same and nothing should
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
-    if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
+    if (tensor->dims().size() < 3)
+      return common::vectorize<int>(tensor->dims());
     if (out_layout == phi::DataLayout::kNHWC ||
         out_layout == phi::DataLayout::kNDHWC) {
-      auto dims = phi::vectorize<int>(tensor->dims());
+      auto dims = common::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
     } else {
-      return phi::vectorize<int>(tensor->dims());
+      return common::vectorize<int>(tensor->dims());
     }
   }
 #endif
-  return phi::vectorize<int>(tensor->dims());
+  return common::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

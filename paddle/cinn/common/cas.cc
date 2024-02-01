@@ -21,13 +21,12 @@
 
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
-#include "paddle/cinn/optim/cast_simplify.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -1585,7 +1584,7 @@ bool CASasSymbol(Expr expr) {
 
 Expr ConvertCinnToCAS(Expr expr) {
   VLOG(7) << "Begin ConvertCinnToCAS " << expr;
-  Expr copied = optim::IRCopy(expr);
+  Expr copied = ir::ir_utils::IRCopy(expr);
   struct Mutator : public ir::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
     void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -1711,7 +1710,7 @@ Expr ConvertCinnToCAS(Expr expr) {
  * simplify the condition ensures correctness, though not sufficient.
  */
 Expr ReplaceMinToConstant(Expr expr) {
-  Expr copied = optim::IRCopy(expr);
+  Expr copied = ir::ir_utils::IRCopy(expr);
   struct Mutator : public ir::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
     void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -1728,10 +1727,10 @@ Expr ReplaceMinToConstant(Expr expr) {
       auto min_b = op->b();
       if (min_a.is_constant() && !min_b.is_constant()) {
         CHECK(min_a->type().is_integer());
-        *expr = optim::IRCopy(min_a);
+        *expr = ir::ir_utils::IRCopy(min_a);
       } else if (min_b.is_constant() && !min_a.is_constant()) {
         CHECK(min_b->type().is_integer());
-        *expr = optim::IRCopy(min_b);
+        *expr = ir::ir_utils::IRCopy(min_b);
       }
     }
   };
@@ -1744,7 +1743,7 @@ Expr ReplaceMinToConstant(Expr expr) {
  * constant value and 1 inconstant value, return the constant max value.
  */
 Expr ReplaceMaxToConstant(Expr expr) {
-  Expr copied = optim::IRCopy(expr);
+  Expr copied = ir::ir_utils::IRCopy(expr);
   struct Mutator : public ir::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
     void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -1761,10 +1760,10 @@ Expr ReplaceMaxToConstant(Expr expr) {
       auto max_b = op->b();
       if (max_a.is_constant() && !max_b.is_constant()) {
         CHECK(max_a->type().is_integer());
-        *expr = optim::IRCopy(max_a);
+        *expr = ir::ir_utils::IRCopy(max_a);
       } else if (max_b.is_constant() && !max_a.is_constant()) {
         CHECK(max_b->type().is_integer());
-        *expr = optim::IRCopy(max_b);
+        *expr = ir::ir_utils::IRCopy(max_b);
       }
     }
   };
@@ -1774,7 +1773,7 @@ Expr ReplaceMaxToConstant(Expr expr) {
 
 Expr ConvertCasToCinn(Expr expr) {
   VLOG(7) << "Begin ConvertCasToCinn : " << expr;
-  Expr copied = optim::IRCopy(expr);
+  Expr copied = ir::ir_utils::IRCopy(expr);
 
   struct Mutator : ir::IRMutator<Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
@@ -1869,7 +1868,7 @@ bool IsExprCasCompatible(Expr expr) {
     return expr->As<Add>() || expr->As<Sub>() || expr->As<Mul>() ||
            expr->As<Div>();
   };
-  return ir::CollectIRNodes(expr, teller).empty();
+  return ir::ir_utils::CollectIRNodes(expr, teller).empty();
 }
 
 // Partially divide a by b. e.g. (2x+y)/2 => x + y/2
@@ -2310,14 +2309,14 @@ Expr SolveInequality(Expr inequality, Var val) {
 #undef __
   Expr all = AutoSimplify(a - b);
 
-  // if (common::IsPureMath(a) && common::IsPureMath(b)) {
+  // if (cinn::common::IsPureMath(a) && cinn::common::IsPureMath(b)) {
   if (true) {
-    auto _res_positive_ = common::Solve(a, b, val);  // NOLINT
+    auto _res_positive_ = cinn::common::Solve(a, b, val);  // NOLINT
     auto& res = std::get<0>(_res_positive_);
     auto& positive = std::get<1>(_res_positive_);
     // Simplify it with CAS to avoid random result from GiNac.
     res = AutoSimplify(res);
-    res = common::cast(res, val->type());
+    res = cinn::common::cast(res, val->type());
 
     if (le_n) {
       if (positive) return ir::LE::Make(val, res);

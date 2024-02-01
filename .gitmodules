@@ -106,3 +106,7 @@
 	path = third_party/jitify
 	url = https://github.com/NVIDIA/jitify.git
 	ignore = dirty
+[submodule "third_party/cccl"]
+	path = third_party/cccl
+	url = https://github.com/NVIDIA/cccl.git
+	ignore = dirty

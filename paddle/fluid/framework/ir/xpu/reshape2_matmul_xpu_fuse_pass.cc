@@ -286,9 +286,6 @@ void MapMatmulV2ToMatmulXPUPass::MapMatmulV2ToMatmul(ir::Graph* graph) const {
     desc.SetAttr("transpose_X", matmul_v2->Op()->GetAttr("trans_x"));
     desc.SetAttr("transpose_Y", matmul_v2->Op()->GetAttr("trans_y"));
     desc.SetAttr("alpha", 1.0f);
-    if (matmul_v2->Op()->HasAttr("use_mkldnn")) {
-      desc.SetAttr("use_mkldnn", matmul_v2->Op()->GetAttr("use_mkldnn"));
-    }
     auto matmul_node = graph->CreateOpNode(&desc);
     IR_NODE_LINK_TO(matmul_x, matmul_node);
     IR_NODE_LINK_TO(matmul_y, matmul_node);

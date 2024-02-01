@@ -18,12 +18,12 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 import sys
 
-from paddle import fluid
+from paddle import base
 
 
 def generate_spec(filename):
     with open(filename, 'w') as f:
-        ops = fluid.core._get_use_default_grad_op_desc_maker_ops()
+        ops = base.core._get_use_default_grad_op_desc_maker_ops()
         for op in ops:
             f.write(op + '\n')
 

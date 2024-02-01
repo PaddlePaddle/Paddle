@@ -225,6 +225,6 @@ if __name__ == "__main__":
     all_code = cdba_header
     all_code += generate_conv2d_depthwise()
     all_code += CommonTail
-    with open("generated/conv2d_depthwise_bias_act.cu", "w") as f:
+    with open("generated_tmp/conv2d_depthwise_bias_act.cu", "w") as f:
         f.write(all_code)
         f.close()

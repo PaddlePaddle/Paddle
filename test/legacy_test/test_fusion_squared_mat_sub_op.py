@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestFusionSquaredMatSubOp(OpTest):
@@ -42,7 +42,7 @@ class TestFusionSquaredMatSubOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFusionSquaredMatSubOpCase1(TestFusionSquaredMatSubOp):

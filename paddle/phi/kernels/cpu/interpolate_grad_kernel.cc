@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 #include <array>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -360,17 +360,20 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
 
   for (int d = 0; d < out_d; d++) {
     int in_d = static_cast<int>(
-        align_corners ? std::lround(ratio_d * static_cast<float>(d))
-                      : (ratio_d * static_cast<float>(d)));
+        align_corners
+            ? static_cast<float>(std::lround(ratio_d * static_cast<float>(d)))
+            : (ratio_d * static_cast<float>(d)));
     for (int k = 0; k < out_h; k++) {  // loop for images
       int in_k = static_cast<int>(
-          align_corners ? std::lround(ratio_h * static_cast<float>(k))
-                        : (ratio_h * static_cast<float>(k)));
+          align_corners
+              ? static_cast<float>(std::lround(ratio_h * static_cast<float>(k)))
+              : (ratio_h * static_cast<float>(k)));
 
       for (int l = 0; l < out_w; l++) {
-        int in_l = static_cast<int>(
-            align_corners ? std::lround(ratio_w * static_cast<float>(l))
-                          : (ratio_w * static_cast<float>(l)));
+        int in_l = static_cast<int>(align_corners
+                                        ? static_cast<float>(std::lround(
+                                              ratio_w * static_cast<float>(l)))
+                                        : (ratio_w * static_cast<float>(l)));
 
         for (int i = 0; i < n; i++) {    // loop for batches
           for (int j = 0; j < c; j++) {  // loop for channels
@@ -403,8 +406,8 @@ static void Interpolate1DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.0;
@@ -504,8 +507,8 @@ static void Interpolate2DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -670,8 +673,8 @@ static void Interpolate3DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;

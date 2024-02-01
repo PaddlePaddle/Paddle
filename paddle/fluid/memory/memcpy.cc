@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -110,11 +111,11 @@ void Copy<platform::CustomPlace, platform::CustomPlace>(
 #endif  // PADDLE_WITH_CUSTOM_DEVICE
 
 template <>
-void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace,
-                                                  void* dst,
-                                                  platform::CPUPlace,
-                                                  const void* src,
-                                                  size_t num) {
+TEST_API void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace,
+                                                           void* dst,
+                                                           platform::CPUPlace,
+                                                           const void* src,
+                                                           size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
   std::memcpy(dst, src, num);
@@ -274,7 +275,7 @@ inline void SyncCUDAStream() {
 #else
 inline void SyncCUDAStream() {
 #if !defined(_WIN32)
-  cudaStreamSynchronize(0);
+  cudaStreamSynchronize(nullptr);
 #else
   cudaError_t e_sync = cudaSuccess;
   while (e_sync = cudaStreamQuery(0)) {
@@ -292,7 +293,7 @@ inline void SyncCUDAStream() {
 // https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
 
 template <>
-void Copy<platform::CPUPlace, platform::CUDAPlace>(
+TEST_API void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place,
     void* dst,
     platform::CUDAPlace src_place,
@@ -336,7 +337,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPlace, platform::CPUPlace>(
+TEST_API void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place,
     void* dst,
     platform::CPUPlace src_place,
@@ -455,7 +456,7 @@ void Copy<platform::CPUPlace, platform::CUDAPinnedPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
+TEST_API void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
     platform::CUDAPinnedPlace dst_place,
     void* dst,
     platform::CPUPlace src_place,
@@ -648,12 +649,12 @@ void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
 
 // NOTE: only for (CPUPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace).
 template <>
-void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                     void* dst,
-                                     phi::CPUPlace src_place,
-                                     const void* src,
-                                     size_t num,
-                                     void* stream) {
+TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                              void* dst,
+                                              phi::CPUPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 
@@ -743,7 +744,7 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
   if (src_place.GetType() == phi::AllocationType::CPU &&
-      dst_place.GetType() == phi::AllocationType::CPU) {
+      dst_place.GetType() == phi::AllocationType::CPU) {  // NOLINT
     std::memcpy(dst, src, num);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -824,11 +825,11 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 
 // NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).
 template <>
-void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                     void* dst,
-                                     phi::CPUPlace src_place,
-                                     const void* src,
-                                     size_t num) {
+TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                              void* dst,
+                                              phi::CPUPlace src_place,
+                                              const void* src,
+                                              size_t num) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num);
 }
 
@@ -882,12 +883,12 @@ void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
 
 // NOTE: only for (CPUPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace).
 template <>
-void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                     void* dst,
-                                     phi::CPUPlace src_place,
-                                     const void* src,
-                                     size_t num,
-                                     void* stream) {
+TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                              void* dst,
+                                              phi::CPUPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 #endif

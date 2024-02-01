@@ -17,11 +17,11 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {

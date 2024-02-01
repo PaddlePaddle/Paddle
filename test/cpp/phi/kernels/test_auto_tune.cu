@@ -83,12 +83,14 @@ TEST(AutoTune, sum) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto in1 = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({N}),
+                           phi::DataLayout::NCHW));
   auto in2 = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({N}),
+                           phi::DataLayout::NCHW));
 
   float* in1_data = in1->data<float>();
   float* in2_data = in2->data<float>();
@@ -106,12 +108,14 @@ TEST(AutoTune, sum) {
 
   auto d_in1 = std::make_shared<phi::DenseTensor>(
       alloc_cuda.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({N}),
+                           phi::DataLayout::NCHW));
   auto d_in2 = std::make_shared<phi::DenseTensor>(
       alloc_cuda.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({N}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({N}),
+                           phi::DataLayout::NCHW));
   phi::Copy(*dev_ctx, *in1.get(), phi::GPUPlace(), false, d_in1.get());
   phi::Copy(*dev_ctx, *in2.get(), phi::GPUPlace(), false, d_in2.get());
 

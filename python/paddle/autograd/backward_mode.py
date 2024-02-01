@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core, framework
-from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
+from paddle.base import core, framework
+from paddle.base.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 

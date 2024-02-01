@@ -29,12 +29,12 @@ void DiagonalKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   auto* input = &x;
   const T* input_data = input->data<T>();
-  auto input_dim = vectorize(input->dims());
+  auto input_dim = common::vectorize(input->dims());
   auto input_dim_size = input_dim.size();
 
   auto* output = out;
   T* output_data = dev_ctx.template Alloc<T>(output);
-  auto output_dim = vectorize(output->dims());
+  auto output_dim = common::vectorize(output->dims());
   auto output_dim_size = output_dim.size();
 
   const int64_t offset_ = offset;

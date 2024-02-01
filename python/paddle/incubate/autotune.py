@@ -16,7 +16,7 @@ import json
 import warnings
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 __all__ = ['set_config']
 

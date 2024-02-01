@@ -182,8 +182,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   out_dims_vec.push_back(1);
   std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
   tmp_dims_vec.push_back(1);
-  ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
-  ctx->SetOutputDim("Tmp", phi::make_ddim(tmp_dims_vec));
+  ctx->SetOutputDim("Out", common::make_ddim(out_dims_vec));
+  ctx->SetOutputDim("Tmp", common::make_ddim(tmp_dims_vec));
 }
 
 void MatchMatrixTensorOpGrad::InferShape(
@@ -251,6 +251,93 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Output<phi::DenseTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
+
+    const auto& x_lod = x->lod();
+    PADDLE_ENFORCE_EQ(x_lod.empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) should hold LoD information, but "
+                          "received Input(X).lod() is empty."));
+    const auto& x_lod_0 = x_lod[0];
+    PADDLE_ENFORCE_GE(x_lod_0.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(X)'s LoD data should be "
+                          "equal to 2, but received %d.",
+                          x_lod_0.size()));
+    auto x_dims = x->dims();
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      static_cast<int64_t>(x_lod_0.back()),
+                      platform::errors::InvalidArgument(
+                          "The last element of Input(X)'s LoD data should be "
+                          "equal to the first dimension of Input(X). "
+                          "But received the last element of Input(X)'s LoD "
+                          "data is %d, the first dimension of Input(X) is %d.",
+                          x_lod_0.back(),
+                          x_dims[0]));
+    const auto& y_lod = y->lod();
+    PADDLE_ENFORCE_EQ(y_lod.empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) should hold LoD information, but "
+                          "received Input(Y).lod() is empty."));
+    const auto& y_lod_0 = y_lod[0];
+    PADDLE_ENFORCE_GE(y_lod_0.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(Y)'s LoD data should be "
+                          "equal to 2, but received %d.",
+                          y_lod_0.size()));
+    auto y_dims = y->dims();
+    PADDLE_ENFORCE_EQ(y_dims[0],
+                      static_cast<int64_t>(y_lod_0.back()),
+                      platform::errors::InvalidArgument(
+                          "The last element of Input(Y)'s LoD data should be "
+                          "equal to the first dimension of Input(Y). "
+                          "But received the last element of Input(Y)'s LoD "
+                          "data is %d, the first dimension of Input(Y) is %d.",
+                          y_lod_0.back(),
+                          y_dims[0]));
+
+    PADDLE_ENFORCE_EQ(x_lod_0.size(),
+                      y_lod_0.size(),
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(X)'s and Input(Y)'s LoD "
+                          "data should be equal. "
+                          "But received the dimensions of Input(X)'s LoD is "
+                          "%d, the dimensions of Input(Y)'s LoD is %d.",
+                          x_lod_0.size(),
+                          y_lod_0.size()));
+
+    int64_t out_dim_0 = 0;
+    int64_t tmp_dim_0 = -1;
+    for (size_t i = 1; i < x_lod_0.size(); i++) {
+      int64_t x_len = x_lod_0[i] - x_lod_0[i - 1];
+      int64_t y_len = y_lod_0[i] - y_lod_0[i - 1];
+      out_dim_0 += (x_len * y_len);
+    }
+    out_dim_0 *= dim_t;
+
+    tmp_dim_0 = x_dims[0] * dim_t * x_dims[1];
+    std::vector<int64_t> out_dims_vec{out_dim_0};
+    out_dims_vec.push_back(1);
+    std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
+    tmp_dims_vec.push_back(1);
+
+    auto& out_meta = out->meta();
+    phi::DenseTensorMeta new_out_meta(out_meta.dtype,
+                                      common::make_ddim(out_dims_vec),
+                                      out_meta.layout,
+                                      out_meta.lod);
+    out->set_meta(new_out_meta);
+
+    auto& tmp_meta = tmp->meta();
+    phi::DenseTensorMeta new_tmp_meta(tmp_meta.dtype,
+                                      common::make_ddim(tmp_dims_vec),
+                                      tmp_meta.layout,
+                                      tmp_meta.lod);
+    tmp->set_meta(new_tmp_meta);
+
     int64_t dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];

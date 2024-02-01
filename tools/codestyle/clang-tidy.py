@@ -396,9 +396,9 @@ def main():
     # Load the database and extract all files.
     database = json.load(open(os.path.join(build_path, db_path)))
     database = skip_check_file(database, build_path)
-    files = [
+    files = {
         make_absolute(entry['file'], entry['directory']) for entry in database
-    ]
+    }
 
     max_task = args.j
     if max_task == 0:
@@ -471,7 +471,7 @@ def main():
 if __name__ == '__main__':
     target_version = "15.0.2"
     try:
-        out = subprocess.check_output(['clang-tidy --version'], shell=True)
+        out = subprocess.check_output(['clang-tidy', '--version'], shell=True)
         version = out.decode('utf-8')
         if version.find(target_version) == -1:
             print(

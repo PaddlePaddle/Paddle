@@ -12,23 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .auto_cast import auto_cast  # noqa: F401
-from .auto_cast import decorate  # noqa: F401
-from .auto_cast import amp_guard  # noqa: F401
-from .auto_cast import amp_decorate  # noqa: F401
-from .amp_lists import white_list  # noqa: F401
-from .amp_lists import black_list  # noqa: F401
+from .auto_cast import (  # noqa: F401
+    auto_cast,
+    decorate,
+    amp_guard,
+    amp_decorate,
+)
+from .amp_lists import (  # noqa: F401
+    white_list,
+    black_list,
+)
 
-from . import grad_scaler  # noqa: F401
-from .grad_scaler import GradScaler  # noqa: F401
-from .grad_scaler import AmpScaler  # noqa: F401
-from .grad_scaler import OptimizerState  # noqa: F401
+from . import (  # noqa: F401
+    debugging,
+    grad_scaler,
+    accuracy_compare,
+)
 
-from . import debugging  # noqa: F401
-from . import accuracy_compare  # noqa: F401
+from .grad_scaler import (  # noqa: F401
+    GradScaler,
+    AmpScaler,
+    OptimizerState,
+)
 
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
 )
@@ -53,10 +61,11 @@ def is_float16_supported(device=None):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        paddle.amp.is_float16_supported() # True or False
+            >>> import paddle
+            >>> paddle.amp.is_float16_supported() # True or False
+            False
     """
 
     device = (
@@ -79,10 +88,11 @@ def is_bfloat16_supported(device=None):
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import paddle
-        paddle.amp.is_bfloat16_supported() # True or False
+            >>> import paddle
+            >>> paddle.amp.is_bfloat16_supported() # True or False
+            True
     """
 
     device = (

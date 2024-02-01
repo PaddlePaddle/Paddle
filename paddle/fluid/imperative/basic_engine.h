@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace imperative {
@@ -29,7 +30,7 @@ namespace imperative {
 class VarBase;
 class OpBase;
 
-class BasicEngine : public Engine {
+class TEST_API BasicEngine : public Engine {
  public:
   void Init(const std::vector<std::shared_ptr<VarBase>>& tensors,
             const std::vector<std::shared_ptr<VarBase>>& grad_tensors,

@@ -14,18 +14,24 @@
 
 import os
 import sys
-from .optimizer_factory import FLEET_GLOBAL_DICT  # noqa: F403
-from .optimizer_factory import DistributedAdam  # noqa: F403
+
 from google.protobuf import text_format
-from paddle.framework import core
-from paddle.incubate.distributed.fleet.base import Fleet
-from paddle.incubate.distributed.fleet.base import Mode
-from paddle.incubate.distributed.fleet.base import DistributedOptimizer
-from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
-from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
-from paddle.common_ops_import import LayerHelper
 
 import paddle
+from paddle.common_ops_import import LayerHelper
+from paddle.framework import core
+from paddle.incubate.distributed.fleet.base import (
+    DistributedOptimizer,
+    Fleet,
+    Mode,
+)
+from paddle.incubate.distributed.fleet.role_maker import (
+    HeterRoleMaker,
+    MPISymetricRoleMaker,
+)
+
+from .optimizer_factory import DistributedAdam  # noqa: F401
+from .optimizer_factory import FLEET_GLOBAL_DICT
 
 
 class PSLib(Fleet):
@@ -592,7 +598,7 @@ class PSLib(Fleet):
         Args:
             decay (float): The decay rate, usually range in (0, 1).
             emb_dim (int, optional): One element's length in datanorm layer. Default is 11.
-            scope (Scope, optional): Scope object, default is fluid.global_scope(). Default is None.
+            scope (Scope, optional): Scope object, default is base.global_scope(). Default is None.
             table_id (int, optional): Table id of shrinking dense table. None means shrink all,
                 you should specify it when using multiple scopes, default is None.
 
@@ -692,7 +698,7 @@ class PSLib(Fleet):
 
                 # below is how to save proto binary file
                 with open("my_program.bin", "wb") as fout:
-                    my_program = fluid.default_main_program()
+                    my_program = base.default_main_program()
                     fout.write(my_program.desc.serialize_to_string())
 
         """
@@ -736,7 +742,7 @@ class PSLib(Fleet):
                                     load_combine = False)
                 # below is how to save proto binary file
                 with open("my_program.bin", "wb") as fout:
-                    my_program = fluid.default_main_program()
+                    my_program = base.default_main_program()
                     fout.write(my_program.desc.serialize_to_string())
 
         """
@@ -1228,7 +1234,7 @@ class fleet_embedding:
                     size=[-1, 11],
                     is_sparse=True,
                     is_distributed=True,
-                    param_attr=fluid.ParamAttr(name="embedding"))
+                    param_attr=base.ParamAttr(name="embedding"))
     """
 
     def __init__(self, click_name, scale_sparse_grad=True):
@@ -1257,8 +1263,8 @@ class fleet_embedding:
 
 class DownpourOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in

@@ -18,11 +18,12 @@ import unittest
 from functools import reduce
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -57,12 +58,13 @@ class TestSetValueBase(unittest.TestCase):
 class TestSetValueApi(TestSetValueBase):
     def _run_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(self.program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x = self._call_setitem_static_api(x)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(self.program, fetch_list=[x])
+        out = exe.run(main_program, fetch_list=[x])
         paddle.disable_static()
         return out
 
@@ -74,6 +76,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
+    @test_with_pir_api
     def test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
@@ -1828,9 +1831,9 @@ class TestGradientTruncated(unittest.TestCase):
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (
-                paddle.fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else paddle.fluid.CUDAPlace(0)
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
             )
 
             prog = paddle.static.default_main_program()
@@ -1874,17 +1877,17 @@ class TestGradientTruncated(unittest.TestCase):
 class TestSetValueInplace(unittest.TestCase):
     def test_inplace(self):
         paddle.disable_static()
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             a.stop_gradient = False
-            b = a[:]
+            b = a[:] * 1
             c = b
             b[paddle.zeros([], dtype='int32')] = 1.0
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
-            self.assertEqual(b.inplace_version, 0)
+            self.assertEqual(b.inplace_version, 1)
 
         paddle.enable_static()
 
@@ -1894,7 +1897,7 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         paddle.disable_static()
 
         a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             b = paddle.rand(shape=[1, 4])
@@ -1905,7 +1908,7 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
             a_grad_1 = a.grad.numpy()
             b_grad_1 = b.grad.numpy()
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             b = paddle.rand(shape=[1, 4])
@@ -1976,6 +1979,88 @@ class TestSetValueBFloat16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['Input'], 'Out', check_dygraph=False)
+
+
+class TestSetValueWithScalarInStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.shape = (10, 2)
+        self.exe = paddle.static.Executor()
+        self.train_program = paddle.static.Program()
+        self.startup_program = paddle.static.Program()
+
+    def test_value_input_is_scalar(self):
+        with paddle.static.program_guard(
+            self.train_program, self.startup_program
+        ):
+            x = paddle.ones(self.shape)
+            x.stop_gradient = False
+            y = x * 1
+
+            # mock test case x[0, 0] = 10 with no ValueTensor input
+            inputs = {
+                'Input': y,
+            }
+            attrs = {
+                'axes': [0, 1],
+                'starts': [0, 0],
+                'ends': [1, 1],
+                'steps': [1, 1],
+                'values': [10],
+                'shape': [1],
+            }
+
+            helper = LayerHelper("set_value")
+            out = helper.create_variable_for_type_inference(dtype=y.dtype)
+
+            helper.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+
+            np_data = np.ones(self.shape).astype('float32')
+
+            paddle.static.append_backward(out.sum())
+            res = self.exe.run(
+                self.train_program, fetch_list=[out, x.grad_name]
+            )
+
+            np_data[0, 0] = 10
+            expected_x_grad = np.ones(self.shape)
+            expected_x_grad[0, 0] = 0
+
+        np.testing.assert_array_equal(res[0], np_data)
+        np.testing.assert_array_equal(res[1], expected_x_grad)
+
+
+class TestSetValueWithScalarInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = (10, 2)
+
+    def test_value_input_is_scalar(self):
+        x = paddle.ones(self.shape)
+        x.stop_gradient = False
+        y = x * 1
+
+        # mock test case x[0, 0] = 10 with no ValueTensor input
+        out = paddle._C_ops.set_value(
+            y, [0, 0], [1, 1], [1, 1], [0, 1], [], [], [1], [10.0]
+        )
+
+        loss = out.sum()
+        loss.backward()
+
+        np_data = np.ones(self.shape).astype('float32')
+        np_data[0, 0] = 10
+
+        expected_x_grad = np.ones(self.shape)
+        expected_x_grad[0, 0] = 0
+
+        np.testing.assert_array_equal(out, np_data)
+        np.testing.assert_array_equal(x.grad, expected_x_grad)
 
 
 if __name__ == '__main__':

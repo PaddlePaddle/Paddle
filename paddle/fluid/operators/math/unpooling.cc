@@ -24,12 +24,12 @@ class Unpool2dMaxFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_height = static_cast<int>(output->dims()[2]);
+    const int output_width = static_cast<int>(output->dims()[3]);
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
     const T* input_data = input.data<T>();
@@ -69,12 +69,12 @@ class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& output,
                   const phi::DenseTensor& output_grad,
                   phi::DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_height = static_cast<int>(output.dims()[2]);
+    const int output_width = static_cast<int>(output.dims()[3]);
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
     const int* indices_data = indices.data<int>();
@@ -113,14 +113,14 @@ class Unpool3dMaxFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_depth = static_cast<int>(output->dims()[2]);
+    const int output_height = static_cast<int>(output->dims()[3]);
+    const int output_width = static_cast<int>(output->dims()[4]);
     int input_feasize = input_depth * input_height * input_width;
     int output_feasize = output_depth * output_height * output_width;
     const T* input_data = input.data<T>();
@@ -161,14 +161,14 @@ class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
                   const phi::DenseTensor& output,
                   const phi::DenseTensor& output_grad,
                   phi::DenseTensor* input_grad) {
-    const int batch_size = input.dims()[0];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_depth = static_cast<int>(output.dims()[2]);
+    const int output_height = static_cast<int>(output.dims()[3]);
+    const int output_width = static_cast<int>(output.dims()[4]);
     int input_feasize = input_depth * input_height * input_width;
     int output_feasize = output_depth * output_height * output_width;
     const int* indices_data = indices.data<int>();

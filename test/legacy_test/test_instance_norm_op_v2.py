@@ -16,11 +16,13 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def instance_norm_wrapper(
@@ -79,27 +81,27 @@ def _reference_instance_norm_grad(x, scale, mean, var):
 
 class TestInstanceNorm(unittest.TestCase):
     def test_error(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
 
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 instance_norm1d = paddle.nn.InstanceNorm1D(1)
-                instance_norm1d(fluid.dygraph.to_variable(x_data_4))
+                instance_norm1d(base.dygraph.to_variable(x_data_4))
 
             def error2d():
                 x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
                 instance_norm2d = paddle.nn.InstanceNorm2D(1)
-                instance_norm2d(fluid.dygraph.to_variable(x_data_3))
+                instance_norm2d(base.dygraph.to_variable(x_data_3))
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 instance_norm3d = paddle.nn.InstanceNorm3D(1)
-                instance_norm3d(fluid.dygraph.to_variable(x_data_4))
+                instance_norm3d(base.dygraph.to_variable(x_data_4))
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
@@ -107,31 +109,31 @@ class TestInstanceNorm(unittest.TestCase):
                     1, weight_attr=False, bias_attr=False
                 )
 
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 weight_bias_false()
                 self.assertRaises(ValueError, error1d)
                 self.assertRaises(ValueError, error2d)
                 self.assertRaises(ValueError, error3d)
 
     def test_dygraph(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.InstanceNorm2D(shape[1])
-                    y = bn(fluid.dygraph.to_variable(x))
+                    y = bn(base.dygraph.to_variable(x))
                 return y.numpy()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.InstanceNorm2D(shape[1])
-                    y = bn(fluid.dygraph.to_variable(x))
+                    y = bn(base.dygraph.to_variable(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")
@@ -139,36 +141,41 @@ class TestInstanceNorm(unittest.TestCase):
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
-        with paddle.fluid.framework._static_guard():
-            places = [fluid.CPUPlace()]
+        with static_guard():
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "instance_norm"
             ):
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for p in places:
-                exe = fluid.Executor(p)
+                exe = base.Executor(p)
                 shape = [4, 10, 16, 16]
 
                 def compute_v1(x_np):
-                    with program_guard(Program(), Program()):
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ):
                         ins = paddle.nn.InstanceNorm2D(shape[1])
                         x = paddle.static.data(
                             name='x', shape=x_np.shape, dtype=x_np.dtype
                         )
                         y = ins(x)
-                        exe.run(fluid.default_startup_program())
+                        exe.run(paddle.static.default_startup_program())
                         r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                     return r
 
                 def compute_v2(x_np):
-                    with program_guard(Program(), Program()):
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ):
                         ins = paddle.nn.InstanceNorm2D(shape[1])
                         x = paddle.static.data(
                             name='x', shape=x_np.shape, dtype=x_np.dtype
                         )
                         y = ins(x)
-                        exe.run(fluid.default_startup_program())
+                        exe.run(paddle.static.default_startup_program())
                         r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                     return r
 
@@ -208,14 +215,29 @@ class TestInstanceNormFP32OP(OpTest):
         self.python_api = instance_norm_wrapper
         self.public_python_api = instance_norm_wrapper
         self.check_prim = (
-            False if os.getenv("FLAGS_enable_new_ir_in_executor") else True
+            False if os.getenv("FLAGS_enable_pir_in_executor") else True
         )
 
     def test_check_output(self):
-        self.check_output(atol=self.atol, check_prim=self.check_prim)
+        self.check_output(
+            atol=self.atol,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
+        )
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=self.check_prim)
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -258,7 +280,13 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=self.atol, check_prim=self.check_prim
+            place,
+            atol=self.atol,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
     def test_check_grad(self):
@@ -269,6 +297,10 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             'Y',
             max_relative_error=self.max_relative_error,
             check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
 
@@ -314,7 +346,7 @@ class TestInstanceNormBF16OP(OpTest):
             'data_format': self.data_format,
         }
         self.check_prim = (
-            False if os.getenv("FLAGS_enable_new_ir_in_executor") else True
+            False if os.getenv("FLAGS_enable_pir_in_executor") else True
         )
 
     def init_value(self):
@@ -328,7 +360,14 @@ class TestInstanceNormBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=self.check_prim)
+        self.check_output_with_place(
+            place,
+            check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -338,6 +377,10 @@ class TestInstanceNormBF16OP(OpTest):
             'Y',
             user_defined_grads=self.user_defined_grads,
             check_prim=self.check_prim,
+            check_pir=True,
+            check_prim_pir=False
+            if os.getenv("FLAGS_enable_pir_in_executor")
+            else True,
         )
 
 
@@ -392,7 +435,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
     def test_amp_nchw(self):
         if not isinstance(
-            paddle.fluid.framework._current_expected_place(), core.CPUPlace
+            paddle.base.framework._current_expected_place(), core.CPUPlace
         ):
             expected = self.train(False)
             actual = self.train(True)

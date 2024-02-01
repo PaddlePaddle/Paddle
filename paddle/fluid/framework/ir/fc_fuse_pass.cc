@@ -198,9 +198,9 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       auto* weight = scope->FindVar(w->Name())->GetMutable<phi::DenseTensor>();
       auto* weight_data = weight->data<float>();
       auto weight_dims = weight->dims();
-      int weight_num = product(weight_dims);
-      int w_h = weight_dims[0];
-      int w_w = weight_dims[1];
+      int weight_num = static_cast<int>(product(weight_dims));
+      int w_h = static_cast<int>(weight_dims[0]);
+      int w_w = static_cast<int>(weight_dims[1]);
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
         auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();

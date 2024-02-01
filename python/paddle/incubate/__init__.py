@@ -12,35 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import LookAhead  # noqa: F401
-from .optimizer import ModelAverage  # noqa: F401
-from .optimizer import DistributedFusedLamb  # noqa: F401
+from ..base.layer_helper import LayerHelper  # noqa: F401
+from ..distributed import fleet  # noqa: F401
+from . import (  # noqa: F401
+    asp,
+    autograd,
+    autotune,
+    layers,
+    multiprocessing,
+    nn,
+    xpu,
+)
 from .checkpoint import auto_checkpoint  # noqa: F401
-from ..fluid.layer_helper import LayerHelper  # noqa: F401
-from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
-from .operators import softmax_mask_fuse  # noqa: F401
-from .operators import graph_send_recv
-from .operators import graph_khop_sampler
-from .operators import graph_sample_neighbors
-from .operators import graph_reindex
-from .tensor import segment_sum
-from .tensor import segment_mean
-from .tensor import segment_max
-from .tensor import segment_min
-from .tensor import _npu_identity
-from .passes import fuse_resnet_unit_pass
-
-from . import autograd  # noqa: F401
-from . import autotune  # noqa: F401
-from . import nn  # noqa: F401
-from . import asp  # noqa: F401
-from . import multiprocessing  # noqa: F401
-from . import layers
-
+from .framework import (  # noqa: F401
+    get_rng_state,
+    register_rng_state_as_index,
+    set_rng_state,
+)
 from .nn.loss import identity_loss
-
-from ..distributed import fleet
-from . import xpu
+from .operators import (
+    graph_khop_sampler,
+    graph_reindex,
+    graph_sample_neighbors,
+    graph_send_recv,
+    softmax_mask_fuse,
+    softmax_mask_fuse_upper_triangle,
+)
+from .optimizer import (
+    DistributedFusedLamb,  # noqa: F401
+    LookAhead,
+    ModelAverage,
+)
+from .passes import fuse_resnet_unit_pass  # noqa: F401
+from .tensor import (
+    _npu_identity,  # noqa: F401
+    segment_max,
+    segment_mean,
+    segment_min,
+    segment_sum,
+)
 
 __all__ = [
     'LookAhead',

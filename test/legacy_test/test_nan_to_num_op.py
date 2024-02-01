@@ -18,9 +18,10 @@ from typing import Optional
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
-# from eager_op_test import OpTest
+# from op_test import OpTest
 
 
 def np_nan_to_num(
@@ -61,6 +62,7 @@ class TestNanToNum(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static(self):
         x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
             np.float32
@@ -87,7 +89,7 @@ class TestNanToNum(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static(place=self.place)
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # NOTE(tiancaishaonvjituizi): float64 input fails the test
             x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
                 np.float32

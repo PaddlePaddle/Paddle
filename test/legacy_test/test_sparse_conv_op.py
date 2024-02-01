@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import sparse
-from paddle.fluid import core
+from paddle.base import core
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO

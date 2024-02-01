@@ -18,11 +18,11 @@ namespace phi {
 namespace funcs {
 
 DDim RowMatrixDimsFromVector(const DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
+  return x_dim.size() > 1 ? x_dim : common::make_ddim({1, x_dim[0]});
 }
 
 DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
+  return y_dim.size() > 1 ? y_dim : common::make_ddim({y_dim[0], 1});
 }
 
 std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,

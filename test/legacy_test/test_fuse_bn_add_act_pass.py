@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -29,33 +29,33 @@ paddle.enable_static()
 )
 class TestFusedBnAddActAPI(unittest.TestCase):
     def setUp(self):
-        self.conv_param_attr1 = fluid.ParamAttr(
+        self.conv_param_attr1 = base.ParamAttr(
             name='conv2d_1.weight',
             initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
-        self.conv_param_attr2 = fluid.ParamAttr(
+        self.conv_param_attr2 = base.ParamAttr(
             name='conv2d_2.weight',
             initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
-        self.bn_param_attr1 = fluid.ParamAttr(
+        self.bn_param_attr1 = base.ParamAttr(
             name='batch_norm_w_1',
             initializer=paddle.nn.initializer.Constant(value=1.0),
         )
-        self.bn_bias_attr1 = fluid.ParamAttr(
+        self.bn_bias_attr1 = base.ParamAttr(
             name='batch_norm_b_1',
             initializer=paddle.nn.initializer.Constant(value=0.0),
         )
-        self.bn_param_attr2 = fluid.ParamAttr(
+        self.bn_param_attr2 = base.ParamAttr(
             name='batch_norm_w_2',
             initializer=paddle.nn.initializer.Constant(value=1.0),
         )
-        self.bn_bias_attr2 = fluid.ParamAttr(
+        self.bn_bias_attr2 = base.ParamAttr(
             name='batch_norm_b_2',
             initializer=paddle.nn.initializer.Constant(value=0.0),
         )
-        self.fc_param_attr = fluid.ParamAttr(
+        self.fc_param_attr = base.ParamAttr(
             name='fc.weight',
             initializer=paddle.nn.initializer.XavierNormal(),
         )
@@ -63,7 +63,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def build_fused_program(
         self, main_program, startup_program, use_cuda, seed=1
     ):
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1, 28, 28], dtype='float32'
             )
@@ -124,7 +124,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def build_origin_program(
         self, main_program, startup_program, use_cuda, seed=1
     ):
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1, 28, 28], dtype='float32'
             )
@@ -191,22 +191,22 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         batch_size = 16
 
         # build_fused_program: turn on fuse_bn_add_act_ops
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
         loss = self.build_origin_program(
             main_program, startup_program, use_cuda
         )
-        build_strategy_fused = fluid.BuildStrategy()
+        build_strategy_fused = base.BuildStrategy()
         build_strategy_fused.fuse_bn_add_act_ops = True
-        binary_fused = fluid.CompiledProgram(
+        binary_fused = base.CompiledProgram(
             main_program, build_strategy=build_strategy_fused
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         loss_vals_fused = []
         x_data = []
         y_data = []
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
                 x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
@@ -219,14 +219,14 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 loss_vals_fused.append(loss_v[0])
 
         # build_origin_program: turn off fused_bn_act_ops
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.fuse_bn_add_act_ops = False
-        binary = fluid.CompiledProgram(
+        binary = base.CompiledProgram(
             main_program, build_strategy=build_strategy_fused
         )
         loss_vals = []
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             for i in range(iters):
                 loss_v = exe.run(
@@ -241,20 +241,20 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
     def test_fuse_bn_add_act(self):
-        place = fluid.CUDAPlace(0)
+        place = base.CUDAPlace(0)
         self.check(place, use_cuda=True)
 
     def test_fuse_bn_add_act_API(self):
         # build_fused_program: use fused_bn_add_act python API
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        place = fluid.CUDAPlace(0)
+        main_program = base.Program()
+        startup_program = base.Program()
+        place = base.CUDAPlace(0)
         x, y, loss = self.build_fused_program(
             main_program, startup_program, use_cuda=True
         )
-        exe = fluid.Executor(place)
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        exe = base.Executor(place)
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(5):
                 x = np.random.random((4, 1, 28, 28)).astype("float32")

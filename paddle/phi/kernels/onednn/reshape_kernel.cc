@@ -17,7 +17,7 @@ namespace phi {
 static DDim ValidateShape(const std::vector<int64_t>& shape,
                           const DDim& in_dims) {
   const int64_t in_size = product(in_dims);
-  auto in_dims_vec = vectorize(in_dims);
+  auto in_dims_vec = common::vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -37,7 +37,7 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
           errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              make_ddim(shape),
+              common::make_ddim(shape),
               i));
       unk_dim_idx = i;
     } else if (shape[i] == copy_dim_val) {
@@ -49,7 +49,7 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
               "X's dimensions = %d.",
-              make_ddim(shape),
+              common::make_ddim(shape),
               i,
               in_dims,
               in_dims.size()));
@@ -61,7 +61,7 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              make_ddim(shape),
+              common::make_ddim(shape),
               i,
               shape[i]));
     }
@@ -88,7 +88,7 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              make_ddim(shape),
+              common::make_ddim(shape),
               capacity));
     } else {
       output_shape[unk_dim_idx] = -1;
@@ -106,11 +106,11 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              make_ddim(shape),
+              common::make_ddim(shape),
               capacity));
     }
   }
-  return make_ddim(output_shape);
+  return common::make_ddim(output_shape);
 }
 
 template <typename T, typename Context>
@@ -143,8 +143,8 @@ void ExecuteReshape(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  const auto reshape_dims =
-      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
+  const auto reshape_dims = out_dims.size() != 0 ? common::vectorize(out_dims)
+                                                 : std::vector<int64_t>{1};
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 

@@ -59,7 +59,30 @@ void GaussianKernel(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
+  if (seed == 0) {
+    // use global Generator seed
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::normal_distribution<MT> dist;
+    funcs::normal_transform<MT> trans(static_cast<MT>(mean),
+                                      static_cast<MT>(std));
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  } else {
+    // use OP seed
+    auto func =
+        GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
+}
+
+template <typename T, typename Context>
+void GaussianInplaceKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           float mean,
+                           float std,
+                           int seed,
+                           DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed
@@ -82,6 +105,15 @@ PD_REGISTER_KERNEL(gaussian,
                    GPU,
                    ALL_LAYOUT,
                    phi::GaussianKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(gaussian_inplace,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GaussianInplaceKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,

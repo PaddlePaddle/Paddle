@@ -16,10 +16,10 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/hostdevice.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 #include "paddle/phi/kernels/merged_momentum_kernel.h"
@@ -53,7 +53,7 @@ struct MergedMomentumKernelParam
   size_t sizes[N];
   T *PADDLE_RESTRICT params[N];
   const T *PADDLE_RESTRICT grads[N];
-  MT *PADDLE_RESTRICT velocitys[N];
+  MT *PADDLE_RESTRICT velocities[N];
   const MultiPrecisionType<MT> *PADDLE_RESTRICT lr;
   MT mu;
   MT rescale_grad;
@@ -67,7 +67,7 @@ struct MergedMomentumKernelParam
 
       auto param_p = params[idx];
       auto grad_p = grads[idx];
-      auto velocity_p = velocitys[idx];
+      auto velocity_p = velocities[idx];
       auto master_param_p = this->MasterParam(idx);
 
       const MT param =
@@ -90,7 +90,7 @@ void MergedMomentumInnerCompute(
     const Context &ctx,
     const std::vector<const DenseTensor *> &params,
     const std::vector<const DenseTensor *> &grads,
-    const std::vector<const DenseTensor *> &velocitys,
+    const std::vector<const DenseTensor *> &velocities,
     const std::vector<const DenseTensor *> &lrs,
     const paddle::optional<std::vector<const DenseTensor *>> &master_params_opt,
     float mu,
@@ -100,7 +100,7 @@ void MergedMomentumInnerCompute(
     float rescale_grad,
     const bool multi_precision,
     std::vector<DenseTensor *> params_out,
-    std::vector<DenseTensor *> velocitys_out,
+    std::vector<DenseTensor *> velocities_out,
     std::vector<DenseTensor *> master_params_out) {
   size_t n = params.size();
   PADDLE_ENFORCE_EQ(n,
@@ -129,26 +129,26 @@ void MergedMomentumInnerCompute(
           n));
 
   PADDLE_ENFORCE_EQ(n,
-                    velocitys.size(),
+                    velocities.size(),
                     phi::errors::InvalidArgument(
                         "The size of Input(Velocity) must be equal to "
                         "Input(Param), but got the size of Input(Velocity) "
                         "is %d, the size of Input(Param) is %d.",
-                        velocitys.size(),
+                        velocities.size(),
                         n));
 
   PADDLE_ENFORCE_EQ(
       n,
-      velocitys_out.size(),
+      velocities_out.size(),
       phi::errors::InvalidArgument(
           "The size of Output(VelocityOut) must be "
           "equal to Input(Param), but got the size of Output(VelocityOut) is "
           "%d, the size of Input(Param) is %d.",
-          velocitys_out.size(),
+          velocities_out.size(),
           n));
   for (size_t i = 0; i < n; ++i) {
-    PADDLE_ENFORCE_EQ(velocitys[i],
-                      velocitys_out[i],
+    PADDLE_ENFORCE_EQ(velocities[i],
+                      velocities_out[i],
                       phi::errors::InvalidArgument(
                           "Input(Velocity) and Output(VelocityOut) must be "
                           "the same Tensors."));
@@ -231,34 +231,34 @@ void MergedMomentumInnerCompute(
 
   if (lrs.size() == 1 && use_nesterov == false &&
       regularization_methods.size() == 0) {
-#define PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL(kMultiPrecision)            \
-  MergedMomentumKernelParam<T, MT, kMultiPrecision> kernel_params;       \
-  constexpr auto kMaxMergedNum = decltype(kernel_params)::N;             \
-  size_t kernel_num = (n + kMaxMergedNum - 1) / kMaxMergedNum;           \
-  kernel_params.mu = static_cast<MT>(mu);                                \
-  kernel_params.rescale_grad = static_cast<MT>(rescale_grad);            \
-  kernel_params.lr = lrs[0]->data<MPType>();                             \
-  for (size_t i = 0; i < kernel_num; ++i) {                              \
-    size_t start = i * kMaxMergedNum;                                    \
-    size_t end = std::min((i + 1) * kMaxMergedNum, n);                   \
-    kernel_params.param_num = static_cast<uint32_t>(end - start);        \
-    size_t max_size = 0;                                                 \
-    for (size_t j = 0; j < kernel_params.param_num; ++j) {               \
-      auto size = static_cast<size_t>(params_out[j + start]->numel());   \
-      max_size = std::max(max_size, size);                               \
-      kernel_params.sizes[j] = size;                                     \
-      kernel_params.params[j] = params_out[j + start]->data<T>();        \
-      kernel_params.grads[j] = grads[j + start]->data<T>();              \
-      kernel_params.velocitys[j] = velocitys_out[j + start]->data<MT>(); \
-      kernel_params.SetMasterParam(                                      \
-          j,                                                             \
-          kMultiPrecision ? master_params_out[j + start]->data<MT>()     \
-                          : nullptr);                                    \
-    }                                                                    \
-    phi::funcs::ForRange<Context> for_range(ctx, max_size);              \
-    for_range(kernel_params);                                            \
-    VLOG(10) << "Launch MergedMomentum kernel " << i << " "              \
-             << kernel_params.param_num;                                 \
+#define PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL(kMultiPrecision)              \
+  MergedMomentumKernelParam<T, MT, kMultiPrecision> kernel_params;         \
+  constexpr auto kMaxMergedNum = decltype(kernel_params)::N;               \
+  size_t kernel_num = (n + kMaxMergedNum - 1) / kMaxMergedNum;             \
+  kernel_params.mu = static_cast<MT>(mu);                                  \
+  kernel_params.rescale_grad = static_cast<MT>(rescale_grad);              \
+  kernel_params.lr = lrs[0]->data<MPType>();                               \
+  for (size_t i = 0; i < kernel_num; ++i) {                                \
+    size_t start = i * kMaxMergedNum;                                      \
+    size_t end = std::min((i + 1) * kMaxMergedNum, n);                     \
+    kernel_params.param_num = static_cast<uint32_t>(end - start);          \
+    size_t max_size = 0;                                                   \
+    for (size_t j = 0; j < kernel_params.param_num; ++j) {                 \
+      auto size = static_cast<size_t>(params_out[j + start]->numel());     \
+      max_size = std::max(max_size, size);                                 \
+      kernel_params.sizes[j] = size;                                       \
+      kernel_params.params[j] = params_out[j + start]->data<T>();          \
+      kernel_params.grads[j] = grads[j + start]->data<T>();                \
+      kernel_params.velocities[j] = velocities_out[j + start]->data<MT>(); \
+      kernel_params.SetMasterParam(                                        \
+          j,                                                               \
+          kMultiPrecision ? master_params_out[j + start]->data<MT>()       \
+                          : nullptr);                                      \
+    }                                                                      \
+    phi::funcs::ForRange<Context> for_range(ctx, max_size);                \
+    for_range(kernel_params);                                              \
+    VLOG(10) << "Launch MergedMomentum kernel " << i << " "                \
+             << kernel_params.param_num;                                   \
   }
     if (multi_precision) {
       PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL(true);
@@ -288,14 +288,14 @@ void MergedMomentumInnerCompute(
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
-                velocitys[idx],
+                velocities[idx],
                 lr_temp,
                 static_cast<MT>(mu),
                 use_nesterov,
                 regularization_flag,
                 regularization_coeff,
                 params_out[idx],
-                velocitys_out[idx]);
+                velocities_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
       } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
         phi::funcs::ForRange<Context> for_range(
@@ -306,7 +306,7 @@ void MergedMomentumInnerCompute(
     DenseMomentumFunctor<T, float, MT, __reg_type, __nesterov> functor( \
         params[idx]->data<T>(),                                         \
         grads[idx]->data<float>(),                                      \
-        velocitys[idx]->data<MT>(),                                     \
+        velocities[idx]->data<MT>(),                                    \
         lr_temp->data<MPType>(),                                        \
         master_in_data,                                                 \
         static_cast<MT>(mu),                                            \
@@ -314,14 +314,14 @@ void MergedMomentumInnerCompute(
         params[idx]->numel(),                                           \
         regularization_coeff,                                           \
         params_out[idx]->data<T>(),                                     \
-        velocitys_out[idx]->data<MT>(),                                 \
+        velocities_out[idx]->data<MT>(),                                \
         master_out_data);                                               \
     for_range(functor);                                                 \
   } else {                                                              \
     DenseMomentumFunctor<T, T, MT, __reg_type, __nesterov> functor(     \
         params[idx]->data<T>(),                                         \
         grads[idx]->data<T>(),                                          \
-        velocitys[idx]->data<MT>(),                                     \
+        velocities[idx]->data<MT>(),                                    \
         lr_temp->data<MPType>(),                                        \
         master_in_data,                                                 \
         static_cast<MT>(mu),                                            \
@@ -329,7 +329,7 @@ void MergedMomentumInnerCompute(
         params[idx]->numel(),                                           \
         regularization_coeff,                                           \
         params_out[idx]->data<T>(),                                     \
-        velocitys_out[idx]->data<MT>(),                                 \
+        velocities_out[idx]->data<MT>(),                                \
         master_out_data);                                               \
     for_range(functor);                                                 \
   }

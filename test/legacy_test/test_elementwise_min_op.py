@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -52,11 +52,15 @@ class TestElementwiseOp(OpTest):
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
-                self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+                self.check_grad(
+                    ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
+                )
             else:
                 self.check_grad(['X', 'Y'], 'Out')
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
+            )
 
     def test_check_grad_ingore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
@@ -73,6 +77,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set("X"),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
     def test_check_grad_ingore_y(self):
@@ -91,6 +96,7 @@ class TestElementwiseOp(OpTest):
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
                 check_prim=True,
+                check_prim_pir=True,
             )
 
     def if_enable_cinn(self):
@@ -344,7 +350,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_normal(self):
         places = self._get_places()
         for place in places:
-            if type(place) is paddle.fluid.libpaddle.CPUPlace:
+            if type(place) is paddle.base.libpaddle.CPUPlace:
                 check_prim = False
             else:
                 check_prim = True
@@ -364,12 +370,13 @@ class TestElementwiseBF16Op(OpTest):
                 only_check_prim=False,
                 atol=1e-5,
                 check_cinn=False,
+                check_prim_pir=check_prim,
             )
 
     def test_check_grad_ingore_x(self):
         places = self._get_places()
         for place in places:
-            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True
@@ -389,12 +396,13 @@ class TestElementwiseBF16Op(OpTest):
                 only_check_prim=False,
                 atol=1e-5,
                 check_cinn=False,
+                check_prim_pir=check_prim,
             )
 
     def test_check_grad_ingore_y(self):
         places = self._get_places()
         for place in places:
-            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True
@@ -414,6 +422,7 @@ class TestElementwiseBF16Op(OpTest):
                 only_check_prim=False,
                 atol=1e-5,
                 check_cinn=False,
+                check_prim_pir=check_prim,
             )
 
     def if_enable_cinn(self):

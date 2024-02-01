@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 paddle.enable_static()
 
@@ -53,7 +53,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.float32)
-            self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
+            self.attrs["values"] = [float(v) for v in self.value.flat]
 
         def test_forward(self):
             self.check_output_with_place(self.place)
@@ -61,19 +61,40 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
     class TestAssignValueOp2(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int32)
-            self.attrs["int32_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp3(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int64)
-            self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp4(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
                 np.bool_
             )
-            self.attrs["bool_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
+
+    class TestAssignValueOp5(TestAssignValueOp):
+        def init_data(self):
+            self.value = np.random.random(size=(2, 5)).astype(np.float64)
+            self.attrs["values"] = [float(v) for v in self.value.flat]
+
+    class TestAssignValueOp6(TestAssignValueOp):
+        def init_data(self):
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * np.random.random(size=(2, 5))
+            ).astype(np.complex64)
+            self.attrs["values"] = list(self.value.flat)
+
+    class TestAssignValueOp7(TestAssignValueOp):
+        def init_data(self):
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * np.random.random(size=(2, 5))
+            ).astype(np.complex128)
+            self.attrs["values"] = list(self.value.flat)
 
 
 class TestAssignApi(unittest.TestCase):
@@ -82,18 +103,17 @@ class TestAssignApi(unittest.TestCase):
         self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
             self.dtype
         )
-        self.place = fluid.XPUPlace(0)
+        self.place = base.XPUPlace(0)
 
     def init_dtype(self):
         self.dtype = "float32"
 
     def test_assign(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x = paddle.tensor.create_tensor(dtype=self.dtype)
-            paddle.assign(self.value, output=x)
+        main_program = base.Program()
+        with base.program_guard(main_program):
+            x = paddle.assign(self.value)
 
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
         np.testing.assert_allclose(fetched_x, self.value)
         self.assertEqual(fetched_x.dtype, self.value.dtype)
@@ -115,10 +135,39 @@ class TestAssignApi4(TestAssignApi):
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
             np.bool_
         )
-        self.place = fluid.XPUPlace(0)
+        self.place = base.XPUPlace(0)
 
     def init_dtype(self):
         self.dtype = "bool"
+
+
+class TestAssignApi5(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "float64"
+
+
+class TestAssignApi6(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * (np.random.random(size=(2, 5)))
+        ).astype(np.complex64)
+        self.place = base.XPUPlace(0)
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+
+class TestAssignApi7(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * (np.random.random(size=(2, 5)))
+        ).astype(np.complex128)
+        self.place = base.XPUPlace(0)
+
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 
 support_types = get_xpu_op_support_types('assign_value')

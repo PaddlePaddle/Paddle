@@ -18,15 +18,15 @@ import numpy as np
 from numpy.random import random as rand
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid, tensor
+import paddle.base.dygraph as dg
+from paddle import base, tensor
 
 
 class TestComplexSumLayer(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
     def test_complex_basic_api(self):

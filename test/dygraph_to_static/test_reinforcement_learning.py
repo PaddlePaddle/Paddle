@@ -18,12 +18,15 @@ import unittest
 
 import gym
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.jit.api import to_static
+from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 
 SEED = 2020
@@ -40,7 +43,6 @@ class Policy(Layer):
         self.saved_log_probs = []
         self.rewards = []
 
-    @to_static
     def forward(self, x):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
@@ -59,18 +61,16 @@ class Args:
     train_step = 10
 
 
-def train(args, place, to_static):
-    paddle.jit.enable_to_static(to_static)
+def train(args, to_static: bool):
+    with enable_to_static_guard(to_static):
+        env = gym.make('CartPole-v0')
+        env.reset(seed=SEED)
 
-    env = gym.make('CartPole-v0')
-    env.seed(SEED)
-
-    with fluid.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
-        policy = Policy()
+        policy = paddle.jit.to_static(Policy())
 
         eps = np.finfo(np.float32).eps.item()
         optimizer = paddle.optimizer.Adamax(
@@ -168,12 +168,13 @@ def train(args, place, to_static):
         loss_data = []
         running_reward = 10
         for i_episode in itertools.count(1):
-            state, ep_reward = env.reset(), 0
+            state, _ = env.reset()
+            ep_reward = 0
             # The default loop number is 10000 is models, we changed it to 1000 for smaller test
             for t in range(1, 1000):
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
-                state, reward, done, _ = env.step(action)
+                state, reward, done, _, _ = env.step(action)
 
                 # log loss_probs
                 loss_data.append(float(loss))
@@ -201,18 +202,14 @@ def train(args, place, to_static):
         return np.array(loss_data)
 
 
-class TestDeclarative(unittest.TestCase):
+class TestDeclarative(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
         self.args = Args()
 
+    @test_legacy_and_pt_and_pir
     def test_train(self):
-        st_out = train(self.args, self.place, to_static=True)
-        dy_out = train(self.args, self.place, to_static=False)
+        st_out = train(self.args, to_static=True)
+        dy_out = train(self.args, to_static=False)
         np.testing.assert_allclose(st_out, dy_out, rtol=1e-05)
 
 

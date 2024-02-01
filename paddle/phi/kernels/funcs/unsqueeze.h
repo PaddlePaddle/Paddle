@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 // TODO(paddle-dev): Remove this file when we can call related Kernel directly
@@ -100,7 +100,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
       output_shape.push_back(in_dims[i]);
     }
   }
-  return phi::make_ddim(output_shape);
+  return common::make_ddim(output_shape);
 }
 
 inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
@@ -149,13 +149,13 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
     }
   }
 
-  return phi::make_ddim(output_shape);
+  return common::make_ddim(output_shape);
 }
 
 inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out(x);
-  std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+  std::vector<int> out_shape = common::vectorize<int>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -163,7 +163,7 @@ inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(phi::make_ddim(out_shape));
+  out.Resize(common::make_ddim(out_shape));
   return out;
 }
 

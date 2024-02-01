@@ -258,7 +258,7 @@ def profiler(args):
         )
 
         result_dict = {
-            "Throughtput": avg_tput,
+            "Throughput": avg_tput,
             "ErrorType": None,
         }
 
@@ -274,7 +274,7 @@ def profiler(args):
     except Exception as e:
         error_type = get_cpp_error_type(e)
         result_dict = {
-            "Throughtput": -1,
+            "Throughput": -1,
             "ErrorType": error_type,
         }
         if not os.path.isfile(result_path):
@@ -294,5 +294,6 @@ def profiler(args):
 
 
 if __name__ == "__main__":
+    paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
     args = parse_args()
     profiler(args)

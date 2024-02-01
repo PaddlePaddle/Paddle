@@ -445,7 +445,7 @@ def add_optimizer_pass(program, config):
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
             optimize_block.append_op(
                 type="scale",
@@ -896,7 +896,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             entry_attr = get_entry_attr(param)
 
             if fuse:
-                # remove origin optimzier op
+                # remove origin optimizer op
                 opt_block._remove_op(opt_idx)
 
             # training/infer

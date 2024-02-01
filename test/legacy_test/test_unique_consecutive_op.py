@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def reference_unique_consecutive(
@@ -93,13 +94,13 @@ class TestUniqueConsecutiveOp(OpTest):
             'X': x,
         }
         self.python_out_sig = ["Out"]
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.outputs = {
             'Out': out,
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -127,9 +128,9 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_inverse': self.return_inverse,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Index"]
         self.outputs = {'Out': result, 'Index': inverse}
 
 
@@ -158,9 +159,9 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Counts"]
         self.outputs = {'Out': result, 'Counts': counts}
 
 
@@ -191,20 +192,22 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
         self.attrs = {
             'return_inverse': self.return_inverse,
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32),
+            'dtype': paddle.int32,
         }
-        self.python_out_sig = ["Out"]
+        self.python_out_sig = ["Out", "Index", "Counts"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -215,20 +218,20 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
             )
             result = paddle.unique_consecutive(input_x)
             x_np = np.random.randint(20, size=100).astype("float32")
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x = np.random.randint(20, size=100).astype("float64")
                 x = paddle.to_tensor(input_x)
                 result = paddle.unique_consecutive(x)
@@ -236,12 +239,14 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -254,20 +259,20 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 input_x, return_inverse=True, return_counts=True
             )
             x_np = np.random.randint(20, size=100).astype("float32")
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x = np.random.randint(20, size=100).astype("float64")
                 x = paddle.to_tensor(input_x)
                 result, inverse, counts = paddle.unique_consecutive(
@@ -277,12 +282,14 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
 
 class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             input_x = paddle.static.data(
                 name="input_x",
@@ -295,20 +302,20 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 input_x, return_inverse=True, return_counts=True, axis=-1
             )
             x_np = np.random.randint(20, size=100).astype("float32")
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x = np.random.randint(20, size=100).astype("float64")
                 x = paddle.to_tensor(input_x)
                 result, inverse, counts = paddle.unique_consecutive(
@@ -341,13 +348,13 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
             'X': x,
         }
         self.python_out_sig = ["Out"]
-        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'dtype': paddle.int32}
         self.outputs = {
             'Out': out,
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 if __name__ == "__main__":

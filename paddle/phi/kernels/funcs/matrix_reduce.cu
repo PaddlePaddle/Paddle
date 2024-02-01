@@ -26,9 +26,9 @@ class MatrixReduceSumFunctor<T, GPUContext> {
                   DenseTensor* out) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<int> in_dims = phi::vectorize<int>(in.dims());
+    const std::vector<int> in_dims = common::vectorize<int>(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<int> out_dims = phi::vectorize<int>(out->dims());
+    const std::vector<int> out_dims = common::vectorize<int>(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<int> out_bst_dims(in_size);
@@ -37,7 +37,7 @@ class MatrixReduceSumFunctor<T, GPUContext> {
     std::copy(out_dims.data(),
               out_dims.data() + out_size,
               out_bst_dims.data() + in_size - out_size);
-    out->Resize(phi::make_ddim(out_bst_dims));
+    out->Resize(common::make_ddim(out_bst_dims));
 
     std::vector<int> out_reduce_dims;
     for (size_t idx = 0; idx <= in_size - 3; idx++) {
@@ -52,6 +52,8 @@ class MatrixReduceSumFunctor<T, GPUContext> {
 
 template class MatrixReduceSumFunctor<float, GPUContext>;
 template class MatrixReduceSumFunctor<double, GPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<float>, GPUContext>;
+template class MatrixReduceSumFunctor<phi::dtype::complex<double>, GPUContext>;
 
 }  // namespace funcs
 }  // namespace phi

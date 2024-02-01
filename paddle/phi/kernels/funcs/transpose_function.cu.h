@@ -1454,8 +1454,8 @@ inline void PermuteWithEigen(
     phi::DenseTensor temp_in;
 
     temp_in.ShareBufferWith(in);
-    temp_in.Resize(phi::make_ddim(simplifier.GetSrcDims()));
-    out->Resize(phi::make_ddim(simplifier.GetDstDims()));
+    temp_in.Resize(common::make_ddim(simplifier.GetSrcDims()));
+    out->Resize(common::make_ddim(simplifier.GetDstDims()));
 
     TransCompute<phi::GPUContext, T>(
         simplifier.GetRank(), ctx, temp_in, out, simplifier.GetPerm());
@@ -1476,7 +1476,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
   bool ret = TransposeSimple<T>::Run(ctx, in, perm, out, numel);
   if (!ret) {
     auto simplifier = phi::funcs::PermuteDimsSimplifier(
-        rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
+        rank, numel, perm, common::vectorize<int64_t>(in.dims()));
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 

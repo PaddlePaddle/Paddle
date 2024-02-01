@@ -15,13 +15,17 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle import nn
 from paddle.jit import to_static
 
 
-class TestStaticAnalysis(unittest.TestCase):
+class TestTensorHook(Dy2StTestBase):
     def test_hook_for_different_parameter(self):
         def f(x):
             def h(g):
@@ -93,6 +97,7 @@ class TestStaticAnalysis(unittest.TestCase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    @test_legacy_and_pt_and_pir
     def test_hook_in_init_for_layer(self):
         def hook(grad):
             return grad * 2

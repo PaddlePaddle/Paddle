@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 paddle.seed(100)
@@ -40,10 +41,12 @@ class TestI0API(unittest.TestCase):
 
     def setUp(self):
         self.x = np.array(self.DATA).astype(self.DTYPE)
+        self.out_ref = output_i0(self.x)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         def run(place):
             paddle.enable_static()
@@ -58,8 +61,7 @@ class TestI0API(unittest.TestCase):
                     feed={"x": self.x},
                     fetch_list=[out],
                 )
-                out_ref = output_i0(self.x)
-                np.testing.assert_allclose(res[0], out_ref, rtol=1e-5)
+                np.testing.assert_allclose(res[0], self.out_ref, rtol=1e-5)
             paddle.disable_static()
 
         for place in self.place:
@@ -130,13 +132,14 @@ class TestI0Op(OpTest):
         self.target = output_i0(self.inputs['x'])
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['x'],
             'out',
             user_defined_grads=[ref_i0_grad(self.case, 1 / self.case.size)],
+            check_pir=True,
         )
 
 

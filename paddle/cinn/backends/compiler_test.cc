@@ -50,26 +50,30 @@ TEST(Compiler, x86) {
 
     auto fn = Lower("fn", stages, {A, B, C});
 
-    ir::Module::Builder builder("some_module", common::DefaultHostTarget());
+    ir::Module::Builder builder("some_module",
+                                cinn::common::DefaultHostTarget());
     builder.AddFunction(fn);
 
-    auto compiler = Compiler::Create(common::DefaultHostTarget());
+    auto compiler = Compiler::Create(cinn::common::DefaultHostTarget());
     compiler->Build(builder.Build());
 
     auto* fnp = compiler->Lookup("fn");
     ASSERT_TRUE(fnp);
 
-    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_zero()
-                   .Build();
+    auto* Ab =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_random()
+            .Build();
+    auto* Bb =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_random()
+            .Build();
+    auto* Cb =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_zero()
+            .Build();
 
-    auto args = common::ArgsBuilder().Add(Ab).Add(Bb).Add(Cb).Build();
+    auto args = cinn::common::ArgsBuilder().Add(Ab).Add(Bb).Add(Cb).Build();
     reinterpret_cast<void (*)(void*, int)>(fnp)(args.data(), args.size());
 
     // test result
@@ -107,24 +111,28 @@ TEST(Compiler, cuda) {
 
     auto fn = Lower("fn", stages, {A, B, C});
 
-    ir::Module::Builder builder("some_module", common::DefaultHostTarget());
+    ir::Module::Builder builder("some_module",
+                                cinn::common::DefaultHostTarget());
     builder.AddFunction(fn);
 
-    auto compiler = Compiler::Create(common::DefaultNVGPUTarget());
+    auto compiler = Compiler::Create(cinn::common::DefaultNVGPUTarget());
     compiler->Build(builder.Build());
 
     auto* fnp = compiler->Lookup("fn");
     ASSERT_TRUE(fnp);
 
-    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_zero()
-                   .Build();
+    auto* Ab =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_random()
+            .Build();
+    auto* Bb =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_random()
+            .Build();
+    auto* Cb =
+        cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+            .set_zero()
+            .Build();
 
     // allocate CUDA buffer
     void *Ag, *Bg, *Cg;
@@ -144,7 +152,8 @@ TEST(Compiler, cuda) {
     cinn_buffer_t Cbb;
     Cbb.memory = reinterpret_cast<uint8_t*>(Cg);
 
-    auto args = common::ArgsBuilder().Add(&Abb).Add(&Bbb).Add(&Cbb).Build();
+    auto args =
+        cinn::common::ArgsBuilder().Add(&Abb).Add(&Bbb).Add(&Cbb).Build();
 
     utils::Timer timer;
     timer.Start();
@@ -204,10 +213,10 @@ TEST(Compiler, sqrt) {
   auto fn =
       Lower("fn", stages, {input, mean, scale, bias, variance, A, B[0], BB});
 
-  Module::Builder builder("some", common::DefaultHostTarget());
+  Module::Builder builder("some", cinn::common::DefaultHostTarget());
   builder.AddFunction(fn);
 
-  auto compiler = Compiler::Create(common::DefaultHostTarget());
+  auto compiler = Compiler::Create(cinn::common::DefaultHostTarget());
   compiler->Build(builder.Build());
 }
 

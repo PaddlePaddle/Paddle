@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #ifdef CINN_WITH_CUDA
+#include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #endif
@@ -20,11 +21,19 @@
 
 #include <sstream>
 
+#include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace common {
+
+Target::Target(OS o,
+               Arch a,
+               Bit b,
+               const std::vector<Feature> &features,
+               const std::vector<Lib> &libs)
+    : os(o), arch(a), bits(b), features(features), libs(libs) {}
 
 bool Target::operator==(const Target &other) const {
   return os == other.os &&      //

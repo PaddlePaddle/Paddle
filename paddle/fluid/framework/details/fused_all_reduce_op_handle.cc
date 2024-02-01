@@ -401,7 +401,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
             "The size of grad tensors of fused_all_reduce_op_handle  "
             "must be > 0, but got %d.",
             len));
-    *numel += phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
+    *numel += static_cast<int64_t>(
+        phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype);
   }
 }
 

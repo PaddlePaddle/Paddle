@@ -103,15 +103,12 @@ limitations under the License. */
 #endif
 #include "paddle/phi/core/flags.h"
 
-namespace phi {
-class ErrorSummary;
-}  // namespace phi
-
 PHI_DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {
 using namespace ::phi::enforce;  // NOLINT
+using ::common::demangle;
 
 /** HELPER MACROS AND FUNCTIONS **/
 

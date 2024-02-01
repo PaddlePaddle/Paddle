@@ -30,20 +30,35 @@ inline void CompareKernelImpl(const Context& ctx,
                               int axis,
                               DenseTensor* out);
 
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out);
+
 template <typename T, typename Context, typename Functor>
 inline void CompareAllKernelImpl(const Context& ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  DenseTensor* out);
 
-#define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)      \
-  template <typename T, typename Context>                          \
-  void name##Kernel(const Context& ctx,                            \
-                    const DenseTensor& x,                          \
-                    const DenseTensor& y,                          \
-                    DenseTensor* out) {                            \
-    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
-        ctx, x, y, -1, out);                                       \
+#define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)               \
+  template <typename T, typename Context>                                   \
+  void name##Kernel(const Context& ctx,                                     \
+                    const DenseTensor& x,                                   \
+                    const DenseTensor& y,                                   \
+                    DenseTensor* out) {                                     \
+    if (out->IsSharedWith(x)) {                                             \
+      InplaceCompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
+          ctx, x, y, -1, out);                                              \
+    } else {                                                                \
+      CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>(        \
+          ctx, x, y, -1, out);                                              \
+    }                                                                       \
   }
 
 DEFINE_COMPARE_KERNEL(LessThan,

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -31,15 +32,25 @@ namespace phi {
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
+void ArangeInferMeta(const Scalar& start,
+                     const Scalar& end,
+                     const Scalar& step,
+                     DataType dtype,
+                     MetaTensor* out);
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out);
 
-void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
+void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
+
+TEST_API void CreateInferMeta(const IntArray& shape,
+                              DataType dtype,
+                              MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
@@ -76,6 +87,15 @@ void PRecvArrayInferMeta(int peer,
                          const std::vector<int>& out_shape,
                          MetaTensor* out);
 
+void RecvV2InferMeta(const int ring_id,
+                     const bool dynamic_shape,
+                     const int peer,
+                     const std::vector<int>& out_shape,
+                     DataType dtype,
+                     MetaTensor* out);
+
+void SeedInferMeta(int seed, MetaTensor* out);
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
@@ -92,4 +112,7 @@ void TrilIndicesInferMeta(
 
 void TriuIndicesInferMeta(
     int row, int col, int offset, DataType dtype, MetaTensor* out);
+
+void ReadFileInferMeta(const std::string& filename, MetaTensor* out);
+
 }  // namespace phi

@@ -17,7 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFunctionalL1Loss(unittest.TestCase):
@@ -43,56 +45,62 @@ class TestFunctionalL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[10, 10, 5], dtype='float32'
-        )
-        label = paddle.static.data(
-            name='label', shape=[10, 10, 5], dtype='float32'
-        )
-        result0 = paddle.nn.functional.l1_loss(input, label)
-        result1 = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-        result2 = paddle.nn.functional.l1_loss(input, label, reduction='none')
-        y = paddle.nn.functional.l1_loss(input, label, name='aaa')
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[10, 10, 5], dtype='float32'
+            )
+            result0 = paddle.nn.functional.l1_loss(input, label)
+            result1 = paddle.nn.functional.l1_loss(
+                input, label, reduction='sum'
+            )
+            result2 = paddle.nn.functional.l1_loss(
+                input, label, reduction='none'
+            )
+            y = paddle.nn.functional.l1_loss(input, label, name='aaa')
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np, "label": self.label_np},
-            fetch_list=[result0, result1, result2],
-        )
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = paddle.static.Executor(place)
+            static_result = exe.run(
+                feed={"input": self.input_np, "label": self.label_np},
+                fetch_list=[result0, result1, result2],
+            )
 
-        expected = np.mean(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
-        expected = np.sum(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
-        expected = np.abs(self.input_np - self.label_np)
-        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
-
-        self.assertTrue('aaa' in y.name)
+            expected = np.mean(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
+            expected = np.sum(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
+            expected = np.abs(self.input_np - self.label_np)
+            np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
+            if not in_pir_mode():
+                self.assertTrue('aaa' in y.name)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):
+        @test_with_pir_api
         def test_value_error():
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
@@ -133,59 +141,63 @@ class TestClassL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[10, 10, 5], dtype='float32'
-        )
-        label = paddle.static.data(
-            name='label', shape=[10, 10, 5], dtype='float32'
-        )
-        l1_loss = paddle.nn.loss.L1Loss()
-        result0 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
-        result1 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(reduction='none')
-        result2 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(name='aaa')
-        result3 = l1_loss(input, label)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[10, 10, 5], dtype='float32'
+            )
+            l1_loss = paddle.nn.loss.L1Loss()
+            result0 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+            result1 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+            result2 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(name='aaa')
+            result3 = l1_loss(input, label)
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        static_result = exe.run(
-            feed={"input": self.input_np, "label": self.label_np},
-            fetch_list=[result0, result1, result2],
-        )
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = paddle.static.Executor(place)
+            static_result = exe.run(
+                feed={"input": self.input_np, "label": self.label_np},
+                fetch_list=[result0, result1, result2],
+            )
 
-        expected = np.mean(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
-        expected = np.sum(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
-        expected = np.abs(self.input_np - self.label_np)
-        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
-        self.assertTrue('aaa' in result3.name)
+            expected = np.mean(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
+            expected = np.sum(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
+            expected = np.abs(self.input_np - self.label_np)
+            np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
+
+            if not in_pir_mode():
+                self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):
+        @test_with_pir_api
         def test_value_error():
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 

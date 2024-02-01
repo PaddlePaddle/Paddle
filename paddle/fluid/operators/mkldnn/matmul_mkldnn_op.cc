@@ -18,11 +18,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace {
+using common::vectorize;
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::framework::GradVarName;
 using phi::OneDNNContext;
-using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
@@ -467,7 +467,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
                 (*y_bd_dims)[i]));
         (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
       }
-      out->Resize(phi::make_ddim((out_dims)));
+      out->Resize(common::make_ddim((out_dims)));
     }
   }
 };
@@ -600,7 +600,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                          phi::DenseTensor *out) const {
     // gradient is calculated in a different way when broadcasting is used
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                        out->dims().size() == 2;
+                        out->dims().size() == 2;  // NOLINT
 
     phi::DenseTensor x_combined, y_combined;
     if (need_combine) {

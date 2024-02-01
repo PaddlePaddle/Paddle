@@ -46,7 +46,7 @@ std::unique_ptr<backends::SimpleJIT> GetLoweredFunc(int M, int N) {
   auto stages = CreateStages({z});
   auto fn = Lower("fn", stages, {x, y, z});
 
-  ir::Module::Builder builder("some_module", common::DefaultHostTarget());
+  ir::Module::Builder builder("some_module", cinn::common::DefaultHostTarget());
   builder.AddFunction(fn);
 
   auto jit = backends::SimpleJIT::Create();
@@ -59,7 +59,7 @@ void InstantiateScope(int M, int N, Scope* scope) {
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
     tensor->Resize(Shape{{M, N}});
-    auto* data = tensor->mutable_data<float>(common::DefaultHostTarget());
+    auto* data = tensor->mutable_data<float>(cinn::common::DefaultHostTarget());
     for (int i = 0; i < M * N; i++) {
       data[i] = (rand() * 1.f) / RAND_MAX;  // NOLINT
     }
@@ -73,7 +73,8 @@ TEST(Instruction, basic) {
   Scope scope;
   InstantiateScope(M, N, &scope);
   // create Instruction
-  Instruction instr(common::DefaultHostTarget(), &scope, {"x", "y"}, {"z"});
+  Instruction instr(
+      cinn::common::DefaultHostTarget(), &scope, {"x", "y"}, {"z"});
   auto jit = GetLoweredFunc(M, N);
   auto fn_ptr = jit->Lookup("fn");
   CHECK(fn_ptr);
@@ -106,8 +107,8 @@ TEST(Instruction, RunWithRawPodArgs) {
   // case 1: create cinn_pod_value_t arguments dicrectly
   std::vector<cinn_buffer_t> args_buffer(
       3);  // store {"x", "y", "z"} buffer objects
-  auto* default_memory_mng =
-      MemoryManager::Global().RetrieveSafely(common::DefaultHostTarget().arch);
+  auto* default_memory_mng = MemoryManager::Global().RetrieveSafely(
+      cinn::common::DefaultHostTarget().arch);
 
   int count = 0;
   for (const auto& name : std::vector<std::string>({"x", "y", "z"})) {
@@ -128,8 +129,10 @@ TEST(Instruction, RunWithRawPodArgs) {
   auto jit = GetLoweredFunc(M, N);
   auto fn_ptr = jit->Lookup("fn");
   CHECK(fn_ptr);
-  Instruction instr(
-      common::DefaultHostTarget(), nullptr, {"x", "y"}, {"z"});  // empty scope
+  Instruction instr(cinn::common::DefaultHostTarget(),
+                    nullptr,
+                    {"x", "y"},
+                    {"z"});  // empty scope
   instr.SetLoweredFunc(reinterpret_cast<void*>(fn_ptr));
   instr.Finalize();
 
@@ -312,12 +315,15 @@ TEST(Instruction, CONV_FORWARD) {
       Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x =
-      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w =
-      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y =
-      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x = cinn::common::BufferBuilder(Float(32), {in, ic, ih, iw})
+                      .set_random()
+                      .Build();
+  auto buffer_w = cinn::common::BufferBuilder(Float(32), {fn, fc, fh, fw})
+                      .set_random()
+                      .Build();
+  auto buffer_y = cinn::common::BufferBuilder(Float(32), {on, oc, oh, ow})
+                      .set_random()
+                      .Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
@@ -353,7 +359,7 @@ TEST(Instruction, CONV_FORWARD) {
   std::vector<cinn_pod_value_t> pod_args = {x, w, y};
 
   Scope scope;
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> in_args, out_args;
   TestInstruction instr(target, &scope, in_args, out_args, "conv2d");
 
@@ -403,12 +409,15 @@ TEST(Instruction, CONV_BACKWARD_DATA) {
       Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x =
-      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w =
-      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y =
-      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x = cinn::common::BufferBuilder(Float(32), {in, ic, ih, iw})
+                      .set_random()
+                      .Build();
+  auto buffer_w = cinn::common::BufferBuilder(Float(32), {fn, fc, fh, fw})
+                      .set_random()
+                      .Build();
+  auto buffer_y = cinn::common::BufferBuilder(Float(32), {on, oc, oh, ow})
+                      .set_random()
+                      .Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
@@ -445,7 +454,7 @@ TEST(Instruction, CONV_BACKWARD_DATA) {
   std::vector<cinn_pod_value_t> pod_args = {w, y, x};
 
   Scope scope;
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> in_args, out_args;
   TestInstruction instr(target, &scope, in_args, out_args, "conv2d");
 
@@ -510,12 +519,15 @@ TEST(Instruction, CONV_BACKWARD_FILTER) {
   ASSERT_EQ(infer_shape[0][3], fw);
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x =
-      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w =
-      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y =
-      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x = cinn::common::BufferBuilder(Float(32), {in, ic, ih, iw})
+                      .set_random()
+                      .Build();
+  auto buffer_w = cinn::common::BufferBuilder(Float(32), {fn, fc, fh, fw})
+                      .set_random()
+                      .Build();
+  auto buffer_y = cinn::common::BufferBuilder(Float(32), {on, oc, oh, ow})
+                      .set_random()
+                      .Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
@@ -552,7 +564,7 @@ TEST(Instruction, CONV_BACKWARD_FILTER) {
   std::vector<cinn_pod_value_t> pod_args = {x, y, w};
 
   Scope scope;
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> in_args, out_args;
   TestInstruction instr(target, &scope, in_args, out_args, "conv2d");
 

@@ -34,7 +34,7 @@ class SplitPrimOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Prim operator split_p should not be excuted directly"));
+        "Prim operator split_p should not be executed directly"));
   }
 };
 
@@ -110,7 +110,7 @@ class SplitPrimOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_name = Input(ctx, "X")[0];
     auto y_names = Output(ctx, "YS");
-    for (auto y_name : y_names) {
+    for (auto const &y_name : y_names) {
       SetType(ctx, y_name, GetType(ctx, x_name));
       SetDataType(ctx, y_name, GetDataType(ctx, x_name));
     }

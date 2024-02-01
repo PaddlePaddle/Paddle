@@ -249,9 +249,7 @@ def _mobilenet(arch, pretrained=False, **kwargs):
     if pretrained:
         assert (
             arch in model_urls
-        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch
-        )
+        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )
@@ -270,7 +268,7 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV1 <api_paddle_vision_MobileNetV1>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV1 <api_paddle_vision_models_MobileNetV1>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV1 model.

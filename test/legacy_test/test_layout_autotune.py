@@ -44,11 +44,11 @@ class SimpleNet(paddle.nn.Layer):
 
 class LayoutAutoTune(unittest.TestCase):
     def test_config(self):
-        paddle.fluid.core.enable_layout_autotune()
+        paddle.base.core.enable_layout_autotune()
         if self.use_autoune():
-            self.assertEqual(paddle.fluid.core.use_layout_autotune(), True)
-            paddle.fluid.core.disable_layout_autotune()
-        self.assertEqual(paddle.fluid.core.use_layout_autotune(), False)
+            self.assertEqual(paddle.base.core.use_layout_autotune(), True)
+            paddle.base.core.disable_layout_autotune()
+        self.assertEqual(paddle.base.core.use_layout_autotune(), False)
         self.use_autoune()
 
     def setUp(self):
@@ -59,7 +59,7 @@ class LayoutAutoTune(unittest.TestCase):
             paddle.incubate.autotune.set_config(
                 config={"layout": {"enable": True}}
             )
-            return paddle.fluid.core.use_layout_autotune()
+            return paddle.base.core.use_layout_autotune()
         else:
             config = {"layout": {"enable": False}}
             tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
@@ -67,7 +67,7 @@ class LayoutAutoTune(unittest.TestCase):
             tfile.close()
             paddle.incubate.autotune.set_config(tfile.name)
             os.remove(tfile.name)
-            return paddle.fluid.core.use_layout_autotune()
+            return paddle.base.core.use_layout_autotune()
 
     def train(self, data_format):
         model = SimpleNet(data_format="NCHW", class_num=2)

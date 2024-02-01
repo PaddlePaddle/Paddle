@@ -24,7 +24,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-SkipRule::SkipRule(const common::Target& target) : AutoGenRule(target) {}
+SkipRule::SkipRule(const cinn::common::Target& target) : AutoGenRule(target) {}
 
 RuleApplyType SkipRule::Init(ir::IRSchedule* ir_schedule) {
   ir_schedule_ = ir_schedule;

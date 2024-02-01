@@ -12,26 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest
 
 import paddle
-import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiagEmbedOp(OpTest):
     def setUp(self):
         self.op_type = "diag_embed"
-        self.python_api = F.diag_embed
+        self.python_api = paddle.diag_embed
         self.init_config()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
@@ -51,19 +52,23 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
+    @test_with_pir_api
     def test_case1(self):
-        with paddle_static_guard():
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             diag_embed = np.random.randn(2, 3, 4).astype('float32')
             data1 = paddle.static.data(
                 name='data1', shape=[2, 3, 4], dtype='float32'
             )
-            out1 = F.diag_embed(data1)
-            out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
+            out1 = paddle.diag_embed(data1)
+            out2 = paddle.diag_embed(data1, offset=1, dim1=-2, dim2=3)
 
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             results = exe.run(
-                fluid.default_main_program(),
+                main,
                 feed={"data1": diag_embed},
                 fetch_list=[out1, out2],
                 return_numpy=True,
@@ -76,6 +81,11 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             )
             np.testing.assert_allclose(results[0], target1, rtol=1e-05)
             np.testing.assert_allclose(results[1], target2, rtol=1e-05)
+
+    def test_tensor_method(self):
+        paddle.disable_static()
+        x = paddle.arange(15).reshape((3, 5)).astype('float64')
+        self.assertTrue(inspect.ismethod(x.diag_embed))
 
 
 if __name__ == "__main__":

@@ -17,9 +17,9 @@ limitations under the License. */
 #include <utility>
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "test/cpp/phi/core/allocator.h"
 

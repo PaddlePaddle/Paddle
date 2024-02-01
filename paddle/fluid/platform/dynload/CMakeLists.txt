@@ -1,7 +1,7 @@
 cc_library(
   dynamic_loader
   SRCS dynamic_loader.cc
-  DEPS glog enforce phi)
+  DEPS glog enforce phi common)
 
 list(
   APPEND
@@ -57,20 +57,20 @@ if(WITH_ROCM)
   hip_library(
     dynload_cuda
     SRCS ${HIP_SRCS}
-    DEPS dynamic_loader phi)
+    DEPS dynamic_loader phi common)
   cc_library(
     dynload_warpctc
     SRCS warpctc.cc
-    DEPS dynamic_loader warpctc phi)
+    DEPS dynamic_loader warpctc phi common)
 else()
   nv_library(
     dynload_cuda
     SRCS ${CUDA_SRCS}
-    DEPS dynamic_loader phi)
+    DEPS dynamic_loader phi common)
   cc_library(
     dynload_warpctc
     SRCS warpctc.cc
-    DEPS dynamic_loader warpctc phi)
+    DEPS dynamic_loader warpctc phi common)
 endif()
 if(WITH_XPU)
   cc_library(
@@ -86,6 +86,6 @@ if(MKL_FOUND AND WITH_ONEMKL)
   cc_library(
     dynload_mklrt
     SRCS mklrt.cc
-    DEPS dynamic_loader phi)
+    DEPS dynamic_loader phi common)
   target_include_directories(dynload_mklrt PRIVATE ${MKL_INCLUDE})
 endif()

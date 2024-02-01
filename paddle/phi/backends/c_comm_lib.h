@@ -15,11 +15,11 @@
 #pragma once
 #include <vector>
 
+#include "paddle/common/errors.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 
 #include "paddle/phi/common/reduce_type.h"
 
@@ -59,9 +59,9 @@ inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
       red_type = phi::ccl::CCLReduceOp::AVG;
       break;
     default:
-      PADDLE_THROW(
-          errors::Unavailable("Unsuppored reduce type. Reduce type must be one "
-                              "of SUM, MAX, MIN, PRODUCT and AVG."));
+      PADDLE_THROW(errors::Unavailable(
+          "Unsupported reduce type. Reduce type must be one "
+          "of SUM, MAX, MIN, PRODUCT and AVG."));
   }
   return red_type;
 }

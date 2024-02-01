@@ -25,7 +25,7 @@ from paddle.distribution import (
     variable,
 )
 
-__all__ = [  # noqa
+__all__ = [
     'Transform',
     'AbsTransform',
     'AffineTransform',
@@ -166,7 +166,9 @@ class Transform:
         Returns:
             Tensor: Outcome of forward transformation.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(
+            x, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}."
             )
@@ -187,7 +189,9 @@ class Transform:
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(
+            y, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}."
             )
@@ -209,12 +213,14 @@ class Transform:
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(
+            x, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}."
             )
         if (
-            isinstance(x, paddle.fluid.framework.Variable)
+            isinstance(x, (paddle.base.framework.Variable, paddle.pir.Value))
             and x.dim() < self._domain.event_rank
         ):
             raise ValueError(
@@ -241,7 +247,9 @@ class Transform:
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(
+            y, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
@@ -441,9 +449,9 @@ class AffineTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.fluid.framework.Variable):
+        if not isinstance(loc, paddle.base.framework.Variable):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.fluid.framework.Variable):
+        if not isinstance(scale, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}"
             )
@@ -587,9 +595,9 @@ class ChainTransform(Transform):
         # Suppose the dimensions of input tensor is N, and chain [t0,...ti,...tm],
         # ti(in) denotes ti.domain.event_rank, ti(out) denotes ti.codomain.event_rank,
         # delta(ti) denotes (ti(out) - ti(in)).
-        # For transform ti, N shoud satisfy the constraint:
+        # For transform ti, N should satisfy the constraint:
         #   N + delta(t0) + delta(t1)...delta(t(i-1)) >= ti(in)
-        # So, for all transform in chain, N shoud satisfy follow constraints:
+        # So, for all transform in chain, N should satisfy follow constraints:
         #   t0: N >= t0(in)
         #   t1: N >= t1(in) - delta(t0)
         #   ...
@@ -791,7 +799,7 @@ class PowerTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.fluid.framework.Variable):
+        if not isinstance(power, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )

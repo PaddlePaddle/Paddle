@@ -33,9 +33,9 @@ namespace hlir {
 namespace op {
 
 TEST(GenerateCode_Cpu, Reciprocal) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr n(4);
   ir::Expr m(2);

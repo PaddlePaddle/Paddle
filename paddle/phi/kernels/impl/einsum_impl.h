@@ -290,7 +290,7 @@ inline static void InferLabelPerm(const CharIterable& op,
   int cur = 0;
   for (int c : op) {
     if (!label2perm->exist(
-            c))  // can appear repeatly. we just record the first position.
+            c))  // can appear repeatedly. we just record the first position.
       (*label2perm)[c] = cur;
     if (c == '.') {
       cur += n_broadcast;
@@ -391,9 +391,9 @@ std::vector<T> GetShapeByType(const std::vector<char>& all_labels,
 }
 
 inline static std::vector<int> perm_moveto(int n, int from, int to) {
-  // a permution means moving `from` to `to`.
+  // a permutation means moving `from` to `to`.
   /*
-  f => t   permtation
+  f => t   permutation
   --------------------
            0 1 2 3 4 5
   5 => 2 : 0 2 5 2 3 4
@@ -491,7 +491,8 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
       if (cur != label2perm[c]) {
         // do diagonal, followed by movedim().
         VLOG(5) << "Do diagonal with shape="
-                << paddle::string::join_strings(vectorize<int>(res.dims()), ',')
+                << paddle::string::join_strings(
+                       common::vectorize<int>(res.dims()), ',')
                 << ", axis1=" << cur << ", axis2=" << label2perm[c];
         res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
         res = Transpose<T, Context>(
@@ -623,7 +624,7 @@ DenseTensor PerformContraction(
     }
     VLOG(5) << "PerformContraction: mul_dims: "
             << paddle::string::join_strings(mul_dims, ",");
-    trans_t.Resize(make_ddim(mul_dims));
+    trans_t.Resize(common::make_ddim(mul_dims));
     return trans_t;
   };
 
@@ -643,7 +644,7 @@ DenseTensor PerformContraction(
   if (recover_dim.size() == 0) recover_dim.push_back(1);
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
-  after_contraction.Resize(make_ddim(recover_dim));
+  after_contraction.Resize(common::make_ddim(recover_dim));
   return after_contraction;
 }
 
@@ -740,7 +741,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                        broadcast_dims.size());
   *out = PerformUndiagonal<T, Context>(
       dev_ctx, *out, broadcast_dims.size(), right);
-  out->Resize(make_ddim(output_dims));
+  out->Resize(common::make_ddim(output_dims));
 }
 
 template <typename T, typename Context>

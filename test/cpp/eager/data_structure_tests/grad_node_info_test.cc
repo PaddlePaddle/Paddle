@@ -37,7 +37,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       grads;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -87,7 +87,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   auto gradient_hook = [](const paddle::Tensor& et) -> paddle::Tensor {
     paddle::Tensor res;
     phi::DenseTensorMeta meta =
-        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
     std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())
@@ -125,7 +125,7 @@ TEST(GradNodeInfo, GradNodeBase) {
 
 TEST(GradNodeInfo, Edge) {
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

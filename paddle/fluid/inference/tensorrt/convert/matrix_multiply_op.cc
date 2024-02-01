@@ -237,7 +237,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
                                  matrix_operation_x,
                                  *input2,
                                  matrix_operation_y);
-
+    SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
     if (enable_int8) {
       if (op_desc.HasAttr("out_threshold") || op_desc.HasAttr("Out")) {
         engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
@@ -259,6 +259,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
                                    *layer->getOutput(0),
                                    *reshape_alpha->getOutput(0),
                                    nvinfer1::ElementWiseOperation::kPROD);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
     }
     RreplenishLayerAndOutput(
         layer, "matrix_multiply_op", {output_name}, test_mode);

@@ -147,9 +147,9 @@ class RowConvKernel : public framework::OpKernel<T> {
     bool is_tensor = x->lod().empty();
     int batch_size = 0;
     if (is_tensor) {
-      batch_size = x->dims()[0];
+      batch_size = static_cast<int>(x->dims()[0]);
     } else {
-      batch_size = x->lod()[0].size() - 1;
+      batch_size = static_cast<int>(x->lod()[0].size() - 1);
     }
     phi::Vector<size_t> batch_indices(batch_size + 1);
     int input_dim = 0;
@@ -158,11 +158,11 @@ class RowConvKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_size + 1; i++) {
         batch_indices[i] = i;
       }
-      input_dim = x->dims()[2];
-      timesteps = x->dims()[1];
+      input_dim = static_cast<int>(x->dims()[2]);
+      timesteps = static_cast<int>(x->dims()[1]);
     } else {
       batch_indices = x->lod()[0];
-      input_dim = x->dims()[1];
+      input_dim = static_cast<int>(x->dims()[1]);
     }
     size_t num_sequence = batch_indices.size() - 1;
 
@@ -225,9 +225,9 @@ class RowConvGradKernel : public framework::OpKernel<T> {
     bool is_tensor = x_lod.empty();
     int batch_size = 0;
     if (is_tensor) {
-      batch_size = x->dims()[0];
+      batch_size = static_cast<int>(x->dims()[0]);
     } else {
-      batch_size = x->lod()[0].size() - 1;
+      batch_size = static_cast<int>(x->lod()[0].size() - 1);
     }
     phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = 0;
@@ -236,11 +236,11 @@ class RowConvGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_size + 1; i++) {
         batch_indices[i] = i;
       }
-      input_dim = x->dims()[2];
-      timesteps = x->dims()[1];
+      input_dim = static_cast<int>(x->dims()[2]);
+      timesteps = static_cast<int>(x->dims()[1]);
     } else {
       batch_indices = x->lod()[0];
-      input_dim = x->dims()[1];
+      input_dim = static_cast<int>(x->dims()[1]);
     }
 
     size_t num_sequence = batch_indices.size() - 1;

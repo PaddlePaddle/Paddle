@@ -39,23 +39,11 @@ class TestReshardRToP:
         dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
+        input_tensor = dist.shard_tensor(a, self._mesh, [dist.Replicate()])
+        # TODO(liyurui): here due to reshard is static graph logic, dist_attr must be call `_set_partial_dims` for Partial. it should be removed when reshard updated.
+        out = dist.reshard(
+            input_tensor, self._mesh, [dist.Partial(dist.ReduceType.kRedSum)]
         )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
-        out_dist_attr._set_partial_dims([0])
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-
-        reshard_func = core.RToPReshardFunction()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
 
         if dist.get_rank() == 0:
             np.testing.assert_equal(

@@ -13,15 +13,19 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _dygraph_place_guard
+from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
+
+sys.path.append("../dygraph_to_static")
+from dygraph_to_static_utils import enable_to_static_guard
 
 paddle.seed(1)
 
@@ -59,11 +63,9 @@ class TestMultiLoad(unittest.TestCase):
     def test_multi_load(self):
         x = paddle.full([2, 4], 2)
         model = Net()
-        paddle.jit.enable_to_static(False)
-        forward_out1 = model.forward(x)
-        infer_out1 = model.infer(x)
-        paddle.jit.enable_to_static(True)
-
+        with enable_to_static_guard(False):
+            forward_out1 = model.forward(x)
+            infer_out1 = model.infer(x)
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
         paddle.jit.save(model, model_path, combine_params=True)
         place = paddle.CPUPlace()

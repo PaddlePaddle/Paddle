@@ -15,14 +15,17 @@
 import random
 import sys
 import unittest
+from pathlib import Path
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
-sys.path.append("../../test/rnn")
+# Add test/rnn to sys.path
+legacy_test_dir = Path(__file__).resolve().parents[1]
+sys.path.append(str(legacy_test_dir / "rnn"))
 from convert import get_params_for_net
 from rnn_numpy import LSTM
 
@@ -45,7 +48,7 @@ def rnn_wrapper(
     seed=0,
     is_test=False,
 ):
-    dropout_state_in = paddle.Tensor()
+    dropout_state_in = paddle.tensor.fill_constant([], "float32", 0.0)
     return paddle._C_ops.rnn(
         Input,
         PreState,
@@ -168,7 +171,9 @@ class TestRNNOp(OpTest):
         }
 
     def test_output(self):
-        self.check_output(no_check_set=['Reserve', 'DropoutState'])
+        self.check_output(
+            no_check_set=['Reserve', 'DropoutState'], check_pir=True
+        )
 
     def set_attrs(self):
         pass
@@ -179,7 +184,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_input(self):
@@ -188,7 +195,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_h(self):
@@ -197,7 +206,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['init_h']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_c(self):
@@ -206,7 +217,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
 

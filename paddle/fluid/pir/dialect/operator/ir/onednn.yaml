@@ -1,0 +1,39 @@
+- op : dequantize
+  args : (Tensor input, float scale=1.0, float shift=0.0)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedExceptDtypeInferMeta
+    param : [input]
+  kernel :
+    func : dequantize
+    data_type : input
+
+- op : fused_conv2d
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_param, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1}, int groups=1, str data_format="NCHW", str mkldnn_data_type="float32", str fuse_activation="", bool fuse_residual_connection=false, bool force_fp32_output=false)
+  output : Tensor(output)
+  infer_meta :
+    func : FusedConvInferMeta
+  kernel :
+    func : fused_conv2d
+    data_type : input
+  optional : bias, residual_param
+
+- op : quantize
+  args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : quantize
+    data_type : input
+
+- op : requantize
+  args : (Tensor input, float scale_in=1.0, float scale_out=1.0, float shift_in=1.0, float shift_out=1.0)
+  output : Tensor(output)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : requantize
+    data_type : input

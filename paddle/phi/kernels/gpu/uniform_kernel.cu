@@ -61,7 +61,7 @@ void UniformKernel(const Context& dev_ctx,
                    const Scalar& max,
                    int seed,
                    DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed

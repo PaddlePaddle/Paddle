@@ -81,7 +81,7 @@ TEST(cinn_computation, basic_cpu) {
   auto c = builder.Add(a, b);
   auto d = builder.Add(a, c);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto comp = CinnComputation::BuildAndCompile(target, builder);
   std::vector<float> hostA(M * N);
   std::vector<float> hostB(M * N);
@@ -119,7 +119,7 @@ TEST(cinn_computation, basic_gpu) {
   auto c = builder.Add(a, b);
   auto d = builder.Add(a, c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto comp = CinnComputation::BuildAndCompile(target, builder);
   std::vector<float> hostA(M * N);
   std::vector<float> hostB(M * N);
@@ -149,7 +149,7 @@ TEST(cinn_computation, basic_gpu) {
 
 TEST(cinn_computation, net_builder_cpu) {
   auto program = CreateTestProgram();
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto compute = CinnComputation::Compile(target, program);
   auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 2);
@@ -183,7 +183,7 @@ TEST(cinn_computation, net_builder_cpu) {
 #ifdef CINN_WITH_CUDA
 TEST(cinn_computation, net_builder_gpu) {
   auto program = CreateTestProgram();
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto compute = CinnComputation::Compile(target, program);
   auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 2);
@@ -223,7 +223,7 @@ TEST(cinn_computation, net_builder_gpu) {
 #endif
 
 TEST(cinn_computation, fc_execute_cpu) {
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   ASSERT_NE(FLAGS_model_dir, "");
   auto compute = CinnComputation::CompilePaddleModel(
       target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
@@ -240,7 +240,7 @@ TEST(cinn_computation, fc_execute_cpu) {
 
 #ifdef CINN_WITH_CUDA
 TEST(cinn_computation, fc_execute_gpu) {
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   ASSERT_NE(FLAGS_model_dir, "");
   auto compute = CinnComputation::CompilePaddleModel(
       target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
@@ -274,7 +274,7 @@ TEST(cinn_computation, decomposer_cpu) {
   // without decomposer
   {
     auto prog = CreateAddProgram();
-    auto target = common::DefaultHostTarget();
+    auto target = cinn::common::DefaultHostTarget();
     auto options = CinnComputation::DefaultCompileOptions();
     options.use_decomposer = false;
     auto compute = CinnComputation::Compile(target, prog, options);
@@ -284,7 +284,7 @@ TEST(cinn_computation, decomposer_cpu) {
   // with decomposer
   {
     auto prog = CreateAddProgram();
-    auto target = common::DefaultHostTarget();
+    auto target = cinn::common::DefaultHostTarget();
     auto options = CinnComputation::DefaultCompileOptions();
     options.use_decomposer = true;
     auto compute = CinnComputation::Compile(target, prog, options);
@@ -295,7 +295,7 @@ TEST(cinn_computation, decomposer_cpu) {
 #ifdef CINN_WITH_CUDA
 TEST(cinn_computation, gpu_stream) {
   // this test only shows the API usage
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto prog = CreateAddProgram();
   auto options = CinnComputation::DefaultCompileOptions();
 
@@ -309,7 +309,7 @@ TEST(cinn_computation, gpu_stream) {
 
 TEST(cinn_computation, without_instantiate_variables) {
   // this test only shows the API usage
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto prog = CreateAddProgram();
   auto options = CinnComputation::DefaultCompileOptions();
   options.with_instantiate_variables = false;

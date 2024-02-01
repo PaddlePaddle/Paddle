@@ -138,7 +138,7 @@ void PriorBoxKernel(const Context& ctx,
   }
 
   DenseTensor var_t;
-  var_t.Resize(phi::make_ddim({1, static_cast<int>(variances.size())}));
+  var_t.Resize(common::make_ddim({1, static_cast<int>(variances.size())}));
   ctx.template Alloc<T>(&var_t);
   auto var_et = EigenTensor<T, 2>::From(var_t);
 

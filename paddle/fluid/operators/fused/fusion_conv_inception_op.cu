@@ -65,7 +65,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(temp_outs[0], temp_outs[0]->numel() * sizeof(T));
 
     DataLayout layout = DataLayout::kNCHW;
-    std::vector<int> in_dim = phi::vectorize<int>(input->dims());
+    std::vector<int> in_dim = common::vectorize<int>(input->dims());
 
     // ------------------- cudnn descriptors ---------------------
     PoolingMode pooling_mode;
@@ -87,9 +87,9 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
         pool_desc.descriptor(pooling_mode, k3x3, k1x1, k1x1);
 
     cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, phi::vectorize<int>(input->dims()));
-    cudnnTensorDescriptor_t pool_out_desc =
-        out_pool_desc.descriptor<T>(layout, phi::vectorize<int>(input->dims()));
+        input_desc.descriptor<T>(layout, common::vectorize<int>(input->dims()));
+    cudnnTensorDescriptor_t pool_out_desc = out_pool_desc.descriptor<T>(
+        layout, common::vectorize<int>(input->dims()));
 
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
     cudnnTensorDescriptor_t* out_desc = new cudnnTensorDescriptor_t[4];
@@ -130,7 +130,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
                                        : CUDNN_DATA_FLOAT;
 
     for (int i = 0; i < 4; ++i) {
-      filter_dims.push_back(phi::vectorize<int>(filters[i]->dims()));
+      filter_dims.push_back(common::vectorize<int>(filters[i]->dims()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
           filter_desc[i], cudnn_dtype, format, 4, filter_dims[i].data()));
       bias_dims.push_back({1, filter_dims[i][0], 1, 1});
@@ -260,7 +260,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     in_datas.push_back(static_cast<const void*>(input_data));
     in_datas.push_back(
         static_cast<const void*>(output_data + (oc0 + oc1) * h * w));
-    temp_outs[1]->Resize(phi::make_ddim(out_dims[2]));
+    temp_outs[1]->Resize(common::make_ddim(out_dims[2]));
     T* temp2_data =
         dev_ctx.Alloc<T>(temp_outs[1], temp_outs[1]->numel() * sizeof(T));
     in_datas.push_back(static_cast<const void*>(temp2_data + oc2 * h * w));

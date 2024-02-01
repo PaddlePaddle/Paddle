@@ -26,6 +26,7 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"               // For VLOG()
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -35,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -104,7 +105,7 @@ struct OperatorRegistrar : public Registrar {
   }
 };
 
-class OpRegistry {
+class TEST_API OpRegistry {
  public:
   /**
    * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
@@ -177,7 +178,7 @@ inline void RegisterKernelClass(const char* op_type,
   if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
                      platform::CustomPlace(library_type),
-                     phi::StringToDataLayout(data_layout),
+                     common::StringToDataLayout(data_layout),
                      LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -186,7 +187,7 @@ inline void RegisterKernelClass(const char* op_type,
 #endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   phi::StringToDataLayout(data_layout),
+                   common::StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -425,7 +426,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
       __use_op_itself_##op_type,                           \
       "USE_OP_ITSELF must be called in global namespace"); \
-  extern int TouchOpRegistrar_##op_type();                 \
+  TEST_API extern int TouchOpRegistrar_##op_type();                 \
   UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
 
 #define USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type,                     \

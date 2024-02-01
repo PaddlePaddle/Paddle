@@ -46,7 +46,7 @@ TEST(DeadCodeEliminate, remove_single) {
   std::vector<std::string> input_names = {x.id().data()};
   std::vector<std::string> output_names = {identity_1->id, reduce_sum_2->id};
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::pair<std::vector<std::string>, std::vector<std::string>> passes{
       {"Decomposer"}, {"DeadCodeEliminate"}};
   CompareResult(
@@ -75,7 +75,7 @@ TEST(DeadCodeEliminate, remove_multiple) {
   std::vector<std::string> input_names = {x.id().data()};
   std::vector<std::string> output_names = {reduce_sum_1->id};
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::pair<std::vector<std::string>, std::vector<std::string>> passes{
       {"Decomposer"}, {"DeadCodeEliminate"}};
   CompareResult(

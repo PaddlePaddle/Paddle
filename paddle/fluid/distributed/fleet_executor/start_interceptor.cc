@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/distributed/fleet_executor/start_interceptor.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {

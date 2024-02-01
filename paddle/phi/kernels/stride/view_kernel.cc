@@ -32,6 +32,7 @@ void ViewShapeKernel(const Context& dev_ctx,
     meta.offset = input.offset();
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The Tensor can not be viewed, please call reshape."));
@@ -51,6 +52,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.dtype = dtype;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else if (input_dtype_size == 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The Tensor's shape is [] can not be viewed."));
@@ -82,6 +84,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.offset = input.offset() * times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else {
     PADDLE_ENFORCE_EQ(
         input.strides()[input.strides().size() - 1],
@@ -140,6 +143,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.offset = input.offset() / times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   }
 }
 

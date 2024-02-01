@@ -25,7 +25,7 @@ from legacy_test.test_dist_base import (
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid
+from paddle import base
 from paddle.nn import Linear
 
 seed = 90
@@ -68,15 +68,14 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         return loss
 
     def run_trainer_func(self, args):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
+            place = base.CUDAPlace(device_id)
         else:
             assert "Only support CUDAPlace for now."
 
-        with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard(place):
+            paddle.seed(seed)
             np.random.seed(seed)
             random.seed(seed)
             model, train_reader, opt = self.get_model()
@@ -101,8 +100,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id

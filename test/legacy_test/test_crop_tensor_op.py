@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def crop(data, offsets, crop_shape):
@@ -81,10 +82,10 @@ class TestCropTensorOp(OpTest):
         self.offsets = [1, 2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestCase1(TestCropTensorOp):
@@ -182,10 +183,10 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.shape_attr = [0, 0]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
@@ -225,6 +226,7 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorException(unittest.TestCase):
+    @test_with_pir_api
     def test_exception(self):
         input1 = paddle.static.data(
             name="input1", shape=[2, 3, 6, 6], dtype="float32"

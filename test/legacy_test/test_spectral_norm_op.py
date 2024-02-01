@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import Program, program_guard
+from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -84,7 +85,7 @@ class TestSpectralNormOpNoGrad(OpTest):
         self.outputs = {"Out": output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def initTestCase(self):
         self.weight_shape = (10, 12)
@@ -116,6 +117,7 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
             ['Weight'],
             'Out',
             no_grad_set={"U", "V"},
+            check_pir=True,
         )
 
     def initTestCase(self):
@@ -138,6 +140,7 @@ class TestSpectralNormOp2(TestSpectralNormOp):
 
 
 class TestSpectralNormOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
 

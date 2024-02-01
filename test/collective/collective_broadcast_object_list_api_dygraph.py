@@ -15,7 +15,7 @@
 import test_collective_api_base as test_base
 
 import paddle.distributed as dist
-from paddle import fluid
+from paddle import base
 
 
 class TestCollectiveBroadcastObjectListAPI(
@@ -25,7 +25,7 @@ class TestCollectiveBroadcastObjectListAPI(
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             object_list = [indata]
             dist.broadcast_object_list(object_list, src=1)
             return object_list

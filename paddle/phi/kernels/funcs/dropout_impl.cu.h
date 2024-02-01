@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -125,15 +126,18 @@ struct DstMaskFunctor {
 };
 
 template <typename T>
-__global__ void VectorizedRandomGenerator(const size_t n,
-                                          uint64_t seed,
-                                          const float dropout_prob,
-                                          const T* src,
-                                          uint8_t* mask,
-                                          T* dst,
-                                          bool is_upscale_in_train,
-                                          uint64_t increment,
-                                          size_t main_offset) {
+__global__ void VectorizedRandomGenerator(
+    unsigned int
+        identifier, /* This is used to relate kernel to cudaGraph nodes*/
+    const size_t n,
+    uint64_t seed,
+    const float dropout_prob,
+    const T* src,
+    uint8_t* mask,
+    T* dst,
+    bool is_upscale_in_train,
+    uint64_t increment,
+    size_t main_offset) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
       phi::funcs::uniform_distribution<float>::kReturnsCount;
@@ -255,17 +259,6 @@ __global__ void VectorizedGeneratorMask(const size_t n,
   }
 }
 
-template <typename T, typename MT>
-void ScaleByDropoutFactor(const phi::GPUContext& dev_ctx,
-                          const phi::DenseTensor& x,
-                          phi::DenseTensor* y,
-                          MT factor) {
-  std::vector<const phi::DenseTensor*> ins = {&x};
-  std::vector<phi::DenseTensor*> outs = {y};
-  auto functor = phi::funcs::ScaleFunctor<T>(factor);
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
-}
-
 template <typename T>
 void DropoutFwGPUKernelDriver(
     const phi::GPUContext& dev_ctx,
@@ -287,7 +280,7 @@ void DropoutFwGPUKernelDriver(
 
   if (!is_test && mask) {
     auto* mask_data = mask->data<uint8_t>();
-    size_t size = phi::product(mask->dims());
+    size_t size = common::product(mask->dims());
 
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
@@ -344,7 +337,6 @@ void DropoutFwGPUKernelDriver(
                                                  dropout_prob,
                                                  x_data,
                                                  mask_data,
-
                                                  increment,
                                                  main_offset,
                                                  mask_functor,
@@ -357,30 +349,72 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
+#ifdef PADDLE_WITH_HIP
+      VectorizedRandomGenerator<T>
+          <<<grid_size, block_size, 0, stream>>>(0,
+                                                 size,
+                                                 seed_data,
+                                                 dropout_prob,
+                                                 x_data,
+                                                 mask_data,
+                                                 y_data,
+                                                 upscale_in_train,
+                                                 increment,
+                                                 main_offset);
+#else
+      void* functionPtr =
+          reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
+      cudaFunction_t cudaFunc;
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
 
-#define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T>
-      PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
-                                         PD_DROPOUT_KERNEL_NAME,
-                                         grid_size,
-                                         block_size,
-                                         0,
-                                         stream,
-                                         offset,
-                                         KERNEL_PARAMS.As<uint64_t>(1),
-                                         KERNEL_PARAMS.As<uint64_t>(7),
-                                         size,
-                                         seed_data,
-                                         dropout_prob,
-                                         x_data,
-                                         mask_data,
-                                         y_data,
-                                         upscale_in_train,
-                                         increment,
-                                         main_offset);
-#undef PD_DROPOUT_KERNEL_NAME
+      const phi::GPUContext* dev_ctx_p = &dev_ctx;
+      auto gen_cuda = dev_ctx.GetGenerator();
+      auto state_index = gen_cuda->GetStateIndex();
+
+      phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
+          parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
+                                phi::backends::gpu::CUDAKernelParams& params) {
+            if (!is_fix_seed) {
+              // we assume seed is null pointer
+              // seed copy to cpu is meaningless here
+              assert(seed_tensor_ptr == nullptr);
+
+              auto gen_cuda = dev_ctx_p->GetGenerator();
+              // ensure the generator use correct state index
+              gen_cuda->SetStateIndex(state_index);
+
+              uint64_t seed, increment;
+              std::tie(seed, increment) = gen_cuda->IncrementOffset(offset);
+
+              params.As<uint64_t>(2) = seed;
+              params.As<uint64_t>(8) = increment;
+
+              VLOG(10) << "CUDA_GRAPH seed = " << seed
+                       << ", increment = " << increment;
+            }
+          };
+
+      phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+          cudaKernelCallback = [=](unsigned int id) {
+            VectorizedRandomGenerator<T>
+                <<<grid_size, block_size, 0, stream>>>(id,
+                                                       size,
+                                                       seed_data,
+                                                       dropout_prob,
+                                                       x_data,
+                                                       mask_data,
+                                                       y_data,
+                                                       upscale_in_train,
+                                                       increment,
+                                                       main_offset);
+          };
+      phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
+          cudaFunc, parameterSetter, cudaKernelCallback);
+
+      VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
+               << ", increment = " << increment;
+#endif
     }
-    VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
-            << ", seed_data:" << seed_data;
   } else {
     if (upscale_in_train) {
       // y = x
@@ -389,7 +423,7 @@ void DropoutFwGPUKernelDriver(
       using MT = typename phi::dtype::MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
-      ScaleByDropoutFactor<T, MT>(dev_ctx, x, y, factor);
+      phi::ScaleKernel<T, phi::GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
     }
   }
 }
@@ -425,7 +459,8 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
   if (is_test) {
     MT factor = static_cast<MT>(upscale_in_train ? 1.0f : 1.0f - dropout_prob);
     // y = factor * x
-    ScaleByDropoutFactor<T, MT>(dev_ctx, grad_y, grad_x, factor);
+    phi::ScaleKernel<T, phi::GPUContext>(
+        dev_ctx, grad_y, factor, 0.0f, false, grad_x);
   } else {
     if (upscale_in_train && dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP

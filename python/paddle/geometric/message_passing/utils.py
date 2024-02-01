@@ -15,11 +15,11 @@
 import numpy as np
 
 import paddle
-from paddle.fluid.data_feeder import check_dtype, convert_dtype
-from paddle.fluid.framework import Variable
+from paddle.base.data_feeder import check_dtype, convert_dtype
+from paddle.base.framework import Variable
 
 
-def convert_out_size_to_list(out_size):
+def convert_out_size_to_list(out_size, op_type):
     """
     Convert out_size(int, np.int32, np.int64, Variable) to list
     in imperative mode.
@@ -28,6 +28,17 @@ def convert_out_size_to_list(out_size):
         out_size = [0]
     elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
+    elif isinstance(out_size, (Variable, paddle.pir.Value)):
+        out_size.stop_gradient = True
+        check_dtype(
+            out_size.dtype,
+            'out_size',
+            ['int32', 'int64'],
+            'op_type',
+            '(When type of out_size in' + op_type + ' is Variable.)',
+        )
+        if convert_dtype(out_size.dtype) == 'int64':
+            out_size = paddle.cast(out_size, 'int32')
     else:
         out_size = [int(out_size)]
     return out_size

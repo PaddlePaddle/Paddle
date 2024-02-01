@@ -17,8 +17,8 @@
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/mman.h>
+#include <cstdlib>
 
 #include <random>
 #include <string>

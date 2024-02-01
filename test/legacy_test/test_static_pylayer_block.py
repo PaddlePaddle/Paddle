@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Executor, append_backward
 from paddle.static.nn.static_pylayer import StaticPyLayerBlock
 
@@ -26,9 +26,9 @@ from paddle.static.nn.static_pylayer import StaticPyLayerBlock
 class StaticPyLayerBlockTest(unittest.TestCase):
     def test_forward_and_backward(self):
         paddle.enable_static()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             data = paddle.static.data(name='X', shape=[10, 1], dtype='float32')
             data.stop_gradient = False
             static_pylayer_manager = StaticPyLayerBlock(inputs=[data])

@@ -145,7 +145,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     std::vector<std::string> subgraph_ins_name;
     std::unordered_set<const Node*> marked_nodes;
 
-    Node* cvm_input_of_cvm;
+    Node* cvm_input_of_cvm = nullptr;
     Node* concat_out_var = concat_node->outputs[0];
 
     GraphPatternDetector::handle_t handler =

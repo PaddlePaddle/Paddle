@@ -11,32 +11,83 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-
 import logging
 
 import paddle
+from paddle.base.log_helper import get_logger
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ....utils.log_utils import get_logger
-
-_logger = get_logger(logging.INFO)
 from ...random import determinate_rng, is_enable_auto_rand_ctrl
+from ..completion import get_phi_spmd_rule
 from ..utils import (
+    get_dist_tensor_spec,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
 from .common import (
     DistributedOperatorImplContainer,
+    merge_forward_backward_dims_mapping,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    update_op_dims_mapping,
 )
 from .dist_eltwise import DistributedDefaultImpl0, DistributedElementwiseImpl0
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class DistributedDropout(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        op_desc = dist_op.serial_op.desc
+
+        x_name = op_desc.input('X')[0]
+        out_name = op_desc.output('Out')[0]
+        mask_name = op_desc.output('Mask')[0]
+        # seed_name = op_desc.input('Seed')[0]  // seed is a scalar and leave it to be unsharded
+
+        x_spec = get_dist_tensor_spec(dist_op, x_name)
+        output_spec = get_dist_tensor_spec(dist_op, out_name, False)
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("dropout")
+        # tensor order following order in PHI definition
+        fw_results = rule.infer_forward(x_spec)
+        bw_results = rule.infer_backward(x_spec, output_spec)
+
+        # step3: update dist_attr
+        # tensor order following order in PHI definition
+        changed = update_op_dims_mapping(
+            dist_op, [x_name], [out_name], fw_results, bw_results
+        )
+
+        # step5: update mask and seed dropout special
+        if changed:
+            (
+                _,
+                infered_output_dims_mappings,
+            ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
+            dist_op.dist_attr.set_output_dims_mapping(
+                mask_name, infered_output_dims_mappings[0]
+            )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        # all dropout op use Dropout with Random Control dist operator impl.
+        op_dist_attr = dist_op.dist_attr
+        op_dist_attr.impl_type = "dropout"
+        op_dist_attr.impl_idx = 0
+
+        return False
 
 
 register_distributed_operator_impl_container(DistributedDropout("dropout"))
@@ -58,12 +109,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
+        assert (
+            op_dist_attr is not None
+        ), f"forward op [{str(src_op)}] don't have dist attribute !"
 
         if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
-            assert (
-                op_dist_attr is not None
-            ), f"forward op [{str(src_op)}] don't have dist attribute !"
-
             # check validation of inputs / outputs
             assert 'X' in kwargs, "input [{}] is not given".format('X')
             assert (
@@ -80,9 +130,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
-                        src_op
-                    )
+                    f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
                 )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
@@ -113,9 +161,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
-                            src_op
-                        )
+                        f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
                     )
             else:
                 # determinate rng
@@ -142,7 +188,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 # set new seed_var's dist_attr
                 seed_var_dims_mapping = [-1]
                 seed_var_dist_attr = set_var_dist_attr(
-                    ctx, seed_var, seed_var_dims_mapping, process_mesh
+                    ctx,
+                    seed_var,
+                    seed_var_dims_mapping,
+                    process_mesh,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # adopt for recompute
@@ -159,13 +209,17 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 seed_op._set_attr('op_namescope', 'auto_tensor_parallel_seed')
                 # set new seed op's dist_attr
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    seed_op, process_mesh, seed_var_dims_mapping, ctx
+                    seed_op,
+                    process_mesh,
+                    seed_var_dims_mapping,
+                    ctx,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # modify dropout op
                 src_op.desc.set_input("Seed", [seed_var.name])
-                src_op._remove_attr("fix_seed")
-                src_op._remove_attr("seed")
+                src_op.desc._set_attr("fix_seed", False)
+                src_op.desc._set_attr("seed", 0)
                 op_dist_attr.set_input_dist_attr(
                     seed_var.name, seed_var_dist_attr
                 )

@@ -95,13 +95,13 @@ void KthvalueKernel(const Context& dev_ctx,
                           k));
 
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   auto out_dims = output->dims();
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     getKthvalue<T, int64_t>(input_height,
                             input_width,
@@ -129,7 +129,7 @@ void KthvalueKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dims = phi::make_ddim(tmp_out_shape);
+      DDim tmp_out_dims = common::make_ddim(tmp_out_shape);
       output->Resize(tmp_out_dims);
       indices->Resize(tmp_out_dims);
     }
@@ -148,8 +148,8 @@ void KthvalueKernel(const Context& dev_ctx,
     funcs::TransCompute<phi::CPUContext, T>(
         ndims, dev_ctx, x, &trans_inp, trans);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
     DenseTensor tmp_out, tmp_indices;
     tmp_out.Resize(trans_out_dims);

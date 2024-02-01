@@ -77,7 +77,7 @@ static framework::RuntimeContext PrepareRuntimeContext(
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
-  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
+  return framework::RuntimeContext(inputs, outputs);
 }
 
 template <typename VarType>
@@ -242,7 +242,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0f);
         } else {
           grad_t->clear();
         }
@@ -387,7 +387,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
                             src.Name()));
       place = Place();
     } else {
-      dst_tensor->set_lod(src_tensor.lod());
+      dst_tensor->set_lod(src_tensor.lod());  // NOLINT
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);

@@ -30,7 +30,6 @@ const int N = 1, C = 3, H = 224, W = 224;
 void SetConfig(AnalysisConfig* config, const std::string& infer_model) {
   config->SetModel(infer_model + "/__model__", infer_model + "/__params__");
   config->DisableFCPadding();
-  config->SwitchUseFeedFetchOps(false);
   config->SwitchSpecifyInputNames(true);
 }
 

@@ -55,7 +55,7 @@ void ExpandAsGradKernel(const Context& context,
     return;
   }
 
-  auto vec_in_dims = phi::vectorize<int>(x_dims);
+  auto vec_in_dims = common::vectorize<int>(x_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());

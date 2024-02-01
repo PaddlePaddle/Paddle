@@ -84,7 +84,7 @@ void NMSKernel(const Context& dev_ctx,
 
   int64_t num_boxes = boxes.dims()[0];
   DenseTensor output_tmp;
-  output_tmp.Resize(phi::make_ddim({num_boxes}));
+  output_tmp.Resize(common::make_ddim({num_boxes}));
   auto output_tmp_data = dev_ctx.template Alloc<int64_t>(&output_tmp);
 
   int64_t num_keep_boxes =

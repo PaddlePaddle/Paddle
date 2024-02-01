@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def gather_numpy(x, index, axis):
@@ -41,10 +42,12 @@ class TestGatherOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
     def config(self):
         """
@@ -114,11 +117,16 @@ class TestGatherOpBFP16(TestGatherOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -299,10 +307,10 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_pir=True)
 
     def config(self):
         """
@@ -328,10 +336,10 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def config(self):
         """
@@ -418,23 +426,23 @@ class TestGatherOp4FP16(TestGatherOp4):
 
 
 class API_TestGather(unittest.TestCase):
+    @test_with_pir_api
     def test_out1(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
-            data1.desc.set_need_check_feed(False)
-            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
-            index.desc.set_need_check_feed(False)
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int64')
             out = paddle.gather(data1, index)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input = np.array([[1, 2], [3, 4], [5, 6]])
-            index_1 = np.array([1, 2])
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            input = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
+            index_1 = np.array([1, 2]).astype('int64')
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
+    @test_with_pir_api
     def test_out2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -500,7 +508,7 @@ class API_TestDygraphGather(unittest.TestCase):
         index = np.random.randint(0, 22682, size=(8859027))
 
         def test_dygraph():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 gpu_out = paddle.gather(
                     paddle.to_tensor(x), paddle.to_tensor(index)
                 )
@@ -560,7 +568,7 @@ class TestGathertError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis_dtype1)
 
     def test_error2(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')
@@ -602,11 +610,22 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
+    @test_with_pir_api
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
-        self.assertTrue(out.dtype == core.VarDesc.VarType.INT64)
+        self.assertTrue(
+            out.dtype == core.VarDesc.VarType.INT64
+            or out.dtype == core.DataType.INT64
+        )
+
+    def test_pir_out_type(self):
+        with paddle.pir_utils.IrGuard():
+            data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
+            index = paddle.static.data(shape=[4], dtype='int64', name='index')
+            out = paddle.gather(data, index)
+            self.assertTrue(out.dtype == core.DataType.INT64)
 
 
 if __name__ == "__main__":

@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
+from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.distributed import collective
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
@@ -330,7 +330,7 @@ def _mp_allreduce(
         return out
 
 
-def _c_lookup_table(table, index, start_index=0, name=None):
+def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
 
@@ -345,9 +345,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
         Tensor.
     """
     if in_dynamic_mode():
-        return _legacy_C_ops.c_embedding(
-            table, index, "start_index", start_index
-        )
+        return _C_ops.c_embedding(table, index, start_index, vocab_size)
     else:
         op_type = 'c_embedding'
         helper = LayerHelper(op_type, **locals())
@@ -358,7 +356,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
             type='c_embedding',
             inputs={'Ids': index, 'W': table},
             outputs={'Out': tmp},
-            attrs={"start_index": start_index},
+            attrs={"start_index": start_index, "vocab_size": vocab_size},
         )
         return tmp
 
@@ -429,10 +427,8 @@ def _c_softmax_with_cross_entropy(
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got input_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
@@ -686,7 +682,11 @@ def _parallel_embedding(
     main_block.vars[weight.name].is_distributed = True
 
     output_parallel = _c_lookup_table(
-        weight, x, start_index=vocab_start_index, name=name
+        weight,
+        x,
+        start_index=vocab_start_index,
+        vocab_size=origin_size[0],
+        name=name,
     )
     out = _mp_allreduce(
         output_parallel,
@@ -811,19 +811,19 @@ def split(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed.fleet as fleet
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed.fleet as fleet
 
-            paddle.enable_static()
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            fleet.init(is_collective=True)
-            data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = paddle.distributed.split(
-                data,
-                (8, 8),
-                operation="embedding",
-                num_partitions=2)
+            >>> paddle.enable_static()
+            >>> paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            >>> fleet.init(is_collective=True)
+            >>> data = paddle.randint(0, 8, shape=[10,4])
+            >>> emb_out = paddle.distributed.split(
+            ...     data,
+            ...     (8, 8),
+            ...     operation="embedding",
+            ...     num_partitions=2)
 
     """
     assert isinstance(size, (list, tuple)), (
@@ -842,9 +842,7 @@ def split(
     ]
     assert operation in supported_operations, (
         "The operation for "
-        "paddle.distributed.split must be one of {}.".format(
-            supported_operations
-        )
+        f"paddle.distributed.split must be one of {supported_operations}."
     )
     if in_dynamic_mode():
         raise ValueError(
@@ -872,9 +870,7 @@ def split(
         )
         assert size[0] % num_partitions == 0, (
             "The length of the vocabulary must be divisible by num_partitions "
-            "but received vocabulary={} num_partitions={}".format(
-                size[0], num_partitions
-            )
+            f"but received vocabulary={size[0]} num_partitions={num_partitions}"
         )
 
         per_part_size = size[0] // num_partitions
@@ -893,10 +889,8 @@ def split(
         should_split = False
         if axis == 0:
             assert size[0] % num_partitions == 0, (
-                "Number of rows of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(
-                    size[0], num_partitions
-                )
+                f"Number of rows of the weight for linear ({size[0]}) must be"
+                f" divisible by num_partitions ({num_partitions})"
             )
             per_part_size = size[0] // num_partitions
             linear_size = (per_part_size, size[1])
@@ -905,17 +899,15 @@ def split(
 
         elif axis == 1:
             assert size[1] % num_partitions == 0, (
-                "Number of column of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(
-                    size[1], num_partitions
-                )
+                f"Number of column of the weight for linear ({size[1]}) must be"
+                f" divisible by num_partitions ({num_partitions})"
             )
             per_part_size = size[1] // num_partitions
             linear_size = (size[0], per_part_size)
         else:
             raise ValueError(
                 "The value of axis must be 0 or 1, but the value "
-                "given is {}.".format(axis)
+                f"given is {axis}."
             )
 
         linear_out = _parallel_linear(

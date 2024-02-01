@@ -20,12 +20,13 @@
 #include <fstream>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -47,8 +48,8 @@ std::vector<ir::LoweredFunc> LowerCompute(const std::vector<int>& shape,
   C = Compute(
       domain, [&B](Var i, Var j) { return B(i, j); }, "C");
 
-  return cinn::lang::LowerVec(
-      "test_func", CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({A, B});
+  return cinn::lang::LowerToAstVec("test_func", {A, B}, &tensor_group, target);
 }
 
 // Create a new IRSchedule with copied ir::LoweredFunc AST
@@ -56,7 +57,7 @@ ir::IRSchedule MakeIRSchedule(const std::vector<ir::LoweredFunc>& lowered_funcs,
                               const std::string& task_key) {
   std::vector<Expr> exprs;
   for (auto&& func : lowered_funcs) {
-    exprs.emplace_back(optim::IRCopy(func->body));
+    exprs.emplace_back(ir::ir_utils::IRCopy(func->body));
   }
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   task_registry->Regist(task_key, ir::ModuleExpr(exprs));
@@ -91,7 +92,7 @@ class TestJSONFileDatabase : public ::testing::Test {
   std::string record_file_path;
   JSONFileDatabase test_db;
   std::vector<ir::LoweredFunc> lowered_funcs;
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 };
 
 TEST_F(TestJSONFileDatabase, Serialize) {

@@ -27,7 +27,6 @@ TEST(TensorRT, instance_norm) {
   int batch_size = 4;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
-  config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(
       1 << 20, batch_size, 0, AnalysisConfig::Precision::kFloat32, false);
 

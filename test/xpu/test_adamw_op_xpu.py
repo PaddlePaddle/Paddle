@@ -21,10 +21,11 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def adamw_step(inputs, attributes):
@@ -84,9 +85,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             # Test AdamW Op with supplied attributes
             self.op_type = "adamw"
             self.init_shape()
-            self.dtype = self.in_type_str
-            param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            self.dtype = self.in_type
+            param = np.random.uniform(-1, 1, self.shape)
+            grad = np.random.uniform(-1, 1, self.shape)
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
             moment2 = np.random.random(self.shape).astype("float32")
@@ -97,7 +98,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             epsilon = 1e-4
             beta1_pow = beta1**10
             beta2_pow = beta2**10
-
+            if self.dtype != np.uint16:
+                param = param.astype(self.dtype)
+                grad = grad.astype(self.dtype)
             self.inputs = {
                 'Param': param,
                 'Grad': grad,
@@ -128,12 +131,25 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
             }
 
+            if self.dtype == np.uint16:
+                self.inputs['Param'] = convert_float_to_uint16(
+                    self.inputs['Param']
+                )
+                self.inputs['Grad'] = convert_float_to_uint16(
+                    self.inputs['Grad']
+                )
+                self.outputs['ParamOut'] = convert_float_to_uint16(param_out)
+
         def init_shape(self):
             self.shape = [102, 105]
 
         def test_check_output(self):
             paddle.enable_static()
             self.check_output_with_place(place=paddle.XPUPlace(0))
+
+        def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+            self.__class__.dtype = self.dtype
+            self.output_dtype = self.dtype
 
     class TestAdamW2(TestAdamW):
         def init_shape(self):
@@ -185,13 +201,13 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 
         def test_adamw_op(self):
             paddle.enable_static()
-            place = fluid.XPUPlace(0)
+            place = base.XPUPlace(0)
             shape = [2, 3, 8, 8]
-            exe = fluid.Executor(place)
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
+            exe = base.Executor(place)
+            train_prog = base.Program()
+            startup = base.Program()
+            with base.program_guard(train_prog, startup):
+                with base.unique_name.guard():
                     data = paddle.static.data(name="data", shape=shape)
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
@@ -437,7 +453,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 
         def test_adamw_op(self):
             paddle.enable_static()
-            place = fluid.XPUPlace(0)
+            place = base.XPUPlace(0)
 
             learning_rate = 0.0001
             beta1 = 0.85
@@ -445,10 +461,10 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             weight_decay = 0.01
             epsilon = 1e-8
 
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
+            train_prog = base.Program()
+            startup = base.Program()
+            with base.program_guard(train_prog, startup):
+                with base.unique_name.guard():
                     x = paddle.static.data(
                         name='x', shape=[None, 10], dtype='float32'
                     )
@@ -557,7 +573,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 "linear_1.b_0@GRAD",
             ]
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup)
             test_prog = train_prog.clone(for_test=True)
 

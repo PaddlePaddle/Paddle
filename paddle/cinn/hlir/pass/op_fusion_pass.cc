@@ -25,8 +25,8 @@ using framework::NodeData;
 using framework::OpPatternKind;
 using framework::shape_t;
 
-using common::GraphEdge;
-using common::GraphNode;
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;

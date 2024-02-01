@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestQueue(unittest.TestCase):
@@ -27,10 +27,10 @@ class TestQueue(unittest.TestCase):
         test queue_generator op, enqueue op and dequeue op.
         """
 
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
         value = np.random.rand(1)
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             data_in = paddle.static.create_global_var(
                 shape=[2, 3],
                 value=value,
@@ -66,11 +66,11 @@ class TestQueue(unittest.TestCase):
         )
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup_program)
         (ret,) = exe.run(main_program, fetch_list=[data_out.name])
         np.testing.assert_allclose(

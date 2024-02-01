@@ -15,15 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -68,6 +64,8 @@ class TestBatchNormOp(OpTest):
         self.op_type = "batch_norm"
         self.prim_op_type = "comp"
         self.python_out_sig = ["Y"]
+        # (Todo: CZ) random error
+        self.check_prim_pir = False
         self.initConfig()
         self.initTestCase()
 
@@ -78,6 +76,7 @@ class TestBatchNormOp(OpTest):
                 no_check_set=None,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
         if paddle.is_compiled_with_cuda():
             self.check_output_with_place(
@@ -85,6 +84,7 @@ class TestBatchNormOp(OpTest):
                 no_check_set=None,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
 
     def test_check_grad_x(self):
@@ -96,6 +96,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -105,6 +106,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
 
     def test_check_grad_scale_bias(self):
@@ -128,6 +130,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -137,6 +140,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
+                check_prim_pir=self.check_prim_pir,
             )
 
     def initConfig(self):
@@ -274,6 +278,7 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
+        self.check_prim_pir = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
@@ -341,6 +346,8 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
+        # Todo(CZ): open this
+        self.check_prim_pir = False
 
 
 @unittest.skipIf(

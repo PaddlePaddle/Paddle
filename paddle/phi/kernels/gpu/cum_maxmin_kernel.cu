@@ -16,8 +16,8 @@
 
 #include <numeric>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -275,7 +275,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
             x_data, values_data, indices_data, num_rows, row_size, init, op);
   } else {
     int64_t row_size = x.dims()[axis];
-    auto sizes = phi::vectorize(x.dims());
+    auto sizes = common::vectorize(x.dims());
 
     const int64_t num_orows =
         std::accumulate(sizes.begin(),
@@ -312,17 +312,16 @@ template <typename T, typename Context>
 void CummaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  auto indices_type = phi::TransToPhiDataType(dtype);
   T init = std::is_floating_point<T>::value
                ? (-1 * std::numeric_limits<T>::infinity())
                : std::numeric_limits<T>::lowest();
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(
         dev_ctx, x, axis, init, out, indices);
-  } else if (indices_type == DataType::INT64) {
+  } else if (dtype == DataType::INT64) {
     ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(
         dev_ctx, x, axis, init, out, indices);
   }
@@ -332,16 +331,15 @@ template <typename T, typename Context>
 void CumminKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  auto indices_type = phi::TransToPhiDataType(dtype);
   T init = std::is_floating_point<T>::value ? std::numeric_limits<T>::infinity()
                                             : std::numeric_limits<T>::max();
-  if (indices_type == DataType::INT32) {
+  if (dtype == DataType::INT32) {
     ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(
         dev_ctx, x, axis, init, out, indices);
-  } else if (indices_type == DataType::INT64) {
+  } else if (dtype == DataType::INT64) {
     ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(
         dev_ctx, x, axis, init, out, indices);
   }

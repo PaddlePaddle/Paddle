@@ -61,7 +61,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       }
     }
   }
-  t.Resize(make_ddim(resize_dims));
+  t.Resize(common::make_ddim(resize_dims));
   DenseTensor after_tile;
   if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int x) {
         return x == 1;
@@ -84,7 +84,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
     for (size_t i = 0; i < ellipsis_dims.size(); ++i)
       if (ellipsis_dims[i] == 1) to_reduce.push_back(i + new_offset);
 
-    VLOG(5) << "PermformTileAndReduction: reduce sum axis: "
+    VLOG(5) << "PerformTileAndReduction: reduce sum axis: "
             << paddle::string::join_strings(to_reduce, ",");
     if (to_reduce.size() != 0) {
       ret = Sum<T, Context>(dev_ctx,
@@ -98,9 +98,9 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   } else {
     ret = after_tile;
   }
-  VLOG(5) << "PermformTileAndReduction: recover shape: "
+  VLOG(5) << "PerformTileAndReduction: recover shape: "
           << paddle::string::join_strings(recover_shape, ",");
-  ret.Resize(make_ddim(recover_shape));
+  ret.Resize(common::make_ddim(recover_shape));
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor out;
   VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;

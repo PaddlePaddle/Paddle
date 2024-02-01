@@ -28,14 +28,14 @@ void LapackSvd(
   char jobz = full ? 'A' : 'S';
   int mx = std::max(rows, cols);
   int mn = std::min(rows, cols);
-  T* a = const_cast<T*>(X);
+  T* a = const_cast<T*>(X);  // NOLINT
   int lda = rows;
   int ldu = rows;
   int ldvt = full ? cols : mn;
   int lwork = full ? (4 * mn * mn + 6 * mn + mx) : (4 * mn * mn + 7 * mn);
   std::vector<T> work(lwork);
   std::vector<int> iwork(8 * mn);
-  int info;
+  int info = 0;
   phi::funcs::lapackSvd<T>(jobz,
                            rows,
                            cols,
@@ -98,7 +98,6 @@ void SvdKernel(const Context& dev_ctx,
   /*Create Tensors and output, set the dim ...*/
   auto numel = X.numel();
   DenseTensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, X);
-  auto* x_data = trans_x.data<T>();
   auto x_dims = X.dims();
   int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
   int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
@@ -113,6 +112,7 @@ void SvdKernel(const Context& dev_ctx,
       0,
       cols,
       errors::InvalidArgument("The col of Input(X) should be greater than 0."));
+  auto* x_data = trans_x.data<T>();
   int batches = static_cast<int>(numel / (rows * cols));
   auto* U_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
   auto* VH_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);
@@ -121,7 +121,7 @@ void SvdKernel(const Context& dev_ctx,
   BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   /* let C[m, n] as a col major matrix with m rows and n cols.
    * let R[m, n] is row major matrix with m rows and n cols.
-   * then we have: R[m,n] = C[m, n].resize((n,m)).tranpose_last_two()
+   * then we have: R[m,n] = C[m, n].resize((n,m)).transpose_last_two()
    * */
   auto col_major_to_row_major = [&dev_ctx](DenseTensor* out) {
     auto origin_dim = out->dims();

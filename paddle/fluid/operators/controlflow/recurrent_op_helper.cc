@@ -83,7 +83,7 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
-      auto *op = block.Op(j);
+      auto *op = block.Op(static_cast<int>(j));
       if (op->Type() == type_name) {
         ops.emplace(op);
       } else if (op->Type() == backward_type_name) {

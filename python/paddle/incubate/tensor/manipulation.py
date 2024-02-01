@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 __all__ = []
@@ -25,7 +25,7 @@ __all__ = []
 def _npu_identity(x, format=-1):
     """
 
-    This OP takes in the Tensor :attr:`x` and change it to ouptut with
+    This OP takes in the Tensor :attr:`x` and change it to output with
     aclFormat with int value. This API is only used for Ascend NPU.
 
     Args:

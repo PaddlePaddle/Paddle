@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import core
+from paddle import base, tensor
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestTraceOp(OpTest):
@@ -30,10 +31,10 @@ class TestTraceOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_pir=True)
 
     def init_config(self):
         self.case = np.random.randn(20, 6).astype('float64')
@@ -108,11 +109,15 @@ class TestTraceBF16Op1(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', numeric_grad_delta=0.02
+            self.place,
+            ['Input'],
+            'Out',
+            numeric_grad_delta=0.02,
+            check_pir=True,
         )
 
     def init_config(self):
@@ -145,22 +150,24 @@ class TestTraceBF16Op2(TestTraceBF16Op1):
 
 
 class TestTraceAPICase(unittest.TestCase):
+    @test_with_pir_api
     def test_case1(self):
-        case = np.random.randn(2, 20, 2, 3).astype('float32')
-        data1 = paddle.static.data(
-            name='data1', shape=[2, 20, 2, 3], dtype='float32'
-        )
-        out1 = tensor.trace(data1)
-        out2 = tensor.trace(data1, offset=-5, axis1=1, axis2=-1)
+        with paddle.static.program_guard(paddle.static.Program()):
+            case = np.random.randn(2, 20, 2, 3).astype('float32')
+            data1 = paddle.static.data(
+                name='data1', shape=[2, 20, 2, 3], dtype='float32'
+            )
+            out1 = tensor.trace(data1)
+            out2 = tensor.trace(data1, offset=-5, axis1=1, axis2=-1)
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        results = exe.run(
-            fluid.default_main_program(),
-            feed={"data1": case},
-            fetch_list=[out1, out2],
-            return_numpy=True,
-        )
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            results = exe.run(
+                paddle.static.default_main_program(),
+                feed={"data1": case},
+                fetch_list=[out1, out2],
+                return_numpy=True,
+            )
         target1 = np.trace(case)
         target2 = np.trace(case, offset=-5, axis1=1, axis2=-1)
         np.testing.assert_allclose(results[0], target1, rtol=1e-05)

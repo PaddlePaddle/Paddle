@@ -15,9 +15,9 @@
 #include "paddle/cinn/auto_schedule/post_schedule_rule/cooperative_process.h"
 
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {

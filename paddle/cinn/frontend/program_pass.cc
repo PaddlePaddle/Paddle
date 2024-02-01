@@ -23,7 +23,7 @@ namespace frontend {
 
 void ProgramPass::Apply(Program* prog,
                         const std::unordered_set<std::string>& fetch_ids,
-                        const common::Target& target,
+                        const cinn::common::Target& target,
                         const std::vector<std::string>& passes) {
   std::vector<const ProgramPass*> fpass;
   for (auto& name : passes) {

@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def sigmoid(x):
@@ -141,7 +142,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
@@ -262,6 +263,7 @@ class TestYoloBoxDygraph(unittest.TestCase):
 
 
 class TestYoloBoxStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         x1 = paddle.static.data('x1', [2, 14, 8, 8], 'float32')
         img_size = paddle.static.data('img_size', [2, 2], 'int32')

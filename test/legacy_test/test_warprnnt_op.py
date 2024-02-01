@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -227,53 +228,44 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
         else:
             self.check_grad(
-                ["input"],
-                "loss",
-                numeric_grad_delta=0.009,
+                ["input"], "loss", numeric_grad_delta=0.009, check_pir=True
             )
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
-    def test_errors(self):
-        print("test_errors")
-        with program_guard(Program(), Program()):
-            logits = paddle.static.data(
-                name='input', shape=[5, 16, 6], dtype='float32'
-            )
+    @test_with_pir_api
+    def test_errors1(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             logits_length = paddle.static.data(
                 name='logit_lengths', shape=[None], dtype='int32'
             )
@@ -296,6 +288,23 @@ class TestWarpRNNTOpError(unittest.TestCase):
                 )
 
             self.assertRaises(TypeError, test_logits_Variable)
+
+    def test_errors2(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            logits = paddle.static.data(
+                name='input', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = paddle.static.data(
+                name='logit_lengths', shape=[None], dtype='int32'
+            )
+            label = paddle.static.data(
+                name='labels', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
+                name='label_lengths', shape=[None], dtype='int32'
+            )
 
             def test_label_Variable():
                 label_data = paddle.static.data(

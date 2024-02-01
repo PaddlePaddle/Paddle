@@ -12,35 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distribution import transform
-from paddle.distribution.bernoulli import Bernoulli
-from paddle.distribution.beta import Beta
-from paddle.distribution.categorical import Categorical
-from paddle.distribution.cauchy import Cauchy
-from paddle.distribution.dirichlet import Dirichlet
-from paddle.distribution.distribution import Distribution
-from paddle.distribution.gumbel import Gumbel
-from paddle.distribution.exponential_family import ExponentialFamily
-from paddle.distribution.independent import Independent
-from paddle.distribution.kl import kl_divergence, register_kl
-from paddle.distribution.lognormal import LogNormal
-from paddle.distribution.multinomial import Multinomial
-from paddle.distribution.normal import Normal
-from paddle.distribution.transform import *  # noqa: F403
-from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.distribution.uniform import Uniform
-from paddle.distribution.laplace import Laplace
-from paddle.distribution.geometric import Geometric
+from . import transform
+from .bernoulli import Bernoulli
+from .beta import Beta
+from .binomial import Binomial
+from .categorical import Categorical
+from .cauchy import Cauchy
+from .continuous_bernoulli import ContinuousBernoulli
+from .dirichlet import Dirichlet
+from .distribution import Distribution
+from .exponential import Exponential
+from .exponential_family import ExponentialFamily
+from .gamma import Gamma
+from .geometric import Geometric
+from .gumbel import Gumbel
+from .independent import Independent
+from .kl import kl_divergence, register_kl
+from .laplace import Laplace
+from .lognormal import LogNormal
+from .multinomial import Multinomial
+from .multivariate_normal import MultivariateNormal
+from .normal import Normal
+from .poisson import Poisson
+from .transform import (  # noqa:F401
+    AbsTransform,
+    AffineTransform,
+    ChainTransform,
+    ExpTransform,
+    IndependentTransform,
+    PowerTransform,
+    ReshapeTransform,
+    SigmoidTransform,
+    SoftmaxTransform,
+    StackTransform,
+    StickBreakingTransform,
+    TanhTransform,
+    Transform,
+)
+from .transformed_distribution import TransformedDistribution
+from .uniform import Uniform
 
-__all__ = [  # noqa
+__all__ = [
     'Bernoulli',
     'Beta',
     'Categorical',
     'Cauchy',
+    'ContinuousBernoulli',
     'Dirichlet',
     'Distribution',
+    'Exponential',
     'ExponentialFamily',
     'Multinomial',
+    'MultivariateNormal',
     'Normal',
     'Uniform',
     'kl_divergence',
@@ -49,8 +72,11 @@ __all__ = [  # noqa
     'TransformedDistribution',
     'Laplace',
     'LogNormal',
+    'Gamma',
     'Gumbel',
     'Geometric',
+    'Binomial',
+    'Poisson',
 ]
 
 __all__.extend(transform.__all__)

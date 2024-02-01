@@ -14,4 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"

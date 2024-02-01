@@ -75,9 +75,7 @@ class CollectiveController(Controller):
                     "PADDLE_CURRENT_ENDPOINT": endpoint,
                     "FLAGS_selected_gpus": "0",
                     "PADDLE_AUTO_PARALLEL_STAGE": "tuner",
-                    "PADDLE_GLOBAL_SIZE": "{}".format(
-                        pod_replicas * int(self.ctx.args.nnodes)
-                    ),
+                    "PADDLE_GLOBAL_SIZE": f"{pod_replicas * int(self.ctx.args.nnodes)}",
                     "PADDLE_LOCAL_SIZE": f"{pod_replicas}",
                 }
                 log_file = "tuner.log"
@@ -94,7 +92,9 @@ class CollectiveController(Controller):
         ips = self.ctx.args.ips.split(',')
 
         job_endpoints = [
-            f"{h}:{p+start_port}" for h in ips for p in range(self.pod.replicas)
+            f"{h}:{p + start_port}"
+            for h in ips
+            for p in range(self.pod.replicas)
         ]
 
         self.ctx.logger.debug(f"job endpoints: {job_endpoints}")

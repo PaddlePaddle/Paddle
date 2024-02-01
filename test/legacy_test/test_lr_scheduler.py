@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def reduce_lr_on_plateau(
@@ -212,6 +212,204 @@ class TestReduceOnPlateauDecay:
         self.assertEqual(scheduler.num_bad_epochs, scheduler1.num_bad_epochs)
         self.assertEqual(scheduler.last_epoch, scheduler1.last_epoch)
         self.assertEqual(scheduler.last_lr, scheduler1.last_lr)
+
+
+def cosine_annealing_warm_restarts_lr(epoch_num, v_l):
+    if epoch_num is None and v_l['last_epoch'] < 0:
+        epoch_num = 0
+
+    cur_lr = (
+        v_l['eta_min']
+        + (v_l['base_lr'] - v_l['eta_min'])
+        * (1 + math.cos(math.pi * v_l['T_cur'] / v_l['T_i']))
+        / 2
+    )
+
+    if v_l['last_epoch'] == -1:
+        cur_lr = v_l['base_lr']
+
+    if epoch_num is None:
+        epoch_num = v_l['last_epoch'] + 1
+        v_l['T_cur'] = v_l['T_cur'] + 1
+        if v_l['T_cur'] >= v_l['T_i']:
+            v_l['T_cur'] = v_l['T_cur'] - v_l['T_i']
+            v_l['T_i'] = v_l['T_i'] * v_l['T_mult']
+    else:
+        if epoch_num < 0:
+            raise ValueError(
+                f"Expected non-negative epoch, but got {epoch_num}"
+            )
+        if epoch_num >= v_l['T_0']:
+            if v_l['T_mult'] == 1:
+                v_l['T_cur'] = epoch_num % v_l['T_0']
+            else:
+                n = int(
+                    math.log(
+                        (epoch_num / v_l['T_0'] * (v_l['T_mult'] - 1) + 1),
+                        v_l['T_mult'],
+                    )
+                )
+                v_l['T_cur'] = epoch_num - v_l['T_0'] * (
+                    v_l['T_mult'] ** n - 1
+                ) / (v_l['T_mult'] - 1)
+                v_l['T_i'] = v_l['T_0'] * v_l['T_mult'] ** (n)
+        else:
+            v_l['T_i'] = v_l['T_0']
+            v_l['T_cur'] = epoch_num
+    v_l['last_epoch'] = math.floor(epoch_num)
+
+    return cur_lr
+
+
+class TestCosineAnnealingWarmRestarts(unittest.TestCase):
+    def test_CosineRestartsLR(self):
+        # check value of T_0
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts(
+                learning_rate=0.5,
+                T_0=-1,
+                T_mult=1,
+            )
+        # check type of T_0
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts(
+                learning_rate=0.5,
+                T_0=1.0,
+                T_mult=1,
+            )
+        # check value of T_mult
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts(
+                learning_rate=0.5,
+                T_0=1,
+                T_mult=-1,
+            )
+        # check type of T_mult
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts(
+                learning_rate=0.5,
+                T_0=1,
+                T_mult=1.0,
+            )
+
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+
+        for place in places:
+            for T_0 in [1, 2, 3]:
+                kwargs = {
+                    'learning_rate': 0.5,
+                    'T_0': T_0,
+                    'T_mult': 2,
+                    'eta_min': 0,
+                    'last_epoch': -1,
+                    'verbose': False,
+                }
+                paddle.enable_static()
+                self._test_static(place, kwargs)
+                paddle.disable_static(place)
+                self._test_dygraph(place, kwargs)
+                paddle.enable_static()
+
+    def _test_static(self, place, kwargs):
+        paddle.enable_static()
+        v_l = {
+            'base_lr': kwargs['learning_rate'],
+            'T_0': kwargs['T_0'],
+            'T_i': kwargs['T_0'],
+            'T_mult': kwargs['T_mult'],
+            'eta_min': kwargs['eta_min'],
+            'T_cur': -1,
+            'last_epoch': -1,
+        }
+        scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(**kwargs)
+        adam = paddle.optimizer.Adam(learning_rate=scheduler)
+
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            x = paddle.static.data(name='x', shape=[3, 4, 5])
+            loss = paddle.mean(x)
+            adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
+            test_prog = main_prog.clone()
+
+        exe = paddle.static.Executor(place)
+        exe.run(start_prog)
+
+        for epoch in range(5):
+            for batch_id in range(2):
+                out = exe.run(
+                    main_prog,
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                    fetch_list=lr_var.name,
+                )
+            expected_lr = np.array(
+                cosine_annealing_warm_restarts_lr(epoch, v_l)
+            ).astype(out[0].dtype)
+            self.assertEqual(out[0], expected_lr)
+            scheduler.step(epoch)
+
+        for epoch in range(5):
+            for batch_id in range(2):
+                out = exe.run(
+                    test_prog,
+                    feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                    fetch_list=lr_var.name,
+                )
+            expected_lr = np.array(
+                cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
+            ).astype(out[0].dtype)
+            self.assertEqual(out[0], expected_lr)
+            scheduler.step()
+
+    def _test_dygraph(self, place, kwargs):
+        paddle.disable_static(place)
+        x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+        linear = paddle.nn.Linear(10, 10)
+        v_l = {
+            'base_lr': kwargs['learning_rate'],
+            'T_0': kwargs['T_0'],
+            'T_i': kwargs['T_0'],
+            'T_mult': kwargs['T_mult'],
+            'eta_min': kwargs['eta_min'],
+            'T_cur': -1,
+            'last_epoch': -1,
+        }
+
+        scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(**kwargs)
+        adam = paddle.optimizer.Adam(
+            learning_rate=scheduler, parameters=linear.parameters()
+        )
+
+        for epoch in range(10):
+            for batch_id in range(2):
+                x = paddle.to_tensor(x)
+                out = linear(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                adam.step()
+                adam.clear_grad()
+            current_lr = adam.get_lr()
+            expected_lr = cosine_annealing_warm_restarts_lr(epoch, v_l)
+            self.assertEqual(current_lr, expected_lr)
+            scheduler.step(epoch)
+
+        for epoch in range(10):
+            for batch_id in range(2):
+                x = paddle.to_tensor(x)
+                out = linear(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                adam.step()
+                adam.clear_grad()
+            current_lr = scheduler.get_lr()
+            expected_lr = cosine_annealing_warm_restarts_lr(
+                epoch_num=None, v_l=v_l
+            )
+            self.assertEqual(current_lr, expected_lr)
+            scheduler.step()
 
 
 def noam_lr(epoch_num, d_model, warmup_steps, learning_rate=1.0, verbose=False):
@@ -464,6 +662,31 @@ def cyclic_lr(
     return base_learning_rate + base_height * scale_fn(eval(scale_mode))
 
 
+linear_last_lr = None
+
+
+def linear_lr(
+    epoch_num,
+    learning_rate,
+    total_steps,
+    start_factor=1.0 / 3,
+    end_factor=1.0,
+    verbose=False,
+):
+    global linear_last_lr
+    if epoch_num == 0:
+        linear_last_lr = learning_rate * start_factor
+        return linear_last_lr
+    elif epoch_num > total_steps:
+        return linear_last_lr
+    else:
+        base_lr = total_steps * start_factor
+        cur_factor = end_factor - start_factor
+        factor = 1.0 + cur_factor / (base_lr + (epoch_num - 1) * cur_factor)
+        linear_last_lr *= factor
+        return linear_last_lr
+
+
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
         scheduler = paddle_api(**kwarg)
@@ -531,6 +754,82 @@ class TestLRScheduler(unittest.TestCase):
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
+
+    def _test_pir(self, python_func, paddle_api, kwarg, place):
+        def get_lr_var(program):
+            for param in program.global_block().all_parameters():
+                if param.name.startswith('learning_rate_'):
+                    return param
+
+        with paddle.pir_utils.IrGuard():
+            scheduler = paddle_api(**kwarg)
+            adam = paddle.optimizer.Adam(learning_rate=scheduler)
+
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 4, 5])
+                loss = paddle.mean(x)
+                adam.minimize(loss)
+
+            test_prog, _ = paddle.base.libpaddle.pir.clone_program(main_prog)
+
+            num = 0
+            exe = paddle.static.Executor(place)
+            exe.run(start_prog)
+
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        main_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=get_lr_var(main_prog),
+                    )
+                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                scheduler.step()
+                num += 1
+
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        test_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=get_lr_var(test_prog),
+                    )
+                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                scheduler.step()
+                num += 1
+
+            if isinstance(place, paddle.CPUPlace):
+                compiled_train_prog = main_prog
+                for epoch in range(5):
+                    python_result = python_func(num, **kwarg)
+                    for batch_id in range(2):
+                        out = exe.run(
+                            compiled_train_prog,
+                            feed={
+                                'x': np.random.randn(3, 4, 5).astype('float32')
+                            },
+                            fetch_list=get_lr_var(compiled_train_prog),
+                        )
+                    self.assertEqual(out, np.array(python_result))
+                    scheduler.step()
+                    num += 1
+
+                compiled_test_prog = test_prog
+                for epoch in range(5):
+                    python_result = python_func(num, **kwarg)
+                    for batch_id in range(2):
+                        out = exe.run(
+                            compiled_test_prog,
+                            feed={
+                                'x': np.random.randn(3, 4, 5).astype('float32')
+                            },
+                            fetch_list=get_lr_var(compiled_test_prog),
+                        )
+                    self.assertEqual(out, np.array(python_result))
+                    scheduler.step()
+                    num += 1
 
     def _test_dygraph(self, python_func, paddle_api, kwarg, place):
         paddle.disable_static(place)
@@ -710,6 +1009,19 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=[100, 200], values=[0.5, 0.1]
+            )
+        # check minus total_steps
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(learning_rate=1, total_steps=-1)
+        # check start_factor
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, start_factor=2
+            )
+        # check end_factor
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.LinearLR(
+                learning_rate=1, total_steps=5, end_factor=2
             )
 
         func_api_kwargs = [
@@ -944,6 +1256,28 @@ class TestLRScheduler(unittest.TestCase):
                     "verbose": False,
                 },
             ),
+            (
+                linear_lr,
+                paddle.optimizer.lr.LinearLR,
+                {
+                    "learning_rate": 0.2,
+                    "total_steps": 40,
+                    "start_factor": 0.5,
+                    "end_factor": 1,
+                    "verbose": False,
+                },
+            ),
+            (
+                linear_lr,
+                paddle.optimizer.lr.LinearLR,
+                {
+                    "learning_rate": 0.2,
+                    "total_steps": 5,
+                    "start_factor": 0.2,
+                    "end_factor": 0.5,
+                    "verbose": False,
+                },
+            ),
         ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
@@ -954,6 +1288,7 @@ class TestLRScheduler(unittest.TestCase):
             for place in places:
                 paddle.enable_static()
                 self._test_static(python_func, paddle_api, kwarg, place)
+                self._test_pir(python_func, paddle_api, kwarg, place)
                 paddle.disable_static(place)
                 self._test_dygraph(python_func, paddle_api, kwarg, place)
                 paddle.enable_static()
@@ -972,6 +1307,38 @@ class TestLRScheduler(unittest.TestCase):
                 )
                 natural_lr.step()
             natural_lr_warmup.step()
+
+    def test_pir_linear_warmup_lr(self):
+        params = {
+            'learning_rate': 0.5,
+            'warmup_steps': 10,
+            'start_lr': 0,
+            'end_lr': 0.5,
+        }
+        scheduler = paddle.optimizer.lr.LinearWarmup(**params)
+        adam = paddle.optimizer.Adam(learning_rate=scheduler)
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 4, 5])
+                loss = paddle.mean(x)
+                adam.minimize(loss)
+                lr_var = adam._global_learning_rate()
+
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        main_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=[lr_var],
+                    )
+                self.assertEqual(
+                    out, np.array(linear_warmup_lr(epoch, **params))
+                )
+                scheduler.step()
 
 
 if __name__ == '__main__':

@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
@@ -37,9 +37,9 @@ static void VecCastKernel(const phi::GPUContext &ctx,
   auto main_offset = n / (VecSize * thread) * VecSize * thread;
   auto stream = ctx.stream();
   using FunctorT = CastFunctor<InT, OutT>;
-  phi::Array<const _ptr_ char *__restrict__, 1> in_arr;
+  Array<const _ptr_ char *__restrict__, 1> in_arr;
   in_arr[0] = reinterpret_cast<const _ptr_ char *>(x);
-  phi::Array<_ptr_ OutT *, 1> out_arr;
+  Array<_ptr_ OutT *, 1> out_arr;
   out_arr[0] = y;
   phi::funcs::VectorizedElementwiseKernel<OutT, FunctorT, 1, 1, VecSize>
       <<<block, thread, 0, stream>>>(

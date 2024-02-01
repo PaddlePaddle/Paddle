@@ -134,9 +134,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         data = paddle.static.data(shape=(20, 22), dtype='float32', name="data1")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "diagonal: TypeError": "diagonal in {} must be a python Int".format(
-                op_type
-            ),
+            "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
         }
         expected = list(errmsg.keys())[0]
         with self.assertRaisesRegex(
@@ -149,9 +147,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         data = paddle.static.data(shape=(200,), dtype='float32', name="data2")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "input: ValueError": "x shape in {} must be at least 2-D".format(
-                op_type
-            ),
+            "input: ValueError": f"x shape in {op_type} must be at least 2-D",
         }
         expected = list(errmsg.keys())[0]
         with self.assertRaisesRegex(

@@ -36,13 +36,13 @@ void BindSimplify(py::module* m) {
   m->def(
       "simplify",
       [](const Expr& expr) -> Expr {
-        auto copied = optim::IRCopy(expr);
+        auto copied = ir::ir_utils::IRCopy(expr);
         Simplify(&copied);
         return copied;
       },
       py::arg("expr"));
 
-  m->def("ir_copy", py::overload_cast<Expr>(&optim::IRCopy));
+  m->def("ir_copy", py::overload_cast<Expr>(&ir::ir_utils::IRCopy));
 }
 
 }  // namespace

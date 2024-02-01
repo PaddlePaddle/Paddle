@@ -60,7 +60,6 @@ def create_attr_dict(yaml_config):
             create_attr_dict(yaml_config[key])
         else:
             yaml_config[key] = value
-    return
 
 
 def merge_configs(cfg, sec, args_dict):

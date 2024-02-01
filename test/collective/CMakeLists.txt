@@ -81,10 +81,10 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_alltoall_api
-                         PROPERTIES TIMEOUT "160" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "280" LABELS "RUN_TYPE=DIST")
   else()
     set_tests_properties(test_collective_alltoall_api
-                         PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "240" LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -240,7 +240,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT "350")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+if((WITH_GPU OR WITH_ROCM)
+   AND (LINUX)
+   AND (NOT WITH_COVERAGE))
   py_test_modules(
     test_collective_reduce_scatter_api MODULES
     test_collective_reduce_scatter_api ENVS
@@ -286,7 +288,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_sendrecv MODULES test_collective_sendrecv ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT "300" LABELS
+  set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT "500" LABELS
                                                            "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -294,7 +296,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv_api
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(

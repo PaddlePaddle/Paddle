@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.incubate.autograd.primrules import _orig2prim
 
 paddle.enable_static()
@@ -313,7 +313,7 @@ class TestReshape2Orig2Prim(TestElementWiseAddOrig2Prim):
             X,
         )
         self.all_ops = ['reshape2', 'reshape_p', 'fill_constant_p']
-        # Do not checke XShape
+        # Do not check XShape
         self.out_map = {0: self.output['Out']}
 
 

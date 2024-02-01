@@ -32,7 +32,7 @@ void MultiplyRawKernel(const Context& dev_ctx,
                        int axis,
                        SelectedRows* out) {
   PADDLE_ENFORCE_EQ(
-      phi::product(y.dims()),
+      common::product(y.dims()),
       1,
       phi::errors::InvalidArgument("For MultiplyKernel, if X is Sparse, Y must "
                                    "contain only one element."));

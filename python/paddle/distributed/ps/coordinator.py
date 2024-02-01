@@ -88,9 +88,7 @@ class ClientSelector(ClientSelectorBase):
         self.parse_from_string()
         for client_id in self.clients_info:
             logger.info(
-                "fl-ps > client {} info : {}".format(
-                    client_id, self.clients_info[client_id]
-                )
+                f"fl-ps > client {client_id} info : {self.clients_info[client_id]}"
             )
             # ......... to implement ...... #
             fl_strategy_desc = the_one_ps_pb2.FLStrategy()
@@ -246,7 +244,6 @@ class FLClient(FLClientBase):
     def push_fl_client_info_sync(self, state_info):
         str_msg = self.__build_fl_client_info_desc(state_info)
         self._client_ptr.push_fl_client_info_sync(str_msg)
-        return
 
     def pull_fl_strategy(self):
         strategy_dict = {}
@@ -254,9 +251,7 @@ class FLClient(FLClientBase):
             self._client_ptr.pull_fl_strategy()
         )  # block: wait for coordinator's strategy arrived
         logger.info(
-            "fl-ps > fl client recved fl_strategy(str):\n{}".format(
-                fl_strategy_str
-            )
+            f"fl-ps > fl client recved fl_strategy(str):\n{fl_strategy_str}"
         )
         fl_strategy_desc = the_one_ps_pb2.FLStrategy()
         text_format.Parse(

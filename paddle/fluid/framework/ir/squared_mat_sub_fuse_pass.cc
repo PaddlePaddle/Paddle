@@ -68,7 +68,7 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
       return nullptr;
     }
     for (auto* var : x->inputs) {
-      for (auto name : x->Op()->Input(arg_name)) {
+      for (auto const& name : x->Op()->Input(arg_name)) {
         if (var->Name() == name) {
           return var;
         }

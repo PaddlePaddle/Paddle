@@ -21,8 +21,8 @@ import tempfile
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestDataset(unittest.TestCase):
@@ -60,7 +60,7 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for python config.
         """
-        dataset = fluid.InMemoryDataset()
+        dataset = base.InMemoryDataset()
         dataset.set_parse_ins_id(True)
         dataset.set_parse_content(True)
         dataset._set_trainer_num(1)
@@ -138,7 +138,7 @@ class TestDataset(unittest.TestCase):
 
     def test_dataset_config(self):
         """Testcase for dataset configuration."""
-        dataset = fluid.core.Dataset("MultiSlotDataset")
+        dataset = base.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
         dataset.set_trainer_num(4)
@@ -212,11 +212,11 @@ class TestDataset(unittest.TestCase):
         exe = paddle.static.Executor(paddle.CPUPlace())
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
@@ -273,21 +273,19 @@ class TestDataset(unittest.TestCase):
         dataset.local_shuffle()
         dataset._set_generate_unique_feasigns(True, 15)
         dataset._generate_local_tables_unlock(0, 11, 1, 25, 15)
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(base.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(), dataset
-                    )
+                    exe.train_from_dataset(base.default_main_program(), dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -297,7 +295,7 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset in gpugraph mode.
         """
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_feed_type("SlotRecordInMemoryDataFeed")
         graph_config = {
             "walk_len": 24,
@@ -347,9 +345,9 @@ class TestDataset(unittest.TestCase):
 
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             for slot in slots[:2]:
                 var = paddle.static.data(
                     name=slot, shape=[-1, 1], dtype="int64", lod_level=1
@@ -376,7 +374,7 @@ class TestDataset(unittest.TestCase):
         dataset.load_into_memory()
         dataset.local_shuffle()
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
 
         for i in range(2):
@@ -423,9 +421,9 @@ class TestDataset(unittest.TestCase):
             f.write(data)
 
         slots_vars = []
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             var1 = paddle.static.data(
                 name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
             )
@@ -454,7 +452,7 @@ class TestDataset(unittest.TestCase):
         dataset.load_into_memory()
         dataset.local_shuffle()
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(startup_program)
 
         for i in range(2):
@@ -512,30 +510,30 @@ class TestDataset(unittest.TestCase):
         dataset.load_into_memory()
         dataset.local_shuffle()
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
+        exe = base.Executor(
+            base.CPUPlace()
             if not core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
 
         for i in range(2):
             try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
+                exe.train_from_dataset(base.default_main_program(), dataset)
                 # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=1
+                #     base.default_main_program(), dataset, thread=1
                 # )
                 exe.train_from_dataset(
-                    fluid.default_main_program(), dataset, thread=2
+                    base.default_main_program(), dataset, thread=2
                 )
                 # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=2
+                #     base.default_main_program(), dataset, thread=2
                 # )
                 # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=3
+                #     base.default_main_program(), dataset, thread=3
                 # )
                 # exe.train_from_dataset(
-                #     fluid.default_main_program(), dataset, thread=4
+                #     base.default_main_program(), dataset, thread=4
                 # )
             except ImportError as e:
                 pass
@@ -543,18 +541,16 @@ class TestDataset(unittest.TestCase):
                 self.assertTrue(False)
 
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(base.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(), dataset
-                    )
+                    exe.train_from_dataset(base.default_main_program(), dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -586,7 +582,7 @@ class TestDataset(unittest.TestCase):
             fleet_send_sleep_seconds=2,
             fea_eval=True,
         )
-        fleet_ptr = fluid.core.Fleet()
+        fleet_ptr = base.core.Fleet()
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)
 
@@ -626,21 +622,19 @@ class TestDataset(unittest.TestCase):
         )
         dataset.set_filelist([filename1, filename2])
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(base.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(), dataset
-                    )
+                    exe.train_from_dataset(base.default_main_program(), dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -650,7 +644,7 @@ class TestDataset(unittest.TestCase):
         )
         dataset.set_filelist([])
         # try:
-        #    exe.train_from_dataset(fluid.default_main_program(), dataset2)
+        #    exe.train_from_dataset(base.default_main_program(), dataset2)
         # except ImportError as e:
         #    print("warning: we skip trainer_desc_pb2 import problem in windows")
         # except Exception as e:
@@ -694,25 +688,23 @@ class TestDataset(unittest.TestCase):
         )
         dataset.set_filelist([filename1, filename2])
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
+        exe = base.Executor(
+            base.CPUPlace()
             if not core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(base.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(), dataset
-                    )
+                    exe.train_from_dataset(base.default_main_program(), dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -760,25 +752,23 @@ class TestDataset(unittest.TestCase):
         dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
+        exe = base.Executor(
+            base.CPUPlace()
             if not core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last
+            data_loader = base.io.DataLoader.from_dataset(
+                dataset, base.cpu_places(), self.drop_last
             )
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(base.default_main_program(), feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(), dataset
-                    )
+                    exe.train_from_dataset(base.default_main_program(), dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -878,7 +868,7 @@ class TestDataset(unittest.TestCase):
             )
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_feed_type("SlotRecordInMemoryDataFeed")
         dataset.set_batch_size(1)
         dataset.set_pipe_command("cat")
@@ -905,15 +895,15 @@ class TestDataset(unittest.TestCase):
 
         dataset.get_memory_data_size()
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
+        exe = base.Executor(
+            base.CPUPlace()
             if not core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         for i in range(self.epoch_num):
             try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
+                exe.train_from_dataset(base.default_main_program(), dataset)
             except Exception as e:
                 self.assertTrue(False)
         temp_dir.cleanup()
@@ -1014,12 +1004,12 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         # test dataset->None
         try:
-            exe.train_from_dataset(fluid.default_main_program(), None)
+            exe.train_from_dataset(base.default_main_program(), None)
         except ImportError as e:
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except RuntimeError as e:
@@ -1036,11 +1026,11 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         try:
-            exe.infer_from_dataset(fluid.default_main_program(), dataset)
+            exe.infer_from_dataset(base.default_main_program(), dataset)
         except ImportError as e:
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except Exception as e:
@@ -1054,15 +1044,15 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         files = [self.filename1, self.filename2]
         dataset = self.get_dataset(slots_vars, files)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
-        fh = fluid.executor.FetchHandler(out.name)
+        fh = base.executor.FetchHandler(out.name)
         fh.help()
 
         try:
             exe.train_from_dataset(
-                program=fluid.default_main_program(),
+                program=base.default_main_program(),
                 dataset=dataset,
                 fetch_handler=fh,
             )
@@ -1110,14 +1100,14 @@ class TestDataset2(unittest.TestCase):
             data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
             f.write(data)
 
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
         from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 
-        with fluid.program_guard(train_program, startup_program):
+        with base.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
@@ -1127,9 +1117,9 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
-        with fluid.scope_guard(scope):
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+        with base.scope_guard(scope):
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             try:
                 fleet.init()
             except ImportError as e:
@@ -1182,14 +1172,14 @@ class TestDataset2(unittest.TestCase):
             data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
             f.write(data)
 
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )
 
-        with fluid.program_guard(train_program, startup_program):
+        with base.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
@@ -1199,9 +1189,9 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
-        with fluid.scope_guard(scope):
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+        with base.scope_guard(scope):
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             try:
                 fleet.init()
             except ImportError as e:
@@ -1315,14 +1305,14 @@ class TestDataset2(unittest.TestCase):
             data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
             f.write(data)
 
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )
 
-        with fluid.program_guard(train_program, startup_program):
+        with base.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
             for slot in slots:
@@ -1332,9 +1322,9 @@ class TestDataset2(unittest.TestCase):
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
             fake_cost = paddle.mean(fake_cost)
-        with fluid.scope_guard(scope):
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+        with base.scope_guard(scope):
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             try:
                 fleet.init()
             except ImportError as e:

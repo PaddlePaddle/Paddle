@@ -70,8 +70,8 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN pip3 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com && \
     pip3 --no-cache-dir install ipykernel==4.6.0 wheel -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
-#For docstring checker
-RUN pip3 --no-cache-dir install pylint pytest astroid isort -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+# For PaddleTest CE
+RUN pip3 --no-cache-dir install pytest -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
 COPY requirements.txt /root/
 RUN pip3 --no-cache-dir install -r /root/requirements.txt -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com

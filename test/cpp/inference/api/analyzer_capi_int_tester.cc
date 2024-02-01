@@ -31,7 +31,6 @@ void zero_copy_run() {
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str(), nullptr);

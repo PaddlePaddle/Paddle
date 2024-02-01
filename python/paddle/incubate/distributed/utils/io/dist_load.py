@@ -17,8 +17,8 @@ import re
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.framework import dygraph_only
 from paddle.distributed import fleet
-from paddle.fluid.framework import dygraph_only
 
 
 @dygraph_only
@@ -39,7 +39,7 @@ def load(path, **configs):
             DO NOT use them. Default None.
             The following options are currently supported:
                 (1) place: where to place the loaded state dict.
-                     If the state dict is too large, the palce should be set 'cpu'.
+                     If the state dict is too large, the place should be set 'cpu'.
             Note:
                 Other config value may cause some error.Please don't use any more config options.
     Returns:

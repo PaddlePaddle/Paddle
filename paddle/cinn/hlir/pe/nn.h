@@ -147,7 +147,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(
     int dilation_w,
     std::string key,
     const std::string &output_name = UniqName("T_Conv2d_NCHW_5D_out"),
-    const common::Target &target = common::DefaultHostTarget());
+    const cinn::common::Target &target = cinn::common::DefaultHostTarget());
 
 /**
  * @brief Perform a 2-D convolution with an NCHWc-layout.
@@ -176,7 +176,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(
     int dilation_h,
     int dilation_w,
     const std::string &output_name = UniqName("T_Conv2d_NCHWc_out"),
-    const common::Target &target = common::DefaultHostTarget());
+    const cinn::common::Target &target = cinn::common::DefaultHostTarget());
 
 #ifdef CINN_WITH_DNNL
 std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(

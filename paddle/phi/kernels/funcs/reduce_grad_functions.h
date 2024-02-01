@@ -36,7 +36,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
   auto x_grad = phi::EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
-  auto reduced_dims_v = phi::vectorize(x_dims);
+  auto reduced_dims_v = common::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
@@ -50,7 +50,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
     broad_cast_times *= x_dims[dims_ref[i]];
   }
-  auto reduced_dims = phi::make_ddim(reduced_dims_v);
+  auto reduced_dims = common::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 

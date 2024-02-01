@@ -78,6 +78,11 @@ class CublasHandle {
   cublasHandle_t cuhandle;
 };
 
+int64_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  return args[idx].operator int64_t();
+}
+
 void cinn_call_cuda_kernel(void *kernel_fn,
                            void *v_args,
                            int num_args,
@@ -162,6 +167,8 @@ void cinn_call_cublas(void *v_args,
   int n = trans_o ? (trans_b ? b3 : b4) : (trans_a ? a4 : a3);
   int k = trans_a ? a3 : a4;
 
+  VLOG(3) << "m: " << m << ", n: " << n << ", k: " << k;
+
   cublasOperation_t trans_op_l = trans_o
                                      ? (trans_a ? CUBLAS_OP_N : CUBLAS_OP_T)
                                      : (trans_b ? CUBLAS_OP_T : CUBLAS_OP_N);
@@ -184,7 +191,7 @@ void cinn_call_cublas(void *v_args,
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
   int bytes = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
-  if (is_float && bytes == sizeof(common::float16)) {
+  if (is_float && bytes == sizeof(cinn::common::float16)) {
     cuda_dtype = CUDA_R_16F;
   } else if (is_float && bytes == sizeof(float)) {
     cuda_dtype = CUDA_R_32F;
@@ -245,7 +252,7 @@ void cinn_call_cublas(void *v_args,
       int batch = std::max(a2, b2);
       VLOG(3) << "call cublasGemmStridedBatched with a1*b1 = 1, stride_l = "
               << stride_l << ", stride_r = " << stride_r
-              << ", batch = " << batch;
+              << ", batch = " << batch << ", dtype = " << cuda_dtype;
       cinn::utils::RecordEvent record_run("Call cublasGemmStridedBatched",
                                           cinn::utils::EventType::kInstruction);
       CUBLAS_CALL(cublasGemmStridedBatched(cuda_dtype,
@@ -406,7 +413,7 @@ void cinn_call_batched_cublas(void *v_args,
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
   int bytes = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
-  if (is_float && bytes == sizeof(common::float16)) {
+  if (is_float && bytes == sizeof(cinn::common::float16)) {
     cuda_dtype = CUDA_R_16F;
   } else if (is_float && bytes == sizeof(float)) {
     cuda_dtype = CUDA_R_32F;
@@ -1834,7 +1841,7 @@ void cinn_assert_true_nvgpu(
                    msg,
                    only_warning,
                    stream,
-                   common::DefaultNVGPUTarget());
+                   cinn::common::DefaultNVGPUTarget());
 }
 
 void cinn_gpu_cublas_mul(const std::vector<int> &attrs,
@@ -2165,11 +2172,11 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
                            cinn_buffer_t *w,
                            cinn_buffer_t *y,
                            cudaStream_t stream,
-                           common::Layout target) {
+                           cinn::common::Layout target) {
   cudnnTensorFormat_t cudnn_tensor_format;
-  if (target == common::Layout::kNCHW) {
+  if (target == cinn::common::Layout::kNCHW) {
     cudnn_tensor_format = CUDNN_TENSOR_NCHW;
-  } else if (target == common::Layout::kNHWC) {
+  } else if (target == cinn::common::Layout::kNHWC) {
     cudnn_tensor_format = CUDNN_TENSOR_NHWC;
   } else {
     CINN_NOT_IMPLEMENTED
@@ -2741,6 +2748,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   cudnnDestroyPoolingDescriptor(pooling_desc);
 }
 
+void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
+  v[row][col] = value;
+}
 void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                             cinn_buffer_t *input,
                             cinn_buffer_t *output,

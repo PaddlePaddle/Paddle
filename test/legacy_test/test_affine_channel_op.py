@@ -18,7 +18,7 @@ Unit testing for affine_channel_op
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def affine_channel(x, scale, bias, layout):

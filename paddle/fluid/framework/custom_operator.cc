@@ -49,7 +49,10 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/core/flags.h"
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+
 PHI_DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {
@@ -110,7 +113,7 @@ static void RunKernelFunc(
         // tensor here.
         custom_vec_in.emplace_back(paddle::Tensor());
       }
-      kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
+      kernel_ctx.EmplaceBackInputs(custom_vec_in);
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
@@ -231,7 +234,7 @@ static void RunKernelFunc(
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
-      kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
+      kernel_ctx.EmplaceBackOutputs(custom_vec_out);
     } else {
       // handle inplace optional outputs = None case
       if (!ctx.HasOutput(out_name)) {
@@ -318,7 +321,7 @@ static void RunKernelFunc(
       }
     }
   } catch (platform::EnforceNotMet& exception) {
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
@@ -434,7 +437,7 @@ static void RunInferShapeFunc(
                        vec_ddim.end(),
                        std::back_inserter(vec_shape),
                        [&](const DDim& ddim) -> std::vector<int64_t> {
-                         return phi::vectorize(ddim);
+                         return common::vectorize(ddim);
                        });
 
       } else {  // optional inputs, `vec_shape` is empty
@@ -450,7 +453,7 @@ static void RunInferShapeFunc(
     } else {
       if (ctx->HasInput(in_name)) {  // general inputs
         auto ddim = ctx->GetInputDim(in_name);
-        input_shapes.emplace_back(phi::vectorize(ddim));
+        input_shapes.emplace_back(common::vectorize(ddim));
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
@@ -582,7 +585,7 @@ static void RunInferShapeFunc(
       } else {
         // Set output dims by the output of InferShapeFn
         ctx->SetOutputDim(out_name,
-                          phi::make_ddim(output_shapes[output_shape_idx++]));
+                          common::make_ddim(output_shapes[output_shape_idx++]));
       }
     }
   }
@@ -653,8 +656,8 @@ static void RunDefaultInferDtypeFunc(
       if (detail::IsDuplicableVar(pair.first)) {
         size_t size = ctx->InputSize(pair.first);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(pair.first, i);
-          ctx->SetOutputDataType(pair.second, dtype, i);
+          auto dtype = ctx->GetInputDataType(pair.first, static_cast<int>(i));
+          ctx->SetOutputDataType(pair.second, dtype, static_cast<int>(i));
         }
       } else {
         auto dtype = ctx->GetInputDataType(pair.first);
@@ -681,7 +684,7 @@ static void RunInferDtypeFunc(
       std::vector<DataType> vec_custom_dtype;
       if (ctx->HasInput(in_name)) {  // general inputs
         for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
           vec_custom_dtype.emplace_back(
               paddle::framework::TransToPhiDataType(dtype));
         }
@@ -799,8 +802,8 @@ static void RunInferDtypeFunc(
       if (ctx->HasOutput(out_name)) {
         size_t size = ctx->InputSize(in_name);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
-          ctx->SetOutputDataType(out_name, dtype, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
+          ctx->SetOutputDataType(out_name, dtype, static_cast<int>(i));
         }
       } else {
         PADDLE_ENFORCE(
@@ -947,12 +950,10 @@ static void RegisterOperatorKernel(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : device_types) {
-    for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-      RegisterOperatorKernelWithPlace(name,
-                                      op_kernel_func,
-                                      proto::VarType::RAW,
-                                      platform::CustomPlace(dev_type, dev_id));
-    }
+    RegisterOperatorKernelWithPlace(name,
+                                    op_kernel_func,
+                                    proto::VarType::RAW,
+                                    platform::CustomPlace(dev_type));
   }
 #endif
 }
@@ -1277,8 +1278,26 @@ void RegisterOperatorWithMetaInfoMap(
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  auto* custom_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
+
+    // Register PIR op
+
+    if (custom_dialect->HasRegistered(pair.first)) {
+      LOG(INFO) << "The operator `" << pair.first
+                << "` has been registered. "
+                   "Therefore, we will not repeat the registration here.";
+      continue;
+    }
+    for (const auto& meta_info : pair.second) {
+      LOG(INFO) << "register pir custom op :" << pair.first;
+      custom_dialect->RegisterCustomOp(meta_info);
+    }
+
+    // Register Fluid op
     RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }

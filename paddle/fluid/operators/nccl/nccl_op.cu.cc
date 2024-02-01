@@ -110,7 +110,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     if (root == gpu_id) {
       recvbuffer = out->mutable_data<T>(ctx.GetPlace());
     } else {
-      out->Resize(phi::make_ddim({0}));
+      out->Resize(common::make_ddim({0}));
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
@@ -155,7 +155,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     } else {
       auto* out = ctx.Output<phi::DenseTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
-              << phi::product(out->dims());
+              << common::product(out->dims());
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(ctx.GetPlace()),
                                        out->numel(),

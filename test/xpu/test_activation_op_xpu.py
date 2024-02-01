@@ -17,12 +17,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import OpTest, convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -46,7 +46,7 @@ class TestActivationOPBase(XPUOpTest):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.exp(x)
         self.attrs = {'use_xpu': True}
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def init_dtype(self):
@@ -72,7 +72,7 @@ class XPUTestExpOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = np.exp(x)
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
     class XPUTestExp_ZeroDIm(TestActivationOPBase):
@@ -97,10 +97,16 @@ class XPUTestSiluOP(XPUOpTestWrapper):
             self.init_shape()
 
             np.random.seed(1024)
-            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            x = np.random.uniform(-1, 1, self.shape)
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(x)
+            else:
+                new_x = x.astype(self.dtype)
             out = x / (np.exp(-x) + 1)
 
-            self.inputs = {'X': x}
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -201,7 +207,7 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
             out = 1 / (1 + np.exp(-self.x))
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.outputs = {'Out': out}
 
         def init_config(self):
@@ -248,7 +254,7 @@ class XPUTestTanhOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = np.tanh(x)
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -271,7 +277,7 @@ class XPUTestSqrtOP(XPUOpTestWrapper):
             out = np.sqrt(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -294,7 +300,7 @@ class XPUTestFloorOP(XPUOpTestWrapper):
             out = np.floor(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
         def test_check_grad(self):
@@ -325,7 +331,7 @@ class XPUTestAbsOP(XPUOpTestWrapper):
             out = np.abs(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
 
@@ -476,7 +482,7 @@ class XPUTestLogOP(XPUOpTestWrapper):
             out = np.log(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
     class TestLogCase_ZeroDim(XPUTestLog):
@@ -515,34 +521,39 @@ class XPUTestSquareOP(XPUOpTestWrapper):
             self.op_type = "square"
             self.dtype = self.in_type
             self.init_config()
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                self.x = convert_float_to_uint16(self.tmp_x)
+            else:
+                self.x = self.tmp_x.astype(self.dtype)
             out = np.square(self.x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.outputs = {'Out': out}
 
         def init_config(self):
-            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-1, 1, [11, 17])
 
     class XPUTestSquare_ZeroDim(XPUTestSquare):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-2, 2, [])
 
     class XPUTestSquare2(XPUTestSquare):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-2, 2, [100])
 
     class XPUTestSquare3(XPUTestSquare):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [1, 15, 19]).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-2, 2, [1, 15, 19])
 
     class XPUTestSquare4(XPUTestSquare):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [100, 10]).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-2, 2, [100, 10])
 
     class XPUTestSquare5(XPUTestSquare):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [1, 2, 5, 17]).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-2, 2, [1, 2, 5, 17])
 
 
 support_types = get_xpu_op_support_types('square')
@@ -563,7 +574,7 @@ class XPUTestPowOP(XPUOpTestWrapper):
             self.init_config()
             out = np.power(self.x, self.factor)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.attrs = {'factor': self.factor, 'use_xpu': True}
             self.outputs = {'Out': out}
 
@@ -662,7 +673,7 @@ class XPUTestReciprocalOP(XPUOpTestWrapper):
             x = np.random.uniform(1, 2, [1111, 1117]).astype(self.dtype)
             out = np.reciprocal(x)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -775,7 +786,7 @@ class XPUTestCeilOP(XPUOpTestWrapper):
             x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
             out = np.ceil(x)
 
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -1150,7 +1161,13 @@ class XPUTestSwishOP(XPUOpTestWrapper):
             self.init_config()
             out = ref_swish(self.x)
 
-            self.inputs = {'X': self.x}
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(self.x)
+            else:
+                new_x = self.x.astype(self.dtype)
+
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -1285,6 +1302,11 @@ class XPUTestSinOP(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             self.init_config()
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                self.x = convert_float_to_uint16(self.tmp_x)
+            else:
+                self.x = self.tmp_x.astype(self.dtype)
             out = np.sin(self.x)
 
             self.inputs = {'X': self.x}
@@ -1292,31 +1314,23 @@ class XPUTestSinOP(XPUOpTestWrapper):
             self.attrs = {'use_xpu': True}
 
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [11, 17])
 
     class XPUTestSin_ZeroDim(XPUTestSinBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [])
 
     class XPUTestSin2(XPUTestSinBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [1024, 8])
 
     class XPUTestSin3(XPUTestSinBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15])
 
     class XPUTestSin4(XPUTestSinBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
 
 
 support_types = get_xpu_op_support_types('sin')
@@ -1335,6 +1349,11 @@ class XPUTestCosOP(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             self.init_config()
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                self.x = convert_float_to_uint16(self.tmp_x)
+            else:
+                self.x = self.tmp_x.astype(self.dtype)
             out = np.cos(self.x)
 
             self.inputs = {'X': self.x}
@@ -1342,36 +1361,74 @@ class XPUTestCosOP(XPUOpTestWrapper):
             self.attrs = {'use_xpu': True}
 
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [11, 17])
 
     class XPUTestCos_ZeroDim(XPUTestCosBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [])
 
     class XPUTestCos2(XPUTestCosBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [1024, 8])
 
     class XPUTestCos3(XPUTestCosBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15])
 
     class XPUTestCos4(XPUTestCosBase):
         def init_config(self):
-            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
-                self.dtype
-            )
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
 
 
 support_types = get_xpu_op_support_types('cos')
 for stype in support_types:
     create_test_class(globals(), XPUTestCosOP, stype)
+
+
+class XPUTestRsqrtOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "rsqrt"
+        self.use_dynamic_create_class = False
+
+    class XPUTestRsqrtBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "rsqrt"
+            self.dtype = self.in_type
+            self.init_config()
+            out = np.reciprocal(np.sqrt(self.x))
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [11, 17]).astype(self.dtype)
+
+    class XPUTestRsqrt_ZeroDim(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, []).astype(self.dtype)
+
+    class XPUTestRsqrt2(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [1024, 8]).astype(self.dtype)
+
+    class XPUTestRsqrt3(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestRsqrt4(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('rsqrt')
+for stype in support_types:
+    create_test_class(globals(), XPUTestRsqrtOP, stype)
+
 
 if __name__ == "__main__":
     unittest.main()

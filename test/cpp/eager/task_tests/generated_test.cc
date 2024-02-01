@@ -41,7 +41,7 @@ TEST(Generated, Sigmoid) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
   VLOG(6) << "Init Env";
   // 1. Prepare Input
-  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
@@ -73,7 +73,7 @@ TEST(Generated, Matmul_v2) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -83,7 +83,7 @@ TEST(Generated, Matmul_v2) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),
@@ -113,7 +113,7 @@ TEST(Generated, ElementwiseAdd) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -123,7 +123,7 @@ TEST(Generated, ElementwiseAdd) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = common::make_ddim({4, 16});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),

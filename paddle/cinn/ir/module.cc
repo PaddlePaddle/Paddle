@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/optimize.h"
 
@@ -48,11 +49,22 @@ void Module::Builder::AddBuffer(ir::Buffer buffer) {
   }
 }
 
+void Module::Builder::AddPredicate(ir::Expr predicate) {
+  module_->predicates.push_back(predicate);
+}
+
+void Module::Builder::SetInferShapeFunc(ir::Expr infer_shape_func) {
+  module_->infer_shape_func = infer_shape_func;
+}
+
 void Module::Builder::Clear() {
   module_->buffers.clear();
   module_->functions.clear();
   module_->submodules.clear();
+  module_->predicates.clear();
 }
+
+Target::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }
 
 Module Module::Builder::Build() {
   if (module_->functions.empty()) {
@@ -61,7 +73,8 @@ Module Module::Builder::Build() {
 
   auto res = ir::Module(module_.get());
 
-  return optim::Optimize(res, module_->target);
+  res = optim::Optimize(res, module_->target);
+  return res;
 }
 
 ir::_Module_ *Module::self() { return p_->as<ir::_Module_>(); }

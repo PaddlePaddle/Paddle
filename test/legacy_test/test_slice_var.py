@@ -15,14 +15,14 @@
 import random
 import unittest
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.transpiler.distribute_transpiler import slice_variable
 
 
 class TestSliceVar(unittest.TestCase):
     def check_slice_output(self, shapes, expected_sizes, min_size):
         var_list = []
-        program = fluid.Program()
+        program = base.Program()
         for shape in shapes:
             var = program.global_block().create_var(
                 name=str(random.randint(10000, 99999)),

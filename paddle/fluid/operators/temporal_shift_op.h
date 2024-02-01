@@ -97,7 +97,7 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
@@ -116,8 +116,8 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     framework::DDim in_grad_dims =
-        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
-                                          : phi::make_ddim({nt, h, w, c}));
+        (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
+                                          : common::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data =
         input_grad->mutable_data<T>(in_grad_dims, ctx.GetPlace());

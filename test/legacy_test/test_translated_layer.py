@@ -72,9 +72,7 @@ def train(layer, loader, loss_fn, opt):
             opt.step()
             opt.clear_grad()
             print(
-                "Epoch {} batch {}: loss = {}".format(
-                    epoch_id, batch_id, np.mean(loss.numpy())
-                )
+                f"Epoch {epoch_id} batch {batch_id}: loss = {np.mean(loss.numpy())}"
             )
     return loss
 
@@ -158,9 +156,7 @@ class TestTranslatedLayer(unittest.TestCase):
         np.testing.assert_array_equal(
             orig_loss.numpy(),
             loss.numpy(),
-            err_msg='original loss:\n{}\nnew loss:\n{}\n'.format(
-                orig_loss.numpy(), loss.numpy()
-            ),
+            err_msg=f'original loss:\n{orig_loss.numpy()}\nnew loss:\n{loss.numpy()}\n',
         )
 
     def test_get_program(self):

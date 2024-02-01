@@ -42,9 +42,9 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -54,9 +54,9 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
                              const Target &target,
                              const std::string &output_name) {
   std::string extern_func = "cinn_";
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     extern_func += "host_";
-  } else if (target == common::DefaultNVGPUTarget()) {
+  } else if (target == cinn::common::DefaultNVGPUTarget()) {
     extern_func += "nvgpu_";
   } else {
     CINN_NOT_IMPLEMENTED

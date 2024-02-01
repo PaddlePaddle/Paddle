@@ -14,8 +14,8 @@
 
 import unittest
 
-from paddle.fluid import core
-from paddle.fluid.framework import Program
+from paddle.base import core
+from paddle.base.framework import Program
 
 
 class TestOpDesc(unittest.TestCase):

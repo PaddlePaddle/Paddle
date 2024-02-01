@@ -54,14 +54,15 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
                             i));
-      auto out_dim = phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
+      auto out_dim =
+          common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_dim.push_back(emb_size);
-      outs_dims[i] = phi::make_ddim(out_dim);
+      outs_dims[i] = common::make_ddim(out_dim);
 
       auto out_extended_dim =
-          phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
+          common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_extended_dim.push_back(emb_extended_size);
-      outs_extended_dims[i] = phi::make_ddim(out_extended_dim);
+      outs_extended_dims[i] = common::make_ddim(out_extended_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     ctx->SetOutputsDim("OutExtend", outs_extended_dims);

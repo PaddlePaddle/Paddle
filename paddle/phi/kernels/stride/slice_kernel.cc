@@ -47,8 +47,9 @@ void SliceStridedKernel(const Context& ctx,
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
       in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
-  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
+  std::vector<int64_t> output_dims = common::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride =
+      common::vectorize<int64_t>(input.strides());
   int64_t output_offset = static_cast<int64_t>(input.offset());
 
   for (size_t i = 0; i < new_axes.size(); ++i) {
@@ -74,7 +75,7 @@ void SliceStridedKernel(const Context& ctx,
       }
     }
     if (FLAGS_set_to_1d && new_shape.size() == 0) {
-      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
+      // NOTE(zoooo0820): Hack processing to 1-D, when axes decrease to 0-D in
       // slice. This will remove in release 2.6.
       new_shape.push_back(1);
       new_stride.push_back(0);
@@ -99,6 +100,7 @@ void SliceStridedKernel(const Context& ctx,
       DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi

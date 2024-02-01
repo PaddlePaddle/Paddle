@@ -21,12 +21,12 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.framework import dygraph_only
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import dygraph_only
 
 __all__ = ["save_for_auto_inference"]
 
@@ -38,26 +38,27 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
         Save model parameters for auto parallel inference.
         Supporting dp + mp + pp + sharding(stage1), dp + sharding stage2-3.
         MoE not sdupported till MoE is supported in auto parallel mode.
-    Args:
-        path_prefix: path prefix to save
-                    If `path_preifx` ends with path sepreator,
-                        the path is processed as a directory and parameters will be saved in it,
-                        automatically named saved_parameters.
-                    Otherwisw, the parameters will be saved with name
-                        path_preifx_dist{global_rank}.pdparams and  path_preifx_dist{global_rank}.pdattrs
 
-        dist_model:
-                model in distributed modeß
+    Args:
+        path_prefix: path prefix to save. If `path_preifx` ends with path sepreator,
+            the path is processed as a directory and parameters will be saved in it,
+            automatically named saved_parameters. Otherwisw, the parameters will be saved with name
+            path_preifx_dist{global_rank}.pdparams and path_preifx_dist{global_rank}.pdattrs.
+        dist_model: model in distributed model.
         cvt2cpu: wheather to move parameters to CPU when using sharding stage 3.
-                The var is invalid if not using sharding stage 3.
+            The var is invalid if not using sharding stage 3.
+
     Returns:
         None
+
     Examples:
-        dist_model = build_distributed_model()
 
-        path_prefix = "path/to/save_infer"
+        .. code-block:: python
 
-        save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
+            >>> # doctest: +SKIP('model not exist')
+            >>> dist_model = build_distributed_model()
+            >>> path_prefix = "path/to/save_infer"
+            >>> save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
 
     Outputs:
         path/to/save_infer_dist0.pdparams path/to/save_infer_dist1.pdparams path/to/save_infer_dist2.pdparams ...
@@ -120,7 +121,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         save params' attr dict
     Args:
         state_dict_:
-            state for which to save attrs, when the state is optimzier state, the master and LRScheduler will be reomoved.
+            state for which to save attrs, when the state is optimizer state, the master and LRScheduler will be removed.
         path:
             path to save
         dims_mapping_dict:

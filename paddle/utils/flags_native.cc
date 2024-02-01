@@ -151,12 +151,12 @@ FlagRegisterer::FlagRegisterer(std::string name,
 }
 
 // Instantiate FlagRegisterer for supported types.
-#define INSTANTIATE_FLAG_REGISTERER(type)                            \
-  template FlagRegisterer::FlagRegisterer(std::string name,          \
-                                          std::string help,          \
-                                          std::string file,          \
-                                          const type* default_value, \
-                                          type* value)
+#define INSTANTIATE_FLAG_REGISTERER(type)                                     \
+  template TEST_API FlagRegisterer::FlagRegisterer(std::string name,          \
+                                                   std::string help,          \
+                                                   std::string file,          \
+                                                   const type* default_value, \
+                                                   type* value)
 
 INSTANTIATE_FLAG_REGISTERER(bool);
 INSTANTIATE_FLAG_REGISTERER(int32_t);
@@ -297,8 +297,9 @@ void Flag::SetValueFromString(const std::string& value) {
 void FlagRegistry::RegisterFlag(Flag* flag) {
   auto iter = flags_.find(flag->name_);
   if (iter != flags_.end()) {
-    LOG_FLAG_FATAL_ERROR("illegal RegisterFlag, flag \"" + flag->name_ +
-                         "\" has been defined in " + iter->second->file_);
+    LOG_FLAG_FATAL_ERROR("flag multiple definition, flag \"" + flag->name_ +
+                         "\" was defined both in " + iter->second->file_ +
+                         " and " + flag->file_);
   } else {
     std::lock_guard<std::mutex> lock(mutex_);
     flags_[flag->name_] = flag;
@@ -380,9 +381,9 @@ void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal) {
 
 static bool allow_undefined_flags = false;
 
-void AllowUndefinedFlags() { allow_undefined_flags = true; }
+TEST_API void AllowUndefinedFlags() { allow_undefined_flags = true; }
 
-void ParseCommandLineFlags(int* pargc, char*** pargv) {
+TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
   assert(*pargc > 0);
   size_t argv_num = *pargc - 1;
   std::vector<std::string> argvs(*pargv + 1, *pargv + *pargc);

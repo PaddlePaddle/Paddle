@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 
 #include <vector>
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs//concat_and_split_functor.h"
@@ -23,6 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -69,6 +73,11 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     dev_ctx.template Alloc(&temp_out, x->dtype());
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    int64_t send_numel = x->numel();
+    const T* send_buff = x->data<T>();
+    T* recv_buff = temp_out.data<T>();
+    XPUStream stream = nullptr;
+
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
@@ -79,15 +88,50 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(in_tensor, out_tensor);
       task->Wait();
     } else {
-      auto comm = dev_ctx.bkcl_context();
-
-      int64_t send_numel = x->numel();
-      const T* send_buff = x->data<T>();
-      T* recv_buff = temp_out.data<T>();
-      auto stream = dev_ctx.x_context()->xpu_stream;
-
-      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(
-          comm, send_buff, send_numel, recv_buff, dtype, stream));
+      platform::BKCLComm* comm = nullptr;
+      phi::distributed::BKCLCommContext* comm_ctx = nullptr;
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      if (FLAGS_dynamic_static_unified_comm) {
+        PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "You choose to use new communication library by "
+                              "setting environment "
+                              "variable FLAGS_dynamic_static_unified_comm "
+                              "True. But ring_id(%d) is "
+                              "not found in comm_context_manager.",
+                              std::to_string(rid)));
+        comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+            comm_context_manager.Get(std::to_string(rid)));
+        PADDLE_ENFORCE_NE(
+            comm_ctx,
+            nullptr,
+            platform::errors::Unavailable(
+                "BKCLCommContext is nullptr, collective op should "
+                "has ring_id attr."));
+        stream = comm_ctx->GetStream();
+        VLOG(3) << "new comm_context_manager has rid " << rid;
+      } else {  // old comm_context
+        auto place = ctx.GetPlace();
+        comm = platform::BKCLCommContext::Instance().Get(rid, place);
+        PADDLE_ENFORCE_EQ(
+            nranks,
+            comm->nranks(),
+            platform::errors::InvalidArgument(
+                "nranks: %s should equal to %s", nranks, comm->nranks()));
+        stream = comm->stream();
+        VLOG(3) << "old BKCLCommContext has rid " << rid;
+      }
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        stream = dev_ctx.x_context()->xpu_stream;
+      }
+      if (comm_ctx) {
+        comm_ctx->AllGather(&temp_out, *x, stream);
+      } else {
+        PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(
+            comm->comm(), send_buff, send_numel, recv_buff, dtype, stream));
+      }
     }
 
     std::vector<phi::DenseTensor> inputs;
@@ -118,5 +162,11 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-PD_REGISTER_STRUCT_KERNEL(
-    c_concat, XPU, ALL_LAYOUT, ops::CConcatOpXPUKernel, float, plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(c_concat,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CConcatOpXPUKernel,
+                          float,
+                          int,
+                          int64_t,
+                          plat::float16) {}

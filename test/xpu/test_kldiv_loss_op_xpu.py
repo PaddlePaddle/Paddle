@@ -105,7 +105,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             target = np.random.uniform(-10, 10, shape).astype('float32')
             gt_loss = kldiv_loss(x, target, reduction)
 
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 kldiv_criterion = paddle.nn.KLDivLoss(reduction)
                 pred_loss = kldiv_criterion(
                     paddle.to_tensor(x), paddle.to_tensor(target)
@@ -125,7 +125,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
 
     class TestKLDivLossTypePromotion(unittest.TestCase):
         def test_kl_div_promotion(self):
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x1 = paddle.rand([5, 20], dtype='float32')
                 target1 = paddle.rand([5, 20], dtype='float32')
 

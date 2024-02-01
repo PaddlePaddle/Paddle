@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 

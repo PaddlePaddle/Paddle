@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace dtype {
@@ -34,7 +35,7 @@ using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
-enum class DataType {
+enum class TEST_API DataType {
   UNDEFINED = 0,
 
   BOOL,

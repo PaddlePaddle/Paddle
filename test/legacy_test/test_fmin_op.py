@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -45,6 +46,7 @@ class ApiFMinTest(unittest.TestCase):
         self.np_expected3 = np.fmin(self.input_a, self.input_c)
         self.np_expected4 = np.fmin(self.input_b, self.input_c)
 
+    @test_with_pir_api
     def test_static_api(self):
         """test_static_api"""
         paddle.enable_static()
@@ -147,11 +149,11 @@ class TestElementwiseFminOp(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -160,6 +162,7 @@ class TestElementwiseFminOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -169,6 +172,7 @@ class TestElementwiseFminOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
+            check_pir=True,
         )
 
 
@@ -192,11 +196,11 @@ class TestElementwiseFmin2Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -205,6 +209,7 @@ class TestElementwiseFmin2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -214,6 +219,7 @@ class TestElementwiseFmin2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
+            check_pir=True,
         )
 
 
@@ -236,11 +242,11 @@ class TestElementwiseFmin3Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
@@ -265,11 +271,11 @@ class TestFminBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":

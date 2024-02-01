@@ -44,13 +44,13 @@ framework::proto::OpDesc PrepareOpDesc(
     const std::string& output) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
-  desc.SetType("conv2d_fusion");
+  desc.SetType("fused_conv2d_add_act");
   desc.SetInput("Bias", {bias});
   desc.SetInput("ResidualData", {bias1});
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
-  desc.SetAttr("use_cudnn", false);
+  desc.SetAttr("use_cudnn", true);
   desc.Flush();
   return *desc.Proto();
 }
@@ -195,7 +195,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
         base_op_desc, bias_name, bias1_name, act_op_type, act_op_out);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("use_cudnn", false);
     }
 
     // Create a new node for the fused op.

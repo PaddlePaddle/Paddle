@@ -21,15 +21,15 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
-namespace optim {
-using namespace ir;  // NOLINT
-
+namespace ir {
+namespace ir_utils {
+namespace {
 struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   // Use maps to unify all the copied tensors and buffers.
   std::map<std::string, ir::_Tensor_*> tensor_map;
@@ -52,7 +52,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     return Expr(make_shared<FloatImm>(op->type(), op->value));
   }
   Expr Visit(const ir::StringImm* op) override {
-    return Expr(common::make_shared<StringImm>(op->value));
+    return Expr(cinn::common::make_shared<StringImm>(op->value));
   }
 
   Expr Visit(const ir::Cast* op) override {
@@ -101,6 +101,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
 
     n->name = op->name;
     n->is_reduce_axis = op->is_reduce_axis;
+    n->is_symbolic_constant = op->is_symbolic_constant;
     n->set_type(op->type());
 
     if (op->lower_bound.defined()) {
@@ -241,7 +242,8 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     std::vector<Expr> buffers;
     std::vector<Expr> functions;
     std::vector<Expr> submodules;
-
+    std::vector<Expr> predicates;
+    Expr infer_shape_func;
     for (auto& expr : op->buffers) {
       buffers.push_back(Visit(&expr));
     }
@@ -254,10 +256,19 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       submodules.push_back(Visit(&expr));
     }
 
+    for (auto& expr : op->predicates) {
+      predicates.push_back(Visit(&expr));
+    }
+    if (op->infer_shape_func.defined()) {
+      infer_shape_func = Visit(&op->infer_shape_func);
+    }
+
     auto res = ir::_Module_::Make(op->name, op->target);
     res->buffers = buffers;
     res->functions = functions;
     res->submodules = submodules;
+    res->predicates = predicates;
+    res->infer_shape_func = infer_shape_func;
 
     return Expr(res);
   }
@@ -361,7 +372,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       arguments.push_back(Visit(args));
     }
 
-    auto n = common::make_shared<ir::PrimitiveNode>();
+    auto n = cinn::common::make_shared<ir::PrimitiveNode>();
     n->name = op->name;
     n->attrs = op->attrs;  // attrs are PODs
     n->arguments = arguments;
@@ -405,6 +416,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     }
     return ir::ScheduleBlockRealize::Make(iter_values,
                                           Visit(&op->schedule_block));
+  }
+
+  Expr Visit(const ir::_Dim_* op) override {
+    return ir::_Dim_::Make(op->name, op->sym_dim);
   }
 
 #define __(x__) Expr Visit(const ir::intrinsics::x__* op);
@@ -474,7 +489,7 @@ Expr IRCopyVisitor::Visit(const ir::intrinsics::BuiltinIntrin* op) {
   return intrinsics::BuiltinIntrin::Make(
       op->name, op->args, op->id, op->arg_nums, op->type());
 }
-
+}  // namespace
 Expr IRCopy(Expr x) {
   IRCopyVisitor visitor;
   auto copied = visitor.Visit(&x);
@@ -507,6 +522,6 @@ std::vector<ir::LoweredFunc> IRCopy(const std::vector<ir::LoweredFunc>& x) {
   }
   return res;
 }
-
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

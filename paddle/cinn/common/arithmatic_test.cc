@@ -20,8 +20,8 @@
 
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -33,8 +33,8 @@ using namespace ir;  // NOLINT
 
 TEST(GiNaC, simplify) {
   using namespace GiNaC;  // NOLINT
-  symbol x("x");
-  symbol y("y");
+  GiNaC::symbol x("x");
+  GiNaC::symbol y("y");
 
   ex e = x * 0 + 1 + 2 + 3 - 100 + 30 * y - y * 21 + 0 * x;
   LOG(INFO) << "e: " << e;
@@ -42,7 +42,7 @@ TEST(GiNaC, simplify) {
 
 TEST(GiNaC, diff) {
   using namespace GiNaC;  // NOLINT
-  symbol x("x"), y("y");
+  GiNaC::symbol x("x"), y("y");
   ex e = (x + 1);
   ex e1 = (y + 1);
 
@@ -54,7 +54,7 @@ TEST(GiNaC, diff) {
 
 TEST(GiNaC, solve) {
   using namespace GiNaC;  // NOLINT
-  symbol x("x"), y("y");
+  GiNaC::symbol x("x"), y("y");
 
   lst eqns{2 * x + 3 == 19};
   lst vars{x};

@@ -15,9 +15,12 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import fluid
 
 SEED = 2020
 np.random.seed(SEED)
@@ -32,12 +35,12 @@ def function(x: A) -> A:
     return 2 * x
 
 
-class TestTransformWhileLoop(unittest.TestCase):
+class TestTypeHint(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -52,28 +55,23 @@ class TestTransformWhileLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
-            # Set the input of dyfunc to Tensor
-            tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
-            if to_static:
-                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
-            else:
-                ret = self.dyfunc(tensor_x)
-            if hasattr(ret, "numpy"):
-                return ret.numpy()
-            else:
-                return ret
+        # Set the input of dyfunc to Tensor
+        tensor_x = paddle.to_tensor(self.x)
+        if to_static:
+            ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
+        else:
+            ret = self.dyfunc(tensor_x)
+        if hasattr(ret, "numpy"):
+            return ret.numpy()
+        else:
+            return ret
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
-
-
-class TestTypeHint(TestTransformWhileLoop):
-    def _init_dyfunc(self):
-        self.dyfunc = function
 
 
 if __name__ == '__main__':

@@ -24,8 +24,8 @@ from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -165,7 +165,7 @@ class TestBase(unittest.TestCase):
     ):
         np.random.seed(5)  # fix seed
 
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
 
         self.param_name = "param"
@@ -332,7 +332,7 @@ class TestRmspropOp(TestBase):
         size = (128, 320)
         for place in places:
             for centered in [False, True]:
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place, is_sparse=False, centered=centered, size=size
                     )

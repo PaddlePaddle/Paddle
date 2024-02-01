@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def one_hot_wrapper(x, depth_tensor, **keargs):
@@ -38,9 +39,9 @@ class TestOneHotOp(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -62,11 +63,11 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -88,9 +89,9 @@ class TestOneHotOp_default_dtype(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -112,11 +113,11 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod)}
@@ -128,51 +129,81 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        depth = 10
-        self._run(depth)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            depth = 10
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
+            one_hot_label = paddle.nn.functional.one_hot(
+                x=label, num_classes=depth
+            )
 
+            place = paddle.CPUPlace()
+            label_data = np.array(
+                [np.random.randint(0, 10 - 1) for i in range(6)]
+            ).reshape([6, 1])
+            label_data = label_data.astype('int64')
+
+            exe = base.Executor(place)
+            exe.run(startup)
+            ret = exe.run(
+                feed={
+                    'label': label_data,
+                },
+                fetch_list=[one_hot_label],
+                return_numpy=False,
+            )
+
+    @test_with_pir_api
     def test_api_with_depthTensor(self):
-        depth = paddle.assign(np.array([10], dtype=np.int32))
-        self._run(depth)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            depth = paddle.assign(np.array([10], dtype=np.int32))
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
+            one_hot_label = paddle.nn.functional.one_hot(
+                x=label, num_classes=depth
+            )
+
+            place = paddle.CPUPlace()
+            label_data = np.array(
+                [np.random.randint(0, 10 - 1) for i in range(6)]
+            ).reshape([6, 1])
+            label_data = label_data.astype('int64')
+
+            exe = base.Executor(place)
+            exe.run(startup)
+            ret = exe.run(
+                feed={
+                    'label': label_data,
+                },
+                fetch_list=[one_hot_label],
+                return_numpy=False,
+            )
 
     def test_api_with_dygraph(self):
         depth = 10
         label = np.array(
             [np.random.randint(0, depth - 1) for i in range(6)]
         ).reshape([6, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             one_hot_label = paddle.nn.functional.one_hot(
-                fluid.dygraph.to_variable(label), depth
+                base.dygraph.to_variable(label), depth
             )
             one_hot_label = paddle.nn.functional.one_hot(
                 paddle.to_tensor(label), depth
             )
 
-    def _run(self, depth):
-        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        label.desc.set_need_check_feed(False)
-        one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
-
-        place = fluid.CPUPlace()
-        label_data = np.array(
-            [np.random.randint(0, 10 - 1) for i in range(6)]
-        ).reshape([6, 1])
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={
-                'label': label_data,
-            },
-            fetch_list=[one_hot_label],
-            return_numpy=False,
-        )
-
 
 class BadInputTestOnehotV2(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_bad_x():
                 label = paddle.static.data(

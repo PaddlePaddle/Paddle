@@ -13,11 +13,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -42,14 +42,14 @@ class TestGumbelSoftmaxOp(OpTest):
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.zeros(self.shape).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmax_ZeroDim(OpTest):
@@ -68,10 +68,10 @@ class TestGumbelSoftmax_ZeroDim(OpTest):
         self.attrs = {"hard": True, "axis": -1}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
@@ -172,11 +172,11 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         batch_x = np.ones(self.shape) * single_x
         out = np.zeros(self.shape).astype(self.dtype)
         self.probs = self.softmax(single_x)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(batch_x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(batch_x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_customized(self.accumulate_output)
+        self.check_output_customized(self.accumulate_output, check_pir=True)
         # Experiment should result in batch num .
         self.assertEqual(self.counts.sum(), self.shape[0])
 
@@ -192,7 +192,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         self.assertLess(np.max(np.abs(z)).item(), 2.58)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 class TestGumbelSoftmaxOpGrad(unittest.TestCase):
@@ -228,7 +228,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.count_expected = 24
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -243,7 +243,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.assertEqual(out_np.sum(), self.count_expected)
 
         # test dygrapg api
-        with paddle.fluid.dygraph.base.guard():
+        with paddle.base.dygraph.base.guard():
             x = paddle.to_tensor(self.x)
             y = paddle.nn.functional.gumbel_softmax(x, hard=True)
             out_np = np.array(y)
@@ -255,8 +255,8 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
         paddle.disable_static()
 
         def test_Variable():
-            x1 = fluid.create_lod_tensor(
-                np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.zeros((100, 784)), [[10, 10, 10, 70]], base.CPUPlace()
             )
             paddle.nn.functional.gumbel_softmax(x1)
 
@@ -278,7 +278,7 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
             x = paddle.to_tensor([0.2, 0.3, 0.4])
             paddle.nn.functional.gumbel_softmax(x, axis=1.1)
 
-        self.assertRaises(ValueError, test_argument2)
+        self.assertRaises(TypeError, test_argument2)
 
         paddle.enable_static()
 

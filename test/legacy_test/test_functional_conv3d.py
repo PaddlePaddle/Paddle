@@ -18,9 +18,9 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 class TestFunctionalConv3D(TestCase):
@@ -72,10 +72,10 @@ class TestFunctionalConv3D(TestCase):
         )
 
     def static_graph_case_1(self):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 if self.channel_last:
                     x = paddle.static.data(
                         "input",
@@ -103,16 +103,16 @@ class TestFunctionalConv3D(TestCase):
                     act=self.act,
                     data_format=self.data_format,
                 )
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(start)
         (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out
 
     def static_graph_case_2(self):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 if self.channel_last:
                     x = x = paddle.static.data(
                         "input",
@@ -146,7 +146,7 @@ class TestFunctionalConv3D(TestCase):
                 if self.act == 'sigmoid':
                     y = F.sigmoid(y)
 
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(start)
         feed_dict = {"input": self.input, "weight": self.weight}
         if not self.no_bias:
@@ -185,14 +185,14 @@ class TestFunctionalConv3D(TestCase):
         np.testing.assert_array_almost_equal(out2, out3)
 
     def test_identity_cpu(self):
-        self.place = fluid.CPUPlace()
+        self.place = base.CPUPlace()
         self._test_identity()
 
     @unittest.skipIf(
-        not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     def test_identity_gpu(self):
-        self.place = fluid.CUDAPlace(0)
+        self.place = base.CUDAPlace(0)
         self._test_identity()
 
 
@@ -230,10 +230,10 @@ class TestFunctionalConv3DError(TestCase):
         self.bias_shape = (self.out_channels,)
 
     def static_graph_case(self):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 self.channel_last = self.data_format == "NDHWC"
                 if self.channel_last:
                     x = x = paddle.static.data(
@@ -480,10 +480,10 @@ class TestFunctionalConv3DErrorCase11(TestCase):
         self.data_format = "NCDHW"
 
     def static_graph_case(self):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 x = paddle.static.data(
                     "input", self.input.shape, dtype=paddle.float32
                 )
@@ -502,7 +502,7 @@ class TestFunctionalConv3DErrorCase11(TestCase):
                     act=None,
                     data_format=self.data_format,
                 )
-        exe = fluid.Executor()
+        exe = base.Executor()
         exe.run(start)
         (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out

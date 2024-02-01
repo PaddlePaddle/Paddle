@@ -44,7 +44,17 @@ void BitwiseAndKernel(const Context& ctx,
   // counterpart. Need to be changed when adding support to other types.
   LogicalAndKernel<T, Context>(ctx, x, y, out);
 }
+
+template <typename T, typename Context>
+void BitwiseOrKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  // Same reason as bitwise_and
+  LogicalOrKernel<T, Context>(ctx, x, y, out);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(bitwise_not, XPU, ALL_LAYOUT, phi::BitwiseNotKernel, bool) {}
 PD_REGISTER_KERNEL(bitwise_and, XPU, ALL_LAYOUT, phi::BitwiseAndKernel, bool) {}
+PD_REGISTER_KERNEL(bitwise_or, XPU, ALL_LAYOUT, phi::BitwiseOrKernel, bool) {}

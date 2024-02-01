@@ -115,12 +115,34 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             self._local_params.extend(list(params))
 
+        self.use_main_grad = None
+        for param in self._local_params:
+            if self.use_main_grad is None and hasattr(param, "main_grad"):
+                self.use_main_grad = True
+            if self.use_main_grad:
+                assert hasattr(
+                    param, "main_grad"
+                ), "Params have different main grad attributes."
+        if self.use_main_grad:
+            assert not offload, "offload not support main_grad for now"
+
         self._default_device = device
         self._pfp16 = (
             len(
                 list(
                     filter(
                         lambda x: x.trainable and x.dtype == Type.fp16.value,
+                        self._local_params,
+                    )
+                )
+            )
+            > 0
+        )
+        self._pbf16 = (
+            len(
+                list(
+                    filter(
+                        lambda x: x.trainable and x.dtype == Type.bf16.value,
                         self._local_params,
                     )
                 )
@@ -172,13 +194,26 @@ class GroupShardedOptimizerStage2(Optimizer):
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
                 and not offload
             ):
-                self._optim._grad_clip = HybridParallelClipGrad(
-                    self._optim._grad_clip, hcg
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = HybridParallelClipGrad(
+                        self._optim._inner_opt._grad_clip, hcg
+                    )
+                else:
+                    self._optim._grad_clip = HybridParallelClipGrad(
+                        self._optim._grad_clip, hcg
+                    )
             else:
-                self._optim._grad_clip = GroupShardedClipGrad(
-                    self._optim._grad_clip, paddle.get_device(), self._group
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                        self._optim._inner_opt._grad_clip,
+                        paddle.get_device(),
+                        self._group,
+                    )
+                else:
+                    self._optim._grad_clip = GroupShardedClipGrad(
+                        self._optim._grad_clip, paddle.get_device(), self._group
+                    )
+
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
@@ -294,7 +329,10 @@ class GroupShardedOptimizerStage2(Optimizer):
                     )
         else:
             for param in trainable_params:
-                if param.dtype == Type.fp16.value:
+                if (
+                    param.dtype == Type.fp16.value
+                    or param.dtype == Type.bf16.value
+                ):
                     master_tensor = paddle.cast(param, Type.fp32.value)
                     master_tensor.name = param.name
                     self._optim._master_weights[param.name] = master_tensor
@@ -421,7 +459,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                     trainable_params = list(
                         filter(lambda x: x.trainable, params)
                     )
-                    if self._pfp16 and dst_rank == self._rank:
+                    if (self._pfp16 or self._pbf16) and dst_rank == self._rank:
                         self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(

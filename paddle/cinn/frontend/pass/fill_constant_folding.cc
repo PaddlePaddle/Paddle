@@ -94,7 +94,7 @@ class FillConstantFoldingPass : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) const override {
+                 const cinn::common::Target& target) const override {
     auto in2instr = GetInputToOpMap(program);
 
     // `fill_constant_map` is used to represent the first fill_constant and its

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <string>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/builtin.h"
@@ -193,7 +194,7 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::vector<int>& new_shape,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
-  std::vector<Expr> A_expr_shape = A->shape;
+  const std::vector<Expr>& A_expr_shape = A->shape;
   int input_total_size = 1;
   int output_total_size = 1;
   for (auto& i : A_expr_shape) {
@@ -207,6 +208,44 @@ ir::Tensor Reshape(const ir::Tensor& A,
   CHECK_EQ(input_total_size, output_total_size)
       << "In op reshape, the input tensor and output tensor's total size "
          "should be equal, please check!";
+  auto res = Compute(
+      new_expr_shape,
+      [=](const std::vector<Expr>& indice) {
+        Expr offset = Expr(0);
+        for (int i = 0; i < indice.size(); i++) {
+          offset = offset * new_expr_shape[i] + indice[i];
+        }
+        std::vector<Expr> indice_a;
+        for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
+          auto temp = common::AutoSimplify(offset % A_expr_shape[i]);
+          indice_a.insert(indice_a.begin(), temp);
+          offset = (offset - temp) / A_expr_shape[i];
+        }
+        return A(indice_a);
+      },
+      name);
+  return res;
+}
+
+ir::Tensor Reshape(const ir::Tensor& A,
+                   const std::vector<ir::Dim>& new_shape,
+                   const std::string& name) {
+  std::vector<Expr> new_expr_shape;
+  const std::vector<Expr>& A_expr_shape = A->shape;
+  ir::Expr input_total_size(1);
+  for (auto& i : A_expr_shape) {
+    // CHECK(i.is_constant()) << "Input tensor's shape should be constant
+    // value.";
+    input_total_size = ir::Mul::Make(input_total_size, i);
+  }
+  ir::Expr output_total_size(1);
+  for (auto& i : new_shape) {
+    output_total_size = ir::Mul::Make(output_total_size, i->dim_expr);
+    new_expr_shape.push_back(i->dim_expr);
+  }
+  // CHECK_EQ(input_total_size, output_total_size)
+  //     << "In op reshape, the input tensor and output tensor's total size "
+  //        "should be equal, please check!";
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
@@ -250,7 +289,7 @@ ir::Tensor Arange(const float start,
         return ir::Cast::Make(
             dtype,
             Expr(start) +
-                Expr(step) * ir::Cast::Make(common::F32(), indices[0]));
+                Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
       },
       output_name);
   return res;

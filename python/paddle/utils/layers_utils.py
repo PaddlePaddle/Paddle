@@ -18,10 +18,18 @@ from collections.abc import Sequence
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
-import paddle
+import numpy as np
 
-from ..fluid.data_feeder import check_dtype, convert_dtype
-from ..fluid.framework import Block, Variable, in_dygraph_mode
+import paddle
+from paddle.pir.core import convert_np_dtype_to_dtype_
+
+from ..base.data_feeder import check_dtype, convert_dtype
+from ..base.framework import (
+    Block,
+    Variable,
+    _current_expected_place,
+    in_dygraph_mode,
+)
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -68,7 +76,7 @@ def convert_to_list(value, n, name, dtype=int):
                 + str(value)
             )
         for single_value in value_list:
-            assert not isinstance(single_value, Variable), (
+            assert not isinstance(single_value, (Variable, paddle.pir.Value)), (
                 "Required numerical type with '%s', but received Tensor."
                 % dtype
             )
@@ -158,8 +166,7 @@ def _yield_value(iterable):
 def _yield_flat_nest(nest):
     for n in _yield_value(nest):
         if is_sequence(n):
-            for ni in _yield_flat_nest(n):
-                yield ni
+            yield from _yield_flat_nest(n)
         else:
             yield n
 
@@ -175,7 +182,7 @@ def flatten(nest):
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
-        :old_api: paddle.fluid.layers.flatten
+        :old_api: paddle.base.layers.flatten
 
     Traverse all entries in the nested structure and put them into an list.
     """
@@ -290,7 +297,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
+            f"First structure: {nest1}\n\nSecond structure: {nest2}."
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -371,12 +378,36 @@ def _is_symmetric_padding(padding, data_dim):
 
 def _contain_var(list_or_tuple):
     """
-    Check whether list or tuple contains variable.
+    Check whether list or tuple contains variable / Value.
     """
     for item in list_or_tuple:
-        if isinstance(item, Variable):
+        if isinstance(item, (Variable, paddle.pir.Value)):
             return True
     return False
+
+
+def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
+    if place is None:
+        place = _current_expected_place()
+
+    int_tensor_list = []
+    for ele in ele_list:
+        if isinstance(ele, paddle.pir.Value):
+            ele.stop_gradient = True
+            if convert_dtype(ele.dtype) != default_dtype:
+                ele = paddle.cast(x=ele, dtype=default_dtype)
+            if ele.shape != []:
+                ele = paddle.reshape(ele, [])
+            int_tensor_list.append(ele)
+        else:
+            temp_out = paddle.full(
+                [],
+                ele,
+                convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
+                place,
+            )
+            int_tensor_list.append(temp_out)
+    return int_tensor_list
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
@@ -407,7 +438,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                temp_out = fill_constant([], 'int32', dim, force_cpu=True)
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
 
@@ -433,13 +464,13 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
     """
-    Converts all elements of a list to Variable.
+    Converts all elements of a list to Variable / Value.
     """
     from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:
-        if isinstance(ele, Variable):
+        if isinstance(ele, (Variable, paddle.pir.Value)):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
@@ -456,7 +487,8 @@ def convert_shape_to_list(shape):
     if isinstance(shape, (list, tuple)):
         shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.astype(int).tolist()
+        if in_dygraph_mode():
+            shape = shape.astype(int).tolist()
     return shape
 
 

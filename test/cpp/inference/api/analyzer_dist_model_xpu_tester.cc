@@ -28,7 +28,6 @@ TEST(test_dist_model_xpu, dist_model_xpu) {
   AnalysisConfig config;
   config.SetModel(FLAGS_infer_model + "/__model__",
                   FLAGS_infer_model + "/__params__");
-  config.SwitchUseFeedFetchOps(false);
   config.EnableXpu();
   config.SetXpuDeviceId(0);
   DistConfig dist_config;

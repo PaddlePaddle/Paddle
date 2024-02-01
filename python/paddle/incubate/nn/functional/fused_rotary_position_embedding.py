@@ -14,7 +14,8 @@
 
 
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fused_rotary_position_embedding(
@@ -86,11 +87,40 @@ def fused_rotary_position_embedding(
               [[ 0.07116699, -0.90966797],
                [-0.03628540, -0.20202637]]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fused_rotary_position_embedding(
             q, k, v, sin, cos, position_ids, use_neox_rotary_style
         )
 
-    raise RuntimeError(
-        "This feature is currently supported only in dynamic mode and with CUDAPlace."
+    helper = LayerHelper('fused_rotary_position_embedding', **locals())
+    out_q = helper.create_variable_for_type_inference(dtype=q.dtype)
+    out_k = (
+        helper.create_variable_for_type_inference(dtype=k.dtype) if k else None
     )
+    out_v = (
+        helper.create_variable_for_type_inference(dtype=v.dtype) if v else None
+    )
+
+    outputs = {'out_q': out_q}
+    if out_k:
+        outputs.update({'out_k': out_k})
+    if out_v:
+        outputs.update({'out_v': out_v})
+
+    helper.append_op(
+        type='fused_rotary_position_embedding',
+        inputs={
+            'q': q,
+            'k': k,
+            'v': v,
+            'sin': sin,
+            'cos': cos,
+            'position_ids': position_ids,
+        },
+        outputs=outputs,
+        attrs={
+            'use_neox_rotary_style': use_neox_rotary_style,
+        },
+    )
+
+    return out_q, out_k, out_v

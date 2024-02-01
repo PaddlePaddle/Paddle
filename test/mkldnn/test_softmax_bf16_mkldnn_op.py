@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -26,7 +26,7 @@ from test_softmax_op import (
 )
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 def stable_softmax(x):

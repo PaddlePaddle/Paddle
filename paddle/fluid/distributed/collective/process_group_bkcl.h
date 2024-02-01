@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 
 #if defined(PADDLE_WITH_XPU)
@@ -145,38 +146,6 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
 
   BKCLContext_t BKCLComm(const Place& place) const;
 
-  // below are old apis
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const AllreduceOptions& = AllreduceOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const AllreduceOptions& options,
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const BroadcastOptions& = BroadcastOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const BroadcastOptions&,
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      bool sync_op) override;
-
  private:
   std::shared_ptr<ProcessGroupBKCL::BKCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -188,16 +157,24 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
 
   void CreateBKCLEnvCache(const Place& place, const std::string& place_key);
 
-  template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> Collective(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      Fn fn,
+      std::function<void(phi::distributed::BKCLCommContext*, XPUStream)> fn,
+      const phi::DenseTensor& tensor,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Point2Point(
+      std::function<void(phi::distributed::BKCLCommContext*, XPUStream, int)>
+          fn,
+      int peer,
+      const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
 
   void SyncCalcStream(const Place& place);
+  phi::distributed::BKCLCommContext* GetCommContext();
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;

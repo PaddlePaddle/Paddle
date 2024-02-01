@@ -44,8 +44,8 @@ class BufferRange;
 struct LoweredFunc;
 class Module;
 
-using common::Object;
-using common::Shared;
+using cinn::common::Object;
+using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
 using attr_t = absl::variant<int, float, bool, std::string>;
@@ -381,6 +381,7 @@ struct _Var_ : public ExprNode<_Var_> {
   std::string name;
 
   bool is_reduce_axis{false};
+  bool is_symbolic_constant{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -399,7 +400,8 @@ struct _Var_ : public ExprNode<_Var_> {
   static Expr Make(Expr lower_bound,
                    Expr upper_bound,
                    const std::string& name,
-                   bool is_reduce);
+                   bool is_reduce,
+                   bool is_symbolic_constant = false);
 
   void Verify() const override;
 
@@ -687,6 +689,21 @@ struct BindInfo {
   inline bool valid() const {
     return offset >= 0 && offset < 3 &&
            (for_type == ForType::GPUThread || for_type == ForType::GPUBlock);
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const BindInfo& bind_info) {
+    CHECK(bind_info.valid()) << "Make invalid BindInfo to stream";
+    char axis_name = 'x' + bind_info.offset;
+    std::string prefix =
+        bind_info.for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
+    os << prefix + axis_name;
+    return os;
+  }
+
+  operator std::string() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
   }
 };
 
@@ -1002,6 +1019,8 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> buffers;
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
+  std::vector<Expr> predicates;
+  Expr infer_shape_func;
 
   static ir::Module Make(const std::string& name, Target target);
 
@@ -1011,7 +1030,7 @@ struct _Module_ : public ExprNode<_Module_> {
 };
 
 /**
- * \brief PrimitiveNode holds the contept of Primitive in CINN.
+ * \brief PrimitiveNode holds the concept of Primitive in CINN.
  * A Primitive is a basic Call to some Expr function, it is introduced to create
  * several level of coarsed-grained IR nodes for better IR optimization and
  * hardware adaption.
@@ -1060,3 +1079,12 @@ using ir::Var;
 // @}
 
 }  // namespace cinn
+
+namespace std {
+template <>
+struct hash<cinn::ir::Var> {
+  std::size_t operator()(const cinn::ir::Var& var) const {
+    return std::hash<std::string>()(var->name);
+  }
+};
+}  // namespace std

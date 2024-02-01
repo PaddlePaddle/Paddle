@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 
@@ -40,7 +40,7 @@ class TestDeQuantizeOp(OpTest):
     def prepare_input_output_bf16(self):
         output = np.random.random(self.input_size).astype(np.float32)
         input = convert_float_to_uint16(output)
-        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(input)}
         self.outputs = {'Output': output}
 
     def prepare_input_int8(self):
@@ -55,7 +55,7 @@ class TestDeQuantizeOp(OpTest):
                 self.data_type
             )
 
-        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
+        self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {'Scale': self.scale, 'Shift': self.shift}
 
     def prepare_output_int8(self):
@@ -66,7 +66,7 @@ class TestDeQuantizeOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def check_raise_error(self, msg):
         try:

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/prune_gate_by_capacity_kernel.h"
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

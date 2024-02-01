@@ -156,7 +156,7 @@ void PSendArrayKernel(const Context& dev_ctx,
     ncclDataType_t dtype = ToNCCLDataType(x.type());
     comm_ctx->Send(x, x.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " send "
-            << phi::product(x.dims()) << " to " << peer;
+            << common::product(x.dims()) << " to " << peer;
   }
 #else
   PADDLE_THROW(
@@ -178,6 +178,7 @@ PD_REGISTER_KERNEL(p_send,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -206,6 +207,7 @@ PD_REGISTER_KERNEL(p_send,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 

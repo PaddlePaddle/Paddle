@@ -60,7 +60,7 @@ TEST(TransposeFoldingInput, TransposeWithMultiMamtul) {
   auto out = builder.Add(dot1, dot2);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),

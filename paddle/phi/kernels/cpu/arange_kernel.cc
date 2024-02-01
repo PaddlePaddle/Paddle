@@ -21,17 +21,14 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
-  T start_value = start.data<T>()[0];
-  T end_value = end.data<T>()[0];
-  T step_value = step.data<T>()[0];
+void ArangeFunc(const Context& dev_ctx,
+                const T& start_value,
+                const T& end_value,
+                const T& step_value,
+                DenseTensor* out) {
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
   T value = start_value;
   for (int64_t i = 0; i < size; ++i) {
@@ -40,7 +37,39 @@ void ArangeKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
+  T start_value = start.data<T>()[0];
+  T end_value = end.data<T>()[0];
+  T step_value = step.data<T>()[0];
+  ArangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+}
+
+template <typename T, typename Context>
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out) {
+  T start_value = start.to<T>();
+  T end_value = end.to<T>();
+  T step_value = step.to<T>();
+  ArangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+}
+
 }  // namespace phi
 
+PD_REGISTER_KERNEL(arange_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArangeTensorKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(
     arange, CPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {}

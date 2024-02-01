@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.base import core
+from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.common_ops_import import Variable
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 __all__ = []
@@ -51,31 +51,46 @@ class RNGStatesTracker:
         self.seeds_.add(seed)
         if name in self.states_:
             raise ValueError(f'state {name} already exists')
-        orig_rng_state = paddle.get_rng_state()
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        # register a new state and set that state with the seed, store the indices into states_
+        self.states_[name] = paddle.incubate.register_rng_state_as_index()
         paddle.seed(seed)
-        self.states_[name] = paddle.get_rng_state()
-        paddle.set_rng_state(orig_rng_state)
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
     def get_states_tracker(self):
         states = {}
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
         for name in self.states_:
-            states[name] = self.states_[name]
+            # switch index to name
+            paddle.incubate.set_rng_state(self.states_[name], use_index=True)
+            # export the saved state
+            states[name] = paddle.get_cuda_rng_state()
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
         return states
 
     def set_states_tracker(self, states):
-        self.states_ = states
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        for name in states:
+            if name not in self.states_:
+                raise ValueError(f'state {name} does not exists')
+            # switch index to name
+            paddle.incubate.set_rng_state(self.states_[name], use_index=True)
+            # set the state to saved state
+            paddle.set_cuda_rng_state(states[name])
+
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
             raise ValueError(f'state {name} does not exist')
-        orig_rng_state = paddle.get_rng_state()
-        paddle.set_rng_state(self.states_[name])
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        paddle.incubate.set_rng_state(self.states_[name], use_index=True)
         try:
             yield
         finally:
-            self.states_[name] = paddle.get_rng_state()
-            paddle.set_rng_state(orig_rng_state)
+            self.states_[name] = paddle.incubate.get_rng_state(use_index=True)
+            paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
 
 RNG_STATE_TRACKER = RNGStatesTracker()
@@ -237,9 +252,7 @@ def dropout(
 
         if isinstance(p, Variable) and not p.shape != [1]:
             raise TypeError(
-                "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                    p.shape
-                )
+                f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
             )
 
         helper = LayerHelper('dropout', **locals())

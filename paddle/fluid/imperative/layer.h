@@ -37,6 +37,7 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 class Variable;
@@ -50,7 +51,7 @@ class GradOpNode;
 class OpBase;
 class VariableWrapper;
 
-class ThreadSafeNameSet {
+class TEST_API ThreadSafeNameSet {
  public:
   void Insert(const std::string& name);
 
@@ -285,7 +286,7 @@ class VarBase {
 
   mutable size_t copied_counter_ = 0;
 
-  static ThreadSafeNameSet name_set_;
+  TEST_API static ThreadSafeNameSet name_set_;
 };
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(

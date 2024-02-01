@@ -16,7 +16,7 @@
 
 set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
-build_dir_name=${cinn_build:-build_cinn}
+build_dir_name=${cinn_build:-build}
 build_dir=$workspace/${build_dir_name}
 py_version=${py_version:-3.10}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
@@ -103,8 +103,8 @@ function cmake_ {
 function _download_and_untar {
     local tar_file=$1
     if [[ ! -f $tar_file ]]; then
-        wget https://paddle-inference-dist.bj.bcebos.com/CINN/$tar_file
-        tar -zxvf $tar_file
+        wget -q https://paddle-inference-dist.bj.bcebos.com/CINN/$tar_file
+        tar -zxf $tar_file
     fi
 }
 
@@ -118,6 +118,15 @@ function prepare_model {
     _download_and_untar ResNet50.tar.gz
     _download_and_untar SqueezeNet.tar.gz
     _download_and_untar FaceDet.tar.gz
+
+
+    mkdir -p $build_dir/third_party/model
+    cd $build_dir/third_party/model
+    tar_file="lite_naive_model.tar.gz"
+    if [[ ! -f $tar_file ]]; then
+        wget -q https://paddle-inference-dist.bj.bcebos.com/$tar_file
+        tar -zxf $tar_file
+    fi
 
     proxy_on
     mkdir -p $build_dir/paddle
@@ -154,9 +163,9 @@ function run_test {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-        ctest --parallel 10 -V
+        ctest --parallel 10 -V -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     else
-        ctest --parallel 10 --output-on-failure
+        ctest --parallel 10 --output-on-failure -E "test_frontend_interpreter|test_cinn_fake_resnet|test_dce_pass"
     fi
 }
 

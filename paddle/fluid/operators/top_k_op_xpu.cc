@@ -63,7 +63,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row =
-        phi::product(phi::slice_ddim(inputdims, 0, inputdims.size() - 1));
+        common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
 
     // int sorted_topk(Context* ctx, const T* x, T* y, int* index, int m, int n,

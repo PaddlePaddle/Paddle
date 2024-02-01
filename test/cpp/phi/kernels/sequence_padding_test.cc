@@ -31,8 +31,8 @@ void TestSequencePadding(const DeviceContext &context,
   phi::DenseTensor pad_value;
 
   const size_t level = lod.size() - 1;
-  auto seq_dims = phi::make_ddim({static_cast<int64_t>(lod[level].back()),
-                                  static_cast<int64_t>(sequence_width)});
+  auto seq_dims = common::make_ddim({static_cast<int64_t>(lod[level].back()),
+                                     static_cast<int64_t>(sequence_width)});
 
   cpu_seq.set_lod(lod);
   auto *dev_ctx = static_cast<phi::CPUContext *>(
@@ -55,9 +55,10 @@ void TestSequencePadding(const DeviceContext &context,
   const size_t max_sequence_length =
       phi::funcs::MaximumSequenceLength(lod[level]);
   const size_t num_sequences = lod[level].size() - 1;
-  auto padding_dims = phi::make_ddim({static_cast<int64_t>(max_sequence_length),
-                                      static_cast<int64_t>(num_sequences),
-                                      static_cast<int64_t>(sequence_width)});
+  auto padding_dims =
+      common::make_ddim({static_cast<int64_t>(max_sequence_length),
+                         static_cast<int64_t>(num_sequences),
+                         static_cast<int64_t>(sequence_width)});
 
   padding.Resize(padding_dims);
   context.template Alloc<T>(&padding);

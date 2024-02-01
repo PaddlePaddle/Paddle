@@ -187,7 +187,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   } else if (platform::is_gpu_place(place)) {
     // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
-    // for more detial.
+    // for more detail.
     new_op_func_node.type_ =
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
   } else if (platform::is_xpu_place(place)) {
@@ -508,7 +508,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
-          const phi::DenseTensor* tensor_in;
+          const phi::DenseTensor* tensor_in = nullptr;
           if (var->IsType<phi::DenseTensor>() ||
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
@@ -536,20 +536,19 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
                   (var->IsType<phi::DenseTensor>() == true) &&
-                  (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
-                  (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-                   DataLayout::kNHWC)) {
+                  (expected_kernel_key.data_layout_ != DataLayout::ONEDNN)) {
                 VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                            "phi::DenseTensor , "
                            "but kNHWC layout"
                         << parameter_name << " in Operator " << op_base->Type();
-                auto op = TransferLayout(var_name,
-                                         &new_var_name,
-                                         tensor_in->layout(),
-                                         DataLayout::kNHWC,
-                                         var_scope,
-                                         local_scope,
-                                         op_base->Type() == "fetch_v2");
+                auto op = TransferLayout(
+                    var_name,
+                    &new_var_name,
+                    tensor_in->layout(),
+                    phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+                    var_scope,
+                    local_scope,
+                    op_base->Type() == "fetch_v2");
                 if (op) {
                   data_transfer_helper.RunAndConstructOpFuncNode(
                       op,

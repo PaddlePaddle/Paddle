@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
@@ -49,7 +50,7 @@ ir::LoweredFunc Lower(const std::string &name,
                       const std::vector<Var> &scalar_args = {},
                       const std::vector<Tensor> &temp_tensors = {},
                       ir::Module::Builder *b = nullptr,
-                      const Target &target = common::DefaultHostTarget(),
+                      const Target &target = cinn::common::DefaultHostTarget(),
                       bool support_ir_schedule = false);
 
 /**
@@ -70,8 +71,25 @@ std::vector<ir::LoweredFunc> LowerVec(
     const std::vector<Var> &scalar_args = {},
     const std::vector<Tensor> &temp_tensors = {},
     ir::Module::Builder *b = nullptr,
-    const Target &target = common::DefaultHostTarget(),
+    const Target &target = cinn::common::DefaultHostTarget(),
     bool support_ir_schedule = false);
+
+ir::LoweredFunc LowerToAst(
+    const std::string &name,
+    const std::vector<Tensor> &tensor_args,
+    ast_gen_ius::TensorGroup *tensor_group,
+    const Target &target = cinn::common::DefaultHostTarget());
+
+std::vector<ir::LoweredFunc> LowerToAstVec(
+    const std::string &name,
+    const std::vector<Tensor> &tensor_args,
+    ast_gen_ius::TensorGroup *tensor_group,
+    const Target &target = cinn::common::DefaultHostTarget());
+
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<Tensor> &tensor_args,
+    const ast_gen_ius::TensorGroup &tensor_group,
+    Expr body);
 
 std::vector<ir::Argument> GetArgs(
     const Expr &func_body, const std::vector<std::string> &input_output_nodes);
@@ -84,6 +102,9 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor> &tensor_args,
 //! Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument> &args,
                                        Expr body);
+
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<cinn::ir::Tensor> &tensor_args, Expr body);
 
 }  // namespace lang
 }  // namespace cinn

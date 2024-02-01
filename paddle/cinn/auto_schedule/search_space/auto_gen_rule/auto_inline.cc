@@ -26,16 +26,17 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
 
 AutoInline::AutoInline(
-    const common::Target& target,
+    const cinn::common::Target& target,
     const std::unordered_set<std::string>& no_inline_output_names)
     : AutoGenRule(target), no_inline_output_names_(no_inline_output_names) {}
 
@@ -49,7 +50,12 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   ir::Expr root = ir_sch->GetRootBlock(sche_block_realize_expr);
 
   // Check the schedule block to be inlined is not a reduce tensor.
-  std::set<ir::Expr> find_store = ir::CollectIRNodesWithoutTensor(
+  for (const ir::Var& iter_var : sche_block->iter_vars) {
+    if (iter_var->is_reduce_axis) {
+      return false;
+    }
+  }
+  std::set<ir::Expr> find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); });
   if (find_store.size() != 1UL) {
     return false;
@@ -69,6 +75,29 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
     return false;
   }
 
+  // the xxx_reduce_init block cannot be inlined.
+  if (ir::IsReduceInitTensorName(tensor->name)) {
+    return false;
+  }
+
+  // Skip external calls
+  std::vector<ir::Expr> consumers =
+      ir::GetConsumers(sche_block_realize_expr, root);
+  for (const ir::Expr& consumer : consumers) {
+    std::set<ir::Expr> find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+        consumer.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>()
+            ->body,
+        [&](const ir::Expr* x) {
+          return x->As<ir::Load>() &&
+                 x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
+                     tensor->name;
+        });
+    if (find_load.empty()) {
+      return false;
+    }
+  }
+
   // write_buffers.size() = 1 and read_buffers is empty, means const
   // we can inline to consumer
   if (sche_block->read_buffers.empty()) {
@@ -76,17 +105,19 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   }
 
   // Check this schedule block is the only writer of the tensor.
-  find_store = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->As<ir::Store>() &&
-           (x->As<ir::Store>()->tensor).as_tensor_ref()->name == tensor->name;
-  });
+  find_store =
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+        return x->As<ir::Store>() &&
+               (x->As<ir::Store>()->tensor).as_tensor_ref()->name ==
+                   tensor->name;
+      });
   if (find_store.size() != 1UL) {
     return false;
   }
   // Check there is no overlap between the buffers the schedule block reads and
   // writes.
-  std::set<ir::Expr> find_load =
-      ir::CollectIRNodesWithoutTensor(compute_body, [&](const Expr* x) {
+  std::set<ir::Expr> find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+      compute_body, [&](const Expr* x) {
         return x->As<ir::Load>() && x->As<ir::Load>()->tensor == tensor_expr;
       });
   if (!find_load.empty()) {

@@ -80,8 +80,8 @@ struct BatchNormHelper {
     auto element_count_1d =
         builder->FillConstant(sum->shape,
                               element_count,
-                              common::UniqName("element_count"),
-                              common::Type2Str(sum->type));
+                              cinn::common::UniqName("element_count"),
+                              cinn::common::Type2Str(sum->type));
     auto mean = builder->Divide(sum, element_count_1d);
     return mean;
   }
@@ -93,8 +93,8 @@ struct BatchNormHelper {
     auto element_count_1d =
         builder->FillConstant(x_square_sum->shape,
                               element_count,
-                              common::UniqName("element_count"),
-                              common::Type2Str(x_square_sum->type));
+                              cinn::common::UniqName("element_count"),
+                              cinn::common::Type2Str(x_square_sum->type));
     auto x_square_mean = builder->Divide(x_square_sum, element_count_1d);
     auto variance = builder->Subtract(
         x_square_mean, builder->Multiply(mean, builder->Identity(mean)));
@@ -103,10 +103,11 @@ struct BatchNormHelper {
 
   // std_variance_inv = rsqrt(variance + epsilon)
   Variable StdVarianceInv1d(Variable variance, float epsilon) {
-    auto epsilon_1d = builder->FillConstant(variance->shape,
-                                            epsilon,
-                                            common::UniqName("epsilon"),
-                                            common::Type2Str(variance->type));
+    auto epsilon_1d =
+        builder->FillConstant(variance->shape,
+                              epsilon,
+                              cinn::common::UniqName("epsilon"),
+                              cinn::common::Type2Str(variance->type));
     auto std_variance_inv = builder->Rsqrt(builder->Add(variance, epsilon_1d));
     return std_variance_inv;
   }
@@ -117,8 +118,8 @@ struct BatchNormHelper {
     auto epsilon_4d =
         builder->FillConstant(variance_4d->shape,
                               epsilon,
-                              common::UniqName("epsilon"),
-                              common::Type2Str(variance_4d->type));
+                              cinn::common::UniqName("epsilon"),
+                              cinn::common::Type2Str(variance_4d->type));
     auto std_variance_inv_4d =
         builder->Rsqrt(builder->Add(variance_4d, epsilon_4d));
     return std_variance_inv_4d;
@@ -129,14 +130,16 @@ struct BatchNormHelper {
   Variable UpdateMeanVariance(Variable moving_value,
                               Variable saved_value,
                               float momentum) {
-    auto factor_0 = builder->FillConstant(moving_value->shape,
-                                          momentum,
-                                          common::UniqName("factor_0"),
-                                          common::Type2Str(moving_value->type));
-    auto factor_1 = builder->FillConstant(saved_value->shape,
-                                          1.0f - momentum,
-                                          common::UniqName("factor_1"),
-                                          common::Type2Str(saved_value->type));
+    auto factor_0 =
+        builder->FillConstant(moving_value->shape,
+                              momentum,
+                              cinn::common::UniqName("factor_0"),
+                              cinn::common::Type2Str(moving_value->type));
+    auto factor_1 =
+        builder->FillConstant(saved_value->shape,
+                              1.0f - momentum,
+                              cinn::common::UniqName("factor_1"),
+                              cinn::common::Type2Str(saved_value->type));
     auto new_moving_value =
         builder->Add(builder->Multiply(moving_value, factor_0),
                      builder->Multiply(saved_value, factor_1));
@@ -253,11 +256,11 @@ void batch_norm_grad(const Instruction& instr,
   // => x_grad = tmp0 * (tmp1 - tmp2 - tmp3)
   auto scaled_std_variance_inv =
       builder->Multiply(scale, helper.StdVarianceInv1d(save_variance, epsilon));
-  auto element_count_1d =
-      builder->FillConstant(scaled_std_variance_inv->shape,
-                            helper.element_count,
-                            common::UniqName("element_count_1d"),
-                            common::Type2Str(scaled_std_variance_inv->type));
+  auto element_count_1d = builder->FillConstant(
+      scaled_std_variance_inv->shape,
+      helper.element_count,
+      cinn::common::UniqName("element_count_1d"),
+      cinn::common::Type2Str(scaled_std_variance_inv->type));
   auto tmp0 = builder->BroadcastTo(
       builder->Divide(scaled_std_variance_inv, element_count_1d),
       x->shape,
@@ -266,8 +269,8 @@ void batch_norm_grad(const Instruction& instr,
   auto element_count_4d =
       builder->FillConstant(y_grad->shape,
                             helper.element_count,
-                            common::UniqName("element_count_4d"),
-                            common::Type2Str(y_grad->type));
+                            cinn::common::UniqName("element_count_4d"),
+                            cinn::common::Type2Str(y_grad->type));
   auto tmp1 = builder->Multiply(y_grad, element_count_4d);
 
   auto tmp2 = builder->BroadcastTo(bias_grad, x->shape, {helper.channel_dim});
@@ -283,8 +286,8 @@ void batch_norm_grad(const Instruction& instr,
   auto epsilon_1d =
       builder->FillConstant(save_variance->shape,
                             epsilon,
-                            common::UniqName("epsilon"),
-                            common::Type2Str(save_variance->type));
+                            cinn::common::UniqName("epsilon"),
+                            cinn::common::Type2Str(save_variance->type));
   auto variance_add_eps = builder->Add(save_variance, epsilon_1d);
   auto variance_add_eps_4d =
       builder->BroadcastTo(variance_add_eps, x->shape, {helper.channel_dim});

@@ -18,13 +18,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 sys.path.append("..")
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 # 2D normal case
@@ -50,10 +50,10 @@ class TestSolveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 # x broadcast + 3D batch case
@@ -71,10 +71,12 @@ class TestSolveOpBatched_case0(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-1)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=1e-1, check_pir=True
+        )
 
 
 # 3D batch + y vector case
@@ -92,10 +94,12 @@ class TestSolveOpBatched_case1(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_pir=True
+        )
 
 
 # 3D batch + y broadcast case
@@ -113,10 +117,12 @@ class TestSolveOpBatched_case2(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_pir=True
+        )
 
 
 # x broadcast + 3D batch case
@@ -134,10 +140,12 @@ class TestSolveOpBatched_case3(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.02, check_pir=True
+        )
 
 
 # 3D normal batch case
@@ -155,10 +163,10 @@ class TestSolveOpBatched_case4(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 # 4D normal batch case
@@ -176,10 +184,10 @@ class TestSolveOpBatched_case5(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 # 4D batch + y broadcast case
@@ -197,10 +205,10 @@ class TestSolveOpBatched_case6(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 # 5D normal batch case
@@ -218,10 +226,12 @@ class TestSolveOpBatched_case7(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_pir=True
+        )
 
 
 # 5D batch + y broadcast case
@@ -239,21 +249,23 @@ class TestSolveOpBatched_case8(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.04, check_pir=True
+        )
 
 
 class TestSolveOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            y1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.linalg.solve, x1, y1)
 
@@ -295,7 +307,7 @@ class TestSolveOpAPI_1(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[3, 3], dtype=self.dtype
             )
@@ -309,9 +321,9 @@ class TestSolveOpAPI_1(unittest.TestCase):
 
             np_result = np.linalg.solve(np_input_x, np_input_y)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
@@ -356,7 +368,7 @@ class TestSolveOpAPI_2(unittest.TestCase):
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[10, 10], dtype=self.dtype
             )
@@ -370,9 +382,9 @@ class TestSolveOpAPI_2(unittest.TestCase):
 
             np_result = np.linalg.solve(np_input_x, np_input_y)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
@@ -416,7 +428,7 @@ class TestSolveOpAPI_3(unittest.TestCase):
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[10, 10], dtype=self.dtype
             )
@@ -430,9 +442,9 @@ class TestSolveOpAPI_3(unittest.TestCase):
 
             np_result = np.linalg.solve(np_input_x, np_input_y)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
@@ -476,7 +488,7 @@ class TestSolveOpAPI_4(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[2, 3, 3], dtype=self.dtype
             )
@@ -490,9 +502,9 @@ class TestSolveOpAPI_4(unittest.TestCase):
 
             np_result = np.linalg.solve(np_input_x, np_input_y)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
@@ -529,13 +541,13 @@ class TestSolveOpAPI_4(unittest.TestCase):
 class TestSolveOpSingularAPI(unittest.TestCase):
     # Singular matrix is ​​not invertible
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         self.dtype = "float64"
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.static.data(name="x", shape=[4, 4], dtype=self.dtype)
             y = paddle.static.data(name="y", shape=[4, 4], dtype=self.dtype)
 
@@ -544,10 +556,10 @@ class TestSolveOpSingularAPI(unittest.TestCase):
             input_x_np = np.ones([4, 4]).astype(self.dtype)
             input_y_np = np.ones([4, 4]).astype(self.dtype)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"x": input_x_np, "y": input_y_np},
                     fetch_list=[result],
                 )
@@ -563,11 +575,11 @@ class TestSolveOpSingularAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x_np = np.ones([4, 4]).astype(self.dtype)
                 input_y_np = np.ones([4, 4]).astype(self.dtype)
-                input_x = fluid.dygraph.to_variable(input_x_np)
-                input_y = fluid.dygraph.to_variable(input_y_np)
+                input_x = base.dygraph.to_variable(input_x_np)
+                input_y = base.dygraph.to_variable(input_y_np)
                 try:
                     result = paddle.linalg.solve(input_x, input_y)
                 except RuntimeError as ex:

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 
 namespace phi {
 namespace funcs {
@@ -33,9 +33,9 @@ inline const DDim InferDenseDims(const DDim& x_dims,
     memcpy(&dense_dim_vec[1],
            x_dims.Get() + sparse_dim,
            dense_dim * sizeof(x_dims[0]));
-    values_dims = phi::make_ddim(dense_dim_vec);
+    values_dims = common::make_ddim(dense_dim_vec);
   } else {
-    values_dims = phi::make_ddim({non_zero_num});
+    values_dims = common::make_ddim({non_zero_num});
   }
   return values_dims;
 }

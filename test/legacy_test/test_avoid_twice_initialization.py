@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestAvoidTwiceInitialization(unittest.TestCase):
     def test_avoid_twice_initialization(self):
-        cur_program = fluid.Program()
+        cur_program = base.Program()
         cur_block = cur_program.current_block()
         var = cur_block.create_parameter(
             initializer=paddle.nn.initializer.Constant(value=0.01),

@@ -138,7 +138,7 @@ CONDITION_FUNC(honrizontal_elementwise_fuse_reduce) {
 }
 
 CONDITION_FUNC(elementwise_fuse_reduce) {
-  if (helper->target_ == common::DefaultHostTarget()) {
+  if (helper->target_ == cinn::common::DefaultHostTarget()) {
     return true;
   }
   // if same shape with horizontal relation
@@ -427,7 +427,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
       reduce_size *= reducer_input_shape[idx - 1];
     }
     // Check if the reduce size exceeds the hardware limit
-    if (helper->target_ == common::DefaultNVGPUTarget() &&
+    if (helper->target_ == cinn::common::DefaultNVGPUTarget() &&
         reduce_size > helper->target_.max_num_threads()) {
       return false;
     }

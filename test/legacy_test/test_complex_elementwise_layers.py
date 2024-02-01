@@ -18,8 +18,8 @@ import numpy as np
 from numpy.random import random as rand
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 
 paddle_apis = {
     "add": paddle.add,
@@ -33,7 +33,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
     def paddle_calc(self, x, y, op, place):

@@ -26,7 +26,7 @@ sys.path.append("../legacy_test")
 import nets
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -130,7 +130,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
-    test_program = fluid.default_main_program().clone(for_test=True)
+    test_program = base.default_main_program().clone(for_test=True)
 
     optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_cost)
@@ -149,12 +149,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(place=place, feed_list=[images, label])
 
     def train_loop(main_program):
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         loss = 0.0
         for pass_id in range(PASS_NUM):
             for batch_id, data in enumerate(train_reader()):
@@ -194,7 +194,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         return
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -223,11 +223,11 @@ def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
         # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
@@ -266,7 +266,7 @@ def infer(use_cuda, save_dirname=None):
 
 
 def main(net_type, use_cuda, is_local=True):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
@@ -299,11 +299,11 @@ class TestImageClassification(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 

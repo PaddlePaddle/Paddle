@@ -13,10 +13,19 @@
 # limitations under the License.
 
 
+import logging
+import os
 from abc import ABC, abstractmethod
 
-from .prune import _PRUNE_FUNC
-from .utils import gbs_search_all, search_all
+from .prune import _PRUNE_HISTORY_FUNC
+from .utils import (
+    gbs_search_all,
+    load_configs_from_csv,
+    search_all,
+    search_by_dp_estimation,
+)
+
+logger = logging.getLogger('auto_tuner')
 
 
 class SearchAlgo(ABC):
@@ -28,7 +37,7 @@ class SearchAlgo(ABC):
         pass
 
     def prune(self, tuner_cfg, cur_cfg, history_cfgs):
-        for func in _PRUNE_FUNC:
+        for func in _PRUNE_HISTORY_FUNC:
             result = func(tuner_cfg, cur_cfg, history_cfgs)
             if result:
                 return True
@@ -40,6 +49,33 @@ class GridSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.all_tasks = search_all(tuner_cfg)
+
+    def search_once(self, history_cfgs):
+        new_cfg = None
+        stop = False
+        while not stop:
+            if self.idx < len(self.all_tasks):
+                new_cfg = self.all_tasks[self.idx]
+                self.idx += 1
+                stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
+            else:
+                return None
+        return new_cfg
+
+
+class DpEstimationSearch(SearchAlgo):
+    def __init__(self, tuner_cfg):
+        super().__init__(tuner_cfg)
+        self.idx = 0
+        if tuner_cfg["candidates"]["dp_degree"] != [1]:
+            logger.warning(
+                "dp_degree should be [1] in dp estimation search mode. Modify it to [1] automatically."
+            )
+            tuner_cfg["candidates"]["dp_degree"] = [1]
+        self.all_tasks = search_by_dp_estimation(tuner_cfg)
+        assert (
+            len(self.all_tasks) > 0
+        ), "Unable to perform single dp estimation search."
 
     def search_once(self, history_cfgs):
         new_cfg = None
@@ -72,4 +108,20 @@ class GBSSearch(SearchAlgo):
                 stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
             else:
                 return None
+        return new_cfg
+
+
+class CustomizeSearch(SearchAlgo):
+    def __init__(self, tuner_cfg):
+        super().__init__(tuner_cfg)
+        self.idx = 0
+        self.configs_csv = tuner_cfg.get("configs_csv", None)
+        assert os.path.exists(
+            self.configs_csv
+        ), "configs_csv file is neccessary in CustomizeSearch mode."
+        self.all_tasks = load_configs_from_csv(self.configs_csv)
+
+    def search_once(self, history_cfgs):
+        new_cfg = self.all_tasks[self.idx]
+        self.idx += 1
         return new_cfg

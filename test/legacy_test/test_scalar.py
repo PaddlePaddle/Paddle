@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import op
 
-from paddle.fluid import framework
+from paddle.base import framework
 
 
 class TestWarpAsScalar(unittest.TestCase):

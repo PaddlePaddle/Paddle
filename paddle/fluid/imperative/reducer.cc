@@ -451,7 +451,7 @@ void Reducer::InitializeGroups(
           .inside_group_index = inside_group_index++,
       };
     }
-    group.variable_indices_ = std::move(variable_indices_);
+    group.variable_indices_ = variable_indices_;
     groups_.emplace_back(std::move(group));
     // Debug Message For Reducer
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();
@@ -841,7 +841,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     UNUSED const int run_order = next_group_ % nrings_;
 
     auto *tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim({group.all_length_}))
+    tensor->Resize(common::make_ddim({group.all_length_}))
         .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
 
     // For CUDA or XPU, compute_stream --> comm_stream.

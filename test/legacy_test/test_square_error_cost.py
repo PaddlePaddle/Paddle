@@ -17,40 +17,50 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.executor import Executor
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSquareErrorCost(unittest.TestCase):
+    @test_with_pir_api
     def test_square_error_cost(self):
-        input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
-        label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
+        paddle.enable_static()
+        shape = [2, 3]
+        input_val = np.random.uniform(0.1, 0.5, shape).astype("float32")
+        label_val = np.random.uniform(0.1, 0.5, shape).astype("float32")
 
         sub = input_val - label_val
         np_result = sub * sub
 
-        input_var = paddle.tensor.create_tensor(dtype="float32", name="input")
-        label_var = paddle.tensor.create_tensor(dtype="float32", name="label")
-        output = paddle.nn.functional.square_error_cost(
-            input=input_var, label=label_var
-        )
-
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = Executor(place)
-            (result,) = exe.run(
-                fluid.default_main_program(),
-                feed={"input": input_val, "label": label_val},
-                fetch_list=[output],
-            )
+            with paddle.static.program_guard(paddle.static.Program()):
+                input_var = paddle.static.data(
+                    name="input", shape=shape, dtype="float32"
+                )
+                label_var = paddle.static.data(
+                    name="label", shape=shape, dtype="float32"
+                )
+                output = paddle.nn.functional.square_error_cost(
+                    input=input_var, label=label_var
+                )
 
-            np.testing.assert_allclose(np_result, result, rtol=1e-05)
+                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                exe = Executor(place)
+                (result,) = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": input_val, "label": label_val},
+                    fetch_list=[output],
+                )
+
+                np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]

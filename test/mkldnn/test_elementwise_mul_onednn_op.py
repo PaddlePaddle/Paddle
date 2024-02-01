@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import skip_check_grad_ci
+from op_test import skip_check_grad_ci
 from test_elementwise_mul_op import ElementwiseMulOp
 
 from paddle import enable_static

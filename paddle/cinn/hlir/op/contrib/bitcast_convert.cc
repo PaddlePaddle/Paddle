@@ -39,8 +39,8 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::shape_t;
 
 ir::Tensor BitcastConvert(const ir::Tensor &input,
@@ -98,8 +98,8 @@ std::vector<shape_t> InferShapeForBitcastConvert(
   auto input_data_type_name =
       absl::get<std::string>(attrs.at("input_data_type"));
   auto output_data_type_name = absl::get<std::string>(attrs.at("dtype"));
-  auto input_data_type = common::Str2Type(input_data_type_name);
-  auto output_data_type = common::Str2Type(output_data_type_name);
+  auto input_data_type = cinn::common::Str2Type(input_data_type_name);
+  auto output_data_type = cinn::common::Str2Type(output_data_type_name);
 
   auto output_shape =
       std::vector<shape_t>(inputs_shape.begin(), inputs_shape.end());
@@ -124,7 +124,7 @@ std::vector<shape_t> InferShapeForBitcastConvert(
 std::vector<Type> InferDtypeForBitcastConvert(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK(attrs.count("dtype"));
-  return {common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
+  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
 }
 
 }  // namespace op

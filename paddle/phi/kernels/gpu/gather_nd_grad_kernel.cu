@@ -64,5 +64,11 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    double,
                    int64_t,
                    int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   bool,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -54,7 +54,7 @@ class TuneTask {
   // Lower handler, Not owned
   hlir::framework::OpLowerer<GroupPtr>* op_lowerer;
   // target of this task
-  common::Target target;
+  cinn::common::Target target;
   // stores the initial (un-optimized) LoweredFuncs
   std::vector<ir::LoweredFunc> lowered_funcs;
   // names of the output arguments of lowered_funcs_

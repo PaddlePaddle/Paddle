@@ -17,14 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.pir_utils import test_with_pir_api
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, fluid.framework.Block)
+        assert isinstance(block, base.framework.Block)
         block.program._use_lamb = True
 
         m = moment1 = self._get_accumulator(
@@ -95,8 +96,6 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
         paddle.assign(next_v, v)
         paddle.assign(next_param, param_and_grad[0])
 
-        return None
-
 
 class TestLambOpV2(unittest.TestCase):
     def test_lamb_op(self):
@@ -115,59 +114,63 @@ class TestLambOpV2(unittest.TestCase):
 
 
 class TestLambOpWithCombinedOp(unittest.TestCase):
+    @test_with_pir_api
     def test_lamb_op_with_multi_steps(self):
         paddle.enable_static()
 
         def _build_static_model(main, startup, seed=100):
-            with fluid.program_guard(main, startup):
+            with base.program_guard(main, startup):
                 main.random_seed = seed
                 startup.random_seed = seed
                 x = paddle.static.data(
                     name='X', shape=[-1, 13], dtype='float32'
                 )
                 y = paddle.static.data(name='Y', shape=[-1, 1], dtype='float32')
-                prediction = paddle.static.nn.fc(x, size=1, activation=None)
+                linear = paddle.nn.Linear(
+                    in_features=x.shape[-1], out_features=1
+                )
+                prediction = linear(x)
                 loss = paddle.nn.functional.square_error_cost(
                     input=prediction, label=y
                 )
                 avg_loss = paddle.mean(loss)
             return avg_loss
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         num_steps = 10
 
         for i in range(num_steps):
             feed_x = np.random.random(size=(10, 13)).astype('float32')
             feed_y = np.random.random(size=(10, 1)).astype('float32')
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program, startup_program):
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with base.program_guard(main_program, startup_program):
                 avg_loss = _build_static_model(main_program, startup_program)
                 lamb_kernel = paddle.optimizer.Lamb(learning_rate=0.2)
                 lamb_kernel.minimize(avg_loss)
 
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             executor.run(startup_program)
             output = executor.run(
                 program=main_program,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[avg_loss.name],
+                fetch_list=[avg_loss],
             )
 
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(main, startup):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
                 loss = _build_static_model(main, startup)
                 lamb = LAMBOptimizer(learning_rate=0.2)
                 lamb.minimize(loss)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup)
             out = exe.run(
                 program=main,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
             np.testing.assert_allclose(out, output, rtol=1e-05)
@@ -228,8 +231,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
         weight, bias = linear.weight, linear.bias
         exe = paddle.static.Executor(place)
         scope = paddle.static.Scope()
-        x = main_prog.global_block().var(x.name)
-        if x.dtype == core.VarDesc.VarType.FP16:
+        if x.dtype in (core.VarDesc.VarType.FP16, core.DataType.FLOAT16):
             x_np = x_np.astype(np.float16)
 
         def get_parameter(var):
@@ -258,7 +260,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
 
             weight_np, bias_np = None, None
             for i in range(n):
-                feed_dict = {x.name: x_np}
+                feed_dict = {'x': x_np}
                 weight_np, bias_np = exe.run(
                     main_prog, feed=feed_dict, fetch_list=[weight, bias]
                 )

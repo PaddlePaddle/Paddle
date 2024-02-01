@@ -17,13 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2021)
 
 
 def tensordot_np(x, y, axes):
-    if isinstance(axes, paddle.fluid.framework.Variable):
+    if isinstance(axes, paddle.base.framework.Variable):
         axes = axes.tolist()
 
     # np.tensordot does not support empty axes
@@ -205,6 +206,7 @@ class TestTensordotAPI(unittest.TestCase):
                 np_res = tensordot_np(self.x, self.y, axes)
                 np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for axes in self.all_axes:
@@ -226,9 +228,10 @@ class TestTensordotAPI(unittest.TestCase):
                     np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
+    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             for axes in self.all_axes:
                 place = paddle.CUDAPlace(0)
                 with paddle.static.program_guard(
@@ -342,9 +345,21 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
-        for axes in self.all_axes:
-            with self.assertRaises(BaseException):
-                paddle.tensordot(x, y, axes)
+
+        with self.assertRaises(TypeError):
+            paddle.tensordot(x, y, axes=self.all_axes[0])
+        with self.assertRaises(TypeError):
+            paddle.tensordot(x, y, axes=self.all_axes[1])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[2])
+        with self.assertRaises(IndexError):
+            paddle.tensordot(x, y, axes=self.all_axes[3])
+        with self.assertRaises(ValueError):
+            paddle.tensordot(x, y, axes=self.all_axes[4])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[5])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[6])
 
 
 class TestTensordotAPIAxesTypeFloat64(TestTensordotAPIAxesType):

@@ -16,49 +16,20 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T, typename DeviceContext>
-class CPUReadFileKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto filename = ctx.Attr<std::string>("filename");
-
-    std::ifstream input(filename.c_str(),
-                        std::ios::in | std::ios::binary | std::ios::ate);
-    std::streamsize file_size = input.tellg();
-
-    input.seekg(0, std::ios::beg);
-
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    std::vector<int64_t> out_shape = {file_size};
-    out->Resize(phi::make_ddim(out_shape));
-
-    uint8_t* data = out->mutable_data<T>(ctx.GetPlace());
-
-    input.read(reinterpret_cast<char*>(data), file_size);
-  }
-};
-
 class ReadFileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of ReadFileOp is null."));
-
-    auto out_dims = std::vector<int>(1, -1);
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-  }
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -85,12 +56,14 @@ This operator read a file.
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(read_file,
+                            ReadFileInferShapeFunctor,
+                            PD_INFER_META(phi::ReadFileInferMeta));
+
 REGISTER_OPERATOR(
     read_file,
     ops::ReadFileOp,
     ops::ReadFileOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
-
-PD_REGISTER_STRUCT_KERNEL(
-    read_file, CPU, ALL_LAYOUT, ops::CPUReadFileKernel, uint8_t) {}
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ReadFileInferShapeFunctor)

@@ -138,11 +138,20 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
+  VLOG(3) << "Running tensorrt_subgraph_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running tensorrt_subgraph_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running tensorrt_subgraph_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
     LOG(WARNING)
-        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+        << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
   }
 
@@ -152,6 +161,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(),
@@ -172,7 +182,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       }
     }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
-        node, no_calib_int8, with_dynamic_shape);
+        node, no_calib_int8, with_dynamic_shape, use_explicit_quantization);
     if (!is_ok)
     {
     //  std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
@@ -195,6 +205,12 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   std::vector<std::string> engine_names;
   for (auto *node : graph->Nodes()) {
+    // load optimized model may update shape_range_info_path
+    auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
+    if (node->IsOp() && node->Op()->Type() == "tensorrt_engine" &&
+        !shape_range_info_path.empty()) {
+      node->Op()->SetAttr("shape_range_info_path", shape_range_info_path);
+    }
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       engine_names.push_back(CreateTensorRTOp(
           node, graph, graph_param_names, &repetitive_params, use_cuda_graph));
@@ -229,7 +245,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               .Has(name),
           true,
           platform::errors::PreconditionNotMet(
-              "TRTEnegineManager shoud has engine %s, but not found.", name));
+              "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
@@ -340,7 +356,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   for (auto *x : node->inputs) {
     //std::cout << "子图输入：" <<  x->Name() << std::endl;
     input_names.insert(x->Name());
-    input_names_with_id.insert(RenameVarBeUnique(x->Name(), std::to_string(x->id())));
+    input_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
       parameters.push_back(x->Name());
     }
@@ -371,8 +388,11 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   // 这个会触发set_value的bug啊！！，我改正了下吧！！
   for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && find(graph_params.begin(), graph_params.end(), n->Name()) != graph_params.end()) {
-      input_names_with_id.insert(RenameVarBeUnique(n->Name(), std::to_string(n->id())));
+    if (n->IsVar() &&
+        find(graph_params.begin(), graph_params.end(), n->Name()) !=
+            graph_params.end()) {
+      input_names_with_id.insert(
+          RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
   }
 
@@ -391,11 +411,27 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
 
+  // rename output names in trt_ops_run_float
+  auto trt_ops_run_float =
+      Get<std::unordered_set<std::string>>("trt_ops_run_float");
+  for (auto node : subgraph) {
+    if (node->NodeType() == Node::Type::kOperation) {
+      for (auto *x : node->outputs) {
+        if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
+          continue;
+        if (trt_ops_run_float.count(x->Name()) > 0) {
+          trt_ops_run_float.erase(x->Name());
+          trt_ops_run_float.insert(
+              RenameVarBeUnique(x->Name(), std::to_string(x->id())));
+        }
+      }
+    }
+  }
+
   // Mark TensorRT output nodes as trt outputs
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
       Get<std::vector<std::string>>("output_tensor_names");
-  auto mark_output_with_id = Get<bool>("mark_output_with_id");
 
   if (mark_output) {
     VLOG(1) << "begin to mark output ...";
@@ -404,17 +440,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          std::string name_with_id = RenameVarBeUnique(x->Name(), std::to_string(x->id()));
-          if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                   output_tensor_name.end(),
-                                                   x->Name()) > 0) ||
-               (mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                  output_tensor_name.end(),
-                                                  name_with_id) > 0)) &&
+          if ((std::count(output_tensor_name.begin(),
+                          output_tensor_name.end(),
+                          x->Name()) > 0) &&
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());
-            output_names_with_id.insert(name_with_id);
+            output_names_with_id.insert(
+                RenameVarBeUnique(x->Name(), std::to_string(x->id())));
             origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
             trt_outputs.insert(x);
             map_origin_outputs_dtype[x->Name()] =
@@ -427,7 +460,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
-    output_names_with_id.insert(RenameVarBeUnique(x->Name(), std::to_string(x->id())));
+    output_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
     trt_outputs.insert(x);
     map_origin_outputs_dtype[x->Name()] =
@@ -605,11 +639,21 @@ for (auto para : parameters) {
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
+  auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
+  if (context_memory_sharing && TRT_VERSION < 7200) {
+    // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
+    // when trt version less than 7.2,
+    // createExecutionContextWithoutDeviceMemory() has bug.
+    // so, we cannot enable engine context memory sharing.
+    context_memory_sharing = false;
+  }
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");
+  auto optimization_level = Get<int>("optimization_level");
+  auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
 
   // Set op's attrs.
   op_desc->SetType("tensorrt_engine");
@@ -628,7 +672,6 @@ for (auto para : parameters) {
   op_desc->SetAttr("parameters", parameters);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
-  op_desc->SetAttr("use_inspector", use_inspector);
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
 
@@ -662,6 +705,8 @@ for (auto para : parameters) {
     op_desc->SetAttr("max_input_shape_vector", max_input_shape_vector);
     op_desc->SetAttr("opt_input_shape_vector", opt_input_shape_vector);
   }
+
+  op_desc->SetAttr("optimization_level", Get<int>("optimization_level"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -724,6 +769,16 @@ for (auto para : parameters) {
   op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+
+  // serialization engine info
+  std::string engine_info_path;
+  if (inspector_serialize) {
+    engine_info_path = Get<std::string>("model_opt_cache_dir") +
+                       "engine_info_" + engine_key + ".json";
+    LOG(INFO) << "Serialize engine info to " << engine_info_path;
+  }
+  op_desc->SetAttr("use_inspector", use_inspector);
+  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
@@ -775,6 +830,8 @@ for (auto para : parameters) {
       framework::ir::Agent(node).subgraph()->end());
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
 
+  // Adding new parameters must set a new op attribute by "op_desc->SetAttr()"
+  // first and syncing it to tensorrt_engine_op.h
   tensorrt::TensorRTEngine::ConstructionParams params;
   params.max_batch_size = max_batch_size;
   params.max_workspace_size = workspace_size;
@@ -797,11 +854,17 @@ for (auto para : parameters) {
   params.tensorrt_transformer_maskid = tensorrt_transformer_maskid;
   params.context_memory_sharing = context_memory_sharing;
   params.use_inspector = use_inspector;
+  params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
+  params.optimization_level = optimization_level;
+  params.use_explicit_quantization = use_explicit_quantization;
 
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id), params);
+
+  // support force ops to run in FP32 precision
+  trt_engine->SetRunFloat(trt_ops_run_float);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -820,7 +883,7 @@ for (auto para : parameters) {
             << GetTrtEngineSerializedPath(
                    Get<std::string>("model_opt_cache_dir"), engine_key)
             << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
+               "does not match Current Version, TRT engine will be rebuilt";
       }
     }
   }
@@ -832,7 +895,7 @@ for (auto para : parameters) {
   }
 
   // the following code will NOT run in following situation:
-  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 1. calibration mode (generate trt int8 calibration table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";

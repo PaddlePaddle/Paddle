@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -102,12 +103,12 @@ inline int str_to_float(const char* str, float* v) {
   return index;
 }
 
-inline float* str_to_float(std::string& str) {
-  return (float*)const_cast<char*>(str.c_str());
+inline float* str_to_float(const std::string& str) {
+  return reinterpret_cast<float*>(const_cast<char*>(str.c_str()));
 }
 
 inline float* str_to_float(const char* str) {
-  return (float*)const_cast<char*>(str);
+  return reinterpret_cast<float*>(const_cast<char*>(str));
 }
 
 // checks whether the test string is a suffix of the input string.
@@ -247,7 +248,7 @@ struct str_ptr_stream {
   char* ptr = NULL;
   char* end = NULL;
   str_ptr_stream() {}
-  str_ptr_stream(const str_ptr& p) { reset(p.ptr, p.len); }
+  explicit str_ptr_stream(const str_ptr& p) { reset(p.ptr, p.len); }
   void reset(const str_ptr& p) { reset(p.ptr, p.len); }
   void reset(const char* p, size_t len) {
     ptr = const_cast<char*>(p);
@@ -316,7 +317,7 @@ inline int split_string_ptr(const char* str,
       ++p;
       continue;
     }
-    values->emplace_back(last, (size_t)(p - last));
+    values->emplace_back(last, static_cast<size_t>(p - last));
     ++num;
     ++p;
     // skip continue delim
@@ -326,7 +327,7 @@ inline int split_string_ptr(const char* str,
     last = p;
   }
   if (p > last) {
-    values->emplace_back(last, (size_t)(p - last));
+    values->emplace_back(last, static_cast<size_t>(p - last));
     ++num;
   }
   return num;
@@ -350,7 +351,7 @@ inline int split_string_ptr(const char* str,
       ++p;
       continue;
     }
-    values->emplace_back(last, (size_t)(p - last));
+    values->emplace_back(last, static_cast<size_t>(p - last));
     ++num;
     ++p;
     if (num >= max_num) {
@@ -363,7 +364,7 @@ inline int split_string_ptr(const char* str,
     last = p;
   }
   if (p > last) {
-    values->emplace_back(last, (size_t)(p - last));
+    values->emplace_back(last, static_cast<size_t>(p - last));
     ++num;
   }
   return num;

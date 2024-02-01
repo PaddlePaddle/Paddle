@@ -16,11 +16,11 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adamgrad_wrapper(

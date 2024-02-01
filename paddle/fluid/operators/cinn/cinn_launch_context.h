@@ -21,10 +21,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 
 // type declaration forward
 struct cinn_buffer_t;
@@ -86,7 +86,7 @@ class CinnLaunchContext {
   // Return whether a Paddle variable used in cinn execution
   bool IsVariableUsed(const std::string& var_name) const;
 
-  // Check the equiality in type and dimension between the tensor
+  // Check the equality in type and dimension between the tensor
   // in Paddle and the compiled tensor returned by CINN of a same variable
   void CheckTensorEquivalent(const std::string& var_name,
                              const phi::DenseTensor& paddle_tensor);
@@ -96,7 +96,7 @@ class CinnLaunchContext {
     return skip_eager_vars_;
   }
 
-  // Redirect the name of a Paddle variable to the orignal if it was inplaced
+  // Redirect the name of a Paddle variable to the original if it was inplaced
   std::string RedirectVarName(const std::string& var_name) const;
 
   // Return internal variable names list
@@ -157,7 +157,7 @@ class CinnLaunchContext {
   // a list of internal variable names in Paddle
   std::unordered_set<std::string> internal_var_names_;
   // In CINN, there are two variables(in/out) mapped to the one inplaced
-  // variable of Paddle. To resovle this conflict, we add a output counterpart
+  // variable of Paddle. To resolve this conflict, we add a output counterpart
   // in Paddle with the name suffixed by @InplaceOut.
   // This set stores which Paddle variable names are inplaced.
   std::unordered_set<std::string> inplace_var_names_;
@@ -179,14 +179,14 @@ class CinnLaunchContext {
   std::vector<std::string> skip_eager_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
-  // an extra stroage is necessary to keep those objects and they can
+  // an extra storage is necessary to keep those objects and they can
   // not be released until the runtime program finish execution.
   std::vector<std::unique_ptr<cinn_buffer_t>> hold_buffers_;
   // this map saves all execution arguments with their cinn names as key,
   // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
   // this map saves all execution arguments with paddle variables as key,
-  // this map conbine name2argument_ and paddle2cinn_varmap_
+  // this map combine name2argument_ and paddle2cinn_varmap_
   std::map<std::string, cinn_pod_value_t> paddle2argument_;
 };
 

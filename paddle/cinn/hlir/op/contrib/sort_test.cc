@@ -33,9 +33,9 @@ namespace hlir {
 namespace op {
 
 TEST(GenerateCode_Cpu, ArgSort) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr n(4);
   ir::Expr h(28);
@@ -72,9 +72,9 @@ TEST(GenerateCode_Cpu, ArgSort) {
 }
 
 TEST(GenerateCode_Cpu, Sort) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr n(4);
   ir::Expr h(28);

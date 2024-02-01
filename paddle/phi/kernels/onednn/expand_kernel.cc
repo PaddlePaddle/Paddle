@@ -36,7 +36,7 @@ void ExpandKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
 
   auto out_new_dims = shape.GetData();
 
@@ -48,7 +48,7 @@ void ExpandKernel(const Context& dev_ctx,
     x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
   }
 
-  out->Resize(make_ddim(out_new_dims));
+  out->Resize(common::make_ddim(out_new_dims));
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),

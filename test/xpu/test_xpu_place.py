@@ -16,8 +16,8 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid, static
-from paddle.fluid import core
+from paddle import base, static
+from paddle.base import core
 
 
 class Test_XPU_Places(unittest.TestCase):
@@ -31,12 +31,12 @@ class Test_XPU_Places(unittest.TestCase):
         if core.is_compiled_with_xpu():
             os.environ["FLAGS_selected_xpus"] = "0"
             place_list = static.xpu_places()
-            self.assert_places_equal([fluid.XPUPlace(0)], place_list)
+            self.assert_places_equal([base.XPUPlace(0)], place_list)
 
     def test_check_no_preset_envs(self):
         if core.is_compiled_with_xpu():
             place_list = static.xpu_places(0)
-            self.assert_places_equal([fluid.XPUPlace(0)], place_list)
+            self.assert_places_equal([base.XPUPlace(0)], place_list)
 
 
 if __name__ == '__main__':

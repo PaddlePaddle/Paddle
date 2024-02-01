@@ -76,7 +76,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
     // assign the out_grad to input_grad directly
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
 
     // init the output grad with 0, because some input elements has no grad
@@ -120,11 +120,11 @@ void TopkGradKernel(const Context& dev_ctx,
         ndims, dev_ctx, out_grad, &trans_dO, trans);
     funcs::TransCompute<phi::CPUContext, int64_t>(
         ndims, dev_ctx, indices, &trans_ind, trans);
-    const int64_t input_height = phi::product(
-        phi::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
     const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
 
-    // Assign the out_grad to tranpose input_grad
+    // Assign the out_grad to transpose input_grad
     DenseTensor tmp_out;
     tmp_out.Resize(trans_in_dims);
     T* t_out = dev_ctx.template Alloc<T>(&tmp_out);

@@ -17,45 +17,43 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base, static
+from paddle.pir_utils import test_with_pir_api
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
     paddle.enable_static()
-    startup_program = fluid.Program()
-    main_program = fluid.Program()
+    startup_program = paddle.static.Program()
+    main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    with fluid.program_guard(main_program, startup_program):
+    exe = base.Executor(place)
+    with static.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
-        res = getattr(paddle.tensor, op_str)(x)
-        exe.run(startup_program)
-        static_result = exe.run(
-            main_program, feed={'x': x_np}, fetch_list=[res]
-        )
+        res = getattr(paddle, op_str)(x)
+        static_result = exe.run(feed={'x': x_np}, fetch_list=[res])
     return static_result
 
 
 def run_dygraph(x_np, op_str, use_gpu=True):
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np)
-    dygraph_result = getattr(paddle.tensor, op_str)(x)
+    dygraph_result = getattr(paddle, op_str)(x)
     return dygraph_result
 
 
 def run_eager(x_np, op_str, use_gpu=True):
-    with paddle.fluid.dygraph.guard():
+    with paddle.base.dygraph.guard():
         place = paddle.CPUPlace()
-        if use_gpu and fluid.core.is_compiled_with_cuda():
+        if use_gpu and base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
 
         x = paddle.to_tensor(x_np)
-        dygraph_result = getattr(paddle.tensor, op_str)(x)
+        dygraph_result = getattr(paddle, op_str)(x)
         return dygraph_result
 
 
@@ -68,7 +66,7 @@ def np_data_generator(
         for i, v in enumerate(sv_list):
             x_np[i] = v
     ori_shape = x_np.shape
-    x_np = x_np.reshape((np.product(ori_shape),))
+    x_np = x_np.reshape((np.prod(ori_shape),))
     np.random.shuffle(x_np)
     x_np = x_np.reshape(ori_shape)
     result_np = getattr(np, op_str)(x_np)
@@ -119,12 +117,21 @@ def test(test_case, op_str, use_gpu=False):
         meta_data = dict(meta_data)
         meta_data['op_str'] = op_str
         x_np, result_np = np_data_generator(**meta_data)
-        static_result = run_static(x_np, meta_data['type'], op_str, use_gpu)
-        dygraph_result = run_dygraph(x_np, op_str, use_gpu)
-        eager_result = run_eager(x_np, op_str, use_gpu)
-        test_case.assertTrue((static_result == result_np).all())
-        test_case.assertTrue((dygraph_result.numpy() == result_np).all())
-        test_case.assertTrue((eager_result.numpy() == result_np).all())
+
+        dygraph_result = run_dygraph(x_np, op_str, use_gpu).numpy()
+        eager_result = run_eager(x_np, op_str, use_gpu).numpy()
+
+        test_case.assertTrue((dygraph_result == result_np).all())
+        test_case.assertTrue((eager_result == result_np).all())
+
+        @test_with_pir_api
+        def test_static_or_pir_mode():
+            (static_result,) = run_static(
+                x_np, meta_data['type'], op_str, use_gpu
+            )
+            test_case.assertTrue((static_result == result_np).all())
+
+        test_static_or_pir_mode()
 
 
 class TestCPUNormal(unittest.TestCase):
@@ -150,25 +157,26 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+    @test_with_pir_api
     def test_bad_input(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_isinf_bad_x():
                 x = [1, 2, 3]
-                result = paddle.tensor.isinf(x)
+                result = paddle.isinf(x)
 
             self.assertRaises(TypeError, test_isinf_bad_x)
 
             def test_isnan_bad_x():
                 x = [1, 2, 3]
-                result = paddle.tensor.isnan(x)
+                result = paddle.isnan(x)
 
             self.assertRaises(TypeError, test_isnan_bad_x)
 
             def test_isfinite_bad_x():
                 x = [1, 2, 3]
-                result = paddle.tensor.isfinite(x)
+                result = paddle.isfinite(x)
 
             self.assertRaises(TypeError, test_isfinite_bad_x)
 

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(
@@ -49,7 +49,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.out = np.add(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     # elementwise_add grad (no braodcasting) is just passing upper gradients to either X or Y or both
     def test_check_grad_normal(self):
@@ -60,6 +60,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             check_dygraph=False,
             user_defined_grads=[self.x, self.x],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -70,6 +71,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             check_dygraph=False,
             user_defined_grads=[self.y],
             user_defined_grad_outputs=[self.y_bf16],
+            check_pir_onednn=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -80,6 +82,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             check_dygraph=False,
             user_defined_grads=[self.x],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
 
@@ -106,6 +109,7 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             check_dygraph=False,
             user_defined_grads=[self.x, self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -116,6 +120,7 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             check_dygraph=False,
             user_defined_grads=[self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
 

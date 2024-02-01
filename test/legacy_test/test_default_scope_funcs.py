@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.default_scope_funcs import (
+from paddle.base.default_scope_funcs import (
     enter_local_scope,
     find_var,
     get_cur_scope,

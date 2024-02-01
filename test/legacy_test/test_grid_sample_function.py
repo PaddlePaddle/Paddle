@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -46,10 +47,10 @@ class GridSampleTestCase(unittest.TestCase):
         self.grid = np.random.uniform(-1, 1, self.grid_shape).astype(self.dtype)
 
     def static_functional(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 x = paddle.static.data("x", self.x_shape, dtype=self.dtype)
                 grid = paddle.static.data(
                     "grid", self.grid_shape, dtype=self.dtype
@@ -62,7 +63,7 @@ class GridSampleTestCase(unittest.TestCase):
                     align_corners=self.align_corners,
                 )
         feed_dict = {"x": self.x, "grid": self.grid}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
@@ -80,6 +81,7 @@ class GridSampleTestCase(unittest.TestCase):
         y_np = y_t.numpy()
         return y_np
 
+    @test_with_pir_api
     def _test_equivalence(self, place):
         result1 = self.static_functional(place)
         with dg.guard(place):
@@ -87,17 +89,17 @@ class GridSampleTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
 
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self._test_equivalence(place)
 
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self._test_equivalence(place)
 
 
 class GridSampleErrorTestCase(GridSampleTestCase):
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with self.assertRaises(ValueError):
             self.static_functional(place)
 
@@ -140,6 +142,7 @@ def load_tests(loader, standard_tests, pattern):
 
 
 class TestGridSampleAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with self.assertRaises(ValueError):
             x = paddle.randn([1, 1, 3, 3])

@@ -26,10 +26,10 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace phi {
 namespace distributed {

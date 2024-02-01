@@ -17,10 +17,11 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 
-class GradNodeAccumulation : public GradNodeBase {
+class TEST_API GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {

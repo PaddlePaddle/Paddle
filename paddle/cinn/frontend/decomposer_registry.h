@@ -46,7 +46,7 @@ class DecomposerContext {
     }
     if (new_var->type != ori_var->type) {
       LOG(FATAL)
-          << "The output type shoule be equal to the original. But received : "
+          << "The output type should be equal to the original. But received : "
           << new_var->id << ".type=" << new_var->type
           << " and the original var " << ori_var->id
           << ".type=" << ori_var->type;
@@ -67,7 +67,7 @@ class InstrDecomposerRegistry : public Registry<Decomposer> {
   }
 
   inline const Decomposer* Get(const std::string& op_name,
-                               const common::Target& target) {
+                               const cinn::common::Target& target) {
     const Decomposer* decomposer = Find(op_name, target);
     CHECK(decomposer) << "Decomposer for [" << op_name << ", " << target
                       << "] is not registered";
@@ -75,7 +75,7 @@ class InstrDecomposerRegistry : public Registry<Decomposer> {
   }
 
   inline const Decomposer* Find(const std::string& name,
-                                const common::Target& target) {
+                                const cinn::common::Target& target) {
     return Registry<Decomposer>::Find(name + "_" + target.arch_str());
   }
 

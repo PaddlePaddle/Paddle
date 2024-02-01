@@ -85,6 +85,9 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
+  bitwise_or_op.cc
+  size_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
@@ -114,19 +117,21 @@ list(
   ms_deform_attn_op.cc
   put_along_axis_op.cc
   atan2_op.cc
-  dequantize_linear_op.cc)
+  dequantize_linear_op.cc
+  share_data_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
-       preln_emb_eltwise_layernorm.cc)
+       preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8 AND ${TENSORRT_MINOR_VERSION}
-                                                 GREATER_EQUAL 2)
+set(TENSORRT_VERSION_NUMBER
+    "${TENSORRT_MAJOR_VERSION}${TENSORRT_MINOR_VERSION}")
+if(${TENSORRT_VERSION_NUMBER} GREATER_EQUAL 82)
   list(APPEND CONVERT_FILES set_value_op.cc)
 endif()
 
@@ -150,7 +155,8 @@ if(WIN32)
   nv_test(
     test_custom_plugin_creater
     SRCS test_custom_plugin_creater.cc
-    DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+    DEPS paddle_framework tensorrt_converter phi common custom_operator
+         init_phi)
 elseif(WITH_CINN)
   nv_test(
     test_custom_plugin_creater
@@ -158,10 +164,10 @@ elseif(WITH_CINN)
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor
-         cinn_compiler
          python)
 else()
   nv_test(
@@ -170,6 +176,7 @@ else()
     DEPS paddle_framework
          tensorrt_converter
          phi
+         common
          custom_operator
          init_phi
          fleet_executor

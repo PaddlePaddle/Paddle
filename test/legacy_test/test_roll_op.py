@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestRollOp(OpTest):
@@ -48,10 +49,12 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestRollOpCase2(TestRollOp):
@@ -108,10 +111,14 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -128,10 +135,19 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -148,10 +164,19 @@ class TestRollBF16OpCase3(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_prim=True)
+        self.check_output_with_place(
+            self.place, check_prim=True, check_pir=True
+        )
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestRollAPI(unittest.TestCase):
@@ -160,43 +185,59 @@ class TestRollAPI(unittest.TestCase):
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
         )
 
-    def test_roll_op_api(self):
-        self.input_data()
-
+    @test_with_pir_api
+    def test_roll_op_api_case1(self):
         paddle.enable_static()
-        # case 1:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            data_x = np.array(
+                [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+            ).astype('float32')
             z = paddle.roll(x, shifts=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             (res,) = exe.run(
-                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+                paddle.static.default_main_program(),
+                feed={'x': data_x},
+                fetch_list=[z],
+                return_numpy=False,
             )
             expect_out = np.array(
                 [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
             )
-            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
-
-        # case 2:
-        with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-            x.desc.set_need_check_feed(False)
-            z = paddle.roll(x, shifts=1, axis=0)
-            exe = fluid.Executor(fluid.CPUPlace())
-            (res,) = exe.run(
-                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
-            )
-        expect_out = np.array(
-            [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
-        )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        paddle.disable_static()
+
+    @test_with_pir_api
+    def test_roll_op_api_case2(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+            data_x = np.array(
+                [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+            ).astype('float32')
+            z = paddle.roll(x, shifts=1, axis=0)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            (res,) = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': data_x},
+                fetch_list=[z],
+                return_numpy=False,
+            )
+            expect_out = np.array(
+                [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+            )
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+        paddle.disable_static()
 
     def test_dygraph_api(self):
         self.input_data()
         # case 1:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1)
             np_z = z.numpy()
         expect_out = np.array(
@@ -205,8 +246,8 @@ class TestRollAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1, axis=0)
             np_z = z.numpy()
         expect_out = np.array(
@@ -214,25 +255,30 @@ class TestRollAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
+    @test_with_pir_api
     def test_roll_op_false(self):
-        self.input_data()
-
         def test_axis_out_range():
-            with program_guard(Program(), Program()):
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
-                x.desc.set_need_check_feed(False)
+                data_x = np.array(
+                    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+                ).astype('float32')
                 z = paddle.roll(x, shifts=1, axis=10)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 (res,) = exe.run(
-                    feed={'x': self.data_x},
-                    fetch_list=[z.name],
+                    feed={'x': data_x},
+                    fetch_list=[z],
                     return_numpy=False,
                 )
 
         self.assertRaises(ValueError, test_axis_out_range)
+        paddle.disable_static()
 
     def test_shifts_as_tensor_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.arange(9).reshape([3, 3])
             shape = paddle.shape(x)
             shifts = shape // 2
@@ -241,8 +287,12 @@ class TestRollAPI(unittest.TestCase):
             expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
             np.testing.assert_allclose(out, expected_out, rtol=1e-05)
 
+    @test_with_pir_api
     def test_shifts_as_tensor_static(self):
-        with program_guard(Program(), Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.arange(9).reshape([3, 3]).astype('float32')
             shape = paddle.shape(x)
             shifts = shape // 2
@@ -250,14 +300,15 @@ class TestRollAPI(unittest.TestCase):
             out = paddle.roll(x, shifts=shifts, axis=axes)
             expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             [out_np] = exe.run(fetch_list=[out])
             np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
             if paddle.is_compiled_with_cuda():
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

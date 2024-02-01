@@ -43,8 +43,8 @@
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/var_mod_simplify.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
@@ -55,8 +55,8 @@ namespace cinn {
 namespace backends {
 
 using BinaryInstruction = llvm::Instruction::BinaryOps;
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 namespace {
 
@@ -69,9 +69,11 @@ auto NodeToExpr(const T *node) {
   return oss.str();
 }
 
-bool is_integral_type(common::Type t) { return t.is_int() || t.is_uint(); }
+bool is_integral_type(cinn::common::Type t) {
+  return t.is_int() || t.is_uint();
+}
 
-bool is_floating_type(common::Type t) { return t.is_float(); }
+bool is_floating_type(cinn::common::Type t) { return t.is_float(); }
 
 llvm::Value *EmitComparison(llvm::CmpInst::Predicate predicate,
                             llvm::Value *lhs,
@@ -405,7 +407,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
   // pod_value_t cast to a value.
   if (op->v().type().is_customized_type() &&
       op->v().type().customized_type() ==
-          common::customized_type::kpod_value_t) {  // pod_value_t operator
+          cinn::common::customized_type::kpod_value_t) {  // pod_value_t
+                                                          // operator
     llvm::Function *callee{};
     if (op->type().is_bool()) {
       callee = m_->getFunction(runtime::intrinsic::pod_value_to_bool);
@@ -747,6 +750,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlock *) {
 llvm::Value *CodeGenLLVM::Visit(const ir::ScheduleBlockRealize *) {
   CINN_NOT_IMPLEMENTED return nullptr;
 }
+llvm::Value *CodeGenLLVM::Visit(const ir::_Dim_ *) {
+  CINN_NOT_IMPLEMENTED return nullptr;
+}
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   if (op->name == runtime::intrinsic::debug_log_repr) {
@@ -790,7 +796,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
   {
     Expr body_to_verify(&Reference(op));
-    ir::IrVerify(body_to_verify);
+    ir::ir_utils::IrVerify(body_to_verify);
   }
 
   for (auto &fn : op->functions) {
@@ -812,7 +818,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
   // TODO(fc500110) hard coding
   if (LLVM_WillVarLowerAsPointer(op->name)) {
     result = value;
-  } else if (value->getType()->isPointerTy()) {
+  } else if (value->getType()->isPointerTy() &&
+             !value->getType()->getPointerElementType()->isPointerTy()) {
     result = Load(value, op->name + "_load");
   } else {
     result = value;
@@ -967,7 +974,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
       // fit the total_lanes in native_lanes(split into multiple native steps)
       for (int offset = 0; offset < total_lanes; offset += total_lanes) {
         int lanes = total_lanes;
-        Expr base = common::AutoSimplify(ramp->base + offset);
+        Expr base = cinn::common::AutoSimplify(ramp->base + offset);
         optim::VarModSimplify(&base);
         auto *ptr =
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
@@ -1280,7 +1287,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
 
   for (int i = 0; i < load_lanes; i += load_lanes) {
     int slice_lanes = load_lanes;
-    auto slice_base = common::AutoSimplify(ramp->base + i);
+    auto slice_base = cinn::common::AutoSimplify(ramp->base + i);
     optim::VarModSimplify(&slice_base);
     auto slide_stride = Expr(1);
     auto slide_index = slice_base;

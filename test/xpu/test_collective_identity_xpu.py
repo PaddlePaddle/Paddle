@@ -14,42 +14,31 @@
 
 import unittest
 
-from get_test_cover_info import (
-    XPUOpTestWrapper,
-    create_test_class,
-    get_xpu_op_support_types,
-)
 from test_collective_base_xpu import TestDistBase
 
 import paddle
-from paddle.fluid import core
 
 paddle.enable_static()
 
 
-class XPUTestCIdentityOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'c_identity'
-        self.use_dynamic_create_class = False
+class TestCIdentityOp(TestDistBase):
+    def _setup_config(self):
+        pass
 
-    class TestCIdentityOp(TestDistBase):
-        def _setup_config(self):
-            pass
-
-        def test_identity(self):
+    def test_identity(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "bfloat16",
+        ]
+        for dtype in dtypes_to_test:
             self.check_with_place(
-                "collective_identity_op_xpu.py", "identity", self.in_type_str
+                "collective_identity_op_xpu.py", "identity", dtype
             )
 
-
-support_types = get_xpu_op_support_types('c_identity')
-for stype in support_types:
-    create_test_class(
-        globals(),
-        XPUTestCIdentityOP,
-        stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
-    )
 
 if __name__ == '__main__':
     unittest.main()

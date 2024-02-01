@@ -30,7 +30,7 @@ void ExpandAs(const Context& context,
               const std::vector<int>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
-  auto vec_in_dims = phi::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -82,8 +82,8 @@ void ExpandAs(const Context& context,
     bcast_dims[i] = repeat_times[i];
   }
 
-  phi::DDim new_in_dims = phi::make_ddim(vec_in_dims);
-  phi::DDim out_dims = phi::make_ddim(target_shape);
+  phi::DDim new_in_dims = common::make_ddim(vec_in_dims);
+  phi::DDim out_dims = common::make_ddim(target_shape);
 
   out->Resize(out_dims);
   context.template Alloc<T>(out);
@@ -129,7 +129,7 @@ void ExpandAsKernel(const Context& ctx,
     if (target_shape[i] == -1) {
       if (y) {
         if (y->IsInitialized()) {
-          real_target_shape = phi::vectorize<int>(y->dims());
+          real_target_shape = common::vectorize<int>(y->dims());
         }
       }
       break;

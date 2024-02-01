@@ -12,21 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .functional_layers import FloatFunctionalLayer  # noqa: F401
-from .functional_layers import add  # noqa: F401
-from .functional_layers import subtract  # noqa: F401
-from .functional_layers import multiply  # noqa: F401
-from .functional_layers import divide  # noqa: F401
-from .functional_layers import reshape  # noqa: F401
-from .functional_layers import transpose  # noqa: F401
-from .functional_layers import concat  # noqa: F401
-from .functional_layers import flatten  # noqa: F401
-from .functional_layers import matmul  # noqa: F401
-from .quantized_linear import weight_only_linear  # noqa: F401
-from .quantized_linear import llm_int8_linear  # noqa: F401
-from .quantized_linear import weight_quantize  # noqa: F401
+from . import qat  # noqa: F401
+from .functional_layers import (  # noqa: F401
+    FloatFunctionalLayer,
+    add,
+    concat,
+    divide,
+    flatten,
+    matmul,
+    multiply,
+    reshape,
+    subtract,
+    transpose,
+)
 from .quant_layers import QuantStub  # noqa: F401
-from . import qat
+from .quantized_linear import (  # noqa: F401
+    apply_per_channel_scale,
+    llm_int8_linear,
+    weight_dequantize,
+    weight_only_linear,
+    weight_quantize,
+)
 from .stub import Stub
 
-__all__ = ["Stub", "weight_only_linear", "llm_int8_linear", "weight_quantize"]
+__all__ = [
+    "Stub",
+    "weight_only_linear",
+    "llm_int8_linear",
+    "weight_quantize",
+    "weight_dequantize",
+]

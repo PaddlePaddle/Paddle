@@ -18,6 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -33,8 +34,8 @@ void ExpandGradKernel(const Context& ctx,
   } else {
     std::vector<int> reduce_dims =
         funcs::GetReduceDim(x_grad->dims(), out_grad.dims(), -1);
-    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx, out_grad, x_grad, kps::IdentityFunctor<T>(), reduce_dims);
+    phi::SumKernel<T, Context>(
+        ctx, out_grad, reduce_dims, out_grad.dtype(), false, x_grad);
   }
 }
 
@@ -46,7 +47,13 @@ PD_REGISTER_KERNEL(expand_grad,
                    phi::ExpandGradKernel,
                    float,
                    double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

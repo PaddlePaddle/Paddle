@@ -11,22 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import logging
 
 import paddle
 
 from ..utils.log_utils import get_logger
-from .process_mesh import retrive_unique_id_for_process_mesh
+from .process_mesh import retrieve_unique_id_for_process_mesh
 from .static.utils import _get_idx_in_axis
 
 _logger = get_logger(logging.INFO)
 
 _rng_name_to_seed = {}
+_rng_name_to_states = {}
 _inited_rng_name_to_seed = {}
 _enable_random_control = False
 _basic_seed = 42
+_basic_name = ""
 
-# use Prime number as offset to avoid confict
+# use Prime number as offset to avoid conflict
 _mesh_offset = 173
 _dim_offsets = [11, 23, 37, 73]
 
@@ -41,7 +44,7 @@ def enable_auto_rand_ctrl():
     _enable_random_control = True
 
 
-def parallel_manual_seed(seed):
+def parallel_manual_seed(seed, name=""):
     """Enable auto parallel random control.
     Random control maintain the randomness when tensor is distributed across devices on a Mesh(any order).
         * Independency: If tensor is **Sharded** on a Mesh dimension, Devices along that Mesh dimension should have Different randomness.
@@ -54,7 +57,7 @@ def parallel_manual_seed(seed):
 
     This function should be called only once before auto parallel compiles the computation graph (e.g. auto_parallel.engine.prepare() or fit()).
 
-    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute amonge mesh, and would NOT affect other processe like Parameter initialization.
+    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute among mesh, and would NOT affect other process like Parameter initialization.
 
     Examples:
         # seed relative to training step
@@ -66,12 +69,23 @@ def parallel_manual_seed(seed):
     enable_auto_rand_ctrl()
     global _basic_seed
     _basic_seed = seed
+    global _basic_name
+    _basic_name = name
 
 
-def determinate_rng(rank, dims_mapping, process_mesh):
+def determinate_rng(
+    rank, dims_mapping=None, process_mesh=None, placements=None
+):
+    assert process_mesh is not None, "Must provide process mesh"
+    assert (
+        dims_mapping is not None or placements is not None
+    ), "Must provide one of dims mapping or placements."
+    assert not (
+        dims_mapping is not None and placements is not None
+    ), "Cannot provide dims mapping and placements at same time."
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
-    # instead of using offsets to coodinate seed across devices.
+    # instead of using offsets to coordinate seed across devices.
     if len(process_mesh.shape) > 4:
         raise NotImplementedError(
             "Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {}".format(
@@ -80,17 +94,24 @@ def determinate_rng(rank, dims_mapping, process_mesh):
         )
     global _basic_seed
     seed_ = _basic_seed
+    global _basic_name
+    name_ = _basic_name
+
+    if name_:
+        name_ += "_"
 
     # FIXME
     # unique_id = process_mesh.unique_id
-    unique_id = retrive_unique_id_for_process_mesh(
+    unique_id = retrieve_unique_id_for_process_mesh(
         process_mesh.shape, process_mesh.process_ids
     )
-    sharding_expr = f'mesh:{unique_id}'
+    sharding_expr = name_ + f'mesh:{unique_id}'
     seed_ += _mesh_offset * (unique_id + 1)
 
     for i in range(len(process_mesh.shape)):
-        if i not in dims_mapping:
+        if (dims_mapping is not None and i not in dims_mapping) or (
+            placements is not None and not placements[i].is_shard()
+        ):
             relative_idx = -1
         else:
             relative_idx = _get_idx_in_axis(
@@ -104,17 +125,38 @@ def determinate_rng(rank, dims_mapping, process_mesh):
         seed_ += _dim_offsets[i] * (relative_idx + 1)
 
     global _rng_name_to_seed
+    global _rng_name_to_states
     if sharding_expr in _rng_name_to_seed:
         assert _rng_name_to_seed[sharding_expr] == seed_
     else:
         assert (
             seed_ not in _rng_name_to_seed.values()
-        ), "Seed Confilt! current seed: {}, current sharding expr: {}, generated seed: {}".format(
+        ), "Seed Conflict! current seed: {}, current sharding expr: {}, generated seed: {}".format(
             seed_, sharding_expr, _rng_name_to_seed
         )
         _rng_name_to_seed[sharding_expr] = seed_
-
+        if paddle.in_dynamic_mode():
+            # for dygraph, just init the seed when meeting a new seed
+            orig_rng_state = paddle.get_rng_state()
+            paddle.seed(seed_)
+            _rng_name_to_states[sharding_expr] = paddle.get_rng_state()
+            paddle.set_rng_state(orig_rng_state)
     return sharding_expr
+
+
+@contextlib.contextmanager
+def rng_state(name):
+    global _rng_name_to_states
+    assert (
+        name in _rng_name_to_states
+    ), f"The rng state name {name} haven't been init. "
+    orig_rng_state = paddle.get_rng_state()
+    paddle.set_rng_state(_rng_name_to_states[name])
+    try:
+        yield
+    finally:
+        _rng_name_to_states[name] = paddle.get_rng_state()
+        paddle.set_rng_state(orig_rng_state)
 
 
 def init_auto_parallel_rng():

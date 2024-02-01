@@ -18,13 +18,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
 np.random.seed(123)
 os.environ["CPU_NUM"] = "1"
-fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
+base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class RecurrentNet(paddle.nn.Layer):

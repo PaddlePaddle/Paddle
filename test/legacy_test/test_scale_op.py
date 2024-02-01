@@ -17,13 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.static import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestScaleOp(OpTest):
@@ -42,10 +42,10 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -66,10 +66,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -132,7 +132,10 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
+        paddle.enable_static()
+
         def test_type():
             paddle.scale([10])
 
@@ -148,10 +151,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 @unittest.skipIf(
@@ -170,14 +173,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.8,
-        )
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_pir=True)
 
 
 @unittest.skipIf(
@@ -202,11 +201,12 @@ class TestScaleApiStatic(unittest.TestCase):
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
-        main_prog = Program()
-        with program_guard(main_prog, Program()):
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[2, 25], dtype="float32")
             out = self._executed_api(x, scale=2.0, bias=3.0)
 
@@ -242,6 +242,7 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -262,9 +263,9 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -273,6 +274,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -293,9 +295,9 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

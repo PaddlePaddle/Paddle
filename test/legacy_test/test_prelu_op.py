@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import Program, core
+from paddle import base
+from paddle.base import Program, core
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_prelu(x, weight):
@@ -48,6 +49,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
 
+    @test_with_pir_api
     def static_check(self, weight_np):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, 'float32')
@@ -69,6 +71,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_api(self):
         self.static_check(self.weight_np_0)
         self.static_check(self.weight_np_1)
@@ -77,6 +80,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
@@ -90,10 +94,11 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            F.prelu(x=x_fp16, weight=weight_fp32)
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
@@ -105,6 +110,7 @@ class TestNNPReluAPI(unittest.TestCase):
         )
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
+    @test_with_pir_api
     def test_static_api(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
@@ -144,14 +150,14 @@ class TestNNPReluAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(name="weight"))
+        m = paddle.nn.PReLU(weight_attr=base.ParamAttr(name="weight"))
         out = m(x)
         out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(0.5)
             )
         )
@@ -226,10 +232,10 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out')
+        self.check_grad(['X', 'Alpha'], 'Out', check_pir=True)
 
 
 @skip_check_grad_ci(
@@ -392,13 +398,17 @@ def create_test_fp16_class(
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=atol)
+                    self.check_output_with_place(
+                        place, atol=atol, check_pir=True
+                    )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and check_grad:
                 # Use the default max_relative_error, not use max_relative_error
-                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Alpha'], 'Out', check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
     TestPReluFp16Case.__name__ = cls_name
@@ -426,13 +436,15 @@ def create_test_bf16_class(
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=atol)
+            self.check_output_with_place(place, atol=atol, check_pir=True)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if check_grad:
                 # Use the default max_relative_error, not use max_relative_error
-                self.check_grad_with_place(place, ['X', 'Alpha'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Alpha'], 'Out', check_pir=True
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestPReluBF16Op.__name__ = cls_name
@@ -471,7 +483,7 @@ create_test_bf16_class(TestModeElementRank6NHWC)
 
 
 def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
-    helper = fluid.layer_helper.LayerHelper('prelu', **locals())
+    helper = base.layer_helper.LayerHelper('prelu', **locals())
     alpha_shape = [1, x.shape[1], 1, 1]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
@@ -503,7 +515,7 @@ class TestModeError(unittest.TestCase):
 
     def test_mode_error(self):
         main_program = Program()
-        with fluid.program_guard(main_program, Program()):
+        with base.program_guard(main_program, Program()):
             x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'any')
@@ -512,7 +524,7 @@ class TestModeError(unittest.TestCase):
 
     def test_data_format_error1(self):
         main_program = Program()
-        with fluid.program_guard(main_program, Program()):
+        with base.program_guard(main_program, Program()):
             x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = prelu_t(x, 'channel', data_format='N')
@@ -521,7 +533,7 @@ class TestModeError(unittest.TestCase):
 
     def test_data_format_error2(self):
         main_program = Program()
-        with fluid.program_guard(main_program, Program()):
+        with base.program_guard(main_program, Program()):
             x = paddle.static.data(name='x', shape=[2, 3, 4, 5])
             try:
                 y = paddle.static.nn.prelu(x, 'channel', data_format='N')

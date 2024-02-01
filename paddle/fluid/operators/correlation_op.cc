@@ -56,7 +56,7 @@ class CorrelationOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input2", "Input is a 4-D Tensor with shape [N, C, H, W]");
     AddOutput("Output",
               "(Tensor) The output tensor of correlation operator. "
-              "It has same data fromat and data type as the Input.");
+              "It has same data format and data type as the Input.");
     AddAttr<int>("pad_size", "pad size for input1 and input2");
     AddAttr<int>("kernel_size", "kernel size of input1 and input2");
     AddAttr<int>("max_displacement", "max displacement of input1 and input2");
@@ -97,15 +97,16 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           "Input(Y) of CorrelationOp must be 4 dims."
                           "But received dims is %d.",
                           in2_dims.size()));
-    std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
-                                                              in_dims[2],
-                                                              in_dims[3],
-                                                              stride1,
-                                                              stride2,
-                                                              kernel_size,
-                                                              pad_size,
-                                                              max_displacement);
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
+    std::vector<int64_t> output_shape =
+        CorrelationOutputSize(static_cast<int>(in_dims[0]),
+                              static_cast<int>(in_dims[2]),
+                              static_cast<int>(in_dims[3]),
+                              stride1,
+                              stride2,
+                              kernel_size,
+                              pad_size,
+                              max_displacement);
+    ctx->SetOutputDim("Output", common::make_ddim(output_shape));
   }
 
  protected:

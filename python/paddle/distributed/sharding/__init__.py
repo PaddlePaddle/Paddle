@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .group_sharded import (
-    group_sharded_parallel,
-    save_group_sharded_model,
-)  # noqa: F401
+from .group_sharded import group_sharded_parallel, save_group_sharded_model
 
 __all__ = ['group_sharded_parallel', 'save_group_sharded_model']

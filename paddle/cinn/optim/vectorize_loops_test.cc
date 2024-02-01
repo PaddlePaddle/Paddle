@@ -52,7 +52,7 @@ TEST(Vectorize, replace_var) {
 
   auto funcs = Lower("matmul", stages, {A, B, C});
 
-  Expr func = optim::Optimize(funcs, common::DefaultHostTarget());
+  Expr func = optim::Optimize(funcs, cinn::common::DefaultHostTarget());
 
   Target target;
   target.arch = Target::Arch ::X86;
@@ -221,14 +221,14 @@ TEST(Vectorize, single_for) {
 
   VectorizeInfo vectorize_info(0, 16);
   auto forloop = ir::For::Make(loop_var,
-                               common::make_const(0),
-                               common::make_const(16),
+                               cinn::common::make_const(0),
+                               cinn::common::make_const(16),
                                ir::ForType::Vectorized,
                                ir::DeviceAPI::UNK,
                                body,
                                vectorize_info);
 
-  forloop = optim::Optimize(forloop, common::DefaultHostTarget());
+  forloop = optim::Optimize(forloop, cinn::common::DefaultHostTarget());
 
   LOG(INFO) << "Forloop\n" << forloop;
 }
@@ -244,7 +244,7 @@ TEST(Vectorize, cuda_vectorize) {
 
   auto stages = CreateStages({C});
   stages[C]->Vectorize(1, 4);
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   auto func = Lower("matmul", stages, {A, B, C}, {}, {}, nullptr, target);
 
   auto target_expr = R"ROC(
@@ -281,7 +281,7 @@ TEST(Vectorize, cuda_vectorize_with_constant) {
 
   auto stages = CreateStages({C});
   stages[C]->Vectorize(1, 4);
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   auto func = Lower("mul_const", stages, {A, C}, {}, {}, nullptr, target);
 }
 

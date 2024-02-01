@@ -20,12 +20,13 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
-from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
+from op_test import OpTest, convert_float_to_uint16
 
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -46,16 +47,17 @@ class TestConjOp(OpTest):
         ).astype(self.dtype)
         out = np.conj(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir=True,
         )
 
 
@@ -90,6 +92,7 @@ class TestComplexConjOp(unittest.TestCase):
                     target = np.conj(input)
                     np.testing.assert_array_equal(result, target)
 
+    @test_with_pir_api
     def test_conj_static_mode(self):
         def init_input_output(dtype):
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
@@ -110,7 +113,7 @@ class TestComplexConjOp(unittest.TestCase):
                     out = paddle.conj(x)
 
                     exe = static.Executor(place)
-                    out_value = exe.run(feed=input_dict, fetch_list=[out.name])
+                    out_value = exe.run(feed=input_dict, fetch_list=[out])
                     np.testing.assert_array_equal(np_res, out_value[0])
 
     def test_conj_api_real_number(self):
@@ -125,18 +128,20 @@ class TestComplexConjOp(unittest.TestCase):
 
 
 class Testfp16ConjOp(unittest.TestCase):
+    @test_with_pir_api
     def testfp16(self):
-        input_x = (
-            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
-        ).astype('float16')
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[12, 14], dtype='float16')
-            out = paddle.conj(x)
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': input_x}, fetch_list=[out])
+        if paddle.is_compiled_with_cuda():
+            input_x = (
+                np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+            ).astype('float16')
+            with static.program_guard(static.Program()):
+                x = static.data(name="x", shape=[12, 14], dtype='float16')
+                out = paddle.conj(x)
+                if paddle.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(paddle.static.default_startup_program())
+                    out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 class TestConjFP16OP(TestConjOp):
@@ -170,11 +175,11 @@ class TestConjBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":

@@ -152,31 +152,19 @@ class HeterComm {
                    const void* src,
                    size_t count,
                    StreamType stream = 0);
+  template <typename StreamType>
+  void MemcpyPeerAsync(void* dst,
+                       const void* src,
+                       size_t count,
+                       StreamType stream);
 
 #if defined(PADDLE_WITH_CUDA)
-  template <typename Sgd>
-  void push_sparse_multi_node(int num,
-                              KeyType* d_keys,
-                              GradType* d_grads,
-                              size_t len,
-                              Sgd& sgd);  // NOLINT
-
   template <typename Sgd>
   void update_one_table(int num,
                         KeyType* d_keys,
                         GradType* d_grads,
                         size_t len,
                         Sgd& sgd);  // NOLINT
-
-  int gather_one_node_grad(int num,
-                           KeyType* d_keys,
-                           GradType* d_grads,
-                           int len);
-
-  int gather_multi_node_grad(int num,
-                             KeyType* d_keys,
-                             GradType* d_grads,
-                             int len);
 
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
@@ -314,7 +302,7 @@ class HeterComm {
       } else if (need_mem > alloc->size()) {
         if (need_copy) {
           std::shared_ptr<memory::Allocation> tmp =
-              memory::Alloc(place_, need_mem, stream_);
+              memory::Alloc(place_, need_mem);
 #if defined(PADDLE_WITH_CUDA)
           PADDLE_ENFORCE_GPU_SUCCESS(
               cudaMemcpyAsync(tmp->ptr(),  // output
@@ -322,6 +310,8 @@ class HeterComm {
                               alloc->size(),
                               cudaMemcpyDeviceToDevice,
                               reinterpret_cast<cudaStream_t>(stream_.id())));
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(
+              reinterpret_cast<cudaStream_t>(stream_.id())));
 #else
           memory::Copy(place_,
                        tmp->ptr(),
@@ -438,6 +428,16 @@ class HeterComm {
     platform::Timer inner_barrier_;
     platform::Timer node_span_;
     platform::Timer node_barrier_;
+
+    platform::Timer node_wait_;
+    platform::Timer node_trans_;
+    platform::Timer node_p2p_;
+    platform::Timer local_oper_;
+    platform::Timer nvcomp_comp_;
+    platform::Timer nvcomp_decomp_;
+    size_t total_keys_ = 0;
+    size_t local_keys_ = 0;
+    size_t remote_keys_ = 0;
   };
 
   void init_path();
@@ -545,7 +545,7 @@ class HeterComm {
                              const int& gpu_num,
                              const int& trans_id,
                              const cudaStream_t& stream);
-  size_t gather_inter_keys_by_copy(const int& gpu_id,
+  size_t gather_inner_keys_by_copy(const int& gpu_id,
                                    const size_t& fea_size,
                                    const KeyType* d_keys,
                                    const cudaStream_t& stream);
@@ -568,17 +568,89 @@ class HeterComm {
                               const char* d_send_buff,
                               char* d_rev_buff,
                               const cudaStream_t& stream);
-  size_t gather_sparse_keys_by_all2all(const int& gpu_id,
-                                       const size_t& fea_size,
-                                       const KeyType* d_in_keys,
-                                       const cudaStream_t& stream);
-  void scatter_sparse_vals_by_all2all(const int& gpu_id,
+  size_t gather_inter_keys_by_all2all(const int& gpu_id,
                                       const size_t& fea_size,
-                                      const char* d_in_vals,
-                                      void* d_out_vals,
-                                      const size_t& value_bytes,
-                                      void* d_tmp_vals,
-                                      const cudaStream_t& stream);
+                                      const KeyType* d_in_keys,
+                                      const cudaStream_t& stream,
+                                      bool debug = false);
+  void scatter_inter_vals_by_all2all(const int& gpu_id,
+                                     const size_t& fea_size,
+                                     const char* d_in_vals,
+                                     void* d_out_vals,
+                                     const size_t& value_bytes,
+                                     void* d_tmp_vals,
+                                     const cudaStream_t& stream);
+  void recalc_local_and_remote_size(const int& gpu_id,
+                                    const size_t& pull_size,
+                                    const size_t& node_num,
+                                    const uint32_t* d_tmp_size_list,
+                                    const uint32_t* d_inter_size_list,
+                                    const cudaStream_t& stream);
+
+  template <typename T>
+  void scatter_inter_vals_by_all2all_common(const int& gpu_id,
+                                            const size_t& len,
+                                            const size_t& value_bytes,
+                                            const T* d_in_vals,
+                                            T* d_out_vals,
+                                            T* d_tmp_vals,
+                                            const cudaStream_t& stream,
+                                            bool sage = false,
+                                            bool slot = false) {
+    AnyDeviceGuard guard(resource_->dev_id(gpu_id));
+    auto& cache = storage_[gpu_id];
+    auto& res = cache.shard_res;
+
+    auto h_local_part_sizes = res.h_local_part_sizes.data();
+    auto h_local_part_offsets = res.h_local_part_offsets.data();
+
+    auto h_remote_part_sizes = res.h_remote_part_sizes.data();
+    auto h_remote_part_offsets = res.h_remote_part_offsets.data();
+
+    size_t total_fea_num = 0;
+    if (rdma_checker_->need_rdma_trans() && !sage) {
+      // Sage mode can not run this branch currently, otherwise the process will
+      // hang here.
+      total_fea_num =
+          send_vals_by_all2all_trans(gpu_id,
+                                     rank_id_,
+                                     node_size_,
+                                     reinterpret_cast<const char*>(d_in_vals),
+                                     reinterpret_cast<char*>(d_tmp_vals),
+                                     value_bytes,
+                                     stream);
+    } else {
+      // sage is true, set default to run here.
+      total_fea_num =
+          send_data_by_all2all(gpu_id,
+                               node_size_,
+                               rank_id_,
+                               value_bytes,
+                               h_remote_part_sizes,
+                               h_remote_part_offsets,
+                               h_local_part_sizes,
+                               h_local_part_offsets,
+                               reinterpret_cast<const char*>(d_in_vals),
+                               reinterpret_cast<char*>(d_tmp_vals),
+                               stream);
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
+    // fill vals
+    // slot feature don't need scatter
+    if (!slot) {
+      heter_comm_kernel_->scatter_vals(
+          reinterpret_cast<const T*>(d_tmp_vals),  // in
+          reinterpret_cast<T*>(d_out_vals),        // out
+          res.d_local_idx_parted,
+          len,
+          value_bytes,
+          stream);
+      CUDA_CHECK(cudaStreamSynchronize(stream));
+    }
+  }
+
   void scatter_inner_vals_p2p(const size_t& total_fea_num,
                               void* d_out_vals,
                               InnerResource& res,  // NOLINT
@@ -587,7 +659,7 @@ class HeterComm {
                               const int& trans_id,
                               const size_t& value_bytes,
                               const cudaStream_t& stream);
-  void scatter_inter_vals_by_copy(const int& gpu_id,
+  void scatter_inner_vals_by_copy(const int& gpu_id,
                                   const size_t& fea_size,
                                   const char* d_in_vals,
                                   void* d_out_vals,
@@ -615,7 +687,7 @@ class HeterComm {
                     const void* d_in_grads,
                     void* d_out_grads,
                     const cudaStream_t& stream);
-  size_t gather_inter_gradient_by_copy(const int& gpu_id,
+  size_t gather_inner_gradient_by_copy(const int& gpu_id,
                                        const size_t& push_size,
                                        KeyType* d_keys,
                                        void* d_push_vals,
@@ -658,17 +730,32 @@ class HeterComm {
   // debug time
   void print_debug_time(const int& gpu_id, bool force = false);
   // alloc temp memory
-  template <typename T, typename TPlace, typename StreamType>
+  template <typename T, typename TPlace>
   T* AllocCache(std::shared_ptr<memory::Allocation>* alloc,
                 const TPlace& place,
-                const size_t& byte_len,
-                const StreamType& stream) {
+                const size_t& byte_len) {
     if (alloc->get() == nullptr || byte_len > (*alloc)->size()) {
       alloc->reset();
-      auto id = phi::Stream(reinterpret_cast<phi::StreamId>(stream));
-      *alloc = memory::Alloc(place, byte_len, id);
+      if (resource_->multi_mf()) {
+        *alloc = memory::Alloc(place, byte_len);
+      } else {
+        auto stream = resource_->local_stream(place.GetDeviceId(), 0);
+        auto id = phi::Stream(reinterpret_cast<phi::StreamId>(stream));
+        *alloc = memory::Alloc(place, byte_len, id);
+      }
     }
     return reinterpret_cast<T*>((*alloc)->ptr());
+  }
+  template <typename TPlace>
+  std::shared_ptr<memory::Allocation> MemoryAlloc(const TPlace& place,
+                                                  const size_t& byte_len) {
+    if (resource_->multi_mf()) {
+      return memory::Alloc(place, byte_len);
+    } else {
+      auto stream = resource_->local_stream(place.GetDeviceId(), 0);
+      auto id = phi::Stream(reinterpret_cast<phi::StreamId>(stream));
+      return memory::Alloc(place, byte_len, id);
+    }
   }
 
   using Table = HashTable<KeyType, ValType>;
@@ -711,6 +798,7 @@ class HeterComm {
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
   int64_t start_time_ = 0;
+  bool is_infer_mode_ = false;
 };
 
 }  // end namespace framework

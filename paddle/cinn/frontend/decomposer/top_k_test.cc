@@ -29,7 +29,7 @@ TEST(Decomposer, top_k_decomposer) {
   }
   auto program = net_builder.Build();
 
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph =

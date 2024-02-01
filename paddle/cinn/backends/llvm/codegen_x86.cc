@@ -28,7 +28,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/optim/collect_undefined_vars.h"
+#include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn::backends {
@@ -98,7 +98,7 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
                                              llvm::Function::PrivateLinkage,
                                              "__parallel_lambda",
                                              m_);
-  std::vector<std::string> vars = optim::CollectUndefinedVars(&body);
+  std::vector<std::string> vars = ir::ir_utils::CollectUndefinedVars(&body);
   uint64_t nbytes;
   auto* data = PackVars(vars, &nbytes);
 
@@ -128,8 +128,8 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
   symbol_table_->PushScope();
   UnpackVars(vars, data);
   ParallelEnv par_env;
-  auto task_id_name = common::UniqName("task_id");
-  auto num_task_name = common::UniqName("num_task");
+  auto task_id_name = cinn::common::UniqName("task_id");
+  auto num_task_name = cinn::common::UniqName("num_task");
   par_env.task_id = ir::Var(task_id_name, Int(32));
   par_env.num_task = ir::Var(num_task_name, Int(32));
   SetVar(task_id_name, task_id);

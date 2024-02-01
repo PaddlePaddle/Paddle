@@ -20,9 +20,9 @@
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -73,6 +73,7 @@ class CodeGenCUDA_Dev : public CodeGenC {
  protected:
   void Visit(const ir::_Var_* op) override;
   void Visit(const ir::_LoweredFunc_* op) override;
+  void Visit(const ir::Free* op) override;
   void Visit(const ir::Min* op) override;
   void Visit(const ir::Max* op) override;
   void Visit(const ir::Alloc* op) override;
@@ -113,6 +114,7 @@ class CodeGenCUDA_Dev : public CodeGenC {
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
+  std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };
 
 }  // namespace backends

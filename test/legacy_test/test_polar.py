@@ -18,7 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -37,6 +38,7 @@ class TestPolarAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
 

@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.static import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 def calc_margin_rank_loss(x, y, label, margin=0.0, reduction='none'):
@@ -42,10 +43,11 @@ def create_test_case(margin, reduction):
                 "float64"
             )
             self.places = []
-            self.places.append(fluid.CPUPlace())
+            self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
 
+        @test_with_pir_api
         def run_static_functional_api(self, place):
             paddle.enable_static()
             expected = calc_margin_rank_loss(
@@ -55,7 +57,9 @@ def create_test_case(margin, reduction):
                 margin=margin,
                 reduction=reduction,
             )
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="x", shape=[10, 10], dtype="float64"
                 )
@@ -79,6 +83,7 @@ def create_test_case(margin, reduction):
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
+        @test_with_pir_api
         def run_static_api(self, place):
             paddle.enable_static()
             expected = calc_margin_rank_loss(
@@ -88,7 +93,9 @@ def create_test_case(margin, reduction):
                 margin=margin,
                 reduction=reduction,
             )
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="x", shape=[10, 10], dtype="float64"
                 )
@@ -112,7 +119,8 @@ def create_test_case(margin, reduction):
                     fetch_list=[result],
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
-                self.assertTrue('loss' in result.name)
+                if not in_pir_mode():
+                    self.assertTrue('loss' in result.name)
 
         def run_dynamic_functional_api(self, place):
             paddle.disable_static(place)
@@ -191,6 +199,7 @@ for margin in [0.0, 0.2]:
 class MarginRakingLossError(unittest.TestCase):
     paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         def test_margin_value_error():
             margin_rank_loss = paddle.nn.loss.MarginRankingLoss(

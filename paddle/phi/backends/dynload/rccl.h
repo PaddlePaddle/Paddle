@@ -44,6 +44,7 @@ extern void* rccl_dso_handle;
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
@@ -55,6 +56,7 @@ extern void* rccl_dso_handle;
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
+  __macro(ncclCommGetAsyncError);       \
   __macro(ncclGetErrorString);
 
 RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)

@@ -26,12 +26,12 @@ from paddle.incubate.autograd.utils import as_tensors
 # Finite Difference Utils
 ##########################################################
 def _product(t):
-    return int(np.product(t))
+    return int(np.prod(t))
 
 
 def _get_item(t, idx):
     assert isinstance(
-        t, paddle.fluid.framework.Variable
+        t, paddle.base.framework.Variable
     ), "The first argument t must be Tensor."
     assert isinstance(
         idx, int
@@ -42,7 +42,7 @@ def _get_item(t, idx):
 
 def _set_item(t, idx, value):
     assert isinstance(
-        t, paddle.fluid.framework.Variable
+        t, paddle.base.framework.Variable
     ), "The first argument t must be Tensor."
     assert isinstance(
         idx, int
@@ -315,7 +315,7 @@ def parameterize(fields, values=None):
     test cases.
 
     Args:
-        fields (Sequence): The feild name sequence of test cases.
+        fields (Sequence): The field name sequence of test cases.
         values (Sequence, optional): The test cases sequence. Defaults to None.
 
     """

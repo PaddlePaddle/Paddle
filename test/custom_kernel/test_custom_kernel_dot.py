@@ -49,9 +49,7 @@ class TestCustomKernelDot(unittest.TestCase):
         np.testing.assert_array_equal(
             out.numpy(),
             result,
-            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
-                out.numpy(), result
-            ),
+            err_msg=f'custom kernel dot out: {out.numpy()},\n numpy dot out: {result}',
         )
 
 
@@ -82,9 +80,7 @@ class TestCustomKernelDotC(unittest.TestCase):
         np.testing.assert_array_equal(
             out.numpy(),
             result,
-            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
-                out.numpy(), result
-            ),
+            err_msg=f'custom kernel dot out: {out.numpy()},\n numpy dot out: {result}',
         )
 
 

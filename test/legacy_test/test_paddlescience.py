@@ -15,10 +15,9 @@
 import unittest
 
 import paddle
-from paddle import fluid, jit, nn
+from paddle import base, jit, nn
 
-paddle.jit.enable_to_static(True)
-fluid.core._set_prim_all_enabled(True)
+base.core._set_prim_all_enabled(True)
 
 x = paddle.randn([4, 1])
 y = paddle.randn([4, 1])

@@ -17,6 +17,7 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.completion import Completer
 from paddle.distributed.auto_parallel.static.cost_model import estimate_cost
@@ -29,7 +30,6 @@ from paddle.distributed.auto_parallel.static.parallelizer import (
 from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 from paddle.distributed.auto_parallel.static.reshard import Resharder
 from paddle.distributed.fleet import auto
-from paddle.fluid import core
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"

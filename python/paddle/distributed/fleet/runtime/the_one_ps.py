@@ -15,11 +15,11 @@
 import os
 import warnings
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program
+from paddle import base
+from paddle.base import core
+from paddle.base.compiler import CompiledProgram
+from paddle.base.executor import Executor
+from paddle.base.framework import Program
 
 from ..base.private_helper_function import wait_server_ready
 from .runtime_base import RuntimeBase
@@ -480,9 +480,7 @@ class Tensor:
         attrs += f"fetch_var_name: \"{str(self.fetch_var_name)}\" "
         attrs += f"startup_program_id: {str(self.startup_program_id)} "
         attrs += f"main_program_id: {str(self.main_program_id)} "
-        attrs += "tensor_table_class: \"{}\" ".format(
-            str(self.tensor_table_class)
-        )
+        attrs += f"tensor_table_class: \"{str(self.tensor_table_class)}\" "
         attrs += "\n"
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
@@ -676,7 +674,7 @@ class TheOnePSRuntime(RuntimeBase):
         super().__init__()
         self._communicator = None
         self._server = None
-        self._worker = fluid.core.DistFleetWrapper()
+        self._worker = base.core.DistFleetWrapper()
         self._server_sub_program = []
         self._heter_client = None
 
@@ -772,7 +770,7 @@ class TheOnePSRuntime(RuntimeBase):
         string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
+            pshost = base.core.PSHost(host, int(port), idx)
             string_hosts.append(pshost.serialize_to_string())
 
         dense_map = self.compiled_strategy.get_the_one_recv_context(
@@ -816,7 +814,7 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_config.mode, kwargs, trainer_config.get_communicator_flags()
         )
         self._communicator.init_with_ctx(
-            send_ctx, dense_map, proto_txt, string_hosts, fluid.global_scope()
+            send_ctx, dense_map, proto_txt, string_hosts, base.global_scope()
         )
 
         from paddle.distributed import fleet
@@ -887,30 +885,28 @@ class TheOnePSRuntime(RuntimeBase):
                 )
 
     def _push_sparse_param(
-        self, var_name, table_id=-1, scope=fluid.global_scope()
+        self, var_name, table_id=-1, scope=base.global_scope()
     ):
         self._communicator.push_sparse_param(var_name, table_id, scope)
 
     def _get_executor(self):
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = base.Executor(base.CPUPlace())
         if self.role_maker._is_heter_parameter_server_mode:
             if self.role_maker._is_heter_worker():
                 heter_device_type = self.role_maker._heter_device_type().upper()
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
-                        "Heter Worker Not Support Device {}".format(
-                            heter_device_type
-                        )
+                        f"Heter Worker Not Support Device {heter_device_type}"
                     )
                 if heter_device_type == "GPU":
                     executor = Executor(
-                        fluid.CUDAPlace(
+                        base.CUDAPlace(
                             int(os.getenv("FLAGS_selected_gpus", "0"))
                         )
                     )
                 elif heter_device_type == "XPU":
                     executor = Executor(
-                        fluid.XPUPlace(
+                        base.XPUPlace(
                             int(os.getenv("FLAGS_selected_xpus", "0"))
                         )
                     )
@@ -1182,10 +1178,10 @@ class TheOnePSRuntime(RuntimeBase):
         string_hosts = []
         for idx, ep in enumerate(endpoints):
             host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
+            pshost = base.core.PSHost(host, int(port), idx)
             string_hosts.append(pshost.serialize_to_string())
 
-        self._server = fluid.core.DistFleetWrapper()
+        self._server = base.core.DistFleetWrapper()
         self._server.init_server(
             proto_txt, string_hosts, role_id, trainers, self._server_sub_program
         )

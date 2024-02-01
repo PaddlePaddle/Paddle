@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -330,7 +330,7 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     auto *in_state = context.Input<phi::DenseTensor>("InState");
 
     phi::DenseTensor tmp_scale;
-    tmp_scale.Resize(phi::make_dim(1));
+    tmp_scale.Resize(common::make_dim(1));
     T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
     FindAbsMaxFunctor<DeviceContext, T>()(
@@ -420,7 +420,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     auto *in_accum = context.Input<phi::DenseTensor>("InAccum");
     auto *in_state = context.Input<phi::DenseTensor>("InState");
     phi::DenseTensor tmp_scale;
-    tmp_scale.Resize(phi::make_dim(1));
+    tmp_scale.Resize(common::make_dim(1));
     T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
 
     FindAbsMaxFunctor<DeviceContext, T>()(

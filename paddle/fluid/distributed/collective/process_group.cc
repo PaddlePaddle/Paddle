@@ -28,6 +28,12 @@ ProcessGroup::ProcessGroup(int rank, int size, int gid)
     auto map = ProcessGroupMapFromGid::getInstance();
     map->insert(gid_, this);
   }
+  const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
+  PADDLE_ENFORCE_NOT_NULL(
+      global_rank,
+      phi::errors::NotFound(
+          "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+  global_rank_ = std::atoi(global_rank);
 }
 
 // TODO(sunyilun): methods below will be removed later

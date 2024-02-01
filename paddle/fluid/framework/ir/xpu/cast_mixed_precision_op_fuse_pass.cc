@@ -127,6 +127,7 @@ int CastMixedPrecisionOpFusePass::ApplyCastBeforePass(
   GraphPatternDetector gpd;
   patterns::CastBeforePattern pattern(
       gpd.mutable_pattern(), name_scope_, mixed_precision_op_type);
+  auto* scope = param_scope();
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -136,7 +137,22 @@ int CastMixedPrecisionOpFusePass::ApplyCastBeforePass(
     GET_IR_NODE(cast);
     GET_IR_NODE(cast_out);
     GET_IR_NODE(mixed_precision_op);
-
+    // Note: conv2d_xpu/fc_xpu not support float32/int8/float16, can not fuse.
+    if (mixed_precision_op_type == "conv2d_xpu") {
+      auto filter_name = mixed_precision_op->Op()->Input("filter")[0];
+      auto filter_data_type =
+          scope->FindVar(filter_name)->GetMutable<phi::DenseTensor>()->dtype();
+      if (filter_data_type == phi::DataType::INT8) {
+        return;
+      }
+    } else if (mixed_precision_op_type == "fc_xpu") {
+      auto w_name = mixed_precision_op->Op()->Input("w")[0];
+      auto w_data_type =
+          scope->FindVar(w_name)->GetMutable<phi::DenseTensor>()->dtype();
+      if (w_data_type == phi::DataType::INT8) {
+        return;
+      }
+    }
     mixed_precision_op->Op()->RenameInput(cast_out->Name(), cast_in->Name());
     IR_NODE_LINK_TO(cast_in, mixed_precision_op);
 
@@ -155,6 +171,7 @@ int CastMixedPrecisionOpFusePass::ApplyCastAfterPass(
   GraphPatternDetector gpd;
   patterns::CastAfterPattern pattern(
       gpd.mutable_pattern(), name_scope_, mixed_precision_op_type);
+  auto* scope = param_scope();
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -164,7 +181,30 @@ int CastMixedPrecisionOpFusePass::ApplyCastAfterPass(
     GET_IR_NODE(cast_in);
     GET_IR_NODE(cast);
     GET_IR_NODE(cast_out);
-
+    // Note: conv2d_xpu/fc_xpu not support float16/int8/float32, can not fuse.
+    if (mixed_precision_op_type == "conv2d_xpu") {
+      auto filter_name = mixed_precision_op->Op()->Input("filter")[0];
+      auto filter_data_type =
+          scope->FindVar(filter_name)->GetMutable<phi::DenseTensor>()->dtype();
+      auto x_name = mixed_precision_op->Op()->Input("x")[0];
+      auto* x_node = FindNodeWithName(graph, x_name);
+      if (filter_data_type == phi::DataType::INT8 &&
+          x_node->Var()->GetDataType() ==
+              proto::VarType::Type::VarType_Type_FP16) {
+        return;
+      }
+    } else if (mixed_precision_op_type == "fc_xpu") {
+      auto w_name = mixed_precision_op->Op()->Input("w")[0];
+      auto w_data_type =
+          scope->FindVar(w_name)->GetMutable<phi::DenseTensor>()->dtype();
+      auto x_name = mixed_precision_op->Op()->Input("x")[0];
+      auto* x_node = FindNodeWithName(graph, x_name);
+      if (w_data_type == phi::DataType::INT8 &&
+          x_node->Var()->GetDataType() ==
+              proto::VarType::Type::VarType_Type_FP16) {
+        return;
+      }
+    }
     mixed_precision_op->Op()->RenameOutput(cast_in->Name(), cast_out->Name());
     int out_dtype = proto::VarType::Type::VarType_Type_FP32;
     mixed_precision_op->Op()->SetAttr("out_dtype", out_dtype);

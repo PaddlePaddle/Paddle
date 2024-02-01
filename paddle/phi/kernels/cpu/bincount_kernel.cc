@@ -75,7 +75,8 @@ void BincountInner(const Context& dev_ctx,
 
   } else {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0L);
+    phi::funcs::SetConstant<Context, int64_t>()(
+        dev_ctx, output, static_cast<int64_t>(0));
     for (int64_t i = 0; i < input_numel; i++) {
       output_data[input_data[i]] += 1L;
     }

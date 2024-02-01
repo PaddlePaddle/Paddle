@@ -16,6 +16,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -40,10 +44,11 @@ class Net(paddle.nn.Layer):
         return t
 
 
-class TestFallback(unittest.TestCase):
+class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor(1.0).astype('int')
 
+    @test_legacy_and_pt_and_pir
     def test_name_load(self):
         net_dy = Net()
         net_st = Net()
@@ -52,7 +57,8 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 
-class TestLoad2(unittest.TestCase):
+class TestLoad2(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_name_load_nograd(self):
         @paddle.no_grad()
         def func(x):
@@ -62,6 +68,28 @@ class TestLoad2(unittest.TestCase):
         x = paddle.to_tensor([[3, 3], [1, 1]])
         output_st = paddle.jit.to_static(func)(x)
         output_dy = func(x)
+        np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
+
+
+class LoadInCallKwargsNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.extra_inputs = []
+
+    def forward(self, x):
+        for i in range(len(self.extra_inputs)):
+            x = paddle.nn.functional.linear(weight=self.extra_inputs[i].T, x=x)
+        return x
+
+
+class TestLoadInCallKwargs(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
+    def test_name_load_nograd(self):
+        net = LoadInCallKwargsNet()
+        x = paddle.rand([10, 10])
+        net.extra_inputs.append(paddle.rand([10, 10]))
+        output_st = paddle.jit.to_static(net)(x)
+        output_dy = net(x)
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 

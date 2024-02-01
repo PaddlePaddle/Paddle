@@ -200,7 +200,7 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
         }
       }
 
-      op_desc->SetInput(pair.first, std::move(names));
+      op_desc->SetInput(pair.first, names);
     }
 
     for (auto &pair : op->Outputs()) {
@@ -212,7 +212,7 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
         }
       }
 
-      op_desc->SetOutput(pair.first, std::move(names));
+      op_desc->SetOutput(pair.first, names);
     }
   }
 
@@ -264,8 +264,8 @@ void ProgramDescTracer::InsertVarIfNotExist(
   if (inner_var.IsType<phi::DenseTensor>()) {
     const auto &tensor = inner_var.Get<phi::DenseTensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
-    new_var_desc->SetShape(phi::vectorize<int64_t>(tensor.dims()));
-    new_var_desc->SetLoDLevel(tensor.lod().size());
+    new_var_desc->SetShape(common::vectorize<int64_t>(tensor.dims()));
+    new_var_desc->SetLoDLevel(static_cast<int32_t>(tensor.lod().size()));
     if (tensor.IsInitialized()) {
       new_var_desc->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
     } else {

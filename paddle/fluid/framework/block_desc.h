@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -37,7 +38,7 @@ class VarDesc;
 // read/write speed. Only when we want the protobuf message, the local changes
 // will be synchronized (by `Sync` method).
 
-class BlockDesc {
+class TEST_API BlockDesc {
  public:
   BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 
@@ -46,6 +47,10 @@ class BlockDesc {
   int32_t ID() const { return desc_->idx(); }
 
   int32_t Parent() const { return desc_->parent_idx(); }
+
+  void SetParent(int32_t parent_id) const {
+    return desc_->set_parent_idx(parent_id);
+  }
 
   int32_t ForwardBlockID() const { return desc_->forward_block_idx(); }
 
@@ -97,7 +102,7 @@ class BlockDesc {
 
   void RemoveOpInternal(const OpDesc *op_desc);
 
-  void RemoveVar(const std::string &name) { vars_.erase(name); }
+  void RemoveVar(const std::string &name);
 
   std::vector<OpDesc *> AllOps() const;
 

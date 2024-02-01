@@ -22,13 +22,39 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed import collective
-from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
+
+
+class OrderedSet:
+    def __init__(self, iterable=None):
+        self._data = OrderedDict.fromkeys(iterable or [])
+
+    def __contains__(self, item):
+        return item in self._data
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
+    def add(self, item):
+        self._data[item] = None
+
+    def discard(self, item):
+        self._data.pop(item, None)
+
+    def update(self, iterable):
+        self._data.update((item, None) for item in iterable)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({list(self._data)})"
 
 
 def _all_gather(tensor, buffer_size, group):
@@ -148,7 +174,7 @@ class GroupShardedStage3(nn.Layer):
             {}
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = {}  # {id(layer): [trainable_params]}
-        self._unslice_params = set()  # param's numel <= segment_size
+        self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
 
@@ -161,14 +187,24 @@ class GroupShardedStage3(nn.Layer):
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
 
+        # check main_grad
+        self._check_main_grad()
+
         # Replace optimizer's _grad_clip
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
             logging.warning(
                 "While using ClipGradByGlobalNorm in GroupShardedStage3, the grad clip of original optimizer will be changed."
             )
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group
-            )
+            if self.use_main_grad:
+                self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                    self._optim._inner_opt._grad_clip,
+                    paddle.get_device(),
+                    self._group,
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
@@ -203,6 +239,16 @@ class GroupShardedStage3(nn.Layer):
         self._redefine_opt_step()
         self._redefine_opt_clear()
 
+    def _check_main_grad(self):
+        self.use_main_grad = None
+        for param in self._layer.parameters():
+            if self.use_main_grad is None and hasattr(param, "main_grad"):
+                self.use_main_grad = True
+            if self.use_main_grad:
+                assert hasattr(
+                    param, "main_grad"
+                ), "Params have different main grad attributes."
+
     @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
         """
@@ -235,8 +281,11 @@ class GroupShardedStage3(nn.Layer):
             assert hasattr(
                 param, "fw_storage"
             ), f"Find {param.name} don't have fw_storage attribute."
-
-            param.fw_storage.clear_gradient(False)
+            if self.use_main_grad:
+                param.fw_storage.main_grad._clear()
+                param.fw_storage.main_grad = None
+            else:
+                param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
             param.bw_storage = None
         # 2.Handle unslice param
@@ -245,7 +294,12 @@ class GroupShardedStage3(nn.Layer):
                 grad_storage.buffer.zero_()
         else:
             for param in list(self._unslice_params):
-                param.clear_gradient(False)
+                if self.use_main_grad:
+                    param.main_grad._clear()
+                    param.main_grad = None
+                else:
+                    param.clear_gradient(False)
+
                 if (
                     self._default_device
                     in paddle.device.get_all_custom_device_type()
@@ -350,7 +404,9 @@ class GroupShardedStage3(nn.Layer):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
-                    dtype=param.dtype,
+                    dtype=param.dtype
+                    if not self.use_main_grad
+                    else paddle.float32,
                     device=self._default_device,
                     destination=self._rank,
                     parm2align=self._unslice_params2align,
@@ -596,8 +652,11 @@ class GroupShardedStage3(nn.Layer):
             ), f"Find {param.name} don't have fw_storage attribute"
 
             param.fw_storage = _TensorWrapper(param)
-            assert param.fw_storage.grad is None
-            param.fw_storage._copy_gradient_from(param.bw_storage)
+            if self.use_main_grad:
+                param.fw_storage.main_grad = param.bw_storage
+            else:
+                assert param.fw_storage.grad is None
+                param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
 
         # 2.Handle unslice param
@@ -617,9 +676,13 @@ class GroupShardedStage3(nn.Layer):
 
             for grad_storage in self._grad_storages.values():
                 for p in grad_storage._params:
-                    tmp_g = _device2cpu(p.grad, convert_dtype=True)
-                    p.clear_gradient(False)
-                    p._copy_gradient_from(tmp_g)
+                    if self.use_main_grad:
+                        tmp_g = _device2cpu(p.main_grad, convert_dtype=True)
+                        p.main_grad = tmp_g
+                    else:
+                        tmp_g = _device2cpu(p.grad, convert_dtype=True)
+                        p.clear_gradient(False)
+                        p._copy_gradient_from(tmp_g)
                     del tmp_g
                 grad_storage.buffer._clear()
 
@@ -650,6 +713,7 @@ class GroupShardedStage3(nn.Layer):
         if convert2cpu:
             for param in trainable_params:
                 t_flow.full_param[param.name][0]._share_buffer_to(param)
+                del t_flow.full_param[param.name]
 
         #  a _allgather_buffer call should be matched with a _release_param call later,
         #  but the _allgather_buffer call here has no match.
@@ -708,7 +772,11 @@ class GroupShardedStage3(nn.Layer):
                             param.bw_storage,
                             full_grad._slice(start, end).detach().clone(),
                         )
-                param.clear_gradient(False)
+
+                if self.use_main_grad:
+                    param.main_grad = None
+                else:
+                    param.clear_gradient(False)
                 del self._task_flow.full_grad[param.name]
 
             if param.name in self._task_flow.full_param.keys():
@@ -726,6 +794,7 @@ class GroupShardedStage3(nn.Layer):
                     del self._task_flow.full_param[param.name]
 
                     if self._offload:
+                        # revert back to cpu for offload update
                         param.fw_storage._clear_data()
                         param.master_weight._share_buffer_to(param.fw_storage)
 
@@ -929,11 +998,14 @@ class TaskFlow:
 
     def __init__(
         self,
+        full_param={},
+        full_grad={},
+        use_calc={},
         callback=None,
     ):
-        self.full_param = {}
-        self.full_grad = {}
-        self.use_calc = {}
+        self.full_param = full_param
+        self.full_grad = full_grad
+        self.use_calc = use_calc
         self.callback = callback
 
 
@@ -959,7 +1031,6 @@ def _release_param(
 
                 if offload:
                     param.fw_storage = _device2cpu(param.fw_storage)
-    return
 
 
 def _wait_layer(
@@ -1015,6 +1086,7 @@ def _allgather_buffer(
             continue
 
         if offload:
+            # convert to device for collective comm
             param.fw_storage = _cpu2device(param)
 
         buffer_size = param2buffer_size[param.name]
@@ -1047,17 +1119,22 @@ def _allgather_buffer(
 @paddle.autograd.no_grad()
 def _create_params_grad(trainable_params, param2buffer_size, task_flow):
     for param in trainable_params:
+        use_main_grad = hasattr(param, "main_grad")
         if not param.trainable:
             continue
         if param.name in task_flow.full_grad.keys():
             continue
         assert isinstance(param2buffer_size[param.name], int)
         temp_grad = paddle.zeros(
-            [param2buffer_size[param.name]], dtype=param.dtype
+            [param2buffer_size[param.name]],
+            dtype=param.dtype if not use_main_grad else paddle.float32,
         )
         temp_tensor = temp_grad._slice(0, param._numel())
         temp_tensor.get_tensor()._set_dims(param.shape)
-        param._copy_gradient_from(temp_tensor)
+        if use_main_grad:
+            param.main_grad = temp_tensor
+        else:
+            param._copy_gradient_from(temp_tensor)
         del temp_tensor
         task_flow.full_grad[param.name] = temp_grad
     return task_flow

@@ -90,7 +90,7 @@ make -j8
    compiling docker building script. it use alpine linux 3.10 as musl linux build environment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
 
     environment variables:
-   - PYTHON_VERSION: the version of python used for image building, default=3.7.
+   - PYTHON_VERSION: the version of python used for image building, default=3.8.
    - WITH_PRUNE_DAYS: prune old docker images, with days limitation.
    - WITH_REBUILD: force to rebuild the image, default=0.
    - WITH_REQUIREMENT: build with the python requirements, default=1.

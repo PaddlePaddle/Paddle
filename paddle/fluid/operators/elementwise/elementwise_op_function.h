@@ -41,9 +41,9 @@ limitations under the License. */
 #include <thrust/iterator/iterator_adaptor.h>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif
@@ -60,7 +60,7 @@ namespace operators {
 
 /*
  *  Pack input and output tensors into respective vectors with
- *  consideration of varible X`s class type.
+ *  consideration of variable X`s class type.
  *  Input variable X is supported to be whether phi::DenseTensor or
  *  SelectedRows class type in this package function, once X
  *  was SelectedRows type, a valid pointer x_for_selectedrows
@@ -91,13 +91,13 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
                       true,
                       platform::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
-                          "scalar. But reveived the size of Y = %d.",
+                          "scalar. But received the size of Y = %d.",
                           y->dims().size()));
     PADDLE_ENFORCE_NOT_NULL(
         x_for_selectedrows,
         platform::errors::InvalidArgument(
             "The parameter x_for_selectedrows is excepted to "
-            "be valid, once input varible X`s class type is "
+            "be valid, once input variable X`s class type is "
             "SelectedRows.\n"));
     auto &x_sele = x_var->Get<phi::SelectedRows>();
     auto out_sele = ctx.Output<phi::SelectedRows>("Out");
@@ -473,7 +473,7 @@ void FusedElemwiseAndActComputeNoBroadcast(
     CompoundFunctor compound_functor,
     phi::DenseTensor *out,
     phi::DenseTensor *intermediate_out) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
@@ -654,7 +654,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
   const T *x_data = nullptr;

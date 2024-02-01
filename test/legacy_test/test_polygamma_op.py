@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 paddle.seed(100)
@@ -64,6 +65,7 @@ class TestPolygammaAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         def run(place):
             paddle.enable_static()
@@ -197,7 +199,7 @@ class TestPolygammaOp(OpTest):
         self.target = ref_polygamma(self.inputs['x'], self.order)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -206,6 +208,7 @@ class TestPolygammaOp(OpTest):
             user_defined_grads=[
                 ref_polygamma_grad(self.case, 1 / self.case.size, self.order)
             ],
+            check_pir=True,
         )
 
 

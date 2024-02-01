@@ -22,6 +22,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -88,12 +89,12 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx,
-          *input_tensor,
-          output_tensor,
-          kps::IdentityFunctor<T>(),
-          reduce_dims_vec);
+      phi::SumKernel<T, Context>(ctx,
+                                 *input_tensor,
+                                 reduce_dims_vec,
+                                 output_tensor->dtype(),
+                                 false,
+                                 output_tensor);
     }
   }
 }
@@ -110,4 +111,6 @@ PD_REGISTER_KERNEL(broadcast_tensors_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

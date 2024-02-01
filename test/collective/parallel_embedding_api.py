@@ -19,7 +19,7 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 paddle.enable_static()
@@ -30,7 +30,7 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             fleet.init(is_collective=True)
             np.random.seed(2020)
             # (num_embeddings, embedding_dim) = (12, 8)
@@ -44,13 +44,13 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
             )
             per_part_size = size[0] // 2
             if rank == 0:
-                param_attr = paddle.fluid.ParamAttr(
+                param_attr = paddle.base.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(
                         np_array[0:per_part_size, :]
                     ),
                 )
             else:
-                param_attr = paddle.fluid.ParamAttr(
+                param_attr = paddle.base.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(
                         np_array[per_part_size : size[0], :]
                     ),

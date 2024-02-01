@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(1)
@@ -57,10 +58,10 @@ class TestMaxOutOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
@@ -95,6 +96,7 @@ class TestMaxoutAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
@@ -122,6 +124,7 @@ class TestMaxoutAPI(unittest.TestCase):
         np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
@@ -161,6 +164,7 @@ class TestMaxoutStaticAPIFP16(unittest.TestCase):
         self.axis = 1
         self.place = paddle.CUDAPlace(0)
 
+    @test_with_pir_api
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)

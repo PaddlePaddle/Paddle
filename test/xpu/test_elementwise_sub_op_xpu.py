@@ -16,17 +16,22 @@
 import unittest
 
 import numpy as np
-from eager_op_test import skip_check_grad_ci
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
+)
+from op_test import (
+    convert_float_to_uint16,
+    skip_check_grad_ci,
 )
 from op_test_xpu import XPUOpTest
 
 import paddle
 
 paddle.enable_static()
+
+INT_GROUP = [np.int32, np.int64]
 
 
 class XPUTestElementwiseSubOp(XPUOpTestWrapper):
@@ -39,14 +44,44 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             self.op_type = "elementwise_sub"
             self.use_xpu = True
             self.dtype = self.in_type
+            self.init_shape()
             self.init_input_output()
 
+        def reshape_data(self, x, y):
+            if len(x.shape) < len(y.shape):
+                reshape_dims = [1 if i not in x.shape else i for i in y.shape]
+                return np.reshape(x, reshape_dims)
+            else:
+                return x
+
+        def gen_data_depend_on_dtype(self, shape):
+            if self.dtype in INT_GROUP:
+                return np.random.randint(1, 100, size=shape)
+            else:
+                return np.random.uniform(-1, 1, size=shape)
+
         def init_input_output(self):
+            self.x = self.gen_data_depend_on_dtype(self.x_shape)
+            self.y = self.gen_data_depend_on_dtype(self.y_shape)
+            if self.dtype == np.uint16:
+                tmp_x = self.reshape_data(self.x, self.y)
+                tmp_y = self.reshape_data(self.y, self.x)
+                tmp_out = tmp_x - tmp_y
+                self.outputs = {'Out': convert_float_to_uint16(tmp_out)}
+                self.x = convert_float_to_uint16(self.x)
+                self.y = convert_float_to_uint16(self.y)
+            else:
+                tmp_x = self.reshape_data(self.x, self.y).astype(self.dtype)
+                tmp_y = self.reshape_data(self.y, self.x).astype(self.dtype)
+                self.outputs = {'Out': tmp_x - tmp_y}
             self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+                'X': self.x.astype(self.dtype),
+                'Y': self.y.astype(self.dtype),
             }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+        def init_shape(self):
+            self.x_shape = [2, 3, 4, 5]
+            self.y_shape = [2, 3, 4, 5]
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
@@ -81,131 +116,76 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                 )
 
     class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = []
+            self.y_shape = []
 
     class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [13, 17]
+            self.y_shape = []
 
     class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = []
+            self.y_shape = [13, 17]
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseSubOp_scalar(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 3, 4).astype(self.dtype),
-                'Y': np.random.rand(1).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [10, 3, 4]
+            self.y_shape = [1]
 
     class TestElementwiseSubOp_Vector(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.random((100,)).astype(self.dtype),
-                'Y': np.random.random((100,)).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [100]
+            self.y_shape = [100]
 
     class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(100, 3, 2).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-
+        def init_shape(self):
+            self.x_shape = [100, 3, 2]
+            self.y_shape = [100]
             self.attrs = {'axis': 0}
-            self.outputs = {
-                'Out': self.inputs['X'] - self.inputs['Y'].reshape(100, 1, 1)
-            }
 
     class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-
+        def init_shape(self):
+            self.x_shape = [2, 100, 3]
+            self.y_shape = [100]
             self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 100, 1)
-            }
 
     class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype),
-            }
-
-            self.outputs = {
-                'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
-            }
+        def init_shape(self):
+            self.x_shape = [2, 3, 100]
+            self.y_shape = [100]
 
     class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
-                'Y': np.random.rand(10, 12).astype(self.dtype),
-            }
-
+        def init_shape(self):
+            self.x_shape = [2, 10, 12, 3]
+            self.y_shape = [10, 12]
             self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 10, 12, 1)
-            }
 
     class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 5, 3, 12).astype(self.dtype),
-                'Y': np.random.rand(2, 5, 1, 12).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [2, 5, 3, 12]
+            self.y_shape = [2, 5, 1, 12]
 
     class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(1, 1, 100).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [2, 3, 100]
+            self.y_shape = [1, 1, 100]
 
     class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 3, 1, 4).astype(self.dtype),
-                'Y': np.random.rand(10, 1, 12, 1).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        def init_shape(self):
+            self.x_shape = [10, 3, 1, 4]
+            self.y_shape = [10, 1, 12, 1]
 
     class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
-        def init_input_output(self):
-            self.inputs = {
-                'X': np.random.rand(10, 12).astype(self.dtype),
-                'Y': np.random.rand(2, 3, 10, 12).astype(self.dtype),
-            }
-
+        def init_shape(self):
+            self.x_shape = [10, 12]
+            self.y_shape = [2, 3, 10, 12]
             self.attrs = {'axis': 2}
-
-            self.outputs = {
-                'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
-            }
 
 
 support_types = get_xpu_op_support_types('elementwise_sub')

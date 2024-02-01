@@ -17,8 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.optimizer import lbfgs as incubate_lbfgs
-from paddle.incubate.optimizer import line_search_dygraph
+from paddle.incubate.optimizer import (
+    lbfgs as incubate_lbfgs,
+    line_search_dygraph,
+)
 from paddle.optimizer import lbfgs
 
 np.random.seed(123)
@@ -490,6 +492,16 @@ class TestLbfgs(unittest.TestCase):
             func2,
             paddle.to_tensor([1.0]),
             paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            max_ls=1,
+        )
+        lbfgs._strong_wolfe(
+            func2,
+            paddle.to_tensor([1.0]),
+            -0.001,
             paddle.to_tensor([1.0]),
             paddle.to_tensor([1.0]),
             paddle.to_tensor([1.0]),

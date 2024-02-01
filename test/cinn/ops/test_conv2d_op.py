@@ -23,7 +23,7 @@ from op_test_helper import TestCaseHelper
 import paddle
 
 set_cinn_cudnn_deterministic(True)
-paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
+paddle.base.set_flags({'FLAGS_cudnn_deterministic': 1})
 
 
 @OpTestTool.skip_if(

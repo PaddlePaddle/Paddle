@@ -34,7 +34,7 @@ namespace framework {
  */
 struct Buffer final {
   Buffer() = default;
-  explicit Buffer(const common::Target& target) { SetTarget(target); }
+  explicit Buffer(const cinn::common::Target& target) { SetTarget(target); }
   ~Buffer() { Free(); }
   //! Resize the memory hold by this buffer *exactlly* to \p size.
   void Resize(uint32_t size);
@@ -45,16 +45,18 @@ struct Buffer final {
   void ResizeLazy(uint32_t alignment, uint32_t size);
 
   //! Resize the memory to \p size in target \p target.
-  void Resize(uint32_t size, const common::Target& target);
-  void Resize(uint32_t alignment, uint32_t size, const common::Target& target);
+  void Resize(uint32_t size, const cinn::common::Target& target);
+  void Resize(uint32_t alignment,
+              uint32_t size,
+              const cinn::common::Target& target);
 
   //! Lazily resize the memory to \p size in target \p target.
-  void ResizeLazy(uint32_t size, const common::Target& target);
+  void ResizeLazy(uint32_t size, const cinn::common::Target& target);
   void ResizeLazy(uint32_t alignment,
                   uint32_t size,
-                  const common::Target& target);
+                  const cinn::common::Target& target);
 
-  void SetTarget(const common::Target& target);
+  void SetTarget(const cinn::common::Target& target);
 
   const cinn_buffer_t* data() const { return &data_; }
   cinn_buffer_t* data() { return &data_; }
@@ -81,7 +83,7 @@ struct Buffer final {
   cinn_buffer_t data_;
 
   //! The place where this buffer locates.
-  common::Target target_;
+  cinn::common::Target target_;
 
   //! Number of bytes of this buffer.
   uint32_t size_{};

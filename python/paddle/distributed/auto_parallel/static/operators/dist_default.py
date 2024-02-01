@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
+from ..completion import get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
@@ -26,20 +28,28 @@ from ..utils import (
     _get_comm_group,
     _get_corresponding_rank,
     compute_compatible_dim_mapping,
+    get_dist_tensor_spec,
     is_prim_op,
-    set_dist_op_desc_original_id,
 )
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    copy_op_without_infer_shape,
+    get_default_distributed_operator_impl,
     gradient_synchronization,
     is_parameter_related,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
+    update_op_dims_mapping,
 )
 
 __op_not_need_param_init__ = ["while", "cond"]
-__op_has_shape_attr__ = ["fill_constant_batch_size_like", "fill_constant"]
+__op_has_shape_attr__ = [
+    "fill_constant_batch_size_like",
+    "fill_constant",
+    "expand_v2",
+]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
@@ -92,12 +102,66 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
         ctx.set_op_dist_attr_for_program(allreduce_op, op_attr)
 
-    return
-
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
+
+    @staticmethod
+    def update_dims_mapping(dist_op):
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+
+        op_desc = dist_op.serial_op.desc
+        input_arg_names = op_desc.input_arg_names()
+        output_arg_names = op_desc.output_arg_names()
+        main_block = dist_op.serial_op.block
+
+        num_inputs = len(input_arg_names)
+        input_specs = []
+        for i in range(num_inputs):
+            assert not is_parameter_related(
+                input_arg_names[i], main_block
+            ), "input {} of op {} is parameter, op should not use default rule.".format(
+                input_arg_names[i], str(dist_op.serial_op)
+            )
+            input_specs.append(
+                get_dist_tensor_spec(dist_op, input_arg_names[i])
+            )
+        num_outputs = len(output_arg_names)
+        output_specs = []
+        for i in range(num_outputs):
+            assert not is_parameter_related(
+                output_arg_names[i], main_block
+            ), "output {} of op {} is parameter, op should not use default rule.".format(
+                output_arg_names[i], str(dist_op.serial_op)
+            )
+            output_specs.append(
+                get_dist_tensor_spec(dist_op, output_arg_names[i], False)
+            )
+
+        # step2: infer spmd
+        rule = get_phi_spmd_rule("default_")
+        # tensor order following order in PHI definition
+        fw_results = rule.infer_forward(input_specs, output_specs)
+        bw_results = rule.infer_backward(input_specs, output_specs)
+
+        # step3: update dist_attr
+        # tensor order following order in PHI definition
+        changed = update_op_dims_mapping(
+            dist_op, input_arg_names, output_arg_names, fw_results, bw_results
+        )
+
+        return changed
+
+    @staticmethod
+    def mapping_to_dist_operator_impl(dist_op, original_op_dist_attr):
+        # all op use default dist operator impl.
+        op_dist_attr = dist_op.dist_attr
+        default_impl = get_default_distributed_operator_impl()
+        op_dist_attr.impl_type = default_impl.type
+        op_dist_attr.impl_idx = default_impl.idx
+
+        return False
 
 
 register_distributed_operator_impl_container(DistributedDefault("default"))
@@ -457,32 +521,18 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
-        dist_op = main_block.append_op(type='nop')
-        dist_op_desc = dist_op.desc
-        dist_op_desc.copy_from(src_op.desc)
-        set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
-        for input_name in src_op.desc.input_names():
-            dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in src_op.desc.output_names():
-            dist_op_desc.set_output(output_name, kwargs[output_name])
-        # TODO: should we add a new dist attr for the new op here?
+        dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
         if (
             src_op.has_attr('shape')
@@ -502,7 +552,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dist_op_desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr('shape', shape_list)
 
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
@@ -516,7 +566,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         if src_op.type in __op_not_need_param_init__:
             return
 
-        for varname in dist_op_desc.input_arg_names():
+        for varname in dst_op.desc.input_arg_names():
             if (
                 startup_block.has_var(varname)
                 and startup_block.var(varname).is_parameter
@@ -558,15 +608,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
-
-                        # set distributed attribute
-                        op_attr = OperatorDistAttr()
-                        op_attr.process_mesh = process_mesh
-                        op_attr.set_output_dims_mapping(
-                            param.name, dims_mapping
+                        set_comm_op_dist_attr_for_program(
+                            new_op,
+                            process_mesh,
+                            param_dist_attr,
+                            ctx,
                         )
-                        op_attr.set_input_dims_mapping(param.name, dims_mapping)
-                        ctx.set_op_dist_attr_for_program(new_op, op_attr)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -577,38 +624,23 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(
-            str(backward_op)
-        )
+        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
         rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 backward_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in backward_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 backward_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
-        dist_op_desc.copy_from(backward_op.desc)
-        # Refer to the related dist op
-        set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
-        for input_name in backward_op.desc.input_names():
-            dist_op_desc.set_input(input_name, kwargs[input_name])
-        for output_name in backward_op.desc.output_names():
-            dist_op_desc.set_output(output_name, kwargs[output_name])
+        copy_op_without_infer_shape(backward_op, main_block, ctx, kwargs)
 
         # data parallel gradient synchronization
         act_grad_names = []

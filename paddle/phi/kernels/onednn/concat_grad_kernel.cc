@@ -38,7 +38,7 @@ void ConcatGradKernel(const Context& dev_ctx,
 
   int axis = axis_scalar.to<int>();
 
-  auto out_grad_vec_dims = vectorize(out_grad.dims());
+  auto out_grad_vec_dims = common::vectorize(out_grad.dims());
 
   axis = funcs::ComputeAxis(axis, out_grad_vec_dims.size());
 
@@ -52,8 +52,8 @@ void ConcatGradKernel(const Context& dev_ctx,
       out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
 
   for (auto& grad : x_grad) {
-    if (grad->numel() != 0UL) {
-      auto x_grad_vec_dims = vectorize(grad->dims());
+    if (grad && grad->numel() != 0UL) {
+      auto x_grad_vec_dims = common::vectorize(grad->dims());
       auto slice_mem_p = reorder_handler.AcquireSubmemory(
           x_grad_vec_dims, offset, reorder_src_memory_p);
 

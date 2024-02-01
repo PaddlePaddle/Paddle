@@ -59,7 +59,7 @@ from .extension_utils import (
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
-from ...fluid import core
+from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -480,7 +480,7 @@ class BuildExtension(build_ext):
                 # shared library have same ABI suffix with libpaddle.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
-                # Append this macor only when jointly compiling .cc with .cu
+                # Append this macro only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     if core.is_compiled_with_rocm():
                         cflags.append('-DPADDLE_WITH_HIP')
@@ -650,9 +650,7 @@ class BuildExtension(build_ext):
         if self.no_python_abi_suffix:
             assert (
                 len(name_items) > 2
-            ), "Expected len(name_items) > 2, but received {}".format(
-                len(name_items)
-            )
+            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -831,7 +829,7 @@ def load(
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
-    Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and excute
+    Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and execute
     ``python setup.py install`` command. The interface contains all compiling and installing
     process underground.
 
@@ -852,7 +850,7 @@ def load(
         from paddle.utils.cpp_extension import load
 
         custom_op_module = load(
-            name="op_shared_libary_name",                # name of shared library
+            name="op_shared_library_name",                # name of shared library
             sources=['relu_op.cc', 'relu_op.cu'],        # source files of customized op
             extra_cxx_cflags=['-g', '-w'],               # optional, specify extra flags to compile .cc/.cpp file
             extra_cuda_cflags=['-O2'],                   # optional, specify extra flags to compile .cu file
@@ -909,9 +907,7 @@ def load(
         extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
-    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags
-    )
+    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(

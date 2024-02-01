@@ -81,7 +81,7 @@ def to_tensor(pic, data_format='CHW'):
     else:
         nchannel = len(pic.mode)
 
-    dtype = paddle.fluid.data_feeder.convert_dtype(img.dtype)
+    dtype = paddle.base.data_feeder.convert_dtype(img.dtype)
     if dtype == 'uint8':
         img = paddle.cast(img, np.float32) / 255.0
 
@@ -268,7 +268,7 @@ def center_crop(img, output_size):
         img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
             it is used for both directions
-        backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'.
+        backend (str, optional): The image process backend type. Options are `pil`, `cv2`. Default: 'pil'.
 
     Returns:
         PIL.Image: Cropped image.
@@ -292,7 +292,7 @@ def hflip(img):
         img (PIL.Image): Image to be flipped.
 
     Returns:
-        PIL.Image:  Horizontall flipped image.
+        PIL.Image:  Horizontally flipped image.
 
     """
 
@@ -520,7 +520,7 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image): Image to be converted to grayscale.
-        backend (str, optional): The image proccess backend type. Options are `pil`,
+        backend (str, optional): The image process backend type. Options are `pil`,
                     `cv2`. Default: 'pil'.
 
     Returns:

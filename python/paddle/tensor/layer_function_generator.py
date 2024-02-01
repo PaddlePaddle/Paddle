@@ -18,15 +18,16 @@ from io import StringIO
 
 from paddle import _C_ops, _legacy_C_ops
 
+from ..base.data_feeder import check_variable_and_dtype
+from ..base.proto import framework_pb2
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.proto import framework_pb2
 from ..framework import (
     LayerHelper,
     OpProtoHolder,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
 )
 
 __all__ = []
@@ -96,8 +97,6 @@ def _generate_doc_string_(
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
-    # attr use_mkldnn and is_test also should not be visible to users.
-    skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")
 
@@ -266,7 +265,7 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if hasattr(_C_ops, op_type):
                 op = getattr(_C_ops, op_type)
                 return op(x)

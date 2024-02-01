@@ -27,7 +27,7 @@ from paddle.nn import Layer
 
 
 def set_random_seed(seed, dp_id, rank_id):
-    """Set random seed for reproducability."""
+    """Set random seed for reproducibility."""
     random.seed(seed)
     np.random.seed(seed + dp_id)
     paddle.seed(seed + dp_id)
@@ -98,6 +98,7 @@ class TransformerNetPipe(TransformerNet):
     def forward(self, tensors):
         if framework.in_dynamic_mode():
             stable, x = tensors
+            stable = paddle.assign(stable)
             output = super().forward(x)
             return stable, output
         else:

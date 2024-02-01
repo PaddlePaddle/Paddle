@@ -134,7 +134,7 @@ CONDITION_FUNC(is_horizontal_relation) {
       candidates.pop();
       // visit all producer node
       for (auto tmp_node : helper->GetProducerNode(candidate)) {
-        // check depency.
+        // check dependency.
         if (producer == tmp_node) {
           return true;
         }
@@ -142,7 +142,7 @@ CONDITION_FUNC(is_horizontal_relation) {
         if (!consumer->nodes_set.count(tmp_node)) {
           continue;
         }
-        // recored visited node.
+        // recorded visited node.
         if (!visited_set.count(tmp_node)) {
           visited_set.insert(tmp_node);
           candidates.push(tmp_node);
@@ -216,7 +216,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     break;
   }
 
-  return helper->target_ == common::DefaultNVGPUTarget()
+  return helper->target_ == cinn::common::DefaultNVGPUTarget()
              ? (succesive_reduce_dimension <= helper->target_.max_num_threads()
                     ? true
                     : false)
@@ -263,7 +263,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     return false;
   }
 
-  if (helper->target_ != common::DefaultNVGPUTarget()) {
+  if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
     return true;
   }
 

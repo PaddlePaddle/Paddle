@@ -138,7 +138,7 @@ TType& GetInnerTensor(const paddle::Tensor& src) {
       src.initialized(),
       true,
       platform::errors::Fatal("We only add tensor with value if a tensor is "
-                              "NOT INITILIZED, it should just move instead of "
+                              "NOT INITIALIZED, it should just move instead of "
                               "calling this method."));
   auto* src_tensor = static_cast<TType*>(src.impl().get());
   return *src_tensor;
@@ -198,7 +198,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
   // AddKernel already support inputs of different dtype. For AMP master_grad,
-  // the dtype of source tensor and destination tensor will be diferent. So the
+  // the dtype of source tensor and destination tensor will be different. So the
   // check requiring input dtypes to be the same have been removed.
 #define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
   if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
@@ -275,6 +275,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
       XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
     } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
       XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::bfloat16>::DataType()) {
+      XPUTensorAddFunctor<platform::bfloat16>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
@@ -547,7 +550,7 @@ void GradientAccumulator::AccumulateGrad() {
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
     VLOG(6) << "Leaf Var(" << var_->Name()
-            << ")'s Gradient has been initizlized, will accumulate on "
+            << ")'s Gradient has been initialized, will accumulate on "
                "previous gradient.";
     if (dst->IsType<phi::DenseTensor>()) {
       if (src->IsType<phi::DenseTensor>()) {
@@ -674,12 +677,12 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
   }
@@ -814,12 +817,12 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
     // looks like tmp_grad_vars will not have any member but just in case

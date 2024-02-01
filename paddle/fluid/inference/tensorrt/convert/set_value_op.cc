@@ -14,15 +14,22 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-#define GET_ATTR_FROM_VECTOR(attr_name__)                                   \
-  do {                                                                      \
-    std::vector<int64_t> vec_##attr_name__;                                 \
-    if (op_desc.HasAttr(#attr_name__)) {                                    \
-      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,            \
-                                           op_desc.GetAttr(#attr_name__));  \
-      if (vec_##attr_name__.size() > 0) {attr_name__ = vec_##attr_name__[0]; \
-      PADDLE_ENFORCE_EQ(vec_##attr_name__.size(), 1UL, platform::errors::InvalidArgument("attr axes/starst/ends/steps 's size in set_value must be one, but got %d", vec_##attr_name__.size()));  }      \
-    }                                                                       \
+#define GET_ATTR_FROM_VECTOR(attr_name__)                                  \
+  do {                                                                     \
+    std::vector<int64_t> vec_##attr_name__;                                \
+    if (op_desc.HasAttr(#attr_name__)) {                                   \
+      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,           \
+                                           op_desc.GetAttr(#attr_name__)); \
+      if (vec_##attr_name__.size() > 0) {                                  \
+        attr_name__ = vec_##attr_name__[0];                                \
+        PADDLE_ENFORCE_EQ(vec_##attr_name__.size(),                        \
+                          1UL,                                             \
+                          platform::errors::InvalidArgument(               \
+                              "attr axes/starst/ends/steps 's size in "    \
+                              "set_value must be one, but got %d",         \
+                              vec_##attr_name__.size()));                  \
+      }                                                                    \
+    }                                                                      \
   } while (0)
 
 namespace paddle {
@@ -43,110 +50,23 @@ class SetValueConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a set value op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
-
-    auto* inputs = engine_->GetITensor(op_desc.Input("Input")[0]);
-    auto output_name = op_desc.Output("Out")[0];
-    nvinfer1::ITensor* updates;
-    if (op_desc.Input("ValueTensor").size() > 0) {
-      updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
-    } else {
-      PADDLE_ENFORCE_EQ(PADDLE_GET_CONST(int, op_desc.GetAttr("dtype")), 5);
-      float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, op_desc.GetAttr("values"))[0].to<int>();
-      VLOG(3) << "the attribute value is: " << value;
-      nvinfer1::Dims tmp_dim;
-      tmp_dim.nbDims = inputs->getDimensions().nbDims;
-      for (int i = 0; i < tmp_dim.nbDims; i++)
-      tmp_dim.d[i] = 1;
-      updates = AddConstantLayer(&value, tmp_dim);
-    }
-    
-    // for debug 
-    {
-      nvinfer1::Dims tmp_dims = inputs->getDimensions();
-      std::vector<int> tmp_vec;
-      for (int i = 0; i < tmp_dims.nbDims; i++)
-        tmp_vec.push_back(tmp_dims.d[i]);
-      VLOG(3) << "Input(Name:"<< op_desc.Input("Input")[0] << ")" << "'s dimension is :["
-                << string::join_strings(tmp_vec, ',') << "]";
-      
-      tmp_vec.clear();
-      tmp_dims = updates->getDimensions();
-      for (int i = 0; i < tmp_dims.nbDims; i++)
-        tmp_vec.push_back(tmp_dims.d[i]);
-      VLOG(3) << "updates tensor" << "'s dimension is :["
-                << string::join_strings(tmp_vec, ',') << "]";
-    }
-
-    const auto decrease_axes = PADDLE_GET_CONST(
-        std::vector<int64_t>, op_desc.GetAttr("decrease_axes"));
-    std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
-    auto value_rank = updates->getDimensions().nbDims;
-    auto input_rank = inputs->getDimensions().nbDims;
-    // GLOG_vmodule=op_teller=6
-    VLOG(3) << "decrease_axes is: [" << string::join_strings(decrease_axes, ',') << "]";
-
-    if (decrease_axes.size() > 0 && value_rank != input_rank) {
-      updates = Unsqueeze(updates, decr_axes);
-    }
-
-    PADDLE_ENFORCE_EQ(updates->getDimensions().nbDims, input_rank,
-    platform::errors::InvalidArgument(
-        "ValueTensor‘s rank not equal to Input's rank, "
-        "you should try use C++ API config.exp_disable_tensorrt_ops({\"%s\"}) to forbind this op enter into TRT, " 
-        "please find the %s's real name from .pdmodel or shape.txt", 
-        output_name, output_name));
-
-    // if still < input_rank, means we need broadcast!
-    // value_rank = updates->getDimensions().nbDims;
-    // if (value_rank < input_rank) {
-    //   std::vector<int> axis (input_rank - value_rank, 0);
-    //   std::iota(axis.begin(), axis.end(), 0);
-    //   updates = Unsqueeze(updates, axis);
-    // }
-    
-    // for debug 
-    {
-      auto tmp_dims = updates->getDimensions();
-      std::vector<int> tmp_vec;  
-      tmp_vec.clear();
-      tmp_dims = updates->getDimensions();
-      for (int i = 0; i < tmp_dims.nbDims; i++)
-        tmp_vec.push_back(tmp_dims.d[i]);
-      VLOG(3) << "updates tensor" << "'s dimension is :["
-                << string::join_strings(tmp_vec, ',') << "]";
-    }
-
-
-
     int64_t axes = 0;
     int64_t starts = 0;
     int64_t steps = 1;
     int64_t ends = 0;
-
     GET_ATTR_FROM_VECTOR(axes);
     GET_ATTR_FROM_VECTOR(starts);
     GET_ATTR_FROM_VECTOR(steps);
     GET_ATTR_FROM_VECTOR(ends);
-    
+
     VLOG(3) << "axes is: " << axes;
     VLOG(3) << "starts is: " << starts;
     VLOG(3) << "steps is: " << steps;
     VLOG(3) << "ends is: " << ends;
 
-    // calculate dims
+    auto* inputs = engine_->GetITensor(op_desc.Input("Input")[0]);
+
     auto input_dims = inputs->getDimensions();
-    auto update_dims = updates->getDimensions();
-
-
-    PADDLE_ENFORCE_GT(input_dims.d[axes], 0,
-    platform::errors::InvalidArgument(
-        "the input_dims.d[%d] must be greater than 0, but received %d",
-        axes, input_dims.d[axes]));
-
-    PADDLE_ENFORCE_GT(update_dims.d[axes], 0,
-    platform::errors::InvalidArgument(
-        "the update_dims.d[%d] must be greater than 0, but received %d",
-        axes, update_dims.d[axes]));
 
     // check params and refill
     if (axes < 0) {
@@ -159,52 +79,154 @@ class SetValueConverter : public OpConverter {
     if (ends >= input_dims.d[axes]) {
       ends = input_dims.d[axes];
     }
-     
+
     VLOG(3) << "after standardization" << axes;
     VLOG(3) << "axes is: " << axes;
     VLOG(3) << "starts is: " << starts;
     VLOG(3) << "steps is: " << steps;
     VLOG(3) << "ends is: " << ends;
 
-    PADDLE_ENFORCE_LE(axes, input_dims.nbDims,
-    platform::errors::InvalidArgument(
-        "The axes %d is larger than total axes %d", 
-        axes, input_dims.nbDims));
+    auto output_name = op_desc.Output("Out")[0];
+    nvinfer1::ITensor* updates;
+    if (op_desc.HasInput("ValueTensor") &&
+        op_desc.Input("ValueTensor").size() > 0) {
+      updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
+    } else {
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+      PADDLE_ENFORCE_EQ(dtype,
+                        5,
+                        platform::errors::InvalidArgument(
+                            "set_value OP dtype must be float"));
+      float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>,
+                                     op_desc.GetAttr("values"))[0]
+                        .to<float>();
+      VLOG(3) << "the attribute value is: " << value;
 
-    PADDLE_ENFORCE_LE(starts, input_dims.d[axes],
-    platform::errors::InvalidArgument(
-        "The start %d of dim %d is larger than origin shape %d",
-        starts, 
-        axes,
-        input_dims.d[axes]));
-
-    PADDLE_ENFORCE_EQ(update_dims.d[axes], (ends - 1 - starts) / steps + 1,
-    platform::errors::InvalidArgument(
-        "the %dth axis of update dim error, should be %d, but we got %d",
-        axes,
-        (ends - 1 - starts) / steps + 1, 
-        update_dims.d[axes]));
-
-    for(int i = 0; i < input_dims.nbDims; i++) {
-      if (i != axes) {
-       // PADDLE_ENFORCE_EQ(input_dims.d[i], update_dims.d[i]);
-      } 
+      nvinfer1::ITensor* input_shape_tensor = Shape(inputs);
+      std::vector<nvinfer1::ITensor*> vec_tensor;
+      for (int32_t i = 0; i < input_dims.nbDims; ++i) {
+        vec_tensor.push_back(GetEleTensorOfShape(input_shape_tensor, i));
+      }
+      std::vector<int32_t> axes_vec(1, (ends - 1 - starts) / steps + 1);
+      vec_tensor[axes] = Add1DConstantLayer(axes_vec, "axes_vec", false);
+      nvinfer1::ITensor* output_shape_tensor = Concat(vec_tensor, 0);
+      updates = FillConstantLayer(
+          output_shape_tensor, inputs->getDimensions().nbDims, value);
     }
 
-    if (engine_->with_dynamic_shape()) {
+    // for log
+    {
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < input_dims.nbDims; i++)
+        tmp_vec.push_back(input_dims.d[i]);
+      VLOG(3) << "Input(Name:" << op_desc.Input("Input")[0] << ")"
+              << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+              << "]";
 
+      tmp_vec.clear();
+      nvinfer1::Dims tmp_dims = updates->getDimensions();
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      VLOG(3) << "updates tensor"
+              << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+              << "]";
+    }
+
+    const auto decrease_axes = PADDLE_GET_CONST(
+        std::vector<int64_t>, op_desc.GetAttr("decrease_axes"));
+    std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
+    auto value_rank = updates->getDimensions().nbDims;
+    auto input_rank = inputs->getDimensions().nbDims;
+    // GLOG_vmodule=op_teller=6
+    VLOG(3) << "decrease_axes is: [" << string::join_strings(decrease_axes, ',')
+            << "]";
+
+    if (decrease_axes.size() > 0 && value_rank != input_rank) {
+      updates = Unsqueeze(updates, decr_axes);
+    }
+
+    PADDLE_ENFORCE_EQ(
+        updates->getDimensions().nbDims,
+        input_rank,
+        platform::errors::InvalidArgument(
+            "ValueTensor‘s rank not equal to Input's rank, "
+            "you should try use C++ API "
+            "config.exp_disable_tensorrt_ops({\"%s\"}) to forbind this op "
+            "enter into TRT, "
+            "please find the %s's real name from .pdmodel or shape.txt",
+            output_name,
+            output_name));
+
+    // for log
+    {
+      auto tmp_dims = updates->getDimensions();
+      std::vector<int> tmp_vec;
+      tmp_vec.clear();
+      tmp_dims = updates->getDimensions();
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      VLOG(3) << "updates tensor"
+              << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+              << "]";
+    }
+
+    // calculate dims
+    auto update_dims = updates->getDimensions();
+
+    PADDLE_ENFORCE_GT(
+        input_dims.d[axes],
+        0,
+        platform::errors::InvalidArgument(
+            "the input_dims.d[%d] must be greater than 0, but received %d",
+            axes,
+            input_dims.d[axes]));
+
+    PADDLE_ENFORCE_GT(
+        update_dims.d[axes],
+        0,
+        platform::errors::InvalidArgument(
+            "the update_dims.d[%d] must be greater than 0, but received %d",
+            axes,
+            update_dims.d[axes]));
+
+    PADDLE_ENFORCE_LE(axes,
+                      input_dims.nbDims,
+                      platform::errors::InvalidArgument(
+                          "The axes %d is larger than total axes %d",
+                          axes,
+                          input_dims.nbDims));
+
+    PADDLE_ENFORCE_LE(
+        starts,
+        input_dims.d[axes],
+        platform::errors::InvalidArgument(
+            "The start %d of dim %d is larger than origin shape %d",
+            starts,
+            axes,
+            input_dims.d[axes]));
+
+    PADDLE_ENFORCE_EQ(
+        update_dims.d[axes],
+        (ends - 1 - starts) / steps + 1,
+        platform::errors::InvalidArgument(
+            "the %dth axis of update dim error, should be %d, but we got %d",
+            axes,
+            (ends - 1 - starts) / steps + 1,
+            update_dims.d[axes]));
+
+    if (engine_->with_dynamic_shape()) {
       nvinfer1::Dims shape_0;
       shape_0.nbDims = update_dims.nbDims;
       for (int i = 0; i < shape_0.nbDims; ++i) {
         shape_0.d[i] = 1;
       }
-      std::vector<float> tmp_0(1,0);
+      std::vector<float> tmp_0(1, 0);
       auto zero_tensor = AddConstantLayer(tmp_0.data(), shape_0);
       auto indice_tensor = Prod(zero_tensor, updates);
       auto cast_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *indice_tensor);
       cast_layer->setOutputType(0, nvinfer1::DataType::kINT32);
       indice_tensor = cast_layer->getOutput(0);
-   
+
       nvinfer1::Dims shape_1;
       shape_1.nbDims = update_dims.nbDims;
       for (int i = 0; i < update_dims.nbDims; ++i) {
@@ -219,11 +241,11 @@ class SetValueConverter : public OpConverter {
       indice_tensor = Sum(indice_tensor, one_tensor);
 
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              Scatter,
-                                              *inputs,
-                                              *indice_tensor,
-                                              *updates,
-                                              nvinfer1::ScatterMode::kELEMENT);
+                                         Scatter,
+                                         *inputs,
+                                         *indice_tensor,
+                                         *updates,
+                                         nvinfer1::ScatterMode::kELEMENT);
 
       layer->setAxis(axes);
 

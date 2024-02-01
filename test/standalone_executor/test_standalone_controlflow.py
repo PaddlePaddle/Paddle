@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -42,19 +42,17 @@ class TestCompatibility(unittest.TestCase):
     def build_program(self):
         def true_func():
             return paddle.tensor.fill_constant(
-                shape=[1, 2], dtype='int32', value=1
-            ), paddle.tensor.fill_constant(
-                shape=[2, 3], dtype='bool', value=True
-            )
+                shape=[1, 2], dtype='float32', value=1
+            ), paddle.tensor.fill_constant(shape=[2, 3], dtype='int64', value=1)
 
         def false_func():
             return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3
             ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.1
             )
@@ -84,10 +82,10 @@ class TestCompatibility(unittest.TestCase):
         if x < y:
             out = [
                 paddle.tensor.fill_constant(
-                    shape=[1, 2], dtype='int32', value=1
+                    shape=[1, 2], dtype='float32', value=1
                 ).numpy(),
                 paddle.tensor.fill_constant(
-                    shape=[2, 3], dtype='bool', value=True
+                    shape=[2, 3], dtype='int64', value=1
                 ).numpy(),
             ]
         else:
@@ -111,6 +109,7 @@ class TestCompatibility(unittest.TestCase):
         out = self._run(feed)
         return out
 
+    @test_with_pir_api
     def test_with_feed(self):
         feed = self._get_feed()
         paddle.enable_static()

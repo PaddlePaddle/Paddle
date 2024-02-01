@@ -20,7 +20,7 @@ import copy
 import numpy as np
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.base.data_feeder import convert_dtype
 
 from ... import tensor
 from ...framework import ParamAttr
@@ -171,11 +171,11 @@ class MultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         assert num_heads > 0, (
             "Expected num_heads to be greater than 0, "
-            "but received {}".format(num_heads)
+            f"but received {num_heads}"
         )
 
         self.embed_dim = embed_dim
@@ -278,9 +278,9 @@ class MultiHeadAttention(Layer):
                 should be float32 or float64.
 
         Returns:
-            tuple: A tuple including transformed keys and values. Their shapes \
-                both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`, \
-                and their data types are same as inputs.
+            Tuple. A tuple including transformed keys and values. Their shapes
+            both are `[batch_size, num_heads, sequence_length, embed_dim // num_heads]`,
+            and their data types are same as inputs.
         """
         k = self.k_proj(key)
         v = self.v_proj(value)
@@ -393,16 +393,16 @@ class MultiHeadAttention(Layer):
                 Default None.
 
         Returns:
-            Tensor|tuple: It is a tensor that has the same shape and data type \
-                as `query`, representing attention output. Or a tuple if \
-                `need_weights` is True or `cache` is not None. If `need_weights` \
-                is True, except for attention output, the tuple also includes \
-                the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`. \
-                If `cache` is not None, the tuple then includes the new cache \
-                having the same type as `cache`, and if it is `StaticCache`, it \
-                is same as the input `cache`, if it is `Cache`, the new cache \
-                reserves tensors concatanating raw tensors with intermediate \
-                results of current query.
+            Tensor|tuple. It is a tensor that has the same shape and data type
+            as `query`, representing attention output. Or a tuple if
+            `need_weights` is True or `cache` is not None. If `need_weights`
+            is True, except for attention output, the tuple also includes
+            the attention weights tensor shaped `[batch_size, num_heads, query_length, key_length]`.
+            If `cache` is not None, the tuple then includes the new cache
+            having the same type as `cache`, and if it is `StaticCache`, it
+            is same as the input `cache`, if it is `Cache`, the new cache
+            reserves tensors concatanating raw tensors with intermediate
+            results of current query.
         """
         key = query if key is None else key
         value = query if value is None else value
@@ -524,19 +524,15 @@ class TransformerEncoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -800,7 +796,7 @@ class TransformerDecoderLayer(Layer):
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
-            in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
+            in :ref:`api_paddle_base_param_attr_ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
@@ -810,6 +806,7 @@ class TransformerDecoderLayer(Layer):
             corresponding layer would not have trainable bias parameter. See
             usage for details in :code:`ParamAttr` . Default: None,which means
             the default bias parameter property is used.
+        layer_norm_eps: the eps value in layer normalization components. Default=1e-5.
 
     Examples:
 
@@ -847,6 +844,7 @@ class TransformerDecoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        layer_norm_eps=1e-5,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -854,19 +852,15 @@ class TransformerDecoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -897,9 +891,9 @@ class TransformerDecoderLayer(Layer):
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2]
         )
-        self.norm1 = LayerNorm(d_model)
-        self.norm2 = LayerNorm(d_model)
-        self.norm3 = LayerNorm(d_model)
+        self.norm1 = LayerNorm(d_model, layer_norm_eps)
+        self.norm2 = LayerNorm(d_model, layer_norm_eps)
+        self.norm3 = LayerNorm(d_model, layer_norm_eps)
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
         self.dropout2 = Dropout(dropout, mode="upscale_in_train")
         self.dropout3 = Dropout(dropout, mode="upscale_in_train")
@@ -1294,19 +1288,15 @@ class Transformer(Layer):
     ):
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         if isinstance(bias_attr, (list, tuple)):
@@ -1461,7 +1451,7 @@ class Transformer(Layer):
             length (int|Tensor): The length of sequence.
 
         Returns:
-            Tensor: Generated square mask according to the given length.
+            Tensor, generated square mask according to the given length. The shape is [length, length].
 
         Examples:
             .. code-block:: python

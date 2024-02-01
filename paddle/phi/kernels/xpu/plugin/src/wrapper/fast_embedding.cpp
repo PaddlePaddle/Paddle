@@ -124,6 +124,9 @@ int fast_embedding(Context* ctx,
                    int64_t padding_idx,
                    TID start_index) {
   WRAPPER_CHECK_CTX(ctx);
+  if (std::is_same<T, bfloat16>::value) {
+    WRAPPER_UNIMPLEMENTED(ctx);
+  }
   WRAPPER_DUMP_FUNCTION_T2(ctx, "fast_embedding", T, TID);
   WRAPPER_DUMP_PARAM6(ctx, x, indices, y, xm, n, ym);
   WRAPPER_DUMP_PARAM3(ctx, padding_idx, start_index, ctx->_l3_mgr.get_size());
@@ -177,6 +180,24 @@ template int fast_embedding(Context*,
                             const float16*,
                             const int64_t*,
                             float16*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t);
+template int fast_embedding(Context*,
+                            const bfloat16*,
+                            const int*,
+                            bfloat16*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int);
+template int fast_embedding(Context*,
+                            const bfloat16*,
+                            const int64_t*,
+                            bfloat16*,
                             int64_t,
                             int64_t,
                             int64_t,

@@ -30,9 +30,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
-  dev_ctx.template Alloc<XPUType>(x_grad);
-  const auto* out_data = out_grad.data<XPUType>();
-  auto* x_grad_data = x_grad->data<XPUType>();
+  dev_ctx.template Alloc(x_grad, x.dtype());
+  auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data());
+  auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data());
   const auto& input_dim_size = x.dims().size();
   std::vector<int> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {
@@ -70,6 +70,12 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_grad, XPU, ALL_LAYOUT, phi::ReduceSumGradKernel, float) {
+PD_REGISTER_KERNEL(sum_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReduceSumGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

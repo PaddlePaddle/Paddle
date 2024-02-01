@@ -28,7 +28,6 @@ TEST(quant_int8, resnet50) {
   AnalysisConfig config;
   config.EnableUseGpu(1000, 0);
   config.SetModel(model_dir);
-  config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(
       1 << 30, 1, 1, AnalysisConfig::Precision::kInt8, false, false);
   std::map<std::string, std::vector<int>> min_input_shape = {

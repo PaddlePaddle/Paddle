@@ -16,10 +16,9 @@ from collections import defaultdict
 
 import numpy as np
 
-from paddle.distributed import fleet
-
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
+from paddle.distributed import fleet
 from paddle.framework import Block, Program, in_dynamic_mode
 
 
@@ -43,145 +42,123 @@ class HybridParallelInferenceHelper:
 
     Write Paradigm:
 
-    .. code-block:: bash
-        :name: bash-example1
+        .. code-block:: text
+            :name: text-example1
 
-        # while op pattern
-        with paddle.fluid.device_guard(f'{device}:all'):
-            # init global cond
-            max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
-            step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
-            cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
-            cond = layers.cast(step_idx < max_len, dtype="bool")
-            while_op = layers.While(cond, is_test=True)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
+            >>> import paddle
+            >>> # while op pattern
+            >>> with paddle.base.device_guard(f'{device}:all'):
+            ...     # init global cond
+            ...     max_len = paddle.full(shape=[1], dtype="int64", fill_value=10)
+            ...     step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0)
+            ...     cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
+            ...     cond = layers.cast(step_idx < max_len, dtype="bool")
+            ...     while_op = layers.While(cond, is_test=True)
 
-            # init global lod_tensor_array for generation task
-            arr = paddle.tensor.array_write(data, step_idx)
+            ...     # init global lod_tensor_array for generation task
+            ...     arr = paddle.tensor.array_write(data, step_idx)
 
-        with while_op.block():
-            with paddle.fluid.device_guard(f'{device}:all'):
-                # read data from global lod_tensor_array
-                element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
-                # write placehold data to global lod_tensor_array,
-                # it need for send_v2 of lod_tensor_array
-                paddle.increment(x=step_idx, value=1.0)
-                paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
+            >>> with while_op.block():
+            ...     with paddle.base.device_guard(f'{device}:all'):
+            ...         # read data from global lod_tensor_array
+            ...         element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
+            ...         # write placehold data to global lod_tensor_array,
+            ...         # it need for send_v2 of lod_tensor_array
+            ...         paddle.increment(x=step_idx, value=1.0)
+            ...         paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
+            ...     with paddle.base.device_guard(f'{device}:0'):
+            ...         pass # some code
+            ...     with paddle.base.device_guard(f'{device}:1'):
+            ...         pass # some code
+            ...     with paddle.base.device_guard(f'{device}:{num_pp-1}'):
+            ...         # generate some data in while block and write to global lod_tensor_array
+            ...         # that they are read in next while step.
+            ...         # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
+            ...         paddle.tensor.array_write(other_var, i=step_idx, array=arr)
+            ...         # update cond and assign to cond_int, we will sync cond_int
+            ...         layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+            ...     with paddle.base.device_guard(f'{model._device}:all'):
+            ...         # the code below must at end of while block and exists in device:all
+            ...         layers.assign(layers.cast(cond_int, dtype='bool'), cond)
 
-            with paddle.fluid.device_guard(f'{device}:0'):
-                ... some code
-
-            with paddle.fluid.device_guard(f'{device}:1'):
-                ... some code
-
-            with paddle.fluid.device_guard(f'{device}:{num_pp-1}'):
-                # generate some data in while block and write to global lod_tensor_array
-                # that they are read in next while step.
-                # we will using send_v2 to send global lod_tensor_array to other pipeline and sync
-                paddle.tensor.array_write(other_var, i=step_idx, array=arr)
-
-                # update cond and assign to cond_int, we will sync cond_int
-                layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-
-            with paddle.fluid.device_guard(f'{model._device}:all'):
-                # the code below must at end of while block and exists in device:all
-                layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-
-        with paddle.fluid.device_guard(f'{model._device}:all'):
-            # use a empty lod_tensor_array to clear lod_tensor_array
-            layers.assign(layers.create_array(data.dtype), arr)
-
+            >>> with paddle.base.device_guard(f'{model._device}:all'):
+            ...     # use a empty lod_tensor_array to clear lod_tensor_array
+            ...     layers.assign(layers.create_array(data.dtype), arr)
 
     Examples:
 
-    .. code-block:: python
-        :name: code-example1
+        .. code-block:: python
+            :name: code-example1
 
-        # required: distributed
-        import os
-        import numpy as np
-        import paddle
-        import paddle.fluid.layers as layers
-        import paddle.distributed.fleet as fleet
-        paddle.enable_static()
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
+            >>> import os
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.distributed.fleet as fleet
+            >>> from paddle.distributed.fleet.utils import hybrid_parallel_inference
+            >>> paddle.enable_static()
+            >>> nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
+            >>> rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+            >>> dev_id = int(os.getenv("FLAGS_selected_gpus", 0))
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> if nranks > 1:
+            ...     dist_strategy = fleet.DistributedStrategy()
+            ...     dist_strategy.without_graph_optimization = True
+            ...     fleet.init(is_collective=True, strategy=dist_strategy)
+            >>> device = "gpu"
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     with paddle.base.device_guard(f'{device}:0'):
+            ...         X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
+            ...     with paddle.base.device_guard(f'{device}:all'):
+            ...         max_len = paddle.full(
+            ...             shape=[1], dtype="int64", fill_value=5, name="n")
+            ...         step_idx = paddle.full(
+            ...             shape=[1], dtype="int64", fill_value=0, name="i")
+            ...         data = paddle.tensor.array_write(X, step_idx)
+            ...         cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
+            ...         cond = paddle.less_than(x=step_idx, y=max_len)
+            ...         while_op = paddle.static.nn.control_flow.While(cond, is_test=True)
+            ...     with while_op.block():
+            ...         with paddle.base.device_guard(f'{device}:all'):
+            ...             input = paddle.tensor.array_read(array=data, i=step_idx)
+            ...             paddle.increment(x=step_idx, value=1.0)
+            ...             paddle.tensor.array_write(input, i=step_idx, array=data)
+            ...         with paddle.base.device_guard(f'{device}:0'):
+            ...             param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
+            ...             weight1 = paddle.static.create_parameter(
+            ...                 shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
+            ...             hidden1 = paddle.matmul(input, weight1)
+            ...         with paddle.base.device_guard(f'{device}:1'):
+            ...             param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
+            ...             weight2 = paddle.static.create_parameter(
+            ...                 shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
+            ...             hidden2 = paddle.matmul(hidden1, weight2)
+            ...             paddle.tensor.array_write(hidden2, i=step_idx, array=data)
+            ...             # update cond and assign to cond_int, we will sync cond_int
+            ...             paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
+            ...             paddle.assign(paddle.cast(cond, dtype="int32"), cond_int)
+            ...         with paddle.base.device_guard(f'{device}:all'):
+            ...             # the code below must at end of while block and exists in device:all
+            ...             paddle.assign(paddle.cast(cond_int, dtype='bool'), cond)
+            ...     with paddle.base.device_guard(f'{device}:all'):
+            ...         out = paddle.tensor.create_array(data.dtype)
+            ...         paddle.assign(data, out)
+            ...     with paddle.base.device_guard(f'{device}:all'):
+            ...         # use a empty lod_tensor_array to clear lod_tensor_array
+            ...         paddle.assign(paddle.tensor.create_array(data.dtype), data)
+            >>> helper = hybrid_parallel_inference.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
+            >>> helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
+            >>> exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
+            >>> exe.run(startup_program)
+            >>> np.random.seed(2333)
+            >>> for step in range(5):
+            ...     init_data = np.random.uniform(low=0.0, high=1.0, size=[2, 2]).astype('float32')
+            ...     [res] = exe.run(main_program, feed={"X": init_data}, fetch_list=[out])
+            ...     print('-------- step', step, ' --------')
+            ...     print(res)
 
-        nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
-        rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
-        dev_id = int(os.getenv("FLAGS_selected_gpus", 0))
-
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-
-        if nranks > 1:
-            dist_strategy = fleet.DistributedStrategy()
-            dist_strategy.without_graph_optimization = True
-            fleet.init(is_collective=True, strategy=dist_strategy)
-
-        device = "gpu"
-
-        with paddle.static.program_guard(main_program, startup_program):
-            with paddle.fluid.device_guard(f'{device}:0'):
-                X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
-
-            with paddle.fluid.device_guard(f'{device}:all'):
-                max_len = paddle.full(
-                    shape=[1], dtype="int64", fill_value=5, name="n")
-                step_idx = paddle.full(
-                    shape=[1], dtype="int64", fill_value=0, name="i")
-
-                data = paddle.tensor.array_write(X, step_idx)
-
-                cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
-                cond = paddle.less_than(x=step_idx, y=max_len)
-                while_op = layers.While(cond, is_test=True)
-
-            with while_op.block():
-                with paddle.fluid.device_guard(f'{device}:all'):
-                    input = paddle.tensor.array_read(array=data, i=step_idx)
-                    paddle.increment(x=step_idx, value=1.0)
-                    paddle.tensor.array_write(input, i=step_idx, array=data)
-
-                with paddle.fluid.device_guard(f'{device}:0'):
-                    param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
-                    weight1 = paddle.static.create_parameter(
-                        shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
-                    hidden1 = paddle.matmul(input, weight1)
-
-                with paddle.fluid.device_guard(f'{device}:1'):
-                    param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
-                    weight2 = paddle.static.create_parameter(
-                        shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
-                    hidden2 = paddle.matmul(hidden1, weight2)
-
-                    paddle.tensor.array_write(hidden2, i=step_idx, array=data)
-
-                    # update cond and assign to cond_int, we will sync cond_int
-                    paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
-                    layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-
-                with paddle.fluid.device_guard(f'{device}:all'):
-                    # the code below must at end of while block and exists in device:all
-                    layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-
-            with paddle.fluid.device_guard(f'{device}:all'):
-                out = layers.create_array(data.dtype)
-                layers.assign(data, out)
-
-            with paddle.fluid.device_guard(f'{device}:all'):
-                # use a empty lod_tensor_array to clear lod_tensor_array
-                layers.assign(layers.create_array(data.dtype), data)
-
-        helper = fleet.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
-        helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
-
-        exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
-        exe.run(startup_program)
-
-        np.random.seed(2333)
-        for step in range(5):
-            init_data = np.random.uniform(low=0.0, high=1.0, size=[2, 2]).astype('float32')
-            [res] = exe.run(main_program, feed={"X": init_data}, fetch_list=[out])
-            print('-------- step', step, ' --------')
-            print(res)
     """
 
     def __init__(
@@ -273,9 +250,9 @@ class HybridParallelInferenceHelper:
                 dev_ids.append(cur_id)
         num_pp = len(dev_ids)
         num_pp = max(1, num_pp)
-        assert num_pp == self.num_pp, 'num_pp: {}, self.num_pp: {}'.format(
-            num_pp, self.num_pp
-        )
+        assert (
+            num_pp == self.num_pp
+        ), f'num_pp: {num_pp}, self.num_pp: {self.num_pp}'
 
         collective_helper = fleet.meta_optimizers.common.CollectiveHelper(
             self.role_maker, wait_port=False
@@ -534,9 +511,7 @@ class HybridParallelInferenceHelper:
             )
 
             device = op.attr(self._op_device_key)
-            assert device, "{} has no {} set.".format(
-                op.type, self._op_device_key
-            )
+            assert device, f"{op.type} has no {self._op_device_key} set."
             if device.split(':')[1] == "all":
                 continue
 

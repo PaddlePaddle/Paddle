@@ -22,7 +22,7 @@ import paddle
 from paddle.common_ops_import import default_main_program
 from paddle.framework import in_dynamic_mode
 
-from ..fluid.data_feeder import convert_dtype
+from ..base.data_feeder import convert_dtype
 
 __all__ = []
 

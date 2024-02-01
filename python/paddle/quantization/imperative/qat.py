@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.nn.quant import quant_layers
 

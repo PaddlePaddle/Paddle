@@ -23,6 +23,7 @@
 
 #include "butil/endpoint.h"
 #include "google/protobuf/service.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -31,7 +32,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/macros.h"
 
 namespace google {
 namespace protobuf {

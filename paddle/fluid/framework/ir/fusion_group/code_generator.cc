@@ -303,7 +303,7 @@ std::string CodeGenerator::EmitParameters(
       output_args.push_back(args_str);
     }
   }
-  for (auto args : output_args) {
+  for (auto const& args : output_args) {
     ret << args;
     if (index != output_args.size() - 1) {
       ret << ", ";

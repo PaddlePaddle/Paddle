@@ -18,8 +18,9 @@
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
@@ -39,11 +40,12 @@ PD_DECLARE_string(cinn_dump_group_instruction);
 namespace cinn {
 namespace backends {
 using ir::Module;
+using CompilationStatus = hlir::framework::CompilationStatus;
 
 static constexpr int DebugLogMaxLen = 30000;
 
 void CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
-    const ir::LoweredFunc& lowered_func, const int gidx) {
+    const ir::LoweredFunc& lowered_func, const int gidx, const int device_id) {
   if (FLAGS_cinn_dump_group_lowered_func.empty() ||
       lowered_func.get() == nullptr) {
     return;
@@ -52,34 +54,42 @@ void CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
   content << lowered_func;
   Dump(FLAGS_cinn_dump_group_lowered_func,
        gidx,
+       device_id,
        "lowered_function.txt",
        content.str());
 }
 
 void CompilationInfoDumper::DumpSourceCodeByGroupIndex(
-    const std::string& source_code, const int gidx) {
+    const std::string& source_code, const int gidx, const int device_id) {
   if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
-  Dump(FLAGS_cinn_dump_group_source_code, gidx, "source_code.cu", source_code);
+  Dump(FLAGS_cinn_dump_group_source_code,
+       gidx,
+       device_id,
+       "source_code.cu",
+       source_code);
 }
 
 void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
-    const std::string& source_ptx, const int gidx) {
+    const std::string& source_ptx, const int gidx, const int device_id) {
   if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
-  Dump(FLAGS_cinn_dump_group_ptx, gidx, "source_ptx.ptx", source_ptx);
+  Dump(
+      FLAGS_cinn_dump_group_ptx, gidx, device_id, "source_ptx.ptx", source_ptx);
 }
 
 void CompilationInfoDumper::DumpInstructionByGroupIndex(
     const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-    const int gidx) {
+    const int gidx,
+    const int device_id) {
   if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
     return;
   }
   Dump(FLAGS_cinn_dump_group_instruction,
        gidx,
+       device_id,
        "instruction.txt",
        instr->DumpInstruction());
 }
@@ -88,11 +98,16 @@ void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.lowered_funcs.size(); ++idx) {
+  for (int idx = 0; idx < info_.Size(); ++idx) {
     std::stringstream content;
-    content << info_.lowered_funcs[idx].front();
+    if (info_.Status(idx) > CompilationStatus::LOWERING_FAIL) {
+      content << info_.LoweredFuncs(idx).front();
+    } else {
+      content << "[No lowered func generated]\n\n" << info_.Message(idx);
+    }
     Dump(FLAGS_cinn_dump_group_lowered_func,
          idx,
+         device_id_,
          "lowered_function.txt",
          content.str());
   }
@@ -102,11 +117,18 @@ void CompilationInfoDumper::DumpSourceCode() {
   if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_codes.size(); ++idx) {
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourceCode(idx);
+    } else {
+      dump_str = "[No source code generated]\n\n" + info_.Message(idx);
+    }
     Dump(FLAGS_cinn_dump_group_source_code,
          idx,
+         device_id_,
          "source_code.cu",
-         info_.source_codes[idx]);
+         dump_str);
   }
 }
 
@@ -114,11 +136,15 @@ void CompilationInfoDumper::DumpPtxCode() {
   if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_ptxs.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_ptx,
-         idx,
-         "source_ptx.ptx",
-         info_.source_ptxs[idx]);
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourcePtx(idx);
+    } else {
+      dump_str = "[No source ptxs generated]\n\n" + info_.Message(idx);
+    }
+    Dump(
+        FLAGS_cinn_dump_group_ptx, idx, device_id_, "source_ptx.ptx", dump_str);
   }
 }
 
@@ -126,20 +152,28 @@ void CompilationInfoDumper::DumpInstruction() {
   if (FLAGS_cinn_dump_group_instruction.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.instructions.size(); ++idx) {
+  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
+    std::string dump_str;
+    if (info_.RuntimeInstruction(idx).get() != nullptr) {
+      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
+    } else {
+      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
+    }
     Dump(FLAGS_cinn_dump_group_instruction,
          idx,
+         device_id_,
          "instruction.txt",
-         info_.instructions[idx]->DumpInstruction());
+         dump_str);
   }
 }
 
 void CompilationInfoDumper::Dump(const std::string& base_path,
                                  const int idx,
+                                 const int device_id,
                                  const std::string& file_name,
                                  const std::string& content) {
-  auto dump_path =
-      utils::StringFormat("%s/fusion_group_%d", base_path.c_str(), idx);
+  auto dump_path = utils::StringFormat(
+      "%s/device_%d/fusion_group_%d", base_path.c_str(), device_id, idx);
   if (!hlir::framework::MakeDirectory(
           dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
     LOG(WARNING) << "Failed to make directory: \"" << dump_path
@@ -269,6 +303,8 @@ void Compiler::CompileCudaModule(const Module& module,
     std::string kernel_fn_name = fn->name;
     auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
     CHECK(fn_kernel);
+
+    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
 
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));

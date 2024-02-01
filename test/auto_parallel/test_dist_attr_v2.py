@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
+from paddle.base.core import OperatorDistAttr, TensorDistAttr
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.dist_context import (
@@ -33,7 +34,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     _copy_dist_attr_to_cpp_for_graph,
 )
 from paddle.distributed.fleet import auto
-from paddle.fluid.core import OperatorDistAttr, TensorDistAttr
 
 paddle.enable_static()
 
@@ -129,7 +129,7 @@ def get_program():
         )
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.fluid.io.DataLoader.from_generator(
+        dataloader = paddle.base.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(

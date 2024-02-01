@@ -15,7 +15,7 @@
 import os
 import threading
 
-from paddle.fluid import log_helper
+from paddle.base import log_helper
 
 from .ast_utils import ast_to_source_code
 

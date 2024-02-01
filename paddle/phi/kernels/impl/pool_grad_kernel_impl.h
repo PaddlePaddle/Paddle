@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_grad_kernel.h"
@@ -163,7 +163,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
 
   if (dx) {
     ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, 0);
+    funcs::set_constant(ctx, dx, static_cast<T1>(0));
 
     switch (kernel_size_.size()) {
       case 2: {
@@ -328,6 +328,81 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                             global_pooling,
                                             adaptive,
                                             dx);
+}
+
+template <typename Context, typename T1, typename T2 = int>
+void FractionalMaxPoolGradRawKernel(const Context& ctx,
+                                    const DenseTensor& x UNUSED,
+                                    const DenseTensor& mask,
+                                    const DenseTensor& dout,
+                                    const std::vector<int>& output_size,
+                                    const std::vector<int>& kernel_size,
+                                    float random_u,
+                                    bool return_mask,
+                                    DenseTensor* dx) {
+  std::vector<int> output_size_ = output_size;
+
+  if (dx) {
+    ctx.template Alloc<T1>(dx);
+    funcs::set_constant(ctx, dx, 0);
+
+    switch (output_size_.size()) {
+      case 2: {
+        funcs::FractionalMaxPool2dGradFunctor<Context, T1, T2> pool2d_backward;
+        pool2d_backward(ctx,
+                        dout,
+                        mask,
+                        output_size,
+                        kernel_size,
+                        random_u,
+                        return_mask,
+                        dx);
+      } break;
+      case 3: {
+        funcs::FractionalMaxPool3dGradFunctor<Context, T1, T2> pool3d_backward;
+        pool3d_backward(ctx,
+                        dout,
+                        mask,
+                        output_size,
+                        kernel_size,
+                        random_u,
+                        return_mask,
+                        dx);
+      } break;
+      default: {
+        PADDLE_THROW(
+            errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+      }
+    }
+  }
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool2dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx) {
+  FractionalMaxPoolGradRawKernel<Context, T>(
+      ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool3dGradKernel(const Context& ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& mask,
+                                   const DenseTensor& dout,
+                                   const std::vector<int>& output_size,
+                                   const std::vector<int>& kernel_size,
+                                   float random_u,
+                                   bool return_mask,
+                                   DenseTensor* dx) {
+  FractionalMaxPoolGradRawKernel<Context, T>(
+      ctx, x, mask, dout, output_size, kernel_size, random_u, return_mask, dx);
 }
 
 }  // namespace phi

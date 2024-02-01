@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -26,10 +26,10 @@ class TensorFill_Test(unittest.TestCase):
 
     def test_tensor_fill_true(self):
         typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-            places.append(fluid.CUDAPinnedPlace())
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+            places.append(base.CUDAPinnedPlace())
 
         for p in places:
             np_arr = np.reshape(

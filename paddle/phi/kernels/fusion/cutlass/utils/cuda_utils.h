@@ -33,6 +33,7 @@
 #include <cublasLt.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <glog/logging.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -40,6 +41,9 @@
 #ifdef SPARSITY_ENABLED
 #include <cusparseLt.h>
 #endif
+
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace phi {
 

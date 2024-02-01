@@ -32,6 +32,39 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
   return CreatePlaceHolder(expr_shape, type, name);
 }
 
+ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
+                             Type type,
+                             const std::string &name) {
+  if (type.is_float(32)) {
+    return Placeholder<float>(name, shape);
+  } else if (type.is_float(64)) {
+    return Placeholder<double>(name, shape);
+  } else if (type.is_bfloat16()) {
+    return Placeholder<bfloat16>(name, shape);
+  } else if (type.is_float16()) {
+    return Placeholder<float16>(name, shape);
+  } else if (type.is_int(8)) {
+    return Placeholder<int8_t>(name, shape);
+  } else if (type.is_int(16)) {
+    return Placeholder<int16_t>(name, shape);
+  } else if (type.is_int(32)) {
+    return Placeholder<int32_t>(name, shape);
+  } else if (type.is_int(64)) {
+    return Placeholder<int64_t>(name, shape);
+  } else if (type.is_uint(8)) {
+    return Placeholder<uint8_t>(name, shape);
+  } else if (type.is_uint(16)) {
+    return Placeholder<uint16_t>(name, shape);
+  } else if (type.is_uint(32)) {
+    return Placeholder<uint32_t>(name, shape);
+  } else if (type.is_uint(64)) {
+    return Placeholder<uint64_t>(name, shape);
+  } else if (type.is_bool()) {
+    return Placeholder<bool>(name, shape);
+  }
+  CINN_NOT_IMPLEMENTED
+}
+
 ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
                              Type type,
                              const std::string &name) {

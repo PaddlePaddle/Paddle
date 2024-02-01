@@ -1474,7 +1474,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   auto* wk_data = wk_tensor->data<T>();
   auto* wv_data = wv_tensor->data<T>();
 
-  auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto combined_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
@@ -1516,7 +1516,7 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
   auto* bk_data = bk_tensor->data<T>();
   auto* bv_data = bv_tensor->data<T>();
 
-  auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+  auto combined_bias_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -1590,7 +1590,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_w_data = qkv_w_tensor->data<T>();
-  auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto transpose_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_transpose_w_tensor;
   tmp_transpose_w_tensor.Resize(transpose_w_dims);
@@ -1628,7 +1628,7 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_b_data = qkv_b_tensor->data<T>();
-  auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
+  auto transpose_b_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_transpose_b_tensor;
   tmp_transpose_b_tensor.Resize(transpose_b_dims);
@@ -1698,8 +1698,8 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 inline void TransposeWeights(phi::DenseTensor* weight_tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
-  int m = weight_tensor->dims()[0];
-  int n = weight_tensor->dims()[1];
+  int m = static_cast<int>(weight_tensor->dims()[0]);
+  int n = static_cast<int>(weight_tensor->dims()[1]);
   phi::DenseTensor tmp_weight_tensor;
   tmp_weight_tensor.Resize({n, m});
   dev_ctx->Alloc<int8_t>(&tmp_weight_tensor);
@@ -1816,8 +1816,8 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
             .at(3);
     auto* layer_norm_bias_tensor =
         scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
-    int dim_embed = layer_norm_bias_tensor->dims()[0];
-    int num_head = wq_tensor->dims()[1] / dim_head;
+    int dim_embed = static_cast<int>(layer_norm_bias_tensor->dims()[0]);
+    int num_head = static_cast<int>(wq_tensor->dims()[1] / dim_head);
 
     QKVWeightsBiasProcess(wq_tensor,
                           wk_tensor,
@@ -2400,6 +2400,16 @@ void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_encoder_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running fused_multi_transformer_encoder_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running fused_multi_transformer_encoder_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
@@ -2437,13 +2447,13 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -2631,8 +2641,8 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         3;  // 3 for qkv
     auto* layer_norm_bias_tensor =
         scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
-    int dim_embed = layer_norm_bias_tensor->dims()[0];
-    int num_head = qkv_w_tensor->dims()[1] / 3 / dim_head;
+    int dim_embed = static_cast<int>(layer_norm_bias_tensor->dims()[0]);
+    int num_head = static_cast<int>(qkv_w_tensor->dims()[1] / 3 / dim_head);
 
     QKVWeightsBiasProcessFuseQKV(
         qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
@@ -3211,6 +3221,17 @@ void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
           "During the fused_multi_transformer_encoder pass, "
           "The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_encoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running "
+           "fused_multi_transformer_encoder_fuse_qkv_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running "
+               "fused_multi_transformer_encoder_fuse_qkv_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderFuseQKVPass, new bool(true));
@@ -3266,13 +3287,13 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -3464,7 +3485,7 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    int dim_embed = wq_tensor->dims()[0];
+    int dim_embed = static_cast<int>(wq_tensor->dims()[0]);
 
     QKVWeightsBiasProcess(wq_tensor,
                           wk_tensor,
@@ -4013,6 +4034,17 @@ void MultiDevicesFusedMultiTransformerEncoderPass::ApplyImpl(
       platform::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
+  VLOG(3) << "Running multi_devices_fused_multi_transformer_encoder_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
@@ -4051,13 +4083,13 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -4242,13 +4274,13 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     // 2. calculate num_head according to wqkv_tensor.shape[1]/3 and dim_head
     auto* layer_norm_bias_tensor =
         scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
-    int dim_embed = layer_norm_bias_tensor->dims()[0];
+    int dim_embed = static_cast<int>(layer_norm_bias_tensor->dims()[0]);
     auto reshape_desc = reshape2_0->Op();
     int dim_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(3) /
         3;  // 3 for qkv
-    int num_head = qkv_w_tensor->dims()[1] / 3 / dim_head;
+    int num_head = static_cast<int>(qkv_w_tensor->dims()[1] / 3 / dim_head);
 
     QKVWeightsBiasProcessFuseQKV(
         qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
@@ -4872,6 +4904,19 @@ void MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(
           "During the fused_multi_transformer_encoder pass, "
           "The scope should not be null."));
 
+  VLOG(3)
+      << "Running multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running "
+           "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kMultiDevicesFusedMultiTransformerEncoderFuseQKVPass,
@@ -4928,13 +4973,13 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")

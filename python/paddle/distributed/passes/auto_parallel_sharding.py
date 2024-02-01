@@ -42,7 +42,9 @@ from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
 
+from .auto_parallel_master_grad import _is_master_grad_cast_op
 from .pass_base import PassBase, register_pass
+from .pass_utils import AutoParallelStreamType
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -70,6 +72,9 @@ _supported_optimizer_type = [
 ]
 
 _logger = get_logger(logging.INFO)
+
+__amp_target_dtype__ = core.VarDesc.VarType.FP16
+__amp_target_dtype_name__ = "float16"
 
 
 def _is_reshard_op(op):
@@ -99,6 +104,7 @@ class ShardingPass(PassBase):
         self.set_attr("enable_hierarchical_comm", None)
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
+        self.set_attr("amp_dtype", "float16")
         self.dp_groups = set()
         self.sharding_infos = []
         self.varname_to_sharding_info = {}
@@ -179,6 +185,11 @@ class ShardingPass(PassBase):
             main_program.global_block(),
             startup_program.global_block(),
         )
+
+        self.amp_dtype = self.get_attr("amp_dtype")
+        if self.amp_dtype == "bfloat16":
+            __amp_target_dtype__ = core.VarDesc.VarType.BF16
+            __amp_target_dtype_name__ = "bfloat16"
 
         # NOTE Multi / Sub-Block Support
         # we assume that only parameter are present and partitioned in main_block,
@@ -338,6 +349,20 @@ class ShardingPass(PassBase):
                                 OP_ROLE_KEY: op_role,
                             },
                         )
+                        dist_attr = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                out_var
+                            )
+                        )
+
+                        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                            main_block.ops[idx],
+                            dist_attr.process_mesh,
+                            dist_attr.dims_mapping,
+                            self._dist_context,
+                            chunk_id=dist_attr.chunk_id,
+                        )
+
                     else:
                         main_block._remove_op(idx, sync=False)
 
@@ -496,6 +521,7 @@ class ShardingPass(PassBase):
                     param_dist_attr.process_mesh,
                     param_dist_attr.dims_mapping,
                     self._dist_context,
+                    chunk_id=param_dist_attr.chunk_id,
                 )
         main_block._sync_with_cpp()
 
@@ -609,13 +635,23 @@ class ShardingPass(PassBase):
                                 input_var
                             )
                         )
-                        out_var_dist_attr = set_var_dist_attr(
+                        set_var_dist_attr(
                             self._dist_context,
                             new_var,
                             ref_dist_attr.dims_mapping,
                             ref_dist_attr.process_mesh,
+                            chunk_id=ref_dist_attr.chunk_id,
+                        )
+                        op_dist_attr = (
+                            self._dist_context.get_op_dist_attr_for_program(op)
+                        )
+                        input_dist_attr = op_dist_attr.get_input_dist_attr(
+                            input_name
                         )
                         op._rename_input(input_name, broadcast_varname)
+                        op_dist_attr.set_input_dist_attr(
+                            broadcast_varname, input_dist_attr
+                        )
 
                     _insert_init_and_broadcast_op(
                         main_block,
@@ -748,13 +784,11 @@ class ShardingPass(PassBase):
                     group = sharding_info.group
                 else:
                     group = new_process_group(ranks, force_new_group=True)
-                # NOTE here stream is just a presentation with different name,
-                # it is up to executor to create the exact streams given the name.
-                stream = f"sharding_param_comm_stream{i}"
+
                 self.param_comm_group_stream_pairs.append(
                     {
                         "comm_group": group,
-                        "comm_stream": stream,
+                        "comm_stream": AutoParallelStreamType.SHARDING_STREAM.value,
                     }
                 )
             _logger.info(
@@ -805,10 +839,7 @@ class ShardingPass(PassBase):
                 )
             )
             _logger.debug(
-                "Bucket[{}] parameters: {}.".format(
-                    i,
-                    [p.name for p in param_group.vars],
-                )
+                f"Bucket[{i}] parameters: {[p.name for p in param_group.vars]}."
             )
 
             broadcast_var_to_group_map[
@@ -1412,6 +1443,7 @@ def _insert_init_and_broadcast_op(
         broadcast_var_dist_attr.process_mesh,
         broadcast_var_dist_attr.dims_mapping,
         dist_context,
+        chunk_id=broadcast_var_dist_attr.chunk_id,
     )
     if local_rank != root_rank:
         new_op = block._insert_op_without_sync(
@@ -1429,8 +1461,8 @@ def _insert_init_and_broadcast_op(
             broadcast_var_dist_attr.process_mesh,
             broadcast_var_dist_attr.dims_mapping,
             dist_context,
+            chunk_id=broadcast_var_dist_attr.chunk_id,
         )
-    return
 
 
 def _insert_reduce_op(
@@ -1463,7 +1495,11 @@ def _insert_reduce_op(
         block.var(reduce_var)
     )
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-        new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context
+        new_op,
+        dist_attr.process_mesh,
+        dist_attr.dims_mapping,
+        dist_context,
+        chunk_id=dist_attr.chunk_id,
     )
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     return new_op
@@ -1496,8 +1532,10 @@ def _is_param_grad_fp32_cast_op(block, op):
     if not is_backward_op(op):
         return False
     if not _is_desired_cast_op(
-        block, op, core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
+        return False
+    if _is_master_grad_cast_op(block, op, __amp_target_dtype_name__):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]
@@ -1521,7 +1559,7 @@ def _is_desired_cast_op(
     block,
     op,
     src_var_type=core.VarDesc.VarType.FP32,
-    dst_var_type=core.VarDesc.VarType.FP16,
+    dst_var_type=__amp_target_dtype__,
 ):
     if op.type != "cast":
         return False
@@ -1540,6 +1578,8 @@ def _get_base_name_from_grad_name(grad_name):
     base_name = None
     if ".cast_fp16@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find(".cast_fp16@GRAD")]
+    elif ".cast_bf16@GRAD" in grad_name:
+        base_name = grad_name[: grad_name.find(".cast_bf16@GRAD")]
     elif "@GRAD" in grad_name:
         base_name = grad_name[: grad_name.find("@GRAD")]
     return base_name
@@ -1649,9 +1689,7 @@ def partition_by_greedy_even(params, group_size):
         numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
-        ), "param [{}] should larger than 0, but it is [{}]".format(
-            param.name, numel
-        )
+        ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
         sizes[rank] += numel
 
     return mapping
@@ -1666,9 +1704,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     _logger.info("Sharding Parameter Partition:")
     for k, v in rank_to_params.items():
         _logger.info(
-            "Rank:{}, Parameter Size:{} MB.".format(
-                k, sum([get_var_size(var) for var in v])
-            )
+            f"Rank:{k}, Parameter Size:{sum([get_var_size(var) for var in v])} MB."
         )
         _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 
@@ -1691,7 +1727,7 @@ def re_order_program(block, param_grads, dist_context):
         if len(use_order) == len(pname_to_pg_pairs):
             break
 
-    # reorder optimzier
+    # reorder optimizer
     last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)
@@ -1700,11 +1736,10 @@ def re_order_program(block, param_grads, dist_context):
     if is_optimize_op(last_op) and last_op.type in _supported_optimizer_type:
         # record optimizer
         for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type not in _supported_optimizer_type:
-                break
-            assert len(op.input("Param")) == 1
-            pname_to_op[op.input("Param")[0]] = op
-            remove_op_indices.append(idx)
+            if op.type in _supported_optimizer_type:
+                assert len(op.input("Param")) == 1
+                pname_to_op[op.input("Param")[0]] = op
+                remove_op_indices.append(idx)
         assert len(use_order) == len(pname_to_op)
 
         # append new opts

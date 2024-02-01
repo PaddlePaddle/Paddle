@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 sys.path.append("../../test/sequence")
 from test_sequence_pool import (

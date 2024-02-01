@@ -51,7 +51,7 @@ struct TimeDim {
 };
 
 class ScheduleGraphNode;
-struct ScheduleGraph : public common::Graph {};
+struct ScheduleGraph : public cinn::common::Graph {};
 
 /**
  * ISL schedule map with time space, used to generate the final schedule.
@@ -205,9 +205,9 @@ std::unique_ptr<Schedule> CreateSchedule(
 // std::vector<Stage *> GatherStagesInTensors(const std::vector<ir::Tensor> &xs,
 // bool with_placeholder = false);
 
-struct ScheduleGraphEdge : public common::GraphEdge {
-  ScheduleGraphEdge(common::GraphNode *a, common::GraphNode *b)
-      : common::GraphEdge(a, b) {}
+struct ScheduleGraphEdge : public cinn::common::GraphEdge {
+  ScheduleGraphEdge(cinn::common::GraphNode *a, cinn::common::GraphNode *b)
+      : cinn::common::GraphEdge(a, b) {}
 
   //! Dependency level.
   int level{-1};
@@ -216,7 +216,7 @@ struct ScheduleGraphEdge : public common::GraphEdge {
 /**
  * Node in the schedule graph.
  */
-struct ScheduleGraphNode : public common::GraphNode {
+struct ScheduleGraphNode : public cinn::common::GraphNode {
   TimeSchedule time_schedule;
   Stage *stage{};
 

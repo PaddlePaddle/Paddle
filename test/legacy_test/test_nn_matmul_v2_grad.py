@@ -19,8 +19,9 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -35,17 +36,14 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -57,9 +55,9 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -72,9 +70,9 @@ class TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
         self.transpose_y = True
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -89,17 +87,14 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         self.transpose_x = True
         self.transpose_y = False
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -111,9 +106,9 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -128,17 +123,14 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -150,9 +142,9 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -161,40 +153,35 @@ class TestMatmulTripleGradCheckDotCase(unittest.TestCase):
     def setUp(self):
         self.init_test()
 
+    def init_test(self):
+        self.x_shape = [2]
+        self.y_shape = [2]
+        self.transpose_x = False
+        self.transpose_y = False
 
-def init_test(self):
-    self.x_shape = [2]
-    self.y_shape = [2]
-    self.transpose_x = False
-    self.transpose_y = False
+    @prog_scope()
+    def func(self, place):
+        eps = 0.005
+        dtype = np.float64
+        typename = "float64"
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
+        out = paddle.matmul(
+            x, y, self.transpose_x, self.transpose_y, name='out'
+        )
+        np.random.seed(2021)
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
-
-@prog_scope()
-def func(self, place):
-    eps = 0.005
-    dtype = np.float64
-    typename = "float64"
-    x = paddle.static.create_parameter(
-        dtype=typename, shape=self.x_shape, name='x'
-    )
-    y = paddle.static.create_parameter(
-        dtype=typename, shape=self.y_shape, name='y'
-    )
-    out = paddle.matmul(x, y, self.transpose_x, self.transpose_y, name='out')
-    np.random.seed(2021)
-    x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
-    y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
-    gradient_checker.triple_grad_check(
-        [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
-    )
-
-
-def test_grad(self):
-    places = [fluid.CPUPlace()]
-    if core.is_compiled_with_cuda():
-        places.append(fluid.CUDAPlace(0))
-    for p in places:
-        self.func(p)
+    def test_grad(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
@@ -212,12 +199,8 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -229,9 +212,9 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -251,12 +234,8 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -268,9 +247,9 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -290,12 +269,8 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -307,9 +282,9 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -329,12 +304,8 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -346,9 +317,9 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -368,12 +339,8 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -385,9 +352,9 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -407,12 +374,8 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -424,9 +387,9 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -446,12 +409,8 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -463,9 +422,9 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -485,12 +444,8 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -502,9 +457,9 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -524,12 +479,8 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -541,9 +492,9 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -563,12 +514,8 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -580,9 +527,9 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -602,12 +549,8 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x'
-        )
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y'
-        )
+        x = paddle.static.data(dtype=typename, shape=self.x_shape, name='x')
+        y = paddle.static.data(dtype=typename, shape=self.y_shape, name='y')
         out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
@@ -619,9 +562,9 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

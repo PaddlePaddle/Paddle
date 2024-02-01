@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -23,8 +24,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -100,10 +101,10 @@ class TestWhereOpError(unittest.TestCase):
             cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
 
-            exe = fluid.Executor(paddle.XPUPlace(0))
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(paddle.XPUPlace(0))
+            exe.run(base.default_startup_program())
             cond_i = np.array([True, False, False, False]).astype("bool")
-            out = exe.run(fluid.default_main_program(), feed={'cond': cond_i})
+            out = exe.run(base.default_main_program(), feed={'cond': cond_i})
 
 
 class TestWhereRaiseError(unittest.TestCase):
@@ -112,6 +113,39 @@ class TestWhereRaiseError(unittest.TestCase):
             paddle.nonzero([10])
 
         self.assertRaises(AttributeError, test_type)
+
+
+class TestWhereSimulatorMode(unittest.TestCase):
+    def test_skip_run_on(self):
+        os.environ['XPUSIM_SKIP_RUN'] = '1'
+        cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
+        result = paddle.nonzero(cond)
+
+        exe = base.Executor(paddle.XPUPlace(0))
+        exe.run(base.default_startup_program())
+        cond_i = np.array([True, False, False, False]).astype("bool")
+        out = exe.run(base.default_main_program(), feed={'cond': cond_i})
+        del os.environ['XPUSIM_SKIP_RUN']
+
+    def test_skip_run_off1(self):
+        cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
+        result = paddle.nonzero(cond)
+
+        exe = base.Executor(paddle.XPUPlace(0))
+        exe.run(base.default_startup_program())
+        cond_i = np.array([True, False, False, False]).astype("bool")
+        out = exe.run(base.default_main_program(), feed={'cond': cond_i})
+
+    def test_skip_run_off2(self):
+        os.environ['XPUSIM_SKIP_RUN'] = '0'
+        cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
+        result = paddle.nonzero(cond)
+
+        exe = base.Executor(paddle.XPUPlace(0))
+        exe.run(base.default_startup_program())
+        cond_i = np.array([True, False, False, False]).astype("bool")
+        out = exe.run(base.default_main_program(), feed={'cond': cond_i})
+        del os.environ['XPUSIM_SKIP_RUN']
 
 
 if __name__ == "__main__":

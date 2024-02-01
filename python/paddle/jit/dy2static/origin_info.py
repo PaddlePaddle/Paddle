@@ -15,11 +15,11 @@
 import inspect
 from collections.abc import Sequence
 
-from paddle.fluid import core
-from paddle.fluid.framework import Program
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.utils import gast
 
-from .utils import ORIGI_INFO, unwrap
+from .utils import ORIGI_INFO
 
 __all__ = []
 
@@ -41,9 +41,7 @@ class Location:
         self.col_offset = col_offset
 
     def __str__(self):
-        return "location: {}:{}:{}".format(
-            self.filepath, self.lineno, self.col_offset
-        )
+        return f"location: {self.filepath}:{self.lineno}:{self.col_offset}"
 
     @property
     def line_location(self):
@@ -97,7 +95,7 @@ class OriginInfoAttacher(gast.NodeTransformer):
 
     def __init__(self, root, func):
         self.root = root
-        self.func = unwrap(func)
+        self.func = inspect.unwrap(func)
         self.filepath = inspect.getsourcefile(self.func)
         self.source_code = inspect.getsource(self.func)
         self.current_func = []
@@ -135,14 +133,6 @@ class OriginInfoAttacher(gast.NodeTransformer):
         setattr(node, ORIGI_INFO, origin_info)
 
     def _abs_lineno(self, node):
-        # NOTE(liym27):
-        #   There are differences in ast_node.lineno between PY3.8+ and PY3.8-.
-        #   If the first gast.FunctionDef has decorator, the lineno of gast.FunctionDef is differs.
-        #       1. < PY3.8
-        #           its lineno equals to the lineno of the first decorator node, which is not right.
-        #       2. >= PY3.8
-        #           its lineno is the actual lineno, which is right.
-
         return self.lineno_offset + node.lineno
 
     def _abs_col_offset(self, node):
@@ -311,9 +301,7 @@ def update_op_callstack_with_origin_info(program):
             if dygraph_func_info:
                 filepath, lineno, funcname, code = dygraph_func_info.as_frame()
 
-            callstack[i] = '  File "{}", line {}, in {}'.format(
-                filepath, lineno, funcname
-            )
+            callstack[i] = f'  File "{filepath}", line {lineno}, in {funcname}'
             callstack[i + 1] = f'    {code}'
 
         return callstack

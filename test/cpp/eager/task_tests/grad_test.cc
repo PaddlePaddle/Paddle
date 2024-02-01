@@ -37,7 +37,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor (output)
   paddle::Tensor output_tensor =
@@ -104,7 +104,7 @@ TEST(Grad, SingleNodeCustomGrad) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
@@ -183,7 +183,7 @@ TEST(Grad, LinearNodes) {
 
   // Prepare Target Tensor
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
@@ -264,7 +264,7 @@ TEST(Grad, WithAccumulation) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   std::vector<paddle::Tensor> target_tensors;

@@ -16,6 +16,8 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -75,7 +77,14 @@ void SigmoidCrossEntropyWithLogitsKernel(
                        dev_ctx.GetPlace(),
                        static_cast<void*>(non_zero),
                        sizeof(int));
-
+    if (std::getenv("XPUSIM_SKIP_RUN") &&
+        std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
+      VLOG(3)
+          << "WARNING: In the simulator mode, the variable non_zero_cpu "
+             "stores an uninitialized value. To avoid allocating a memory of "
+             "random size, we assign numel to non_zero_cpu";
+      non_zero_cpu = x.numel();
+    }
     r = xpu::scale(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(out->data<T>()),
                    reinterpret_cast<XPUType*>(out->data<T>()),

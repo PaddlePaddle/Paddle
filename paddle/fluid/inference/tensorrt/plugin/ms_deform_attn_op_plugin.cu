@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/ms_deform_attn_op_plugin.h"
 #include <cub/cub.cuh>
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 //#include <cuda_fp16.h>
 

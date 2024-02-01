@@ -30,13 +30,13 @@ namespace auto_schedule {
 class ExprCostModel : public XgbCostModel {
  public:
   virtual float Predict(const ir::ModuleExpr& sample,
-                        const common::Target& target) const;
+                        const cinn::common::Target& target) const;
   void Train(const std::vector<const ir::ModuleExpr*>& samples,
              const std::vector<float>& labels,
-             const common::Target& target);
+             const cinn::common::Target& target);
   void Update(const std::vector<const ir::ModuleExpr*>& samples,
               const std::vector<float>& labels,
-              const common::Target& target);
+              const cinn::common::Target& target);
 
  private:
   std::atomic<int> trained_times_{0};

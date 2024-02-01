@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 
@@ -123,7 +124,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     DenseTensor *norm_tensor = new DenseTensor();
     norm_tensor->Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(norm_tensor);
-    auto dims = phi::vectorize(counts_tensor->dims());
+    auto dims = common::vectorize(counts_tensor->dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);
@@ -144,10 +145,8 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
-    std::vector<const DenseTensor *> div_ins = {in_grad};
-    std::vector<DenseTensor *> div_outs = {in_grad};
-    auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
+    phi::ScaleKernel<T>(
+        dev_ctx, *in_grad, (1.0 / *norm_cpu_ptr), 0.0f, false, in_grad);
 
     delete norm_tensor;
   }

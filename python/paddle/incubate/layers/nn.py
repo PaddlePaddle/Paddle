@@ -21,15 +21,15 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import (
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 
 __all__ = []
 
@@ -364,7 +364,7 @@ def search_pyramid_hash(
         lr (float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
         param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
         param_attr_wl (ParamAttr, optional): Specified parameters of white filter. Default: None.
         param_attr_bl (ParamAttr, optional): Specified parameters of black filter. Default: None.
         distribute_update_vars(list[ParamAttr.name], optional): Decided which params should be updated in distribute training.
@@ -532,7 +532,7 @@ def partial_concat(input, start_index=0, length=-1):
 
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
-            int64.
+            int64, complex64, complex128.
         start_index(int32, optional): The start index of each instance for partial concatenation.
             Default is 0.
         length(int32, optional): The length of each instance for partial concatenation. Default is -1.
@@ -560,7 +560,15 @@ def partial_concat(input, start_index=0, length=-1):
         check_variable_and_dtype(
             x,
             'input[' + str(id) + ']',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'partial_concat',
         )
     check_type(start_index, 'start_index', (int), 'partial_concat')
@@ -663,7 +671,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         node_nums (int): Number of total nodes.
         child_nums (int): Maximum number of child nodes per node.
         param_attr (ParamAttr, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in: ref: `api_paddle_ParamAttr`, should
             has shape (node_nums, 3 + child_nums), dtype support int32/int64.
             The dimension[1] of tdm-tree-info contains the following:
             1. Item_id (int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
@@ -764,10 +772,10 @@ def tdm_sampler(
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
         tree_travel_attr (ParamAttr, optional): To specify the tdm-travel parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
         tree_layer_attr (ParamAttr, optional): To specify the tdm-layer parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
         output_positive (bool, optional): Whether to output positive samples (include label and mask )at the same time. Default: True.
         output_list (bool, optional): Whether to divide the output into layers and organize it into list format. Default: True.
@@ -1134,7 +1142,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     :alias_main: paddle.nn.functional.bilateral_slice
         :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-        :old_api: paddle.fluid.layers.bilateral_slice
+        :old_api: paddle.base.layers.bilateral_slice
 
     This operation implements bilateral slicing on the input according to the guide map.
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_

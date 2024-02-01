@@ -40,7 +40,7 @@ struct Linspace<phi::GPUContext, T> {
                   bool align_corners,
                   DenseTensor* numbers,
                   const phi::GPUContext& dev_ctx) {
-    numbers->Resize(phi::make_ddim({count}));
+    numbers->Resize(common::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
     if (!align_corners) {
@@ -144,7 +144,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   int w = 0;
   h = size_attr[2];
   w = size_attr[3];
-  theta_grad->Resize(phi::make_ddim({n, 2, 3}));
+  theta_grad->Resize(common::make_ddim({n, 2, 3}));
   T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
   phi::funcs::SetConstant<phi::GPUContext, T>()(
       dev_ctx, theta_grad, static_cast<T>(0));
@@ -199,7 +199,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   d = size_attr[2];
   h = size_attr[3];
   w = size_attr[4];
-  theta_grad->Resize(phi::make_ddim({n, 3, 4}));
+  theta_grad->Resize(common::make_ddim({n, 3, 4}));
   T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
   phi::funcs::SetConstant<phi::GPUContext, T>()(
       dev_ctx, theta_grad, static_cast<T>(0));

@@ -47,7 +47,7 @@ struct SequenceExpandAsFunctor<phi::CPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
                   phi::DenseTensor *out) {
     int64_t height = x.dims()[0];
-    int64_t width = phi::product(x.dims()) / height;
+    int64_t width = common::product(x.dims()) / height;
 
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(context.GetPlace());
@@ -124,7 +124,7 @@ struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
                   phi::DenseTensor *dx) {
     int64_t height = dx->dims()[0];
-    int64_t width = phi::product(dx->dims()) / height;
+    int64_t width = common::product(dx->dims()) / height;
 
     const T *dout_data = dout.data<T>();
     T *dx_data = dx->mutable_data<T>(context.GetPlace());

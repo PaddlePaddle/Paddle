@@ -229,15 +229,12 @@ size_t DeviceInterface::AvailableAllocSize(size_t dev_id) {
   size_t total = 0;
   size_t available = 0;
   MemoryStats(dev_id, &total, &available);
-  size_t reserving =
-      static_cast<size_t>(fraction_reserve_gpu_memory * available);
   // If available size is less than minimum chunk size, no usable memory exists
-  size_t available_to_alloc = available - reserving;
   size_t min_chunk_size = GetMinChunkSize(dev_id);
-  if (available_to_alloc < min_chunk_size) {
-    available_to_alloc = 0;
+  if (available < min_chunk_size) {
+    available = 0;
   }
-  return available_to_alloc;
+  return available;
 }
 
 size_t DeviceInterface::GetInitAllocSize(size_t dev_id) {

@@ -15,7 +15,7 @@
 from typing import Optional, Sequence, Tuple, Union
 
 import paddle
-from paddle.fluid import framework
+from paddle.base import framework
 
 
 def as_tensors(xs):
@@ -404,7 +404,7 @@ def _multi_index(indexes, shape):
 
     Currently supporting following input format:
         * ([positive|negative|slice], ...), the right-most elements can be
-            omited.
+            omitted.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
@@ -701,7 +701,7 @@ def _grad_for_jacobian(ys, xs, v=None):
         # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.fluid.framework.Variable)
+            isinstance(xs, paddle.base.framework.Variable)
             and isinstance(xs_grad, Sequence)
             and len(xs_grad) > 0
         ):

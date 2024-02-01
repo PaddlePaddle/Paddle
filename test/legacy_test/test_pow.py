@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 DYNAMIC = 1
@@ -211,6 +211,18 @@ class TestPowerError(unittest.TestCase):
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
         self.assertRaises(TypeError, paddle.pow, x, str(y))
+
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+
+            def x_dtype_error():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data('x', [2, 2], dtype='int8')
+                    out = paddle.pow(x, 2)
+
+            self.assertRaises(TypeError, x_dtype_error)
 
 
 if __name__ == '__main__':

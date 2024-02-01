@@ -44,16 +44,16 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      ctx->SetOutputDim("Out", phi::make_ddim(tensor_shape));
+      ctx->SetOutputDim("Out", common::make_ddim(tensor_shape));
     } else {
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_EQ(phi::arity(x_dim),
-                        phi::arity(y_dim),
+      PADDLE_ENFORCE_EQ(common::arity(x_dim),
+                        common::arity(y_dim),
                         platform::errors::InvalidArgument(
                             "The number of dimensions (%d) of CropOp's input(X)"
                             " must be equal to that (%d) of input(Y).",
-                            phi::arity(x_dim),
-                            phi::arity(y_dim)));
+                            common::arity(x_dim),
+                            common::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }
   }
@@ -207,7 +207,7 @@ class CropGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GropNoNeedBufferVarInferer, "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CropNoNeedBufferVarInferer, "Y");
 
 }  // namespace operators
 }  // namespace paddle
@@ -218,7 +218,7 @@ REGISTER_OPERATOR(crop,
                   ops::CropOpMaker,
                   ops::CropGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
-                  ops::GropNoNeedBufferVarInferer);
+                  ops::CropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(crop,
                        ops::CropKernel<phi::CPUContext, float>,

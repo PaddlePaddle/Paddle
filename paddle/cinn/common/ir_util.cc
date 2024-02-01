@@ -18,10 +18,9 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/cast_simplify.h"
 
 namespace cinn {
 namespace common {
@@ -70,8 +69,8 @@ Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
   CHECK(ramp);
   CHECK(other);
   if (ramp->lanes == other->lanes) {
-    Expr base_add = common::AutoSimplify(ramp->base + other->base);
-    Expr stride_add = common::AutoSimplify(ramp->stride + other->stride);
+    Expr base_add = cinn::common::AutoSimplify(ramp->base + other->base);
+    Expr stride_add = cinn::common::AutoSimplify(ramp->stride + other->stride);
     VLOG(2) << base_add;
     VLOG(2) << stride_add;
     return ir::Ramp::Make(base_add, stride_add, ramp->lanes);
@@ -144,10 +143,14 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
   VLOG(3) << "indices is : " << utils::Join(indices, ",");
   CHECK_LE(shape.size(), indices.size());
   Expr res;
+  ir::TryElevateInt32ToInt64(shape);
   for (int i = 0; i < shape.size(); i++) {
-    CHECK_EQ(shape[i].type(), Int(32));
+    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32))
+        << "The shape data type currently supports only int32 or int64, but "
+           "the current data type of shape["
+        << i << "] is " << shape[i].type();
     Expr indice_prod = indices[i];
-    optim::CastSimplify(&indice_prod);
+    optim::SimplifyCast(&indice_prod);
     for (int j = i + 1; j < shape.size(); j++) {
       indice_prod = RampRelatedMul(indice_prod, shape[j]);
     }
@@ -157,7 +160,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
       res = indice_prod;
     }
   }
-  return common::AutoSimplify(res);
+  return cinn::common::AutoSimplify(res);
 }
 
 Expr IndiceToAbsOffset(const std::vector<int> &shape,
@@ -250,8 +253,8 @@ Expr or_all(const std::vector<Expr> &conds) {
 }
 
 void CheckTensorUniqueInExpr(Expr expr) {
-  auto tensor_uniq =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
+  auto tensor_uniq = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
   absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
@@ -270,9 +273,9 @@ void CheckBufferUniqueInExpr(Expr expr) {
   // the buffers exists in tensor and lowered functions.
   CheckTensorUniqueInExpr(expr);
 
-  auto tensors =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
-  auto funcs = ir::CollectIRNodes(
+  auto tensors = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
+  auto funcs = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_lowered_func(); });
 
   absl::flat_hash_map<std::string, const ir::_Buffer_ *> buffer_name;

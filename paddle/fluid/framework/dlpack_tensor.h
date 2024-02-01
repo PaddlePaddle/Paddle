@@ -41,7 +41,7 @@ class DLPackTensor {
 
   // The shape in DLTensor is defined as int64_t*
   // Add this member to make TVMTensor init without heap allocation
-  ShapeType shape_[DDim::kMaxRank];
+  ShapeType shape_[phi::DDim::kMaxRank];
 };
 
 DLManagedTensor* toDLPack(const phi::DenseTensor& src);

@@ -49,9 +49,7 @@ class Fixed(TunableVariable):
         self.name = name
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
-                "Fixed must be an str, int, float or bool, but found {}".format(
-                    default
-                )
+                f"Fixed must be an str, int, float or bool, but found {default}"
             )
         self._default = default
 
@@ -79,9 +77,7 @@ class Boolean(TunableVariable):
         return rng.choice((True, False))
 
     def __repr__(self):
-        return 'Boolean(name: "{}", default: {})'.format(
-            self.name, self.default
-        )
+        return f'Boolean(name: "{self.name}", default: {self.default})'
 
 
 class Choice(TunableVariable):

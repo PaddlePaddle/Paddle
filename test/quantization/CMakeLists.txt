@@ -234,12 +234,14 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_config)
   list(REMOVE_ITEM TEST_OPS test_quant_amp)
+  list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 
 endif()
 
 if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
   list(REMOVE_ITEM TEST_OPS test_llm_int8_linear)
+  list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -452,7 +454,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
      quant_int8_image_classification_comparison quant_int8_nlp_comparison)
 
-#TODO(wanghaoshuang): Fix this unitest failed on GCC8.
+#TODO(wanghaoshuang): Fix this unittest failed on GCC8.
 list(REMOVE_ITEM TEST_OPS test_auto_pruning)
 list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 

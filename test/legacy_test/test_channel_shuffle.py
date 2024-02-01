@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -71,10 +71,10 @@ class TestChannelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestChannelLast(TestChannelShuffleOp):
@@ -84,84 +84,122 @@ class TestChannelLast(TestChannelShuffleOp):
 
 class TestChannelShuffleAPI(unittest.TestCase):
     def setUp(self):
-        self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
-        self.out_1_np = channel_shuffle_np(self.x_1_np, 3)
         self.out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
+        self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
+        self.out_1_np = channel_shuffle_np(self.x_1_np, 3)
 
+    @test_with_pir_api
     def test_static_graph_functional(self):
-        for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            for use_cuda in (
+                [False, True] if core.is_compiled_with_cuda() else [False]
+            ):
+                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
-            paddle.enable_static()
-            x_1 = paddle.static.data(
-                name="x", shape=[2, 9, 4, 4], dtype="float64"
-            )
-            x_2 = paddle.static.data(
-                name="x2", shape=[2, 4, 4, 9], dtype="float64"
-            )
-            out_1 = F.channel_shuffle(x_1, 3)
-            out_2 = F.channel_shuffle(x_2, 3, "NHWC")
+                paddle.enable_static()
+                x_1 = paddle.static.data(
+                    name="x", shape=[2, 9, 4, 4], dtype="float64"
+                )
+                out_1 = F.channel_shuffle(x_1, 3)
 
-            exe = paddle.static.Executor(place=place)
-            res_1 = exe.run(
-                fluid.default_main_program(),
-                feed={"x": self.x_1_np},
-                fetch_list=out_1,
-                use_prune=True,
-            )
+                exe = paddle.static.Executor(place=place)
+                res_1 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x_1_np},
+                    fetch_list=out_1,
+                    use_prune=True,
+                )
 
-            res_2 = exe.run(
-                fluid.default_main_program(),
-                feed={"x2": self.x_2_np},
-                fetch_list=out_2,
-                use_prune=True,
-            )
-
-            np.testing.assert_allclose(res_1[0], self.out_1_np)
-            np.testing.assert_allclose(res_2[0], self.out_2_np)
+                np.testing.assert_allclose(res_1[0], self.out_1_np)
 
     # same test between layer and functional in this op.
+    @test_with_pir_api
     def test_static_graph_layer(self):
-        for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            for use_cuda in (
+                [False, True] if core.is_compiled_with_cuda() else [False]
+            ):
+                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
-            paddle.enable_static()
-            x_1 = paddle.static.data(
-                name="x", shape=[2, 9, 4, 4], dtype="float64"
-            )
-            x_2 = paddle.static.data(
-                name="x2", shape=[2, 4, 4, 9], dtype="float64"
-            )
-            # init instance
-            ps_1 = paddle.nn.ChannelShuffle(3)
-            ps_2 = paddle.nn.ChannelShuffle(3, "NHWC")
-            out_1 = ps_1(x_1)
-            out_2 = ps_2(x_2)
-            out_1_np = channel_shuffle_np(self.x_1_np, 3)
-            out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
+                paddle.enable_static()
+                x_1 = paddle.static.data(
+                    name="x", shape=[2, 9, 4, 4], dtype="float64"
+                )
+                # init instance
+                ps_1 = paddle.nn.ChannelShuffle(3)
+                out_1 = ps_1(x_1)
+                out_1_np = channel_shuffle_np(self.x_1_np, 3)
 
-            exe = paddle.static.Executor(place=place)
-            res_1 = exe.run(
-                fluid.default_main_program(),
-                feed={"x": self.x_1_np},
-                fetch_list=out_1,
-                use_prune=True,
-            )
+                exe = paddle.static.Executor(place=place)
+                res_1 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x_1_np},
+                    fetch_list=out_1,
+                    use_prune=True,
+                )
 
-            res_2 = exe.run(
-                fluid.default_main_program(),
-                feed={"x2": self.x_2_np},
-                fetch_list=out_2,
-                use_prune=True,
-            )
+                np.testing.assert_allclose(res_1[0], out_1_np)
 
-            np.testing.assert_allclose(res_1[0], out_1_np)
-            np.testing.assert_allclose(res_2[0], out_2_np)
+    @test_with_pir_api
+    def test_static_graph_functional_new(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            for use_cuda in (
+                [False, True] if core.is_compiled_with_cuda() else [False]
+            ):
+                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+
+                paddle.enable_static()
+                x_2 = paddle.static.data(
+                    name="x2", shape=[2, 4, 4, 9], dtype="float64"
+                )
+                out_2 = F.channel_shuffle(x_2, 3, "NHWC")
+
+                exe = paddle.static.Executor(place=place)
+                res_2 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x2": self.x_2_np},
+                    fetch_list=out_2,
+                    use_prune=True,
+                )
+
+                np.testing.assert_allclose(res_2[0], self.out_2_np)
+
+    @test_with_pir_api
+    def test_static_graph_layer_new(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            for use_cuda in (
+                [False, True] if core.is_compiled_with_cuda() else [False]
+            ):
+                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+
+                paddle.enable_static()
+                x_2 = paddle.static.data(
+                    name="x2", shape=[2, 4, 4, 9], dtype="float64"
+                )
+                # init instance
+                ps_2 = paddle.nn.ChannelShuffle(3, "NHWC")
+                out_2 = ps_2(x_2)
+                out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
+
+                exe = paddle.static.Executor(place=place)
+
+                res_2 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x2": self.x_2_np},
+                    fetch_list=out_2,
+                    use_prune=True,
+                )
+
+                np.testing.assert_allclose(res_2[0], out_2_np)
 
     def run_dygraph(self, groups, data_format):
         n, c, h, w = 2, 9, 4, 4
@@ -209,30 +247,31 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 
 class TestChannelShuffleError(unittest.TestCase):
+    @test_with_pir_api
     def test_error_functional(self):
         def error_input():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3)
 
         self.assertRaises(ValueError, error_input)
 
         def error_groups_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3.33)
 
         self.assertRaises(TypeError, error_groups_1)
 
         def error_groups_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), -1)
 
         self.assertRaises(ValueError, error_groups_2)
 
         def error_data_format():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(
                     paddle.to_tensor(x), 3, "WOW"
@@ -240,9 +279,10 @@ class TestChannelShuffleError(unittest.TestCase):
 
         self.assertRaises(ValueError, error_data_format)
 
+    @test_with_pir_api
     def test_error_layer(self):
         def error_input_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3)
                 cs(paddle.to_tensor(x))
@@ -250,21 +290,21 @@ class TestChannelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_input_layer)
 
         def error_groups_layer_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3.33)
 
         self.assertRaises(TypeError, error_groups_layer_1)
 
         def error_groups_layer_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(-1)
 
         self.assertRaises(ValueError, error_groups_layer_2)
 
         def error_data_format_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3, "MEOW")
 
@@ -308,15 +348,11 @@ class TestChannelShuffleBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == '__main__':

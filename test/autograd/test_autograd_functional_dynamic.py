@@ -145,9 +145,9 @@ class TestAutogradFunctional(unittest.TestCase):
 class TestVJP(TestAutogradFunctional):
     def func_vjp_i1o1(self):
         test_cases = [
-            [reduce, 'A'],  # noqa
-            [reduce_dim, 'A'],  # noqa
-        ]  # noqa
+            [reduce, 'A'],
+            [reduce_dim, 'A'],
+        ]
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
@@ -155,9 +155,9 @@ class TestVJP(TestAutogradFunctional):
 
     def func_vjp_i2o1(self):
         test_cases = [
-            [matmul, ['A', 'B']],  # noqa
-            [mul, ['b', 'c']],  # noqa
-        ]  # noqa
+            [matmul, ['A', 'B']],
+            [mul, ['b', 'c']],
+        ]
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
             vjp_result, grad_result = vjp(), grad()
@@ -165,8 +165,8 @@ class TestVJP(TestAutogradFunctional):
 
     def func_vjp_i2o2(self):
         test_cases = [
-            [o2, ['A', 'A']],  # noqa
-        ]  # noqa
+            [o2, ['A', 'A']],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             v = make_v(f, inputs)
@@ -176,8 +176,8 @@ class TestVJP(TestAutogradFunctional):
 
     def func_vjp_i2o2_omitting_v(self):
         test_cases = [
-            [o2, ['A', 'A']],  # noqa
-        ]  # noqa
+            [o2, ['A', 'A']],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             vjp, grad = self.gen_test_pairs(f, inputs)
@@ -187,7 +187,7 @@ class TestVJP(TestAutogradFunctional):
     def func_vjp_nested(self):
         x = self.gen_input('a')
         test_cases = [
-            [nested(x), 'a'],  # noqa
+            [nested(x), 'a'],
         ]
         for f, inputs in test_cases:
             vjp, grad = self.gen_test_pairs(f, inputs)
@@ -212,7 +212,7 @@ class TestVJP(TestAutogradFunctional):
     def test_input_single_tensor(self):
         self.assertIsInstance(
             paddle.incubate.autograd.vjp(paddle.tanh, paddle.rand((3, 4)))[1],
-            paddle.fluid.framework.Variable,
+            paddle.base.framework.Variable,
         )
 
 
@@ -274,9 +274,9 @@ def jac(grad_fn, f, inputs):
 class TestJVP(TestAutogradFunctional):
     def func_jvp_i1o1(self):
         test_cases = [
-            [reduce, 'A'],  # noqa
-            [reduce_dim, 'A'],  # noqa
-        ]  # noqa
+            [reduce, 'A'],
+            [reduce_dim, 'A'],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
@@ -284,9 +284,9 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o1(self):
-        test_cases = [  # noqa
-            [matmul, ['A', 'B']],  # noqa
-        ]  # noqa
+        test_cases = [
+            [matmul, ['A', 'B']],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
@@ -294,9 +294,9 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o2(self):
-        test_cases = [  # noqa
-            [o2, ['A', 'A']],  # noqa
-        ]  # noqa
+        test_cases = [
+            [o2, ['A', 'A']],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
@@ -304,9 +304,9 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o2_omitting_v(self):
-        test_cases = [  # noqa
-            [o2, ['A', 'A']],  # noqa
-        ]  # noqa
+        test_cases = [
+            [o2, ['A', 'A']],
+        ]
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
             results_omitting_v = paddle.incubate.autograd.jvp(f, inputs)

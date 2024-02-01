@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base, static
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -44,11 +45,15 @@ class TestMatrixPowerOp(OpTest):
         self.attrs = {"n": self.n}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-7
+            ["X"],
+            "Out",
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-7,
+            check_pir=True,
         )
 
 
@@ -109,7 +114,11 @@ class TestMatrixPowerOpNMinus(TestMatrixPowerOp):
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
+            ["X"],
+            "Out",
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+            check_pir=True,
         )
 
 
@@ -156,7 +165,11 @@ class TestMatrixPowerOpNMinus10(TestMatrixPowerOp):
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
+            ["X"],
+            "Out",
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+            check_pir=True,
         )
 
 
@@ -209,7 +222,7 @@ class TestMatrixPowerOpFP32(TestMatrixPowerOp):
         self.n = 2
 
     def test_grad(self):
-        self.check_grad(["X"], "Out", max_relative_error=1e-2)
+        self.check_grad(["X"], "Out", max_relative_error=1e-2, check_pir=True)
 
 
 class TestMatrixPowerOpBatchedFP32(TestMatrixPowerOpFP32):
@@ -243,12 +256,12 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 class TestMatrixPowerAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 4], dtype="float64"
             )
@@ -256,9 +269,8 @@ class TestMatrixPowerAPI(unittest.TestCase):
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.matrix_power(input_np, -2)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
                 feed={"input_x": input_np},
                 fetch_list=[result],
             )
@@ -266,13 +278,14 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 fetches[0], np.linalg.matrix_power(input_np, -2), rtol=1e-05
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = paddle.to_tensor(input_np)
                 result = paddle.linalg.matrix_power(input, -2)
@@ -284,6 +297,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -303,13 +317,6 @@ class TestMatrixPowerAPIError(unittest.TestCase):
                 name="input_" + dtype, shape=[4, 4], dtype=dtype
             )
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2)
-
-        # When out is set, the data type must be the same as input.
-        input = paddle.static.data(
-            name="input_1", shape=[4, 4], dtype="float32"
-        )
-        out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
-        self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
 
         # The number of dimensions of input must be >= 2.
         input = paddle.static.data(name="input_2", shape=[4], dtype="float32")
@@ -335,15 +342,23 @@ class TestMatrixPowerAPIError(unittest.TestCase):
             ValueError, paddle.linalg.matrix_power, input, -956301312
         )
 
+    def test_old_ir_errors(self):
+        # When out is set, the data type must be the same as input.
+        input = paddle.static.data(
+            name="input_1", shape=[4, 4], dtype="float32"
+        )
+        out = paddle.static.data(name="output", shape=[4, 4], dtype="float64")
+        self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2, out)
+
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -351,10 +366,9 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
             input_np = np.zeros([4, 4]).astype("float64")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    fluid.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -363,6 +377,7 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for place in self.places:
@@ -371,9 +386,9 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float64")
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 try:
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:

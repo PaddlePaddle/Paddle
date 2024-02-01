@@ -45,7 +45,7 @@ void NllLossGradKernel(const Context& dev_ctx,
   auto d_x_data = dev_ctx.template Alloc<XPUType>(d_x);
 
   auto d_x_dims = d_x->dims();
-  std::vector<int64_t> d_x_shape = phi::vectorize<int64_t>(d_x_dims);
+  std::vector<int64_t> d_x_shape = common::vectorize<int64_t>(d_x_dims);
 
   auto weight_data =
       weight.get_ptr() ? weight.get_ptr()->data<float>() : nullptr;

@@ -13,21 +13,27 @@
 # limitations under the License.
 
 from .pass_base import new_pass, PassManager, PassContext
-from .fuse_all_reduce import *  # noqa: F403
+
 from .auto_parallel_gradient_merge import *  # noqa: F403
 from .auto_parallel_sharding import *  # noqa: F403
 from .auto_parallel_amp import *  # noqa: F403
+from .auto_parallel_master_grad import *  # noqa: F403
 from .auto_parallel_fp16 import *  # noqa: F403
 from .auto_parallel_recompute import *  # noqa: F403
 from .auto_parallel_quantization import *  # noqa: F403
 from .auto_parallel_data_parallel_optimization import *  # noqa: F403
 from .auto_parallel_grad_clip import *  # noqa: F403
+from .auto_parallel_fused_linear_promotion import *  # noqa: F403
 from .auto_parallel_supplement_explicit_dependencies import *  # noqa: F403
 from .auto_parallel_pipeline import *  # noqa: F403
-from .pipeline_scheduler_pass import *  # noqa: F403
+from .auto_parallel_sequence_parallel_optimization import *  # noqa: F403
+from .allreduce_matmul_grad_overlapping import *  # noqa: F403
 from .cpp_pass import *  # noqa: F403
+from .fuse_all_reduce import *  # noqa: F403
+from .pipeline_scheduler_pass import *  # noqa: F403
 from .ps_trainer_pass import *  # noqa: F403
 from .ps_server_pass import *  # noqa: F403
+
 
 __all__ = [
     'new_pass',

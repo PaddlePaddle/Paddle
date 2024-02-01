@@ -33,7 +33,7 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              platform::DeviceContext *dev_ctx,
                                              proto::VarType::Type dtype)
     : OpHandleBase(node),
-      coeff_(static_cast<float>(1.0 / num_dev)),
+      coeff_(static_cast<float>(1.0 / num_dev)),  // NOLINT
       scope_(scope),
       place_(place),
       out_dtype_(dtype) {
@@ -108,7 +108,7 @@ void ScaleLossGradOpHandle::RunImpl() {
 
 void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<phi::DenseTensor>();
-  tensor->Resize(phi::make_ddim({1}));
+  tensor->Resize(common::make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(

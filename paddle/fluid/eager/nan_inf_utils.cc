@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/selected_rows.h"
 
@@ -90,8 +91,12 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     } else if (tensor.is_selected_rows()) {
       dense_tensor = &(
           static_cast<const phi::SelectedRows*>(tensor.impl().get())->value());
+    } else if (tensor.is_dist_tensor()) {
+      dense_tensor = &(
+          static_cast<const phi::distributed::DistTensor*>(tensor.impl().get())
+              ->value());
     } else {
-      VLOG(10) << "Only DenseTensor or SelectedRows need to check, "
+      VLOG(10) << "Only DenseTensor,SelectedRows,DistTensor need to check, "
                << tensor_name << " is no need.";
       return;
     }

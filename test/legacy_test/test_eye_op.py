@@ -16,13 +16,14 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestEyeOp(OpTest):
@@ -46,7 +47,7 @@ class TestEyeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.int32
@@ -69,7 +70,7 @@ class TestEyeOp1(OpTest):
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestEyeOp2(OpTest):
@@ -85,14 +86,15 @@ class TestEyeOp2(OpTest):
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class API_TestTensorEye(unittest.TestCase):
-    def test_out(self):
+    @test_with_pir_api
+    def test_static_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="float32")
@@ -114,12 +116,14 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
+    def test_dynamic_out(self):
         paddle.disable_static()
         out = paddle.eye(10, dtype="int64")
         expected_result = np.eye(10, dtype="int64")
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
 
@@ -215,7 +219,7 @@ class TestEyeBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
 
 if __name__ == "__main__":

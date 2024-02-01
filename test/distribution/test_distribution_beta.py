@@ -45,7 +45,7 @@ class TestBeta(unittest.TestCase):
         self._paddle_beta = paddle.distribution.Beta(alpha, beta)
 
     def test_mean(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_beta.mean,
                 scipy.stats.beta.mean(self.alpha, self.beta),
@@ -54,7 +54,7 @@ class TestBeta(unittest.TestCase):
             )
 
     def test_variance(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_beta.variance,
                 scipy.stats.beta.var(self.alpha, self.beta),
@@ -66,7 +66,7 @@ class TestBeta(unittest.TestCase):
         value = [np.random.rand(*self._paddle_beta.alpha.shape)]
 
         for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
+            with paddle.base.dygraph.guard(self.place):
                 np.testing.assert_allclose(
                     self._paddle_beta.prob(paddle.to_tensor(v)),
                     scipy.stats.beta.pdf(v, self.alpha, self.beta),
@@ -78,7 +78,7 @@ class TestBeta(unittest.TestCase):
         value = [np.random.rand(*self._paddle_beta.alpha.shape)]
 
         for v in value:
-            with paddle.fluid.dygraph.guard(self.place):
+            with paddle.base.dygraph.guard(self.place):
                 np.testing.assert_allclose(
                     self._paddle_beta.log_prob(paddle.to_tensor(v)),
                     scipy.stats.beta.logpdf(v, self.alpha, self.beta),
@@ -87,7 +87,7 @@ class TestBeta(unittest.TestCase):
                 )
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_beta.entropy(),
                 scipy.stats.beta.entropy(self.alpha, self.beta),

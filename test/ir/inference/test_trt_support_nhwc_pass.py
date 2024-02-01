@@ -93,6 +93,10 @@ class TRTNHWCConvertTest(unittest.TestCase):
             self.temp_dir.name, 'inference_pass', 'nhwc_converter', ''
         )
         self.model_prefix = self.path + 'infer_model'
+        self.set_args()
+
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Float32
 
     def create_model(self):
         image = static.data(
@@ -115,7 +119,7 @@ class TRTNHWCConvertTest(unittest.TestCase):
             workspace_size=1 << 30,
             max_batch_size=1,
             min_subgraph_size=3,
-            precision_mode=inference.PrecisionType.Float32,
+            precision_mode=self.precision_mode,
             use_static=False,
             use_calib_mode=False,
         )
@@ -145,6 +149,45 @@ class TRTNHWCConvertTest(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.path)
+
+
+class TRTNHWCConvertAMPTest(TRTNHWCConvertTest):
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Half
+
+    def create_model(self):
+        train_prog = paddle.static.Program()
+        with paddle.static.program_guard(train_prog):
+            with paddle.static.amp.fp16_guard():
+                image = paddle.static.data(
+                    name='image', shape=[None, 224, 224, 4], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[None, 1], dtype='int64'
+                )
+                predict = SimpleNet()(image)
+            cost = paddle.nn.functional.loss.cross_entropy(
+                input=predict, label=label
+            )
+            avg_cost = paddle.mean(x=cost)
+            optimizer = paddle.optimizer.Momentum(
+                momentum=0.9,
+                learning_rate=0.01,
+                weight_decay=paddle.regularizer.L2Decay(4e-5),
+            )
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                use_dynamic_loss_scaling=False,
+                use_pure_fp16=False,
+            )
+            optimizer.minimize(avg_cost)
+        val_prog = train_prog.clone(for_test=True)
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(paddle.static.default_startup_program())
+        paddle.static.save_inference_model(
+            self.model_prefix, [image], [predict], exe, program=val_prog
+        )
 
 
 if __name__ == '__main__':

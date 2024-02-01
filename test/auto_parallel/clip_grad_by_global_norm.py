@@ -37,13 +37,13 @@ def apply_pass(use_sharding=False):
 
 
 def get_parameter_value(program):
-    from paddle.fluid.framework import Parameter
+    from paddle.base.framework import Parameter
 
     def is_parameter(var):
         return isinstance(var, Parameter)
 
     def get_tensor(var):
-        t = paddle.fluid.global_scope().find_var(var.name).get_tensor()
+        t = paddle.base.global_scope().find_var(var.name).get_tensor()
         return np.array(t)
 
     def get_name(var):
@@ -57,8 +57,8 @@ def get_parameter_value(program):
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.base.framework.switch_main_program(paddle.static.Program())
+    paddle.base.framework.switch_startup_program(paddle.static.Program())
 
 
 class TestGradientClipByGlobalNorm(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         paddle.seed(2022)
         np.random.seed(2022)
         random.seed(2022)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+        place = paddle.base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_sharding=False):

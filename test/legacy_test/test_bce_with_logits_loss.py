@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def call_bce_layer(
@@ -49,9 +50,10 @@ def test_static(
     functional=False,
 ):
     paddle.enable_static()
-    prog = paddle.static.Program()
-    startup_prog = paddle.static.Program()
-    with paddle.static.program_guard(prog, startup_prog):
+
+    with paddle.static.program_guard(
+        paddle.static.Program(), paddle.static.Program()
+    ):
         logit = paddle.static.data(
             name='logit', shape=logit_np.shape, dtype='float64'
         )
@@ -79,7 +81,7 @@ def test_static(
         else:
             res = call_bce_layer(logit, label, weight, reduction, pos_weight)
         exe = paddle.static.Executor(place)
-        (static_result,) = exe.run(prog, feed=feed_dict, fetch_list=[res])
+        (static_result,) = exe.run(feed=feed_dict, fetch_list=[res])
     return static_result
 
 
@@ -92,7 +94,7 @@ def test_dygraph(
     pos_weight_np=None,
     functional=False,
 ):
-    with paddle.fluid.dygraph.base.guard():
+    with paddle.base.dygraph.base.guard():
         logit = paddle.to_tensor(logit_np)
         label = paddle.to_tensor(label_np)
         weight = None
@@ -141,30 +143,14 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
     def test_BCEWithLogitsLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                static_result = test_static(
-                    place, logit_np, label_np, reduction=reduction
-                )
                 dy_result = test_dygraph(
                     place, logit_np, label_np, reduction=reduction
-                )
-                expected = calc_bce_with_logits_loss(
-                    logit_np, label_np, reduction
-                )
-                np.testing.assert_allclose(static_result, expected, rtol=1e-05)
-                np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
-                np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-                static_functional = test_static(
-                    place,
-                    logit_np,
-                    label_np,
-                    reduction=reduction,
-                    functional=True,
                 )
                 dy_functional = test_dygraph(
                     place,
@@ -173,14 +159,40 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     reduction=reduction,
                     functional=True,
                 )
+                expected = calc_bce_with_logits_loss(
+                    logit_np, label_np, reduction
+                )
 
-                np.testing.assert_allclose(
-                    static_functional, expected, rtol=1e-05
-                )
-                np.testing.assert_allclose(
-                    static_functional, dy_functional, rtol=1e-05
-                )
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
+
+                @test_with_pir_api
+                def test_static_or_pir_mode():
+                    static_result = test_static(
+                        place, logit_np, label_np, reduction=reduction
+                    )
+                    static_functional = test_static(
+                        place,
+                        logit_np,
+                        label_np,
+                        reduction=reduction,
+                        functional=True,
+                    )
+                    np.testing.assert_allclose(
+                        static_result, expected, rtol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        static_result, dy_result, rtol=1e-05
+                    )
+
+                    np.testing.assert_allclose(
+                        static_functional, expected, rtol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        static_functional, dy_functional, rtol=1e-05
+                    )
+
+                test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
@@ -191,18 +203,11 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         )
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         for reduction in ['sum', 'mean', 'none']:
-            static_result = test_static(
-                place,
-                logit_np,
-                label_np,
-                weight_np=weight_np,
-                reduction=reduction,
-            )
             dy_result = test_dygraph(
                 place,
                 logit_np,
@@ -213,17 +218,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
             expected = calc_bce_with_logits_loss(
                 logit_np, label_np, reduction, weight_np=weight_np
             )
-            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
-            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
-            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            static_functional = test_static(
-                place,
-                logit_np,
-                label_np,
-                weight_np=weight_np,
-                reduction=reduction,
-                functional=True,
-            )
             dy_functional = test_dygraph(
                 place,
                 logit_np,
@@ -232,11 +226,38 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                 reduction=reduction,
                 functional=True,
             )
-            np.testing.assert_allclose(static_functional, expected, rtol=1e-05)
-            np.testing.assert_allclose(
-                static_functional, dy_functional, rtol=1e-05
-            )
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
+
+            @test_with_pir_api
+            def test_static_or_pir_mode():
+                static_result = test_static(
+                    place,
+                    logit_np,
+                    label_np,
+                    weight_np=weight_np,
+                    reduction=reduction,
+                )
+
+                static_functional = test_static(
+                    place,
+                    logit_np,
+                    label_np,
+                    weight_np=weight_np,
+                    reduction=reduction,
+                    functional=True,
+                )
+                np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+                np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+
+                np.testing.assert_allclose(
+                    static_functional, expected, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    static_functional, dy_functional, rtol=1e-05
+                )
+
+            test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_pos_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
@@ -248,31 +269,17 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         pos_weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         reduction = "mean"
-        static_result = test_static(
-            place, logit_np, label_np, weight_np, reduction, pos_weight_np
-        )
+
         dy_result = test_dygraph(
             place, logit_np, label_np, weight_np, reduction, pos_weight_np
         )
         expected = calc_bce_with_logits_loss(
             logit_np, label_np, reduction, weight_np, pos_weight_np
-        )
-        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
-        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
-        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-        static_functional = test_static(
-            place,
-            logit_np,
-            label_np,
-            weight_np,
-            reduction,
-            pos_weight_np,
-            functional=True,
         )
         dy_functional = test_dygraph(
             place,
@@ -283,9 +290,32 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
             pos_weight_np,
             functional=True,
         )
-        np.testing.assert_allclose(static_functional, expected, rtol=1e-05)
-        np.testing.assert_allclose(static_functional, dy_functional, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
+
+        @test_with_pir_api
+        def test_static_or_pir_mode():
+            static_result = test_static(
+                place, logit_np, label_np, weight_np, reduction, pos_weight_np
+            )
+            static_functional = test_static(
+                place,
+                logit_np,
+                label_np,
+                weight_np,
+                reduction,
+                pos_weight_np,
+                functional=True,
+            )
+
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(static_functional, expected, rtol=1e-05)
+            np.testing.assert_allclose(
+                static_functional, dy_functional, rtol=1e-05
+            )
+
+        test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_error(self):
         paddle.disable_static()

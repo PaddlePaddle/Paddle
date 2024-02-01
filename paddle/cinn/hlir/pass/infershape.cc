@@ -24,7 +24,7 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::Type;
+using cinn::common::Type;
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;
@@ -34,7 +34,7 @@ using infershape_t = std::function<std::vector<framework::shape_t>(
     const std::vector<framework::shape_t>&, const framework::AttrMapType&)>;
 using inferdtype_t = std::function<std::vector<Type>(
     const std::vector<Type>&, const framework::AttrMapType&)>;
-using dtype_dict_t = absl::flat_hash_map<std::string, common::Type>;
+using dtype_dict_t = absl::flat_hash_map<std::string, cinn::common::Type>;
 using shape_dict_t = absl::flat_hash_map<std::string, framework::shape_t>;
 
 void InferShape(Node* node,

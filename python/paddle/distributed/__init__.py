@@ -12,27 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import atexit
+import atexit  # noqa: F401
 from . import io
-from .spawn import spawn  # noqa: F401
-from .launch.main import launch  # noqa: F401
-from .parallel import init_parallel_env  # noqa: F401
-from .parallel import get_rank  # noqa: F401
-from .parallel import get_world_size  # noqa: F401
-from .parallel import ParallelEnv  # noqa: F401
-from .parallel import DataParallel
-from .parallel_with_gloo import gloo_init_parallel_env
-from .parallel_with_gloo import gloo_barrier
-from .parallel_with_gloo import gloo_release
+from .spawn import spawn
+from .launch.main import launch
+from .parallel import (  # noqa: F401
+    init_parallel_env,
+    get_rank,
+    get_world_size,
+    ParallelEnv,
+    DataParallel,
+)
+from .parallel_with_gloo import (
+    gloo_init_parallel_env,
+    gloo_barrier,
+    gloo_release,
+)
 
-from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
-from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
-from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
+from paddle.distributed.fleet.dataset import InMemoryDataset, QueueDataset
+from paddle.distributed.fleet.base.topology import ParallelMode
 
-from .collective import split  # noqa: F401
-from .collective import new_group  # noqa: F401
-from .collective import is_available
-from .communication import (
+from .collective import (
+    split,
+    new_group,
+    is_available,
+)
+from .communication import (  # noqa: F401
     stream,
     ReduceOp,
     all_gather,
@@ -59,28 +64,54 @@ from .communication import (
     wait,
     barrier,
     get_backend,
-)  # noqa: F401
+)
 
-from .auto_parallel.process_mesh import ProcessMesh  # noqa: F401
-from .auto_parallel.api import DistAttr  # noqa: F401
+from .auto_parallel.process_mesh import ProcessMesh
+
+from paddle.base.core import ReduceType, Placement
+from .auto_parallel.placement_type import (
+    Shard,
+    Replicate,
+    Partial,
+)
 
 from .auto_parallel import shard_op  # noqa: F401
-from .auto_parallel.api import shard_tensor  # noqa: F401
+
+from .auto_parallel.api import (
+    DistAttr,
+    shard_tensor,
+    dtensor_from_fn,
+    reshard,
+    shard_dataloader,
+    shard_layer,
+    shard_optimizer,
+    to_static,
+    Strategy,
+    DistModel,
+    unshard_dtensor,
+)
 
 from .fleet import BoxPSDataset  # noqa: F401
 
-from .entry_attr import ProbabilityEntry  # noqa: F401
-from .entry_attr import CountFilterEntry  # noqa: F401
-from .entry_attr import ShowClickEntry  # noqa: F401
+from .entry_attr import (
+    ProbabilityEntry,
+    CountFilterEntry,
+    ShowClickEntry,
+)
 
 from . import cloud_utils  # noqa: F401
 
-from .sharding import group_sharded_parallel  # noqa: F401
-from .sharding import save_group_sharded_model  # noqa: F401
+from .sharding import (  # noqa: F401
+    group_sharded_parallel,
+    save_group_sharded_model,
+)
 
-from . import rpc
+from . import rpc  # noqa: F401
 
-__all__ = [  # noqa
+from .checkpoint.save_state_dict import save_state_dict
+from .checkpoint.load_state_dict import load_state_dict
+
+__all__ = [
     "io",
     "spawn",
     "launch",
@@ -126,4 +157,20 @@ __all__ = [  # noqa
     "ProcessMesh",
     "DistAttr",
     "shard_tensor",
+    "dtensor_from_fn",
+    "reshard",
+    "shard_layer",
+    "shard_dataloader",
+    "ReduceType",
+    "Placement",
+    "Shard",
+    "Replicate",
+    "Partial",
+    "save_state_dict",
+    "load_state_dict",
+    "shard_optimizer",
+    "to_static",
+    "Strategy",
+    "DistModel",
+    "unshard_dtensor",
 ]

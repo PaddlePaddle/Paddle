@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,10 +31,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'])
+        self.check_grad(['Input'], ['Out'], check_pir=True)
 
     def init_data(self):
         np.random.seed(0)
@@ -85,6 +86,7 @@ class TestDeterminantAPI(unittest.TestCase):
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -114,11 +116,13 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
+        self.check_grad(
+            ['Input'], ['Out'], max_relative_error=0.1, check_pir=True
+        )
 
     def init_data(self):
         np.random.seed(0)
@@ -142,6 +146,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

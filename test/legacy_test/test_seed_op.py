@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import static
@@ -69,7 +69,10 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
                 (out1,) = exe.run(
                     static.default_main_program(), fetch_list=res_list
                 )
-                self.assertEqual(out1, np.cast['int32'](self.rng1.random()))
+                self.assertEqual(
+                    out1,
+                    np.asarray(self.rng1.random()).astype(np.int32),
+                )
 
     def test_static(self):
         for place in self.places:

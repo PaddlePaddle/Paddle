@@ -15,10 +15,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 
 TEST(AssignOp, AssignLoDTensor) {
   paddle::platform::CPUPlace cpu_place;
@@ -28,7 +28,7 @@ TEST(AssignOp, AssignLoDTensor) {
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
 
   phi::DenseTensor input;
-  paddle::framework::DDim in_dims = phi::make_ddim({3, 4});
+  paddle::framework::DDim in_dims = common::make_ddim({3, 4});
   int* in_data = input.mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
     in_data[i] = i;
@@ -54,7 +54,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 
   paddle::framework::LoDTensorArray input;
   for (int i = 0; i < 5; ++i) {
-    paddle::framework::DDim in_dims = phi::make_ddim({i + 1, i + 2});
+    paddle::framework::DDim in_dims = common::make_ddim({i + 1, i + 2});
     phi::DenseTensor lod_tensor;
     float* in_data = lod_tensor.mutable_data<float>(in_dims, cpu_place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
@@ -68,7 +68,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
   auto& out_array = output.Get<paddle::framework::LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
     paddle::framework::DDim out_dims = out_array[i].dims();
-    EXPECT_EQ(phi::make_ddim({i + 1, i + 2}), out_dims);
+    EXPECT_EQ(common::make_ddim({i + 1, i + 2}), out_dims);
     const float* out_data = out_array[i].data<float>();
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       EXPECT_EQ(static_cast<float>(j), out_data[j]);
@@ -89,7 +89,7 @@ TEST(AssignOp, AssignSelectedRows) {
   phi::SelectedRows input(rows, height);
   phi::DenseTensor* input_tensor = input.mutable_value();
 
-  paddle::framework::DDim in_dims = phi::make_ddim({3, 4});
+  paddle::framework::DDim in_dims = common::make_ddim({3, 4});
   int* in_data = input_tensor->mutable_data<int>(in_dims, cpu_place);
   for (int i = 0; i < 12; ++i) {
     in_data[i] = i;

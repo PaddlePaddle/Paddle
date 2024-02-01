@@ -69,7 +69,7 @@ class TestElementwiseOpGradGrad {
   }
 
   void Setup() {
-    size_t numel = static_cast<size_t>(phi::product(dims_));
+    size_t numel = static_cast<size_t>(common::product(dims_));
     // init vars in scope and feed inputs
     for (auto in_name : inputs_) {
       InitVarInScope(in_name);
@@ -127,7 +127,7 @@ class TestElementwiseOpGradGrad {
         cpu_out = out_tensor;
       }
       auto *out_ptr = cpu_out.data<T>();
-      size_t numel = static_cast<size_t>(phi::product(dims_));
+      size_t numel = static_cast<size_t>(common::product(dims_));
 #ifdef PADDLE_WITH_HIP
       auto is_equal = std::equal(
           out_ptr,

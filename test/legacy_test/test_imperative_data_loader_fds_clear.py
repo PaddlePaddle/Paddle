@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 from paddle.io import DataLoader, Dataset
 
 
@@ -60,12 +60,12 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
         self.capacity = 50
 
     def prepare_data_loader(self):
-        loader = fluid.io.DataLoader.from_generator(
+        loader = base.io.DataLoader.from_generator(
             capacity=self.capacity, use_multiprocess=True
         )
         loader.set_batch_generator(
             batch_generator_creator(self.batch_size, self.batch_num),
-            places=fluid.CPUPlace(),
+            places=base.CPUPlace(),
         )
         return loader
 
@@ -80,14 +80,14 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
                 break
 
     def test_data_loader_break(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
                 break
 
     def test_data_loader_continue_break(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
@@ -95,8 +95,8 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
 
 class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
     def prepare_data_loader(self):
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
             loader = DataLoader(
                 dataset,

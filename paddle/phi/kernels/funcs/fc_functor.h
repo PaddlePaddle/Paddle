@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
@@ -31,6 +32,26 @@ class FCFunctor {
                   const T* X,
                   const T* W,
                   T* Y,
+                  const T* B = nullptr,
+                  bool relu = false,
+                  bool weight_pass = false);
+};
+
+template <typename DeviceContext, typename T>
+class FCInt8Functor {
+ public:
+  void operator()(const DeviceContext& context,
+                  const int M,
+                  const int N,
+                  const int K,
+                  const T* X,
+                  const DenseTensor* W,
+                  T* Y,
+                  float scale_in,
+                  std::vector<float> scale_weights,
+                  int quant_round_type,
+                  float quant_max_bound,
+                  float quant_min_bound,
                   const T* B = nullptr,
                   bool relu = false,
                   bool weight_pass = false);

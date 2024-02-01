@@ -19,9 +19,9 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 from paddle.static import nn
 
 
@@ -29,7 +29,7 @@ class TRTNearestInterpTest(InferencePassTest):
     def setUp(self):
         self.set_params()
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
                 shape = [
                     -1,
@@ -132,17 +132,6 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 class TRTNearestInterpTest3(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (16, 16)  # HW
-        self.resize_shape = (32, 32)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTNearestInterpTest4(TRTNearestInterpTest):
-    def set_params(self):
-        self.bs = 4
         self.scale = 2.0
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
@@ -151,7 +140,7 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
         self.data_layout = 'NHWC'
 
 
-class TRTNearestInterpTest5(TRTNearestInterpTest):
+class TRTNearestInterpTest4(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
         self.scale = -1

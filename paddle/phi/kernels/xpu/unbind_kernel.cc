@@ -32,7 +32,7 @@ void UnbindKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(outs[j]);
     y_ptrs.emplace_back(outs[j]->data<T>());
   }
-  auto x_shape = vectorize<int>(x.dims());
+  auto x_shape = common::vectorize<int>(x.dims());
   int r = xpu::unbind(dev_ctx.x_context(), x.data<T>(), y_ptrs, x_shape, axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "unbind");
 }

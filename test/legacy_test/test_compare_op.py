@@ -14,17 +14,18 @@
 
 import unittest
 
-import eager_op_test
 import numpy
 import numpy as np
+import op_test
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
-def create_test_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+def create_test_class(op_type, typename, callback, check_pir=False):
+    class Cls(op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
             b = numpy.random.random(size=(10, 7)).astype(typename)
@@ -35,35 +36,50 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_cinn=True)
+            self.check_output(check_cinn=True, check_pir=check_pir)
 
-        def test_errors(self):
+        def test_int16_support(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
-                x = paddle.static.data(name='x', shape=[-1, 2], dtype='int32')
-                y = paddle.static.data(name='y', shape=[-1, 2], dtype='int32')
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 a = paddle.static.data(name='a', shape=[-1, 2], dtype='int16')
+                b = paddle.static.data(name='b', shape=[-1, 2], dtype='int16')
                 op = eval("paddle.%s" % self.op_type)
-                self.assertRaises(TypeError, op, x=x, y=a)
-                self.assertRaises(TypeError, op, x=a, y=y)
+
+                try:
+                    result = op(x=a, y=b)
+                except TypeError:
+                    self.fail("TypeError should not be raised for int16 inputs")
 
     cls_name = f"{op_type}_{typename}"
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
 
-for _type_name in {'float32', 'float64', 'int32', 'int64', 'float16'}:
+for _type_name in {
+    'float32',
+    'float64',
+    'uint8',
+    'int8',
+    'int16',
+    'int32',
+    'int64',
+    'float16',
+}:
     if _type_name == 'float64' and core.is_compiled_with_rocm():
         _type_name = 'float32'
     if _type_name == 'float16' and (not core.is_compiled_with_cuda()):
         continue
 
-    create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
-    create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
-    create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
-    create_test_class('greater_equal', _type_name, lambda _a, _b: _a >= _b)
-    create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
-    create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b)
+    create_test_class('less_than', _type_name, lambda _a, _b: _a < _b, True)
+    create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b, True)
+    create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b, True)
+    create_test_class(
+        'greater_equal', _type_name, lambda _a, _b: _a >= _b, True
+    )
+    create_test_class('equal', _type_name, lambda _a, _b: _a == _b, True)
+    create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b, True)
 
 
 def create_paddle_case(op_type, callback):
@@ -73,33 +89,39 @@ def create_paddle_case(op_type, callback):
             self.input_x = np.array([1, 2, 3, 4]).astype(np.int64)
             self.input_y = np.array([1, 3, 2, 4]).astype(np.int64)
             self.real_result = callback(self.input_x, self.input_y)
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
             if core.is_compiled_with_cuda():
                 self.place = paddle.CUDAPlace(0)
 
+        @test_with_pir_api
         def test_api(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[4], dtype='int64')
                 y = paddle.static.data(name='y', shape=[4], dtype='int64')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                exe = fluid.Executor(self.place)
+                exe = base.Executor(self.place)
                 (res,) = exe.run(
                     feed={"x": self.input_x, "y": self.input_y},
                     fetch_list=[out],
                 )
             self.assertEqual((res == self.real_result).all(), True)
 
+        @test_with_pir_api
         def test_api_float(self):
             if self.op_type == "equal":
                 paddle.enable_static()
-                with program_guard(Program(), Program()):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     x = paddle.static.data(name='x', shape=[4], dtype='int64')
                     y = paddle.static.data(name='y', shape=[], dtype='int64')
                     op = eval("paddle.%s" % (self.op_type))
                     out = op(x, y)
-                    exe = fluid.Executor(self.place)
+                    exe = base.Executor(self.place)
                     (res,) = exe.run(
                         feed={"x": self.input_x, "y": 1.0}, fetch_list=[out]
                     )
@@ -288,9 +310,12 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
+        @test_with_pir_api
         def test_broadcast_api_1(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name='x', shape=[1, 2, 1, 3], dtype='int32'
                 )
@@ -306,9 +331,12 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_broadcast_api_2(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[1, 2, 3], dtype='int32')
                 y = paddle.static.data(
                     name='y', shape=[1, 2, 1, 3], dtype='int32'
@@ -324,9 +352,12 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_broadcast_api_3(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[5], dtype='int32')
                 y = paddle.static.data(name='y', shape=[3, 1], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
@@ -340,9 +371,12 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_zero_dim_api_1(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.randint(-3, 3, shape=[], dtype='int32')
                 y = paddle.randint(-3, 3, shape=[], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
@@ -356,9 +390,12 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_zero_dim_api_2(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
                 y = paddle.randint(-3, 3, shape=[], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
@@ -372,9 +409,12 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_zero_dim_api_3(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.randint(-3, 3, shape=[], dtype='int32')
                 y = paddle.randint(-3, 3, shape=[2, 3, 4], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
@@ -388,9 +428,12 @@ def create_paddle_case(op_type, callback):
                 real_result = callback(x_np, y_np)
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_bool_api_4(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[3, 1], dtype='bool')
                 y = paddle.static.data(name='y', shape=[3, 1], dtype='bool')
                 op = eval("paddle.%s" % (self.op_type))
@@ -404,9 +447,12 @@ def create_paddle_case(op_type, callback):
                 )
             self.assertEqual((res == real_result).all(), True)
 
+        @test_with_pir_api
         def test_bool_broadcast_api_4(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[3, 1], dtype='bool')
                 y = paddle.static.data(name='y', shape=[1], dtype='bool')
                 op = eval("paddle.%s" % (self.op_type))
@@ -422,7 +468,9 @@ def create_paddle_case(op_type, callback):
 
         def test_attr_name(self):
             paddle.enable_static()
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[-1, 4], dtype='int32')
                 y = paddle.static.data(name='y', shape=[-1, 4], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
@@ -443,8 +491,8 @@ create_paddle_case('not_equal', lambda _a, _b: _a != _b)
 
 
 # add bf16 tests
-def create_bf16_case(op_type, callback):
-    class TestCompareOpBF16Op(eager_op_test.OpTest):
+def create_bf16_case(op_type, callback, check_pir=False):
+    class TestCompareOpBF16Op(op_test.OpTest):
         def setUp(self):
             self.op_type = op_type
             self.dtype = np.uint16
@@ -454,74 +502,86 @@ def create_bf16_case(op_type, callback):
             y = np.random.uniform(0, 1, [5, 5]).astype(np.float32)
             real_result = callback(x, y)
             self.inputs = {
-                'X': eager_op_test.convert_float_to_uint16(x),
-                'Y': eager_op_test.convert_float_to_uint16(y),
+                'X': op_test.convert_float_to_uint16(x),
+                'Y': op_test.convert_float_to_uint16(y),
             }
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
-            self.check_output(check_cinn=True)
+            self.check_output(check_cinn=True, check_pir=check_pir)
 
     cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name
     globals()[cls_name] = TestCompareOpBF16Op
 
 
-create_bf16_case('less_than', lambda _a, _b: _a < _b)
-create_bf16_case('less_equal', lambda _a, _b: _a <= _b)
-create_bf16_case('greater_than', lambda _a, _b: _a > _b)
-create_bf16_case('greater_equal', lambda _a, _b: _a >= _b)
-create_bf16_case('equal', lambda _a, _b: _a == _b)
-create_bf16_case('not_equal', lambda _a, _b: _a != _b)
+create_bf16_case('less_than', lambda _a, _b: _a < _b, True)
+create_bf16_case('less_equal', lambda _a, _b: _a <= _b, True)
+create_bf16_case('greater_than', lambda _a, _b: _a > _b, True)
+create_bf16_case('greater_equal', lambda _a, _b: _a >= _b, True)
+create_bf16_case('equal', lambda _a, _b: _a == _b, True)
+create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-    def test_errors(self):
+    @test_with_pir_api
+    def test_int16_support(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The input x and y of compare_op must be Variable.
             x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
-            y = fluid.create_lod_tensor(
-                numpy.array([[-1]]), [[1]], fluid.CPUPlace()
+            y = base.create_lod_tensor(
+                numpy.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.greater_equal, x, y)
 
 
 class API_TestElementwise_Equal(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             label = paddle.assign(np.array([3, 3], dtype="int32"))
             limit = paddle.assign(np.array([3, 2], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, False])).all(), True)
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             label = paddle.assign(np.array([3, 3], dtype="int32"))
             limit = paddle.assign(np.array([3, 3], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
 
+    @test_with_pir_api
     def test_api_fp16(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             label = paddle.to_tensor([3, 3], dtype="float16")
             limit = paddle.to_tensor([3, 2], dtype="float16")
             out = paddle.equal(x=label, y=limit)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([True, False])).all(), True)
 
 
 class API_TestElementwise_Greater_Than(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -538,17 +598,21 @@ class API_TestElementwise_Greater_Than(unittest.TestCase):
 
 
 class TestCompareOpPlace(unittest.TestCase):
+    @test_with_pir_api
     def test_place_1(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        label = paddle.assign(np.array([3, 3], dtype="int32"))
-        limit = paddle.assign(np.array([3, 2], dtype="int32"))
-        out = paddle.less_than(label, limit)
-        exe = fluid.Executor(place)
-        (res,) = exe.run(fetch_list=[out])
-        self.assertEqual((res == np.array([False, False])).all(), True)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            label = paddle.assign(np.array([3, 3], dtype="int32"))
+            limit = paddle.assign(np.array([3, 2], dtype="int32"))
+            out = paddle.less_than(label, limit)
+            exe = base.Executor(place)
+            (res,) = exe.run(fetch_list=[out])
+            self.assertEqual((res == np.array([False, False])).all(), True)
 
     def test_place_2(self):
         place = paddle.CPUPlace()

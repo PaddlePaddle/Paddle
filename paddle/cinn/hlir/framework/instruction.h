@@ -109,7 +109,7 @@ class Instruction {
         auto& pod_args = args_cached_[idx];
         CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first "
                                 "by calling SetLoweredFunc method";
-        if (target_ == common::DefaultNVGPUTarget()) {
+        if (target_ == cinn::common::DefaultNVGPUTarget()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {

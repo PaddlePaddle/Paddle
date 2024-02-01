@@ -64,9 +64,7 @@ class PassTest(OpTest):
             self.assertIn(
                 var.name(),
                 self.feed_data,
-                msg="Cannot found input data {} in self.feed_data".format(
-                    var.name()
-                ),
+                msg=f"Cannot found input data {var.name()} in self.feed_data",
             )
             feed_list.append(self.feed_data[var.name()])
 
@@ -95,9 +93,7 @@ class PassTest(OpTest):
         logger.debug(f"Pass after base pass optimize has {base_pass_size} ops")
         test_pass_size = self.get_pass_size(base_passes + test_passes)
         logger.debug(
-            "Pass after base and test pass optimize has {} ops".format(
-                test_pass_size
-            )
+            f"Pass after base and test pass optimize has {test_pass_size} ops"
         )
         self.assertEqual(
             base_pass_size - test_pass_size,

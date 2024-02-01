@@ -40,10 +40,10 @@ TEST(Scalar, ConstructFromDenseTensor1) {
   // 1. create tensor
   const auto alloc =
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
-  phi::DenseTensor dense_x(
-      alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT16, phi::make_ddim({1}), phi::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT16,
+                                                common::make_ddim({1}),
+                                                phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
 
@@ -60,7 +60,7 @@ TEST(Scalar, ConstructFromDenseTensor2) {
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
-          phi::DataType::INT16, phi::make_ddim({1}), phi::DataLayout::NCHW));
+          phi::DataType::INT16, common::make_ddim({1}), phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
 
@@ -77,7 +77,7 @@ TEST(Scalar, ConstructFromDenseTensor3) {
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
-          phi::DataType::INT8, phi::make_ddim({1}), phi::DataLayout::NCHW));
+          phi::DataType::INT8, common::make_ddim({1}), phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
 
@@ -94,7 +94,7 @@ TEST(Scalar, ConstructFromDenseTensor4) {
   phi::DenseTensor dense_x(
       alloc.get(),
       phi::DenseTensorMeta(
-          phi::DataType::BOOL, phi::make_ddim({1}), phi::DataLayout::NCHW));
+          phi::DataType::BOOL, common::make_ddim({1}), phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
 
@@ -110,7 +110,7 @@ TEST(Scalar, ConstructFromDenseTensor5) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(alloc.get(),
                            phi::DenseTensorMeta(phi::DataType::COMPLEX64,
-                                                phi::make_ddim({1}),
+                                                common::make_ddim({1}),
                                                 phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
@@ -128,7 +128,7 @@ TEST(Scalar, ConstructFromDenseTensor6) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor dense_x(alloc.get(),
                            phi::DenseTensorMeta(phi::DataType::COMPLEX128,
-                                                phi::make_ddim({1}),
+                                                common::make_ddim({1}),
                                                 phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
@@ -144,10 +144,10 @@ TEST(Scalar, ConstructFromDenseTensor7) {
   // 1. create tensor
   const auto alloc =
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
-  phi::DenseTensor dense_x(
-      alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
+  phi::DenseTensor dense_x(alloc.get(),
+                           phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                common::make_ddim({1}),
+                                                phi::DataLayout::NCHW));
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -164,8 +164,9 @@ TEST(Scalar, ConstructFromTensor) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::FLOAT32, phi::make_ddim({1}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           common::make_ddim({1}),
+                           phi::DataLayout::NCHW));
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));

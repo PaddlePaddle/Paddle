@@ -16,12 +16,13 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import OpTest
+from op_test import OpTest
+from utils import static_guard
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.dygraph import to_variable
+from paddle import base, nn
+from paddle.base import Program, core, program_guard
+from paddle.base.dygraph import to_variable
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -129,10 +130,16 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=True)
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_test_case(self):
         x_shape = [2, 100, 4, 5]
@@ -325,9 +332,9 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             self.static_rev_desire[-1].append(rev[2])
 
     def get_eager_desire(self, place):
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, fluid.CUDAPlace):
+        if isinstance(place, base.CUDAPlace):
             paddle.set_device("gpu")
         core.set_prim_eager_enabled(False)
         paddle.disable_static()
@@ -350,9 +357,9 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
     def get_static_desire(self, place):
         core._set_prim_all_enabled(False)
         paddle.enable_static()
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, fluid.CUDAPlace):
+        if isinstance(place, base.CUDAPlace):
             paddle.set_device("gpu")
 
         mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -428,7 +435,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
         if len(self.places) < 1:
             return
 
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 fwd_actual.append([])
                 rev_actual.append([])
@@ -783,8 +790,8 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             ]
             ground_truth = {name: var_dict[name] for name in var_names}
 
-            program = fluid.Program()
-            with fluid.program_guard(program):
+            program = base.Program()
+            with base.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
                     block.create_var(
@@ -827,7 +834,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
                 program._sync_with_cpp()
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 out = exe.run(
                     program,
                     feed={
@@ -871,8 +878,8 @@ class TestInstanceNormOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # the input of instance_norm must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.static.nn.instance_norm, x1)
 
@@ -918,7 +925,7 @@ class TestElasticNormOp(unittest.TestCase):
         )
 
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 instance_norm = paddle.nn.InstanceNorm2D(
                     5, weight_attr=False, bias_attr=False
                 )
@@ -952,7 +959,7 @@ class TestElasticNormOpCase2(unittest.TestCase):
         )
 
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 instance_norm = paddle.nn.InstanceNorm2D(
                     3, weight_attr=True, bias_attr=True
                 )

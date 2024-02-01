@@ -39,8 +39,9 @@ Instruction CreateNewCastInstruction(const Variable& input,
                                      const Variable& output) {
   Instruction new_cast_instr("cast", {input});
   new_cast_instr->outputs = {output};
-  new_cast_instr->attrs = {{"dtype", common::Type2Str(output->type)}};
-  new_cast_instr->attrs_ordered = {{"dtype", common::Type2Str(output->type)}};
+  new_cast_instr->attrs = {{"dtype", cinn::common::Type2Str(output->type)}};
+  new_cast_instr->attrs_ordered = {
+      {"dtype", cinn::common::Type2Str(output->type)}};
   return new_cast_instr;
 }
 
@@ -256,7 +257,7 @@ class AutoCastPass : public ProgramPass {
  protected:
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     NetBuilder builder("auto_cast_builder");
     for (auto& var : program->GetInputs()) {
       builder.CreateInput(var);

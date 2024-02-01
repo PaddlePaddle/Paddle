@@ -1,8 +1,8 @@
 cc_library(
   benchmark
   SRCS benchmark.cc
-  DEPS enforce)
-cc_test_old(test_benchmark SRCS benchmark_tester.cc DEPS benchmark)
+  DEPS enforce common)
+
 cc_library(
   infer_io_utils
   SRCS io_utils.cc
@@ -10,24 +10,15 @@ cc_library(
 cc_library(
   model_utils
   SRCS model_utils.cc
-  DEPS proto_desc enforce)
+  DEPS proto_desc enforce common)
 
-cc_test_old(
-  infer_io_utils_tester
-  SRCS
-  io_utils_tester.cc
-  DEPS
-  infer_io_utils
-  fleet_executor
-  python)
+cc_library(table_printer SRCS table_printer.cc)
+
+proto_library(shape_range_info_proto SRCS shape_range_info.proto)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
-  copy_onnx(infer_io_utils_tester)
+  copy_onnx(test_benchmark)
+  copy_onnx(test_table_printer)
 endif()
-
-cc_library(table_printer SRCS table_printer.cc)
-cc_test_old(test_table_printer SRCS table_printer_tester.cc DEPS table_printer)
-
-proto_library(shape_range_info_proto SRCS shape_range_info.proto)

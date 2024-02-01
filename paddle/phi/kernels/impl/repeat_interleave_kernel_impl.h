@@ -77,24 +77,24 @@ void RepeatInterleaveKernel(const Context& ctx,
   for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(phi::make_ddim({index_size}));
+  index.Resize(common::make_ddim({index_size}));
   if (place == cpu_place) {
     DenseTensor x_copy = x;
     phi::TensorFromVector<int>(index_vec, ctx, &index);
 
-    auto output_dim = phi::vectorize(x.dims());
+    auto output_dim = common::vectorize(x.dims());
     output_dim[dim] = index_size;
-    out->Resize(phi::make_ddim(output_dim));
+    out->Resize(common::make_ddim(output_dim));
     phi::IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
 #if defined(__NVCC__) || defined(__HIPCC__)
   } else {
-    auto stride_dim = phi::stride(input_dim);
+    auto stride_dim = common::stride(input_dim);
     int64_t stride = stride_dim[dim];
     phi::TensorFromVector<int>(index_vec, ctx, &index);
     auto stream = ctx.stream();
-    auto output_dim = phi::vectorize(x.dims());
+    auto output_dim = common::vectorize(x.dims());
     output_dim[dim] = index_size;
-    out->Resize(phi::make_ddim(output_dim));
+    out->Resize(common::make_ddim(output_dim));
     ctx.template Alloc<T>(out);
     auto* out_data = out->data<T>();
     int64_t numel = out->numel();
@@ -153,21 +153,21 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
     if (index_type == phi::DataType::INT32) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
           ctx, repeats_tensor, &index);
-      auto output_dim = phi::vectorize(x.dims());
+      auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
-      out->Resize(phi::make_ddim(output_dim));
+      out->Resize(common::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
     } else if (index_type == phi::DataType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
-      auto output_dim = phi::vectorize(x.dims());
+      auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
-      out->Resize(phi::make_ddim(output_dim));
+      out->Resize(common::make_ddim(output_dim));
       IndexSelectInner<Context, T, int64_t>(ctx, &x_copy, index, out, dim);
     }
 #if defined(__NVCC__) || defined(__HIPCC__)
   } else {
-    auto stride_dim = phi::stride(input_dim);
+    auto stride_dim = common::stride(input_dim);
     int64_t stride = stride_dim[dim];
     auto stream = ctx.stream();
     auto* in_data = x.data<T>();
@@ -176,9 +176,9 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
           ctx, repeats_tensor, &index);
 
       const int64_t* index_data = index.data<int64_t>();
-      auto output_dim = phi::vectorize(x.dims());
+      auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
-      out->Resize(phi::make_ddim(output_dim));
+      out->Resize(common::make_ddim(output_dim));
       T* out_data = ctx.template Alloc<T>(out);
       int64_t numel = out->numel();
       int64_t size = output_dim[dim];
@@ -195,9 +195,9 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
           ctx, repeats_tensor, &index);
 
       const int* index_data = index.data<int>();
-      auto output_dim = phi::vectorize(x.dims());
+      auto output_dim = common::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
-      out->Resize(phi::make_ddim(output_dim));
+      out->Resize(common::make_ddim(output_dim));
       T* out_data = ctx.template Alloc<T>(out);
       int64_t numel = out->numel();
       int64_t size = output_dim[dim];

@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -55,10 +55,21 @@ class TestSqueezeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_prim=True)
+        self.check_output(
+            no_check_set=['XShape'],
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -277,6 +288,16 @@ class TestSqueezeAPI(unittest.TestCase):
         def test_axes_type():
             x2 = paddle.static.data(name="x2", shape=[2, 1, 25], dtype="int32")
             self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(TypeError, test_axes_type)
+
+    def test_pir_error(self):
+        def test_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(
+                    name="x2", shape=[2, 1, 25], dtype="int32"
+                )
+                self.squeeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
 

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_std(x, axis=None, unbiased=True, keepdim=False):
@@ -39,7 +40,7 @@ class TestStdAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -61,6 +62,7 @@ class TestStdAPI(unittest.TestCase):
         paddle.enable_static()
         return out.numpy()
 
+    @test_with_pir_api
     def test_api(self):
         out_ref = ref_std(self.x, self.axis, self.unbiased, self.keepdim)
         out_dygraph = self.dygraph()
@@ -120,9 +122,10 @@ class TestStdError(unittest.TestCase):
 
 
 class Testfp16Std(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

@@ -134,7 +134,7 @@ void PNormGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
 
     DenseTensor porder_tensor;
-    phi::DDim pdim = phi::make_ddim({1});
+    phi::DDim pdim = common::make_ddim({1});
     porder_tensor.Resize(pdim);
     dev_ctx.template Alloc<float>(&porder_tensor);
     r = xpu::constant(
