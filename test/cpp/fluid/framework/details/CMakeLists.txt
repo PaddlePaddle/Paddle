@@ -1,9 +1,9 @@
 paddle_test(broadcast_op_test SRCS broadcast_op_handle_test.cc)
 
-cc_test(
+paddle_test(
   gather_op_test
   SRCS gather_op_handle_test.cc
-  DEPS detail_op_handle scope phi common fluid_memory device_context)
+  DEPS detail_op_handle scope common fluid_memory device_context)
 
 paddle_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc)
 paddle_test(exception_holder_test SRCS exception_holder_test.cc)
