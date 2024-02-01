@@ -603,7 +603,7 @@ CreateGroupShapeOrDataExprs(
   for (auto* op : group->ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
-      if (operand && value2shape.find(result) == value2shape.end() &&
+      if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
         value2shape.insert(
             {operand, shape_analysis.GetShapeOrDataForValue(operand)});
