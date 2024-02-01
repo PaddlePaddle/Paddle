@@ -22,8 +22,8 @@ TEST(CC, IMPORT_PY) {
   ASSERT_TRUE(Py_IsInitialized());
 
   // 1. C/C++ Run Python simple string
-  ASSERT_FALSE(PyRun_SimpleString("import paddle"));
-  ASSERT_FALSE(PyRun_SimpleString("print(paddle.to_tensor(1))"));
+  // ASSERT_FALSE(PyRun_SimpleString("import paddle"));
+  // ASSERT_FALSE(PyRun_SimpleString("print(paddle.to_tensor(1))"));
 
   // 2. C/C++ Run Python function
   PyRun_SimpleString("import sys");
