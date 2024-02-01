@@ -99,6 +99,8 @@ struct IR_API PrintHooks {
   OpPrintHook op_print_hook{nullptr};
 };
 
+IR_API std::ostream& operator<<(std::ostream& os, const CustomPrintHelper& p);
+
 class IR_API CustomPrintHelper {
  public:
   explicit CustomPrintHelper(const Program& program, const PrintHooks& hooks)
@@ -109,7 +111,5 @@ class IR_API CustomPrintHelper {
   const PrintHooks& hooks_;
   const Program& prog_;
 };
-
-IR_API std::ostream& operator<<(std::ostream& os, const CustomPrintHelper& p);
 
 }  // namespace pir
