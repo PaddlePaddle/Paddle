@@ -46,10 +46,15 @@ void JitKernelOp::VerifySig() {
 
   auto& attributes = this->attributes();
 
-  IR_ENFORCE(attributes.count(kAttrName) > 0 &&
-                 attributes.at(kAttrName)
-                     .isa<cinn::dialect::CINNKernelInfoAttribute>(),
-             "Type of attribute: instruction is not right.");
+  // IR_ENFORCE(attributes.count(kAttrName) > 0 &&
+  //                attributes.at(kAttrName)
+  //                    .isa<cinn::dialect::CINNKernelInfoAttribute>(),
+  //            "Type of attribute: instruction is not right.");
+  PADDLE_ENFORCE_EQ(attributes.count(kAttrName) > 0 &&
+                        attributes.at(kAttrName)
+                            .isa<cinn::dialect::CINNKernelInfoAttribute>(),
+                    true,
+                    "Type of attribute: instruction is not right.")
 }
 
 const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {

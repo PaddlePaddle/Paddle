@@ -298,6 +298,18 @@ using CommonType2 = typename std::add_lvalue_reference<
     }                                                                          \
   } while (0)
 
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                    \
+  do {                                                                         \
+    if (UNLIKELY(nullptr == (__VAL))) {                                        \
+      auto __summary__ = ::common::ErrorSummary(__VA_ARGS__);                  \
+      auto __message__ = ::paddle::string::Sprintf(                            \
+          "%s\n  [Hint: " #__VAL " should not be null.]",                      \
+          __summary__.error_message());                                        \
+      __THROW_ERROR_INTERNAL__(                                                \
+          ::common::ErrorSummary(__summary__.code(), std::move(__message__))); \
+    }                                                                          \
+  } while (0)
+
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
 #define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
