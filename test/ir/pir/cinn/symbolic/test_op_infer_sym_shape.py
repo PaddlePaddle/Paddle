@@ -99,7 +99,6 @@ class TestEmbeddingOpInferSymbolicShape(TestBase):
             'output shape is not expected!',
         )
         out = net(self.x)
-        print(out)
         return out
 
 
