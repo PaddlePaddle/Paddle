@@ -61,6 +61,14 @@ need_export_symbol_op_list = [
     'TransposeOp',
     'LessThanOp',
     'AddGradOp',
+    'ConcatOp',
+    'CummaxOp',
+    'CastOp',
+    'ReluOp',
+    'ReluGradOp',
+    'BatchNorm_Op',
+    'GeluOp',
+    'GeluGradOp',
     'MatmulGradOp',
 ]
 
