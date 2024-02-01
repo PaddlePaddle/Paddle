@@ -32,6 +32,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
+                         bool time_major,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -129,7 +130,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                                 head_dim,
                                                 outs_data,
                                                 num_inputs,
-                                                div_c);
+                                                div_c,
+                                                time_major);
   } else {
     VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
         use_neox_rotary_style
@@ -160,7 +162,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                               head_dim,
                                               out_q,
                                               1,
-                                              div_c);
+                                              div_c,
+                                              time_major);
 
     // rotary position embedding K,V
     phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
@@ -176,7 +179,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                                head_dim,
                                                out_kv,
                                                num_inputs - 1,
-                                               div_c);
+                                               div_c,
+                                               time_major);
   }
 }
 

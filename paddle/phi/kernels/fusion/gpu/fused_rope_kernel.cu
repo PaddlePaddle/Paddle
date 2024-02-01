@@ -32,6 +32,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& cos,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
+                     bool time_major,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -41,9 +42,10 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, 3> inputs_num_heads;
 
-  // q.shape: [batch_size, seq_len, num_heads, head_dim]
-  auto batch_size = q.dims()[0];
-  auto seq_len = q.dims()[1];
+  // q.shape: [seq_len, batch_size, num_heads, head_dim] if time_major else
+  // [batch_size, seq_len, num_heads, head_dim]
+  auto batch_size = time_major ? q.dims()[1] : q.dims()[0];
+  auto seq_len = time_major ? q.dims()[0] : q.dims()[1];
   inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
 
@@ -201,7 +203,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                                 head_dim,
                                                 outs_data,
                                                 num_inputs,
-                                                div_c);
+                                                div_c,
+                                                time_major);
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -257,7 +260,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                               head_dim,
                                               out_q,
                                               1,
-                                              div_c);
+                                              div_c,
+                                              time_major);
 
     // rotary position embedding K,V
     phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
@@ -273,7 +277,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                                head_dim,
                                                out_kv,
                                                num_inputs - 1,
-                                               div_c);
+                                               div_c,
+                                               time_major);
   }
 }
 }  // namespace fusion

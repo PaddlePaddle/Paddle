@@ -192,7 +192,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
                             const DistMetaTensor& sin,
                             const DistMetaTensor& cos,
                             const DistMetaTensor& position_ids,
-                            bool use_neox_rotary_style) {
+                            bool use_neox_rotary_style,
+                            bool time_major) {
   check_q(q);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>>
@@ -279,7 +280,8 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                                    const DistMetaTensor& out_q,
                                    const DistMetaTensor& out_k,
                                    const DistMetaTensor& out_v,
-                                   bool use_neox_rotary_style) {
+                                   bool use_neox_rotary_style,
+                                   bool time_major) {
   check_q(out_q);
   std::vector<std::pair<std::string, std::vector<int64_t>>>
       outputs_sharding_info;
@@ -372,7 +374,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& out_q_grad,
                                 const DistMetaTensor& out_k_grad,
                                 const DistMetaTensor& out_v_grad,
-                                bool use_neox_rotary_style) {
+                                bool use_neox_rotary_style,
+                                bool time_major) {
   // NOTE(zhonghui): The forward and backward kernels of fuse rope are same, so
   // the spmd rules can be shared.
   SpmdInfo spmd_info = FusedRopeInferSpmd(out_q_grad,
@@ -381,7 +384,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                           sin,
                                           cos,
                                           position_ids,
-                                          use_neox_rotary_style);
+                                          use_neox_rotary_style,
+                                          time_major);
   std::vector<ArgDistAttr> dist_attrs;
   std::vector<int> order = {3, 4, 5, 0, 1, 2};
   for (int ind : order) {
