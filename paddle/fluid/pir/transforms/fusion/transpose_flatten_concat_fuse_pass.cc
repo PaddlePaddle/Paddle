@@ -24,14 +24,17 @@
 namespace {
 
 class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  int transpose_flatten_count_;
+
  public:
-  explicit NTransposeFlattenConcatFusePattern(int transpose_flatten_time) {
-    transpose_flatten_time_ = transpose_flatten_time;
+  explicit NTransposeFlattenConcatFusePattern(int transpose_flatten_count) {
+    transpose_flatten_count_ = transpose_flatten_count;
   }
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     std::vector<const paddle::drr::Tensor *> combine_in;
-    for (int i = 0; i < transpose_flatten_time_; i++) {
+    for (int i = 0; i < transpose_flatten_count_; i++) {
       const auto &transpose_op =
           pat.Op(paddle::dialect::TransposeOp::name(),
                  {{"perm", pat.Attr("perm_" + std::to_string(i))}});
@@ -60,7 +63,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
           if (flatten_out_shape_0.size() != 2) {
             return false;
           }
-          if (transpose_flatten_time_ < 2) {
+          if (transpose_flatten_count_ < 2) {
             return true;
           }
 
@@ -68,7 +71,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
               match_ctx.Attr<std::vector<int32_t>>("perm_0");
           int flatten_start_0 = match_ctx.Attr<int>("start_axis_0");
           int flatten_stop_0 = match_ctx.Attr<int>("stop_axis_0");
-          for (int i = 1; i < transpose_flatten_time_; i++) {
+          for (int i = 1; i < transpose_flatten_count_; i++) {
             auto flatten_out_shape = pir::GetShapeFromValue(
                 match_ctx.Tensor("flatten_out_" + std::to_string(i)));
             if (flatten_out_shape.size() != 2) {
@@ -124,7 +127,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
                    {"concat_axis", res_concat_axis},
                });
     std::vector<const paddle::drr::Tensor *> x_in;
-    for (int i = 0; i < transpose_flatten_time_; i++) {
+    for (int i = 0; i < transpose_flatten_count_; i++) {
       x_in.push_back(&res.Tensor("transpose_in_" + std::to_string(i)));
     }
     const auto &combine_2 = res.Op(pir::CombineOp::name());
@@ -135,12 +138,25 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
 
   std::string name() const override {
     return "NTransposeFlattenConcatFusePattern_" +
-           std::to_string(transpose_flatten_time_);
+           std::to_string(transpose_flatten_count_);
   }
-
- private:
-  int transpose_flatten_time_;
 };
+
+/*
+    x1          x2               x6
+    |           |                |
+transpose    transpose   ...  transpose
+    |           |                |
+  flatten     flatten         flatten
+    |           |                /
+     \          |              /
+       \        |            /
+         \      |          /
+           \    |        /
+               combine
+                 |
+               concat
+*/
 
 class TransposeFlattenConcatFusePass : public pir::PatternRewritePass {
  public:
@@ -149,7 +165,7 @@ class TransposeFlattenConcatFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    for (int pattern_num = 1; pattern_num <= 6; ++pattern_num) {
+    for (int pattern_num = 1; pattern_num <= 6; pattern_num++) {
       ps.Add(NTransposeFlattenConcatFusePattern(pattern_num).Build(context));
     }
     return ps;
