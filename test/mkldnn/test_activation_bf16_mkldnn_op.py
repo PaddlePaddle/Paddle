@@ -58,7 +58,9 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
         self.dx = self.op_grad(self.out, self.x)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad(self):
         self.calculate_grads()
@@ -68,6 +70,7 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
             "Out",
             user_defined_grads=[self.dx],
             user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -151,6 +154,7 @@ class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
 class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "relu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.maximum(x, 0)

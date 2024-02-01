@@ -111,8 +111,7 @@ void ParameterOp::Build(Builder &builder,
                         OperationArgument &argument,
                         const std::string &name,
                         Type type) {
-  argument.attributes[attributes_name[0]] =
-      pir::StrAttribute::get(builder.ir_context(), name);
+  argument.attributes[attributes_name[0]] = builder.str_attr(name);
   argument.output_types.emplace_back(type);
   PassStopGradients(argument);
 }
@@ -151,9 +150,9 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
                            Value parameter,
                            const std::string &name) {
   argument.AddInput(parameter);
-  argument.AddAttribute(attributes_name[0],
-                        pir::StrAttribute::get(builder.ir_context(), name));
+  argument.AddAttribute(attributes_name[0], builder.str_attr(name));
 }
+
 void SetParameterOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
@@ -177,9 +176,9 @@ void ShadowOutputOp::Build(Builder &builder,             // NOLINT
                            Value parameter,
                            const std::string &name) {
   argument.AddInput(parameter);
-  argument.AddAttribute(attributes_name[0],
-                        pir::StrAttribute::get(builder.ir_context(), name));
+  argument.AddAttribute(attributes_name[0], builder.str_attr(name));
 }
+
 void ShadowOutputOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
   // Verify inputs:
@@ -203,8 +202,7 @@ void CombineOp::Build(Builder &builder,
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs_type[idx] = inputs[idx].type();
   }
-  argument.output_types.emplace_back(
-      pir::VectorType::get(builder.ir_context(), inputs_type));
+  argument.output_types.emplace_back(builder.vec_type(inputs_type));
   PassStopGradientsDefaultly(argument);
 }
 
@@ -249,15 +247,14 @@ void SliceOp::Build(Builder &builder,
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
 
-  argument.AddAttribute(
-      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
+  argument.AddAttribute("index", builder.int32_attr(index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
-  if (auto input = argument.inputs[0].dyn_cast<pir::OpResult>()) {
-    auto *defining_op = input.owner();
+  if (auto input = argument.inputs[0]) {
+    auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
                  "Required CombineOp must have attribute %s",
@@ -277,8 +274,8 @@ void SliceOp::RefreshStopGradients() {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
   auto index = attribute("index").dyn_cast<pir::Int32Attribute>().data();
-  if (auto input = (*this)->operand_source(0).dyn_cast<pir::OpResult>()) {
-    auto *defining_op = input.owner();
+  if (auto input = (*this)->operand_source(0)) {
+    auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
                  "Required CombineOp must have attribute %s",
@@ -353,8 +350,8 @@ void SplitOp::Build(Builder &builder,
 
 void SplitOp::PassStopGradients(OperationArgument &argument) {
   std::vector<bool> defaut_stop_gradients(argument.output_types.size(), true);
-  if (auto input = argument.inputs[0].dyn_cast<OpResult>()) {
-    auto *defining_op = input.owner();
+  if (auto input = argument.inputs[0]) {
+    auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE(argument.output_types.size(),
                  defining_op->num_operands(),
@@ -394,8 +391,8 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
 
 void SplitOp::RefreshStopGradients() {
   std::vector<bool> default_stop_gradients((*this)->num_results(), true);
-  if (auto input = (*this)->operand_source(0).dyn_cast<OpResult>()) {
-    auto *defining_op = input.owner();
+  if (auto input = (*this)->operand_source(0)) {
+    auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE((*this)->num_results(),
                  defining_op->num_operands(),
@@ -406,7 +403,7 @@ void SplitOp::RefreshStopGradients() {
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
-        auto *operand_defining_op = value.dyn_cast<OpResult>().owner();
+        auto *operand_defining_op = value.defining_op();
         if (operand_defining_op->HasAttribute(kStopGradientAttrName)) {
           auto attrs = operand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()
@@ -490,6 +487,14 @@ ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
 bool ConstantTensorOp::classof(const Operation *op) {
   return ConstantOp::classof(op) && op &&
          op->attribute("value").isa<TensorNameAttribute>();
+}
+
+void ConstantTensorOp::Build(Builder &builder,
+                             OperationArgument &argument,
+                             const std::string &name,
+                             Type output_type) {
+  ConstantOp::Build(
+      builder, argument, builder.tensor_name_attr(name), output_type);
 }
 
 std::string ConstantTensorOp::tensor_name() {

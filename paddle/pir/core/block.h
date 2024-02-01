@@ -72,7 +72,7 @@ class IR_API Block {
   void pop_back();
   Iterator insert(ConstIterator iterator, Operation *op);
   Iterator erase(ConstIterator position);
-  void clear();
+  void ClearOps();
 
   // Assign the operation underlying in position with parameter op,
   // meanwhile, destroy the original operation.
@@ -94,32 +94,63 @@ class IR_API Block {
   void ResetOpListOrder(const OpListType &new_op_list);
 
   ///
-  /// \brief Block argument management
+  /// \brief Position argument management
   ///
-  using ArgListType = std::vector<Value>;
-  using ArgsIterator = ArgListType::iterator;
-  using ConstArgsIterator = ArgListType::const_iterator;
+  using ArgsType = std::vector<Value>;
+  using ArgsIterator = ArgsType::iterator;
+  using ConstArgsIterator = ArgsType::const_iterator;
 
-  ArgsIterator args_begin() { return arguments_.begin(); }
-  ArgsIterator args_end() { return arguments_.end(); }
-  ConstArgsIterator args_begin() const { return arguments_.begin(); }
-  ConstArgsIterator args_end() const { return arguments_.end(); }
-  bool args_empty() const { return arguments_.empty(); }
-  uint32_t args_size() const { return arguments_.size(); }
-  const ArgListType &args() const { return arguments_; }
-  Value arg(uint32_t index) { return arguments_[index]; }
-  Type arg_type(uint32_t index) const { return arguments_[index].type(); }
-  void ClearArguments();
-  Value AddArgument(Type type);
-  void EraseArgument(uint32_t index);
+  ArgsIterator args_begin() { return args_.begin(); }
+  ArgsIterator args_end() { return args_.end(); }
+  ConstArgsIterator args_begin() const { return args_.begin(); }
+  ConstArgsIterator args_end() const { return args_.end(); }
+  bool args_empty() const { return args_.empty(); }
+  uint32_t args_size() const { return args_.size(); }
+  const ArgsType &args() const { return args_; }
+  Value arg(uint32_t index) const { return args_[index]; }
+  Type arg_type(uint32_t index) const { return args_[index].type(); }
+  void ClearArgs();
+  Value AddArg(Type type);
+  void EraseArg(uint32_t index);
   template <class TypeIter>
-  void AddArguments(TypeIter first, TypeIter last);
+  void AddArgs(TypeIter first, TypeIter last);
   template <class TypeContainer>
-  void AddArguments(const TypeContainer &container) {
-    AddArguments(container.begin(), container.end());
+  void AddArgs(const TypeContainer &container) {
+    AddArgs(container.begin(), container.end());
   }
-  void AddArguments(std::initializer_list<Type> type_list) {
-    AddArguments(std::begin(type_list), std::end(type_list));
+  void AddArgs(std::initializer_list<Type> type_list) {
+    AddArgs(std::begin(type_list), std::end(type_list));
+  }
+
+  ///
+  /// \brief Keyword argument management
+  ///
+  using KwargsType = std::unordered_map<std::string, Value>;
+  using KwargsIterator = KwargsType::iterator;
+  using ConstKwargsIterator = KwargsType::const_iterator;
+
+  KwargsIterator kwargs_begin() { return kwargs_.begin(); }
+  KwargsIterator kwargs_end() { return kwargs_.end(); }
+  ConstKwargsIterator kwargs_begin() const { return kwargs_.begin(); }
+  ConstKwargsIterator kwargs_end() const { return kwargs_.end(); }
+  bool kwargs_empty() const { return kwargs_.empty(); }
+  uint32_t kwargs_size() const { return kwargs_.size(); }
+  const KwargsType &kwargs() const { return kwargs_; }
+  Value kwarg(const std::string &keyword) const { return kwargs_.at(keyword); }
+  Type kwarg_type(const std::string &keyword) const {
+    return kwarg(keyword).type();
+  }
+  void ClearKwargs();
+  Value AddKwarg(const std::string &keyword, Type type);
+  void EraseKwarg(const std::string &keyword);
+  bool HasKwarg(const std::string &keyword) const {
+    return kwargs_.find(keyword) != kwargs_.end();
+  }
+  template <class KwTypeIter>
+  void AddKwargs(KwTypeIter first, KwTypeIter last);
+  template <class KwTypeContainer>
+  void AddKwargs(const KwTypeContainer &container) {
+    AddKwargs(container.begin(), container.end());
   }
 
   // Walk the operations in the specified [begin, end) range of this block.
@@ -127,7 +158,7 @@ class IR_API Block {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
     for (auto &op = begin; op != end; ++op) {
-      detail::Walk<Order>(&*op, callback);
+      pir::Walk<Order>(&*op, callback);
     }
   }
 
@@ -136,6 +167,12 @@ class IR_API Block {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
     return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
+  }
+
+  uint32_t num_ops() {
+    uint32_t num = 0;
+    Walk([&num](Operation *) { ++num; });
+    return num;
   }
 
  private:
@@ -154,15 +191,24 @@ class IR_API Block {
 
  private:
   BlockOperand first_use_;
-  OpListType ops_;         // owned
-  ArgListType arguments_;  // owned
-  Region *parent_;         // not owned
+  OpListType ops_;     // owned
+  ArgsType args_;      // owned
+  KwargsType kwargs_;  // owned
+  Region *parent_;     // not owned
 };
 
 template <class TypeIter>
-void Block::AddArguments(TypeIter first, TypeIter last) {
+void Block::AddArgs(TypeIter first, TypeIter last) {
   while (first != last) {
-    AddArgument(*first++);
+    AddArg(*first++);
+  }
+}
+
+template <class KwTypeIter>
+void Block::AddKwargs(KwTypeIter first, KwTypeIter last) {
+  while (first != last) {
+    AddKwarg(first->first, first->second);
+    ++first;
   }
 }
 

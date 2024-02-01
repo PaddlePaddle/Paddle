@@ -57,7 +57,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -90,7 +90,7 @@ class SmoothL1Loss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_sum(self):
@@ -105,7 +105,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -138,7 +138,7 @@ class SmoothL1Loss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_none(self):
@@ -153,7 +153,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -186,7 +186,7 @@ class SmoothL1Loss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_delta(self):
@@ -202,7 +202,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -235,7 +235,7 @@ class SmoothL1Loss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
 

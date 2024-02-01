@@ -953,6 +953,16 @@
   kernel :
     func : frame_grad
 
+- backward_op : gammaincc_grad
+  forward : gammaincc(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(y_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [y]
+  kernel :
+    func : gammaincc_grad
+
 - backward_op : gammaln_grad
   forward : gammaln(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -986,8 +996,6 @@
     func : gather_nd_grad
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
-  data_transform :
-    skip_transform : index
 
 - backward_op : gaussian_inplace_grad
   forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
@@ -2355,6 +2363,7 @@
     param : [out_grad, axis]
     data_type : out_grad
   no_need_buffer : x
+  composite : stack_grad(x, out_grad, axis, x_grad)
 
 - backward_op : stanh_grad
   forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)

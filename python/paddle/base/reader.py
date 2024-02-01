@@ -616,7 +616,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # or just hang, the main process will hang waiting for data, so here need to deal
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of
-            # joining them without a timeout), so here nedd to deal with SIGTERM.
+            # joining them without a timeout), so here need to deal with SIGTERM.
             core._set_process_pids(id(self), [self._process.pid])
             _set_SIGCHLD_handler()
 
@@ -1102,7 +1102,7 @@ class GeneratorLoader(DataLoaderBase):
         else:
             if places is not None:
                 logging.info(
-                    'places would be ommited when DataLoader is not iterable'
+                    'places would be omitted when DataLoader is not iterable'
                 )
         return self
 

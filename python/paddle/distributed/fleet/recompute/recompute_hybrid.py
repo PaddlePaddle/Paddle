@@ -150,7 +150,7 @@ class _HPRecomputeFunction(PyLayer):
 
                 # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
                 #  which is inplace operating. When the inputs' stop_gradient is True, an
-                #  error will occurs because the stop_gradient=True and inpalce-op are not
+                #  error will occurs because the stop_gradient=True and inplace-op are not
                 #  supported in the same time. The solution is to mark the inputs non_differentiable
                 #  if its stop_gradient is True.
                 # Note:

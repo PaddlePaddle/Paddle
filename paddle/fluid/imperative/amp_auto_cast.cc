@@ -119,17 +119,17 @@ OpSupportedInfos(const std::string& place,
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
 
-AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
-    : tracer_(tracer) {
-  pre_amp_level_ = tracer_->GetAmpLevel();
+AutoCastGuard::AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel level)
+    : state_(state) {
+  pre_amp_level_ = state_->GetAmpLevel();
 
   if (pre_amp_level_ != level) {
-    tracer_->SetAmpLevel(level);
+    state_->SetAmpLevel(level);
   }
 }
 
 AutoCastGuard::~AutoCastGuard() {  // NOLINT
-  tracer_->SetAmpLevel(pre_amp_level_);
+  state_->SetAmpLevel(pre_amp_level_);
 }
 
 AmpOperators::AmpOperators()
@@ -231,6 +231,46 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
+thread_local bool AMPState::use_promote_ = false;
+
+thread_local AmpLevel AMPState::amp_level_ = AmpLevel::O0;
+
+thread_local phi::DataType AMPState::amp_dtype_ = phi::DataType::FLOAT32;
+
+AMPState::AMPState() {}
+
+AMPState::~AMPState() = default;
+
+bool AMPState::GetUsePromote() const { return use_promote_; }
+
+void AMPState::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
+
+AmpLevel AMPState::GetAmpLevel() const { return amp_level_; }
+
+void AMPState::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
+
+std::string AMPState::GetAmpDtype() const {
+  if (amp_dtype_ == phi::DataType::FLOAT16) {
+    return std::string("float16");
+  } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+    return std::string("bfloat16");
+  } else {
+    return std::string("float32");
+  }
+}
+
+void AMPState::SetAmpDtype(std::string amp_dtype) {
+  if (amp_dtype == "float16") {
+    amp_dtype_ = phi::DataType::FLOAT16;
+  } else if (amp_dtype == "bfloat16") {
+    amp_dtype_ = phi::DataType::BFLOAT16;
+  } else {
+    amp_dtype_ = phi::DataType::FLOAT32;
+  }
+}
+
+phi::DataType AMPState::GetAmpPhiDtype() const { return amp_dtype_; }
+
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
   return framework::DataTypeToString(GetDataType<VarType>(var));
@@ -268,7 +308,7 @@ static inline std::shared_ptr<VarType> CastToType(
   imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, AmpLevel::O0);
+    AutoCastGuard guard(imperative::GetCurrentAMPState(), AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -399,7 +439,7 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
-      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
+      if ((op_type == "fused_attention" || op_type == "fused_feedforward") &&
           dst_type == framework::proto::VarType::FP32) {
         if (pair.first != "LnScale" && pair.first != "LnBias" &&
             pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&

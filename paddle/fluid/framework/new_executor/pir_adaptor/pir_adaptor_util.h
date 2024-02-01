@@ -58,9 +58,7 @@ class ValueExecutionInfo {
 
   void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value,
-              const std::string& new_name,
-              const std::string& orig_name);
+  void Rename(const std::string& new_name, const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
@@ -71,6 +69,8 @@ class ValueExecutionInfo {
   const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
   void AddValue2VarName(::pir::Value value, const std::string& var_name);
+
+  void UpdateValue2VarName(::pir::Value value, const std::string& var_name);
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
   GetVar2VarName() const;
@@ -181,6 +181,7 @@ void BuildPhiContext(pir::Operation* op,
       if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
         InListType optional_inputs;
+        optional_inputs.emplace_back(InType());
         ctx->EmplaceBackInputs(optional_inputs);
       } else {
         phi::DenseTensor* temp = nullptr;

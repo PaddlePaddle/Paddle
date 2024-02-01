@@ -25,13 +25,18 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/fusion.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/utils/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
+
+PD_DECLARE_int32(low_precision_op_list);
+
 namespace paddle {
 namespace experimental {
 
@@ -179,13 +184,13 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     }
 #endif
     std::vector<const phi::TensorBase*> input_x(x.size());
-    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
-    temp_dense_tensots.reserve(x.size());
+    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensors;
+    temp_dense_tensors.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
       if (phi::DenseTensor::classof(x[i].impl().get())) {
-        temp_dense_tensots.push_back(
+        temp_dense_tensors.push_back(
             PrepareData(x[i], kernel.InputAt(0), {}, false));
-        input_x[i] = temp_dense_tensots.back().get();
+        input_x[i] = temp_dense_tensors.back().get();
       } else {
         input_x[i] = x[i].impl().get();
       }
@@ -219,6 +224,114 @@ Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   copy(x, place, blocking, &out);
   out.set_name(x.name());
   return out;
+}
+
+std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& bias,
+    bool trans_x,
+    bool trans_y,
+    const std::string& activation) {
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, bias);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  VLOG(6) << "fused_gemm_epilogue API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "fused_gemm_epilogue",
+      {kernel_backend, kernel_layout, kernel_data_type},
+      true);
+  const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+        "fused_gemm_epilogue", kernel_data_type);
+  }
+  VLOG(6) << "fused_gemm_epilogue kernel: " << kernel;
+  // add actual_kernel_backend to select actual kernel backend after a potential
+  // falling-back to CPU
+  Backend actual_kernel_backend =
+      kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
+  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
+
+  auto input_x = PrepareData(
+      x,
+      GetKernelInputArgDef(kernel.InputAt(0), actual_kernel_backend),
+      {},
+      kernel_result.is_stride_kernel);
+  auto input_y = PrepareData(
+      y,
+      GetKernelInputArgDef(kernel.InputAt(1), actual_kernel_backend),
+      {},
+      kernel_result.is_stride_kernel);
+  auto input_bias = PrepareData(
+      bias,
+      GetKernelInputArgDef(kernel.InputAt(2), actual_kernel_backend),
+      {},
+      kernel_result.is_stride_kernel);
+
+  std::tuple<Tensor, Tensor> api_output;
+  auto kernel_out_0 = SetKernelOutput(&std::get<0>(api_output));
+  phi::DenseTensor* kernel_out_1 = nullptr;
+  if (activation != "none") {
+    kernel_out_1 = SetKernelOutput(&std::get<1>(api_output));
+  }
+
+  phi::MetaTensor meta_out_0(kernel_out_0, kernel_result.is_stride_kernel);
+  phi::MetaTensor meta_out_1(kernel_out_1, kernel_result.is_stride_kernel);
+
+  phi::FusedGemmEpilogueInferMeta(MakeMetaTensor(*input_x),
+                                  MakeMetaTensor(*input_y),
+                                  MakeMetaTensor(*input_bias),
+                                  trans_x,
+                                  trans_y,
+                                  activation,
+                                  kernel_out_0 ? &meta_out_0 : nullptr,
+                                  kernel_out_1 ? &meta_out_1 : nullptr);
+
+  using kernel_signature = void (*)(const phi::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    const phi::DenseTensor&,
+                                    bool,
+                                    bool,
+                                    const std::string&,
+                                    phi::DenseTensor*,
+                                    phi::DenseTensor*);
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+  (*kernel_fn)(*dev_ctx,
+               *input_x,
+               *input_y,
+               *input_bias,
+               trans_x,
+               trans_y,
+               activation,
+               kernel_out_0,
+               kernel_out_1);
+
+  if (kernel_result.has_fallback_cpu) {
+    TransDataBackend(kernel_out_0, kernel_backend, kernel_out_0);
+    TransDataBackend(kernel_out_1, kernel_backend, kernel_out_1);
+  }
+  return api_output;
 }
 
 ////////////////// Backward(grad) api impls //////////////////////

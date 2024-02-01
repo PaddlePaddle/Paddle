@@ -112,7 +112,7 @@ def _apply_pass(
 
 class PostTrainingQuantization:
     """
-    Utilizing post training quantization methon to quantize the FP32 model,
+    Utilizing post training quantization method to quantize the FP32 model,
     and it uses calibrate data to get the quantization information for all
     quantized variables.
     """
@@ -168,14 +168,14 @@ class PostTrainingQuantization:
                 When all parameters were saved in a single binary file, set it
                 as the real filename. If parameters were saved in separate files,
                 set it as 'None'. Default is 'None'.
-            batch_generator(Python Generator, depreceated): The batch generator provides
+            batch_generator(Python Generator, deprecated): The batch generator provides
                 calibrate data for DataLoader, and it returns a batch every
                 time. Note that, sample_generator and batch_generator, only one
-                should be set. Beisdes, batch_generator supports lod tensor.
-            sample_generator(Python Generator, depreceated): The sample generator provides
+                should be set. Besides, batch_generator supports lod tensor.
+            sample_generator(Python Generator, deprecated): The sample generator provides
                 calibrate data for DataLoader, and it only returns a sample every
                 time. Note that, sample_generator and batch_generator, only one
-                should be set. Beisdes, sample_generator dose not support lod tensor.
+                should be set. Besides, sample_generator dose not support lod tensor.
             data_loader(Paddle.io.DataLoader): The
                 Dataloader provides calibrate data, and it could
                 return a batch every time.
@@ -183,7 +183,7 @@ class PostTrainingQuantization:
             batch_nums(int, optional): If batch_nums is not None, the number of
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use
                 all data provided by sample_generator as calibrate data.
-            algo(str, optional): If algo='KL', use KL-divergenc method to
+            algo(str, optional): If algo='KL', use KL-divergence method to
                 get the KL threshold for quantized activations and get the abs_max
                 value for quantized weights. If algo='abs_max', get the abs max
                 value for activations and weights. If algo= 'min_max', get the min
@@ -327,7 +327,7 @@ class PostTrainingQuantization:
         )
         assert (
             weight_quantize_type in self._support_weight_quantize_type
-        ), "The weight_quantize_type ({}) shoud in ({}).".format(
+        ), "The weight_quantize_type ({}) should in ({}).".format(
             weight_quantize_type, self._support_weight_quantize_type
         )
 
@@ -500,7 +500,7 @@ class PostTrainingQuantization:
         self._reset_activation_persistable()
 
         if self._algo == 'min_max':
-            self._save_input_threhold()
+            self._save_input_threshold()
         else:
             self._update_program()
 
@@ -1055,7 +1055,7 @@ class PostTrainingQuantization:
             threshold = q_max * scale
             self._quantized_threshold[var_name] = threshold
 
-    def _save_input_threhold(self):
+    def _save_input_threshold(self):
         '''
         Save input threshold to the quantized op.
         '''
@@ -1116,10 +1116,10 @@ class PostTrainingQuantization:
             if var_name not in self._sampling_act_histogram:
                 min_val = self._sampling_act_abs_min_max[var_name][0]
                 max_val = self._sampling_act_abs_min_max[var_name][1]
-                hist, hist_edeges = np.histogram(
+                hist, hist_edges = np.histogram(
                     [], bins=self._histogram_bins, range=(min_val, max_val)
                 )
-                self._sampling_act_histogram[var_name] = [hist, hist_edeges]
+                self._sampling_act_histogram[var_name] = [hist, hist_edges]
 
     def _calculate_kl_hist_threshold(self):
         '''
@@ -1155,16 +1155,16 @@ class PostTrainingQuantization:
                 var_name not in self._sampling_act_histogram
             ):
                 continue
-            hist, hist_edeges = self._sampling_act_histogram[var_name]
+            hist, hist_edges = self._sampling_act_histogram[var_name]
             if self._algo == "KL":
-                bin_width = hist_edeges[1] - hist_edeges[0]
+                bin_width = hist_edges[1] - hist_edges[0]
                 self._quantized_var_threshold[var_name] = cal_kl_threshold(
                     hist, bin_width, self._activation_bits
                 )
             elif self._algo == "hist":
                 self._quantized_var_threshold[
                     var_name
-                ] = self._get_hist_scaling_factor(hist, hist_edeges)
+                ] = self._get_hist_scaling_factor(hist, hist_edges)
 
     def _update_program(self):
         '''
@@ -1570,7 +1570,7 @@ class WeightQuantization:
     def __init__(self, model_dir, model_filename=None, params_filename=None):
         '''
         This class quantizes the weight of some ops to reduce the size of model
-        or improve the perforemace.
+        or improve the performance.
 
         Args:
             model_dir(str): The path of the fp32 model that will be quantized,
@@ -1625,7 +1625,7 @@ class WeightQuantization:
                 as True, it saves a fake quantized model, in which the weights
                 are quantized and dequantized. We can use PaddlePaddle to load
                 the fake quantized model and test the accuracy on GPU or CPU.
-            threshold_rate(float, optional): This api uses abs_max methd to
+            threshold_rate(float, optional): This api uses abs_max method to
                 quantize the weight from float32 to int8/16, and the abs max
                 value is important for quantization diff. When the abs_max
                 value is far away from the center of the numerical distribution,
@@ -1995,7 +1995,7 @@ class WeightQuantization:
 
     def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
         input_abs = np.abs(input)
-        hist, hist_edeges = np.histogram(
+        hist, hist_edges = np.histogram(
             input_abs, bins=histogram_bins, range=(0, np.max(input_abs))
         )
         hist = hist / float(sum(hist))
@@ -2006,5 +2006,5 @@ class WeightQuantization:
             if hist_sum >= 1.0 - threshold_rate:
                 hist_index = i + 1
                 break
-        bin_width = hist_edeges[1] - hist_edeges[0]
+        bin_width = hist_edges[1] - hist_edges[0]
         return hist_index * bin_width

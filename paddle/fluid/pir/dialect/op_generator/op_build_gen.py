@@ -26,6 +26,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'FusedConv2dAddActInferMeta',
     'InterpolateInferMeta',
     'DeformableConvInferMeta',
+    'MatrixNMSInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
@@ -166,11 +167,11 @@ def GenBuildInserFullForMutableAttribute(
     build_mutable_attribute = ""
     BUILD_INTARRAY_ATTRIBUTE_TEMPLATE = """  // Generate int_array mutable attribute: {attr_name}
   paddle::dialect::FullIntArrayOp full_{attr_name}_op = builder.Build<paddle::dialect::FullIntArrayOp>({attr_name}, {phi_dtype}, phi::CPUPlace());
-  pir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
+  pir::Value {attr_name}_ = full_{attr_name}_op->result(0);
     """
     BUILD_SCALAR_ATTRIBUTE_TEMPLATE = """  // Generate scalar mutable attribute: {attr_name}
   paddle::dialect::FullOp full_{attr_name}_op = builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{{1}}, {attr_name}, {phi_dtype}, phi::CPUPlace());
-  pir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
+  pir::Value {attr_name}_ = full_{attr_name}_op->result(0);
     """
     for idx in range(len(op_mutable_attribute_name_list)):
         attr_name = op_mutable_attribute_name_list[idx]
@@ -209,6 +210,8 @@ def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
         build_input_str += BUILD_INPUT_TEMPLATE.format(
             inputs_args=inputs_args_str
         )
+    else:
+        build_input_str += '  std::vector<pir::Value> argument_inputs = {};\n'
     return build_input_str
 
 
@@ -229,6 +232,7 @@ def GenBuildAttributes(
   pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_{attr_name});
 """
     attr_str = '  VLOG(4) << "Builder construction attributes";\n'
+    attr_str += '  pir::AttributeMap argument_attributes = {};\n'
     array_attr_type = "pir::ArrayAttribute<"
     for idx in range(len(op_non_mutable_attribute_name_list)):
         if array_attr_type in op_non_mutable_attribute_type_list[idx]:
@@ -291,7 +295,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n""".format(
+        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 
@@ -386,9 +390,9 @@ def GenBuildOutputs(
 """
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-                          {name}_.dyn_cast<pir::OpResult>().owner()
+                          {name}_.defining_op()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                           .attribute("value"))));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -408,9 +412,9 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {{
     {name} = paddle::dialect::GetInt64Vector(
-                    {name}_.dyn_cast<pir::OpResult>().owner()
+                    {name}_.defining_op()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                     .attribute("value"));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
@@ -428,8 +432,8 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_.dyn_cast<pir::OpResult>() && {name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.dyn_cast<pir::OpResult>().owner()
+  if ({name}_.isa<pir::OpResult>() && {name}_.defining_op()->isa<paddle::dialect::FullOp>()) {{
+    {name} = std::move(phi::Scalar({name}_.defining_op()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
@@ -734,20 +738,12 @@ def gen_build_func_str(
         op_non_mutable_attribute_name_list,
         op_non_mutable_attribute_type_list,
     )
-    build_outputs_str = GenBuildOutputs(
-        op_class_name,
-        op_input_name_list,
-        op_input_type_list,
-        op_input_optional_list,
-        op_mutable_attribute_name_list,
-        op_mutable_attribute_type_list,
-        op_output_name_list,
-        op_output_type_list,
-        op_output_size_list,
-        op_output_optional_list,
-        op_infer_meta_map,
-        op_inplace_map,
-        muta_attr_is_input,
+
+    build_outputs_str = """
+  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);""".format(
+        op_name=op_class_name
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """

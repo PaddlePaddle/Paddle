@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/xpu/multi_encoder_xpu_fuse_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -523,65 +524,196 @@ void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(cast_mask_counts);
 }
 
-void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
-                                               Scope* scope,
-                                               BlockDesc* block,
-                                               Node* q_w,
-                                               Node* k_w,
-                                               Node* v_w,
-                                               Node** qkv_w_int16,
-                                               Node** qkv_w_max) const {
-  phi::DenseTensor q_w_fp32_t;
-  phi::DenseTensor k_w_fp32_t;
-  phi::DenseTensor v_w_fp32_t;
-  Assign(scope->Var(q_w->Name())->Get<phi::DenseTensor>(), &q_w_fp32_t);
-  Assign(scope->Var(k_w->Name())->Get<phi::DenseTensor>(), &k_w_fp32_t);
-  Assign(scope->Var(v_w->Name())->Get<phi::DenseTensor>(), &v_w_fp32_t);
+void MultiEncoderXPUFusePass::PrepareInputMax(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    std::unordered_map<std::string, std::vector<Node*>>* node_maps,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+    std::vector<Node*>* input_max_nodes) const {
+  // mul input_max, output_max * 6 + matmul x_max,y_max,output_max * 2
+  auto quant_mul_ops = node_maps->find("quant_mul_ops")->second;
+  auto matmul_ops = node_maps->find("matmul_ops")->second;
+  auto mul_add_ops = node_maps->find("mul_add_ops")->second;
+  auto softmax_ops = node_maps->find("softmax_ops")->second;
+  std::vector<float> input_max(quant_mul_ops.size() * 2 + matmul_ops.size() * 3,
+                               0);
+  for (size_t i = 0; i < quant_mul_ops.size(); ++i) {
+    auto input_name = quant_mul_ops[i]->Op()->Input("X")[0];
+    auto output_name = mul_add_ops[i]->Op()->Output("Out")[0];
+    if (var_quant_scales->find(input_name) != var_quant_scales->end() &&
+        var_quant_scales->find(output_name) != var_quant_scales->end()) {
+      input_max[i * 2] = var_quant_scales->at(input_name)[0];
+      input_max[i * 2 + 1] = var_quant_scales->at(output_name)[0];
+      VLOG(3) << quant_mul_ops[i] << " input_max: " << input_max[i * 2]
+              << ", output_max(ew_add): " << input_max[i * 2 + 1];
+    }
+  }
+  float max_qkv_input = std::max(input_max[0], input_max[2]);
+  max_qkv_input = std::max(max_qkv_input, input_max[4]);
+  input_max[0] = max_qkv_input;
+  input_max[2] = max_qkv_input;
+  input_max[4] = max_qkv_input;
+  float max_qkv_output = std::max(input_max[1], input_max[3]);
+  max_qkv_output = std::max(max_qkv_output, input_max[5]);
+  input_max[1] = max_qkv_output;
+  input_max[3] = max_qkv_output;
+  input_max[5] = max_qkv_output;
+  VLOG(3) << "max_qkv_input: " << max_qkv_input
+          << ", max_qkv_output: " << max_qkv_output;
 
-  CastToFp32(&q_w_fp32_t);
-  CastToFp32(&k_w_fp32_t);
-  CastToFp32(&v_w_fp32_t);
+  auto input_x_name = matmul_ops[0]->Op()->Input("X")[0];
+  auto input_y_name = matmul_ops[0]->Op()->Input("Y")[0];
+  auto output_name = softmax_ops[0]->Op()->Output("Out")[0];
+  auto matmul_offset = quant_mul_ops.size();
+  std::vector<bool> matmul_quants(2, false);
+  if (matmul_ops[0]->Op()->HasAttr("enable_int8") &&
+      PADDLE_GET_CONST(bool, matmul_ops[0]->Op()->GetAttr("enable_int8")) &&
+      var_quant_scales->find(input_x_name) != var_quant_scales->end() &&
+      var_quant_scales->find(input_y_name) != var_quant_scales->end() &&
+      var_quant_scales->find(output_name) != var_quant_scales->end()) {
+    input_max[matmul_offset * 2 + 0] =
+        max_qkv_output != 0 ? max_qkv_output
+                            : var_quant_scales->at(input_x_name)[0];
+    input_max[matmul_offset * 2 + 1] =
+        max_qkv_output != 0 ? max_qkv_output
+                            : var_quant_scales->at(input_y_name)[0];
+    input_max[matmul_offset * 2 + 2] = var_quant_scales->at(output_name)[0];
+    VLOG(3) << "qk_matmul X_max: " << input_max[matmul_offset * 2 + 0]
+            << "          Y_max: " << input_max[matmul_offset * 2 + 1]
+            << "        Out_max: " << input_max[matmul_offset * 2 + 2];
+    matmul_quants[0] = true;
+  }
+  input_x_name = matmul_ops[1]->Op()->Input("X")[0];
+  input_y_name = matmul_ops[1]->Op()->Input("Y")[0];
+  output_name = matmul_ops[1]->Op()->Output("Out")[0];
+  if (matmul_ops[1]->Op()->HasAttr("enable_int8") &&
+      PADDLE_GET_CONST(bool, matmul_ops[1]->Op()->GetAttr("enable_int8")) &&
+      var_quant_scales->find(input_x_name) != var_quant_scales->end() &&
+      var_quant_scales->find(input_y_name) != var_quant_scales->end() &&
+      var_quant_scales->find(output_name) != var_quant_scales->end()) {
+    input_max[matmul_offset * 2 + 3] = var_quant_scales->at(input_x_name)[0];
+    input_max[matmul_offset * 2 + 4] = var_quant_scales->at(input_y_name)[0];
+    input_max[matmul_offset * 2 + 5] = var_quant_scales->at(output_name)[0];
+    VLOG(3) << "qk_matmul X_max: " << input_max[matmul_offset * 2 + 3]
+            << "          Y_max: " << input_max[matmul_offset * 2 + 4]
+            << "        Out_max: " << input_max[matmul_offset * 2 + 5];
+    matmul_quants[1] = true;
+  }
+  if (matmul_quants[0] == false || matmul_quants[1] == false) {
+    // For backward compatible, API uses the size of input_max vector to
+    // check whether it is mul quant or mul+matmul quant.
+    input_max.resize(quant_mul_ops.size() * 2);
+    input_max_nodes->resize(quant_mul_ops.size() * 2, nullptr);
+  }
+  std::string base_name = quant_mul_ops[0]->Op()->Input("X")[0];
+  for (size_t i = 0; i < input_max.size(); i++) {
+    std::string fc_input_max_name =
+        base_name + "_" + std::to_string(i) + "_max_in";
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    VarDesc fc_input_max_desc(fc_input_max_name);
+    fc_input_max_desc.SetPersistable(true);
+    fc_input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
+    fc_input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    Node* fc_input_max_in = graph->CreateVarNode(&fc_input_max_desc);
+    auto* block_input_max_in_desc = block->Var(fc_input_max_name);
+    block_input_max_in_desc->SetPersistable(fc_input_max_desc.Persistable());
+    block_input_max_in_desc->SetShape(fc_input_max_desc.GetShape());
+    block_input_max_in_desc->SetDataType(fc_input_max_desc.GetDataType());
+    (*input_max_nodes)[i] = fc_input_max_in;
 
-  Transpose2D(&q_w_fp32_t);
-  Transpose2D(&k_w_fp32_t);
-  Transpose2D(&v_w_fp32_t);
+    phi::DenseTensor fc_max_in_cpu_tensor;
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    fc_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+    fc_max_in_cpu_tensor.Resize({max_ptr_size});
+    std::vector<float> output_scales(max_ptr_size, input_max[i]);
+    memcpy(cpu_ctx->Alloc<float>(&fc_max_in_cpu_tensor),
+           output_scales.data(),
+           max_ptr_size * sizeof(float));
+    Assign(fc_max_in_cpu_tensor,
+           scope->Var(fc_input_max_name)->GetMutable<phi::DenseTensor>());
+  }
+}
 
-  phi::DenseTensor qkv_w_int16_t;
+void MultiEncoderXPUFusePass::PrepareQKVWeight(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* q_w,
+    Node* k_w,
+    Node* v_w,
+    bool enable_int8,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+    Node** qkv_w_intx,
+    Node** qkv_w_max,
+    Node** qkv_scale_max) const {
+  phi::DenseTensor qkv_w_intx_t;
   phi::DenseTensor qkv_w_max_t;
   phi::DenseTensor qkv_scale_max_t;
-  qkv_w_int16_t.Resize(
-      DDim({q_w_fp32_t.dims()[0] + k_w_fp32_t.dims()[0] + v_w_fp32_t.dims()[0],
-            q_w_fp32_t.dims()[1]}));
-  qkv_w_int16_t.set_type(q_w_fp32_t.type());
+  size_t qkv_w_intx_hash;
+  phi::DenseTensor q_w_t;
+  phi::DenseTensor k_w_t;
+  phi::DenseTensor v_w_t;
+  Assign(scope->Var(q_w->Name())->Get<phi::DenseTensor>(), &q_w_t);
+  Assign(scope->Var(k_w->Name())->Get<phi::DenseTensor>(), &k_w_t);
+  Assign(scope->Var(v_w->Name())->Get<phi::DenseTensor>(), &v_w_t);
+  Transpose2D(&q_w_t);
+  Transpose2D(&k_w_t);
+  Transpose2D(&v_w_t);
+  qkv_w_intx_t.Resize(DDim(
+      {q_w_t.dims()[0] + k_w_t.dims()[0] + v_w_t.dims()[0], q_w_t.dims()[1]}));
+  qkv_w_intx_t.set_type(q_w_t.type());
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  paddle::experimental::CheckAndTrans2Contiguous(&q_w_fp32_t);
-  paddle::experimental::CheckAndTrans2Contiguous(&k_w_fp32_t);
-  paddle::experimental::CheckAndTrans2Contiguous(&v_w_fp32_t);
-  std::vector<const phi::DenseTensor*> in_tensors{
-      &q_w_fp32_t, &k_w_fp32_t, &v_w_fp32_t};
-  phi::ConcatKernel<float>(*cpu_ctx, in_tensors, 0, &qkv_w_int16_t);
-
-  ConvertWithQuant<float, int16_t>(
-      &qkv_w_int16_t, &qkv_w_max_t, &qkv_scale_max_t, false);
-  size_t qkv_w_int16_hash = HashTensor<int16_t>(qkv_w_int16_t);
+  paddle::experimental::CheckAndTrans2Contiguous(&q_w_t);
+  paddle::experimental::CheckAndTrans2Contiguous(&k_w_t);
+  paddle::experimental::CheckAndTrans2Contiguous(&v_w_t);
+  std::vector<const phi::DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
+  bool is_per_channel = false;
+  if (!enable_int8) {
+    CastToFp32(&q_w_t);
+    CastToFp32(&k_w_t);
+    CastToFp32(&v_w_t);
+    phi::ConcatKernel<float>(*cpu_ctx, in_tensors, 0, &qkv_w_intx_t);
+    ConvertWithQuant<float, int16_t>(
+        &qkv_w_intx_t, &qkv_w_max_t, &qkv_scale_max_t, false);
+    qkv_w_intx_hash = HashTensor<int16_t>(qkv_w_intx_t);
+  } else {
+    phi::ConcatKernel<int8_t>(*cpu_ctx, in_tensors, 0, &qkv_w_intx_t);
+    std::unordered_map<std::string, std::vector<float>> var_quant_scales =
+        GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
+    std::vector<float> q_scales = var_quant_scales.at(q_w->Name());
+    if (q_scales.size() != 1) {
+      is_per_channel = true;
+      std::vector<float> k_scales = var_quant_scales.at(k_w->Name());
+      std::vector<float> v_scales = var_quant_scales.at(v_w->Name());
+      q_scales.insert(q_scales.end(), k_scales.begin(), k_scales.end());
+      q_scales.insert(q_scales.end(), v_scales.begin(), v_scales.end());
+    }
+    ConvertWithoutQuant<int8_t>(
+        &qkv_w_intx_t, &qkv_w_max_t, &qkv_scale_max_t, false, q_scales);
+    qkv_w_intx_hash = HashTensor<int8_t>(qkv_w_intx_t);
+  }
   size_t qkv_w_max_hash = HashTensor<float>(qkv_w_max_t);
-  std::string qkv_w_int16_name = std::to_string(qkv_w_int16_hash);
+  std::string qkv_w_intx_name = std::to_string(qkv_w_intx_hash);
   std::string qkv_w_max_name = std::to_string(qkv_w_max_hash);
-  *qkv_w_int16 = FindNodeWithName(graph, qkv_w_int16_name);
-  if (*qkv_w_int16 == nullptr) {
-    // Create qkv_w_int16 node
-    // Update qkv_w_int16 var_desc in block
-    VarDesc qkv_w_int16_desc(qkv_w_int16_name);
-    qkv_w_int16_desc.SetPersistable(true);
-    qkv_w_int16_desc.SetShape(common::vectorize(qkv_w_int16_t.dims()));
-    qkv_w_int16_desc.SetDataType(
-        framework::TransToProtoVarType(qkv_w_int16_t.dtype()));
-    *qkv_w_int16 = graph->CreateVarNode(&qkv_w_int16_desc);
-    auto* block_qkv_w_int16_desc = block->Var(qkv_w_int16_name);
-    block_qkv_w_int16_desc->SetPersistable(qkv_w_int16_desc.Persistable());
-    block_qkv_w_int16_desc->SetShape(qkv_w_int16_desc.GetShape());
-    block_qkv_w_int16_desc->SetDataType(qkv_w_int16_desc.GetDataType());
+  std::string qkv_scale_max_name;
+
+  *qkv_w_intx = FindNodeWithName(graph, qkv_w_intx_name);
+  if (*qkv_w_intx == nullptr) {
+    // Create qkv_w_intx node
+    // Update qkv_w_intx var_desc in block
+    VarDesc qkv_w_intx_desc(qkv_w_intx_name);
+    qkv_w_intx_desc.SetPersistable(true);
+    qkv_w_intx_desc.SetShape(common::vectorize(qkv_w_intx_t.dims()));
+    qkv_w_intx_desc.SetDataType(
+        framework::TransToProtoVarType(qkv_w_intx_t.dtype()));
+    *qkv_w_intx = graph->CreateVarNode(&qkv_w_intx_desc);
+    auto* block_qkv_w_intx_desc = block->Var(qkv_w_intx_name);
+    block_qkv_w_intx_desc->SetPersistable(qkv_w_intx_desc.Persistable());
+    block_qkv_w_intx_desc->SetShape(qkv_w_intx_desc.GetShape());
+    block_qkv_w_intx_desc->SetDataType(qkv_w_intx_desc.GetDataType());
     // Create qkv_w_max node
     // Update qkv_w_max var_desc in block
     VarDesc qkv_w_max_desc(qkv_w_max_name);
@@ -594,33 +726,63 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
     block_qkv_w_max_desc->SetShape(qkv_w_max_desc.GetShape());
     block_qkv_w_max_desc->SetDataType(qkv_w_max_desc.GetDataType());
 
-    // Find qkv_w_int16/qkv_w_max variable in scope
-    auto* qkv_w_int16_var = scope->FindVar(qkv_w_int16_name);
-    if (qkv_w_int16_var == nullptr) {
-      // Create qkv_w_int16/qkv_w_max variable/tensor
-      Assign(qkv_w_int16_t,
-             scope->Var(qkv_w_int16_name)->GetMutable<phi::DenseTensor>());
+    if (is_per_channel) {
+      size_t qkv_scale_max_hash = HashTensor<float>(qkv_scale_max_t);
+      qkv_scale_max_name = std::to_string(qkv_scale_max_hash);
+      // Create qkv_scale_max_t node
+      // Update qkv_scale_max_t var_desc in block
+      VarDesc qkv_scale_max_desc(qkv_scale_max_name);
+      qkv_scale_max_desc.SetPersistable(true);
+      qkv_scale_max_desc.SetShape(common::vectorize(qkv_scale_max_t.dims()));
+      qkv_scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+      *qkv_scale_max = graph->CreateVarNode(&qkv_scale_max_desc);
+      auto* block_qkv_scale_max_desc = block->Var(qkv_scale_max_name);
+      block_qkv_scale_max_desc->SetPersistable(
+          qkv_scale_max_desc.Persistable());
+      block_qkv_scale_max_desc->SetShape(qkv_scale_max_desc.GetShape());
+      block_qkv_scale_max_desc->SetDataType(qkv_scale_max_desc.GetDataType());
+    }
+
+    // Find qkv_w_intx/qkv_w_max variable in scope
+    auto* qkv_w_intx_var = scope->FindVar(qkv_w_intx_name);
+    if (qkv_w_intx_var == nullptr) {
+      // Create qkv_w_intx/qkv_w_max variable/tensor
+      Assign(qkv_w_intx_t,
+             scope->Var(qkv_w_intx_name)->GetMutable<phi::DenseTensor>());
       Assign(qkv_w_max_t,
              scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
+      if (is_per_channel) {
+        Assign(qkv_scale_max_t,
+               scope->Var(qkv_scale_max_name)->GetMutable<phi::DenseTensor>());
+      }
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(qkv_w_max_name),
           platform::errors::Fatal(
-              "qkv_w_max(%s) variable should not be nullptr if qkv_w_int16(%s) "
+              "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
               "variable is exist.",
               qkv_w_max_name,
-              qkv_w_int16_name));
+              qkv_w_intx_name));
+      if (is_per_channel) {
+        PADDLE_ENFORCE_NOT_NULL(
+            scope->FindVar(qkv_scale_max_name),
+            platform::errors::Fatal("qkv_scale_max(%s) variable should not be "
+                                    "nullptr if qkv_w_intx(%s) "
+                                    "variable is exist.",
+                                    qkv_scale_max_name,
+                                    qkv_w_intx_name));
+      }
     }
   } else {
     *qkv_w_max = FindNodeWithName(graph, qkv_w_max_name);
     PADDLE_ENFORCE_NOT_NULL(
         *qkv_w_max,
         platform::errors::Fatal(
-            "qkv_w_max(%s) variable should not be nullptr if qkv_w_int16(%s) "
+            "qkv_w_max(%s) variable should not be nullptr if qkv_w_intx(%s) "
             "variable is exist.",
             qkv_w_max_name,
-            qkv_w_int16_name));
+            qkv_w_intx_name));
   }
 }
 
@@ -800,34 +962,83 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
 
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
-    bool enable_fp16 =
-        scope->FindVar(q_matmul_w->Name())->Get<phi::DenseTensor>().dtype() ==
-        phi::DataType::FLOAT16;
+    auto weight_dtype =
+        scope->FindVar(q_matmul_w->Name())->Get<phi::DenseTensor>().dtype();
+    std::string use_precision = "float32";
+    if (weight_dtype == phi::DataType::INT8) {
+      use_precision = "int8";
+    } else if (weight_dtype == phi::DataType::FLOAT16) {
+      use_precision = "float16";
+    }
+    bool is_per_channel = false;
+    std::vector<Node*> input_max;
+    std::unordered_map<std::string, std::vector<float>> var_quant_scales =
+        GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
+    if (use_precision == "int8") {
+      std::unordered_map<std::string, std::vector<Node*>> node_maps;
+      std::vector<Node*> quant_mul_ops = {q_matmul,
+                                          k_matmul,
+                                          v_matmul,
+                                          qkv_matmul_1,
+                                          qkv_matmul_2,
+                                          qkv_matmul_3};
+      node_maps.insert(std::make_pair("quant_mul_ops", quant_mul_ops));
+      std::vector<Node*> mul_add_ops = {
+          q_add, k_add, v_add, qkv_add_0, qkv_act, qkv_add_3};
+      node_maps.insert(std::make_pair("mul_add_ops", mul_add_ops));
+      std::vector<Node*> matmul_ops = {qk_matmul, qkv_matmul_0};
+      node_maps.insert(std::make_pair("matmul_ops", matmul_ops));
+      std::vector<Node*> softmax_ops = {qk_softmax};
+      node_maps.insert(std::make_pair("softmax_ops", softmax_ops));
+      input_max.resize((quant_mul_ops.size() * 2 + quant_mul_ops.size() * 3),
+                       nullptr);
+      PrepareInputMax(
+          graph, scope, block, &node_maps, &var_quant_scales, &input_max);
+    }
 
-    Node* qkv_w_int16 = nullptr;
+    Node* qkv_w_intx = nullptr;
     Node* qkv_w_max = nullptr;
+    Node* qkv_scale_max = nullptr;
     PrepareQKVWeight(graph,
                      scope,
                      block,
                      q_matmul_w,
                      k_matmul_w,
                      v_matmul_w,
-                     &qkv_w_int16,
-                     &qkv_w_max);
+                     (use_precision == "int8"),
+                     &var_quant_scales,
+                     &qkv_w_intx,
+                     &qkv_w_max,
+                     &qkv_scale_max);
 
-#define PREPARE_QKV_MATMUL_W(idx_)                              \
-  Node* qkv_matmul_##idx_##_w_int16 = nullptr;                  \
-  Node* qkv_matmul_##idx_##_w_max = nullptr;                    \
-  Node* qkv_matmul_##idx_##_scale_max = nullptr;                \
-  PrepareWeight<float, int16_t>(graph,                          \
-                                scope,                          \
-                                block,                          \
-                                qkv_matmul_##idx_##_w,          \
-                                &qkv_matmul_##idx_##_w_int16,   \
-                                &qkv_matmul_##idx_##_w_max,     \
-                                &qkv_matmul_##idx_##_scale_max, \
-                                true,                           \
-                                std::vector<float>({}));
+#define PREPARE_QKV_MATMUL_W(idx_)                                \
+  Node* qkv_matmul_##idx_##_w_intx = nullptr;                     \
+  Node* qkv_matmul_##idx_##_w_max = nullptr;                      \
+  Node* qkv_matmul_##idx_##_scale_max = nullptr;                  \
+  if (use_precision != "int8") {                                  \
+    PrepareWeight<float, int16_t>(graph,                          \
+                                  scope,                          \
+                                  block,                          \
+                                  qkv_matmul_##idx_##_w,          \
+                                  &qkv_matmul_##idx_##_w_intx,    \
+                                  &qkv_matmul_##idx_##_w_max,     \
+                                  &qkv_matmul_##idx_##_scale_max, \
+                                  true,                           \
+                                  std::vector<float>({}));        \
+  } else {                                                        \
+    std::vector<float> weight_scales =                            \
+        var_quant_scales.at(qkv_matmul_##idx_##_w->Name());       \
+    is_per_channel = (weight_scales.size() != 1);                 \
+    PrepareWeight<int8_t, int8_t>(graph,                          \
+                                  scope,                          \
+                                  block,                          \
+                                  qkv_matmul_##idx_##_w,          \
+                                  &qkv_matmul_##idx_##_w_intx,    \
+                                  &qkv_matmul_##idx_##_w_max,     \
+                                  &qkv_matmul_##idx_##_scale_max, \
+                                  true,                           \
+                                  weight_scales);                 \
+  }
     PREPARE_QKV_MATMUL_W(1);
     PREPARE_QKV_MATMUL_W(2);
     PREPARE_QKV_MATMUL_W(3);
@@ -853,16 +1064,31 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     framework::OpDesc op_desc(block);
     op_desc.SetType("single_encoder_xpu");
     op_desc.SetInput("x", {ln_0_x->Name()});
+    std::vector<std::string> fc_input_max_names;
+    for (auto* node : input_max) {
+      if (node) {
+        fc_input_max_names.push_back(node->Name());
+      }
+    }
+    op_desc.SetInput("fc_input_max", fc_input_max_names);
     op_desc.SetInput("fc_weight",
-                     {qkv_w_int16->Name(),
-                      qkv_matmul_1_w_int16->Name(),
-                      qkv_matmul_2_w_int16->Name(),
-                      qkv_matmul_3_w_int16->Name()});
-    op_desc.SetInput("fc_weight_max",
-                     {qkv_w_max->Name(),
-                      qkv_matmul_1_w_max->Name(),
-                      qkv_matmul_2_w_max->Name(),
-                      qkv_matmul_3_w_max->Name()});
+                     {qkv_w_intx->Name(),
+                      qkv_matmul_1_w_intx->Name(),
+                      qkv_matmul_2_w_intx->Name(),
+                      qkv_matmul_3_w_intx->Name()});
+    if (!is_per_channel) {
+      op_desc.SetInput("fc_weight_max",
+                       {qkv_w_max->Name(),
+                        qkv_matmul_1_w_max->Name(),
+                        qkv_matmul_2_w_max->Name(),
+                        qkv_matmul_3_w_max->Name()});
+    } else {
+      op_desc.SetInput("fc_weight_max",
+                       {qkv_scale_max->Name(),
+                        qkv_matmul_1_scale_max->Name(),
+                        qkv_matmul_2_scale_max->Name(),
+                        qkv_matmul_3_scale_max->Name()});
+    }
     op_desc.SetInput("fc_bias",
                      {qkv_add_bias_fp32->Name(),
                       qkv_add_0_bias_fp32->Name(),
@@ -891,7 +1117,8 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
         static_cast<int>(qkv_matmul_2_w_shape[1] / qkv_matmul_2_w_shape[0]));
     op_desc.SetAttr("act_type", ConvertActivationType(act_type));
     op_desc.SetAttr("relative_type", static_cast<int>(0));
-    op_desc.SetAttr("enable_fp16", enable_fp16);
+    op_desc.SetAttr("use_precision", use_precision);
+    op_desc.SetAttr("is_per_channel", is_per_channel);
     if (norm_before) {
       op_desc.SetOutput("out", {qkv_add_4_out->Name()});
     } else {
@@ -900,13 +1127,24 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     auto* single_encoder_xpu = graph->CreateOpNode(&op_desc);
     // Link nodes
     IR_NODE_LINK_TO(ln_0_x, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_w_int16, single_encoder_xpu);
+    for (auto* node : input_max) {
+      if (node) {
+        IR_NODE_LINK_TO(node, single_encoder_xpu);
+      }
+    }
+    if (is_per_channel) {
+      IR_NODE_LINK_TO(qkv_scale_max, single_encoder_xpu);
+      IR_NODE_LINK_TO(qkv_matmul_1_scale_max, single_encoder_xpu);
+      IR_NODE_LINK_TO(qkv_matmul_2_scale_max, single_encoder_xpu);
+      IR_NODE_LINK_TO(qkv_matmul_3_scale_max, single_encoder_xpu);
+    }
+    IR_NODE_LINK_TO(qkv_w_intx, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_1_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_1_w_intx, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_2_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_2_w_intx, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_3_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_3_w_intx, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_add_bias_fp32, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_add_0_bias_fp32, single_encoder_xpu);
@@ -1014,7 +1252,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
 static std::vector<Node*> GetSingleEncoders(ir::Graph* graph) {
   std::vector<Node*> single_encoders;
   for (auto* node : graph->Nodes()) {
-    // Find first singld_encoder_xpu
+    // Find first single_encoder_xpu
     if (node->IsVar() || node->Op()->Type() != "single_encoder_xpu") continue;
     bool is_first_encoder = true;
     for (auto* in_node : node->inputs) {
@@ -1045,8 +1283,12 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
 
   // Prepare inputs/outputs names/nodes
   std::string x_name = single_encoders[0]->Op()->Inputs().at("x")[0];
-  std::vector<std::string> arg_names{
-      "fc_weight", "fc_weight_max", "fc_bias", "ln_scale", "ln_bias"};
+  std::vector<std::string> arg_names{"fc_input_max",
+                                     "fc_weight",
+                                     "fc_weight_max",
+                                     "fc_bias",
+                                     "ln_scale",
+                                     "ln_bias"};
   std::map<std::string, std::vector<std::string>> arg_names_map;
   std::string mask_name = single_encoders[0]->Op()->Inputs().count("mask") > 0
                               ? single_encoders[0]->Op()->Inputs().at("mask")[0]
@@ -1126,8 +1368,13 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
   }
   op_desc.SetAttr("slice_idx", static_cast<int>(-1));
   op_desc.SetAttr(
-      "enable_fp16",
-      PADDLE_GET_CONST(bool, single_encoders[0]->Op()->GetAttr("enable_fp16")));
+      "use_precision",
+      PADDLE_GET_CONST(std::string,
+                       single_encoders[0]->Op()->GetAttr("use_precision")));
+  op_desc.SetAttr(
+      "is_per_channel",
+      PADDLE_GET_CONST(bool,
+                       single_encoders[0]->Op()->GetAttr("is_per_channel")));
   op_desc.SetOutput("out", {out_name});
   op_desc.SetOutput("x_fp16", {x_fp16_name});
   op_desc.SetOutput("out_fp16", {out_fp16_name});
@@ -1161,9 +1408,10 @@ int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
   for (auto node : nodes) {
     if (node->IsVar()) continue;
     auto op_desc = node->Op();
+    auto use_precision = op_desc->GetAttrIfExists<std::string>("use_precision");
     if (node->IsVar() ||  //
         op_desc->Type() != "multi_encoder_xpu" ||
-        !op_desc->GetAttrIfExists<bool>("enable_fp16") ||
+        (use_precision != "float16" && use_precision != "int8") ||
         op_desc->Inputs().count("mask") == 0)
       continue;
 

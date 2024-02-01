@@ -14,7 +14,8 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::AssertOp
+    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp,
+    paddle::dialect::SelectOutputOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -168,18 +169,21 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << "{";
+  os << "{\n";
+  printer.AddIndentation();
   for (auto &item : true_block()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
   }
-  os << "\n } else {";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "} else {\n";
+  printer.AddIndentation();
   for (auto &item : false_block()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
   }
-  os << "\n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
+
 void IfOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: IfOp.";
   auto input_size = num_operands();
@@ -217,8 +221,14 @@ void IfOp::VerifyRegion() {
       1u,
       phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
                                       (*this)->region(0).size()));
-  if ((*this)->region(0).front().size() > 0) {
-    auto &true_last_op = (*this)->region(0).front().back();
+  if ((*this)->num_results() != 0) {
+    auto &true_block = (*this)->region(0).front();
+    PADDLE_ENFORCE_GT(
+        true_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The true block must have at least one op yield op."));
+    auto &true_last_op = true_block.back();
     PADDLE_ENFORCE_EQ(true,
                       true_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -228,15 +238,19 @@ void IfOp::VerifyRegion() {
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
-  }
-  VLOG(4) << "Start Verifying false branch.";
-  PADDLE_ENFORCE_EQ(
-      (*this)->region(1).size(),
-      1u,
-      phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
-                                      (*this)->region(0).size()));
-  if ((*this)->region(1).front().size() > 0) {
-    auto &false_last_op = (*this)->region(1).front().back();
+    VLOG(4) << "Start Verifying false branch.";
+    PADDLE_ENFORCE_EQ((*this)->region(1).size(),
+                      1u,
+                      phi::errors::PreconditionNotMet(
+                          "The size %d of false_region must be 1.",
+                          (*this)->region(0).size()));
+    auto &false_block = (*this)->region(1).front();
+    PADDLE_ENFORCE_GT(
+        false_block.size(),
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The false block must have at least one op yield op."));
+    auto &false_last_op = false_block.back();
     PADDLE_ENFORCE_EQ(true,
                       false_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -249,7 +263,7 @@ void IfOp::VerifyRegion() {
   }
 }
 
-std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
+std::vector<std::vector<pir::Value>> IfOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs_,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -271,8 +285,8 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
   VLOG(6) << "Prepare outputs for if_grad";
 
   std::vector<pir::Type> output_types;
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    if (!stop_gradients[i][0]) {
+  for (size_t i = 1; i < inputs_.size(); ++i) {
+    if (!stop_gradients[i - 1][0]) {
       output_types.push_back(inputs_[i][0].type());
     }
   }
@@ -280,11 +294,11 @@ std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
   auto if_grad = ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
       cond_val, std::move(output_types));
 
-  std::vector<std::vector<pir::OpResult>> res{inputs_.size()};
-  for (size_t i = 0, j = 0; i < inputs_.size(); ++i) {
-    res[i].resize(1);
-    if (!stop_gradients[i][0]) {
-      res[i][0] = if_grad->result(j++);
+  std::vector<std::vector<pir::Value>> res{inputs_.size() - 1};
+  for (size_t i = 1, j = 0; i < inputs_.size(); ++i) {
+    res[i - 1].resize(1);
+    if (!stop_gradients[i - 1][0]) {
+      res[i - 1][0] = if_grad->result(j++);
     }
   }
   return res;
@@ -302,7 +316,7 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
     auto &body = argument.AddRegion().emplace_back();
     for (auto val : inputs) {
       argument.AddOutput(val.type());
-      auto arg = body.AddArgument(val.type());
+      auto arg = body.AddArg(val.type());
       auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
       outs_stop_gradient.push_back(bool_attr ? bool_attr
                                              : builder.bool_attr(false));
@@ -346,17 +360,20 @@ void WhileOp::Print(pir::IrPrinter &printer) {
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  os << ") { \n ^";
+  os << ") { \n";
+  os << printer.indentation() << "^";
   pir::PrintInterleave(
       body().args_begin(),
       body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
+  os << "\n";
+  printer.AddIndentation();
   for (auto &item : body()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
   }
-  os << "\n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void WhileOp::VerifySig() {
@@ -449,7 +466,7 @@ void WhileOp::VerifyRegion() {
   VLOG(4) << "Successful end verifying sub regions for: WhileOp.";
 }
 
-std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
+std::vector<std::vector<pir::Value>> WhileOp::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -469,7 +486,7 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
       PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
                         true,
                         phi::errors::InvalidArgument(
-                            "The last container in foward while op must used "
+                            "The last container in forward while op must used "
                             "empty while construct while_grad op"));
       break;
     }
@@ -514,13 +531,13 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
   }
   auto while_grad = builder.Build<WhileOp>(cond_val, loop_vars);
 
-  std::vector<std::vector<pir::OpResult>> res(inputs.size());
+  std::vector<std::vector<pir::Value>> res(inputs.size());
   for (size_t i = 0, j = 0; i < inputs.size(); ++i) {
     res[i].push_back(stop_gradients[i][0] ? nullptr : while_grad.result(j++));
   }
   return res;
 }
-std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
+std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
     const std::vector<std::vector<pir::Value>> &outputs,
@@ -536,7 +553,7 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
           inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
-  std::vector<std::vector<pir::OpResult>> res{inputs.size()};
+  std::vector<std::vector<pir::Value>> res{inputs.size()};
   res[0].resize(1);
   for (size_t i = 1u; i < inputs.size(); ++i) {
     res[i].resize(1);
@@ -671,6 +688,159 @@ void AssertOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssertOp.";
 }
 
+void SelectInputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectInputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be 3.", in_size);
+    auto input1 = (*this)->operand_source(1).type();
+    auto input2 = (*this)->operand_source(2).type();
+    if (input1.isa<paddle::dialect::DenseTensorType>() &&
+        input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(input1 == input2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 input1,
+                 input2);
+    }
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
+void SelectOutputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectOutputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 2u, "Size %d of inputs must be 2.", in_size);
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 2u, "Size %d of outputs must be equal to 2.", out_size);
+
+    auto out1 = (*this)->result(0).type();
+    auto out2 = (*this)->result(1).type();
+    if (out1.isa<paddle::dialect::DenseTensorType>() &&
+        out2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = out1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = out2.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (out1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               out2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 = out1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 = out2.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(out1 == out2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 out1,
+                 out2);
+    }
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -678,5 +848,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)
 
 #endif

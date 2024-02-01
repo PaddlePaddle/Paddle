@@ -20,7 +20,7 @@ from paddle.distributed.auto_parallel.static.tuner import (
 )
 
 
-class TestTiral(unittest.TestCase):
+class TestTrial(unittest.TestCase):
     def test_trial(self):
         space = ts.TunableSpace()
         space.choice("choice", [0, 1, 2, 3], default=2)

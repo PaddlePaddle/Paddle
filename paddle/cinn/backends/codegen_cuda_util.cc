@@ -94,12 +94,12 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,
-                      Expr(func_node->cuda_axis_info.grid_dim(0)),   // grid_x
-                      Expr(func_node->cuda_axis_info.grid_dim(1)),   // grid_y
-                      Expr(func_node->cuda_axis_info.grid_dim(2)),   // grid_z
-                      Expr(func_node->cuda_axis_info.block_dim(0)),  // block_x
-                      Expr(func_node->cuda_axis_info.block_dim(1)),  // block_y
-                      Expr(func_node->cuda_axis_info.block_dim(2)),  // block_z
+                      func_node->cuda_axis_info.grid_dim(0),   // grid_x
+                      func_node->cuda_axis_info.grid_dim(1),   // grid_y
+                      func_node->cuda_axis_info.grid_dim(2),   // grid_z
+                      func_node->cuda_axis_info.block_dim(0),  // block_x
+                      func_node->cuda_axis_info.block_dim(1),  // block_y
+                      func_node->cuda_axis_info.block_dim(2),  // block_z
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,
@@ -114,15 +114,16 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
   for (int i = 0; i < args.size(); ++i) {
     if (args[i].is_var()) {
       ir::Expr call_get_value_in_kernel_args =
-          ir::Call::Make(Int(32),
+          ir::Call::Make(Int(64),
                          runtime::intrinsic::get_value_in_cuda_kernel_args,
                          {kernel_args_, ir::Expr(i)},
                          {},
                          ir::CallType::Extern,
                          ir::FunctionRef(),
                          0);
-      ir::Expr stmt = ir::Let::Make(ir::Expr(args[i].var_arg()),
-                                    call_get_value_in_kernel_args);
+      ir::Expr let_symbol = ir::Expr(args[i].var_arg());
+      let_symbol->set_type(type_of<int64_t>());
+      ir::Expr stmt = ir::Let::Make(let_symbol, call_get_value_in_kernel_args);
       arg_defs_.push_back(stmt);
     }
   }

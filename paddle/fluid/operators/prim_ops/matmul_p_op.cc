@@ -34,7 +34,7 @@ class MatmulPrimOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Prim operator matmul_p should not be excuted directly"));
+        "Prim operator matmul_p should not be executed directly"));
   }
 };
 
