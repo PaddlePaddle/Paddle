@@ -1486,11 +1486,11 @@ static PyObject* tensor__lt__method(TensorObject* self,
   // }
 
   // // 4. calculation
-  // VLOG(6) << "Calling less_than_ad_func in tensor__lt__method";
-  // {
-  //   eager_gil_scoped_release guard;
-  //   ret = less_than_ad_func(self_tensor, other_tensor);
-  // }
+  VLOG(6) << "Calling less_than_ad_func in tensor__lt__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = less_than_ad_func(self_tensor, other_tensor);
+  }
 
   return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
