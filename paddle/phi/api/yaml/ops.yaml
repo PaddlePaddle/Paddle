@@ -200,6 +200,19 @@
   backward : as_strided_grad
   no_need_buffer : input
 
+- op : asgd_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(d_out), Tensor(y_out), Tensor(master_param_out)
+  infer_meta :
+    func : ASGDInferMeta
+  kernel :
+    func : asgd
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate, n
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (d -> d_out), (y -> y_out), (master_param -> master_param_out)
+
 - op : asin
   args : (Tensor x)
   output : Tensor(out)
@@ -1188,6 +1201,16 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+
+- op : graph_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
+  output : Tensor(out), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : GraphSampleNeighborsInferMeta
+  kernel :
+    func : graph_sample_neighbors
+    data_type : row
+  optional : eids, perm_buffer
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)

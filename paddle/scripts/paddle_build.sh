@@ -61,7 +61,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default
     export FLAGS_call_stack_level=2
-    export FLAGS_set_to_1d=False
 }
 
 function cmake_base() {
@@ -987,7 +986,7 @@ function check_run_sot_ci() {
 function run_sot_test() {
     PY_VERSION=$1
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
-    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+    PY_VERSION_NO_DOT=$(echo $PY_VERSION | sed 's/\.//g')
 
     export STRICT_MODE=1
     export COST_MODEL=False
@@ -1003,10 +1002,28 @@ function run_sot_test() {
     # Run unittest
     failed_tests=()
 
+    # Skip single tests that are currently not supported
+    declare -a skip_files
+    skiplist_filename="./skip_files_py$PY_VERSION_NO_DOT"
+    if [ -f "$skiplist_filename" ];then
+        # Prevent missing lines
+        echo "" >> "$skiplist_filename"
+        while IFS= read -r line; do  
+            skip_files+=("$line")
+            echo "$line"
+        done < "$skiplist_filename"
+    else
+        skip_files=()
+    fi
+
     for file in ./test_*.py; do
         # check file is python file
         if [ -f "$file" ]; then
-            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            if [[ "${skip_files[*]}"  =~ "${file}" ]]; then
+                echo "skip ${PY_VERSION_NO_DOT} ${file}"
+                continue
+            fi
+            echo Running:" STRICT_MODE=1 COST_MODEL=False MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True python " $file
             # run unittests
             python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
 
@@ -4363,15 +4380,12 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11 3.12)
+        PYTHON_VERSIONS=(3.12 3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            # Currently, only compile on Python 3.12
-            if [ "${PY_VERSION}" != "3.12" ]; then
-                run_sot_test $PY_VERSION
-            fi
+            run_sot_test $PY_VERSION
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
         ;;

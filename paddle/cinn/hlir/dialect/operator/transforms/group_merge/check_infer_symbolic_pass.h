@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,16 @@
 
 #pragma once
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/pass/pass.h"
 
-namespace cinn::common {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-symbol::DimExpr SimplifyDimExpr(const symbol::DimExpr&);
-
-}
+// This is a helper pass for checking the symbolic inference accuracy.
+std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

@@ -71,7 +71,7 @@ class RuntimeSymbols {
   /**
    * Lookup a symbol from the registry.
    * @param name Name of the symbol.
-   * @return The address if existes, or nullptr will return.
+   * @return The address if exists, or nullptr will return.
    */
   void *Lookup(absl::string_view name) const;
 

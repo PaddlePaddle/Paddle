@@ -40,7 +40,7 @@
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -65,11 +65,6 @@ bool SameInputOutputShape(
   return x.shape() == out.shape();
 }
 
-void ReplaceAllUsesWithInput(paddle::dialect::ExpandOp expand) {
-  pir::Value x = expand.x();
-  expand.out().ReplaceAllUsesWith(x);
-}
-
 // Returns true if success
 bool EraseOneExpand(
     pir::Block* block,
@@ -83,9 +78,11 @@ bool EraseOneExpand(
     auto generate_shape_op =
         expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
     CHECK_NOTNULL(generate_shape_op);
-    ReplaceAllUsesWithInput(expand);
+    rewriter.ReplaceAllUsesWith(expand.out(), expand.x());
     rewriter.EraseOp(expand);
-    rewriter.EraseOp(generate_shape_op);
+    if (generate_shape_op->use_empty()) {
+      rewriter.EraseOp(generate_shape_op);
+    }
     return true;
   }
   return false;
@@ -131,12 +128,14 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
-      group->value_to_shape_or_data_exprs.emplace(
-          broadcast_out, group->GetShapeOrDataExprs(expand_out));
+      group->SetShapeOrDataExprs(broadcast_out,
+                                 group->GetShapeOrDataExprs(expand_out));
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
-      generate_shape_op->Erase();
+      if (generate_shape_op->use_empty()) {
+        generate_shape_op->Erase();
+      }
     }
   }
 }
@@ -175,7 +174,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     return shape_analysis.GetShapeOrDataForValue(value);
   };
 
-  std::vector<pir::Value> lhs_minial_inputs;
+  std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
@@ -183,11 +182,11 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {lhs_expr},
                                                   group_inputs,
-                                                  &lhs_minial_inputs,
+                                                  &lhs_minimal_inputs,
                                                   &lhs_output_dim_expr_attrs,
                                                   &lhs_symbol_bindings);
   CHECK(success);
-  std::vector<pir::Value> rhs_minial_inputs;
+  std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
@@ -195,20 +194,22 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {rhs_expr},
                                                   group_inputs,
-                                                  &rhs_minial_inputs,
+                                                  &rhs_minimal_inputs,
                                                   &rhs_output_dim_expr_attrs,
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
   auto lhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              lhs_minial_inputs, lhs_output_dim_expr_attrs, lhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
+                                                 lhs_output_dim_expr_attrs,
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              rhs_minial_inputs, rhs_output_dim_expr_attrs, rhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
+                                                 rhs_output_dim_expr_attrs,
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder
@@ -243,13 +244,13 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
               std::vector<symbol::DimExpr>{shape_dim_expr.size()},
               shape_dim_expr)});
     } else {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(shape_dim_expr)});
@@ -448,7 +449,6 @@ void SimplyConditionBlock(
 
 void CompileGroupToJitKernelOp(
     const std::vector<pir::Value>& group_inputs,
-    const std::vector<pir::Type>& output_types,
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     pir::PatternRewriter& rewriter,  // NOLINT
     std::unordered_map<pir::Block*, cinn::dialect::ir::GroupPtr>* group_map) {
@@ -461,12 +461,16 @@ void CompileGroupToJitKernelOp(
   auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_list);
   VLOG(4) << "The size of group_map is : " << group_map->size();
   for (auto& [block, group] : *group_map) {
+    std::vector<pir::Type> output_types;
+    const auto& group_output_values = group->output_values;
+    for (size_t i = 0; i < group_output_values.size(); ++i) {
+      output_types.push_back(group_output_values[i].type());
+    }
     auto& yeild_op = block->back();
     CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     rewriter.set_insertion_point(&yeild_op);
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
-    auto group_output_values = group->GetGroupOutputValues();
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
     for (size_t i = 0; i < jit_kernel_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(group_output_values[i],
@@ -517,8 +521,7 @@ pir::Operation* ComplieBroadcastTreeToConditionBlock(
   VLOG(6) << "After simply condition block: " << *program;
 
   // 3. complie condition block to jit_kernel_op
-  CompileGroupToJitKernelOp(
-      group_inputs, output_types, pir_compiler, rewriter, &group_map);
+  CompileGroupToJitKernelOp(group_inputs, pir_compiler, rewriter, &group_map);
   VLOG(6) << "complie condition block to jit_kernel_op: " << *program;
 
   return cond_op;
@@ -640,8 +643,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    group->value_to_shape_or_data_exprs =
-        CreateGroupShapeOrDataExprs(group, shape_analysis);
+    group->set_value_to_shape_or_data_exprs(
+        CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
@@ -655,14 +658,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       value2id[group->output_values[i]] = i;
     }
 
-    auto yeild_op = fusion_op.GetOperators().back();
+    auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(
           fusion_op.result(i),
-          complied_op->result(value2id[yeild_op->operand_source(i)]));
+          complied_op->result(value2id[yield_op->operand_source(i)]));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            complied_op->result(value2id[yeild_op->operand_source(i)]),
+            complied_op->result(value2id[yield_op->operand_source(i)]),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "
@@ -713,9 +716,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // Rebuild output_ops and input_ops of the group
-    auto yeild_op = fusion_op.GetOperators().back();
-    for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
-      group->output_ops.insert(yeild_op->operand_source(i).defining_op());
+    auto yield_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      group->output_ops.insert(yield_op->operand_source(i).defining_op());
     }
 
     // Rebuild other informations

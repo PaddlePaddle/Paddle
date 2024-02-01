@@ -28,9 +28,6 @@ class IR_API ShapeDialect : public Dialect {
 
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(Operation* op,
-                      IrPrinter& printer) const override;  // NOLINT
-
  private:
   void initialize();
 };

@@ -528,47 +528,62 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     micro_batch_size = cur_cfg['micro_batch_size']
     recompute_granularity = cur_cfg['recompute_granularity']
 
-    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {dp_degree} --mp_degree {mp_degree} \
-                                --pp_degree {pp_degree} --vpp_degree {vpp_degree} \
-                                --sharding_degree {sharding_degree} --sharding_stage {sharding_stage} \
-                                --use_recompute {use_recompute} --micro_batch_size {micro_batch_size} \
-                                --recompute_granularity {recompute_granularity}"
+    memory_estimation_cmd = [
+        "python",
+        memory_estimation_tool,
+        "--dp_degree",
+        str(dp_degree),
+        "--mp_degree",
+        str(mp_degree),
+        "--pp_degree",
+        str(pp_degree),
+        "--vpp_degree",
+        str(vpp_degree),
+        "--sharding_degree",
+        str(sharding_degree),
+        "--sharding_stage",
+        str(sharding_stage),
+        "--use_recompute",
+        str(use_recompute),
+        "--micro_batch_size",
+        str(micro_batch_size),
+        "--recompute_granularity",
+        str(recompute_granularity),
+    ]
 
     # get model config
     hidden_size = model_cfg.get('hidden_size', None)
-    memory_estimation_cmd += (
-        f" --hidden_size {hidden_size}" if hidden_size is not None else ""
-    )
+    if hidden_size is not None:
+        memory_estimation_cmd.extend(["--hidden_size", str(hidden_size)])
+
     num_attention_heads = model_cfg.get('num_attention_heads', None)
-    memory_estimation_cmd += (
-        f" --num_attention_heads {num_attention_heads}"
-        if num_attention_heads is not None
-        else ""
-    )
+    if num_attention_heads is not None:
+        memory_estimation_cmd.extend(
+            ["--num_attention_heads", str(num_attention_heads)]
+        )
+
     num_layers = model_cfg.get('num_layers', None)
-    memory_estimation_cmd += (
-        f" --num_layers {num_layers}" if num_layers is not None else ""
-    )
+    if num_layers is not None:
+        memory_estimation_cmd.extend(["--num_layers", str(num_layers)])
+
     max_sequence_length = model_cfg.get('max_sequence_length', None)
-    memory_estimation_cmd += (
-        f" --max_sequence_length {max_sequence_length}"
-        if max_sequence_length is not None
-        else ""
-    )
+    if max_sequence_length is not None:
+        memory_estimation_cmd.extend(
+            ["--max_sequence_length", str(max_sequence_length)]
+        )
+
     vocab_size = model_cfg.get('vocab_size', None)
-    memory_estimation_cmd += (
-        f" --vocab_size {vocab_size}" if vocab_size is not None else ""
-    )
+    if vocab_size is not None:
+        memory_estimation_cmd.extend(["--vocab_size", str(vocab_size)])
+
     intermediate_size = model_cfg.get('intermediate_size', None)
-    memory_estimation_cmd += (
-        f" --intermediate_size {intermediate_size}"
-        if intermediate_size is not None
-        else ""
-    )
+    if intermediate_size is not None:
+        memory_estimation_cmd.extend(
+            ["--intermediate_size", str(intermediate_size)]
+        )
 
     result = subprocess.run(
         memory_estimation_cmd,
-        shell=True,
         capture_output=True,
         text=True,
     )
@@ -599,4 +614,100 @@ def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
             return True
         if not result[tuner_cfg['metric_cfg']['name']]:
             return True
+    return False
+
+
+def is_invalid(cur_cfg, invalid_strategy):
+    mapping = {
+        "dp_degree": "dp",
+        "mp_degree": "mp",
+        "pp_degree": "pp",
+        "vpp_degree": "vpp",
+        "micro_batch_size": "mbs",
+        "sharding_degree": "sharding",
+        "sharding_stage": "stage",
+        "use_recompute": "recompute",
+        "recompute_granularity": "granularity",
+    }
+    granularity_mapping = {0: "full", 1: "full_attn", 2: "core_attn"}
+    reversed_mapping = {}
+    for key in mapping:
+        reversed_mapping[mapping[key]] = key
+
+    for strategy in invalid_strategy:
+        assert isinstance(strategy, str)
+        dims = strategy.split("_")
+        has_matched = 0
+        for dim in dims:
+            matched = None
+            for key in reversed_mapping:
+                if dim.startswith(key):
+                    matched = key
+                    break
+            if matched:
+                value = dim[len(matched)]
+                # * means this strategy turned on
+                if matched in ["dp", "mp", "pp", "vpp", "sharding"]:
+                    if value == "*":
+                        if cur_cfg[reversed_mapping[matched]] != 1:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "recompute":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping[matched]]:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = bool(int(value))
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "stage":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping["sharding"]] != 1:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "mbs":
+                    if value == "*":
+                        has_matched += 1
+                        continue
+                    else:
+                        value = int(value)
+                        if cur_cfg[reversed_mapping[matched]] == value:
+                            has_matched += 1
+                            continue
+                elif matched == "granularity":
+                    if value == "*":
+                        if cur_cfg[reversed_mapping["use_recompute"]]:
+                            has_matched += 1
+                            continue
+                    else:
+                        value = int(value)
+                        granularity = granularity_mapping[value]
+                        if cur_cfg[reversed_mapping[matched]] == granularity:
+                            has_matched += 1
+                            continue
+    if has_matched == len(dims):
+        return True
+    return False
+
+
+@register_prune
+def prune_by_invalid_strategy(tuner_cfg, cur_cfg, history_cfgs=[]):
+    if tuner_cfg.get("invalid_strategy", None):
+        invalid_strategy = tuner_cfg["invalid_strategy"]
+        assert isinstance(invalid_strategy, list)
+        if is_invalid(cur_cfg, invalid_strategy):
+            return True
+
     return False

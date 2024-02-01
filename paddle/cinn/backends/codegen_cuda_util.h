@@ -109,12 +109,12 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                        {kernel_ptr,
                         kernel_args,
                         kernel_args_num,
-                        Expr(func->cuda_axis_info.grid_dim(0)),   // grid_x
-                        Expr(func->cuda_axis_info.grid_dim(1)),   // grid_y
-                        Expr(func->cuda_axis_info.grid_dim(2)),   // grid_z
-                        Expr(func->cuda_axis_info.block_dim(0)),  // block_x
-                        Expr(func->cuda_axis_info.block_dim(1)),  // block_y
-                        Expr(func->cuda_axis_info.block_dim(2)),  // block_z
+                        func->cuda_axis_info.grid_dim(0),   // grid_x
+                        func->cuda_axis_info.grid_dim(1),   // grid_y
+                        func->cuda_axis_info.grid_dim(2),   // grid_z
+                        func->cuda_axis_info.block_dim(0),  // block_x
+                        func->cuda_axis_info.block_dim(1),  // block_y
+                        func->cuda_axis_info.block_dim(2),  // block_z
                         kernel_stream},
                        {},
                        ir::CallType::Extern,
@@ -162,6 +162,9 @@ struct CollectBucketStrategyHostFunctionVisitor
 
  private:
   void Visit(const ir::_Module_* op, Expr* expr) {
+    if (op->functions.size() == 1 && op->predicates.size() == 0) {
+      expr->as_module()->predicates.push_back(ir::Expr(true));
+    }
     CHECK_EQ(op->functions.size(), op->predicates.size());
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);

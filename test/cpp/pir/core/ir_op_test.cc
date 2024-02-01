@@ -64,7 +64,7 @@ TEST(op_test, region_test) {
   // (3) Test custom operation printer
   std::stringstream ss;
   op1->Print(ss);
-  EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
+  EXPECT_EQ(ss.str(), "(%0) = \"test.operation1\" ()\n");
 
   region.push_back(new pir::Block());
   region.push_front(new pir::Block());
