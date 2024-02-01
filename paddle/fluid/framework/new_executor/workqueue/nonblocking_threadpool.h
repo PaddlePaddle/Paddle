@@ -109,7 +109,6 @@ class ThreadPoolTempl {
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
     Task t = env_.CreateTask(std::move(fn));
     PerThread* pt = GetPerThread();
-    uint64_t num_tasks = num_tasks_.fetch_add(1, std::memory_order_relaxed) + 1;
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.
       Queue& q = thread_data_[pt->thread_id].queue;
@@ -125,6 +124,8 @@ class ThreadPoolTempl {
       Queue& q = thread_data_[start + rnd].queue;
       t = q.PushBack(std::move(t));
     }
+    num_tasks_.fetch_add(1);
+
     // Note: below we touch this after making w available to worker threads.
     // Strictly speaking, this can lead to a racy-use-after-free. Consider that
     // Schedule is called from a thread that is neither main thread nor a worker
@@ -134,14 +135,14 @@ class ThreadPoolTempl {
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
       // Allow 'false positive' which makes a redundant notification.
-      if (num_tasks > num_threads_ - blocked_) {
+      if (num_tasks_ > num_threads_ - blocked_) {
         VLOG(6) << "Add task, Notify";
         ec_.Notify(false);
       } else {
         VLOG(6) << "Add task, No Notify";
       }
     } else {
-      num_tasks_.fetch_sub(1, std::memory_order_relaxed);
+      num_tasks_.fetch_sub(1);
       env_.ExecuteTask(t);  // Push failed, execute directly.
     }
   }
@@ -290,7 +291,7 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
-          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
+          num_tasks_.fetch_sub(1);
         }
       }
     } else {
