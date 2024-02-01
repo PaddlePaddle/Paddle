@@ -3393,7 +3393,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   }
 }
 
-Predictor *PredictorPool::Retrive(size_t idx) {
+Predictor *PredictorPool::Retrieve(size_t idx) {
   PADDLE_ENFORCE_LT(
       idx,
       preds_.size() + 1,

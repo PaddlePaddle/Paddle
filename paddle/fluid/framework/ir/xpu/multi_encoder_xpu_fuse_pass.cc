@@ -1252,7 +1252,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
 static std::vector<Node*> GetSingleEncoders(ir::Graph* graph) {
   std::vector<Node*> single_encoders;
   for (auto* node : graph->Nodes()) {
-    // Find first singld_encoder_xpu
+    // Find first single_encoder_xpu
     if (node->IsVar() || node->Op()->Type() != "single_encoder_xpu") continue;
     bool is_first_encoder = true;
     for (auto* in_node : node->inputs) {

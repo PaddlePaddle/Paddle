@@ -87,6 +87,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
@@ -153,6 +154,7 @@ USE_PIR_PASS(batch_norm_act_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
+PHI_DECLARE_bool(check_infer_symbolic);
 
 namespace paddle {
 namespace pybind {
@@ -296,14 +298,21 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
-      .def("move_parameters_from",
+      .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
-             self->set_parameters(std::move(other->parameters()));
+             self->set_parameters(other->parameters());
            })
       .def(
           "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "clone",
+          [](std::shared_ptr<Program> self) {
+            pir::IrMapping mapper;
+            return self->Clone(mapper);
+          },
           return_value_policy::reference)
       .def(
           "global_block",
@@ -432,7 +441,8 @@ void BindBlock(py::module *m) {
            [](Block &self) -> py::list {
              py::list param_list;
              for (auto &op : self) {
-               if (op.HasAttribute(kAttrIsPersisable)) {
+               if (op.name() == "builtin.parameter" &&
+                   op.HasAttribute(kAttrIsPersisable)) {
                  auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
@@ -490,6 +500,7 @@ void BindOperation(py::module *m) {
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
+      .def("has_attr", &Operation::HasAttribute)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -1570,8 +1581,15 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = HasDynamicShape(program);
-  pass_manager->EnableIRPrinting();
 
+  if (FLAGS_print_ir) {
+    pass_manager->EnableIRPrinting();
+  }
+
+  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
