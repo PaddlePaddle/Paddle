@@ -295,7 +295,7 @@ def to_static(
 
 def not_to_static(func=None):
     """
-    A Decorator to suppresses the convertion of a function.
+    A Decorator to suppresses the convention of a function.
 
     Args:
         func(callable): The function to decorate.
@@ -363,7 +363,7 @@ class _SaveLoadConfig:
         # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
         self.input_names_after_prune = None
 
-        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        # in the scene of llm-inference, pruning program can cause unexpectable result, an option to skip prune is necessary
         self.skip_prune_program = False
 
     @property
@@ -493,7 +493,7 @@ def _parse_load_config(configs):
 def _get_input_var_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
-        "When using jit.save, please set InputSepc's name in "
+        "When using jit.save, please set InputSpec's name in "
         "to_static(input_spec=[]) and jit.save(input_spec=[]) "
         "and make sure they are consistent."
     )
@@ -521,7 +521,7 @@ def _get_input_var_names(inputs, input_spec, input_names_after_prune):
         # no prune
         return input_var_names
     else:
-        # fileter out non-tensor type spec infos.
+        # filter out non-tensor type spec infos.
         input_spec = [
             spec
             for spec in input_spec
@@ -1154,7 +1154,7 @@ def save(layer, path, input_spec=None, **configs):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
-        # 4. build input & output of save_infernece_model
+        # 4. build input & output of save_inference_model
         # NOTE(chenweihang): [ Get input variables name ]
         # There are two cases, whether to prune the inputs or not
         # - not prune inputs (recommend):
@@ -1285,7 +1285,7 @@ def load(path, **configs):
     .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
-        1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
+        1. Imperative mode do not support LoDTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
