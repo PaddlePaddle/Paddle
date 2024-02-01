@@ -568,11 +568,10 @@ Tensor hardswish_decomp(const Tensor& x) {
   const double SCALE = 6.0;
 
   // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
-  auto org_dim = common::vectorize(x.dims());
   auto minimun_out =
-      minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
-                            full<T>(org_dim, 0.0, x.dtype())),
-                 full<T>(org_dim, THRESHOLD, x.dtype()));
+      minimum<T>(maximum<T>(x + full<T>(empty_shape, OFFSET, x.dtype()),
+                            full<T>(empty_shape, 0.0, x.dtype())),
+                 full<T>(empty_shape, THRESHOLD, x.dtype()));
   return (minimun_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
