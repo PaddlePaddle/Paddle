@@ -1535,6 +1535,18 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : graph_khop_sampler
+  inputs :
+    {row : Row, colptr : Col_Ptr, x : X, eids : Eids}
+  outputs :
+    {out_src : Out_Src, out_dst : Out_Dst, sample_index : Sample_Index, reindex_x : Reindex_X, out_eids : Out_Eids}
+
+- op : graph_sample_neighbors
+  inputs :
+    {row : Row, colptr : Col_Ptr, x : X, eids : Eids, perm_buffer : Perm_Buffer}
+  outputs :
+    {out : Out, out_count : Out_Count, out_eids : Out_Eids}
+
 - op : greater_equal
   inputs :
     {x : X, y : Y}

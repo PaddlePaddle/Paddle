@@ -137,6 +137,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_dot_product_attention',
     'nce',
     'lars_momentum',
+    'lars_momentum_',
     'max_pool2d_v2',
     'recv_v2',
     'rnn_',

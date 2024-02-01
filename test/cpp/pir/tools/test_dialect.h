@@ -22,8 +22,7 @@ class TestDialect : public pir::Dialect {
  public:
   explicit TestDialect(pir::IrContext *context);
   static const char *name() { return "test"; }
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;
+  pir::OpPrintFn PrintOperation(pir::Operation *op) const override;
 
  private:
   void initialize();
