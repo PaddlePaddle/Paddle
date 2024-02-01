@@ -22,14 +22,6 @@
 #include <fstream>
 #include <iostream>
 #include "glog/logging.h"
-#include "paddle/fluid/platform/flags.h"
-
-PADDLE_DEFINE_EXPORTED_string(pass_controller_config_path,
-                              "",
-                              "Enable pass controller for manage passes");
-PADDLE_DEFINE_EXPORTED_bool(pass_controller_radical_mode,
-                            false,
-                            "Enable switch to radical mode");
 
 namespace paddle {
 int GetTrtVersion() {
@@ -315,12 +307,12 @@ std::vector<VersionCtrlState> GetVersionRange(std::string range,
   return res;
 }
 bool PaddlePassContorller::LoadDefaultPassCtrl() {
-  if (FLAGS_pass_controller_config_path == "") {
+  if (config_dir_ == "") {
     return LoadDefaultConfig();
   } else {
     bool succeed = true;
     LOG(INFO) << "[PaddlePassController]Load  user configured!";
-    std::ifstream configFile(FLAGS_pass_controller_config_path);
+    std::ifstream configFile(config_dir_);
     if (configFile.is_open()) {
       std::map<std::string,
                std::map<std::string, std::map<std::string, std::string>>>
@@ -482,11 +474,11 @@ std::string GetCtrlRuntimeStatus(int64_t mixed_precision_mode,
 }
 
 const std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
-    const std::vector<std::string> passes,
-    const int64_t mixed_precision_mode,
-    const int64_t tensorrt_precision_mode,
-    const bool use_gpu,
-    const bool use_trt) {
+    const std::vector<std::string>& passes,
+    int64_t mixed_precision_mode,
+    int64_t tensorrt_precision_mode,
+    bool use_gpu,
+    bool use_trt) {
   if (pass_ctrl_map_.empty()) {
     bool succeed = LoadDefaultPassCtrl();
     if (!succeed) {
@@ -497,9 +489,8 @@ const std::vector<std::string> PaddlePassContorller::GetCtrlPassList(
   auto pass_runtime_status = GetCtrlRuntimeStatus(
       mixed_precision_mode, tensorrt_precision_mode, use_gpu, use_trt);
   LOG(INFO) << "[pass controller] pass_runtime_status: " << pass_runtime_status;
-  auto pass_ctrl_mode = FLAGS_pass_controller_radical_mode
-                            ? PassCtrlMode::RadicalMode
-                            : PassCtrlMode::DefaultMode;
+  auto pass_ctrl_mode =
+      pass_ctrl_mode_ ? PassCtrlMode::RadicalMode : PassCtrlMode::DefaultMode;
   if (pass_ctrl_mode == PassCtrlMode::RadicalMode) {
     LOG(INFO) << "pass controller run in RadicalMode mode!";
   }

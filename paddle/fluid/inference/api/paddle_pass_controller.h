@@ -106,30 +106,35 @@ struct PD_INFER_DECL PassContorller {
 };
 
 struct PD_INFER_DECL PaddlePassContorller {
-  enum class Precision {
-    kFloat32 = 0,  ///< fp32
-    kInt8,         ///< int8
-    kHalf,         ///< fp16
-    kBf16,         ///< bf16
-  };
   PaddlePassContorller() {}
   explicit PaddlePassContorller(const PaddlePassContorller& other) {
     pass_ctrl_map_ = other.pass_ctrl_map_;
     ctrl_passes_ = other.ctrl_passes_;
+    config_dir_ = other.config_dir_;
+    pass_ctrl_mode_ = other.pass_ctrl_mode_;
   }
   bool LoadDefaultPassCtrl();
   bool LoadDefaultConfig();
   void SetPassStatus(const std::string& pass_name, const int64_t pass_status);
   const std::vector<std::string> GetCtrlPassList(
-      const std::vector<std::string> passes,
-      const int64_t mixed_precision_mode,
-      const int64_t tensorrt_precision_mode,
-      const bool use_gpu,
-      const bool use_trt);
+      const std::vector<std::string>& passes,
+      int64_t mixed_precision_mode,
+      int64_t tensorrt_precision_mode,
+      bool use_gpu,
+      bool use_trt);
+  void SetPassCtrlMode(bool pass_ctrl_mode) {
+    pass_ctrl_mode_ =
+        pass_ctrl_mode ? PassCtrlMode::RadicalMode : PassCtrlMode::DefaultMode;
+  }
+  void SetPassCtrlCfigDir(const std::string& config_dir) {
+    config_dir_ = config_dir;
+  }
 
  protected:
   // pass->PassContorller
   std::map<std::string, PassContorller> pass_ctrl_map_;
   std::vector<std::string> ctrl_passes_;
+  std::string config_dir_;
+  PassCtrlMode pass_ctrl_mode_{PassCtrlMode::DefaultMode};
 };
 };  // namespace paddle

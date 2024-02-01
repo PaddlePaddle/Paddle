@@ -10,7 +10,7 @@ if(WITH_MKLDNN)
   cc_library(
     ${mkldnn_quantizer_cfg}
     SRCS mkldnn_quantizer_config.cc
-    DEPS lod_tensor paddle_pass_builder paddle_pass_controller)
+    DEPS lod_tensor paddle_pass_builder)
   set(mkldnn_quantizer_cfg
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
@@ -21,12 +21,12 @@ cc_library(
   SRCS paddle_infer_contrib.cc
   DEPS zero_copy_tensor)
 cc_library(
-  paddle_pass_controller
-  SRCS paddle_pass_controller.cc
-  DEPS framework_proto)
-cc_library(
   paddle_pass_builder
   SRCS paddle_pass_builder.cc
+  DEPS framework_proto)
+cc_library(
+  paddle_pass_controller
+  SRCS paddle_pass_controller.cc
   DEPS framework_proto)
 
 set(paddle_inference_api_deps

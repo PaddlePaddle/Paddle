@@ -310,6 +310,11 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   const std::string& params_file() const { return params_file_; }
 
+  void EnablePassController(bool use_pass_controller) {
+    use_pass_controller_ = use_pass_controller;
+  }
+  bool use_pass_controller() const { return use_pass_controller_; }
+
   // Padding related.
 
   ///
@@ -1407,6 +1412,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
 
+  // pass controller
+  bool use_pass_controller_{true};
   // fleet exe related
   DistConfig dist_config_{};
 

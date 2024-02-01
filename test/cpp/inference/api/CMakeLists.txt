@@ -959,6 +959,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(
+      analyzer_pass_controller_tester
+      SRCS
+      analyzer_pass_controller_tester.cc
+      EXTRA_DEPS
+      common
+      paddle_inference_shared
+      --infer_model=${TRT_MODEL_INSTALL_DIR}/)
+    inference_analysis_test(
       trt_mark_trt_engine_outputs_test
       SRCS
       trt_mark_trt_engine_outputs_test.cc
@@ -1298,7 +1306,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
-
     inference_analysis_test(
       paddle_infer_api_copy_tensor_tester
       SRCS
