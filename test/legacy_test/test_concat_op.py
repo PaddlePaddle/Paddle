@@ -720,7 +720,7 @@ class TestConcatAPI(unittest.TestCase):
             def test_input_same_dtype():
                 paddle.concat([x7, x8])
 
-            self.assertRaises(TypeError, test_input_same_dtype)
+            self.assertRaises(ValueError, test_input_same_dtype)
 
 
 class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
