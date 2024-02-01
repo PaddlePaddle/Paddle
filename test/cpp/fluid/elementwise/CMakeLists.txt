@@ -5,7 +5,6 @@ paddle_test(
        op_registry
        scope
        device_context
-       enforce
        common)
 cc_test(
   test_elementwise_div_grad_grad
