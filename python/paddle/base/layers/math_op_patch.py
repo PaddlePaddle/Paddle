@@ -264,6 +264,30 @@ def monkey_patch_variable():
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
 
+    @static_only
+    def contiguous(self):
+        """
+        Variable don't have 'contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
+        )
+        return self
+
+    @static_only
+    def is_contiguous(self):
+        """
+        Variable don't have 'is_contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
+        )
+        return True
+
     def astype(self, dtype):
         """
         **Notes**:
@@ -716,6 +740,8 @@ def monkey_patch_variable():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('contiguous', contiguous),
+        ('is_contiguous', is_contiguous),
         ('append', append),
         ('item', _item),
         ('pop', pop),
