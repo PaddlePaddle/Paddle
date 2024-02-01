@@ -62,7 +62,6 @@ void CompilationTask::Lowering() {
       op_lowerer.BucketLower(context_->group_, false, true, false));
   // context_->SetLoweredFuncs(
   //     op_lowerer.BucketLower(context_->group_, false, false, false));
-  op_lowerer.InsertNameGeneToScope(context_->scope_);
 }
 
 void CompilationTask::CodegenAndJit() {
