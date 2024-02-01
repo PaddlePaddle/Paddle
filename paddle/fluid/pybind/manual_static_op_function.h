@@ -379,17 +379,17 @@ static PyObject *static_api_slice_array(PyObject *self,
           starts_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
 
-    PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
+    PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value ends;
     if (PyObject_CheckIRValue(ends_obj)) {
-      ends = CastPyArg2Value(ends_obj, "slice_array", 1);
+      ends = CastPyArg2Value(ends_obj, "slice_array", 2);
     } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
-          CastPyArg2VectorOfValue(ends_obj, "slice_array", 1);
+          CastPyArg2VectorOfValue(ends_obj, "slice_array", 2);
       ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
     } else {
       std::vector<int64_t> ends_tmp =
-          CastPyArg2Longs(ends_obj, "slice_array", 1);
+          CastPyArg2Longs(ends_obj, "slice_array", 2);
       ends = paddle::dialect::full_int_array(
           ends_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
