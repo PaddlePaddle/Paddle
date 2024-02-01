@@ -95,6 +95,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -1591,6 +1592,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pass_manager->AddPass(
+      std::make_unique<cinn::dialect::ir::RemoveUnchangedReshapePass>());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
