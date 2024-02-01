@@ -520,7 +520,7 @@ class TestTransposeOpError(unittest.TestCase):
                 x_fp16 = paddle.static.data(
                     name='x1', shape=[-1, 10, 5, 3], dtype='float16'
                 )
-                self.transpose(x_fp16, perm=[1, 0, 2])
+                paddle.transpose(x_fp16, perm=[1, 0, 2])
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
