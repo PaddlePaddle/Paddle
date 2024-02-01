@@ -22,7 +22,7 @@ void ControlFlowDialect::initialize() {
   RegisterOps<YieldOp, StackCreateOp, TuplePushOp, TuplePopOp>();
 }
 
-void ControlFlowDialect::PrintType(pir::Type type, std::ostream &os) const {
+void ControlFlowDialect::PrintType(pir::Type type, std::ostream& os) const {
   os << name();
   os << '.';
   if (type.isa<StackType>()) {
@@ -36,13 +36,14 @@ void ControlFlowDialect::PrintType(pir::Type type, std::ostream &os) const {
   }
 }
 
-void ControlFlowDialect::PrintOperation(pir::Operation *op,
-                                        pir::IrPrinter &printer) const {
+pir::OpPrintFn ControlFlowDialect::PrintOperation(pir::Operation* op) const {
   if (auto create_op = op->dyn_cast<StackCreateOp>()) {
-    create_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation* op, pir::IrPrinter& printer) {
+      auto create_op = op->dyn_cast<StackCreateOp>();
+      create_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 }  // namespace pir
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
