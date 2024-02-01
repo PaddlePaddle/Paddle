@@ -40,11 +40,13 @@ from .tensor.linalg import (
     solve,
     svd,
     triangular_solve,
+    vector_norm,
 )
 
 __all__ = [
     'cholesky',
     'norm',
+    'vector_norm',
     'cond',
     'cov',
     'corrcoef',

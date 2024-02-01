@@ -331,12 +331,12 @@ class TestSetitemInDygraph(unittest.TestCase):
         zero.stop_gradient = False
 
         zero1 = zero * 1
-        zero1[paddle.to_tensor([0, 1])] = vv
+        zero1[1, paddle.to_tensor([2, 0, 1])] = vv
 
         loss = zero1.sum()
         loss.backward()
 
-        expected_v_grad = np.ones((3, 1)) * 10.0
+        expected_v_grad = np.ones((3, 1)) * 5.0
         if self.dtype == 'bfloat16':
             np.testing.assert_allclose(
                 v.grad.cast('float32').numpy(), expected_v_grad

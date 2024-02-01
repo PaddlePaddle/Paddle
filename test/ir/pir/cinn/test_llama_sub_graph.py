@@ -14,7 +14,8 @@
 import unittest
 
 import numpy as np
-from test_cinn_sub_graph import TestCinnSubGraphBase, apply_to_static
+import utils
+from test_cinn_sub_graph import TestCinnSubGraphBase
 
 import paddle
 from paddle import nn
@@ -49,11 +50,11 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = LlamaRMSNorm()
-        # TODO(Aurelius84): Need to remove it after verify CINN
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
@@ -105,11 +106,11 @@ class TestRotaryPosEmb(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RotaryPosEmb()
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
-
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
@@ -146,17 +147,21 @@ class TestRepeatKV(TestCinnSubGraphBase):
         self.shape = [1, 2048, 8, 96]
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
-
         self.n_rep = 4
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 2)
+        # pd_op.tile is not fused into GroupOp
+        utils.check_jit_kernel_structure(static_fn, {'jit_kernel': 2})
 
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RepeatKV()
-        # TODO(Aurelius84): Need to remove it after verify CINN
-        if use_cinn:
-            net = apply_to_static(net, False)
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.hidden_states, self.n_rep)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

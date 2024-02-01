@@ -77,7 +77,8 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-class IR_API ConcatOp : public pir::Op<ConcatOp> {
+class IR_API ConcatOp
+    : public pir::Op<ConcatOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
 
@@ -93,6 +94,8 @@ class IR_API ConcatOp : public pir::Op<ConcatOp> {
                     int axis);
 
   void VerifySig() const {}
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class IR_API SplitOp : public pir::Op<SplitOp> {
@@ -144,7 +147,7 @@ class IR_API GenerateShapeOp
 
   void VerifySig() {}
 
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 

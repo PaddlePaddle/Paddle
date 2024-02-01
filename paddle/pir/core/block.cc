@@ -23,10 +23,11 @@
 namespace pir {
 Block::~Block() {
   if (!use_empty()) {
-    LOG(FATAL) << "Destoryed a block that is still in use.";
+    LOG(FATAL) << "Destroyed a block that is still in use.";
   }
-  clear();
-  ClearArguments();
+  ClearOps();
+  ClearKwargs();
+  ClearArgs();
 }
 void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
@@ -54,7 +55,7 @@ Block::Iterator Block::erase(ConstIterator position) {
   return ops_.erase(position);
 }
 
-void Block::clear() {
+void Block::ClearOps() {
   while (!empty()) {
     pop_back();
   }
@@ -93,24 +94,52 @@ void Block::ResetOpListOrder(const OpListType &new_op_list) {
   }
 }
 
-void Block::ClearArguments() {
-  for (auto &argument : arguments_) {
-    argument.dyn_cast<BlockArgument>().Destroy();
+void Block::ClearArgs() {
+  for (auto &arg : args_) {
+    arg.dyn_cast<BlockArgument>().Destroy();
   }
-  arguments_.clear();
+  args_.clear();
 }
-Value Block::AddArgument(Type type) {
-  auto argument = BlockArgument::Create(type, this, arguments_.size());
-  arguments_.emplace_back(argument);
+
+Value Block::AddArg(Type type) {
+  auto argument = BlockArgument::Create(type, this, args_.size());
+  args_.emplace_back(argument);
   return argument;
 }
 
-void Block::EraseArgument(uint32_t index) {
+void Block::EraseArg(uint32_t index) {
   auto argument = arg(index);
   IR_ENFORCE(argument.use_empty(),
              "Erase a block argument that is still in use.");
   argument.dyn_cast<BlockArgument>().Destroy();
-  arguments_.erase(arguments_.begin() + index);
+  args_.erase(args_.begin() + index);
+}
+
+void Block::ClearKwargs() {
+  for (auto &kwarg : kwargs_) {
+    kwarg.second.dyn_cast<BlockArgument>().Destroy();
+  }
+  kwargs_.clear();
+}
+
+Value Block::AddKwarg(const std::string &keyword, Type type) {
+  IR_ENFORCE(kwargs_.find(keyword) == kwargs_.end(),
+             "Add keyword (%s) argument which has been existed.",
+             keyword.c_str());
+  auto arg = BlockArgument::Create(type, this, 0);
+  kwargs_[keyword] = arg;
+  return arg;
+}
+
+void Block::EraseKwarg(const std::string &keyword) {
+  IR_ENFORCE(kwargs_.find(keyword) != kwargs_.end(),
+             "Erase keyword (%s) argument which doesn't existed.",
+             keyword.c_str());
+  auto kwarg = kwargs_[keyword];
+  IR_ENFORCE(kwarg.use_empty(),
+             "Erase a block keyword argument that is still in use.");
+  kwarg.dyn_cast<BlockArgument>().Destroy();
+  kwargs_.erase(keyword);
 }
 bool Block::TopoOrderCheck(const OpListType &op_list) {
   std::unordered_set<Value> visited_values;

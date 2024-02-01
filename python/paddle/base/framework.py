@@ -5655,8 +5655,7 @@ class IrGraph:
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call(
-                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
-                shell=True,
+                ['dot', '-Tpdf', dot_file_path, '-o', pdf_save_path]
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
@@ -6969,7 +6968,7 @@ class Program:
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
         Args:
-            index (int) - The index of  :ref:`api_guide_Block_en`  to get
+            index (int): The index of  :ref:`api_guide_Block_en`  to get
 
         Returns:
             :ref:`api_guide_Block_en`: The :code:`index` block
@@ -7427,7 +7426,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 
@@ -7543,7 +7542,7 @@ class EagerParamBase(core.eager.Tensor):
             be applied on the EagerParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this EagerParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 

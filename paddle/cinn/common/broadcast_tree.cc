@@ -17,8 +17,8 @@
 #include <optional>
 #include <unordered_map>
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn::common {
 
@@ -137,7 +137,8 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
       }
     }
     if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol);
+      CHECK(lhs_symbol != rhs_symbol)
+          << lhs_symbol.value() << " != " << rhs_symbol.value();
       ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
                                                    rhs_symbol.value()};
       return true;
@@ -207,7 +208,8 @@ symbol::DimExpr GetCstrLhsEqRhsDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqRhsReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrLhsEqOneDimExpr(
@@ -215,7 +217,8 @@ symbol::DimExpr GetCstrLhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrRhsEqOneDimExpr(
@@ -223,7 +226,8 @@ symbol::DimExpr GetCstrRhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrRhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 typedef symbol::DimExpr (*ConvertDimExprT)(
@@ -339,10 +343,6 @@ std::string ToTxtStringImpl(const BroadcastLeaf& leaf) {
 std::string ToTxtString(const BroadcastTree& tree) {
   return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
                     tree.variant());
-}
-
-std::ostream& operator<<(std::ostream& os, const BroadcastTree& tree) {
-  os << ToTxtString(tree);
 }
 
 }  // namespace cinn::common

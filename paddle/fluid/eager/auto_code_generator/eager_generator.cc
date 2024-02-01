@@ -1763,7 +1763,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const char* CALL_BACK_TEMPLATE =
         "    {\n"
         "      paddle::imperative::AutoCastGuard "
-        "guard(egr::Controller::Instance().GetCurrentTracer(), "
+        "guard(egr::Controller::Instance().GetCurrentAMPState(), "
         "paddle::imperative::AmpLevel::O0);\n"
         "      return %s_dygraph_function(%s);\n"
         "    }";

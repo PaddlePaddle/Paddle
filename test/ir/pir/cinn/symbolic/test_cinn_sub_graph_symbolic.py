@@ -20,6 +20,18 @@ import paddle
 from paddle.static import InputSpec
 
 
+def get_sym_shape_str_for_op(net, input_spec, op_name):
+    forward_program = net.forward.get_concrete_program(*input_spec)[
+        1
+    ].infer_program.forward_program
+    all_sym_shape_str = []
+    for op in forward_program.global_block().ops:
+        if op.name() == op_name:
+            all_sym_shape_str.append(op.attrs()['sym_shape_str'])
+
+    return all_sym_shape_str
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -43,7 +55,6 @@ def reshape(x):
     i = paddle.shape(x)[0]
     j = paddle.shape(y)[1]
     out = paddle.reshape(z, shape=[i, j])
-    # out = paddle.reshape(z, shape=[128, 4, 2])
     return out
 
 
@@ -93,12 +104,15 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
     def prepare_data(self):
         self.shape = [64, 128]
-        self.axis = -1
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
+    def test_eval_symbolic(self):
+        pass
+
+
+class TestCinnExpSubGraph(TestCinnSubGraphBase):
     def eval_symbolic(self, use_cinn):
-        paddle.seed(2022)
         net = CINNSubGraphNet()
         input_spec = [InputSpec(shape=[None, 128], dtype='float32')]
         net = apply_to_static(net, use_cinn, input_spec)
@@ -115,7 +129,6 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnDyShapeBase(TestCinnSubGraphBase):
     def prepare_data(self):
         self.shape = [4, 256]
-        self.axis = -1
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
@@ -129,17 +142,12 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         return out
 
     def test_eval_symbolic(self):
-        import os
-
-        is_debug = os.getenv('IS_DEBUG_DY_SHAPE')
-        if is_debug:
-            cinn_out = self.eval_symbolic(use_cinn=True)
-
+        cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
-        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnDyShapeBC(TestCinnDyShapeBase):
+class TestCinnDyShapeBC(TestCinnSubGraphBase):
     def prepare_data(self):
         self.x_shape = [2, 4, 1]
         self.x = paddle.randn(self.x_shape, dtype="float32")
@@ -183,7 +191,7 @@ class LlamaRMSNorm(paddle.nn.Layer):
 
         axis_rst = -1
         # 1.1 decomp pow -> elementwise_pow
-        pow_tensor = paddle.full([1], axis_rst, hidden_states.dtype)
+        pow_tensor = paddle.full([1], 2, hidden_states.dtype)
         pow_rst = paddle.pow(hidden_states, pow_tensor)
 
         # 1.2 decomp mean -> sum & div
@@ -207,13 +215,14 @@ class LlamaRMSNorm(paddle.nn.Layer):
         return hidden_states * self.weight
 
 
-class TestCinnDyShapeRMSNorm(TestCinnDyShapeBase):
+class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
     def prepare_data(self):
         self.hidden_states_shape = [1, 300, 4096]
         self.hidden_states = paddle.randn(
             self.hidden_states_shape, dtype="float32"
         )
         self.hidden_states.stop_gradient = False
+        self.expected_output_sym_shape = 'shape[S0, S1, 4096]'
 
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
@@ -223,6 +232,90 @@ class TestCinnDyShapeRMSNorm(TestCinnDyShapeBase):
         ]
         net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
+
+        sym_shape_str_list = get_sym_shape_str_for_op(
+            net, input_spec, 'builtin.shadow_output'
+        )
+        np.testing.assert_equal(len(sym_shape_str_list), 1)
+        np.testing.assert_equal(
+            sym_shape_str_list[0].find(self.expected_output_sym_shape),
+            0,
+            'output shape is not expected!',
+        )
+
+        out = net(self.hidden_states)
+
+        return out
+
+    def test_eval_symbolic(self):
+        # cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+def unsqueeze_composite(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = paddle.reshape(x, x_shape)
+    return out
+
+
+class LlamaRepeatKV(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.n_rep = 4
+
+    def forward(self, hidden_states):
+        batch, slen, num_key_value_heads, head_dim = hidden_states.shape
+        rst_unsqueeze = unsqueeze_composite(hidden_states, [-2])
+        rst_tile = rst_unsqueeze.tile([1, 1, 1, self.n_rep, 1])
+        out = rst_tile.reshape(
+            [batch, slen, num_key_value_heads * self.n_rep, head_dim]
+        )
+
+        return out
+
+
+class TestCinnDyShapeRepeatKV(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.hidden_states_shape = [1, 2048, 8, 96]
+        self.hidden_states = paddle.randn(
+            self.hidden_states_shape, dtype="float32"
+        )
+        self.hidden_states.stop_gradient = False
+        self.expected_output_sym_shape = 'shape[S0, S1, 32, 96]'
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = LlamaRepeatKV()
+        input_spec = [
+            InputSpec(shape=[None, None, 8, 96], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+
+        sym_shape_str_list = get_sym_shape_str_for_op(
+            net, input_spec, 'builtin.shadow_output'
+        )
+        np.testing.assert_equal(len(sym_shape_str_list), 1)
+        np.testing.assert_equal(
+            sym_shape_str_list[0].find(self.expected_output_sym_shape),
+            0,
+            'output shape is not expected!',
+        )
+
         out = net(self.hidden_states)
         return out
 

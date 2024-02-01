@@ -30,7 +30,6 @@ from paddle.base.layer_helper import LayerHelper
 class TestElementwiseAddOp(OpTest):
     def init_kernel_type(self):
         self.use_mkldnn = False
-        self.check_pir_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_add"

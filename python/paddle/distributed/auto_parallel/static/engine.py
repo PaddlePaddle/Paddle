@@ -304,6 +304,8 @@ class Engine:
                     DistrubutedInputSpec.from_dtensor(item, name)
                 )
 
+        inputs_spec = self._validate_spec(inputs_spec)
+        labels_spec = self._validate_spec(labels_spec)
         return inputs_spec, labels_spec
 
     def _prepare_data_spec(self, data, split, batch_size):
@@ -907,7 +909,7 @@ class Engine:
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
-            # The model's instance variables (not paramters), used in forward function,
+            # The model's instance variables (not parameters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
                 for buffer in self._model.buffers():
@@ -1835,9 +1837,11 @@ class Engine:
         specs = auto_utils.to_list(specs)
         if specs is not None:
             for i, spec in enumerate(specs):
-                if not isinstance(spec, InputSpec):
+                if not isinstance(spec, InputSpec) and not isinstance(
+                    spec, DistrubutedInputSpec
+                ):
                     raise TypeError(
-                        "'spec' must be object of class `paddle.static.InputSpec`."
+                        "'spec' must be object of class `paddle.static.InputSpec` or `DistrubutedInputSpec`."
                     )
                 if spec.name is None:
                     raise ValueError(

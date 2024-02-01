@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/gammaincc_grad_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/gammaincc_grad_kernel_impl.h"
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-
-namespace cinn::common {
-
-symbol::DimExpr SimplifyDimExpr(const symbol::DimExpr&);
-
-}
+PD_REGISTER_KERNEL(
+    gammaincc_grad, GPU, ALL_LAYOUT, phi::GammainccGradKernel, float, double) {}

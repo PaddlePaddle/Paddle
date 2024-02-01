@@ -1359,7 +1359,7 @@ class Model:
         """
 
         This function saves parameters, optimizer information or model and
-        paramters only for inference to path. It depends on the parameter
+        parameters only for inference to path. It depends on the parameter
         `training`.
 
         If `training` is set to True, the parameters saved contain all
