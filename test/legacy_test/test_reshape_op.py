@@ -734,8 +734,8 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
             self.assertEqual(result[3].shape, (1,))
 
 
-class TestReshapePirOpResultListShape(unittest.TestCase):
-    def test_opresult_list_shape(self):
+class TestReshapePirValueListShape(unittest.TestCase):
+    def test_value_list_shape(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data(
                 'x',

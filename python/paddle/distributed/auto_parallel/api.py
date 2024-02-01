@@ -611,6 +611,10 @@ class _ShardOptimizer:
                         placements=placements,
                     )
 
+            self._inner_opt._accumulators[key][target_name].name = (
+                target_name + "_" + key
+            )
+
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []
@@ -1218,8 +1222,13 @@ class DistModel:
                         tensor._local_value().get_tensor()
                     )
                 else:
+                    # infer dtype from tensor
+                    if tensor.is_integer():
+                        dtype = paddle.iinfo(tensor.dtype).dtype
+                    else:
+                        dtype = paddle.finfo(tensor.dtype).dtype
                     tensor_np_value = np.zeros(
-                        tensor._local_value().shape, dtype=np.float32
+                        tensor._local_value().shape, dtype=dtype
                     )
                     lodtensor.set(
                         tensor_np_value,

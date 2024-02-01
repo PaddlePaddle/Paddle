@@ -196,7 +196,7 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                 op._rename_output(old_var_name, new_var_name)
 
     # NOTE(MarioLulab): block attr type with the name of "blocks" or "sub_block" indicates
-    # the block might be excuted. We should rename the var name in these blocks recursively
+    # the block might be executed. We should rename the var name in these blocks recursively
     block_attr_names = ["blocks", "sub_block"]
 
     for op in cur_block.ops:

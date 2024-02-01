@@ -77,10 +77,8 @@ static bool check_dynamic_shape(const pir::OpOperand& item,
   auto dims = GetValueDims(item.source());
   std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
   if (find_value(shape, -1)) {
-    LOG(WARNING)
-        << "[Prim] Decomp op does not support dynamic shape -1, but got "
-           "shape ["
-        << dims << "] in inputs of op " << op.name();
+    VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << dims
+            << "] in inputs of op " << op.name();
     return true;
   } else {
     return false;
@@ -120,7 +118,7 @@ bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
 
 void DecompProgram::check_decomp_outputs(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<pir::Value>& orig_outs,
     const std::vector<pir::Value>& decomp_outs) {
   bool skip_invalid_op_check =
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
@@ -159,18 +157,12 @@ void DecompProgram::check_decomp_outputs(
       auto decomp_dim = GetValueDims(decomp_outs[i]);
       std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
       if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-        LOG(WARNING)
-            << "[Prim] Decomp op does not support dynamic shape -1, but got "
-               "shape ["
-            << orig_dim << "] in " << i << "-index output of origin op "
-            << op_name;
+        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
+                << "] in " << i << "-index output of origin op " << op_name;
       }
       if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-        LOG(WARNING)
-            << "[Prim] Decomp op does not support dynamic shape -1, but got "
-               "shape ["
-            << decomp_dim << "] in " << i << "-index output of decomp op "
-            << op_name;
+        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
+                << "] in " << i << "-index output of decomp op " << op_name;
       }
 
       PADDLE_ENFORCE(orig_dim == decomp_dim,
@@ -189,7 +181,7 @@ void DecompProgram::check_decomp_outputs(
 
 std::vector<pir::Value> DecompProgram::format_decomp_res(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<pir::Value>& orig_outs,
     const std::vector<std::vector<pir::Value>>& decomp_outs) {
   PADDLE_ENFORCE_EQ(
       orig_outs.size(),
@@ -220,7 +212,7 @@ std::vector<pir::Value> DecompProgram::format_decomp_res(
 
 std::vector<pir::Value> DecompProgram::construct_dst_vars(
     const std::string& op_name,
-    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<pir::Value>& orig_outs,
     const std::vector<pir::Value>& decomp_outs,
     std::unordered_map<pir::Value, int> orig_vars_dict) {
   std::vector<pir::Value> tar_vars(src_vars_.size());
@@ -283,6 +275,7 @@ void DecompProgram::decomp_program() {
   }
   std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] Origin program before decomp :\n"
           << orig_prog_stream.str();
 
@@ -309,7 +302,7 @@ void DecompProgram::decomp_program() {
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
-      std::vector<pir::OpResult> orig_outs = op->results();
+      std::vector<pir::Value> orig_outs = op->results();
       std::vector<pir::Value> standard_decomp_res =
           format_decomp_res(op->name(), orig_outs, decomp_res);
       check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
@@ -339,6 +332,7 @@ void DecompProgram::decomp_program() {
   builder.SetInsertionPointToBlockEnd(block);
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
   dst_vars_ = tar_vars;
   return;

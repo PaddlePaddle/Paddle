@@ -29,10 +29,10 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
   static const char *name() { return "pd_op.if"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value cond,
-                    std::vector<pir::Type> &&output_types);
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value cond,
+                             std::vector<pir::Type> &&output_types);
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
@@ -81,7 +81,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
                     bool construct_body = true);
   TEST_API pir::Block &body();
   pir::Value cond();
-  const pir::Block::ArgListType &block_args() { return body().args(); }
+  const pir::Block::ArgsType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
@@ -169,7 +169,7 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   static constexpr uint32_t attributes_num = 0;
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {
