@@ -44,19 +44,19 @@ void AddmmKernelImpl(const Context& dev_ctx,
       rank,
       2,
       phi::errors::InvalidArgument(
-          "the dims size of input must be greater than or eaqual to 2."));
+          "the dims size of input must be greater than or equal to 2."));
 
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       rank,
       phi::errors::PreconditionNotMet(
-          "The dims size of Input(input) and Input(x) must be eaqual."));
+          "The dims size of Input(input) and Input(x) must be equal."));
 
   PADDLE_ENFORCE_GE(
       y_dim.size(),
       rank,
       phi::errors::InvalidArgument(
-          "the dims size of Input(input) and Input(y) must be eaqual."));
+          "the dims size of Input(input) and Input(y) must be equal."));
 
   for (size_t i = 0; i < rank - 2; ++i) {
     PADDLE_ENFORCE_EQ(input_dim[i],
@@ -74,21 +74,21 @@ void AddmmKernelImpl(const Context& dev_ctx,
       x_dim[rank - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(x) is not suitable for matmul "
-          "opetation, input_dim[-2] must be eaqual to x_dim[-2]."));
+          "opetation, input_dim[-2] must be equal to x_dim[-2]."));
 
   PADDLE_ENFORCE_GE(
       input_dim[rank - 1],
       y_dim[rank - 1],
       phi::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(y) is not suitable for matmul "
-          "opetation, input_dim[-1] must be eaqual to y_dim[-1]."));
+          "opetation, input_dim[-1] must be equal to y_dim[-1]."));
 
   PADDLE_ENFORCE_GE(
       x_dim[rank - 1],
       y_dim[rank - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
