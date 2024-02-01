@@ -23,7 +23,7 @@ namespace primitive {
 namespace details {
 
 // empty_shape means x.shape=[]
-static std::vector<int64_t> empty_shape;
+static std::vector<int64_t> empty_shape({1});
 
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {

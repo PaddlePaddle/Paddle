@@ -206,8 +206,9 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-8)
         np.testing.assert_allclose(cinn_w_grad, dy_w_grad, atol=1e-8)
         np.testing.assert_allclose(cinn_b_grad, dy_b_grad, atol=1e-8)
-
-        # np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
+        # print( np.allclose(cinn_x_grad, dy_x_grad, atol=1e-8) )
+        # print( np.allclose(cinn_w_grad, dy_w_grad, atol=1e-8) )
+        # print( np.allclose(cinn_b_grad, dy_b_grad, atol=1e-8) )
 
 
 # class TestAddDropoutLayerNorm(TestCinnSubGraphBase):

@@ -200,7 +200,8 @@ class IRSchedule {
                  const std::vector<int64_t>& axes,
                  const std::vector<int64_t>& factors,
                  bool add_check,
-                 bool first_broadcast);
+                 bool first_broadcast,
+                 bool full_broadcast);
 
   void BroadcastToElementwise(const std::string& block_name,
                               const std::vector<int64_t>& axes);

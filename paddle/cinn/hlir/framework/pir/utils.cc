@@ -82,8 +82,16 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout"};
+  std::unordered_set<std::string> default_deny_ops_{"feed",
+                                                    "fetch",
+                                                    "conv2d",
+                                                    "conv2d_grad",
+                                                    "dropout",
+                                                    "slice",
+                                                    "concat",
+                                                    "gather_nd",
+                                                    "pool2d",
+                                                    "split"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -183,7 +191,7 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
+  if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;

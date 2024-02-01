@@ -279,7 +279,7 @@ struct GroupClusterNode {
   }
 
   // step 3: Replace outputs of inner ops
-  std::vector<pir::OpResult> group_outs = new_group_op->results();
+  auto group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
 

@@ -30,6 +30,7 @@ struct BroadcastInfo {
 
   bool with_constrain{false};
   bool first_broadcast{false};
+  bool full_broadcast{false};
 };
 struct GroupTileInfo {
   GroupTileInfo() {}

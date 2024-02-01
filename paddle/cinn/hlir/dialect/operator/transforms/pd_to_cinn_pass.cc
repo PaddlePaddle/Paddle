@@ -206,7 +206,7 @@ class ReshapeOpPattern
     auto not_combine_input =
         op->result(0).use_count() == 1 &&
         op->result(0).first_use().owner()->name() == "builtin.combine";
-    return flag && full_op && not_combine_input;
+    return flag && full_op && (!not_combine_input);
   }
 
   void Rewrite(paddle::dialect::ReshapeOp op,

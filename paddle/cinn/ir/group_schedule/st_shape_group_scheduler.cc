@@ -231,19 +231,32 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
       // broadcast loops
       std::cerr << "broadcast axes \n";
       for (auto& axis : group_tile_info_->broadcast_info[name].broadcast_axes) {
-        std::cerr << "axis" << axis << std::endl;
+        std::cerr << "axis " << axis << std::endl;
       }
       std::cerr << "out shape \n";
       for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
         std::cerr << "dim " << s << std::endl;
       }
+      if (group_tile_info_->broadcast_info[name].full_broadcast) {
+        // split first
+        std::vector<int32_t> vec_out_split(
+            group_tile_info_->broadcast_info[name].output_shape.size(), 1);
+        std::cerr << "split size " << vec_out_split.size() << std::endl;
 
-      ir_sch_->Broadcast(
-          name,
-          group_tile_info_->broadcast_info[name].broadcast_axes,
-          group_tile_info_->broadcast_info[name].output_shape,
-          group_tile_info_->broadcast_info[name].with_constrain,
-          group_tile_info_->broadcast_info[name].first_broadcast);
+        auto loops = ir_sch_->GetLoops(name);
+        std::cerr << "before split\n " << loops[0] << std::endl;
+        ir_sch_->Split(loops[0], vec_out_split);
+
+        loops = ir_sch_->GetLoops(name);
+        std::cerr << "after split\n " << loops[0] << std::endl;
+      }
+
+      ir_sch_->Broadcast(name,
+                         group_tile_info_->broadcast_info[name].broadcast_axes,
+                         group_tile_info_->broadcast_info[name].output_shape,
+                         group_tile_info_->broadcast_info[name].with_constrain,
+                         group_tile_info_->broadcast_info[name].first_broadcast,
+                         group_tile_info_->broadcast_info[name].full_broadcast);
     }
 
     std::cerr << "fin broadcast " << name << std::endl;
@@ -562,8 +575,8 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after bind block and thread info: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "after bind block and thread info: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {

@@ -92,6 +92,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_full_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
@@ -1578,6 +1579,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+  pass_manager->AddPass(
+      std::make_unique<cinn::dialect::ir::MergeFullWithBroadcastPass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
@@ -1592,21 +1595,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-  // if (has_dynamic_shape) {
-  //   pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
-  // }
+  auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
 
-  // <<<<<<< HEAD
-  //   auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
-  //   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  //   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-  //   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-
-  //   pass_manager->EnableIRPrinting();
-  //   pass_manager->Run(&program);
-  //   VLOG(3) << "after BuildCinnPass, forward_program:\n" << program;
-
-  // =======
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
@@ -1628,9 +1618,11 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pass_manager->EnableIRPrinting();
   pass_manager->AddPass(
       std::make_unique<
           cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

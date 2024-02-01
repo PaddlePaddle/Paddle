@@ -667,10 +667,18 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                      .dyn_cast<paddle::dialect::DenseTensorType>()
                      .dims();
       }
-      std::cerr << " in dim " << in_dim << "\t" << it->second[0].DebugStr()
-                << std::endl;
+      std::cerr << it->first->name() << "\t in dim " << in_dim << "\t"
+                << it->second[0].DebugStr() << std::endl;
 
-      if (in_dim.size() == broadcast_axes.size()) {
+      if (in_dim.size() == 1u && in_dim[0] == 1u) {
+        std::cerr << "!!!!!!!!!!!!!!!!!!!! " << output_shape.size()
+                  << std::endl;
+        for (size_t i = 0; i < output_shape.size(); ++i) {
+          std::cerr << i << "    shape   " << output_shape[i] << std::endl;
+          changed_axes.push_back(i);
+          changed_factor.push_back(output_shape[i]);
+        }
+      } else if (in_dim.size() == broadcast_axes.size()) {
         for (size_t i = 0; i < broadcast_axes.size(); ++i) {
           if (in_dim[i] != output_shape[broadcast_axes[i]]) {
             if (in_dim[i] != 1) {
@@ -682,7 +690,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
         }
       } else {
         // only deal with broadcast axes
+        std::set<int> axes_set;
         for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+          axes_set.insert(broadcast_axes[i]);
           if (in_dim[broadcast_axes[i]] != 1) {
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
@@ -692,7 +702,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
         }
       }
 
+      if (changed_axes.size() == 0) {
+        std::cerr << "opname " << it->first->name() << std::endl;
+        throw std::runtime_error(" changed axes is zero");
+      }
       cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
+      if (in_dim.size() == 1u && in_dim[0] == 1u) {
+        info.full_broadcast = true;
+      }
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {
@@ -701,7 +718,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
           break;
         }
       }
+
       auto op_out = it->first->result(0);
+      std::cerr << "var name " << ValueName(op_out) << std::endl;
       broadcast_info[ValueName(op_out)] = info;
 
       // if( op_out.use_count() > 1 )
@@ -722,8 +741,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
         if (CompatibleInfo::OpKind(*(use_it->owner())) ==
             framework::kBroadcast) {
           std::cerr << "match broadcast !!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-          broadcast_to_elementwise[ValueName(use_it->owner()->result(0))] =
-              info;
+          if (!info.full_broadcast) {
+            broadcast_to_elementwise[ValueName(use_it->owner()->result(0))] =
+                info;
+          }
         }
       }
     } else {
@@ -859,7 +880,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
       auto body = BuildOuputExpr(tensor);
 
-      // std::cerr << "final body  " << body << std::endl;
+      std::cerr << "oupput body  " << body << std::endl;
 
       added_expr.push_back(body);
 
