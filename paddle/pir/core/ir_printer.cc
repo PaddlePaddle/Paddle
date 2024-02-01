@@ -234,7 +234,6 @@ void IrPrinter::PrintValue(Value v) {
   const void* key = v.impl();
   auto ret = aliases_.find(key);
   if (ret != aliases_.end()) {
-    VLOG(0) << "[PrintValue] key: " << ret->first << ", value: " << ret->second;
     os << ret->second;
     return;
   }
@@ -242,13 +241,11 @@ void IrPrinter::PrintValue(Value v) {
     std::string new_name = "%" + std::to_string(cur_result_number_);
     cur_result_number_++;
     aliases_[key] = new_name;
-    VLOG(0) << "[PrintValue] key: " << key << ", new value: " << new_name;
     os << new_name;
   } else {
     std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
     cur_block_argument_number_++;
     aliases_[key] = new_name;
-    VLOG(0) << "[PrintValue] key: " << key << ", new value: " << new_name;
     os << new_name;
   }
 }
