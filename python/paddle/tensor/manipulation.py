@@ -4028,9 +4028,7 @@ def tile(x, repeat_times, name=None):
         check_input(x, repeat_times)
         if isinstance(repeat_times, (list, tuple)):
             if paddle.utils._contain_var(repeat_times):
-                repeat_times = paddle.utils._convert_to_tensor_list(
-                    repeat_times
-                )
+                repeat_times = paddle.utils.get_int_tensor_list(repeat_times)
         return _C_ops.tile(x, repeat_times)
     else:
         check_input(x, repeat_times)
