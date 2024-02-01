@@ -30,35 +30,32 @@ using VectorizedFusedRopeCudaKernelFunc =
              int64_t seq_len,
              int64_t num_heads,
              int64_t head_dim,
+             int64_t batch_stride,
+             int64_t seq_stride,
              phi::Array<T*, NInputs> outs_data,
              int num_inputs,
-             MPType div_c,
-             bool time_major);
+             MPType div_c);
 
 template <typename T, typename MPType, int VecSize = 2>
 __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     const int64_t* position_ids_data,
                                     bool flag_sin_cos,
                                     int64_t index,
+                                    int64_t batch_size,
                                     int64_t seq_len,
                                     int64_t num_heads,
                                     int64_t head_dim,
-                                    int64_t batch_size,
+                                    int64_t batch_stride,
+                                    int64_t seq_stride,
                                     MPType* out_sin,
                                     MPType* out_cos,
-                                    MPType div_c,
-                                    bool time_major) {
+                                    MPType div_c) {
   MPType* sin_value = out_sin;
   MPType* cos_value = out_cos;
 
   if (flag_sin_cos) {
 #pragma unroll
     for (int64_t nx = 0; nx < VecSize; ++nx) {
-      int64_t batch_stride =
-          time_major ? num_heads * head_dim : seq_len * num_heads * head_dim;
-      int64_t seq_stride =
-          time_major ? batch_size * num_heads * head_dim : num_heads * head_dim;
-
       int64_t pos_seq_ori = (index + nx) / seq_stride % seq_len;
       int64_t pos_seq;
       if (position_ids_data) {
@@ -80,10 +77,6 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
       // get sin_index and cos_index
-      // int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      // int64_t pos_seq = index_wc / (num_heads * head_dim);
-      int64_t seq_stride =
-          time_major ? batch_size * num_heads * head_dim : num_heads * head_dim;
       int64_t pos_seq = (index + nx) / seq_stride % seq_len;
 
       MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
@@ -108,10 +101,11 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, NInputs> outs_data,
     int num_inputs,
-    MPType div_c,
-    bool time_major) {
+    MPType div_c) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -131,14 +125,15 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
-                        batch_size,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
-                        div_c,
-                        time_major);
+                        div_c);
 
 #pragma unroll
     for (int iter = 0; iter < NInputs; iter++) {
@@ -186,10 +181,11 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, NInputs> outs_data,
     int num_inputs,
-    MPType div_c,
-    bool time_major) {
+    MPType div_c) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -209,14 +205,15 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
-                        batch_size,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
-                        div_c,
-                        time_major);
+                        div_c);
 
     // use rotate_half mode
     int stride_r = head_dim / 2;
