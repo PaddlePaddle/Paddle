@@ -536,7 +536,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
-        p (int|float|string, optional): None for porder='fro'. Default None.
+        p (int|float|string, optional): Default 'fro'.
         axis (list, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
@@ -563,7 +563,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=2,axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [15.75858021, 14.97979641, 14.69693565, 14.97979069])
+            [15.75857544, 14.97978878, 14.69693947, 14.97978973])
 
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='fro',axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
@@ -583,7 +583,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
             >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='nuc',axis=[0,1],keepdim=False)
             >>> print(out_matrix_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [23.21962929, 22.82873917, 22.69693565, 22.82873344])
+            [23.21962357, 22.82873154, 22.69693947, 22.82873154])
 
     """
 
@@ -934,8 +934,36 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
 def norm(x, p=None, axis=None, keepdim=False, name=None):
     """
 
-    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
+    Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm) of a given tensor.
+
+    **Paddle 支持以下范数:**
+    +----------------+--------------------------------+--------------------------------+
+    |     porder     |        norm for matrices       |        norm for vectors        |
+    +================+================================+================================+
+    |       fro      |         frobenius norm         |          not support           |
+    +----------------+--------------------------------+--------------------------------+
+    |       nuc      |          nuclear norm          |          not support           |
+    +----------------+--------------------------------+--------------------------------+
+    |       inf      |     max(sum(abs(x), dim=1))    |          max(abs(x))           |
+    +----------------+--------------------------------+--------------------------------+
+    |      -inf      |     min(sum(abs(x), dim=1))    |          min(abs(x))           |
+    +----------------+--------------------------------+--------------------------------+
+    |       0        |          not support           |          sum(x != 0)           |
+    +----------------+--------------------------------+--------------------------------+
+    |       1        |     max(sum(abs(x), dim=0))    |           as below             |
+    +----------------+--------------------------------+--------------------------------+
+    |      -1        |     min(sum(abs(x), dim=0))    |           as below             |
+    +----------------+--------------------------------+--------------------------------+
+    |       2        |The maximum singular value      |           as below             |
+    |                |of a matrix consisting of axis. |                                |
+    +----------------+--------------------------------+--------------------------------+
+    |      -2        |The minimum singular value      |           as below             |
+    |                |of a matrix consisting of axis. |                                |
+    +----------------+--------------------------------+--------------------------------+
+    |    other int   |           not support          | sum(abs(x)^{porder})^          |
+    |     or float   |                                | {(1 / porder)}                 |
+    +----------------+--------------------------------+--------------------------------+
 
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
@@ -990,7 +1018,7 @@ def norm(x, p=None, axis=None, keepdim=False, name=None):
             >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
             >>> print(out_pnorm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [15.75858021, 14.97979641, 14.69693565, 14.97979069])
+            [15.75857544, 14.97978878, 14.69693947, 14.97978973])
 
             >>> # compute inf-order  norm
             >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
