@@ -546,17 +546,19 @@ class TestCosDoubleGradCheck(unittest.TestCase):
 
 
 class TestCosDoubleGradCheck2(unittest.TestCase):
-    def test_cos_double_dynamic(self):
+    @test_with_pir_api
+    def _run_cos_double_dynamic(self, place):
         with dygraph_guard():
             x = paddle.randn([64, 64])
-            x = paddle.to_tensor(x, place=base.CPUPlace(), stop_gradient=False)
+            x = paddle.to_tensor(x, place=place, stop_gradient=False)
             y = paddle.cos(x)
             dx = paddle.grad(y, x, create_graph=True)
             dxx_result = paddle.grad(dx, x)[0]
             dxx_expected = -paddle.cos(x)
             np.testing.assert_allclose(dxx_result.numpy(), dxx_expected.numpy())
 
-    def test_cos_double_static(self):
+    @test_with_pir_api
+    def _run_cos_double_static(self, place):
         x_data = np.random.randn(64, 64).astype("float32")
         with static_guard():
             main_prog = paddle.static.Program()
@@ -568,17 +570,22 @@ class TestCosDoubleGradCheck2(unittest.TestCase):
                 dx = paddle.static.gradients(y, x)
                 dxx = paddle.static.gradients(dx, x)[0]
 
-            exe = paddle.static.Executor(base.CUDAPlace(0))
+            exe = paddle.static.Executor(place)
             exe.run(starup_prog)
             (dxx_result,) = exe.run(main_prog, fetch_list=[dxx])
             dxx_expected = -np.cos(x_data)
             np.testing.assert_allclose(dxx_result, dxx_expected, 1e-6, 1e-6)
 
             exe = paddle.static.Executor(base.CPUPlace())
-            exe.run(starup_prog)
-            (dxx_result,) = exe.run(main_prog, fetch_list=[dxx])
-            dxx_expected = -np.cos(x_data)
-            np.testing.assert_allclose(dxx_result, dxx_expected, 1e-6, 1e-6)
+
+    def test_cos_double_grad(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+
+        for place in places:
+            self._run_cos_double_dynamic(place)
+            self._run_cos_double_static(place)
 
 
 class TestPowDoubleGradCheck1(unittest.TestCase):
