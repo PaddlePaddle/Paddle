@@ -210,7 +210,6 @@ phi::DataType GetAmpDestDtype(
     dst_type = phi::DataType::FLOAT32;
   }
 
-  // dst_type = GetDtypeWithPlace(op_name, amp_values_vector, dst_type);
   VLOG(6) << "AMP GetAmpDestDtype:"
           << " op(" << op_name << ") amp_dtype(" << dst_type << ") amp_level("
           << static_cast<int>(amp_level) << ").";
