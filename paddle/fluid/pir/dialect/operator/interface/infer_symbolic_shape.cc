@@ -592,6 +592,13 @@ bool MultiplySr_OpInferSymbolicShape(
   return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
+bool ConcatOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
 bool GatherNdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   auto x_shape_or_data =
@@ -1001,11 +1008,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  if (operand_shape_or_data.data().has_value()) {
-    shape_data.SetData(operand_shape_or_data.shape());
-  }
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
