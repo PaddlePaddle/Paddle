@@ -176,7 +176,7 @@ struct GroupClusterNode {
       loop_ranges = node.loop_ranges;
     }
 
-    if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
+    if ((ops.size() == 1) && (ops.front()->isa<cinn::dialect::ReshapeOp>())) {
       loop_ranges = node.loop_ranges;
     }
   }
@@ -263,7 +263,7 @@ bool CanFuse(const GroupClusterNode& first,
              const GroupClusterNode& second,
              ScheduleInfoNode* sch_node) {
   if ((second.ops.size() == 1) &&
-      (second.ops.front()->name() == "cinn_op.reshape") &&
+      (second.ops.front()->isa<cinn::dialect::ReshapeOp>()) &&
       (IsLastReshape(second.ops.front()))) {
     return true;
   }
@@ -431,7 +431,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
   }
 
   for (auto* op : op_list) {
-    if (op->name() == "cf.yield") {
+    if (ip->isa<::pir::YieldOp>()) {
       continue;
     }
 
@@ -453,33 +453,19 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
     } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
                cinn::hlir::framework::kElementWise) {
       if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-        if (op->name() != "cinn_op.reshape") {
-          cluster_node.loop_ranges =
-              phi::vectorize(op->result(0)
-                                 .type()
-                                 .dyn_cast<paddle::dialect::DenseTensorType>()
-                                 .dims());
-        } else {
-          // is reshape  op
-          cluster_node.loop_ranges =
-              phi::vectorize(op->result(0)
-                                 .type()
-                                 .dyn_cast<paddle::dialect::DenseTensorType>()
-                                 .dims());
-        }
+        cluster_node.loop_ranges =
+            phi::vectorize(op->result(0)
+                               .type()
+                               .dyn_cast<paddle::dialect::DenseTensorType>()
+                               .dims());
       }
     } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
                cinn::hlir::framework::kBroadcast) {
-      // if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-      // std::cerr << "is broadcast !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
       cluster_node.loop_ranges =
           phi::vectorize(op->result(0)
                              .type()
                              .dyn_cast<paddle::dialect::DenseTensorType>()
                              .dims());
-      //}
-
-      // all the op in cluster node must add broadcast
 
       sch_node.type = "broadcast";
       sch_node.axis_info =
@@ -641,7 +627,7 @@ class CinnGroupClusterPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "build_cinn_pass should run on module op.");
+    IR_ENFORCE(module_op, "cinn_group_cluster_pass should run on module op.");
     auto& block = module_op.block();
 
     for (auto it = block.begin(); it != block.end();) {
