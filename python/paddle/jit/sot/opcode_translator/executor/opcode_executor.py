@@ -722,11 +722,11 @@ class OpcodeExecutorBase:
         if sys.version_info >= (3, 12):
             assert isinstance(instr.arg, int)
             attr_name = self._code.co_names[instr.arg >> 1]
+            if instr.arg & 1:
+                self.load_method(attr_name)
+                return
         else:
             attr_name = self._code.co_names[instr.arg]
-        if sys.version_info >= (3, 12) and instr.arg & 1:
-            self.load_method(attr_name)
-            return
         attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
         obj = self.stack.pop()
         self.stack.push(
