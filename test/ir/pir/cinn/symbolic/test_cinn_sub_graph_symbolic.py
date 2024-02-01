@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
 
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
 from paddle.static import InputSpec
@@ -30,17 +35,6 @@ def get_sym_shape_str_for_op(net, input_spec, op_name):
             all_sym_shape_str.append(op.attrs()['sym_shape_str'])
 
     return all_sym_shape_str
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
 
 
 def exp_sub(x):
@@ -107,6 +101,10 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def test_eval_symbolic(self):
         pass
 
@@ -115,9 +113,11 @@ class TestCinnExpSubGraph(TestCinnSubGraphBase):
     def eval_symbolic(self, use_cinn):
         net = CINNSubGraphNet()
         input_spec = [InputSpec(shape=[None, 128], dtype='float32')]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval_symbolic(self):
@@ -136,9 +136,11 @@ class TestCinnDyShapeBase(TestCinnSubGraphBase):
         paddle.seed(2022)
         net = CINNReshapeSubGraphNet()
         input_spec = [InputSpec(shape=[None, 256], dtype='float32')]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval_symbolic(self):
@@ -164,9 +166,11 @@ class TestCinnDyShapeBC(TestCinnSubGraphBase):
             InputSpec(shape=[None, None, None], dtype='float32'),
             InputSpec(shape=[None, None], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x, self.y)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval_symbolic(self):
@@ -230,7 +234,7 @@ class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
         input_spec = [
             InputSpec(shape=[None, None, 4096], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
 
         sym_shape_str_list = get_sym_shape_str_for_op(
@@ -244,6 +248,8 @@ class TestCinnDyShapeRMSNorm(TestCinnSubGraphBase):
         )
 
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
 
         return out
 
@@ -303,7 +309,7 @@ class TestCinnDyShapeRepeatKV(TestCinnSubGraphBase):
         input_spec = [
             InputSpec(shape=[None, None, 8, 96], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
 
         sym_shape_str_list = get_sym_shape_str_for_op(
@@ -317,6 +323,8 @@ class TestCinnDyShapeRepeatKV(TestCinnSubGraphBase):
         )
 
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval_symbolic(self):
