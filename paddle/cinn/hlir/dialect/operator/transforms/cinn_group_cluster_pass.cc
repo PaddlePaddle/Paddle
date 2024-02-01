@@ -431,7 +431,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
   }
 
   for (auto* op : op_list) {
-    if (ip->isa<::pir::YieldOp>()) {
+    if (op->isa<::pir::YieldOp>()) {
       continue;
     }
 
