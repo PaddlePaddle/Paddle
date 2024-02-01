@@ -439,5 +439,56 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
   }
 }
 
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor) {
+  std::vector<int64_t> vec_shape;
+  if (shape_.isa<pir::OpResult>() &&
+      shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+    vec_shape = paddle::dialect::GetInt64Vector(
+        shape_.defining_op()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"));
+  } else if (shape_.isa<pir::OpResult>() &&
+             shape_.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs = shape_.defining_op()
+                                         ->operand_source(0)
+                                         .defining_op()
+                                         ->operands_source();
+    for (auto item : inputs) {
+      auto tmp = ParseValueShape(item, is_from_tensor);
+      vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
+    }
+  } else if (shape_.type().isa<pir::VectorType>()) {
+    size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim shape_dim =
+        shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t shape_size = common::product(shape_dim);
+    if (common::contain_unknown_dim(shape_dim)) {
+      shape_size = 1;
+    }
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else if (shape_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim shape_dim =
+        shape_.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t shape_size = common::product(shape_dim);
+    if (common::contain_unknown_dim(shape_dim)) {
+      shape_size = 1;
+    }
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  return vec_shape;
+}
+
 }  // namespace dialect
 }  // namespace paddle
