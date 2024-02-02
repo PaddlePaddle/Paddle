@@ -131,59 +131,60 @@ if(WITH_TESTING)
 endif()
 
 if(WIN32)
-  if(WITH_SETUP_INSTALL)
+  add_custom_command(
+    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+      ${PADDLE_BINARY_DIR}/python/paddle/
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
+            ${PADDLE_BINARY_DIR}/test
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
+
+  if(NOT WITH_SETUP_INSTALL)
     add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-      COMMAND
-        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
-        ${PADDLE_BINARY_DIR}/python/paddle/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
-              ${PADDLE_BINARY_DIR}/test
-      COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
-  else()
-    add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-      COMMAND
-        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
-        ${PADDLE_BINARY_DIR}/python/paddle/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
-              ${PADDLE_BINARY_DIR}/test
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp1
       COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
               bdist_wheel
       COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
+      DEPENDS copy_libpaddle
+              ${FLUID_CORE}
+              framework_py_proto
+              profiler_py_proto
+              pass_desc_py_proto
+              ${PY_FILES}
+              ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
   endif()
 else()
-  if(WITH_SETUP_INSTALL)
+  add_custom_command(
+    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+    COMMAND touch stub.cc
+    COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
+    COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
+    DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+            pass_desc_py_proto ${PY_FILES})
+
+  if(NOT WITH_SETUP_INSTALL)
     add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-      COMMAND touch stub.cc
-      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
-              ${PADDLE_BINARY_DIR}/python
-      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
-      COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
-  else()
-    add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-      COMMAND touch stub.cc
-      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
-              ${PADDLE_BINARY_DIR}/python
-      COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp1
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
       COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
+      DEPENDS copy_libpaddle
+              ${FLUID_CORE}
+              framework_py_proto
+              profiler_py_proto
+              pass_desc_py_proto
+              ${PY_FILES}
+              ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
   endif()
 endif()
 
+add_custom_target(copy_source_to_build_dir ALL
+                  DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+
 if(BUILD_WHL_PACKAGE)
   add_custom_target(paddle_python ALL
-                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp1)
 endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
