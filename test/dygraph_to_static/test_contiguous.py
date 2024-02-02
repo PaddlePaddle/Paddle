@@ -15,27 +15,29 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import enable_to_static_guard
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle.jit.api import to_static
 
 
-@to_static
 def func_test_to_static():
-    x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+    x = paddle.arange(12, dtype="float32").reshape([2, 3, 2])
     x = x.transpose([1, 0, 2])
     x = x.contiguous()
     assert x.is_contiguous()
     return x
 
 
-class TestContiguous(unittest.TestCase):
+class TestContiguous(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
-        with enable_to_static_guard(True):
-            static_result = func_test_to_static()
-        with enable_to_static_guard(False):
-            dygraph_result = func_test_to_static()
+        static_func = to_static(func_test_to_static)
+        static_result = static_func()
+        dygraph_result = func_test_to_static()
         np.testing.assert_allclose(
             static_result,
             dygraph_result,
