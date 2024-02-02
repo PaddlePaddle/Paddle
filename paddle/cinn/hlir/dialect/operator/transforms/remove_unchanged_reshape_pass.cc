@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -85,4 +86,5 @@ std::unique_ptr<pir::Pass> CreateRemoveUnchangedReshapePass() {
 }  // namespace dialect
 }  // namespace cinn
 
-REGISTER_IR_PASS(remove_unchanged_reshape_pass, RemoveUnchangedReshapePass);
+REGISTER_IR_PASS(remove_unchanged_reshape_pass,
+                 ::cinn::dialect::ir::RemoveUnchangedReshapePass);
