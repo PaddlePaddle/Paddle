@@ -16,7 +16,16 @@ import collections
 
 from paddle.utils import gast
 
+from ..utils import ast_to_source_code
 from .base import BaseTransformer
+
+
+def get_loads(node: gast.AST):
+    for child in gast.walk(node):
+        if isinstance(
+            child, (gast.Name, gast.Attribute, gast.Subscript)
+        ) and isinstance(child.ctx, gast.Load):
+            yield child
 
 
 class RegisterHookTransformer(BaseTransformer):
@@ -31,58 +40,42 @@ class RegisterHookTransformer(BaseTransformer):
         """
         self.visit(self.root)
 
-    def visit_FunctionDef(self, func_def):
-        # The inner function that has register_hook will not be processed
-        check_register_hook = next(
-            (
-                node
-                for node in gast.walk(func_def)
-                if isinstance(node, gast.Attribute)
-                and node.attr == 'register_hook'
-            ),
-            None,
-        )
-        if check_register_hook is None:
-            return func_def
-
-        register_hook_pos_map = self.register_hook_pos_map
-        assignment_pos_map = self.assignment_pos_map
-
-        for i in range(len(func_def.body) - 1, -1, -1):
-            body = func_def.body[i]
-            # Check if the code body contains the register_hook
-            if isinstance(body, gast.Expr):
-                for node in gast.walk(body):
-                    if (
-                        isinstance(node, gast.Attribute)
-                        and node.attr == 'register_hook'
-                    ):
-                        # parameter name for register_hook
-                        param_name = node.value.id
-                        register_hook_pos_map[param_name].append(i)
-            elif isinstance(body, gast.Assign):
-                for target in body.targets:
-                    assignment_pos_map[target.id].append(i)
-
-        # Confirm the order
-        order_map = {}
-        for k, idx_list in register_hook_pos_map.items():
-            for idx in idx_list:
-                if k not in assignment_pos_map:
-                    order_map[idx] = 1
-                else:
-                    for assignment_idx in assignment_pos_map[k]:
-                        if idx > assignment_idx:
-                            order_map[idx] = assignment_idx + 1
-                            break
-        code_order = [*range(len(func_def.body))]
-        for k, v in sorted(order_map.items(), key=lambda x: x[1], reverse=True):
-            if k == v:
+    def visit_FunctionDef(self, node: gast.FunctionDef):
+        func_body = node.body
+        regisiter_hook_nodes = [
+            n
+            for n in func_body
+            for stmt in gast.walk(n)
+            if isinstance(stmt, gast.Attribute) and stmt.attr == "register_hook"
+        ]
+        # Analyze the register_hook nodes name dependency
+        dependents = {}
+        for n in regisiter_hook_nodes:
+            if n not in func_body:
                 continue
-            code_order.remove(k)
-            code_order.insert(v, k)
+            for load_node in get_loads(n):
+                load_name = ast_to_source_code(load_node)
+                if load_name not in dependents:
+                    dependents[load_name] = []
+                dependents[load_name].append(n)
 
-        # rearrange the code according to the specified order
-        new_body = [func_def.body[i] for i in code_order]
-        func_def.body = new_body
-        return func_def
+        # Reorder the register_hook nodes, insert it before the dependent nodes
+        idx = 0
+        body = list(func_body)
+        while idx < len(body):
+            stmt = body[idx]
+            loads = get_loads(stmt)
+            for load_node in loads:
+                load_name = ast_to_source_code(load_node)
+                if load_name in dependents:
+                    dep_nodes = dependents[load_name]
+                    for dep_node in dep_nodes:
+                        dep_idx = body.index(dep_node)
+                        if dep_idx <= idx:
+                            continue
+                        body.remove(dep_node)
+                        body.insert(idx, dep_node)
+                        idx += 1
+            idx += 1
+        node.body = body
+        return node

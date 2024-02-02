@@ -363,6 +363,14 @@ def recover_globals_attribute(src_obj, dst_obj):
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
 
+    # Inject source function closure into destination function globals
+    # Because the destination function is a standalone function, the original
+    # closure of the source function is compiled as LOAD_GLOBAL in the
+    # destination function.
+    src_closure = inspect.getclosurevars(src_obj)
+    for k, v in src_closure.nonlocals.items():
+        dst_globals[k] = v
+
 
 def func_to_source_code(function, dedent=True):
     """
