@@ -20,12 +20,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-TEST_API void Poly2Mask(const float* ploy, int k, int h, int w, uint8_t* mask);
+void Poly2Mask(const float* ploy, int k, int h, int w, uint8_t* mask);
 
-TEST_API void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
+void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
                          float* boxes);
 
-TEST_API void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
+void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
                                const float* box,
                                int M,
                                uint8_t* mask);
