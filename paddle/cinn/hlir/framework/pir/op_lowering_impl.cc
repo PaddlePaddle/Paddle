@@ -131,9 +131,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
 
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
@@ -276,18 +275,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
-    // std::transform(
-    //     group->output_ops.begin(),
-    //     group->output_ops.end(),
-    //     std::inserter(output_tensor_names, output_tensor_names.begin()),
-    //     [](::pir::Operation* node) {
-    //       ::pir::Value node_data = node->result(0);
-    //       return this->ValueName(node_data);
-    //     });
     ir::StaticShapeGroupScheduler group_scheduler(
         &ir_sch, output_tensor_names, target_);
     group_scheduler.MapExprSchedule();
@@ -428,27 +418,22 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
-  // TODO(phlrain): output values not stable here
-  for (auto& op : group->output_ops) {
-    // collect all output tensor.
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      auto tensor = tensor_map.at(opresult);
-      if (arg_name_set.count(tensor->buffer->name) != 0) {
-        continue;
-      }
-
-      group->output_values.push_back(opresult);
-      // output arg tensors
-      group_func_arg_tensors->push_back(tensor);
-      // output args
-      group->output_names.push_back(tensor->name);
-      (*group_func_args)
-          .emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
-      arg_name_set.insert(tensor->buffer->name);
+  for (auto opresult : group->GetGroupOutputValues()) {
+    if (tensor_map.count(opresult) == 0) {
+      continue;
     }
+    auto tensor = tensor_map.at(opresult);
+    if (arg_name_set.count(tensor->buffer->name) != 0) {
+      continue;
+    }
+
+    group->output_values.push_back(opresult);
+    // output arg tensors
+    group_func_arg_tensors->push_back(tensor);
+    // output args
+    group->output_names.push_back(tensor->name);
+    (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
+    arg_name_set.insert(tensor->buffer->name);
   }
 
   if (!done_op_schedule) {
@@ -705,11 +690,9 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
   std::unordered_set<std::string> output_tensor_names;
-  std::transform(
-      group->output_ops.begin(),
-      group->output_ops.end(),
-      std::inserter(output_tensor_names, output_tensor_names.begin()),
-      [&](::pir::Operation* op) { return ValueName(op->result(0)); });
+  for (auto value : group->GetGroupOutputValues()) {
+    output_tensor_names.insert(ValueName(value));
+  }
   std::unique_ptr<ir::GroupScheduler> group_scheduler =
       ir::GroupScheduler::Make(
           &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ false);
