@@ -1830,6 +1830,9 @@ void AnalysisPredictor::PrepareArgument() {
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
+      if (config_.ir_debug_) {
+        pass_builder->TurnOnDebug();
+      }
     } else {
       LOG(INFO)
           << "Ir optimization is turned off, no ir pass will be executed.";
