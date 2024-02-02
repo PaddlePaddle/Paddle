@@ -46,7 +46,14 @@ class LinearQuanterDequanter(Layer):
 
 
 class LinearQuanter(Layer):
-    def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
+    def __init__(
+        self,
+        scales,
+        zero_point=None,
+        quant_axis=None,
+        bit_length=8,
+        group_size=128,
+    ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
         scale_attr = paddle.framework.ParamAttr(
@@ -65,9 +72,19 @@ class LinearQuanter(Layer):
         )
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
+        self._group_size = group_size
 
     def forward(self, input):
         if in_dynamic_mode():
+            if len(self._scales.shape) > 1:
+                bnt = (1 << (self._bit_length - 1)) - 1
+                new_s = paddle.repeat_interleave(
+                    self._scales, self._group_size, 0
+                )
+                quant_weight = paddle.clip(
+                    paddle.round(input / new_s * bnt), -bnt - 1, bnt
+                )
+                return quant_weight
             return _C_ops.quantize_linear(
                 input.cast('float32'),
                 self._scales,
@@ -105,7 +122,14 @@ class LinearQuanter(Layer):
 
 
 class LinearDequanter(Layer):
-    def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
+    def __init__(
+        self,
+        scales,
+        zero_point=None,
+        quant_axis=None,
+        bit_length=8,
+        group_size=128,
+    ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
         scale_attr = paddle.framework.ParamAttr(
@@ -124,9 +148,18 @@ class LinearDequanter(Layer):
         )
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
+        self._group_size = group_size
 
     def forward(self, input):
         if in_dynamic_mode():
+            if len(self._scales.shape) > 1:
+                bnt = (1 << (self._bit_length - 1)) - 1
+                new_s = paddle.repeat_interleave(
+                    self._scales, self._group_size, 0
+                )
+                quant_dequant_weight = input / bnt * new_s
+                return quant_dequant_weight
+
             return _C_ops.dequantize_linear(
                 input.cast('float32'),
                 self._scales,
