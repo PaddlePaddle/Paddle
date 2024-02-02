@@ -128,6 +128,21 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << " \n }";
 }
 
+void StoreOp::Build(pir::Builder& builder,
+                    pir::OperationArgument& argument,
+                    pir::Type output_type) {
+  argument.AddRegion(nullptr);
+  argument.output_types = {output_type};
+}
+
+void StoreOp::VerifySig() {}
+
+void StoreOp::Print(pir::IrPrinter& printer) {
+  auto& os = printer.os;
+  auto op = operation();
+  printer.PrintOperation(op);
+}
+
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   VLOG(4) << "Infer symbolic shape for cinn_op.concat";

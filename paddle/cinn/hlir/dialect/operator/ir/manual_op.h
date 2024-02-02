@@ -67,6 +67,22 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
+// StoreOp represents a store operation for
+// seperate local variable and ouptut
+class IR_API StoreOp : public pir::Op<StoreOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.store"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Type output_type);
+
+  void VerifySig();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
 class IR_API ConcatOp
     : public pir::Op<ConcatOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
