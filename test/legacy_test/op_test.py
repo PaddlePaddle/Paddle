@@ -895,11 +895,11 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = base.dygraph.base.to_variable(value=data)
+            v = paddle.to_tensor(value=data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return base.dygraph.base.to_variable(value)
+            return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
