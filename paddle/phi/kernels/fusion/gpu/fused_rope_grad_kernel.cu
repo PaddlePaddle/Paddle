@@ -42,9 +42,15 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
   auto batch_size = dout_q.dims()[0];
+  auto seq_len = dout_q.dims()[1];
   inputs_num_heads[0] = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
-  auto seq_len = dout_q.dims()[1];
+
+  int64_t batch_stride_q = dout_q.strides()[0];
+  int64_t seq_stride_q = dout_q.strides()[1];
+  int64_t batch_stride_kv = batch_stride_q;
+  int64_t seq_stride_kv = seq_stride_q;
+
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
                     phi::errors::InvalidArgument(
@@ -52,11 +58,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   constexpr const int vec_size = 2;
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -73,6 +74,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     outs_data[num_inputs] = dk->data<T>();
     ins_data[num_inputs] = dout_k->data<T>();
     inputs_num_heads[num_inputs] = dk->dims()[2];
+
+    batch_stride_kv = dout_k->strides()[0];
+    seq_stride_kv = dout_k->strides()[1];
+
     num_inputs++;
   }
 
@@ -81,6 +86,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     outs_data[num_inputs] = dv->data<T>();
     ins_data[num_inputs] = dout_v->data<T>();
     inputs_num_heads[num_inputs] = dv->dims()[2];
+
+    batch_stride_kv = dout_v->strides()[0];
+    seq_stride_kv = dout_v->strides()[1];
+
     num_inputs++;
   }
 
@@ -99,85 +108,35 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     }
   }
 
-  bool is_same_num_heads = true;
-  auto prev_num_heads = inputs_num_heads[0];
-  for (int i = 1; i < num_inputs; ++i) {
-    if (prev_num_heads != inputs_num_heads[i]) {
-      is_same_num_heads = false;
-      break;
-    }
-    prev_num_heads = inputs_num_heads[i];
-  }
+  int64_t num_heads_kv =
+      GetNumHeadsOfKV(dout_k, dout_v, inputs_num_heads, num_inputs);
+
+  const uint32_t kThreadsPerBlock = 256;
+  const uint32_t kWarpSize = 32;
+  const uint32_t kWarpsPerBlock = kThreadsPerBlock / kWarpSize;
+  dim3 grid((uint32_t)batch_size, (uint32_t)seq_len);
+  dim3 block(kWarpSize, kWarpsPerBlock);
 
   int sign = -1;
-  if (is_same_num_heads) {
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          3,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>;
-    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
-                                                sin_cos_data,
-                                                position_ids_data,
-                                                flag_sin_cos,
-                                                sign,
-                                                batch_size,
-                                                seq_len,
-                                                inputs_num_heads[0],
-                                                head_dim,
-                                                outs_data,
-                                                num_inputs,
-                                                div_c);
-  } else {
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          1,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 1, vec_size>;
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 2, vec_size> kernel_func_kv =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          2,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>;
-
-    // rotary position embedding Q
-    phi::Array<const T*, 1> input_q{ins_data[0]};
-    phi::Array<T*, 1> out_q{outs_data[0]};
-    kernel_func_q<<<grid, block, 0, stream>>>(input_q,
-                                              sin_cos_data,
-                                              position_ids_data,
-                                              flag_sin_cos,
-                                              sign,
-                                              batch_size,
-                                              seq_len,
-                                              inputs_num_heads[0],
-                                              head_dim,
-                                              out_q,
-                                              1,
-                                              div_c);
-
-    // rotary position embedding K,V
-    phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
-    phi::Array<T*, 2> out_kv{outs_data[1], outs_data[2]};
-    kernel_func_kv<<<grid, block, 0, stream>>>(input_kv,
-                                               sin_cos_data,
-                                               position_ids_data,
-                                               flag_sin_cos,
-                                               sign,
-                                               batch_size,
-                                               seq_len,
-                                               inputs_num_heads[1],
-                                               head_dim,
-                                               out_kv,
-                                               num_inputs - 1,
-                                               div_c);
-  }
+  VectorizedFusedRopeKernel<T, MPType, 3, vec_size>
+      <<<grid, block, 0, stream>>>(ins_data,
+                                   sin_cos_data,
+                                   position_ids_data,
+                                   batch_size,
+                                   seq_len,
+                                   inputs_num_heads[0],
+                                   num_heads_kv,
+                                   head_dim,
+                                   batch_stride_q,
+                                   seq_stride_q,
+                                   batch_stride_kv,
+                                   seq_stride_kv,
+                                   outs_data,
+                                   div_c,
+                                   use_neox_rotary_style,
+                                   flag_sin_cos,
+                                   sign,
+                                   num_inputs);
 }
 
 }  // namespace fusion
