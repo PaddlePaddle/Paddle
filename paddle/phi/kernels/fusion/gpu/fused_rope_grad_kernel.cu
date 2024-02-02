@@ -118,7 +118,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   dim3 block(kWarpSize, kWarpsPerBlock);
 
   int sign = -1;
-  VectorizedFusedRopeKernel<T, MPType, 3, vec_size>
+  VectorizedFusedRopeKernel<T, MPType, vec_size>
       <<<grid, block, 0, stream>>>(ins_data,
                                    sin_cos_data,
                                    position_ids_data,

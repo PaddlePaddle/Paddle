@@ -187,7 +187,7 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   int sign = 1;
 
-  VectorizedFusedRopeKernel<T, MPType, 3, vec_size>
+  VectorizedFusedRopeKernel<T, MPType, vec_size>
       <<<grid, block, 0, dev_ctx.stream()>>>(ins_data,
                                              sin_cos_data,
                                              position_ids_data,
