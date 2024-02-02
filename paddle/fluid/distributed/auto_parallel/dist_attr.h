@@ -55,13 +55,13 @@ using phi::distributed::auto_parallel::OperatorDistAttrProto;
 
 constexpr const char* kDefault = "default";
 
-std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
+TEST_API std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
 class OperatorDistAttr {
  public:
   OperatorDistAttr() = default;
 
-  explicit OperatorDistAttr(const OpDesc& op);
+  TEST_API explicit OperatorDistAttr(const OpDesc& op);
 
   OperatorDistAttr(const OperatorDistAttr& dist_attr);
 
@@ -90,7 +90,7 @@ class OperatorDistAttr {
     return output_dist_attrs_;
   }
 
-  void set_output_dist_attrs(
+  TEST_API void set_output_dist_attrs(
       const std::map<std::string, TensorDistAttr>& dist_attrs);
 
   const TensorDistAttr& input_dist_attr(const std::string& name) const {
@@ -101,8 +101,8 @@ class OperatorDistAttr {
     return input_dist_attrs_.at(name);
   }
 
-  void set_input_dist_attr(const std::string& name,
-                           const TensorDistAttr& dist_attr);
+  TEST_API void set_input_dist_attr(const std::string& name,
+                                    const TensorDistAttr& dist_attr);
 
   const TensorDistAttr& output_dist_attr(const std::string& name) const {
     return output_dist_attrs_.at(name);
@@ -117,7 +117,7 @@ class OperatorDistAttr {
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
 
-  void set_process_mesh(const ProcessMesh& process_mesh);
+  TEST_API void set_process_mesh(const ProcessMesh& process_mesh);
 
   const std::string& op_type() const { return op_type_; }
 
@@ -185,9 +185,9 @@ class OperatorDistAttr {
     return annotated_.count(name) == 1 && annotated_.at(name) == true;
   }
 
-  void mark_annotated(const std::string& name);
+  TEST_API void mark_annotated(const std::string& name);
 
-  void clear_annotated();
+  TEST_API void clear_annotated();
 
   const std::vector<int64_t>& input_dims_mapping(const std::string& name) const;
 
@@ -211,18 +211,18 @@ class OperatorDistAttr {
 
   bool verify_annotated(const std::map<std::string, bool>& annotated) const;
 
-  bool verify(const OpDesc* op = nullptr) const;
+  TEST_API bool verify(const OpDesc* op = nullptr) const;
 
   void rename_input(const std::string& old_name, const std::string& new_name);
 
   void rename_output(const std::string& old_name, const std::string& new_name);
 
   // OperatorDistAttr from_string(const std::string& dist_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
-  void from_proto(const OperatorDistAttrProto& proto);
+  TEST_API void from_proto(const OperatorDistAttrProto& proto);
 
-  OperatorDistAttrProto to_proto() const;
+  TEST_API OperatorDistAttrProto to_proto() const;
 
   std::string serialize_to_string();
 
@@ -262,7 +262,7 @@ inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {
   return os;
 }
 
-bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs);
+TEST_API bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs);
 
 inline bool operator!=(const OperatorDistAttr& lhs,
                        const OperatorDistAttr& rhs) {
