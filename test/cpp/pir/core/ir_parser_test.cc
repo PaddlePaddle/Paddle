@@ -184,11 +184,7 @@ TEST(IrParserTest, TestParserByFile) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-#ifdef _WIN32
   const std::string file_path = "TestParserText.txt";
-#else
-  const std::string file_path = "./pir/core/TestParserText.txt";
-#endif
   std::ifstream is(file_path);
   EXPECT_TRUE(is.is_open());
   ParserTest parser_test(is);

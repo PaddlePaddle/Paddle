@@ -829,7 +829,7 @@ void SwitchWarpSoftmaxBackward(const int blocks,
 
 /**
  * <NormalSoftmaxKernel>
- * Better performence when axis != -1
+ * Better performance when axis != -1
  */
 
 static void GetGridDim(

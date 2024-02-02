@@ -109,7 +109,7 @@ class Property {
 
   // Note: the id_ is unique for all Property (only for auto parallel).
   uint64_t id_ = GenerateId();
-  // Note: the orignal_id_ is used for referring to the original Property
+  // Note: the original_id_ is used for referring to the original Property
   // that the current Property is built from (only for auto parallel).
   // The default original_id_ is same as the id_, which means the
   // current Property is not built from the other one.
