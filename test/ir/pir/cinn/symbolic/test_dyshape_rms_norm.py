@@ -11,14 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
-from test_cinn_sub_graph_symbolic import apply_to_static
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+
+import utils
 
 
 class LlamaRMSNorm(nn.Layer):
@@ -50,15 +56,20 @@ class TestLlamaRMSNorm(unittest.TestCase):
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def eval(self, use_cinn):
-        paddle.seed(2022)
         net = LlamaRMSNorm()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
