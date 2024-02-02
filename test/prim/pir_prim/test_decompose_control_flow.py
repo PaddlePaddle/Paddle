@@ -88,7 +88,10 @@ class TestPrimControlFlowIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, paddle.base.CUDAPlace):
+            if (
+                isinstance(place, paddle.base.CUDAPlace)
+                and paddle.is_compiled_with_cuda()
+            ):
                 paddle.set_device("gpu")
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
@@ -104,7 +107,10 @@ class TestPrimControlFlowIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, paddle.base.CUDAPlace):
+            if (
+                isinstance(place, paddle.base.CUDAPlace)
+                and paddle.is_compiled_with_cuda()
+            ):
                 paddle.set_device("gpu")
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
@@ -147,7 +153,10 @@ class TestPrimControlFlowWhile(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, paddle.base.CUDAPlace):
+            if (
+                isinstance(place, paddle.base.CUDAPlace)
+                and paddle.is_compiled_with_cuda()
+            ):
                 paddle.set_device("gpu")
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
@@ -186,7 +195,10 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, paddle.base.CUDAPlace):
+            if (
+                isinstance(place, paddle.base.CUDAPlace)
+                and paddle.is_compiled_with_cuda()
+            ):
                 paddle.set_device("gpu")
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")

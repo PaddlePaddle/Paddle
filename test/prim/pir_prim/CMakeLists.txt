@@ -7,7 +7,8 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_sink_decomp
     test_prim_skip_dynamic
     test_prim_dynamic
-    test_prim_jit_dynamic)
+    test_prim_jit_dynamic
+    test_decompose_control_flow)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(
