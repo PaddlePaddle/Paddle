@@ -89,7 +89,7 @@ class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
         self.assertTrue(static_place.is_gpu_place())
 
 
-class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
+class TestTensorCopyToCUDAWithWarningOnGPU(Dy2StTestBase):
     def _run(self):
         x1 = paddle.ones([1, 2, 3])
         x2 = paddle.jit.to_static(tensor_copy_to_cuda_with_warning)(
