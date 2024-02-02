@@ -17,7 +17,9 @@ from __future__ import annotations
 import dataclasses
 from enum import Enum
 
-from ...utils import InnerError, OrderedSet
+from paddle.jit.utils import OrderedSet
+
+from ...utils import InnerError
 from .instruction_utils import Instruction
 from .opcode_info import ALL_JUMP, HAS_FREE, HAS_LOCAL, UNCONDITIONAL_JUMP
 
