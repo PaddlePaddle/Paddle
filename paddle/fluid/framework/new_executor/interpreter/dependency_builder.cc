@@ -35,7 +35,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 // Program, while "serial_run" ensures that all Ops are scheduled in a signal
 // thread. In standalone executor, "sequential_run" is also "serial_run", while
 // "serial_run" is not necessarily "sequential_run".
-PHI_DECLARE_bool(new_executor_sequential_run);
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                            false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
 PHI_DECLARE_int32(enable_adjust_op_order);
 // add debug info
 PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
