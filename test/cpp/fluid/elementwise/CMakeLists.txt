@@ -3,7 +3,6 @@ paddle_test(
   SRCS test_elementwise_add_op_inplace.cc
   DEPS executor
        op_registry
-       scope
        common)
 cc_test(
   test_elementwise_div_grad_grad
