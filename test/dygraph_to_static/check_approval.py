@@ -35,10 +35,15 @@ python test/dygraph_to_static/check_approval.py test/dygraph_to_static
 """
 import argparse
 import ast
+import logging
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+logging.basicConfig(style="{", format="{message}", level=logging.INFO)
+logger = logging.getLogger("Dygraph to static unittest dev guide checker")
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -186,7 +191,6 @@ class TestBaseChecker(Checker):
                 and base.value.id == 'unittest'
                 and base.attr == 'TestCase'
             ) or (isinstance(base, ast.Name) and base.id == 'TestCase'):
-                # print(f'Found test class {node.name}')
                 start = Location(node.lineno, node.col_offset)
                 end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
                 self.diagnostics.append(
@@ -263,14 +267,14 @@ def show_diagnostics(
     )
     if not total_errors:
         return
-    print(f'Total errors: {total_errors}')
+    logger.error(f'Total errors: {total_errors}')
     for file, file_diagnostics in diagnostics:
         if not file_diagnostics:
             continue
         for diagnostic in file_diagnostics:
             if not isinstance(diagnostic, show_diagnostic_classes):
                 continue
-            print(
+            logger.error(
                 f'{file}:{diagnostic.start.lineno}:{diagnostic.start.col_offset}: {diagnostic.message}'
             )
 
@@ -313,9 +317,6 @@ def main():
         with open(file, 'r') as f:
             code = f.read()
             tree = ast.parse(code)
-            # print(tree)
-            # print(ast.dump(tree, indent=2))
-
             checkers: list[Checker] = [
                 TestBaseChecker(),
                 FunctionTostaticChecker(),
