@@ -28,8 +28,7 @@ from paddle.static import Executor, Program, program_guard
 
 def get_program(args):
     main, startup = Program(), Program()
-    main.paddle.seed(10)
-    startup.paddle.seed(10)
+    paddle.seed(2023)
     with base.unique_name.guard():
         with program_guard(main, startup):
             data = paddle.static.data(
