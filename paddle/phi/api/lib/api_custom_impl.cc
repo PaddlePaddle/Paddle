@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 
 namespace paddle {
 namespace experimental {
