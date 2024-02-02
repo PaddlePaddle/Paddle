@@ -762,12 +762,25 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
     }
   }
 
-  if (first_broadcast && !full_broadcast &&
-      (info.op_name != "cinn_op.reshape")) {
+  if (first_broadcast && !full_broadcast) {
     std::cerr << "first broadcat\n";
     auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
 
+    if (info.op_name == "cinn_op.reshape") {
+      for (auto expr : exprs) {
+        auto load = expr.As<ir::Load>();
+        for (size_t k = 0; k < load->indices.size(); ++k) {
+          for (size_t i = 0; i < axes.size(); ++i) {
+            ReplaceExpr(&load->indices[k],
+                        {schedule_block->iter_vars[axes[i]]},
+                        {Expr(0)});
+          }
+        }
+      }
+
+      return;
+    }
     for (auto expr : exprs) {
       auto load = expr.As<ir::Load>();
       if (load->indices.size() == schedule_realize->iter_values.size()) {

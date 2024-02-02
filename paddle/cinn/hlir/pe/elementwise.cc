@@ -272,14 +272,18 @@ ir::Tensor Reshape(const ir::Tensor& A,
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = Expr(0);
-        for (int i = 0; i < indice.size(); i++) {
+        Expr offset = indice[0] * new_stride_info[0];
+        for (int i = 1; i < indice.size(); i++) {
           offset = offset + indice[i] * new_stride_info[i];
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
           // auto temp = common::AutoSimplify(offset % A_expr_shape[i]);
-          auto temp = offset / A_stride_info[i] % A_expr_shape[i];
+          auto inner_offset = offset;
+          if (i != (A_expr_shape.size() - 1)) {
+            inner_offset = inner_offset / A_stride_info[i];
+          }
+          auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
         }
         return A(indice_a);

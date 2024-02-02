@@ -842,10 +842,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       }
       auto tensor = tensor_map.at(opresult);
 
-      // std::cerr << "tensor name "  << tensor->name << std::endl;
-
-      // if (broadcast_info.count(tensor->name)) {
-      // std::cerr << "broadcast is a output " << tensor->name << std::endl;
       if (opresult.use_count() > 1) {
         copyed_var_names.insert(tensor->name);
 
