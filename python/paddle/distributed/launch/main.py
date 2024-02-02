@@ -437,10 +437,8 @@ def launch():
         max_search_time = tuner_cfg.get("max_search_time", None)
 
         # buffer and memory
-        buffer = tuner_cfg.get("buffer", 0)
-        tuner_cfg['buffer'] = buffer
-        memory = tuner_cfg.get("memory", None)
-        tuner_cfg['buffer'] = buffer
+        buffer = tuner_cfg.get("buffer", None)
+        max_mem_usage = tuner_cfg.get("max_mem_usage", None)
 
         is_first_task = True
         # build history recorder
@@ -687,8 +685,8 @@ def launch():
                 cur_best_cfgs, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                    buffer=tuner_cfg['buffer'],
-                    memory=tuner_cfg['memory'],
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if not err:
                     ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -789,8 +787,8 @@ def launch():
                         direction=tuner_cfg['metric_cfg'][
                             'OptimizationDirection'
                         ],
-                        buffer=tuner_cfg['buffer'],
-                        memory=tuner_cfg['memory'],
+                        buffer=buffer,
+                        max_mem_usage=max_mem_usage,
                     )
                     if not err:
                         ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1168,8 +1166,8 @@ def launch():
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                buffer=tuner_cfg['buffer'],
-                memory=tuner_cfg['memory'],
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1217,8 +1215,8 @@ def launch():
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                    buffer=tuner_cfg['buffer'],
-                    memory=tuner_cfg['memory'],
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if err:
                     raise ValueError(
@@ -1244,8 +1242,8 @@ def launch():
             best_cfg, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                buffer=tuner_cfg['buffer'],
-                memory=tuner_cfg['memory'],
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if err:
                 raise ValueError(

@@ -51,21 +51,30 @@ class HistoryRecorder:
                 reverse=False,
             )
 
-    def get_best(self, metric, direction, buffer, memory) -> Tuple[dict, bool]:
+    def get_best(
+        self, metric, direction, buffer=None, max_mem_usage=None
+    ) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
-            return (self.history[0], True)
+            return (None, True)
 
         best_cfg = self.history[0]
         if isinstance(best_cfg["max_mem_usage"], str) or best_cfg["time"] == -1:
             return (best_cfg, True)
 
-        if buffer > 0:
+        if buffer is not None:
+            if buffer < 0:
+                raise ValueError("The buffer should be not less than 0.")
+            if max_mem_usage <= 0:
+                raise ValueError("max_mem_usage should be greater than 0.")
+            assert (
+                max_mem_usage is None
+            ), "max_mem_usage cannot be None when buffer is greater than 0."
             for cfg in self.history:
                 best_cfg = cfg
                 if (
                     not isinstance(cfg["max_mem_usage"], str)
-                    and cfg["max_mem_usage"] < memory - buffer
+                    and cfg["max_mem_usage"] < max_mem_usage - buffer
                     and cfg["time"] != -1
                 ):
                     break
