@@ -450,10 +450,8 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
             .attribute("value"));
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
-    std::vector<pir::Value> inputs = shape.defining_op()
-                                         ->operand_source(0)
-                                         .defining_op()
-                                         ->operands_source();
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
       auto tmp = ParseValueShape(item, is_from_tensor);
       vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
