@@ -4,7 +4,6 @@ paddle_test(
   DEPS executor
        op_registry
        scope
-       device_context
        common)
 cc_test(
   test_elementwise_div_grad_grad
