@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace drr {
