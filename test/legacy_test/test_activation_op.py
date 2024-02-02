@@ -5305,7 +5305,9 @@ create_test_act_fp16_class(TestSoftsign, check_pir=True)
 create_test_act_fp16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
-create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
+create_test_act_fp16_class(
+    TestHardSwish, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_fp16_class(TestMish, check_pir=True)
 create_test_act_fp16_class(
     TestLeakyRelu,
@@ -5475,7 +5477,9 @@ create_test_act_bf16_class(TestSoftsign, check_pir=True)
 create_test_act_bf16_class(TestThresholdedRelu, check_pir=True)
 create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
-create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestHardSwish, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(TestMish, check_pir=True)
 create_test_act_bf16_class(
     TestLeakyRelu, check_prim=True, check_pir=True, check_prim_pir=True
