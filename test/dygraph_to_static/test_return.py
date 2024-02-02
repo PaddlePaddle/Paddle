@@ -19,8 +19,8 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_only,
     test_legacy_and_pt_and_pir,
+    test_legacy_only,
 )
 from ifelse_simple_func import dyfunc_with_if_else
 
