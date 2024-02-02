@@ -182,35 +182,24 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   int sign = 1;
   if (is_same_num_heads) {
-    if (use_neox_rotary_style) {
-      VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(ins_data,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[0],
-                                       head_dim,
-                                       outs_data,
-                                       num_inputs,
-                                       div_c);
-    } else {
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(ins_data,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[0],
-                                       head_dim,
-                                       outs_data,
-                                       num_inputs,
-                                       div_c);
-    }
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func_qkv =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
+
+    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
+                                                sin_cos_data,
+                                                position_ids_data,
+                                                flag_sin_cos,
+                                                sign,
+                                                batch_size,
+                                                seq_len,
+                                                inputs_num_heads[0],
+                                                head_dim,
+                                                outs_data,
+                                                num_inputs,
+                                                div_c);
+
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -237,70 +226,40 @@ void FusedRopeKernel(const Context& dev_ctx,
               inputs_num_heads[2]));
     }
 
+    VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
+        use_neox_rotary_style
+            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
+
     // rotary position embedding Q
-    if (use_neox_rotary_style) {
-      VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(ins_data,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[0],
-                                       head_dim,
-                                       outs_data,
-                                       1,
-                                       div_c);
-    } else {
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(ins_data,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[0],
-                                       head_dim,
-                                       outs_data,
-                                       1,
-                                       div_c);
-    }
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            outs_data,
+                                            1,
+                                            div_c);
 
     // rotary position embedding K,V
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
-
-    if (use_neox_rotary_style) {
-      VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(input_kv,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[1],
-                                       head_dim,
-                                       out_kv,
-                                       num_inputs - 1,
-                                       div_c);
-    } else {
-      VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
-          <<<grid, block, 0, stream>>>(input_kv,
-                                       sin_cos_data,
-                                       position_ids_data,
-                                       flag_sin_cos,
-                                       sign,
-                                       batch_size,
-                                       seq_len,
-                                       inputs_num_heads[1],
-                                       head_dim,
-                                       out_kv,
-                                       num_inputs - 1,
-                                       div_c);
-    }
+    kernel_func<<<grid, block, 0, stream>>>(input_kv,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[1],
+                                            head_dim,
+                                            out_kv,
+                                            num_inputs - 1,
+                                            div_c);
   }
 }
 }  // namespace fusion

@@ -19,6 +19,21 @@
 namespace phi {
 namespace fusion {
 
+template <typename T, typename MPType, int VecSize>
+using VectorizedFusedRopeCudaKernelFunc =
+    void (*)(phi::Array<const T*, 3> ins_data,
+             phi::Array<const T*, 2> sin_cos_data,
+             const int64_t* position_ids_data,
+             bool flag_sin_cos,
+             int sign,
+             int64_t batch_size,
+             int64_t seq_len,
+             int64_t num_heads,
+             int64_t head_dim,
+             phi::Array<T*, 3> outs_data,
+             int num_inputs,
+             MPType div_c);
+
 template <typename T, typename MPType, int VecSize = 2>
 __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     const int64_t* position_ids_data,
