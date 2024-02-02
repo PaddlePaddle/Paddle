@@ -35,9 +35,9 @@ class ProcessMesh {
  public:
   ProcessMesh() = default;
 
-  ProcessMesh(const std::vector<int64_t>& shape,
-              const std::vector<int64_t>& process_ids,
-              const std::vector<std::string>& dim_names);
+  TEST_API ProcessMesh(const std::vector<int64_t>& shape,
+                       const std::vector<int64_t>& process_ids,
+                       const std::vector<std::string>& dim_names);
 
   const std::vector<int64_t>& shape() const { return shape_; }
 
