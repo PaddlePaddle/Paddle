@@ -17,8 +17,14 @@ import unittest
 
 from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
 
+import paddle
 from paddle.jit.dy2static.transformers.utils import index_in_list
 from paddle.jit.dy2static.utils import is_paddle_func
+
+
+@paddle.jit.to_static
+def foo():
+    ...
 
 
 class TestIndexInList(Dy2StTestBase):
