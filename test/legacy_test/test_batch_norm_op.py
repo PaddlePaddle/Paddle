@@ -203,9 +203,9 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
         out_dtype = out_tensor.dtype()
         if data is None:
-            if out_dtype == core.VarDesc.VarType.FP64:
+            if out_dtype == paddle.float64:
                 data = np.ones(out_tensor.shape(), dtype=np.float64)
-            elif out_dtype == core.VarDesc.VarType.FP32:
+            elif out_dtype == paddle.float32:
                 data = np.ones(out_tensor.shape(), dtype=np.float32)
             else:
                 raise ValueError("Not supported data type " + str(out_dtype))
@@ -739,7 +739,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 grad_op_desc.infer_shape(block.desc)
                 for arg in grad_op_desc.output_arg_names():
                     grad_var = block.desc.find_var(arg.encode("ascii"))
-                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
+                    grad_var.set_dtype(paddle.float32)
 
                 program._sync_with_cpp()
 

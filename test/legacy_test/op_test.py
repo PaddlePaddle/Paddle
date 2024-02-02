@@ -166,19 +166,19 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
+    if tensor_to_check_dtype == paddle.float32:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
+    elif tensor_to_check_dtype == paddle.float64:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
+    elif tensor_to_check_dtype == paddle.float16:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+    elif tensor_to_check_dtype == paddle.bfloat16:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+    elif tensor_to_check_dtype == paddle.complex64:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+    elif tensor_to_check_dtype == paddle.complex128:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -196,7 +196,7 @@ def get_numeric_gradient(
             # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
-            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            if tensor_to_check._dtype() == paddle.bfloat16:
                 output_numpy = convert_uint16_to_float(output_numpy)
             sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
@@ -208,7 +208,7 @@ def get_numeric_gradient(
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
             return struct.unpack(
@@ -236,7 +236,7 @@ def get_numeric_gradient(
             numpy_tensor[i] = e
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
@@ -3470,7 +3470,7 @@ class OpTest(unittest.TestCase):
                 for cast_input in cast_inputs:
                     if isinstance(cast_input, paddle.Tensor):
                         cast_outputs.append(
-                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                            paddle.cast(cast_input, paddle.float32)
                         )
                     else:
                         raise TypeError(
@@ -3554,8 +3554,8 @@ class OpTest(unittest.TestCase):
                 outputs={"Out": cast_output},
                 type="cast",
                 attrs={
-                    "in_dtype": core.VarDesc.VarType.BF16,
-                    "out_dtype": core.VarDesc.VarType.FP32,
+                    "in_dtype": paddle.bfloat16,
+                    "out_dtype": paddle.float32,
                 },
             )
             cast_op.desc.infer_var_type(block.desc)
@@ -3678,8 +3678,8 @@ class OpTest(unittest.TestCase):
                             outputs={"Out": cast_outputs},
                             type="cast",
                             attrs={
-                                "in_dtype": core.VarDesc.VarType.BF16,
-                                "out_dtype": core.VarDesc.VarType.FP32,
+                                "in_dtype": paddle.bfloat16,
+                                "out_dtype": paddle.float32,
                             },
                         )
                         cast_op.desc.infer_var_type(block.desc)

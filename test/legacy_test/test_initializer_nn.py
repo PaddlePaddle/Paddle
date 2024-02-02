@@ -20,7 +20,6 @@ from utils import static_guard
 import paddle
 from paddle import base, nn
 from paddle.base import framework
-from paddle.base.core import VarDesc
 from paddle.nn import initializer
 
 DELTA = 0.00001
@@ -35,8 +34,8 @@ def get_uniform_min_and_max(weight):
 def check_cast_op(op):
     return (
         op.type == 'cast'
-        and op.attr('in_dtype') == VarDesc.VarType.FP32
-        and op.attr('out_dtype') in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]
+        and op.attr('in_dtype') == paddle.float32
+        and op.attr('out_dtype') in [paddle.float16, paddle.bfloat16]
     )
 
 
