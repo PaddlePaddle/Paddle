@@ -429,8 +429,10 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
     if [ $? -ne 0 ]; then
         echo_line="Your PR does not meet Dy2St unittest dev guide, please check https://github.com/PaddlePaddle/Paddle/issues/61464 for details.\n"
-        echo_line=${echo_line}"Errors are as follows:\n${error_lines}\n"
-        echo_line=${echo_line}"You can run 'python test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}' to check the details.\n"
+        echo_line=${echo_line}"Errors are as follows:\n"
+        echo_line=${echo_line}${error_lines}"\n"
+        echo_line=${echo_line}"You can run following command to fix the errors:\n"
+        echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
         echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for the changes.\n"
         check_approval 1 SigureMo Aurelius84 2742195759 gouzil
     fi
