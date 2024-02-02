@@ -781,7 +781,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
             a = 1.5
             b = paddle.full([4, 5, 6], True, dtype='bool')
             c = a + b
-            self.assertTrue(c.dtype == paddle.float32)
+            self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
         paddle.disable_static()
