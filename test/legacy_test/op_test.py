@@ -431,6 +431,7 @@ class OpTest(unittest.TestCase):
         cls.check_prim = False
         cls.check_prim_pir = False
         cls._check_cinn = False
+        cls.check_pir_onednn = False
 
         np.random.seed(123)
         random.seed(124)

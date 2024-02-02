@@ -38,9 +38,9 @@ class LegacyKernelOp : public pir::Op<LegacyKernelOp> {
   static const char *name() { return "pd_kernel.legacy_kernel"; }
   static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
-  std::string op_name();
-  std::string kernel_name();
-  phi::KernelKey kernel_key();
+  TEST_API std::string op_name();
+  TEST_API std::string kernel_name();
+  TEST_API phi::KernelKey kernel_key();
   void VerifySig();
 };
 

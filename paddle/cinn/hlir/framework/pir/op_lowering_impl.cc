@@ -158,7 +158,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_op_schedule,
+                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -720,20 +720,32 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
-    std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
+
+  auto ForEachDimExpr = [&](const auto& DoEach) {
+    const auto& dims = type_info.dims();
+    if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+      const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      for (const auto& dim_expr : sym_vec) {
+        DoEach(dim_expr);
+      }
+    } else {  // static shape
+      for (int i = 0; i < dims.size(); ++i) {
+        DoEach(::symbol::DimExpr{dims[i]});
+      }
     }
+  };
+  if (FLAGS_cinn_bucket_compile) {
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
-    return lang::CreatePlaceHolder(
-        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+    return lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
+                                   CompatibleInfo::ConvertIRType(dtype),
+                                   input_id);
   }
 }
 
@@ -804,14 +816,15 @@ void OpLowererImpl::CollectOutputInfo(
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
 
     auto ForEachDimExpr = [&](const auto& DoEach) {
-      if (!group->value_to_shape_or_data_exprs.empty()) {
-        auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+      const auto& dims = type_info.dims();
+      if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+        const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
-      } else {
-        auto out_shape = ::common::vectorize<int64_t>(type_info.dims());
+      } else {  // static shape
+        auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});
         }

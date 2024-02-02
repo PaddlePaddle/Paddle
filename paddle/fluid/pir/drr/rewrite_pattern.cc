@@ -199,7 +199,7 @@ void DrrRewritePattern::DfsVisitor(
         ir_operand_value.use_count()) {
       return;
     }
-    auto* ir_producer_op = ir_operand_value.dyn_cast<pir::OpResult>().owner();
+    auto* ir_producer_op = ir_operand_value.defining_op();
     drr_visited_ops->insert(drr_producer_op);
     DfsVisitor(drr_producer_op,
                ir_producer_op,
@@ -428,7 +428,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       }
       auto ir_val = res_match_ctx.GetIrValue(input->name());
       if (ir_val) {
-        pir::Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
+        pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
           max_input_op_index = 0UL;
         } else if (max_input_op_index <

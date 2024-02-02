@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 import opcode
 
+from paddle.jit.utils import OrderedSet
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
@@ -34,7 +36,6 @@ from ...utils import (
     BreakGraphError,
     FallbackError,
     InnerError,
-    OrderedSet,
     SotUndefinedVar,
     get_static_function,
     log,
@@ -339,7 +340,7 @@ class OpcodeExecutorBase:
     def validate_value(value):
         assert isinstance(
             value, VariableBase
-        ), f"value: {value}, type shoule be VariableBase(or derived), but get {type(value)}"
+        ), f"value: {value}, type should be VariableBase(or derived), but get {type(value)}"
         assert not isinstance(value.tracker, DanglingTracker) or isinstance(
             value, (NullVariable, CellVariable)
         ), f"dangling variable {value} should not be pushed into stack."

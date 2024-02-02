@@ -311,7 +311,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
 
         self._graph.add_global_guarded_variable(iterator)
 
-        # simplely get next
+        # simply get next
         if isinstance(
             iterator,
             SequenceIterVariable,

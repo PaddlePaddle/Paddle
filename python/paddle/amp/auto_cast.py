@@ -138,7 +138,7 @@ def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
     # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
     # here we provide a option to keep fp32 param.
-    if not layer._cast_to_low_precison:
+    if not layer._cast_to_low_precision:
         need_keep_fp32 = True
     # The BN layers will keep fp32
     elif isinstance(
@@ -197,12 +197,12 @@ def set_excluded_layers(models, excluded_layers):
         for layer in excluded_layers_instances[idx].sublayers(
             include_self=True
         ):
-            layer._cast_to_low_precison = False
+            layer._cast_to_low_precision = False
     excluded_layers_types = tuple(excluded_layers_types)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if isinstance(layer, excluded_layers_types):
-                layer._cast_to_low_precison = False
+                layer._cast_to_low_precision = False
 
 
 @dygraph_only
@@ -806,7 +806,7 @@ def decorate(
         level(str, optional): Auto mixed precision level. Accepted values are 'O1' and 'O2': O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure float16/bfloat16, the decorator will cast all parameters of models to float16/bfloat16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
+        master_weight(bool, optional): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight

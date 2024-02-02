@@ -501,7 +501,7 @@ void ProgramTranslator::TranslateWhileOperation(
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    body_block_context->PushValue(loop_var, body_block->AddArgument(val_type));
+    body_block_context->PushValue(loop_var, body_block->AddArg(val_type));
   }
 
   pir::Operation* while_op =
@@ -751,7 +751,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-  auto val = pir::OpResult(nullptr);
+  auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
       paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
     val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
@@ -806,17 +806,15 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
   }
 }
 
-std::unordered_map<std::string, std::vector<pir::OpResult>>
-ProgramTranslator::VarDesc2OpResult() {
-  std::unordered_map<std::string, std::vector<pir::OpResult>>
-      var_desc_2_opresult;
+std::unordered_map<std::string, std::vector<pir::Value>>
+ProgramTranslator::VarDesc2Value() {
+  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
   for (const auto& [var_name, value_info_list] : param_map_) {
     for (const auto& value_info : value_info_list) {
-      var_desc_2_opresult[var_name].push_back(
-          value_info.value.dyn_cast<pir::OpResult>());
+      var_desc_2_value[var_name].push_back(value_info.value);
     }
   }
-  return var_desc_2_opresult;
+  return var_desc_2_value;
 }
 
 }  // namespace translator

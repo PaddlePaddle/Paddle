@@ -21,6 +21,7 @@
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
 
@@ -39,7 +40,7 @@ class IR_API ShapeConstraintIRAnalysis {
 
   bool HasShapeOrDataForValue(Value val) const;
 
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val);
+  const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
@@ -50,7 +51,7 @@ class IR_API ShapeConstraintIRAnalysis {
   void PrintShapeOrDatas() const;
 
   // Returns true if the two value have the same symbolic shape.
-  bool IsShapeEqual(Value lhs, Value rhs);
+  bool IsShapeEqual(Value lhs, Value rhs) const;
 
   // Suppose:
   //    lhs_dim_idxs = {ld0, ld1, ...}
@@ -59,18 +60,22 @@ class IR_API ShapeConstraintIRAnalysis {
   //    lhs.shape[ld0] * lhs.shape[ld1] * ... ==
   //    rhs.shape[rd0] * rhs.shape[rd1] * ...
   bool IsProductEqual(Value lhs,
-                      std::vector<int> lhs_dim_idxs,
+                      const std::vector<int>& lhs_dim_idxs,
                       Value rhs,
-                      std::vector<int> rhs_dim_idxs);
+                      const std::vector<int>& rhs_dim_idxs) const;
 
   // Returns true if:
   //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
   //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
-  bool IsProductEqual(
-      Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to);
+  bool IsProductEqual(Value lhs,
+                      int lhs_from,
+                      int lhs_to,
+                      Value rhs,
+                      int rhs_from,
+                      int rhs_to) const;
 
   // Returns true if the two value have the same number elements.
-  bool IsSameNumElements(Value lhs, Value rhs);
+  bool IsSameNumel(Value lhs, Value rhs) const;
 
  private:
   ModuleOp m_;

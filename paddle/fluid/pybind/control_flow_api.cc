@@ -29,9 +29,9 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
@@ -79,7 +79,7 @@ void BindIfOp(py::module* m) {
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
-          op_list.append(self.result(i));
+          op_list.append(static_cast<pir::Value>(self.result(i)));
         }
         return op_list;
       });
@@ -243,7 +243,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       body_block.arg(arg_index).ReplaceAllUsesWith(
           operand_source(operand_index));
-      body_block.EraseArgument(arg_index);
+      body_block.EraseArg(arg_index);
       no_change = false;
       res[operand_index - 1u] = operand_source(operand_index);
     } else {

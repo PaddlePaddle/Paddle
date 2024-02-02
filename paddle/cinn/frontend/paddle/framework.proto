@@ -15,7 +15,7 @@ package cinn.frontend.paddle.proto;
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.
 //
-// Serailization and Deserialization codes should be modified in a way
+// Serialization and Deserialization codes should be modified in a way
 // that supports old versions following the version and compatibility policy.
 message Version { optional int64 version = 1 [ default = 0 ]; }
 

@@ -103,6 +103,16 @@ void TensorArray::push_back(const DenseTensor& tensor) {
   tensors_.push_back(tensor);
 }
 
+void TensorArray::pop(size_t i) {
+  PADDLE_ENFORCE_LT(i,
+                    tensors_.size(),
+                    errors::OutOfRange("The size of TensorArray is %d, "
+                                       "but the received index is %d.",
+                                       tensors_.size(),
+                                       i));
+  tensors_.erase(tensors_.begin() + i);
+}
+
 void TensorArray::emplace_back(const DenseTensor& tensor) {
   tensors_.emplace_back(tensor);
 }

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from itertools import product
 
 import numpy as np
 from op_test import OpTest, OpTestTool, convert_float_to_uint16
@@ -50,6 +51,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.init_data_type()
         self.init_force_fp32_output()
         self.init_infer_or_train()
+        self.check_pir_onednn = True
 
         self.conv2d_param = {
             'stride': self.stride,
@@ -117,7 +119,9 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.init_additional_attrs()
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad(self):
         pass
@@ -186,6 +190,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             "Output",
             user_defined_grads=[dx, dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_filter(self):
@@ -202,6 +207,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             {'Filter'},
             user_defined_grads=[dx],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_no_input(self):
@@ -218,6 +224,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             {'Input'},
             user_defined_grads=[dweights],
             user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -236,22 +243,24 @@ def conv_backward(dout, x, w, params):
 
     x_padded = np.pad(x, ((0,), (0,), (padding,), (padding,)), 'constant')
 
-    for n in range(N):
-        for oc in range(OC):
-            for i in range(KH):
-                for j in range(KW):
-                    for k in range(H_out):
-                        for l in range(W_out):
-                            for ic in range(IC):
-                                dweights[oc, ic, i, j] += (
-                                    x_padded[
-                                        n,
-                                        ic,
-                                        i + k * stride[0],
-                                        j + l * stride[1],
-                                    ]
-                                    * dout[n, oc, k, l]
-                                )
+    for n, oc, i, j, k, l, ic in product(
+        range(N),
+        range(OC),
+        range(KH),
+        range(KW),
+        range(H_out),
+        range(W_out),
+        range(IC),
+    ):
+        dweights[oc, ic, i, j] += (
+            x_padded[
+                n,
+                ic,
+                i + k * stride[0],
+                j + l * stride[1],
+            ]
+            * dout[n, oc, k, l]
+        )
 
     dx_padded = np.pad(dx, ((0,), (0,), (padding,), (padding,)), 'constant')
 
@@ -260,21 +269,18 @@ def conv_backward(dout, x, w, params):
         for j in range(KW):
             w_[:, :, i, j] = w[:, :, KH - i - 1, KW - j - 1]
 
-    for n in range(N):
-        for oc in range(OC):
-            for i in range(H_out):
-                for j in range(W_out):
-                    for kh in range(KH):
-                        for kw in range(KW):
-                            for ic in range(IC):
-                                dx_padded[
-                                    n,
-                                    ic,
-                                    stride[0] * i + kh,
-                                    stride[1] * j + kw,
-                                ] += (
-                                    dout[n, oc, i, j] * w[oc, ic, kh, kw]
-                                )
+    for n, oc, i, j, kh, kw, ic in product(
+        range(N),
+        range(OC),
+        range(H_out),
+        range(W_out),
+        range(KH),
+        range(KW),
+        range(IC),
+    ):
+        dx_padded[n, ic, stride[0] * i + kh, stride[1] * j + kw] += (
+            dout[n, oc, i, j] * w[oc, ic, kh, kw]
+        )
 
     if padding == 0:
         dx = dx_padded

@@ -42,7 +42,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAMPState(),
           paddle::imperative::AmpLevel::O0);
       return add_n_ad_func(NEW_x);
     }
