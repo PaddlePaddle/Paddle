@@ -34,16 +34,16 @@ class Timer {
   // Reset() will be called during initialization
   // all timing variables will be set 0 in Reset()
   Timer() { Reset(); }
-  void Reset();
-  void Start();
-  void Pause();
+  TEST_API void Reset();
+  TEST_API void Start();
+  TEST_API void Pause();
   // Resume will get current system time
   void Resume();
   int Count();
   // return elapsed time in us
   double ElapsedUS();
   // return elapsed time in ms
-  double ElapsedMS();
+  TEST_API double ElapsedMS();
   // return elapsed time in sec
   double ElapsedSec();
 
