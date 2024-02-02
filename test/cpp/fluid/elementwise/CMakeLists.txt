@@ -1,8 +1,7 @@
 paddle_test(
   test_elementwise_add_op_inplace
   SRCS test_elementwise_add_op_inplace.cc
-  DEPS executor
-       op_registry
+  DEPS op_registry
        common)
 cc_test(
   test_elementwise_div_grad_grad
