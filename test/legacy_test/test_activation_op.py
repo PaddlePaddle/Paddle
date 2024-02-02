@@ -3884,6 +3884,8 @@ class TestSquareBF16(OpTest):
     def setUp(self):
         self.op_type = "square"
         self.python_api = paddle.square
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.square
         self.init_dtype()
 
         np.random.seed(1024)
@@ -3900,7 +3902,7 @@ class TestSquareBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
