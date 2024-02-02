@@ -450,12 +450,14 @@ bool ReshapeOpInferSymbolicShape(
     }
 
     for (size_t i = 0; i < out_dims.size(); i++) {
-      if (out_dims[i].dyn_cast<int64_t>() != static_cast<int64_t>(-1)) {
-        product = product * out_dims[i];
-      } else {
-        if (i == out_dims.size() - 1) {
+      if (out_dims[i].isa<int64_t>()) {
+        if (out_dims[i].dyn_cast<int64_t>() != static_cast<int64_t>(-1)) {
+          product = product * out_dims[i];
+        } else if (i == out_dims.size() - 1) {
           out_dims[i] = numel / product;
         }
+      } else {
+        product = product * out_dims[i];
       }
     }
 
