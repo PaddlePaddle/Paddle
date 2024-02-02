@@ -148,8 +148,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         """Build program."""
         main = base.Program()
         startup = base.Program()
-        main.random_seed = seed
-        startup.random_seed = seed
+        paddle.seed(seed)
         use_cudnn = (self.dtype == np.float16) or (self.dtype == np.uint16)
         with base.unique_name.guard():
             with base.program_guard(main, startup):
