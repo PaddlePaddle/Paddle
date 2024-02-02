@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,21 @@
 
 #pragma once
 
-#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
-#include "paddle/fluid/primitive/backend/manual/manual_backend.h"
-#include "paddle/fluid/primitive/backend/manual/manual_prim_backend.h"
+#include <string>
+#include <vector>
+
+#include "paddle/phi/api/include/tensor.h"
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+template <typename T>
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            DataType dtype = DataType::FLOAT32,
+            Place place = Place());
+
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle
