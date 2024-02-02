@@ -82,9 +82,11 @@ class LinearQuanter(Layer):
                     self._scales, self._group_size, 0
                 )
                 quant_weight = paddle.clip(
-                    paddle.round(input / new_s * bnt), -bnt - 1, bnt
+                    paddle.round(input.cast('float32') / new_s * bnt),
+                    -bnt - 1,
+                    bnt,
                 )
-                return quant_weight
+                return quant_weight.cast(input.dtype)
             return _C_ops.quantize_linear(
                 input.cast('float32'),
                 self._scales,
@@ -157,8 +159,8 @@ class LinearDequanter(Layer):
                 new_s = paddle.repeat_interleave(
                     self._scales, self._group_size, 0
                 )
-                quant_dequant_weight = input / bnt * new_s
-                return quant_dequant_weight
+                quant_dequant_weight = input.cast('float32') / bnt * new_s
+                return quant_dequant_weight.cast(input.dtype)
 
             return _C_ops.dequantize_linear(
                 input.cast('float32'),
