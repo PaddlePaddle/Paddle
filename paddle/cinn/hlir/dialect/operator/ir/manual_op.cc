@@ -130,8 +130,9 @@ void FusionOp::Print(pir::IrPrinter& printer) {
 
 void StoreOp::Build(pir::Builder& builder,
                     pir::OperationArgument& argument,
+                    pir::Value x,
                     pir::Type output_type) {
-  argument.AddRegion(nullptr);
+  argument.inputs = {x};
   argument.output_types = {output_type};
 }
 

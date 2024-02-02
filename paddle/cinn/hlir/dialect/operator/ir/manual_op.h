@@ -77,6 +77,7 @@ class IR_API StoreOp : public pir::Op<StoreOp> {
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x,
                     pir::Type output_type);
 
   void VerifySig();
