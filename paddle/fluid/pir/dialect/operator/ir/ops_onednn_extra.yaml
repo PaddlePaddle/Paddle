@@ -215,8 +215,8 @@
 
 # - op : sgd_dense_param_sparse_grad
 
-- op : shape
-  extra_args : str mkldnn_data_type="float32"
+# - op : shape
+#   extra_args : str mkldnn_data_type="float32"
 
 - op : shuffle_channel
 
@@ -255,10 +255,8 @@
 - op : subtract_grad
 
 - op : sum
-  extra_args : str mkldnn_data_type="float32"
 
 - op : sum_grad
-  extra_args : str mkldnn_data_type="float32"
 
 # - op : swish
 
