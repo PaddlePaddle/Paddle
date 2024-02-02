@@ -300,9 +300,9 @@ def train():
         for center_words, target_words, label, eval_words in build_batch(
             dataset, batch_size, epoch_num
         ):
-            center_words_var = base.dygraph.to_variable(center_words)
-            target_words_var = base.dygraph.to_variable(target_words)
-            label_var = base.dygraph.to_variable(label)
+            center_words_var = paddle.to_tensor(center_words)
+            target_words_var = paddle.to_tensor(target_words)
+            label_var = paddle.to_tensor(label)
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )
