@@ -423,9 +423,9 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(
       CURAND_STATUS_ARCH_MISMATCH,
       "Architecture mismatch, GPU does not support requested feature"));
-  EXPECT_TRUE(
-      CheckCudaStatusFailure(CURAND_STATUS_LENGTH_NOT_MULTIPLE,
-                             "Length requested is not a multple of dimension"));
+  EXPECT_TRUE(CheckCudaStatusFailure(
+      CURAND_STATUS_LENGTH_NOT_MULTIPLE,
+      "Length requested is not a multiple of dimension"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUDNN_STATUS_SUCCESS));
   EXPECT_TRUE(
