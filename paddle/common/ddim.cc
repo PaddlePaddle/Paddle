@@ -274,7 +274,7 @@ DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
                     true,
                     "Does not support rank inconsistency: rank1=%d, rank2=%d",
                     dim1.size(),
-                    dim2.size())
+                    dim2.size());
   std::vector<int64_t> result;
   for (int i = 0; i < dim1.size(); ++i) {
     if (dim1[i] != dim2[i]) {

@@ -54,7 +54,7 @@ void JitKernelOp::VerifySig() {
                         attributes.at(kAttrName)
                             .isa<cinn::dialect::CINNKernelInfoAttribute>(),
                     true,
-                    "Type of attribute: instruction is not right.")
+                    "Type of attribute: instruction is not right.");
 }
 
 const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
