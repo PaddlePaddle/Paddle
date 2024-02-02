@@ -735,14 +735,6 @@ void BindValue(py::module *m) {
                   "is persistable"));
             }
           })
-      .def("is_tensorarray",
-           [](Value self) {
-             if (self.type().isa<DenseTensorArrayType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -803,29 +795,11 @@ void BindValue(py::module *m) {
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("is_dense_tensor_type",
-           [](Value self) {
-             if (self.type().isa<DenseTensorType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
-           [](Value self) {
-             if (self.type().isa<SelectedRowsType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<SelectedRowsType>(); })
       .def("is_dense_tensor_array_type",
-           [](Value self) {
-             if (self.type().isa<DenseTensorArrayType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
