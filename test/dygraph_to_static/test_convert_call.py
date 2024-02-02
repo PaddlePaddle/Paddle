@@ -187,6 +187,7 @@ class TestRecursiveCall2(Dy2StTestBase):
         with enable_to_static_guard(True):
             return self._run()
 
+    @test_legacy_and_pir
     def test_transformed_static_result(self):
         self.set_func()
         dygraph_res = self.get_dygraph_output()
