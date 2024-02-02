@@ -18,6 +18,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
     enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
@@ -98,6 +101,8 @@ class TestTensorCopyToCUDAWithWarningOnGPU(Dy2StTestBase):
         return x1.place, x2.place, x2.numpy()
 
     @test_legacy_and_pt_and_pir
+    @disable_test_case((ToStaticMode.SOT, IrMode.LEGACY_IR))
+    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.LEGACY_IR))
     def test_with_warning_on_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
