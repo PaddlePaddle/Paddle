@@ -20,13 +20,13 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     test_ast_only,
     test_legacy_only,
+    test_legacy_and_pt_and_pir,
 )
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
 from paddle.base import core
 from paddle.jit.dy2static.utils import Dygraph2StaticException
-from paddle.pir_utils import test_with_pir_api
 
 SEED = 2020
 np.random.seed(SEED)
@@ -279,7 +279,7 @@ class TestReturnBase(Dy2StTestBase):
             self.assertEqual(dygraph_res, static_res)
 
     @test_ast_only
-    @test_with_pir_api
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         if hasattr(self, "error"):
@@ -326,7 +326,7 @@ class TestReturnIf(Dy2StTestBase):
         else:
             self.assertEqual(dygraph_res, static_res)
 
-    @test_with_pir_api
+    @test_legacy_and_pt_and_pir
     @test_ast_only
     def test_transformed_static_result(self):
         self.init_dygraph_func()
@@ -428,7 +428,7 @@ class TestReturnIfElse(Dy2StTestBase):
         else:
             self.assertEqual(dygraph_res, static_res)
 
-    @test_with_pir_api
+    @test_legacy_and_pt_and_pir
     @test_ast_only
     def test_transformed_static_result(self):
         self.init_dygraph_func()
