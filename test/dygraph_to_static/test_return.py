@@ -291,7 +291,6 @@ class TestReturnBase(Dy2StTestBase):
 
 class TestInsideFuncBase(TestReturnBase):
     def init_dygraph_func(self):
-        # ...
         self.dygraph_func = test_inside_func_base
 
 
