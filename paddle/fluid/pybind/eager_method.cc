@@ -53,11 +53,10 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -1611,10 +1610,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("set_value", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "set_value");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "set_value");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {
@@ -1705,10 +1705,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("index_put", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "index_put");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "index_put");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {

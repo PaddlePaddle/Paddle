@@ -1751,7 +1751,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_logic_str += "\n";
       const char* GET_AMP_GET_DST_DTYPE_CONTEXT =
           "    auto amp_dst_dtype = "
-          "egr::GetAmpDestDtype(\"%s\", "
+          "paddle::imperative::GetAmpDestDtype(\"%s\", "
           "amp_tensors_vector);\n";
       amp_logic_str +=
           paddle::string::Sprintf(GET_AMP_GET_DST_DTYPE_CONTEXT, op_type);
@@ -3018,7 +3018,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
-      "#include \"paddle/fluid/eager/amp_utils.h\"\n"
+      "#include \"paddle/fluid/imperative/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
       "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
 
