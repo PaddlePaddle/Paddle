@@ -182,7 +182,7 @@ endif()
 add_custom_target(copy_source_to_build_dir ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
-if(BUILD_WHL_PACKAGE)
+if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_python ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp1)
 endif()
