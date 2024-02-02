@@ -15,16 +15,9 @@
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
-
-
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
 
 
 def exp_sub(x):
@@ -143,11 +136,19 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
         self.x.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+
         return out
 
     # def test_eval(self):
@@ -181,7 +182,7 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         paddle.seed(2022)
         self.prepare_data()
         net = CINNLayerNormSubGraphNet(self.shape[-1])
-        net = apply_to_static(net, use_cinn)
+        net = utils.apply_to_static(net, use_cinn)
         # net.eval()
         weight = paddle.ones(shape=[self.shape[-1]], dtype="float64")
         weight.stop_gradient = False
@@ -215,7 +216,7 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
 #     def train(self, use_cinn):
 #         paddle.seed(2022)
 #         net = CINNAddDropoutLayerNormSubGraphNet(self.shape[-1])
-#         net = apply_to_static(net, use_cinn)
+#         net = utils.apply_to_static(net, use_cinn)
 #         # net.eval()
 #         weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
 #         bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
@@ -235,14 +236,13 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
 #     def train(self, use_cinn):
 #         paddle.seed(2022)
 #         net = CINNDropoutSubGraphNet()
-#         net = apply_to_static(net, use_cinn)
-#         net.eval()
-
+#         net = utils.apply_to_static(net, use_cinn)
 #         out = net(self.x)
 
 #         loss = out.mean()
 #         loss.backward()
-
+#         if use_cinn:
+#             self.check_jit_kernel_info(net.forward)
 #         return out
 
 #     def test_forward(self):
@@ -257,27 +257,27 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
 #         self.hidden_states = paddle.randn(self.shape, dtype="float32")
 #         self.hidden_states.stop_gradient = False
 
-#     def eval(self, use_cinn):
-#         paddle.seed(2022)
-#         net = CINNSoftmaxSubGraphNet()
-#         if use_cinn:
-#             net = apply_to_static(net, True)
-#         net.eval()
-#         out = net(self.hidden_states)
+# def eval(self, use_cinn):
+#     paddle.seed(2022)
+#     net = CINNSoftmaxSubGraphNet()
+#     net = utils.apply_to_static(net, use_cinn)
+#     net.eval()
+#     out = net(self.hidden_states)
 
-#         if use_cinn:
-#             ops = [
-#                 op.name()
-#                 for op in net.forward.program_cache.last()[-1][-1]
-#                 .train_program.program.global_block()
-#                 .ops
-#             ]
-#             assert (
-#                 "pd_op.softmax" not in ops
-#             ), f"after prim, pd_op.softmax should not exist, but got {ops}"
-#             assert (
-#                 "pd_op.exp" in ops
-#             ), f"after prim, pd_op.softmax should not exist, but got {ops}"
+#     if use_cinn:
+#         ops = [
+#             op.name()
+#             for op in net.forward.program_cache.last()[-1][-1]
+#             .train_program.program.global_block()
+#             .ops
+#         ]
+#         assert (
+#             "pd_op.softmax" not in ops
+#         ), f"after prim, pd_op.softmax should not exist, but got {ops}"
+#         assert (
+#             "pd_op.exp" in ops
+#         ), f"after prim, pd_op.softmax should not exist, but got {ops}"
+#         self.check_jit_kernel_info(net.forward)
 
 #         return out
 

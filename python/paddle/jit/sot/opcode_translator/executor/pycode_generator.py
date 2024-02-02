@@ -27,11 +27,11 @@ from typing import TYPE_CHECKING
 import opcode
 
 import paddle
+from paddle.jit.utils import OrderedSet
 
 from ...utils import (
     FallbackError,
     InnerError,
-    OrderedSet,
     ResumeFnNameFactory,
     is_clean_code,
     list_contain_by_id,
