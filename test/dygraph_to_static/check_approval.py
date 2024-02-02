@@ -47,6 +47,21 @@ class Location:
     col_offset: int
 
 
+def ast_to_source_code(node):
+    if sys.version_info >= (3, 9):
+        ast.fix_missing_locations(node)
+        return ast.unparse(node)
+
+    # Do not wrap lines even if they are too long
+    def pretty_source(source):
+        return ''.join(source)
+
+    import astor
+
+    source_code = astor.to_source(node, pretty_source=pretty_source)
+    return source_code
+
+
 class Diagnostic:
     def __init__(self, start: Location, end: Location, message: str):
         self.start = start
@@ -204,7 +219,7 @@ class TestBaseChecker(Checker):
             )
         # Check if the test case use @test_with_pir_api
         for decorator in node.decorator_list:
-            decorator_str = ast.unparse(decorator).strip()
+            decorator_str = ast_to_source_code(decorator).strip()
             if TestBaseChecker.REGEX_TEST_WITH_PIR_API.match(decorator_str):
                 start = Location(node.lineno, node.col_offset)
                 end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
@@ -219,7 +234,7 @@ class FunctionTostaticChecker(Checker):
     def visit_FunctionDef(self, node: ast.FunctionDef):
         # Function should not decorate with @paddle.jit.to_static directly
         for decorator in node.decorator_list:
-            decoreator_name = ast.unparse(decorator).strip()
+            decoreator_name = ast_to_source_code(decorator).strip()
             if FunctionTostaticChecker.REGEX_TO_STATIC.match(decoreator_name):
                 start = Location(node.lineno, node.col_offset)
                 end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
