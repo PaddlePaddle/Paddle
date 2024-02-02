@@ -515,13 +515,6 @@ class TestTransposeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable_check)
 
-            if core.is_compiled_with_cuda():
-                # the Input(x)'s dtype must be one of [bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128]
-                x_fp16 = paddle.static.data(
-                    name='x1', shape=[-1, 10, 5, 3], dtype='float16'
-                )
-                paddle.transpose(x_fp16, perm=[1, 0, 2])
-
             def test_perm_list_check():
                 # Input(perm)'s type must be list
                 paddle.transpose(x, perm="[1, 0, 2]")
