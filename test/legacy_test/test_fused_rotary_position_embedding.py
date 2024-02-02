@@ -283,16 +283,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 rtol=self.rtol,
             )
 
-    def test_fused_rope_with_sin_cos(self):
+    def test_fused_rope_without_sin_cos(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
+            with_sin_cos=False,
         )
         for i in range(len(p_fw)):
             np.testing.assert_allclose(
