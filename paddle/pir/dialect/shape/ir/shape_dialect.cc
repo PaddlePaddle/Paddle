@@ -58,10 +58,6 @@ void ShapeDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
   }
 }
 
-void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {
-  printer.PrintGeneralOperation(op);
-}
-
 }  // namespace pir::shape
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)
