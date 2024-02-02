@@ -81,6 +81,7 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
+PHI_DECLARE_bool(new_executor_sequential_run);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -1322,8 +1323,9 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run ||
+        (!FLAGS_new_executor_sequential_run && nccl_op_num_ > 1) ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1343,8 +1345,9 @@ paddle::framework::FetchList PirInterpreter::Run(
       VLOG(4) << "Done BuildInstruction";
     }
 #endif
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run ||
+        (!FLAGS_new_executor_sequential_run && nccl_op_num_ > 1) ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1412,8 +1415,9 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run ||
+        (!FLAGS_new_executor_sequential_run && nccl_op_num_ > 1) ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
@@ -1433,8 +1437,9 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
       VLOG(4) << "Done BuildInstruction";
     }
 #endif
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
+    if (FLAGS_enable_pir_in_executor_trace_run ||
+        (!FLAGS_new_executor_sequential_run && nccl_op_num_ > 1) ||
+        onednn_op_num_ || execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
