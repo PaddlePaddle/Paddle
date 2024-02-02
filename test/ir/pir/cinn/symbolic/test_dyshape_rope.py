@@ -11,13 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+
+import utils
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -73,20 +79,46 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
         self.position_ids.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 7)
+        utils.check_jit_kernel_structure(
+            static_fn,
+            {
+                'if_0': {
+                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'else_0_0': {
+                        'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                        'else_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    },
+                },
+                'else_0': {
+                    'if_0_0': {
+                        'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                        'else_0_0_0': {
+                            'if_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                            'else_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
+                        },
+                    },
+                    'else_0_0': {utils.JIT_KERNEL_NAME: 1},
+                },
+            },
+        )
+
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RotaryPosEmb()
-        if use_cinn:
-            input_spec = [
-                InputSpec(shape=[1, None, 8, 96], dtype='float32'),
-                InputSpec(shape=[1, None, 8, 96], dtype='float32'),
-                InputSpec(shape=[1, None, 1, 96], dtype='float32'),
-                InputSpec(shape=[1, None, 1, 96], dtype='float32'),
-                InputSpec(shape=[1, None], dtype='float32'),
-            ]
-            net = apply_to_static(net, use_cinn, input_spec)
+        input_spec = [
+            InputSpec(shape=[1, None, 8, 96], dtype='float32'),
+            InputSpec(shape=[1, None, 8, 96], dtype='float32'),
+            InputSpec(shape=[1, None, 1, 96], dtype='float32'),
+            InputSpec(shape=[1, None, 1, 96], dtype='float32'),
+            InputSpec(shape=[1, None], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
