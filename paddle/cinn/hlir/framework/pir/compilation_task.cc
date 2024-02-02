@@ -59,10 +59,7 @@ void CompilationTask::operator()() {
 void CompilationTask::Lowering() {
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
-      op_lowerer.BucketLower(context_->group_, false, true, false));
-  // context_->SetLoweredFuncs(
-  //     op_lowerer.BucketLower(context_->group_, false, false, false));
-  op_lowerer.InsertNameGeneToScope(context_->scope_);
+      op_lowerer.BucketLower(context_->group_, false, true, true));
 }
 
 void CompilationTask::CodegenAndJit() {
