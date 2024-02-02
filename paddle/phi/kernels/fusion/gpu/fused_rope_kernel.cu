@@ -186,7 +186,6 @@ void FusedRopeKernel(const Context& dev_ctx,
           ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
-
   if (is_same_num_heads) {
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
