@@ -68,7 +68,7 @@ class ProcessMesh {
   bool contains(int64_t process_id) const;
 
   // ProcessMesh from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
   static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
   void to_proto(auto_parallel::ProcessMeshProto* proto) const;
@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const ProcessMesh& obj) {
   return os;
 }
 
-bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
+TEST_API bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
 
 inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
   return !operator==(lhs, rhs);
