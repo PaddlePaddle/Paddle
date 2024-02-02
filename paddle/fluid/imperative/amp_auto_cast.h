@@ -95,7 +95,6 @@ class AMPState {
   std::string GetAmpDtype() const;
   void SetAmpDtype(std::string amp_dtype);
   phi::DataType GetAmpPhiDtype() const;
-  // void Reset();
 
  private:
   static thread_local bool use_promote_;

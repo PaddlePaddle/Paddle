@@ -151,6 +151,28 @@ def monkey_patch_value():
             "Value do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
+    def contiguous(self):
+        """
+        Value don't have 'contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
+        )
+        return self
+
+    def is_contiguous(self):
+        """
+        Value don't have 'is_contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
+        )
+        return True
+
     @property
     def _ndim(self):
         """
@@ -577,6 +599,8 @@ def monkey_patch_value():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('contiguous', contiguous),
+        ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),

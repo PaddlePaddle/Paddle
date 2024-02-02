@@ -221,6 +221,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):
@@ -258,6 +259,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):

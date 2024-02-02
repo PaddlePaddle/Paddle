@@ -2059,12 +2059,12 @@ struct FusionLSTM : public PatternBase {
   // declare op
   PATTERN_DECL_NODE(op);
 
-  // declate inputs
+  // declare inputs
   PATTERN_DECL_NODE(x);
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
 
-  // decalre outputs
+  // declare outputs
   PATTERN_DECL_NODE(hidden);
   PATTERN_DECL_NODE(cell);
 };

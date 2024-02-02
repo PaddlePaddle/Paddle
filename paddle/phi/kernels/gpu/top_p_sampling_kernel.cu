@@ -135,6 +135,16 @@ __global__ void setup_kernel(hiprandState_t* state,
     hiprand_init(seed, i, 0, &state[i]);
   }
 }
+
+__global__ void setup_kernel(hiprandState_t* state,
+                             const uint64_t seed,
+                             const uint64_t offset,
+                             const int bs) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
+    hiprand_init(seed, i, offset, &state[i]);
+  }
+}
 #else
 __global__ void setup_kernel(curandState_t* state,
                              const uint64_t seed,
@@ -142,6 +152,16 @@ __global__ void setup_kernel(curandState_t* state,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
     curand_init(seed, i, 0, &state[i]);
+  }
+}
+
+__global__ void setup_kernel(curandState_t* state,
+                             const uint64_t seed,
+                             const uint64_t offset,
+                             const int bs) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
+    curand_init(seed, i, offset, &state[i]);
   }
 }
 #endif
@@ -709,11 +729,16 @@ void TopPSamplingKernel(const Context& dev_ctx,
 #endif
   uint64_t seed;
   if (random_seed == -1) {
-    seed = static_cast<uint64_t>(time(NULL) % 1000000);
+    auto gen_cuda = dev_ctx.GetGenerator();
+    uint64_t increment = p_num * 4;
+    auto seed_offset = gen_cuda->IncrementOffset(increment);
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, offset, bs);
   } else {
     seed = random_seed;
+    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
   }
-  setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
 
   DenseTensor count_iter;
   count_iter.Resize(common::make_ddim({bs + 1}));
