@@ -77,6 +77,7 @@
     backend : place
   data_transform :
     support_trans_dtype : start, end, step
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign
   args : (Tensor x)

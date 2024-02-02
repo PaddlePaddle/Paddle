@@ -252,6 +252,7 @@ class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "abs"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.absolute(x)
