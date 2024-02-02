@@ -73,48 +73,6 @@ class TestEnableLowPrecisionIO:
         #     )
 
 
-class TestEnableLowPrecisionIOWithGPU(
-    TestEnableLowPrecisionIO, unittest.TestCase
-):
-    def init_predictor(self, low_precision_io: bool):
-        config = Config(
-            os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
-        )
-        config.enable_use_gpu(256, 0, PrecisionType.Half)
-        config.enable_memory_optim()
-        config.enable_low_precision_io(low_precision_io)
-        config.disable_glog_info()
-        predictor = create_predictor(config)
-        return predictor
-
-
-class TestEnableLowPrecisionIOWithTRTAllGraph(
-    TestEnableLowPrecisionIO, unittest.TestCase
-):
-    def init_predictor(self, low_precision_io: bool):
-        config = Config(
-            os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
-        )
-        config.enable_use_gpu(256, 0, PrecisionType.Half)
-        config.enable_tensorrt_engine(
-            workspace_size=1 << 30,
-            max_batch_size=1,
-            min_subgraph_size=3,
-            precision_mode=PrecisionType.Half,
-            use_static=False,
-            use_calib_mode=False,
-        )
-        config.enable_tensorrt_memory_optim(True, 1)
-        config.enable_tuned_tensorrt_dynamic_shape()
-        config.enable_new_executor()
-        config.enable_low_precision_io(low_precision_io)
-        config.disable_glog_info()
-        predictor = create_predictor(config)
-        return predictor
-
-
 class TestEnableLowPrecisionIOWithTRTSubGraph(
     TestEnableLowPrecisionIO, unittest.TestCase
 ):
@@ -138,6 +96,8 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
         config.enable_new_executor()
         config.enable_low_precision_io(low_precision_io)
         config.exp_disable_tensorrt_ops(["flatten_contiguous_range"])
+        config.specify_tensorrt_subgraph([" "], ["pool2d_2.tmp_0"])
+        # config.switch_ir_debug(True)
         config.disable_glog_info()
         predictor = create_predictor(config)
         return predictor
