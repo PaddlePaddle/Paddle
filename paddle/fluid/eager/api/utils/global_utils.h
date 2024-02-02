@@ -140,6 +140,9 @@ class Controller {
     return force_sequential_nodes_;
   }
 
+  TEST_API void SetIsInBackward(bool is_in_backward);
+  TEST_API bool GetIsInBackward() const;
+
  private:
   Controller() = default;
   static Controller* controller_;
@@ -153,7 +156,15 @@ class Controller {
       custom_edges_slot_map_;
   std::vector<std::shared_ptr<VoidHook>> final_backward_hooks_;
   std::queue<GradNodeBase*> force_sequential_nodes_;
+  bool is_in_backward_{false};
   DISABLE_COPY_AND_ASSIGN(Controller);
+};
+
+class EagerBackwardStateGuard {
+ public:
+  EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(true); }
+
+  ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
 };
 
 }  // namespace egr

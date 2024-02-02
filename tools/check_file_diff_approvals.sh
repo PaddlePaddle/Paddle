@@ -272,14 +272,13 @@ fi
 
 IF_USE_SUBPROCESS=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "subprocess" || true`
 if [[ ${IF_USE_SUBPROCESS} ]]; then
-    echo_line="You must have one RD wanghuancoder approval for using subprocess, which may cause security problem.\n"
-    check_approval 1 wanghuancoder
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using subprocess, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
 fi
-
 IF_USE_EVAL=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "eval([^()]*[a-zA-Z0-9_])" || true`
 if [[ ${IF_USE_EVAL} ]]; then
-    echo_line="You must have one RD wanghuancoder approval for using eval, which may cause security problem.\n"
-    check_approval 1 wanghuancoder
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using eval, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
