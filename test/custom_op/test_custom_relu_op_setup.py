@@ -50,19 +50,19 @@ def custom_relu_static(
     paddle.set_device(device)
 
     with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name='X', shape=[None, 8], dtype=dtype)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
             out = func(x) if use_func else paddle.nn.functional.relu(x)
-            static.append_backward(out)
+            # static.append_backward(out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+            exe = paddle.static.Executor()
+            exe.run(paddle.static.default_startup_program())
             # in static graph mode, x data has been covered by out
             out_v = exe.run(
-                static.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()

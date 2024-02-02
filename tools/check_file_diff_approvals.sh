@@ -20,7 +20,6 @@ fi
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
-           "third_party"
            "paddle/fluid/framework/operator.h"
            "paddle/fluid/framework/tensor.h"
            "paddle/fluid/framework/details/op_registry.h"
@@ -141,9 +140,6 @@ for API_FILE in ${API_FILES[*]}; do
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 wanghuancoder luotao1 Aurelius84 XiaoguangHu01 qili93
-      elif [ "${API_FILE}" == "third_party" ];then
-          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
-          check_approval 1 risemeup1 tianshuo78520a
       elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/base/init.py, which manages the environment variables.\n"
           check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
@@ -262,6 +258,27 @@ HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\
 if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the fluid/operators directory, please request one of the RD (chenwhql, zyfncg, YuanRisheng, phlrain) review and approve.\n"
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
+fi
+
+DIFF_OUTPUT=$(git diff --unified=0 upstream/$BRANCH)
+# check if any .cc or .cu file in the phi/kernels/ directory is changed and if any template is added
+if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddle/phi/kernels/.*\.cc\|diff --git a/paddle/phi/kernels/.*\.cu b/paddle/phi/kernels/.*\.cu'; then
+    if echo "$DIFF_OUTPUT" | grep -q '+.*template <'; then
+        echo "A C++ template is added in .cc or .cu file in the phi/kernels directory,which can lead to an overly large size of the compiled .o file, resulting in a failure in multi-architecture compilation!"
+        echo_line="You must have one RD (risemeup1 or Galaxy1458) approval for the change of C++ template.\n"
+        check_approval 1 risemeup1 Galaxy1458
+    fi
+fi
+
+IF_USE_SUBPROCESS=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "subprocess" || true`
+if [[ ${IF_USE_SUBPROCESS} ]]; then
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using subprocess, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
+fi
+IF_USE_EVAL=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "eval([^()]*[a-zA-Z0-9_])" || true`
+if [[ ${IF_USE_EVAL} ]]; then
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using eval, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`

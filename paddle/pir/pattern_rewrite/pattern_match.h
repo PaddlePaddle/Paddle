@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The design is mainly from MLIR, very thanks to the greate project.
+// The design is mainly from MLIR, very thanks to the great project.
 
 #pragma once
 
@@ -306,7 +306,7 @@ class RewriterBase : public Builder {
 
   virtual void FinalizeRootUpdate(Operation* op) {}
 
-  virtual void CancleRootUpdate(Operation* op) {}
+  virtual void CancelRootUpdate(Operation* op) {}
 
   template <typename CallableT>
   void UpdateRootInplace(Operation* root, CallableT&& callable) {

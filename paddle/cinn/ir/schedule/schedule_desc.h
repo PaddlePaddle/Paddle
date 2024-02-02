@@ -31,7 +31,7 @@ namespace ir {
 // records all transform/getting operations executed by a corresponding
 // ir::IRSchedule. A ScheduleDesc can be serialized to JSON format and saved to
 // file. For deserializing, it can be re-applied to a new IRSchedule that is
-// initialzied by a semantics-euqal original ir::ModuleExpr, and then achieves
+// initialzied by a semantics-equal original ir::ModuleExpr, and then achieves
 // the same result.
 
 class IRSchedule;  // forward declartion to avoid cross-reference
@@ -78,7 +78,7 @@ class ScheduleDesc {
 
   /**
    * \brief Replay this description to a new IRSchedule that is initialzied by a
-   * semantics-euqal original ModuleExpr.
+   * semantics-equal original ModuleExpr.
    * @param schedule The original IRSchedule to be replayed the description on.
    * @param without_post_schedule Determine whether to delete the post
    * schedules.

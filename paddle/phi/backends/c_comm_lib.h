@@ -33,6 +33,7 @@ enum CCLDataType {
   CCL_DATA_TYPE_FP64 = 0,
   CCL_DATA_TYPE_FP32,
   CCL_DATA_TYPE_FP16,
+  CCL_DATA_TYPE_BF16,
   CCL_DATA_TYPE_INT64,
   CCL_DATA_TYPE_INT32,
   CCL_DATA_TYPE_INT16,
@@ -59,9 +60,9 @@ inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
       red_type = phi::ccl::CCLReduceOp::AVG;
       break;
     default:
-      PADDLE_THROW(
-          errors::Unavailable("Unsuppored reduce type. Reduce type must be one "
-                              "of SUM, MAX, MIN, PRODUCT and AVG."));
+      PADDLE_THROW(errors::Unavailable(
+          "Unsupported reduce type. Reduce type must be one "
+          "of SUM, MAX, MIN, PRODUCT and AVG."));
   }
   return red_type;
 }
@@ -73,6 +74,8 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_FP32;
   } else if (type == phi::DataType::FLOAT16) {
     return CCL_DATA_TYPE_FP16;
+  } else if (type == phi::DataType::BFLOAT16) {
+    return CCL_DATA_TYPE_BF16;
   } else if (type == phi::DataType::INT64) {
     return CCL_DATA_TYPE_INT64;
   } else if (type == phi::DataType::INT32) {
@@ -95,6 +98,8 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
     return phi::DataType::FLOAT32;
   } else if (type == CCLDataType::CCL_DATA_TYPE_FP16) {
     return phi::DataType::FLOAT16;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_BF16) {
+    return phi::DataType::BFLOAT16;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT64) {
     return phi::DataType::INT64;
   } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {

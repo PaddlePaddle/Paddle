@@ -164,7 +164,7 @@ All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgu
 
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
-  {% set optional_inputs_name = op["inputs"]| find_optinal_inputs_name %}
+  {% set optional_inputs_name = op["inputs"]| find_optional_inputs_name %}
   {{get_input_list(op["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}

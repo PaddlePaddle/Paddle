@@ -483,7 +483,7 @@ void FleetWrapper::PushDenseVarsAsync(
 
     ::paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " table_id "
             << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
             << g[tensor->numel() - 1];
   }
@@ -813,7 +813,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THORW(platform::errors::Fatal(
+    // PADDLE_THROW(platform::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
@@ -839,7 +839,7 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
     VLOG(0) << "FleetWrapper::Client is null";
     return -1;
   } else {
-    return worker_ptr_->RegisteClient2ClientMsgHandler(msg_type, handler);
+    return worker_ptr_->RegisterClient2ClientMsgHandler(msg_type, handler);
   }
 }
 

@@ -72,7 +72,7 @@ void ArgOpMapperHelper(const paddle::cpp::OpDesc& op_desc,
       << "the indices dtype must be int32 or int64, but got dtype = " << dtype;
 
   int ndim = x->shape.size();
-  // If flatten = true, flatten x and do opration on axis 0.
+  // If flatten = true, flatten x and do operation on axis 0.
   if (flatten) {
     x = ctx.Builder()->Reshape(x, {-1});
     axis = 0;

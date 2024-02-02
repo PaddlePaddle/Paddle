@@ -51,16 +51,16 @@ void OneDNNOperatorDialect::initialize() {
 #ifdef WIN32
   RegisterOps<
 #define GET_OP_LIST1
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
   RegisterOps<
 #define GET_OP_LIST2
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
 #else
   RegisterOps<
 #define GET_OP_LIST
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
 #endif
 }
@@ -166,15 +166,19 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-void OneDNNOperatorDialect::PrintOperation(pir::Operation *op,
-                                           pir::IrPrinter &printer) const {
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
-    if_op.Print(printer);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto if_op = op->dyn_cast<IfOp>();
+      if_op.Print(printer);
+    };
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
-    while_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto while_op = op->dyn_cast<WhileOp>();
+      while_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 
 }  // namespace dialect

@@ -99,7 +99,7 @@ ReshardGradNode::operator()(
 #else
   PADDLE_THROW(phi::errors::Unavailable(
       "ReshardGrad is not supported in this version of Paddle. Try to "
-      "recompile it with WITH_DISTRIBTUE=ON and reinstall this package."));
+      "recompile it with WITH_DISTRIBUTE=ON and reinstall this package."));
   return paddle::small_vector<std::vector<paddle::Tensor>,
                               egr::kSlotSmallVectorSize>(1);
 #endif

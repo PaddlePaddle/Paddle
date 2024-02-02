@@ -26,7 +26,7 @@ namespace cinn::frontend::pass {
 
 // Pass `TransposeFoldingInput` folds transpose into dot, then both of them can
 // be implemented by a GEMM kernel. For each dot operator, try folding every
-// input that belong output of transpose. If output of tranpose in `fetch_ids`,
+// input that belong output of transpose. If output of transpose in `fetch_ids`,
 // keep the operator.
 class TransposeFoldingInputPass : public TransposeFoldingBase {
  public:
@@ -138,7 +138,7 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
             }
             continue;
           } else {
-            // invlid folding op, skip
+            // invalid folding op, skip
             continue;
           }
 

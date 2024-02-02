@@ -15,8 +15,7 @@
 
 from paddle.utils import gast
 
-from .. import utils
-from ..ast_utils import ast_to_source_code
+from ..utils import ast_to_source_code
 from .base import BaseTransformer
 
 __all__ = []
@@ -29,7 +28,6 @@ class BasicApiTransformer(BaseTransformer):
 
     def __init__(self, root):
         self.root = root
-        self.class_node_dict = {}
 
     def transform(self):
         to_tensor_transformer = ToTensorTransformer(self.root)
@@ -38,63 +36,6 @@ class BasicApiTransformer(BaseTransformer):
         attribute_transformer.transform()
         self.visit(self.root)
         return self.root
-
-    def visit_Assign(self, node):
-        if self._update_class_node_dict(node):
-            return None
-
-        for child_node in gast.walk(node.value):
-            if isinstance(child_node, gast.Call):
-                self._visit_Call(child_node)
-        return node
-
-    def visit_Expr(self, node):
-        value_node = node.value
-        for child_node in gast.walk(value_node):
-            if isinstance(child_node, gast.Call):
-                # TODO(liym27):
-                #  Considers that a dygraph api which modifies the input or has a output.
-                if utils.is_dygraph_api(child_node):
-                    return
-                else:
-                    self._visit_Call(child_node)
-        return node
-
-    def _visit_Call(self, node):
-        assert isinstance(node, gast.Call)
-        func_name = ast_to_source_code(node.func)
-
-        if self._is_dygraph_forward(func_name):
-            class_node = self._get_class_node(func_name)
-            static_node = utils.to_static_ast(node, class_node)
-            return static_node
-        else:
-            return node
-
-    def _is_dygraph_forward(self, func_id):
-        return func_id in self.class_node_dict
-
-    def _get_class_node(self, func_id):
-        return self.class_node_dict[func_id]
-
-    def _update_class_node_dict(self, node):
-        assert isinstance(node, gast.Assign)
-        node_value = node.value
-        if isinstance(node_value, gast.Call):
-            if is_to_variable(node_value):
-                return False
-
-            if utils.is_dygraph_api(node_value):
-                dygraph_api = node_value.func.attr
-                if not utils.dygraph_class_to_static_api.get(dygraph_api):
-                    return False
-
-                utils.update_args_of_func(node_value, node_value, "__init__")
-                target_str = ast_to_source_code(node.targets[0])
-                self.class_node_dict[target_str] = node_value
-                return True
-            # TODO: node.value is not dygraph class
-        return False
 
 
 class ToTensorTransformer(BaseTransformer):
@@ -141,7 +82,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def _surround_with_ld(self, node):
         node = (
-            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
+            gast.parse(f"_jst.Ld({ast_to_source_code(node).strip()})")
             .body[0]
             .value
         )
@@ -171,9 +112,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def visit_Attribute(self, node):
         def skip_fn(node):
-            if utils.ast_to_source_code(node).startswith(
-                "_jst."
-            ):  # skip _jst.xxx
+            if isinstance(node.value, gast.Name) and node.value.id == "_jst":
                 return True
             return False
 
@@ -222,7 +161,7 @@ class AttributeJstTransformer(BaseTransformer):
             value = node.value
             node = (
                 gast.parse(
-                    f"_jst.Attr({utils.ast_to_source_code(value).strip()}, \"{attr}\")"
+                    f"_jst.Attr({ast_to_source_code(value).strip()}, \"{attr}\")"
                 )
                 .body[0]
                 .value
@@ -233,12 +172,9 @@ class AttributeJstTransformer(BaseTransformer):
 
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
-    api_name = utils.ast_to_source_code(node.func).strip()
+    api_name = ast_to_source_code(node.func).strip()
 
-    if utils.is_dygraph_api(node):
-        return api_name.endswith("to_variable")
-
-    return False
+    return api_name.split(".")[-1] == "to_variable"
 
 
 def to_assign_node(node):

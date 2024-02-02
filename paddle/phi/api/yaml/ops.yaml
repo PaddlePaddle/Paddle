@@ -135,6 +135,15 @@
     func : angle
   backward : angle_grad
 
+- op : apply_per_channel_scale
+  args: (Tensor x, Tensor scales)
+  output: Tensor(out)
+  infer_meta :
+    func : ApplyPerChannelScaleInferMeta
+  kernel :
+    func : apply_per_channel_scale
+    data_type : x
+
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
@@ -190,6 +199,19 @@
     func : as_strided
   backward : as_strided_grad
   no_need_buffer : input
+
+- op : asgd_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
+  output : Tensor(param_out), Tensor(d_out), Tensor(y_out), Tensor(master_param_out)
+  infer_meta :
+    func : ASGDInferMeta
+  kernel :
+    func : asgd
+    data_type : param
+  data_transform :
+    support_trans_dtype : learning_rate, n
+  optional : master_param, master_param_out
+  inplace : (param -> param_out), (d -> d_out), (y -> y_out), (master_param -> master_param_out)
 
 - op : asin
   args : (Tensor x)
@@ -540,6 +562,7 @@
     func : concat
     data_type : x
   backward : concat_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conj
   args : (Tensor x)
@@ -557,6 +580,7 @@
     func : ConvInferMeta
   kernel :
     func : conv2d
+    data_type : input
   backward : conv2d_grad
 
 - op : conv3d
@@ -566,6 +590,7 @@
     func : Conv3DInferMeta
   kernel :
     func : conv3d
+    data_type : input
   backward : conv3d_grad
 
 - op : conv3d_transpose
@@ -703,6 +728,7 @@
     func : DepthwiseConvInferMeta
   kernel :
     func : depthwise_conv2d
+    data_type : input
   backward : depthwise_conv2d_grad
 
 - op : det
@@ -883,6 +909,7 @@
     func : expand
     data_type : x
   backward : expand_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
@@ -1092,6 +1119,17 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : gammaincc
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : gammaincc
+  inplace: (x -> out)
+  backward : gammaincc_grad
+
 - op : gammaln
   args : (Tensor x)
   output : Tensor(out)
@@ -1121,6 +1159,7 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1163,6 +1202,26 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+
+- op : graph_khop_sampler
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
+  output : Tensor(out_src), Tensor(out_dst), Tensor(sample_index), Tensor(reindex_x), Tensor(out_eids)
+  infer_meta :
+    func : GraphKhopSamplerInferMeta
+  kernel :
+    func : graph_khop_sampler
+    data_type : row
+  optional : eids
+
+- op : graph_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
+  output : Tensor(out), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : GraphSampleNeighborsInferMeta
+  kernel :
+    func : graph_sample_neighbors
+    data_type : row
+  optional : eids, perm_buffer
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
@@ -2081,6 +2140,7 @@
     data_type : x
   inplace: (x -> out)
   backward : pow_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format="NCHW", str mode="all")
@@ -2172,6 +2232,7 @@
     func : relu
   inplace : (x -> out)
   backward : relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : relu6
   args : (Tensor x)
@@ -2292,6 +2353,7 @@
     func : rsqrt
   inplace : (x -> out)
   backward : rsqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
   args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
@@ -2306,6 +2368,7 @@
     data_type : x
   inplace : (x -> out)
   backward : scale_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
@@ -2590,6 +2653,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stack
   args : (Tensor[] x, int axis = 0)
@@ -2825,6 +2889,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unstack
   args : (Tensor x, int axis=0, int num=0)
@@ -2951,6 +3016,7 @@
     func : where
   inplace: (x -> out)
   backward : where_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
