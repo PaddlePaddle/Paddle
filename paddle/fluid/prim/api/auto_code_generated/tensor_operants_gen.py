@@ -373,7 +373,7 @@ class PrimTensorAPI(BaseAPI):
 
     def gene_eager_tensor_operants_implementation(self):
         api_func_name = self.get_api_func_name()
-        # func decalaration
+        # func declaration
         if api_func_name[-1] != '_':
             api_code = f"""{self.get_return_type()} EagerTensorOperants::{api_func_name}({self.get_declare_args_nodefault()}) {{"""
         else:
@@ -407,7 +407,7 @@ class PrimTensorAPI(BaseAPI):
         api_code = ""
         indent = "  "
         api_func_name = self.get_api_func_name()
-        # func decalaration
+        # func declaration
         if api_func_name[-1] != '_':
             api_code = f"""{self.get_return_type()} StaticTensorOperants::{api_func_name}({self.get_declare_args_nodefault()}) {{"""
         else:
