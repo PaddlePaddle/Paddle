@@ -1045,7 +1045,7 @@ def np_to_variable(data):
         + decoder_data_input_fields[:-1]
         + label_data_input_fields
     ):
-        var_inputs.append(paddle.to_tensor(data_inputs[i], name=field))
+        var_inputs.append(paddle.to_tensor(data_inputs[i]))
 
     enc_inputs = var_inputs[0 : len(encoder_data_input_fields)]
     dec_inputs = var_inputs[
