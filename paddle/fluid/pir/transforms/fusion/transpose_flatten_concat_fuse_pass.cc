@@ -24,13 +24,9 @@
 namespace {
 
 class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
- private:
-  int transpose_flatten_count_;
-
  public:
-  explicit NTransposeFlattenConcatFusePattern(int transpose_flatten_count) {
-    transpose_flatten_count_ = transpose_flatten_count;
-  }
+  explicit NTransposeFlattenConcatFusePattern(int transpose_flatten_count)
+      : transpose_flatten_count_(transpose_flatten_count) {}
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     std::vector<const paddle::drr::Tensor *> combine_in;
@@ -57,43 +53,42 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
     concat_op({&pat.Tensor("combine_out"), &full_op()},
               {&pat.Tensor("concat_out")});
     pat.RequireNativeCall(
-        [this](const paddle::drr::MatchContext &match_ctx) -> bool {
+        [transpose_flatten_count_ = transpose_flatten_count_](
+            const paddle::drr::MatchContext &match_ctx) -> bool {
           auto flatten_out_shape_0 =
               pir::GetShapeFromValue(match_ctx.Tensor("flatten_out_0"));
           if (flatten_out_shape_0.size() != 2) {
             return false;
           }
-          if (transpose_flatten_count_ < 2) {
-            return true;
-          }
-
-          std::vector<int32_t> perm_0 =
-              match_ctx.Attr<std::vector<int32_t>>("perm_0");
-          int flatten_start_0 = match_ctx.Attr<int>("start_axis_0");
-          int flatten_stop_0 = match_ctx.Attr<int>("stop_axis_0");
-          for (int i = 1; i < transpose_flatten_count_; i++) {
-            auto flatten_out_shape = pir::GetShapeFromValue(
-                match_ctx.Tensor("flatten_out_" + std::to_string(i)));
-            if (flatten_out_shape.size() != 2) {
-              return false;
-            }
-            auto tmp_perm = match_ctx.Attr<std::vector<int32_t>>(
-                "perm_" + std::to_string(i));
-            auto tmp_flatten_start =
-                match_ctx.Attr<int>("start_axis_" + std::to_string(i));
-            auto tmp_flatten_stop =
-                match_ctx.Attr<int>("stop_axis_" + std::to_string(i));
-            if (perm_0.size() != tmp_perm.size()) {
-              return false;
-            }
-            for (size_t j = 0; j < perm_0.size(); j++) {
-              if (perm_0[j] != tmp_perm[j]) {
+          if (transpose_flatten_count_ >= 2) {
+            std::vector<int32_t> perm_0 =
+                match_ctx.Attr<std::vector<int32_t>>("perm_0");
+            int flatten_start_0 = match_ctx.Attr<int>("start_axis_0");
+            int flatten_stop_0 = match_ctx.Attr<int>("stop_axis_0");
+            for (int i = 1; i < transpose_flatten_count_; i++) {
+              auto flatten_out_shape = pir::GetShapeFromValue(
+                  match_ctx.Tensor("flatten_out_" + std::to_string(i)));
+              if (flatten_out_shape.size() != 2) {
                 return false;
               }
-            }
-            if (flatten_start_0 != tmp_flatten_start ||
-                flatten_stop_0 != tmp_flatten_stop) {
-              return false;
+              auto tmp_perm = match_ctx.Attr<std::vector<int32_t>>(
+                  "perm_" + std::to_string(i));
+              auto tmp_flatten_start =
+                  match_ctx.Attr<int>("start_axis_" + std::to_string(i));
+              auto tmp_flatten_stop =
+                  match_ctx.Attr<int>("stop_axis_" + std::to_string(i));
+              if (perm_0.size() != tmp_perm.size()) {
+                return false;
+              }
+              for (size_t j = 0; j < perm_0.size(); j++) {
+                if (perm_0[j] != tmp_perm[j]) {
+                  return false;
+                }
+              }
+              if (flatten_start_0 != tmp_flatten_start ||
+                  flatten_stop_0 != tmp_flatten_stop) {
+                return false;
+              }
             }
           }
           return true;
@@ -140,6 +135,9 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
     return "NTransposeFlattenConcatFusePattern_" +
            std::to_string(transpose_flatten_count_);
   }
+
+ private:
+  int transpose_flatten_count_;
 };
 
 /*
@@ -153,8 +151,8 @@ transpose    transpose   ...  transpose
        \        |            /
          \      |          /
            \    |        /
-               combine
-                 |
+              combine
+                |
                concat
 */
 
