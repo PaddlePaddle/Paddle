@@ -79,8 +79,8 @@ def monkey_patch_tensor():
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
-        Notes:
-            **This API is ONLY available in Dygraph mode**
+        Note:
+            This API is ONLY available in Dygraph mode
 
         Transform a Tensor into static Variable with same attributes. It's a low level interface used
         in dy2static and shall not be called directly.

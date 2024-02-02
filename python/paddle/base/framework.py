@@ -1679,7 +1679,7 @@ class Variable(metaclass=VariableMetaClass):
     def numpy(self):
         """
         Note:
-            **This API is ONLY available in Dygraph mode**
+            This API is ONLY available in Dygraph mode
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -1711,7 +1711,7 @@ class Variable(metaclass=VariableMetaClass):
     def backward(self, retain_graph=False):
         """
         Note:
-            **This API is ONLY available in Dygraph mode**
+            This API is ONLY available in Dygraph mode
 
         Run backward of current Graph which starts from current Tensor.
 
@@ -1760,7 +1760,7 @@ class Variable(metaclass=VariableMetaClass):
     def gradient(self):
         """
         Note:
-            **This API is ONLY available in Dygraph mode**
+            This API is ONLY available in Dygraph mode
 
         Get the Gradient of Current Variable
 
@@ -1809,9 +1809,9 @@ class Variable(metaclass=VariableMetaClass):
     def clear_gradient(self):
         """
         Note:
-            **1. This API is ONLY available in Dygraph mode**
+            1. This API is ONLY available in Dygraph mode
 
-            **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
+            2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC
 
         Clear  (set to ``0`` ) the Gradient of Current Variable
 
@@ -2037,7 +2037,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating if we stop gradient from current Variable
 
-        **Note: This Property has default value as** ``True`` **in** Dygraph **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
+        Note: This Property has default value as ``True`` in Dygraph mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is ``False``
 
         Examples:
             .. code-block:: python
@@ -2075,11 +2075,11 @@ class Variable(metaclass=VariableMetaClass):
         Indicating if we current Variable should be long-term alive
 
 
-        **Note: This Property will be deprecated and this API is just to help user understand concept**
+        Note: This Property will be deprecated and this API is just to help user understand concept
 
-            **1. All Variable's persistable is** ``False`` **except Parameters.**
+            1. All Variable's persistable is ``False`` except Parameters.
 
-            **2. In** Dygraph **mode, this property should not be changed**
+            2. In Dygraph mode, this property should not be changed
 
         Examples:
             .. code-block:: python
@@ -2129,7 +2129,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of current Variable
 
-        **Note: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
+        Note: If it has two or more Varaible share the same name in the same :ref:`api_guide_Block_en` , it means these Variable will share content in no- Dygraph mode. This is how we achieve Parameter sharing
 
         Examples:
             .. code-block:: python
@@ -2150,7 +2150,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of the gradient Variable of current Variable.
 
-        Notes: This is a read-only property. It simply returns name of
+        Note: This is a read-only property. It simply returns name of
         gradient Variable from a naming convention but doesn't guarantee
         the gradient exists.
 
@@ -2175,7 +2175,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating shape of current Variable
 
-        Notes: This is a read-only property
+        Note: This is a read-only property
 
         Examples:
             .. code-block:: python
@@ -2219,11 +2219,11 @@ class Variable(metaclass=VariableMetaClass):
         Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_paddle_Tensor` to check the meaning
         of ``LoD``
 
-        Notes:
+        Note:
 
-            **1. This is a read-only property**
+            1. This is a read-only property
 
-            **2. Don't support this property in** Dygraph **mode, it's value should be** ``0(int)``
+            2. Don't support this property in Dygraph mode, it's value should be ``0(int)``
 
         Examples:
             .. code-block:: python
@@ -5758,9 +5758,9 @@ class Program:
     backward ops and vars.
 
     Note:
-        **we have** :ref:`api_paddle_base_framework_default_startup_program` **and** :ref:`api_paddle_base_framework_default_main_program`
-        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_base_framework_default_startup_program` **only run once to initialize parameters,**
-        :ref:`api_paddle_base_framework_default_main_program` **run in every mini batch and adjust the weights.**
+        we have :ref:`api_paddle_base_framework_default_startup_program` and :ref:`api_paddle_base_framework_default_main_program`
+        by default, a pair of them will shared the parameters. The :ref:`api_paddle_base_framework_default_startup_program` only run once to initialize parameters,
+        :ref:`api_paddle_base_framework_default_main_program` run in every mini batch and adjust the weights.
 
     Returns:
         Program: An empty Program.

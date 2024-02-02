@@ -484,9 +484,9 @@ def monkey_patch_value():
     def clear_gradient(self):
         """
         Note:
-            **1. This API is ONLY available in Dygraph mode**
+            1. This API is ONLY available in Dygraph mode
 
-            **2. Use it only Value has gradient, normally we use this for Parameters since other temporal Value will be deleted by Python's GC**
+            2. Use it only Value has gradient, normally we use this for Parameters since other temporal Value will be deleted by Python's GC
 
         Clear  (set to ``0`` ) the Gradient of Current Value
 
@@ -520,7 +520,7 @@ def monkey_patch_value():
     def append(self, var):
         """
         Note:
-           **The type Value must be Tensor Array.
+           The type Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
