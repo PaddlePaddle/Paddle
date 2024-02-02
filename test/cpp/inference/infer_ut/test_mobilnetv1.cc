@@ -71,7 +71,7 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
   LOG(INFO) << config.Summary();
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   VLOG(1) << "finish test";

@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 import opcode
 
+from paddle.jit.utils import OrderedSet
+
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
@@ -34,7 +36,6 @@ from ...utils import (
     BreakGraphError,
     FallbackError,
     InnerError,
-    OrderedSet,
     SotUndefinedVar,
     get_static_function,
     log,

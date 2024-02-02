@@ -24,9 +24,10 @@ import weakref
 from typing import Any, Callable
 
 import paddle
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
-from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
+from ..utils import NameGenerator, Singleton, flatten_extend
 
 
 class Reference:  # to unify weak_ref and strong_ref

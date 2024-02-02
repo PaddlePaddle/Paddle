@@ -24,6 +24,7 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
 from ...infer_meta import (
@@ -38,7 +39,6 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
-    OrderedSet,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
