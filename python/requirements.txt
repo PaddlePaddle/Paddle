@@ -5,4 +5,4 @@ Pillow
 decorator
 astor
 opt_einsum==3.3.0
-nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' 
+# nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' 
