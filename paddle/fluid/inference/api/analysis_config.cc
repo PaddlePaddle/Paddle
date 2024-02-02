@@ -48,6 +48,12 @@ AnalysisConfig::AnalysisConfig() {
   // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
   inference::InitGflagsFromEnv();
 }
+PassContorller *AnalysisConfig::pass_controller() const {
+  if (!pass_ctrl_.get()) {
+    pass_ctrl_ = std::make_unique<PassContorller>();
+  }
+  return pass_ctrl_.get();
+}
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -73,7 +79,6 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     LOG(WARNING) << "Please make them compatible, still use the existing "
                     "PassBuilder.";
   }
-
   return pass_builder_.get();
 }
 
