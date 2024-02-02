@@ -61,6 +61,10 @@ int main(int argc, char** argv) {  // NOLINT
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (strstr(env_str, "enable_gpu_memory_usage_log")) {
+    PADDLE_ENFORCE_NOT_NULL(
+        FLAGS_enable_gpu_memory_usage_log,
+        paddle::platform::errors::InvalidArgument(
+            "FLAGS_enable_gpu_memory_usage_log contains no data."));
     VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
     FLAGS_enable_gpu_memory_usage_log = true;
   }

@@ -25,6 +25,9 @@
 
 namespace pir {
 OpOperand &OpOperand::operator=(const OpOperand &rhs) {
+  if (this == &rhs) {
+    return *this;
+  }
   impl_ = rhs.impl_;
   return *this;
 }
