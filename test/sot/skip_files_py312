@@ -45,6 +45,7 @@
 ./test_numpy.py
 ./test_numpy_var_if.py
 ./test_output_restoration.py
+./test_segment_linear.py
 ./test_side_effects.py
 ./test_simulate_initialize.py
 ./test_sir_rollback.py
@@ -53,6 +54,7 @@
 ./test_sot_export.py
 ./test_sot_resnet.py
 ./test_sot_resnet50_backward.py
+./test_specialization.py
 ./test_str_format.py
 ./test_tensor_dtype_in_guard.py
 ./test_tensor_slice.py

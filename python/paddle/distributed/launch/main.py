@@ -1073,7 +1073,8 @@ def launch():
                         )
                         if len(single_error_info) > 0:
                             while not client.put(
-                                path, single_error_info.encode('latin-1')
+                                path,
+                                single_error_info.encode('latin-1', 'ignore'),
                             ):
                                 time.sleep(1)
                             ctx.logger.info(
@@ -1102,7 +1103,7 @@ def launch():
                         status = [
                             i[0].decode()
                             for i in result
-                            if "OK" not in i[0].decode()
+                            if "OK" not in i[0].decode('utf-8', 'ignore')
                         ]
                         error_info = list(set(status))
                         ctx.logger.info(

@@ -2043,7 +2043,9 @@ def stack(x, axis=0, name=None):
         if (
             isinstance(x, Variable)
             and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        ) or (isinstance(x, paddle.pir.Value) and x.is_tensorarray()):
+        ) or (
+            isinstance(x, paddle.pir.Value) and x.is_dense_tensor_array_type()
+        ):
             x = [x]
         else:
             raise TypeError(
@@ -2056,7 +2058,7 @@ def stack(x, axis=0, name=None):
             )
 
     if in_pir_mode():
-        if x[0].is_tensorarray():
+        if x[0].is_dense_tensor_array_type():
             assert len(x) == 1, (
                 "If the elements of 'x' in stack are Variable(LoDTensorArray), "
                 "number of the elements must be 1, but received %s." % len(x)
