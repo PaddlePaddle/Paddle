@@ -27,14 +27,13 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
                                  const T *__restrict__ y,
                                  T *__restrict__ z,
                                  int64_t m,
-                                 int64_t n,
-                                 int64_t n_vec_piece) {
+                                 int64_t n) {
   funcs::SwiGLUFunctor<T> functor;
   if constexpr (IsCombine) {
     int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
+    int64_t n_vec_piece = n / VecSize;
     int64_t valid_num = m * n_vec_piece;
-    int64_t col_limit = n - VecSize;
     while (idx < valid_num) {
       int64_t row_offset = idx / n_vec_piece * n;
       int64_t col_offset = idx % n_vec_piece * VecSize;
@@ -88,7 +87,7 @@ void SwiGLUKernelImpl(
   case __vec_size: {                                                           \
     SwiGLUCUDAKernel<T, __vec_size, __is_combine>                              \
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
-            x, y, z, m, n, n_vec_piece);                                       \
+            x, y, z, m, n);                                                    \
     break;                                                                     \
   }
 
@@ -107,7 +106,6 @@ void SwiGLUKernelImpl(
 
   if (y) {
     vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(y));
-    int64_t n_vec_piece = 1;
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n, vec_size);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(false);
@@ -116,9 +114,8 @@ void SwiGLUKernelImpl(
       vec_size /= 2;
     }
     y = x + n;
-    int64_t n_vec_piece = n / vec_size;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n_vec_piece, 1);
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(true);
   }
 }

@@ -30,16 +30,13 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
                                      T *__restrict__ dx,
                                      T *__restrict__ dy,
                                      int64_t m,
-                                     int64_t n,
-                                     int64_t n_vec_piece) {
+                                     int64_t n) {
   funcs::SwiGLUGradFunctor<T, HasDX, HasDY> functor;
   if constexpr (IsCombine) {
     int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
+    int64_t n_vec_piece = n / VecSize;
     int64_t valid_num = m * n_vec_piece;
-    int64_t col_limit = n - VecSize;
-    dy = dx + n;
-
     while (idx < valid_num) {
       int64_t row_offset = idx / n_vec_piece * n;
       int64_t col_offset = idx % n_vec_piece * VecSize;
@@ -135,7 +132,7 @@ void SwiGLUGradKernelImpl(const Context &ctx,
   case __vec_size: {                                                           \
     SwiGLUGradCUDAKernel<T, __vec_size, __is_combine, __has_dx, __has_dy>      \
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
-            x, y, dz, dx, dy, m, n, n_vec_piece);                              \
+            x, y, dz, dx, dy, m, n);                                           \
     break;                                                                     \
   }
 
@@ -156,7 +153,6 @@ void SwiGLUGradKernelImpl(const Context &ctx,
   } while (0)
 
   if (y) {
-    int64_t n_vec_piece = 1;
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n, vec_size);
     if (dx) {
@@ -181,9 +177,9 @@ void SwiGLUGradKernelImpl(const Context &ctx,
       vec_size /= 2;
     }
     y = x + n;
-    int64_t n_vec_piece = n / vec_size;
+    dy = dx + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n_vec_piece, 1);
+        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(true, true, true);
   }
 }
