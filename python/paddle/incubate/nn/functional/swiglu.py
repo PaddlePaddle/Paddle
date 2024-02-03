@@ -32,6 +32,18 @@ def swiglu(x, y=None, name=None):
 
     Returns:
         A Tensor with the same data type with x and y.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> x = paddle.to_tensor([1, 2], dtype='float32')
+            >>> out1, out2 = F.swiglu(x), F.swiglu(x, x)
+            >>> print(out1, out2)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [1.46211720]) Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [0.73105860, 3.52318811])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.swiglu(x, y)
