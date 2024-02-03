@@ -68,27 +68,33 @@ def check_jit_kernel_number(static_fn, expected_number):
     np.testing.assert_equal(jit_kernel_number, expected_number)
 
 
-def get_jit_kernel_structure_helper(block, map_info):
-    if_op_idx, while_op_idx = 0, 0
+def get_jit_kernel_structure_helper(block, map_info, if_op_idx='_0'):
+    """
+    Recursivly generate JIT_KERNEL map_info for Static/Dynmaic Shape UT.
+    """
+    if_count = 0
     for op in block.ops:
         op_name = op.name()
         if JIT_KERNEL_NAME in op_name:
+            if JIT_KERNEL_NAME not in map_info:
+                map_info[JIT_KERNEL_NAME] = 0
             map_info[JIT_KERNEL_NAME] += 1
         elif op_name == __IF_OP_NAME:
-            true_key = f"if_{if_op_idx}"
+            true_key = f"if{if_op_idx}"
+            false_key = f"else{if_op_idx}"
             map_info[true_key] = {}
-            get_jit_kernel_structure_helper(op.true_block(), map_info[true_key])
-
-            false_key = f"else_{if_op_idx}"
+            map_info[false_key] = {}
             get_jit_kernel_structure_helper(
-                op.false_block(), map_info[false_key]
+                op.as_if_op().true_block(),
+                map_info[true_key],
+                if_op_idx + '_' + str(if_count),
             )
-            if_op_idx += 1
-        elif op.name() == __WHILE_OP_NAME:
-            key = f"while_{while_op_idx}"
-            map_info[key] = {}
-            get_jit_kernel_structure_helper(op.body(), map_info[key])
-            while_op_idx += 1
+            get_jit_kernel_structure_helper(
+                op.as_if_op().false_block(),
+                map_info[false_key],
+                if_op_idx + '_' + str(if_count),
+            )
+            if_count += 1
 
 
 def get_jit_kernel_structure(static_fn):
