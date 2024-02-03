@@ -134,7 +134,7 @@ class DrrPatternContext {
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
-  TEST_API void RequireEqual(const TensorDataType& first, 
+  TEST_API void RequireEqual(const TensorDataType& first,
                              const TensorDataType& second);
   void RequireNativeCall(const ConstraintFunction& custom_fn);
 
