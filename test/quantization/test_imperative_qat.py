@@ -95,8 +95,7 @@ class TestImperativeQat(unittest.TestCase):
 
             seed = 1
             np.random.seed(seed)
-            paddle.static.default_main_program().random_seed = seed
-            paddle.static.default_startup_program().random_seed = seed
+            paddle.seed(seed)
 
             lenet = ImperativeLenet()
             lenet = fix_model_dict(lenet)
