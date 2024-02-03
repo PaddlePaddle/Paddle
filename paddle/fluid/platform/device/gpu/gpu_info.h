@@ -29,7 +29,7 @@ namespace platform {
 int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-int GetGPUDeviceCount();
+TEST_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
 TEST_API int GetGPUComputeCapability(int id);
