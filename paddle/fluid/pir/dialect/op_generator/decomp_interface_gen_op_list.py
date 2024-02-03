@@ -43,6 +43,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -70,6 +71,7 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 

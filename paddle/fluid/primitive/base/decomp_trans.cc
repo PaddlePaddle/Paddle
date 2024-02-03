@@ -164,16 +164,20 @@ void DecompProgram::check_decomp_outputs(
         VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
-
-      PADDLE_ENFORCE(orig_dim == decomp_dim,
-                     paddle::platform::errors::PreconditionNotMet(
-                         "[Prim] For op %s, its origin %d-index output shape "
-                         "[%s] is not equal to "
-                         "decomp output shape [%s] ",
-                         op_name,
-                         i,
-                         orig_dim,
-                         decomp_dim));
+      for (int i = 0; i < orig_dim.size(); i++) {
+        if (orig_dim[i] != -1 && decomp_dim[i] != -1) {
+          PADDLE_ENFORCE(
+              orig_dim[i] == decomp_dim[i],
+              paddle::platform::errors::PreconditionNotMet(
+                  "[Prim] For op %s, its origin %d-index output shape "
+                  "[%s] is not equal to "
+                  "decomp output shape [%s] ",
+                  op_name,
+                  i,
+                  orig_dim,
+                  decomp_dim));
+        }
+      }
     }
   }
   return;
