@@ -30,8 +30,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
         epoch_num = 1
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             base.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist2 = MNIST()
@@ -82,8 +81,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                         break
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             exe = base.Executor(
                 base.CPUPlace()
