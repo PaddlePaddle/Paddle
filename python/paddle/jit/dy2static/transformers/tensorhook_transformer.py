@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 
 from paddle.utils import gast
 
@@ -30,8 +29,6 @@ def get_loads(node: gast.AST):
 
 class RegisterHookTransformer(BaseTransformer):
     def __init__(self, root):
-        self.register_hook_pos_map = collections.defaultdict(list)
-        self.assignment_pos_map = collections.defaultdict(list)
         self.root = root
 
     def transform(self):
