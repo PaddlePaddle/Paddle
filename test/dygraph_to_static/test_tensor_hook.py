@@ -51,6 +51,36 @@ class TestTensorHook(Dy2StTestBase):
         loss.backward()
         np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
+    def test_hook_in_sub_block(self):
+        def f(x):
+            def hook1(grad):
+                return 2 * grad
+
+            def hook2(grad):
+                return 3 * grad
+
+            if x > 1:
+                y = x + 4
+                z = y**2
+                y.register_hook(hook1)
+            else:
+                y = x - 4
+                z = y**3
+                y.register_hook(hook2)
+            return z
+
+        x = paddle.to_tensor([2.0])
+        x.stop_gradient = False
+        loss = f(x)
+        loss.backward()
+
+        x_jit = paddle.to_tensor([2.0])
+        x_jit.stop_gradient = False
+        jit_f = to_static(f)
+        loss = jit_f(x_jit)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
+
     def test_hook_sub_attr(self):
         IMAGE_SIZE = 784
         CLASS_NUM = 10

@@ -40,18 +40,18 @@ class RegisterHookTransformer(BaseTransformer):
         """
         self.visit(self.root)
 
-    def visit_FunctionDef(self, node: gast.FunctionDef):
-        func_body = node.body
+    def reorder_block_statements(self, stmts):
         regisiter_hook_nodes = [
             n
-            for n in func_body
+            for n in stmts
             for stmt in gast.walk(n)
             if isinstance(stmt, gast.Attribute) and stmt.attr == "register_hook"
         ]
         # Analyze the register_hook nodes name dependency
         dependents = {}
+        print(dependents)
         for n in regisiter_hook_nodes:
-            if n not in func_body:
+            if n not in stmts:
                 continue
             for load_node in get_loads(n):
                 load_name = ast_to_source_code(load_node)
@@ -61,21 +61,55 @@ class RegisterHookTransformer(BaseTransformer):
 
         # Reorder the register_hook nodes, insert it before the dependent nodes
         idx = 0
-        body = list(func_body)
-        while idx < len(body):
-            stmt = body[idx]
+        reordered_stmts = list(stmts)
+        while idx < len(reordered_stmts):
+            stmt = reordered_stmts[idx]
             loads = get_loads(stmt)
             for load_node in loads:
                 load_name = ast_to_source_code(load_node)
                 if load_name in dependents:
                     dep_nodes = dependents[load_name]
                     for dep_node in dep_nodes:
-                        dep_idx = body.index(dep_node)
+                        dep_idx = reordered_stmts.index(dep_node)
                         if dep_idx <= idx:
                             continue
-                        body.remove(dep_node)
-                        body.insert(idx, dep_node)
+                        reordered_stmts.remove(dep_node)
+                        reordered_stmts.insert(idx, dep_node)
                         idx += 1
             idx += 1
-        node.body = body
+        return reordered_stmts
+
+    def visit_FunctionDef(self, node: gast.FunctionDef):
+        node.body = self.reorder_block_statements(node.body)
+        self.generic_visit(node)
+        return node
+
+    def visit_For(self, node: gast.For):
+        node.body = self.reorder_block_statements(node.body)
+        node.orelse = self.reorder_block_statements(node.orelse)
+        self.generic_visit(node)
+        return node
+
+    def visit_While(self, node: gast.While):
+        node.body = self.reorder_block_statements(node.body)
+        node.orelse = self.reorder_block_statements(node.orelse)
+        self.generic_visit(node)
+        return node
+
+    def visit_If(self, node: gast.If):
+        node.body = self.reorder_block_statements(node.body)
+        node.orelse = self.reorder_block_statements(node.orelse)
+        self.generic_visit(node)
+        return node
+
+    def visit_With(self, node: gast.With):
+        node.body = self.reorder_block_statements(node.body)
+        self.generic_visit(node)
+        return node
+
+    def visit_Try(self, node: gast.Try):
+        node.body = self.reorder_block_statements(node.body)
+        node.orelse = self.reorder_block_statements(node.orelse)
+        node.finalbody = self.reorder_block_statements(node.finalbody)
+        self.generic_visit(node)
         return node
