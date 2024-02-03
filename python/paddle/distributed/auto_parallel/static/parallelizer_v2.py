@@ -78,6 +78,8 @@ class Parallelizer:
                 serial_loss,
                 parameter_list,
             )
+            print("After generate backward, the program is ")
+            print(serial_main_program)
             # Apply pre optimization passes
             time0 = time.time()
             (
@@ -128,6 +130,9 @@ class Parallelizer:
                 )
             )
 
+            # from .utils import print_program_with_dist_attr
+            # print("========parallelizer v2==== before reshard")
+            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
