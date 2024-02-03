@@ -20,7 +20,6 @@ from test_imperative_lod_tensor_to_selected_rows import SimpleNet
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph import base as imperative_base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
@@ -78,9 +77,9 @@ class Test_Forward_Hook(unittest.TestCase):
                 )
                 y_data = y_data.reshape((-1, 1))
 
-                input = imperative_base.to_variable(input_word)
-                input1 = imperative_base.to_variable(input_word1)
-                y = imperative_base.to_variable(y_data)
+                input = paddle.to_tensor(input_word)
+                input1 = paddle.to_tensor(input_word1)
+                y = paddle.to_tensor(y_data)
 
                 simplenet = SimpleNet(
                     hidden_size=20,
@@ -160,8 +159,8 @@ class Test_Forward_Hook(unittest.TestCase):
                 )
                 y_data = y_data.reshape((-1, 1))
 
-                input = imperative_base.to_variable(input_word)
-                y = imperative_base.to_variable(y_data)
+                input = paddle.to_tensor(input_word)
+                y = paddle.to_tensor(y_data)
 
                 simplenet = SimpleNet(
                     hidden_size=20,
