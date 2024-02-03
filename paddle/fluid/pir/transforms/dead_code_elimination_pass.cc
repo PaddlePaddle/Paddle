@@ -43,7 +43,6 @@ class DeadCodeEliminationPass : public pir::Pass {
       if (op.HasTrait<pir::SideEffectTrait>() ||
           op.HasTrait<paddle::dialect::InplaceTrait>() ||
           op.isa<paddle::dialect::DataOp>() ||
-          op.name().find("builtin") != std::string::npos ||
           paddle::dialect::IsCustomOp(&op)) {
         continue;
       }
