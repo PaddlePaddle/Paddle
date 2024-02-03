@@ -37,8 +37,7 @@ def static(
 ):
     startup_program = Program()
     main_program = Program()
-    startup_program.random_seed = SEED
-    main_program.random_seed = SEED
+    paddle.seed(SEED)
 
     with program_guard(main_program, startup_program):
 
@@ -175,8 +174,7 @@ class DygraphLayer(paddle.nn.Layer):
 def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
     place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
         dy_layer = DygraphLayer()
         adam = paddle.optimizer.Adam(
             learning_rate=LR, parameters=dy_layer.parameters()
