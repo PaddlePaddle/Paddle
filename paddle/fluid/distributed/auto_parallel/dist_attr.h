@@ -262,7 +262,8 @@ inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {
   return os;
 }
 
-TEST_API bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs);
+TEST_API bool operator==(const OperatorDistAttr& lhs,
+                                            const OperatorDistAttr& rhs);
 
 inline bool operator!=(const OperatorDistAttr& lhs,
                        const OperatorDistAttr& rhs) {
