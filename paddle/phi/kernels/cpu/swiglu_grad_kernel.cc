@@ -29,29 +29,28 @@ void SwiGLUGradKernelImpl(const Context &ctx,
                           int64_t m,
                           int64_t n) {
   funcs::SwiGLUGradFunctor<T> functor;
+  int64_t stride;
   if (y) {
-    int64_t numel = m * n;
-    for (int64_t i = 0; i < numel; ++i) {
-      T dx_tmp, dy_tmp;
-      functor(x[i], y[i], dz[i], &dx_tmp, &dy_tmp);
-      if (dx) {
-        dx[i] = dx_tmp;
-      }
-      if (dy) {
-        dy[i] = dy_tmp;
-      }
-    }
+    stride = n;
   } else {
-    int64_t stride = 2 * n;
+    stride = 2 * n;
     y = x + n;
     dy = dx + n;
-    for (int64_t i = 0; i < m; ++i) {
-      for (int64_t j = 0; j < n; ++j) {
-        functor(x[i * stride + j],
-                y[i * stride + j],
-                dz[i * n + j],
-                &dx[i * stride + j],
-                &dy[i * stride + j]);
+  }
+
+  for (int64_t i = 0; i < m; ++i) {
+    for (int64_t j = 0; j < n; ++j) {
+      T dx_tmp, dy_tmp;
+      functor(x[i * stride + j],
+              y[i * stride + j],
+              dz[i * n + j],
+              &dx_tmp,
+              &dy_tmp);
+      if (dx) {
+        dx[i * stride + j] = dx_tmp;
+      }
+      if (dy) {
+        dy[i * stride + j] = dy_tmp;
       }
     }
   }

@@ -23,18 +23,17 @@ template <typename T, typename Context>
 void SwiGLUKernelImpl(
     const Context &ctx, const T *x, const T *y, T *z, int64_t m, int64_t n) {
   funcs::SwiGLUFunctor<T> functor;
+  int64_t stride;
   if (y) {
-    int64_t numel = m * n;
-    for (int64_t i = 0; i < numel; ++i) {
-      z[i] = functor(x[i], y[i]);
-    }
+    stride = n;
   } else {
-    int64_t stride = 2 * n;
+    stride = 2 * n;
     y = x + n;
-    for (int64_t i = 0; i < m; ++i) {
-      for (int64_t j = 0; j < n; ++j) {
-        z[i * n + j] = functor(x[i * stride + j], y[i * stride + j]);
-      }
+  }
+
+  for (int64_t i = 0; i < m; ++i) {
+    for (int64_t j = 0; j < n; ++j) {
+      z[i * n + j] = functor(x[i * stride + j], y[i * stride + j]);
     }
   }
 }
