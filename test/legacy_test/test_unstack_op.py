@@ -257,7 +257,7 @@ class TestUnstackZeroInputOp(unittest.TestCase):
                     data = (
                         np.random.random([0]) + 1j * np.random.random([0])
                     ).astype(dtype)
-                x = base.dygraph.to_variable(data)
+                x = paddle.to_tensor(data)
                 paddle.unstack(x, axis=1)
 
     def test_type_error(self):
