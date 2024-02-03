@@ -284,8 +284,7 @@ def train():
         base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = 1000
-        base.default_main_program().random_seed = 1000
+        paddle.seed(1000)
 
         skip_gram_model = paddle.jit.to_static(
             SkipGram("skip_gram_model", vocab_size, embedding_size)
