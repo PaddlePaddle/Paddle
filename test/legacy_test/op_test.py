@@ -895,7 +895,7 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = paddle.to_tensor(value=data)
+            v = paddle.to_tensor(data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
