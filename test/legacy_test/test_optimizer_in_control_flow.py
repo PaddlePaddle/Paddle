@@ -187,8 +187,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
 
         for epoch in range(EPOCH_NUM):
             image_data, label = train_data[epoch]
-            var_input = base.dygraph.to_variable(image_data)
-            var_label = base.dygraph.to_variable(label)
+            var_input = paddle.to_tensor(image_data)
+            var_label = paddle.to_tensor(label)
             hidden, prediction = dy_layer(var_input)
 
             if epoch % 2 == 0:
