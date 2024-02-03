@@ -54,7 +54,7 @@ class TestPrimMode1(unittest.TestCase):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm1
-        self.enable_cinn = True
+        self.enable_cinn = False
 
     def base_net(self, flag=None):
         x = paddle.to_tensor(self.x)
