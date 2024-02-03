@@ -256,7 +256,7 @@
   optional : rotary_tensor, time_step, seq_lengths, src_mask
   output : Tensor(out), Tensor[](cache_kv_out)
   infer_meta :
-    func : FusedScaleBiasAddReluInferMeta
+    func : FusedMultiTransformerInferMeta
   kernel :
     func : fused_multi_transformer
     data_type : x1
