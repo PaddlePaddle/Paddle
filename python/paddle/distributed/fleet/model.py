@@ -198,7 +198,6 @@ def distributed_model(model):
                         model, fleet_env._hcg, strategy=strategy
                     )
                 else:
-                    # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
                     model = PipelineParallelWithInterleaveFthenB(
                         model, fleet_env._hcg, strategy=strategy
                     )
