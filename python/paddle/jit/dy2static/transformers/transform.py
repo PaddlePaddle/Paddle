@@ -65,6 +65,7 @@ class DygraphToStaticAst(BaseTransformer):
     """
 
     def __init__(self):
+        super().__init__()
         self.translator_logger = logging_utils.TranslatorLogger()
 
     def get_static_ast(self, root):

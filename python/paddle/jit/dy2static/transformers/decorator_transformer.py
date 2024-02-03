@@ -39,6 +39,7 @@ class DecoratorTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def transform(self):

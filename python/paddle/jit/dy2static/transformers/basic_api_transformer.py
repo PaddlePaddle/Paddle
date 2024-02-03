@@ -27,6 +27,7 @@ class BasicApiTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def transform(self):
@@ -44,6 +45,7 @@ class ToTensorTransformer(BaseTransformer):
     """
 
     def __init__(self, node):
+        super().__init__()
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
@@ -74,6 +76,7 @@ class NameloadJstTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def transform(self):
@@ -138,6 +141,7 @@ class AttributeJstTransformer(BaseTransformer):
     """
 
     def __init__(self, node):
+        super().__init__()
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."

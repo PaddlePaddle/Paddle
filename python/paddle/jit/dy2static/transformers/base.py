@@ -33,13 +33,19 @@ __all__ = []
 
 
 class BaseTransformer(gast.NodeTransformer):
+    def __init__(self):
+        super().__init__()
+        self.ancestor_nodes = []
+
     def visit(self, node):
         if not isinstance(node, gast.AST):
             msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
         origin_info = getattr(node, ORIGI_INFO, None)
 
+        self.ancestor_nodes.append(node)
         result = super().visit(node)
+        self.ancestor_nodes.pop()
 
         iter_result = result
         if iter_result is not node and iter_result is not None:
@@ -58,6 +64,7 @@ class NameNodeReplaceTransformer(BaseTransformer):
     """
 
     def __init__(self, root_node, target_name, replace_node):
+        super().__init__()
         assert isinstance(target_name, str)
 
         # NOTE(liym27):
@@ -113,6 +120,7 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def transform(self):

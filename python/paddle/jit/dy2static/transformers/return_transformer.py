@@ -63,6 +63,7 @@ class ReplaceReturnNoneTransformer(BaseTransformer):
     """
 
     def __init__(self, root_node):
+        super().__init__()
         self.root = root_node
 
     def transform(self):
@@ -131,6 +132,7 @@ class ReturnTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
         pre_transformer = ReplaceReturnNoneTransformer(self.root)
         pre_transformer.transform()
@@ -150,6 +152,7 @@ class SingleReturnTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
         assert isinstance(
             self.root, gast.FunctionDef

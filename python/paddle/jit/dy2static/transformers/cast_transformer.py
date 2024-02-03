@@ -26,6 +26,7 @@ class CastTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
         self._castable_type = {'bool', 'int', 'float'}
 

@@ -29,6 +29,7 @@ class CallTransformer(BaseTransformer):
     """
 
     def __init__(self, root):
+        super().__init__()
         self.root = root
 
     def _no_need_convert_call(self, node):
