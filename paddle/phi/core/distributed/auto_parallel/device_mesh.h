@@ -34,7 +34,7 @@ class DeviceCapabilityProto;
 class DeviceProto;
 class LinkCapabilityProto;
 class LinkProto;
-class DeviceMeshProto;
+class TEST_API DeviceMeshProto;
 
 struct DeviceCapability {
   double single_precision_flops = 0.0;
@@ -77,7 +77,7 @@ class Device {
   }
 
   // Device from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
   static Device from_proto(const DeviceProto& proto);
   void to_proto(DeviceProto* proto) const;
@@ -134,7 +134,7 @@ class Link {
   }
 
   // Link from_string(const std::string& str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
   static Link from_proto(const LinkProto& proto);
   void to_proto(LinkProto* proto) const;
@@ -203,10 +203,10 @@ class DeviceMesh {
  public:
   DeviceMesh() = default;
 
-  DeviceMesh(const std::string& name,
-             const std::vector<int64_t>& shape,
-             const std::vector<int64_t>& device_ids,
-             const std::vector<std::string>& dim_names);
+  TEST_API DeviceMesh(const std::string& name,
+                      const std::vector<int64_t>& shape,
+                      const std::vector<int64_t>& device_ids,
+                      const std::vector<std::string>& dim_names);
 
   const std::string& name() const { return name_; }
 
@@ -296,7 +296,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceMesh& obj) {
   return os;
 }
 
-bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
+TEST_API bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
 
 inline bool operator!=(const DeviceMesh& lhs, const DeviceMesh& rhs) {
   return !operator==(lhs, rhs);
