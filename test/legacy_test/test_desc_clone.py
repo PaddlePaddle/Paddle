@@ -29,7 +29,9 @@ paddle.enable_static()
 
 
 # random seed must set before configuring the network.
-# base.default_startup_program().random_seed = SEED
+paddle.seed(SEED)
+
+
 def cnn_model(data):
     conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
