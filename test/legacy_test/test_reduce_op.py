@@ -1710,7 +1710,7 @@ class API_TestSumOp(unittest.TestCase):
     def test_dygraph(self):
         np_x = np.random.random([2, 3, 4]).astype('int32')
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             out0 = paddle.sum(x).numpy()
             out1 = paddle.sum(x, axis=0).numpy()
             out2 = paddle.sum(x, axis=(0, 1)).numpy()
