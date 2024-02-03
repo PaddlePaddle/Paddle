@@ -101,7 +101,7 @@ list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
 set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
-                          ${utils_modules} benchmark)
+                          ${utils_modules})
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
 endif()
