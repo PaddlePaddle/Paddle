@@ -24,7 +24,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle import base
 from paddle.static import InputSpec
 
 
