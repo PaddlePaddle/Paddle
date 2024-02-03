@@ -702,6 +702,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
+            # if sum_square.dtype != core.VarDesc.VarType.FP32:
+            #     sum_square = sum_square.astype("float32")
             if src_mesh is not None and g.process_mesh != src_mesh:
                 sum_square = dist.reshard(
                     sum_square, src_mesh, sum_square.placements
