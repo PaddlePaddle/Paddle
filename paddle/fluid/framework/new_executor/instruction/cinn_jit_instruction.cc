@@ -163,7 +163,6 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
-    VLOG(0) << "####### out " << i << " type: " << alloc_tensor_type.dtype();
     tensor->Resize(alloc_tensor_type.dims());
   }
 }
