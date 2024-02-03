@@ -80,6 +80,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -110,12 +111,15 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
@@ -797,14 +801,17 @@ bool AnalysisPredictor::PrepareExecutor() {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
         //----------------------------------------------------------------------------------------------//
         // Functional pass
+        gpu_pm.AddPass(::pir::CreateMapOpToAnotherPass());
         gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
+        gpu_pm.AddPass(::pir::CreateSiluFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
@@ -835,6 +842,28 @@ bool AnalysisPredictor::PrepareExecutor() {
           gpu_pm.EnableIRPrinting();
         }
         gpu_pm.Run(pir_program_.get());
+#ifdef PADDLE_WITH_DNNL
+      } else if (config_.mkldnn_enabled()) {
+        ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
+
+        mkldnn_pm.AddPass(::pir::CreateConv2dBiasFusePass());
+
+        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+
+        mkldnn_pm.AddPass(std::move(constant_folding_pass));
+        mkldnn_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        mkldnn_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+        //----------------------------------------------------------------------------------------------//
+        if (!config_.glog_info_disabled()) {
+          mkldnn_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          mkldnn_pm.EnableIRPrinting();
+        }
+        mkldnn_pm.Run(pir_program_.get());
+#endif
       } else {
         ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
 
@@ -1801,6 +1830,9 @@ void AnalysisPredictor::PrepareArgument() {
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
+      if (config_.ir_debug_) {
+        pass_builder->TurnOnDebug();
+      }
     } else {
       LOG(INFO)
           << "Ir optimization is turned off, no ir pass will be executed.";
@@ -2875,10 +2907,10 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 #endif
 #ifdef PADDLE_WITH_LITE
 #ifdef LITE_SUBGRAPH_WITH_XPU
-  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_,
                                 config_.xpu_config_.stream);
 #else
-  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_, nullptr);
 #endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);
@@ -3364,7 +3396,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   }
 }
 
-Predictor *PredictorPool::Retrive(size_t idx) {
+Predictor *PredictorPool::Retrieve(size_t idx) {
   PADDLE_ENFORCE_LT(
       idx,
       preds_.size() + 1,

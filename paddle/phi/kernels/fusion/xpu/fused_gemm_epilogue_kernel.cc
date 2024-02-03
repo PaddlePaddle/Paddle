@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
@@ -32,60 +30,88 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::Context* xpu_ctx = dev_ctx.x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
-  auto x_mat_dims =
-      common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
-
-  // (M * K) * (K * N) for new api use
-  // int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
-  // int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
-  // int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
-
-  // 调用新接口，这里先分开调用，等待qingpen的新接口
-  int r = 0;
+  int r = xpu::SUCCESS;
   xpu::Activation_t act = xpu::Activation_t::LINEAR;
   if (activation == "relu") {
     act = xpu::Activation_t::RELU;
   } else if (activation == "gelu") {
     act = xpu::Activation_t::GELU;
   }
-  // fc + bias + act
-  // 1. fc
-  phi::XpuFcInfo fc_info;
-
-  phi::GetFCInfo(x_mat_dims, y.dims(), trans_x, trans_y, &fc_info);
-  xpu::Context* xpu_ctx = dev_ctx.x_context();
 
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_tmp_ptr = dev_ctx.template Alloc<T>(out);
-  XPUType* out_ptr = reinterpret_cast<XPUType*>(out_tmp_ptr);
-  xpu::ctx_guard RAII_GUARD(xpu_ctx);
-  XPUType* fc_out_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
-  phi::MatMulXPUFunction<XPUType>(
-      xpu_ctx, x_ptr, y_ptr, fc_out_ptr, fc_info, 1.0f);
-  XPUType* bias_out_ptr = out_ptr;
-  if (activation != "none" && reserve_space) {
-    auto* bias_out_temp_ptr = dev_ctx.template Alloc<T>(reserve_space);
-    bias_out_ptr = reinterpret_cast<XPUType*>(bias_out_temp_ptr);
+  XPUType* out_ptr = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
+
+  decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[5] = {
+      &xpu_fc_wrapper<XPUType, int16_t>,
+      &xpu_fc_wrapper<XPUType, int32_t>,
+      &xpu_fc_wrapper<XPUType, float>,
+      &xpu_fc_wrapper<XPUType, int_with_ll_t>,
+      &xpu_fc_wrapper<XPUType, tfloat32>,
+  };
+
+  auto fccal_type = FCCalcType<XPUType>();
+
+  auto fc_api = fc_api_list[fccal_type];
+
+  // fc + bias + act
+  phi::XpuFcInfo fc_info;
+  auto mat_x_dims =
+      common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
+  auto mat_y_dims = y.dims();
+  phi::GetFCInfo(mat_x_dims, mat_y_dims, trans_x, trans_y, &fc_info);
+  int batch_size = fc_info.bs;
+  int m = fc_info.m;
+  int n = fc_info.n;
+  int k = fc_info.k;
+  int ldx = fc_info.stride_x;
+  int ldy = fc_info.stride_y;
+  int ldout = fc_info.stride_out;
+  float* max_x = fc_info.max_x;
+  float* max_y = fc_info.max_y;
+  float* max_out = fc_info.max_out;
+
+  PADDLE_ENFORCE_LE(
+      batch_size,
+      1,
+      errors::InvalidArgument(
+          "FusedGemm do not support batched fc now, but got batch size %d.",
+          batch_size));
+  const float* bias_ptr = reinterpret_cast<const float*>(bias.data<T>());
+  if (!std::is_same<T, float>::value) {
+    // TODO(lijin23): Now xblas and xdnn support fp32 bias only, may be removed
+    // in the future.
+    float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(bias.numel());
+    r = xpu::cast<XPUType, float>(
+        xpu_ctx,
+        reinterpret_cast<const XPUType*>(bias.data<T>()),
+        bias_tmp,
+        bias.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    bias_ptr = bias_tmp;
   }
-  // 2 bias
-  const XPUType* bias_ptr = reinterpret_cast<const XPUType*>(bias.data<T>());
-  r = xpu::broadcast_add(xpu_ctx,
-                         fc_out_ptr,
-                         bias_ptr,
-                         bias_out_ptr,
-                         {fc_info.m, fc_info.n},
-                         {fc_info.n});
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
-  // 3 act
-  if (activation == "relu") {
-    r = xpu::relu(xpu_ctx, bias_out_ptr, out_ptr, out->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
-  } else if (activation == "gelu") {
-    r = xpu::gelu(xpu_ctx, bias_out_ptr, out_ptr, out->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
-  }
+  fc_api(xpu_ctx,
+         x_ptr,
+         y_ptr,
+         out_ptr,
+         m,
+         n,
+         k,
+         trans_x,
+         trans_y,
+         max_x,
+         max_y,
+         max_out,
+         ldx,
+         ldy,
+         ldout,
+         1.0f,
+         0,
+         bias_ptr,
+         act);
 }
 
 }  // namespace fusion

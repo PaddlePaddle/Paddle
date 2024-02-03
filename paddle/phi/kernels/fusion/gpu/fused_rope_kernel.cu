@@ -96,7 +96,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                       cos.get_ptr()->dims(),
                       phi::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
 
@@ -106,7 +106,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         (dims_size == 2 || dims_size == 4),
         true,
         phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but recieved %d.",
+                                     "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
@@ -126,7 +126,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           phi::errors::InvalidArgument(
               "The seq_len of sin and cos must be greater than or equal to "
               "this of q. The head_dim of sin and cos must be the same as this "
-              "of q. But recieved sin's "
+              "of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));
@@ -136,7 +136,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                         2,
                         phi::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
-                            "be 2, but recieved %d.",
+                            "be 2, but received %d.",
                             position_ids_dims.size()));
 
       PADDLE_ENFORCE_EQ(
@@ -145,7 +145,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
-              "those of q. But recieved position_ids's "
+              "those of q. But received position_ids's "
               "shape is {%s}, q's shape is {%s}.",
               position_ids_dims,
               q.dims()));
@@ -158,7 +158,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The seq_len and head_dim of sin and cos "
-              "must be the same as those of q. But recieved sin's "
+              "must be the same as those of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));

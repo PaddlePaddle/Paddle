@@ -112,7 +112,7 @@ class LazyInitialized:
 
 class ProgramInfo:
     """
-    A helper class to recoder Program information
+    A helper class to record Program information
     """
 
     def __init__(self):
@@ -126,7 +126,7 @@ class ProgramInfo:
 
     def __call__(self, key, prog_creator):
         """
-        Recoder infer program and op size.
+        Record infer program and op size.
         """
         assert key in ['fp32', 'amp', 'fp16']
         if key not in self.programs:
@@ -564,7 +564,7 @@ class PartialProgramLayer:
         else:
             """
             Can't just return paddle.static.Program(), because self.backward_program is a property,
-            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            whenever we call this method, a tmp Program() object is created and is gc immediately
             after executed the following line in PartialProgramLayer.__call__.
 
             >>> self.backward_program.desc.block(0),
@@ -597,7 +597,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -1116,7 +1116,7 @@ class PartialProgramLayer:
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
