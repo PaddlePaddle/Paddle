@@ -3554,8 +3554,8 @@ class OpTest(unittest.TestCase):
                 outputs={"Out": cast_output},
                 type="cast",
                 attrs={
-                    "in_dtype": paddle.bfloat16,
-                    "out_dtype": paddle.float32,
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
             cast_op.desc.infer_var_type(block.desc)
@@ -3678,8 +3678,8 @@ class OpTest(unittest.TestCase):
                             outputs={"Out": cast_outputs},
                             type="cast",
                             attrs={
-                                "in_dtype": paddle.bfloat16,
-                                "out_dtype": paddle.float32,
+                                "in_dtype": core.VarDesc.VarType.BF16,
+                                "out_dtype": core.VarDesc.VarType.FP32,
                             },
                         )
                         cast_op.desc.infer_var_type(block.desc)

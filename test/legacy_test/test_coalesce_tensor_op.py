@@ -35,7 +35,7 @@ def coalesce_tensor_eager_api(
     concated_shapes=[],
     concated_ranks=[],
 ):
-    if datatype == int(paddle.float32):
+    if datatype == int(core.VarDesc.VarType.FP32):
         datatype = core.VarDesc.VarType.FP32
     return paddle._C_ops.coalesce_tensor(
         Input,

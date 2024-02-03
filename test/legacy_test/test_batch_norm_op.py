@@ -739,7 +739,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 grad_op_desc.infer_shape(block.desc)
                 for arg in grad_op_desc.output_arg_names():
                     grad_var = block.desc.find_var(arg.encode("ascii"))
-                    grad_var.set_dtype(paddle.float32)
+                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 program._sync_with_cpp()
 
