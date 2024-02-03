@@ -29,7 +29,7 @@ class PrepareDecoderAttentionMask(nn.Layer):
         super().__init__()
 
     # [batch_size, src_length] -> [batch_size, 1, tgt_length, src_length]
-    def _expand_2d_mask(mask, target_length):
+    def _expand_2d_mask(self, mask, target_length):
         batch_size, src_length = mask.shape[0], mask.shape[-1]
 
         mask = mask[:, None, None, :].astype("bool")
@@ -38,7 +38,7 @@ class PrepareDecoderAttentionMask(nn.Layer):
 
         return expanded_mask
 
-    def _make_causal_mask(input_ids_shape):
+    def _make_causal_mask(self, input_ids_shape):
         batch_size, seq_len = input_ids_shape
 
         mask = paddle.tril(paddle.ones((seq_len, seq_len), dtype="bool"))
@@ -52,8 +52,8 @@ class PrepareDecoderAttentionMask(nn.Layer):
         expanded_attn_mask = self._expand_2d_mask(
             attention_mask, target_length=input_shape[-1]
         )
+        combined_attention_mask = self._make_causal_mask(input_shape)
         if input_shape[-1] > 1:
-            combined_attention_mask = self._make_causal_mask(input_shape)
             expanded_attn_mask = expanded_attn_mask & combined_attention_mask
         expanded_attn_mask = paddle.where(
             expanded_attn_mask, 0.0, paddle.finfo("float32").min
@@ -67,28 +67,32 @@ class TestPrepareDecoderAttentionMask(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.input_ids = paddle.randn([1, 2048], dtype="int64")
+        self.input_ids = paddle.randint(
+            low=0, high=2048, shape=[1, 2048], dtype="int64"
+        )
         self.input_ids.stop_gradient = False
 
-        self.attention_mask = paddle.randn([1, 2048], dtype="bool")
+        self.attention_mask = paddle.ones([1, 2048], dtype="bool")
         self.attention_mask.stop_gradient = False
 
     def eval(self, use_cinn):
-        paddle.seed(2022)
         net = PrepareDecoderAttentionMask()
-        input_spec = [
-            InputSpec(shape=[None, None], dtype='float32'),
-        ]
+        if use_cinn:
+            input_spec = [
+                InputSpec(shape=[None, None], dtype="int64"),
+                InputSpec(shape=[None, None], dtype="bool"),
+            ]
+        else:
+            input_spec = None
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.input_ids, self.attention_mask)
         return out
 
     def test_eval(self):
-        # cinn_outs = self.eval(use_cinn=True)
-        dy_outs = self.eval(use_cinn=False)
+        cinn_outs = self.eval(use_cinn=True)
+        # dy_outs = self.eval(use_cinn=False)
 
-        # TODO(phlrain): Need to check result
         # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
         #     np.testing.assert_allclose(
         #         cinn_out.numpy(), dy_out.numpy(), atol=1e-8
