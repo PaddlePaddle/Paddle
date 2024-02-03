@@ -287,7 +287,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                         np.random.uniform(-1, 1, [1, 9, 9, 4])
                         + 1j * np.random.uniform(-1, 1, [1, 9, 9, 4])
                     ).astype(dtype)
-                x = base.dygraph.to_variable(data)
+                x = paddle.to_tensor(data)
                 tril_out, triu_out = (
                     tensor.tril(x).numpy(),
                     tensor.triu(x).numpy(),
