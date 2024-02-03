@@ -75,8 +75,7 @@ class TestQuantizationScalePass(unittest.TestCase):
         for_ci=False,
     ):
         def build_program(main, startup, is_test):
-            main.random_seed = seed
-            startup.random_seed = seed
+            paddle.seed(2023)
             with paddle.utils.unique_name.guard():
                 with paddle.static.program_guard(main, startup):
                     img = paddle.static.data(

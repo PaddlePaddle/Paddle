@@ -294,11 +294,6 @@ struct RegisterGetterSetterVisitor {
 };
 
 static void RegisterGlobalVarGetterSetter() {
-#ifdef PADDLE_WITH_DITRIBUTE
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_get_thread_num);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);
-#endif
-
   const auto &flag_map = phi::GetExportedFlagInfoMap();
   for (const auto &pair : flag_map) {
     const std::string &name = pair.second.name;
