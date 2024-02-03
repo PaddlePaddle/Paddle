@@ -46,7 +46,6 @@ class RegisterHookTransformer(BaseTransformer):
         ]
         # Analyze the register_hook nodes name dependency
         dependents = {}
-        print(dependents)
         for n in regisiter_hook_nodes:
             if n not in stmts:
                 continue
