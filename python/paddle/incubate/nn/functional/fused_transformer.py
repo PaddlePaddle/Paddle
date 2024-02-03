@@ -413,7 +413,7 @@ def fused_bias_dropout_residual_layer_norm(
             x.shape[len(x.shape) - 1] == ln_bias.shape[0]
         ), "The dim of ln_bias must equal to the last dim of x."
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         (

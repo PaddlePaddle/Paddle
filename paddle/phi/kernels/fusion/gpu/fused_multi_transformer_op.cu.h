@@ -745,9 +745,9 @@ inline __device__ void convert_from_float(float4 &dst, float4 src) {  // NOLINT
   dst = src;
 }
 
-inline __device__ void convert_from_float(phi::phi::float16 &dst,  // NOLINT
+inline __device__ void convert_from_float(phi::float16 &dst,  // NOLINT
                                           float src) {
-  dst = static_cast<phi::phi::float16>(src);
+  dst = static_cast<phi::float16>(src);
 }
 
 inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT
@@ -1782,7 +1782,7 @@ class CublasFusedMLP {
     cudaDataType_t mat_type = CUDA_R_32F;
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-    if (std::is_same<T, phi::phi::float16>::value) {
+    if (std::is_same<T, phi::float16>::value) {
       mat_type = CUDA_R_16F;
       if (FLAGS_gemm_use_half_precision_compute_type) {
         // This option default value is true, it tends to result NaN, but get
@@ -1979,7 +1979,7 @@ class CublasFusedMLP {
                              const uint64_t cublas_row,
                              const uint64_t cublas_col) {
     cudaDataType_t mat_type = CUDA_R_32F;
-    if (std::is_same<T, phi::phi::float16>::value) {
+    if (std::is_same<T, phi::float16>::value) {
       mat_type = CUDA_R_16F;
     }
     if (std::is_same<T, phi::bfloat16>::value) {
