@@ -961,7 +961,7 @@ void FusedBiasDropoutResidualLnInferMeta(
                         "0.0 and 0.001, But received [%s].",
                         ln_epsilon));
   auto x_dim = x.dims();
-  int left = 1;
+  int64_t left = 1;
   for (int i = 0; i < x_dim.size() - 1; i++) {
     left *= x_dim[i];
   }
@@ -1181,7 +1181,47 @@ void FusedMultiTransformerInferMeta(
   }
   out->set_dims(x.dims());
 }
-
+void FusedMultiTransformerInt8InferMeta(
+    const MetaTensor& input_x,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& qkv_w,
+    const MetaTensor& qkv_bias,
+    const MetaTensor& cache_kv,
+    const MetaTensor& time_step,
+    const MetaTensor& src_mask,
+    const MetaTensor& out_linear_w,
+    const MetaTensor& out_linear_bias,
+    const MetaTensor& ffn_ln_scale,
+    const MetaTensor& ffn_ln_bias,
+    const MetaTensor& ffn1_weight,
+    const MetaTensor& ffn1_bias,
+    const MetaTensor& ffn2_weight,
+    const MetaTensor& ffn2_bias,
+    const MetaTensor& qkv_out_scale,
+    const MetaTensor& out_linear_out_scale,
+    const MetaTensor& ffn1_out_scale,
+    const MetaTensor& ffn2_out_scale,
+    bool pre_layer_norm,
+    float epsilon,
+    float dropout_rate,
+    bool is_test,
+    std::string dropout_implementation,
+    std::string act_method,
+    bool trans_qkvw,
+    int ring_id,
+    int num_head,
+    int dim_head,
+    int dim_ffn,
+    const std::vector<float>& qkv_in_scale,
+    const std::vector<float>& out_linear_in_scale,
+    const std::vector<float>& ffn1_in_scale,
+    const std::vector<float>& ffn2_in_scale,
+    int quant_round_type,
+    float quant_max_bound,
+    float quant_min_bound,
+    MetaTensor* cache_kv_out,
+    MetaTensor* out) {}
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
                                const MetaTensor& dropout2_seed,
