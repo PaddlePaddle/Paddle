@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
 
+import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.dygraph import base as imperative_base
@@ -55,8 +56,7 @@ class Test_Forward_Hook(unittest.TestCase):
 
         for place in places:
             with base.dygraph.guard(place):
-                base.default_startup_program().random_seed = seed
-                base.default_main_program().random_seed = seed
+                paddle.seed(seed)
                 base.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 input_word = (
@@ -137,8 +137,7 @@ class Test_Forward_Hook(unittest.TestCase):
 
         for place in places:
             with base.dygraph.guard(place):
-                base.default_startup_program().random_seed = seed
-                base.default_main_program().random_seed = seed
+                paddle.seed(seed)
                 base.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 global call_forward_post_hook
