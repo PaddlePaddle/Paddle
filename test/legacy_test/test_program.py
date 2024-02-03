@@ -127,7 +127,7 @@ class TestProgram(unittest.TestCase):
     def test_random_seed_error(self):
         program = base.default_main_program()
         with self.assertRaises(ValueError):
-            program.random_seed = "seed"
+            paddle.seed("seed")
 
     def test_copy_info_from_error(self):
         program = base.default_main_program()
