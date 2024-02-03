@@ -36,6 +36,7 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;
@@ -67,6 +68,10 @@ ProgramInfo BuildProgram() {
   auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
   auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
   auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
+
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_x.result(0)});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_y.result(0)});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op_y.result(0)});
 
   std::vector<GroupPtr> groups;
   groups.emplace_back(
@@ -119,6 +124,7 @@ ProgramInfo BuildSoftmax() {
           .result(0);
   auto divide =
       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
+  auto yield_op = builder.Build<pir::YieldOp>(std::vector<pir::Value>{divide});
 
   std::vector<GroupPtr> groups;
   groups.emplace_back(std::make_shared<Group>(
@@ -148,7 +154,7 @@ TEST(PirCompier, CompileSoftmax) {
   auto prog_info = BuildSoftmax();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-  EXPECT_EQ(program->block()->size(), 8u);
+  EXPECT_EQ(program->block()->size(), 9u);
   LOG(INFO) << program->block()->size();
 
   std::stringstream ss;
@@ -215,7 +221,7 @@ TEST(PirCompier, CompilerAndRun) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
+  EXPECT_EQ(program->block()->size(), 9u);
   LOG(INFO) << program->block()->size();
 
   std::stringstream ss;
@@ -247,7 +253,7 @@ TEST(PirCompier, CompileGroupOps) {
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
+  EXPECT_EQ(program->block()->size(), 9u);
   LOG(INFO) << program->block()->size();
 
   std::stringstream ss;
@@ -278,7 +284,7 @@ TEST(RuntimeDialect, CompilerAndRun) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
+  EXPECT_EQ(program->block()->size(), 9u);
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
