@@ -65,6 +65,11 @@ def ast_to_source_code(node: ast.AST):
         return f'({", ".join(ast_to_source_code(elt) for elt in node.elts)})'
     elif isinstance(node, ast.List):
         return f'[{", ".join(ast_to_source_code(elt) for elt in node.elts)}]'
+    elif isinstance(node, ast.Set):
+        return f'{{{", ".join(ast_to_source_code(elt) for elt in node.elts)}}}'
+    elif isinstance(node, ast.Dict):
+        return f'{{{", ".join(f"{ast_to_source_code(k)}: {ast_to_source_code(v)}" for k, v in zip(node.keys, node.values))}}}'
+        return f'{ast_to_source_code(node.value)}[{ast_to_source_code(node.slice)}]'
     elif isinstance(node, ast.Constant):
         return repr(node.value)
     elif isinstance(node, ast.Call):
