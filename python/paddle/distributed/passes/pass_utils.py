@@ -665,8 +665,13 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     return [fwd_prog, bwd_prog, opt_prog]
 
 
-def _program_for_vpp(program, num_model_chunks, dist_context):
-    _insert_sync_for_fthenb_1f1b(program, dist_context)
+def _program_for_vpp(
+    program, num_model_chunks, dist_context, enable_send_recv_overlap=False
+):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program, dist_context)
 
     oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
 
