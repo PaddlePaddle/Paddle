@@ -85,9 +85,8 @@ fake_data_reader = FakeDataReader()
 def train():
     random.seed(0)
     np.random.seed(0)
+    paddle.seed(1000)
 
-    paddle.static.default_startup_program().random_seed = 1000
-    paddle.static.default_main_program().random_seed = 1000
     model = paddle.jit.to_static(YOLOv3(3, is_train=True))
 
     boundaries = cfg.lr_steps
