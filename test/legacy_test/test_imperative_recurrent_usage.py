@@ -38,8 +38,7 @@ class TestRecurrentFeed(unittest.TestCase):
         original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
         original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             original_in1 = paddle.to_tensor(original_np1)
             original_in2 = paddle.to_tensor(original_np2)
             original_in1.stop_gradient = False
@@ -57,8 +56,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             original_in1 = paddle.to_tensor(original_np1)
             original_in2 = paddle.to_tensor(original_np2)
             original_in1.stop_gradient = False
@@ -76,8 +74,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             in1 = paddle.static.data(name="inp1", shape=[2, 2])
             in1.stop_gradient = False
             in2 = paddle.static.data(name="inp2", shape=[2, 2])
