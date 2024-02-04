@@ -34,8 +34,8 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 
 namespace paddle {
 namespace framework {

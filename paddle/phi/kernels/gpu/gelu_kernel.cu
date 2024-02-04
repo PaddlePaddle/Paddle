@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 // clang-format on
 
-PD_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

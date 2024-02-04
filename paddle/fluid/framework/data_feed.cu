@@ -28,21 +28,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
-PHI_DECLARE_bool(enable_opt_get_features);
-PHI_DECLARE_bool(graph_metapath_split_opt);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
-PHI_DECLARE_bool(enable_graph_multi_node_sampling);
-PHI_DECLARE_bool(query_dest_rank_by_multi_node);
-PHI_DECLARE_string(graph_edges_split_mode);
+COMMON_DECLARE_bool(enable_opt_get_features);
+COMMON_DECLARE_bool(graph_metapath_split_opt);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_double(gpugraph_hbm_table_load_factor);
+COMMON_DECLARE_bool(enable_graph_multi_node_sampling);
+COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
+COMMON_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {
