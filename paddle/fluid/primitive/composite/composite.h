@@ -26,6 +26,18 @@ namespace details {
 static std::vector<int64_t> empty_shape;
 
 template <typename T>
+Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
+  auto org_dtype = x.dtype();
+
+  auto res = cast<T>(sum<T>(x, axis, org_dtype, keepdim), DataType::BOOL);
+  if (org_dtype != DataType::BOOL) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -248,6 +260,24 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto molecular = exp<T>(x_tmp - max_tmp);
   auto res = molecular / sum<T>(molecular, {axis}, molecular.dtype(), true);
 
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  auto res = log<T>(softmax_decomp<T>(x_tmp, axis));
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -538,12 +568,11 @@ Tensor hardswish_decomp(const Tensor& x) {
   const double SCALE = 6.0;
 
   // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
-  auto org_dim = common::vectorize(x.dims());
   auto minimun_out =
-      minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
-                            full<T>(org_dim, 0.0, x.dtype())),
-                 full<T>(org_dim, THRESHOLD, x.dtype()));
-  return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
+      minimum<T>(maximum<T>(x + full<T>(empty_shape, OFFSET, x.dtype()),
+                            full<T>(empty_shape, 0.0, x.dtype())),
+                 full<T>(empty_shape, THRESHOLD, x.dtype()));
+  return (minimun_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
 template <typename T>
@@ -779,14 +808,38 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
 }
 
 template <typename T>
-Tensor embedding_decomp(const Tensor& x, const Tensor& weight, const int64_t padding_idx, const bool sparse) {
-  if(weight.dims().size() != 2) {
+Tensor square_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor two;
+  two = full<T>(empty_shape, 2, x_cast.dtype());
+
+  auto ans = elementwise_pow<T>(x_cast, two);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
+Tensor embedding_decomp(const Tensor& x,
+                        const Tensor& weight,
+                        const int64_t padding_idx,
+                        const bool sparse) {
+  if (weight.dims().size() != 2) {
     PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
   }
 
-  if(x.dims().size() <= 1) {
+  if (x.dims().size() <= 1) {
     auto out = index_select_decomp<T>(weight, x, 0);
-    if(x.dims().size() == 0) {
+    if (x.dims().size() == 0) {
       out = std::get<0>(squeeze_decomp<T>(out, {0}));
     }
     return out;
