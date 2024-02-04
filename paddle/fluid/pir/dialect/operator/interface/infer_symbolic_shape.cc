@@ -669,7 +669,7 @@ bool PowOpInferSymbolicShape(pir::Operation *op,
 bool Pow_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return PowOpInferSymbolicShape(op, shape_analysis);
 }
 
@@ -917,7 +917,7 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
 bool TransposeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 bool Transpose_OpInferSymbolicShape(
@@ -1050,14 +1050,14 @@ bool EmbeddingOpInferSymbolicShape(
 bool SparseWeightEmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 
 bool ExpandOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 
@@ -1175,7 +1175,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 bool TrilOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 
@@ -1187,7 +1187,7 @@ bool Tril_OpInferSymbolicShape(pir::Operation *op,
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
 
