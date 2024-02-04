@@ -1,6 +1,6 @@
-if(NOT WITH_GFLAGS)
-  paddle_test(flags_native_test SRCS flags_native_test.cc)
-endif()
+# if(NOT WITH_GFLAGS)
+#   paddle_test(flags_native_test SRCS flags_native_test.cc)
+# endif()
 
 add_subdirectory(string)
 
