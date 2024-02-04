@@ -31,14 +31,15 @@ logger = logging.getLogger('auto_tuner')
 class SearchAlgo(ABC):
     def __init__(self, tuner_cfg):
         self.tuner_cfg = tuner_cfg
+        self.pruned_cfgs = []
 
     @abstractmethod
     def search_once(self, history_cfgs):
         pass
 
-    def prune(self, tuner_cfg, cur_cfg, history_cfgs):
+    def prune(self, tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
         for func in _PRUNE_HISTORY_FUNC:
-            result = func(tuner_cfg, cur_cfg, history_cfgs)
+            result = func(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs)
             if result:
                 return True
         return False
@@ -49,17 +50,44 @@ class GridSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.all_tasks = search_all(tuner_cfg)
+        need_baseline = self.tuner_cfg.get("need_baseline", False)
+        self.baseline = None
+        if need_baseline:
+            from .utils import memory_sort
+
+            self.all_tasks.sort(key=memory_sort)
+        self.previous_cfg = None
 
     def search_once(self, history_cfgs):
         new_cfg = None
         stop = False
+        if history_cfgs:
+            if history_cfgs[-1].get("time", -1) > 0:
+                if self.baseline is None:
+                    from .utils import performance_sort
+
+                    self.baseline = history_cfgs[-1]
+                    self.all_tasks[self.idx :] = sorted(
+                        self.all_tasks[self.idx : len(self.all_tasks)],
+                        key=performance_sort,
+                    )
+                    if self.tuner_cfg.get("schedule_prior", False):
+                        from .utils import sort_by_sepecial
+
+                        self.all_tasks[self.idx :] = sort_by_sepecial(
+                            self.all_tasks[self.idx :], self.tuner_cfg
+                        )
         while not stop:
             if self.idx < len(self.all_tasks):
                 new_cfg = self.all_tasks[self.idx]
                 self.idx += 1
-                stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
+                stop = not self.prune(
+                    self.tuner_cfg, new_cfg, history_cfgs, self.pruned_cfgs
+                )
+                self.pruned_cfgs.append(new_cfg)
             else:
                 return None
+
         return new_cfg
 
 

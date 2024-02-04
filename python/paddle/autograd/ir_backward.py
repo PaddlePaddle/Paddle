@@ -56,7 +56,7 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
     if paddle.pir.is_fake_value(value):
         state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
         return
-    if copy_value.is_tensorarray():
+    if copy_value.is_dense_tensor_array_type():
         value_grad = paddle._pir_ops.create_array_like(
             copy_value,
             float_value,
@@ -93,7 +93,7 @@ def append_add_n(
             return_map_value(item[0], bwd_value_to_block_argument_map)
         )
 
-    if value.is_tensorarray():
+    if value.is_dense_tensor_array_type():
         add_n_value = paddle._pir_ops.add_n_array(add_n_list)
     else:
         add_n_value = paddle.add_n(add_n_list)
@@ -1137,9 +1137,15 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
             )
 
     else:
-        parameter_list = (
-            loss.get_defining_op().get_parent_block().all_parameters()
-        )
+        ops = loss.get_defining_op().get_parent_block().ops
+        parameter_list = []
+        for op in ops:
+            if not op.has_attr("is_persisable"):
+                continue
+            persist_value = [
+                result for result in op.results() if result.persistable
+            ]
+            parameter_list.extend(persist_value)
 
     if no_grad_set is None:
         no_grad_set_ = ValueSet()

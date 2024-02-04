@@ -65,8 +65,12 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  value_to_shape_or_data_.erase(val);
-  CHECK(value_to_shape_or_data_.emplace(val, shape_or_data).second);
+  auto iter = value_to_shape_or_data_.find(val);
+  if (iter == value_to_shape_or_data_.end()) {
+    value_to_shape_or_data_.emplace(val, shape_or_data);
+  } else {
+    iter->second = shape_or_data;
+  }
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {

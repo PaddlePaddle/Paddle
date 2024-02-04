@@ -111,10 +111,12 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
@@ -805,9 +807,11 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Operator fusion pass
+        gpu_pm.AddPass(::pir::CreateSiluFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
+        gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
@@ -1826,6 +1830,9 @@ void AnalysisPredictor::PrepareArgument() {
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
+      if (config_.ir_debug_) {
+        pass_builder->TurnOnDebug();
+      }
     } else {
       LOG(INFO)
           << "Ir optimization is turned off, no ir pass will be executed.";
@@ -3389,7 +3396,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   }
 }
 
-Predictor *PredictorPool::Retrive(size_t idx) {
+Predictor *PredictorPool::Retrieve(size_t idx) {
   PADDLE_ENFORCE_LT(
       idx,
       preds_.size() + 1,

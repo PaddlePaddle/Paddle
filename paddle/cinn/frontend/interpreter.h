@@ -32,8 +32,9 @@ namespace frontend {
  */
 class Interpreter final {
  public:
-  Interpreter(const std::vector<std::string>& input_names,
-              const std::vector<hlir::framework::shape_t>& input_shapes);
+  TEST_API Interpreter(
+      const std::vector<std::string>& input_names,
+      const std::vector<hlir::framework::shape_t>& input_shapes);
 
   /**
    * Load a Paddle model.
@@ -49,7 +50,7 @@ class Interpreter final {
   /**
    * Run the executor.
    */
-  void Run();
+  TEST_API void Run();
 
   frontend::Program GetProgram();
 
@@ -57,7 +58,7 @@ class Interpreter final {
 
   std::shared_ptr<hlir::framework::Scope> GetScope();
 
-  ~Interpreter();
+  TEST_API ~Interpreter();
 
  private:
   class Impl;
