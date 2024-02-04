@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+import sys
 import unittest
 
 import numpy as np
 
 import paddle
+from paddle import base
+from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.framework import core
+
+sys.path.append(
+    str(pathlib.Path(__file__).resolve().parents[2] / 'legacy_test')
+)
+from utils import static_guard
 
 
 class IfNet(paddle.nn.Layer):
@@ -217,6 +226,101 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         core._set_prim_forward_enabled(False)
+
+
+class TestPrimControlFlowWhileBackward(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        core._set_prim_all_enabled(False)
+
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_i = [1]
+        self.shape_x = [1]
+        self.i_np = np.random.random(self.shape_i).astype("float32")
+        self.x_np = np.random.random(self.shape_x).astype("float32")
+
+    def cond(self, i, x):
+        return i < 3
+
+    def body(self, i, x):
+        x = paddle.pow(x, i)
+        i = i + 1
+        return [i, x]
+
+    def get_while_prim_grad_res(self):
+        core._set_prim_all_enabled(True)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
+            i.stop_gradient = False
+            i.persistable = True
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x.stop_gradient = False
+            x.persistable = True
+
+            out = paddle.static.nn.while_loop(self.cond, self.body, [i, x])
+            [new_out] = paddle.decomposition.decomp.decompose(
+                main_program, [out[1]]
+            )
+            out_grad = ir_grad(new_out, [x])
+
+        place = (
+            base.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+        print(main_program)
+        out_grad = exe.run(
+            main_program,
+            feed={'i': self.i_np, 'x': self.x_np},
+            fetch_list=[out_grad],
+        )
+        core._set_prim_all_enabled(False)
+        return out_grad[0]
+
+    def get_while_grad_res(self):
+        core._set_prim_all_enabled(False)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
+            i.stop_gradient = False
+            i.persistable = True
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x.stop_gradient = False
+            x.persistable = True
+
+            out = paddle.static.nn.while_loop(self.cond, self.body, [i, x])
+            out_grad = ir_grad(out, [x])
+
+        place = (
+            base.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+        print(main_program)
+        out_grad = exe.run(
+            main_program,
+            feed={'i': self.i_np, 'x': self.x_np},
+            fetch_list=[out_grad],
+        )
+        return out_grad[0]
+
+    def test_while_loop_backward2(self):
+        with static_guard():
+            out_grad_baseline = self.get_while_grad_res()
+            out_grad = self.get_while_prim_grad_res()
+        np.testing.assert_allclose(
+            out_grad_baseline, out_grad, rtol=1e-6, atol=0
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        core._set_prim_all_enabled(False)
 
 
 if __name__ == "__main__":
