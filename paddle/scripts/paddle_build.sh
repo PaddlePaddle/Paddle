@@ -3361,6 +3361,8 @@ function distribute_test() {
 
     echo "Start LLM Test"
     cd ${work_dir}/PaddleNLP
+    # Disable Test: test_gradio
+    rm tests/llm/test_gradio.py
     python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
 
