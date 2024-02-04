@@ -953,10 +953,10 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         base = paddle.base.layer_helper_base.LayerHelperBase(
             "test_layer", "test_layer"
         )
-        return base.to_variable(value).numpy()
+        return paddle.to_tensor(value).numpy()
 
     def func_base_to_variable(self, value):
-        paddle.base.dygraph.base.to_variable(value)
+        paddle.to_tensor(value)
 
     def test_backward_with_single_tensor(self):
         arr4 = np.random.rand(4, 16, 16, 32).astype('float32')

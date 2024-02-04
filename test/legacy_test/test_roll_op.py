@@ -237,7 +237,7 @@ class TestRollAPI(unittest.TestCase):
         self.input_data()
         # case 1:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
+            x = paddle.to_tensor(self.data_x)
             z = paddle.roll(x, shifts=1)
             np_z = z.numpy()
         expect_out = np.array(
@@ -247,7 +247,7 @@ class TestRollAPI(unittest.TestCase):
 
         # case 2:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
+            x = paddle.to_tensor(self.data_x)
             z = paddle.roll(x, shifts=1, axis=0)
             np_z = z.numpy()
         expect_out = np.array(
