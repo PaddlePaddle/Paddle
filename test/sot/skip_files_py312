@@ -26,9 +26,7 @@
 ./test_builtin_map.py
 ./test_builtin_range.py
 ./test_builtin_zip.py
-./test_call_ast.py
 ./test_call_object.py
-./test_case_base.py
 ./test_constant_graph.py
 ./test_delete_fast.py
 ./test_dtype.py
@@ -59,4 +57,3 @@
 ./test_tensor_dtype_in_guard.py
 ./test_tensor_slice.py
 ./test_trace_list_arg.py
-./test_unsupport_function.py
