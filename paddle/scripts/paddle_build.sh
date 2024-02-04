@@ -4326,10 +4326,6 @@ function main() {
         parallel_test
         check_coverage
         ;;
-    check_cinn_coverage)
-    parallel_test
-    check_coverage
-    ;;
       check_rocm_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
