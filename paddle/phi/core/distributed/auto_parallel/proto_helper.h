@@ -27,7 +27,7 @@ class DeviceMesh;
 class DistributedMapper;
 }  // namespace auto_parallel
 auto_parallel::TensorDistAttrProto to_proto(const TensorDistAttr& dist_attr);
-auto_parallel::ProcessMeshProto to_proto(const ProcessMesh& dist_attr);
+TEST_API auto_parallel::ProcessMeshProto to_proto(const ProcessMesh& dist_attr);
 
 auto_parallel::DeviceCapabilityProto to_proto(
     const auto_parallel::DeviceCapability& device_capibilty);
