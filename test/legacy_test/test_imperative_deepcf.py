@@ -368,8 +368,6 @@ class TestDygraphDeepCF(unittest.TestCase):
         with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = paddle.optimizer.Adam(0.01, parameters=deepcf.parameters())

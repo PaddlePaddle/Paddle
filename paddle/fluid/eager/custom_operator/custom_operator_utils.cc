@@ -406,7 +406,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DataType> dtypes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;

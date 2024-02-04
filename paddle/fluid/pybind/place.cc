@@ -590,8 +590,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                              "machine.";
                std::exit(-1);
              }
-             // use ipu(0) to comile, while run with the number user configure
-             // in sharding and pipline.
+             // use ipu(0) to compile, while run with the number user configure
+             // in sharding and pipeline.
              new (&self) platform::IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(
