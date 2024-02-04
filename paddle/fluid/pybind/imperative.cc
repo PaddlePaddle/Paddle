@@ -634,6 +634,8 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
+  m.def("_get_amp_state",
+        []() { return egr::Controller::Instance().GetCurrentAMPState(); });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
@@ -646,6 +648,18 @@ void BindImperative(py::module *m_ptr) {
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
+
+  py::class_<imperative::AMPState, std::shared_ptr<imperative::AMPState>>(
+      m, "AMPState", R"DOC()DOC")
+      .def_property("_use_promote",
+                    &imperative::AMPState::GetUsePromote,
+                    &imperative::AMPState::SetUsePromote)
+      .def_property("_amp_level",
+                    &imperative::AMPState::GetAmpLevel,
+                    &imperative::AMPState::SetAmpLevel)
+      .def_property("_amp_dtype",
+                    &imperative::AMPState::GetAmpDtype,
+                    &imperative::AMPState::SetAmpDtype);
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
