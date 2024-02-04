@@ -449,6 +449,14 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"));
   } else if (shape_.isa<pir::OpResult>() &&
+             shape_.defining_op()->isa<paddle::dialect::FullOp>()) {
+    auto shape_item = shape_.defining_op()
+                          ->dyn_cast<paddle::dialect::FullOp>()
+                          .attribute("value")
+                          .dyn_cast<pir::FloatAttribute>()
+                          .data();
+    vec_shape = {static_cast<int64_t>(shape_item)};
+  } else if (shape_.isa<pir::OpResult>() &&
              shape_.defining_op()->isa<paddle::dialect::StackOp>()) {
     std::vector<pir::Value> inputs = shape_.defining_op()
                                          ->operand_source(0)
