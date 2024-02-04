@@ -45,7 +45,7 @@ class ProcessMesh {
 
   const std::vector<std::string>& dim_names() const { return dim_names_; }
 
-  int64_t size() const;
+  TEST_API int64_t size() const;
 
   int64_t ndim() const { return shape_.size(); }
 
@@ -65,12 +65,12 @@ class ProcessMesh {
   }
 
   bool empty() const { return (shape_.empty() || process_ids_.empty()); }
-  bool contains(int64_t process_id) const;
+  TEST_API bool contains(int64_t process_id) const;
 
   // ProcessMesh from_string(const std::string& mesh_str);
   TEST_API std::string to_string() const;
 
-  static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
+  TEST_API static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
   void to_proto(auto_parallel::ProcessMeshProto* proto) const;
 
  private:
