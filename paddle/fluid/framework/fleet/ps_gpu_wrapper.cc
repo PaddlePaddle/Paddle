@@ -42,12 +42,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_bool(query_dest_rank_by_multi_node);
-PHI_DECLARE_string(graph_edges_split_mode);
+COMMON_DECLARE_int32(gpugraph_dedup_pull_push_mode);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
+COMMON_DECLARE_string(graph_edges_split_mode);
 
 namespace paddle {
 namespace framework {

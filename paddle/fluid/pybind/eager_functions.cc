@@ -62,18 +62,18 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
