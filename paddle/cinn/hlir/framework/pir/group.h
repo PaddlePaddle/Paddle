@@ -61,42 +61,29 @@ struct Group {
 
   std::shared_ptr<Group> Clone(::pir::Block* target_block,
                                ::pir::IrMapping& ir_mapping,
-                               const Options& option = Options()) const {
-    CHECK_EQ(option.OnlyCloneOps(), true)
-        << "Only Support Clone Group ops information.";
-    std::vector<::pir::Operation*> new_ops;
-    // Mapper from original to new ops.
-    std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-    auto clone_options = ::pir::CloneOptions(false, true, false);
-    for (auto* op : ops) {
-      VLOG(4) << "clone op :" << op->name();
-      auto* new_op = op->Clone(ir_mapping, clone_options);
-      // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
-      // will lead memory-leak.
-      target_block->insert(target_block->end(), new_op);
-      new_ops.push_back(new_op);
-      ops_mapper[op] = new_op;
-    }
-    // Construct Base information for new Group
-    auto new_group = std::make_shared<Group>(new_ops);
-    for (auto& iter : this->input_ops) {
-      new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
-    }
-    for (auto* op : this->output_ops) {
-      new_group->output_ops.insert(ops_mapper.at(op));
-    }
-    for (const auto& output_value : this->output_values) {
-      new_group->output_values.push_back(output_value);
-    }
-
-    return new_group;
-  }
+                               const Options& option = Options()) const;
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
-    CHECK(value_to_shape_or_data_exprs.count(value))
-        << "value not found in value_to_shape_or_data_exprs";
-    return value_to_shape_or_data_exprs.at(value);
+    CHECK(value_to_shape_or_data_exprs_.count(value))
+        << "value not found in value_to_shape_or_data_exprs_";
+    return value_to_shape_or_data_exprs_.at(value);
+  }
+
+  void SetShapeOrDataExprs(const ::pir::Value& value,
+                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    auto iter = value_to_shape_or_data_exprs_.find(value);
+    if (iter == value_to_shape_or_data_exprs_.end()) {
+      value_to_shape_or_data_exprs_.emplace(value, shape_or_data);
+    } else {
+      iter->second = shape_or_data;
+    }
+  }
+
+  void set_value_to_shape_or_data_exprs(
+      const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
+          value_to_shape_or_data_exprs) {
+    value_to_shape_or_data_exprs_ = value_to_shape_or_data_exprs;
   }
 
   // distance to last group.
@@ -126,9 +113,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_exprs;
 
   // for op lowering.
   std::vector<std::string> input_names;
@@ -311,7 +295,12 @@ struct Group {
                      SharedGroupComparator>
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
+
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

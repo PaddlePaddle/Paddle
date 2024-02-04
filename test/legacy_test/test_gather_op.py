@@ -616,8 +616,7 @@ class TestCheckOutType(unittest.TestCase):
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
         self.assertTrue(
-            out.dtype == core.VarDesc.VarType.INT64
-            or out.dtype == core.DataType.INT64
+            out.dtype == paddle.int64 or out.dtype == core.DataType.INT64
         )
 
     def test_pir_out_type(self):

@@ -31,11 +31,11 @@ def _product(t):
 
 
 def dtype_to_np_dtype(dtype):
-    if dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32:
+    if dtype == paddle.float32 or dtype == core.DataType.FLOAT32:
         return np.float32
-    elif dtype == core.VarDesc.VarType.FP64 or dtype == core.DataType.FLOAT64:
+    elif dtype == paddle.float64 or dtype == core.DataType.FLOAT64:
         return np.float64
-    elif dtype == core.VarDesc.VarType.FP16 or dtype == core.DataType.FLOAT16:
+    elif dtype == paddle.float16 or dtype == core.DataType.FLOAT16:
         return np.float16
     else:
         raise ValueError("Not supported data type " + str(dtype))

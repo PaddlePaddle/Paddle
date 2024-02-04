@@ -267,7 +267,7 @@ class PD_INFER_DECL PredictorPool {
   explicit PredictorPool(const Config& config, size_t size = 1);
 
   /// \brief Get \param id-th predictor.
-  Predictor* Retrive(size_t idx);
+  Predictor* Retrieve(size_t idx);
 
  private:
   std::shared_ptr<Predictor> main_pred_;

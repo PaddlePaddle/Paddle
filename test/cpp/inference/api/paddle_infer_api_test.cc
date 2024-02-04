@@ -67,7 +67,7 @@ TEST(PredictorPool, basic) {
   config.EnableUseGpu(100, 0);
 
   services::PredictorPool pred_pool(config, 4);
-  auto pred = pred_pool.Retrive(2);
+  auto pred = pred_pool.Retrieve(2);
 
   std::vector<int> in_shape = {1, 3, 318, 318};
   int in_num =

@@ -161,7 +161,7 @@ phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value& value) {
+const phi::DDim& GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -295,7 +295,7 @@ class OpFusionPassHelper {
         // use current op as master op for schedule
         group->master_ops.insert(op);
 
-        // get opration unique id
+        // get operation unique id
         group->group_id = "id_" + std::to_string(index++);
         fusion_groups_[op] = group;
       }
@@ -356,7 +356,7 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+    const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         ops_.front()->GetParentProgram());
     for (auto consumer : ops_) {
       auto consumer_kind =
@@ -492,7 +492,7 @@ class OpFusionPassHelper {
                return true;
              }
 
-             // NOTE, original code is below, if produer is not output op,
+             // NOTE, original code is below, if producer is not output op,
              // result always be true
              // !helper->output_ops_set_.count(producer);
              return true;
@@ -609,13 +609,17 @@ class OpFusionPassHelper {
             hlir::framework::pir::CompatibleInfo::OpKind(*consumer))) {
       auto& consumer_group = fusion_groups_[consumer];
       // second step: check producer can be fused into consumer group
-      VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
+      VLOG(3) << "Call ConditionFunction, Producer Op: [" << producer->name()
+              << "] Pattern : "
               << hlir::framework::pir::CompatibleInfo::OpKind(*producer)
-              << " , Consumer Group Pattern : "
-              << consumer_group->op_pattern_kind;
+              << " , Consumer Group [" << consumer->name()
+              << "] Pattern : " << consumer_group->op_pattern_kind;
 
-      return relation.fusion_op_kind[consumer_group->op_pattern_kind](
+      bool result = relation.fusion_op_kind[consumer_group->op_pattern_kind](
           producer, fusion_groups_[consumer], shape_analysis);
+      VLOG(3) << " CanFuse: " << result;
+
+      return result;
     }
 
     return false;
@@ -638,7 +642,7 @@ class OpFusionPassHelper {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;

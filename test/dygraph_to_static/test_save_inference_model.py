@@ -92,8 +92,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
 
         x = paddle.to_tensor(x_data)
         layer = paddle.jit.to_static(SimpleFcLayer(fc_size))
@@ -139,8 +138,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
         paddle.framework._set_expected_place(place)
 
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
         x = paddle.to_tensor(x_data)
         layer = paddle.jit.to_static(SimplePyLayerNet(fc_size))
         adam = paddle.optimizer.SGD(

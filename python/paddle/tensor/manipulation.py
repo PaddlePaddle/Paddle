@@ -2034,67 +2034,80 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.stack(x, axis)
-    else:
-        if not isinstance(x, list) and not isinstance(x, tuple):
-            # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
-            # In that case, Variable is array of tensors indeed.
-            if (
-                isinstance(x, Variable)
-                and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            ):
-                x = [x]
-            else:
-                raise TypeError(
-                    "The type of '{}' in {} must be {}, but received {}".format(
-                        'x',
-                        'stack',
-                        'list[Tensor], tuple[Tensor] or TensorArray',
-                        type(x),
-                    )
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
+        # In that case, Variable is array of tensors indeed.
+        if (
+            isinstance(x, Variable)
+            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        ) or (
+            isinstance(x, paddle.pir.Value) and x.is_dense_tensor_array_type()
+        ):
+            x = [x]
+        else:
+            raise TypeError(
+                "The type of '{}' in {} must be {}, but received {}".format(
+                    'x',
+                    'stack',
+                    'list[Tensor], tuple[Tensor] or TensorArray',
+                    type(x),
                 )
+            )
 
-        helper = LayerHelper('stack', **locals())
-
-        out = helper.create_variable_for_type_inference(x[0].dtype)
-        if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if in_pir_mode():
+        if x[0].is_dense_tensor_array_type():
             assert len(x) == 1, (
                 "If the elements of 'x' in stack are Variable(LoDTensorArray), "
                 "number of the elements must be 1, but received %s." % len(x)
             )
-            out_index = helper.create_variable_for_type_inference(dtype="int32")
-
-            for i in x:
-                check_variable_and_dtype(
-                    i,
-                    'x',
-                    [
-                        'float16',
-                        'float32',
-                        'float64',
-                        'int32',
-                        'int64',
-                        'uint16',
-                    ],
-                    'stack',
-                )
-
-            helper.append_op(
-                type='tensor_array_to_tensor',
-                inputs={'X': x[0]},
-                outputs={'Out': [out], 'OutIndex': [out_index]},
-                attrs={'axis': axis, 'use_stack': True},
-            )
+            out, _ = _C_ops.array_to_tensor(x, axis, True)
+            return out
         else:
-            helper.append_op(
-                type='stack',
-                inputs={'X': x},
-                outputs={'Y': out},
-                attrs={'axis': axis},
+            return _C_ops.stack(x, axis)
+
+    helper = LayerHelper('stack', **locals())
+
+    out = helper.create_variable_for_type_inference(x[0].dtype)
+    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(x) == 1, (
+            "If the elements of 'x' in stack are Variable(LoDTensorArray), "
+            "number of the elements must be 1, but received %s." % len(x)
+        )
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+
+        for i in x:
+            check_variable_and_dtype(
+                i,
+                'x',
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
+                'stack',
             )
 
-        return out
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': x[0]},
+            outputs={'Out': [out], 'OutIndex': [out_index]},
+            attrs={'axis': axis, 'use_stack': True},
+        )
+    else:
+        helper.append_op(
+            type='stack',
+            inputs={'X': x},
+            outputs={'Y': out},
+            attrs={'axis': axis},
+        )
+
+    return out
 
 
 def hstack(x, name=None):
@@ -4028,9 +4041,7 @@ def tile(x, repeat_times, name=None):
         check_input(x, repeat_times)
         if isinstance(repeat_times, (list, tuple)):
             if paddle.utils._contain_var(repeat_times):
-                repeat_times = paddle.utils._convert_to_tensor_list(
-                    repeat_times
-                )
+                repeat_times = paddle.utils.get_int_tensor_list(repeat_times)
         return _C_ops.tile(x, repeat_times)
     else:
         check_input(x, repeat_times)

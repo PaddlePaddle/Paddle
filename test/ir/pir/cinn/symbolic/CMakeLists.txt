@@ -5,7 +5,8 @@ if(WITH_GPU)
     "test_*.py")
 
   list(REMOVE_ITEM CINN_PIR_SYMBOLIC_TEST test_cinn_reduce_symbolic_demo.py
-       test_sub_graph_for_backend.py test_sub_graph_for_frontend.py)
+       test_sub_graph_for_backend.py test_sub_graph_for_frontend.py
+       test_check_infer_symbolic.py)
 
   foreach(cinn_pir_test_name ${CINN_PIR_SYMBOLIC_TEST})
     string(REGEX REPLACE ".py" "" cinn_pir_test_name ${cinn_pir_test_name})
@@ -59,5 +60,17 @@ if(WITH_GPU)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_sub_graph_for_frontend PROPERTIES LABELS
                                                               "RUN_TYPE=CINN")
+
+  add_test(
+    NAME test_check_infer_symbolic
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_check_infer_symbolic=True FLAGS_cinn_bucket_compile=False
+      FLAGS_enable_pir_api=1 ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_check_infer_symbolic.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_check_infer_symbolic PROPERTIES LABELS
+                                                            "RUN_TYPE=CINN")
 
 endif()

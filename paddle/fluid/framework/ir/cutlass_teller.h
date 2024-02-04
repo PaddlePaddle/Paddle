@@ -157,7 +157,7 @@ class CutlassTeller {
     }
 
     // To prevent generating too many cutlass code,
-    // we only allow oc and ic is divisable by CUTLASS_NHWC_ALIGNMENT
+    // we only allow oc and ic is divisible by CUTLASS_NHWC_ALIGNMENT
     if (groups == 1) {
       if (oc % CUTLASS_NHWC_ALIGNMENT != 0 ||
           ic % CUTLASS_NHWC_ALIGNMENT != 0) {

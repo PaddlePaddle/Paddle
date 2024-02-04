@@ -54,7 +54,7 @@ class FusedAttention {
   void ComputeBackward();
 
  private:
-  FusedMHA<T>* fmha;  // fused multihead attention
+  FusedMHA<T>* fmha;  // fused multi-head attention
 
   int batch_size;
   int max_seq_len;

@@ -76,6 +76,30 @@ static PyObject *static_api_set_parameter(PyObject *self,
   }
 }
 
+static PyObject *static_api_set_persistable_value(PyObject *self,
+                                                  PyObject *args,
+                                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add shadow_output op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get OpResult from args
+    PyObject *persist_value_obj = PyTuple_GET_ITEM(args, 0);
+    auto persist_value = CastPyArg2Value(persist_value_obj, "persist_value", 0);
+
+    // Parse Attributes
+    PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
+    std::string name = CastPyArg2String(name_obj, "name", 1);
+    // Call ir static api
+    paddle::dialect::shadow_output(persist_value, name);
+
+    Py_RETURN_NONE;
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   try {
     VLOG(6) << "Add full op into program";
@@ -355,17 +379,17 @@ static PyObject *static_api_slice_array(PyObject *self,
           starts_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
 
-    PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
+    PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value ends;
     if (PyObject_CheckIRValue(ends_obj)) {
-      ends = CastPyArg2Value(ends_obj, "slice_array", 1);
+      ends = CastPyArg2Value(ends_obj, "slice_array", 2);
     } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
-          CastPyArg2VectorOfValue(ends_obj, "slice_array", 1);
+          CastPyArg2VectorOfValue(ends_obj, "slice_array", 2);
       ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
     } else {
       std::vector<int64_t> ends_tmp =
-          CastPyArg2Longs(ends_obj, "slice_array", 1);
+          CastPyArg2Longs(ends_obj, "slice_array", 2);
       ends = paddle::dialect::full_int_array(
           ends_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
@@ -754,11 +778,88 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
+                                                PyObject *args,
+                                                PyObject *kwargs) {
+  try {
+    VLOG(6) << "Running Static API: fused_gemm_epilogue";
+
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "fused_gemm_epilogue", 0);
+    PyObject *y_obj = PyTuple_GET_ITEM(args, 1);
+    auto y = CastPyArg2Value(y_obj, "fused_gemm_epilogue", 1);
+    PyObject *bias_obj = PyTuple_GET_ITEM(args, 2);
+    auto bias = CastPyArg2Value(bias_obj, "fused_gemm_epilogue", 2);
+
+    // Parse Attributes if needed
+    PyObject *trans_x_obj = PyTuple_GET_ITEM(args, 3);
+    bool trans_x = CastPyArg2Boolean(trans_x_obj, "fused_gemm_epilogue", 3);
+    PyObject *trans_y_obj = PyTuple_GET_ITEM(args, 4);
+    bool trans_y = CastPyArg2Boolean(trans_y_obj, "fused_gemm_epilogue", 4);
+    PyObject *activation_obj = PyTuple_GET_ITEM(args, 5);
+    std::string activation =
+        CastPyArg2String(activation_obj, "fused_gemm_epilogue", 5);
+
+    // Call ir static api
+    auto out = paddle::dialect::fused_gemm_epilogue(
+        x, y, bias, trans_x, trans_y, activation);
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+static PyObject *static_api_array_pop(PyObject *self,
+                                      PyObject *args,
+                                      PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_pop op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "array_pop", 0);
+
+    PyObject *index_obj = PyTuple_GET_ITEM(args, 1);
+    auto index = CastPyArg2Int(index_obj, "array_pop", 1);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_pop(input, index);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+extern PyObject *eager_api_fused_gemm_epilogue(PyObject *self,
+                                               PyObject *args,
+                                               PyObject *kwargs);
+
+static PyObject *fused_gemm_epilogue(PyObject *self,
+                                     PyObject *args,
+                                     PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_fused_gemm_epilogue";
+    return static_api_fused_gemm_epilogue(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_fused_gemm_epilogue";
+    return eager_api_fused_gemm_epilogue(self, args, kwargs);
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for set_parameter."},
+    {"set_persistable_value",
+     (PyCFunction)(void (*)(void))static_api_set_persistable_value,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for set_persistable_value."},
     {"parameter",
      (PyCFunction)(void (*)(void))static_api_parameter,
      METH_VARARGS | METH_KEYWORDS,
@@ -799,10 +900,18 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_slice_array_dense,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for slice_array_dense."},
+    {"fused_gemm_epilogue",
+     (PyCFunction)(void (*)(void))fused_gemm_epilogue,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for fused_gemm_epilogue."},
     {"_run_custom_op",
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
+    {"array_pop",
+     (PyCFunction)(void (*)(void))static_api_array_pop,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_pop."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

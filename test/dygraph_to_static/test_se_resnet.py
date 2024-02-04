@@ -494,8 +494,8 @@ class TestSeResnet(Dy2StTestBase):
                 se_resnext.eval()
 
                 label = np.random.random([1, 1]).astype("int64")
-                img = base.dygraph.to_variable(data)
-                label = base.dygraph.to_variable(label)
+                img = paddle.to_tensor(data)
+                label = paddle.to_tensor(label)
                 pred_res, _, _, _ = se_resnext(img, label)
 
                 return pred_res.numpy()

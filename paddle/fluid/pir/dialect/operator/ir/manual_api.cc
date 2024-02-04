@@ -62,6 +62,11 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
                                                                   name);
 }
 
+void shadow_output(const pir::Value& persist_value, const std::string& name) {
+  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
+                                                                  name);
+}
+
 pir::Value embedding_grad(const pir::Value& x,
                           const pir::Value& weight,
                           const pir::Value& out_grad,
@@ -222,6 +227,38 @@ pir::Value assign(const pir::Value& x) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently, assign only supports DenseTensorType and "
         "DenseTensorArrayType."));
+  }
+}
+
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attribute_map = {
+      {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
+      {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
+      {"activation", pir::StrAttribute::get(ctx, activation)}};
+  auto fused_gemm_epilogue_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::FusedGemmEpilogueOp>(
+              x, y, bias, attribute_map);
+  return std::make_tuple(fused_gemm_epilogue_op.result(0),
+                         fused_gemm_epilogue_op.result(1));
+}
+
+pir::Value array_pop(pir::Value input, int index) {
+  if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    paddle::dialect::ArrayPopOp array_pop_op =
+        ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::ArrayPopOp>(
+            input, index);
+    return array_pop_op.result(1);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "pop only supports DenseTensorArrayType."));
   }
 }
 

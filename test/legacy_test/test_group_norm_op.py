@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -179,14 +180,26 @@ class TestGroupNormOp(OpTest):
             self.do_compare_between_place()
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+
+        self.rev_comp_atol = 1e-12
+        self.rev_comp_rtol = 1e-12
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+                place,
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_pir=True,
+                check_prim_pir=check_prim_grad,
             )
 
     def init_test_case(self):
@@ -221,9 +234,16 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
@@ -293,9 +313,21 @@ class TestGroupNormBF16Op(OpTest):
         if self.compare_between_place:
             return
 
+        check_prim_grad = True if self.data_format == "NCHW" else False
+
+        self.rev_comp_atol = 1e-2
+        self.rev_comp_rtol = 1e-2
+        # prim bf16 has diff in windows
+        if sys.platform == "win32":
+            self.rev_comp_atol = 1e-1
+            self.rev_comp_rtol = 1e-1
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+            place,
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=check_prim_grad,
         )
 
     def init_test_case(self):
