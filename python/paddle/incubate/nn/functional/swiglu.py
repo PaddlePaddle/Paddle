@@ -24,7 +24,7 @@ def swiglu(x, y=None, name=None):
     .. math::
 
         out = silu(x) * y when y is not None
-        out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(2, axis=-1)
+        out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(x, 2, axis=-1)
 
     Args:
         x (Tensor): The first input Tensor of SwiGLU.
