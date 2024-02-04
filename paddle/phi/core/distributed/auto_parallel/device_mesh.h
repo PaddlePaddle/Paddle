@@ -151,7 +151,7 @@ inline std::ostream& operator<<(std::ostream& os, const Link& obj) {
   return os;
 }
 
-bool operator==(const Link& lhs, const Link& rhs);
+TEST_API bool operator==(const Link& lhs, const Link& rhs);
 
 inline bool operator!=(const Link& lhs, const Link& rhs) {
   return !operator==(lhs, rhs);
