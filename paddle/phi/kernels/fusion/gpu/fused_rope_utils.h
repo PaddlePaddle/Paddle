@@ -21,10 +21,10 @@ namespace fusion {
 
 // Return the number of heads for key and value. If both key and value are None,
 // return num_heads of query.
-int64_t GetNumHeadsOfKV(const paddle::optional<DenseTensor>& k,
-                        const paddle::optional<DenseTensor>& v,
-                        const phi::Array<int64_t, 3>& inputs_num_heads,
-                        int num_inputs) {
+inline int64_t GetNumHeadsOfKV(const paddle::optional<DenseTensor>& k,
+                               const paddle::optional<DenseTensor>& v,
+                               const phi::Array<int64_t, 3>& inputs_num_heads,
+                               int num_inputs) {
   bool have_same_num_heads = true;
   auto num_heads_kv = inputs_num_heads[0];
   for (int i = 1; i < num_inputs; ++i) {
