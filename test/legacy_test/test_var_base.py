@@ -511,7 +511,7 @@ class TestVarBase(unittest.TestCase):
 
             # test copy selected rows
             x = core.eager.Tensor(
-                paddle.float32,
+                core.VarDesc.VarType.FP32,
                 [3, 100],
                 "selected_rows",
                 core.VarDesc.VarType.SELECTED_ROWS,

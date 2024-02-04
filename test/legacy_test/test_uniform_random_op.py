@@ -229,7 +229,7 @@ class TestUniformRandomOpError(unittest.TestCase):
                     shape=[3, 4], dtype='float64'
                 )
                 if paddle.framework.in_pir_mode():
-                    self.assertEqual(out.dtype, paddle.float64)
+                    self.assertEqual(out.dtype, base.core.DataType.FLOAT64)
                 else:
                     self.assertEqual(out.dtype, paddle.float64)
 
@@ -593,7 +593,7 @@ class TestUniformOpError(unittest.TestCase):
                     shape=[3, 4], dtype='float64'
                 )
                 if paddle.framework.in_pir_mode():
-                    self.assertEqual(out.dtype, paddle.float64)
+                    self.assertEqual(out.dtype, base.core.DataType.FLOAT64)
                 else:
                     self.assertEqual(out.dtype, paddle.float64)
 
