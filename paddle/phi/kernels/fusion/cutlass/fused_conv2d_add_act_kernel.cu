@@ -122,14 +122,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
                           groups,
                           ctx.stream()};
 
-  // void *dlhandler;
-  // char *error;
-
-  // const std::string DLL_PATH = "libMathFunctions.so";
-  // GetCutlassHandle;
-  // dlhandler = dlopen(DLL_PATH.c_str(),RTLD_LAZY);
-
-  void* dlhandler = phi::dynload::GetCutlassHandle();
+  void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
   func conv_func = NULL;
   CHECK_EQ(dlhandler == NULL, false);
 
@@ -140,13 +133,13 @@ void FusedConv2dAddActKernel(const Context& ctx,
       CHECK_EQ(residual->data<T>() == nullptr, true);
     }
     if (activation == "relu") {
-      Conv2dDepthwiseBiasRelu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasRelu"));
     } else if (activation == "identity") {
-      Conv2dDepthwiseBias(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBias"));
     } else if (activation == "sigmoid") {
-      Conv2dDepthwiseBiasSigmoid(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasSigmoid"));
     } else if (activation == "swish") {
-      Conv2dDepthwiseBiasSilu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasSilu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass conv2d_depthwise does not support this activation: %s.",
@@ -160,28 +153,27 @@ void FusedConv2dAddActKernel(const Context& ctx,
   if (residual) {
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
-      Conv2dBiasAddRelu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dBiasAddRelu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
-    // Conv2dBiasRelu(params);
     conv_func = (func)(dlsym(dlhandler, "Conv2dBiasRelu"));
-    conv_func(params);
   } else if (activation == "swish") {
-    Conv2dBiasSilu(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasSilu"));
   } else if (activation == "identity") {
-    Conv2dBias(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBias"));
   } else if (activation == "leaky_relu") {
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasLeakyRelu"));
     params.alpha = fuse_alpha;
-    Conv2dBiasLeakyRelu(params);
   } else if (activation == "sigmoid") {
-    Conv2dBiasSigmoid(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasSigmoid"));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
   }
+  conv_func(params);
   output->set_layout(DataLayout::NHWC);
 }
 }  // namespace cutlass_internal
