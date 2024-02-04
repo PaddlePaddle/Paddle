@@ -778,6 +778,23 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   return std::make_tuple(out, mean_out, var_out);
 }
 
+template <typename T>
+Tensor embedding_decomp(const Tensor& x, const Tensor& weight, const int64_t padding_idx, const bool sparse) {
+  if(weight.dims().size() != 2) {
+    PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
+  }
+
+  if(x.dims().size() <= 1) {
+    auto out = index_select_decomp<T>(weight, x, 0);
+    if(x.dims().size() == 0) {
+      out = std::get<0>(squeeze_decomp<T>(out, {0}));
+    }
+    return out;
+  } else {
+    return index_select_decomp<T>(weight, x, 0);
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
