@@ -19,6 +19,7 @@ import struct
 
 import numpy as np
 
+import paddle
 from paddle.base import core, framework, global_scope
 from paddle.base.log_helper import get_logger
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -60,7 +61,7 @@ def _dtype_to_str(dtype):
     Args:
         dtype (VarType): Variable type.
     """
-    if dtype == core.VarDesc.VarType.BF16:
+    if dtype == paddle.bfloat16:
         return 'bf16'
     else:
         return 'fp32'
@@ -83,7 +84,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
+        if src_dtype == paddle.float32 and op.type in [
             'batch_norm',
             'fused_bn_add_activation',
             'layer_norm',
@@ -120,10 +121,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if (
-        src_dtype == core.VarDesc.VarType.FP32
-        and dest_dtype == core.VarDesc.VarType.BF16
-    ):
+    if src_dtype == paddle.float32 and dest_dtype == paddle.bfloat16:
         for out_name in op.output_names:
             if (
                 op.type
@@ -135,7 +133,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 out_var = block.var(out_var_name)
                 if out_var.type not in _valid_types:
                     continue
-                if out_var.dtype == core.VarDesc.VarType.FP32:
+                if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
@@ -282,17 +280,14 @@ def cast_initializers_to_bf16(
 
             if change_op and are_post_ops_bf16(op_post_ops, keep_fp32_ops):
                 for out_var in op_out_vars:
-                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                    if out_var.dtype == paddle.float32:
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                     if (
                         to_bf16_var_names is not None
                         and out_var.name in to_bf16_var_names
                     ):
                         to_bf16_var_names.remove(out_var.name)
-                if (
-                    op.has_attr('dtype')
-                    and op.attr('dtype') == core.VarDesc.VarType.FP32
-                ):
+                if op.has_attr('dtype') and op.attr('dtype') == paddle.float32:
                     op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
 
@@ -352,7 +347,7 @@ def cast_model_to_bf16(
                     if in_var is None or in_var.type not in _valid_types:
                         continue
 
-                    if in_var.dtype == core.VarDesc.VarType.FP32:
+                    if in_var.dtype == paddle.float32:
                         in_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                         to_bf16_var_names.add(in_var_name)
 
@@ -386,7 +381,7 @@ def cast_model_to_bf16(
                     if out_var is None or out_var.type not in _valid_types:
                         continue
 
-                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                    if out_var.dtype == paddle.float32:
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
@@ -397,7 +392,7 @@ def cast_model_to_bf16(
             for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
                 if (
                     op.has_attr(attr_name)
-                    and op.attr(attr_name) == core.VarDesc.VarType.FP32
+                    and op.attr(attr_name) == paddle.float32
                 ):
                     op._set_attr(attr_name, core.VarDesc.VarType.BF16)
 
@@ -444,7 +439,7 @@ def cast_model_to_bf16(
                     out_var = block.vars.get(out_var_name)
                     if out_var is None or out_var.type not in _valid_types:
                         continue
-                    if out_var.dtype == core.VarDesc.VarType.BF16:
+                    if out_var.dtype == paddle.bfloat16:
                         out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                         post_ops = find_true_post_op(ops, op, out_var_name)
                         for post_op in post_ops:
@@ -589,10 +584,7 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
                 core.VarDesc.VarType.FP32,
             )
         elif op in bf16_op_set:
-            if (
-                op.has_attr('dtype')
-                and op.attr('dtype') == core.VarDesc.VarType.FP32
-            ):
+            if op.has_attr('dtype') and op.attr('dtype') == paddle.float32:
                 op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
             num_cast_ops = _insert_cast_op(

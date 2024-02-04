@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops
 from paddle.base import core
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
@@ -132,7 +133,7 @@ def update_loss_scaling(
         )
         if e.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             assert (
-                prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
+                prev_loss_scaling.dtype == paddle.float32
             ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
         else:
             assert (
