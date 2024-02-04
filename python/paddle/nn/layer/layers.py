@@ -415,7 +415,7 @@ class Layer:
         self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
-        # Records orignal functions after @to_static to support to rollback
+        # Records original functions after @to_static to support to rollback
         self._original_funcs = collections.OrderedDict()
 
     def train(self):
