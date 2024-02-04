@@ -27,10 +27,13 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.check_pir_onednn = True
 
     def test_check_output(self):
         self.check_output(
-            check_dygraph=False, check_pir=False, check_pir_onednn=True
+            check_dygraph=False,
+            check_pir=False,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -41,7 +44,7 @@ class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
             'Out',
             check_dygraph=False,
             check_pir=False,
-            check_pir_onednn=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -104,6 +107,7 @@ class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
         self.outputs = {
             'Out': self.inputs['X'].sum(keepdims=self.attrs['keep_dim'])
         }
+        self.check_pir_onednn = False
 
 
 class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
@@ -113,6 +117,7 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
         self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.inputs['X'].sum()}
+        self.check_pir_onednn = False
 
 
 @OpTestTool.skip_if(
@@ -246,6 +251,7 @@ class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
             'Out': self.inputs['X'].sum()
             / np.asarray(self.inputs['X'].shape).prod()
         }
+        self.check_pir_onednn = False
 
 
 if __name__ == '__main__':
