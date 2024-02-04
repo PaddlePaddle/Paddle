@@ -95,7 +95,7 @@ class PipeLineModelAdaptor:
     def apply(self, src_model_path: str, dst_model_path: str):
         for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
-                # TODO(liuzhenhai): use multiple processs
+                # TODO(liuzhenhai): use multiple process
                 layers = []
 
                 # 1、extract layers in the same pp group
@@ -190,7 +190,7 @@ class PipeLineModelAdaptor:
             e for e in opt.keys() if e not in ["master_weights", "LR_Scheduler"]
         ]
         opt_to_t = self._opt_name_to_tname(tensor_names, opt_names)
-        # gather tensors belonging to one layer togather
+        # gather tensors belonging to one layer together
         layers = OrderedDict()
         for k, v in params.items():
             layer, p = tname_to_layer_and_pname[v.name]
@@ -339,7 +339,7 @@ class PipeLineModelAdaptor:
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
 
         for pp_rank, segs in enumerate(segments):
-            print(f"segmentment result for pp_rank {pp_rank}:")
+            print(f"segment result for pp_rank {pp_rank}:")
             print(50 * "=")
             for seg in segs:
                 print(f"{seg[0]} => {seg[1]}")

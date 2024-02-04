@@ -44,7 +44,7 @@ thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
 #endif
-// stack to strore event sunch as pe and so on
+// stack to store event such as pe and so on
 static std::deque<Event *> main_thread_annotation_stack{};
 static std::deque<std::string> main_thread_annotation_stack_name{};
 

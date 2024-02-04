@@ -386,7 +386,7 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   return ir_res;
 }
 
-std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> &output_names,
