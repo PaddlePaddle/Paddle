@@ -160,7 +160,7 @@ class TestAsLodTensor(unittest.TestCase):
             base.executor._as_lodtensor,
             {"a": 1},
             cpu,
-            paddle.int32,
+            base.core.VarDesc.VarType.INT32,
         )
 
     def test_as_lodtensor_list(self):
@@ -180,7 +180,7 @@ class TestAsLodTensor(unittest.TestCase):
             base.executor._as_lodtensor,
             [{1.2, 1.2}, {1, 2}],
             cpu,
-            paddle.int32,
+            base.core.VarDesc.VarType.INT32,
         )
 
 

@@ -88,29 +88,25 @@ class EagerScaleTestCase(unittest.TestCase):
 
 
 class EagerDtypeTestCase(unittest.TestCase):
-    def check_to_tesnsor_and_numpy(self, dtype, proto_dtype):
+    def check_to_tensor_and_numpy(self, dtype, paddle_dtype):
         arr = np.random.random([4, 16, 16, 32]).astype(dtype)
         tensor = paddle.to_tensor(arr, dtype)
-        self.assertEqual(tensor.dtype, proto_dtype)
+        self.assertEqual(tensor.dtype, paddle_dtype)
         np.testing.assert_array_equal(arr, tensor.numpy())
 
     def test_dtype_base(self):
         print("Test_dtype")
-        self.check_to_tesnsor_and_numpy('bool', paddle.bool)
-        self.check_to_tesnsor_and_numpy('int8', paddle.int8)
-        self.check_to_tesnsor_and_numpy('uint8', paddle.uint8)
-        self.check_to_tesnsor_and_numpy('int16', paddle.int16)
-        self.check_to_tesnsor_and_numpy('int32', paddle.int32)
-        self.check_to_tesnsor_and_numpy('int64', paddle.int64)
-        self.check_to_tesnsor_and_numpy('float16', paddle.float16)
-        self.check_to_tesnsor_and_numpy('float32', paddle.float32)
-        self.check_to_tesnsor_and_numpy('float64', paddle.float64)
-        self.check_to_tesnsor_and_numpy(
-            'complex64', core.VarDesc.VarType.COMPLEX64
-        )
-        self.check_to_tesnsor_and_numpy(
-            'complex128', core.VarDesc.VarType.COMPLEX128
-        )
+        self.check_to_tensor_and_numpy('bool', paddle.bool)
+        self.check_to_tensor_and_numpy('int8', paddle.int8)
+        self.check_to_tensor_and_numpy('uint8', paddle.uint8)
+        self.check_to_tensor_and_numpy('int16', paddle.int16)
+        self.check_to_tensor_and_numpy('int32', paddle.int32)
+        self.check_to_tensor_and_numpy('int64', paddle.int64)
+        self.check_to_tensor_and_numpy('float16', paddle.float16)
+        self.check_to_tensor_and_numpy('float32', paddle.float32)
+        self.check_to_tensor_and_numpy('float64', paddle.float64)
+        self.check_to_tensor_and_numpy('complex64', paddle.complex64)
+        self.check_to_tensor_and_numpy('complex128', paddle.complex128)
 
 
 class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
@@ -123,7 +119,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(egr_tensor.stop_gradient, True)
 
         egr_tensor0 = core.eager.Tensor(
-            paddle.float32,
+            core.VarDesc.VarType.FP32,
             [4, 16, 16, 32],
             "test_eager_tensor",
             core.VarDesc.VarType.LOD_TENSOR,
