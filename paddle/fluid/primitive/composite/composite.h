@@ -34,6 +34,7 @@ static void print_vec(std::vector<T> vec, const std::string& message) {
   std::cout << std::endl;
 }
 
+template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
 
