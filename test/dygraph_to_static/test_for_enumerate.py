@@ -24,14 +24,13 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle import base
 from paddle.static import InputSpec
 
 
 # 0. for in range var.numpy()[0]
 def for_in_range(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     for i in range(x.numpy().item()):
         z = z + i
     return z
@@ -56,7 +55,7 @@ def for_enumerate_list(x_array):
 # 3. for iter var.numpy()
 def for_iter_var_numpy(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for x in x_array.numpy():
         z = z + x
     return z
@@ -66,7 +65,7 @@ def for_iter_var_numpy(x_array):
 def for_enumerate_var_numpy(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         z = z + x
@@ -77,7 +76,7 @@ def for_enumerate_var_numpy(x_array):
 def for_enumerate_var_numpy_with_start(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         z = z + x
@@ -87,7 +86,7 @@ def for_enumerate_var_numpy_with_start(x_array):
 # 6. for in range with break
 def for_in_range_with_break(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     for i in range(x.numpy()[0]):
         z = z + i
         if i > 2:
@@ -99,7 +98,7 @@ def for_in_range_with_break(x):
 def for_enumerate_var_numpy_with_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         z = z + x
@@ -112,7 +111,7 @@ def for_enumerate_var_numpy_with_break(x_array):
 def for_enumerate_var_numpy_with_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         if i > 2:
@@ -125,7 +124,7 @@ def for_enumerate_var_numpy_with_continue(x_array):
 def for_enumerate_var_numpy_with_start_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         z = z + x
@@ -138,7 +137,7 @@ def for_enumerate_var_numpy_with_start_break(x_array):
 def for_enumerate_var_numpy_with_start_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         if i > 2:
@@ -150,7 +149,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 # 11. for iter var
 def for_iter_var(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
 
     for x in x_array:
         z = z + x
@@ -161,7 +160,7 @@ def for_iter_var(x_array):
 def for_enumerate_var(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, x in enumerate(x_array):
         y = y + i
         z = z + x
@@ -171,7 +170,7 @@ def for_enumerate_var(x_array):
 # 13. for iter list[var]
 def for_iter_var_list(x):
     # 1. prepare data, ref test_list.py
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
     a = []
     for i in range(iter_num):
@@ -186,7 +185,7 @@ def for_iter_var_list(x):
 # 14. for enumerate list[var]
 def for_enumerate_var_list(x):
     # 1. prepare data, ref test_list.py
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
     a = []
     for i in range(iter_num):
@@ -203,7 +202,7 @@ def for_enumerate_var_list(x):
 # 15. for enumerate list[var] with a nested for range
 def for_enumerate_var_with_nested_range(x_array):
     x = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
     for i, num in enumerate(x_array):
         for idx in range(num):
             x = x + num
@@ -213,7 +212,7 @@ def for_enumerate_var_with_nested_range(x_array):
 # 16. for iter var[idx]
 def for_iter_var_idx(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = base.dygraph.to_variable(x_array)
+    x_array = paddle.to_tensor(x_array)
 
     for x in x_array[0:]:
         z = z + x

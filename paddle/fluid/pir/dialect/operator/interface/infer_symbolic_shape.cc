@@ -39,8 +39,24 @@ bool InferSymbolicShapeInterface::InferSymbolicShape(
 
 namespace {
 
-std::vector<int64_t> GetInt64VectorAttr(const ::pir::Operation *op,
-                                        const std::string &name) {
+template <typename T>
+struct AttributeTrait;
+
+template <>
+struct AttributeTrait<std::int64_t> {
+  using value_type = ::pir::Int64Attribute;
+};
+
+template <>
+struct AttributeTrait<int> {
+  using value_type = ::pir::Int32Attribute;
+};
+
+template <typename T = int64_t>
+std::vector<T> GetVectorAttr(const ::pir::Operation *op,
+                             const std::string &name) {
+  using value_type = typename AttributeTrait<T>::value_type;
+
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(name),
@@ -54,12 +70,12 @@ std::vector<int64_t> GetInt64VectorAttr(const ::pir::Operation *op,
   auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
   std::vector<int64_t> vec_res;
   if (array_list.size() > 0) {
-    PADDLE_ENFORCE_EQ(array_list[0].isa<::pir::Int64Attribute>(),
+    PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),
                       true,
                       phi::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < array_list.size(); ++i) {
-      vec_res.push_back(array_list[i].dyn_cast<::pir::Int64Attribute>().data());
+      vec_res.push_back(array_list[i].dyn_cast<value_type>().data());
     }
   }
   return vec_res;
@@ -387,7 +403,7 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
 
   auto axis_gen_op = op->operand_source(1).defining_op();
   if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-    std::vector<int64_t> axis = GetInt64VectorAttr(
+    std::vector<int64_t> axis = GetVectorAttr(
         axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
     if (axis.size() == 0) {
       reduce_all = true;
@@ -415,7 +431,7 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
 
   auto axis_gen_op = op->operand_source(1).defining_op();
   if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-    std::vector<int64_t> axis = GetInt64VectorAttr(
+    std::vector<int64_t> axis = GetVectorAttr(
         axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
     return ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
   } else {
@@ -1071,6 +1087,151 @@ bool Relu_OpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
 }
+
+bool ArangeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &start_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &end_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &step_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto start = [&] {
+    symbol::DimExpr expr;
+    if (start_shape_or_data.data().has_value()) {
+      expr = start_shape_or_data.data().value()[0];
+    } else {
+      expr = start_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const auto end = [&] {
+    symbol::DimExpr expr;
+    if (end_shape_or_data.data().has_value()) {
+      expr = end_shape_or_data.data().value()[0];
+    } else {
+      expr = end_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const auto step = [&] {
+    symbol::DimExpr expr;
+    if (step_shape_or_data.data().has_value()) {
+      expr = step_shape_or_data.data().value()[0];
+    } else {
+      expr = step_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
+    // but DimExpr doesn't support ceil and float now
+    out_dims.emplace_back((end - start) / step);
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  return true;
+}
+
+bool EmbeddingOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto weight_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  const std::vector<symbol::DimExpr> &weight_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (weight_shape_or_data.data().has_value()) {
+      dims = weight_shape_or_data.data().value();
+    } else {
+      dims = weight_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_dims;
+    // no need to check validation of weight_dims index, since all checks have
+    // been done at corresponding InferMeta
+    out_dims.emplace_back(weight_dims[1]);
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  return true;
+}
+
+bool SparseWeightEmbeddingOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool ExpandOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool MatmulOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool MaxOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool TrilOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool Tril_OpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return TrilOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool WhereOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  return true;
+}
+
+bool Where_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return WhereOpInferSymbolicShape(op, shape_analysis);
+}
 }  // namespace paddle::dialect
 namespace cinn::dialect {
 
@@ -1164,7 +1325,7 @@ bool ReduceInferSymbolicShape(pir::Operation *op,
       phi::errors::PreconditionNotMet(
           "attr [keep_dim] MUST in attribute map for [%s] op", op->name()));
   bool keepdim = attr_map.at("keep_dim").dyn_cast<pir::BoolAttribute>().data();
-  auto axis = GetInt64VectorAttr(op, "dim");
+  auto axis = GetVectorAttr(op, "dim");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::ReduceInferDim(
       op, shape_analysis, axis, keepdim, reduce_all);
@@ -1188,6 +1349,23 @@ bool ReduceProdOpInferSymbolicShape(
 bool ReduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  std::vector<int> shape = GetVectorAttr<int>(op, "shape");
+
+  std::vector<symbol::DimExpr> out_dims;
+  for (int dim : shape) {
+    out_dims.emplace_back(static_cast<std::int64_t>(dim));
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  return true;
 }
 
 }  // namespace cinn::dialect

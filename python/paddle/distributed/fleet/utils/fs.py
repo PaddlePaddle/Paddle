@@ -127,7 +127,7 @@ class LocalFS(FS):
 
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -377,7 +377,7 @@ class LocalFS(FS):
 
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -516,7 +516,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -550,7 +550,7 @@ class HDFSClient(FS):
     @_handle_errors()
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -706,7 +706,7 @@ class HDFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DITSTRIBUTED)
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -1226,7 +1226,7 @@ class AFSClient(FS):
 
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -1254,7 +1254,7 @@ class AFSClient(FS):
 
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.

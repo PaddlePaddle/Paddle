@@ -203,8 +203,6 @@ void PrintOperationImpl(pir::Operation* op,
     if_op.Print(printer);
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
     while_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
   }
 }
 
@@ -314,9 +312,11 @@ pir::Attribute OperatorDialect::ParseAttribute(
   }
 }
 
-void OperatorDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
+  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+    return PrintOperationImpl;
+  }
+  return nullptr;
 }
 
 class IdManager {
@@ -476,9 +476,8 @@ void CustomOpDialect::PrintAttribute(pir::Attribute attr,
   PrintAttributeImpl(attr, os);
 }
 
-void CustomOpDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn CustomOpDialect::PrintOperation(pir::Operation* op) const {
+  return PrintOperationImpl;
 }
 
 void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
