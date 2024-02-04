@@ -27,7 +27,8 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-paddle.seed(2023)
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
