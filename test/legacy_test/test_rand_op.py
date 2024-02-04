@@ -124,17 +124,17 @@ class TestRandDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, paddle.float16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, paddle.float32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.rand([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, paddle.float64)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')
