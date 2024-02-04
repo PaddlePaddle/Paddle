@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.base import Program, program_guard
 from paddle.nn.functional import interpolate
 from paddle.pir_utils import test_with_pir_api
 
@@ -366,7 +365,9 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 class TestBicubicOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # the input of interpoalte must be Variable.
             x1 = base.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()

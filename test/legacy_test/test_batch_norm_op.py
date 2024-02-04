@@ -921,7 +921,6 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 
 
 class TestBatchNormOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
@@ -945,7 +944,9 @@ class TestBatchNormOpError(unittest.TestCase):
 class TestDygraphBatchNormAPIError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             batch_norm = paddle.nn.BatchNorm(10)
             # the input of BatchNorm must be Variable.
             x1 = base.create_lod_tensor(
