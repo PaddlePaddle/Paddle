@@ -63,7 +63,7 @@ class TestPrimMode1(unittest.TestCase):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm1
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def base_net(self, flag=None):
         x = paddle.to_tensor(self.x)
@@ -74,7 +74,7 @@ class TestPrimMode1(unittest.TestCase):
                 self.net,
                 use_cinn=self.enable_cinn,
                 input_spec=[
-                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=[1, 300, 4096], dtype='float32'),
                     InputSpec(shape=[4096], dtype='float32'),
                 ],
             )
@@ -109,7 +109,7 @@ class TestPrimMode2(TestPrimMode1):
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm2
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestPrimOne(unittest.TestCase):
