@@ -50,11 +50,11 @@ TEST(gpu_tester_resnet50, analysis_gpu_bz1) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
   // get infer results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   std::cout << "finish test" << std::endl;
@@ -81,11 +81,11 @@ TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
   // get infer results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data, 2e-4);
   std::cout << "finish test" << std::endl;
@@ -120,10 +120,10 @@ TEST(tensorrt_tester_resnet50, serial_diff_batch_trt_fp32) {
         truth_output_data;
     // get groudtruth by disbale ir
     SingleThreadPrediction(
-        pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+        pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
     // get infer results
     SingleThreadPrediction(
-        pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
+        pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data);
     // check outputs
     CompareRecord(&truth_output_data, &infer_output_data, 1e-4);
   }
@@ -152,14 +152,14 @@ TEST(tensorrt_tester_resnet50, multi_thread4_trt_fp32_bz2) {
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i),
+                         pred_pool.Retrieve(i),
                          &my_input_data_map,
                          &infer_output_data,
                          2);
@@ -193,11 +193,11 @@ TEST(tensorrt_tester_resnet50, trt_int8_bz2) {
   // get first time prediction int8 results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &truth_output_data, 1);
+      pred_pool.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
 
   // get repeat 5 times prediction int8 results
   SingleThreadPrediction(
-      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data, 5);
+      pred_pool.Retrieve(0), &my_input_data_map, &infer_output_data, 5);
 
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
@@ -225,7 +225,7 @@ TEST(DISABLED_tensorrt_tester_resnet50, profile_multi_thread_trt_fp32) {
   std::vector<std::future<double>> calcs;
   for (int i = 0; i < thread_num; ++i) {
     calcs.push_back(std::async(&paddle::test::SingleThreadProfile,
-                               pred_pool.Retrive(i),
+                               pred_pool.Retrieve(i),
                                &my_input_data_map,
                                repeat_time));
   }

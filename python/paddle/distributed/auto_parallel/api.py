@@ -1222,8 +1222,13 @@ class DistModel:
                         tensor._local_value().get_tensor()
                     )
                 else:
+                    # infer dtype from tensor
+                    if tensor.is_integer():
+                        dtype = paddle.iinfo(tensor.dtype).dtype
+                    else:
+                        dtype = paddle.finfo(tensor.dtype).dtype
                     tensor_np_value = np.zeros(
-                        tensor._local_value().shape, dtype=np.float32
+                        tensor._local_value().shape, dtype=dtype
                     )
                     lodtensor.set(
                         tensor_np_value,

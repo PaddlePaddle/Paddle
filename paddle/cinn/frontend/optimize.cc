@@ -158,7 +158,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
     const std::vector<std::string>& passes) {
   OptimizeOptions options;
 
-  bool enbale_fusion = false;
+  bool enable_fusion = false;
   if (!passes.empty()) {
     for (const auto& pass : passes) {
       auto* p_pass = ProgramPassRegistry::Global()->Find(pass);
@@ -169,7 +169,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
       } else if (g_pass) {
         options.graph_passes.emplace_back(pass);
         if (pass == "OpFusionPass" || pass == "FusionMergePass") {
-          enbale_fusion = true;
+          enable_fusion = true;
         }
       } else {
         LOG(FATAL) << "Pass " << pass
@@ -177,7 +177,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
       }
     }
 
-    if (!enbale_fusion) {
+    if (!enable_fusion) {
       options.graph_passes.emplace_back("BuildNonFusedGroupsPass");
     }
   } else {
