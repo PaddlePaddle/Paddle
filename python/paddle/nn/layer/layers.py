@@ -169,7 +169,7 @@ class LayerObjectHelper(LayerHelperBase):
             for inp in inputs:
                 ret.append(paddle.to_tensor(inp))
         else:
-            ret.append(paddle.to_tensor(inputs))
+            ret.append(self.to_variable(inputs))
         return ret
 
     # TODO: make it public when we need it
