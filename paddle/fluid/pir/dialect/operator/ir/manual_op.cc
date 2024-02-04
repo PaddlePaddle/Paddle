@@ -675,7 +675,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
               inputs[i]
                   .dyn_cast<paddle::dialect::DenseTensorArrayType>()
                   .dtype()),
-          {},
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorArrayType>().dims(),
           inputs[i]
               .dyn_cast<paddle::dialect::DenseTensorArrayType>()
               .data_layout(),
@@ -687,7 +687,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
               inputs[i]
                   .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
                   .dtype()),
-          {},
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorArrayType>().dims(),
           inputs[i]
               .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
               .data_layout(),
@@ -719,6 +719,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
       dense_out.layout());
 
   argument_outputs.push_back(out_dense_tensor_type);
@@ -1669,6 +1670,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      common::make_ddim({0}),  // TODO(chenxi67): set shape
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
@@ -1788,6 +1790,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)input_type;
   } else {
@@ -1798,7 +1801,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
 
@@ -1813,6 +1816,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
 
@@ -1915,6 +1919,7 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)x_type;
   } else {
@@ -1925,7 +1930,7 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
 
   paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_x(&dense_x);
@@ -2085,6 +2090,7 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
     array_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)array_type;
   } else {
@@ -2094,7 +2100,7 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_array(
       paddle::dialect::TransToPhiDataType(array_type.dtype()),
-      {},
+      array_type.dims(),
       array_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
@@ -2265,6 +2271,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     array_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)array_type;
   } else {
@@ -2275,7 +2282,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
 
   paddle::dialect::IrTensor dense_array(
       paddle::dialect::TransToPhiDataType(array_type.dtype()),
-      {},
+      array_type.dims(),
       array_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
@@ -2317,8 +2324,12 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   std::vector<pir::Type> argument_outputs;
   pir::Type out_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
-      paddle::dialect::TransToIrDataType(dense_out.dtype()),
-      dense_out.layout());
+      paddle::dialect::TransToIrDataType(dense_array.dtype()),
+      x_type.dims(),
+      dense_array.layout());
+  // update array's dims as x's dims.
+  // TOOD(chenxi67) Do not change if dim is set by custom
+  array_type.SetDims(x_type.dims());
   argument_outputs.push_back(out_type);
   return argument_outputs;
 }
@@ -2466,6 +2477,7 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)x_type;
   } else {
@@ -2475,7 +2487,7 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_x(&dense_x);
@@ -2669,6 +2681,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
     x = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)x;
   } else {
@@ -2678,7 +2691,10 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   }
 
   paddle::dialect::IrTensor dense_x(
-      paddle::dialect::TransToPhiDataType(x.dtype()), {}, x.data_layout(), {});
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      {});
 
   paddle::dialect::DenseTensorType out_grad;
   if (out_grad_.type().isa<paddle::dialect::DenseTensorType>()) {
@@ -2724,6 +2740,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
+          dense_x_grad.dims(),
           dense_x_grad.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -2902,6 +2919,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)input_type;
   } else {
@@ -2912,7 +2930,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -2934,6 +2952,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(dense_out.dtype()),
+          dense_out.dims(),
           dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -3061,6 +3080,7 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)input_type;
   } else {
@@ -3070,7 +3090,7 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -3207,6 +3227,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -3215,7 +3236,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -3230,6 +3251,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(dense_out.dtype()),
+          dense_out.dims(),
           dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -3315,6 +3337,7 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)x_type;
   } else {
@@ -3324,7 +3347,7 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -4415,6 +4438,7 @@ std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)x_type;
   } else {
@@ -4424,7 +4448,7 @@ std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -4573,6 +4597,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
     (void)input_type;
   } else {
@@ -4587,7 +4612,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -4606,6 +4631,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   pir::Type out_array_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(array_out.dtype()),
+      array_out.dims(),
       array_out.layout());
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
       pir::IrContext::Instance(),

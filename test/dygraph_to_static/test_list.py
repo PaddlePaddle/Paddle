@@ -312,10 +312,6 @@ class TestTensorArraySlice(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_tensor_array_slice]
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
-    def test_transformed_static_result(self):
-        self.compare_transformed_static_result()
-
 
 class TestListInForLoop(TestListInWhileLoop):
     def init_dygraph_func(self):
