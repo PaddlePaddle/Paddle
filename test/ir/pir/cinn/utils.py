@@ -26,8 +26,8 @@ __WHILE_OP_NAME = "pd_op.while"
 
 def unittest_use_cinn():
     use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
-    true_value_set = {True, 1, "True", "true"}
-    false_value_set = {False, 0, "False", "false"}
+    true_value_set = {True, 1, "1", "True", "true"}
+    false_value_set = {False, 0, "0", "False", "false"}
     assert use_cinn in (true_value_set | false_value_set)
     return use_cinn in true_value_set
 
