@@ -76,18 +76,16 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     std::vector<int> thread_binded_reduce_loop_indices;
     bool thread_binded_inner = false;
     for (int i = 0; i < cur_loops_.size(); ++i) {
-      if (thread_binded_inner ||
-          reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name) >
-              0) {
-        if (thread_binded_inner ||
-            cur_loops_[i].As<ir::For>()->is_gpu_thread_binded()) {
-          if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
-            return false;
-          }
-
-          thread_binded_inner = true;
-          thread_binded_reduce_loop_indices.push_back(i);
-        }
+      if (ir::GetLoopExtent(cur_loops_[i]) > 1024) {
+        return false;
+      }
+      if (thread_binded_inner) {
+        thread_binded_reduce_loop_indices.push_back(i);
+        continue;
+      }
+      if (reduce_var_names.count(cur_loops_[i].As<ir::For>()->loop_var->name)) {
+        thread_binded_inner = true;
+        thread_binded_reduce_loop_indices.push_back(i);
       }
     }
     if (thread_binded_reduce_loop_indices.size() == 0 ||
