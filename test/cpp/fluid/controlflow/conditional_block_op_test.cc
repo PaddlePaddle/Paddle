@@ -18,9 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
-USE_NO_KERNEL_OP(conditional_block);
-USE_NO_KERNEL_OP(conditional_block_grad);
-
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;

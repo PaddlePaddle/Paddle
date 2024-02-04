@@ -23,8 +23,11 @@ from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
+from paddle.framework import use_pir_api
+from paddle.jit.utils import OrderedSet
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
+from paddle.utils import is_sequence, map_structure
 
 from .py_layer import StaticPyLayer
 from .utils import (
@@ -32,10 +35,30 @@ from .utils import (
     Dygraph2StaticException,
     GetterSetterHelper,
     UndefinedVar,
+    create_undefined_variable,
 )
-from .variable_trans_func import to_static_variable
 
 __all__ = []
+
+
+def to_static_variable(x):
+    '''
+    Translate a Python Tensor to PaddlePaddle static graph Tensor
+    '''
+    if isinstance(x, bool):
+        return paddle.full(shape=[], dtype='bool', fill_value=x)
+    if isinstance(x, float):
+        return paddle.full(shape=[], dtype='float64', fill_value=x)
+    if isinstance(x, int):
+        return paddle.full(shape=[], dtype='int64', fill_value=x)
+    if not use_pir_api() and (isinstance(x, UndefinedVar) or x is None):
+        """
+        for early return case, we need a variable to represent None, current we use data_layer_not_check.
+        """
+        return create_undefined_variable()
+    if is_sequence(x):
+        return map_structure(to_static_variable, x)
+    return x
 
 
 def convert_attr(x, attr):
@@ -185,9 +208,9 @@ def _run_paddle_while(
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
 
-    union_name = (set(return_name_ids) if return_name_ids else set()) | (
-        set(push_pop_names) if push_pop_names else set()
-    )
+    union_name = (
+        OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+    ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
     union_name = list(union_name)
 
     def new_body_fn(*args):
@@ -422,9 +445,9 @@ def _run_paddle_cond(
     if return_name_ids is None and push_pop_names is None:
         union_name = None
     else:
-        union_name = (set(return_name_ids) if return_name_ids else set()) | (
-            set(push_pop_names) if push_pop_names else set()
-        )
+        union_name = (
+            OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+        ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
         union_name = list(union_name)
 
     def new_true_fn():
@@ -637,7 +660,7 @@ class VariableTuple:
         self.var = var
         self.len = convert_len(var)
         if isinstance(self.len, (Variable, Value)):
-            self.rag = paddle.arange(start, start + self.len, 1, paddle.int64)
+            self.rag = paddle.arange(start, start + self.len, 1, "int64")
         else:
             self.rag = range(start, start + self.len)
 
@@ -726,7 +749,12 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
-        return eval(f'{dtype}(var)')
+        assert dtype in [
+            'bool',
+            'int',
+            'float',
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        return eval(dtype)(var)
 
 
 def convert_assert(cond, message=""):
@@ -752,28 +780,6 @@ def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
         if isinstance(obj, (Variable, Value)):
             paddle.static.Print(obj)
     print(*objects, sep=sep, end=end, file=file, flush=flush)
-
-
-def convert_pop(target, *args):
-    """
-    A function representation of a Python pop statement for a list or dict.
-
-    Args:
-        target(list|dict|Tensor): A variable to pop item from.
-        *args(tuple): index or default value to parse.
-
-    Returns:
-        A item poped from target.
-    """
-
-    is_variable = isinstance(target, (Variable, Value))
-    if is_variable:
-        is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-
-    if is_variable and is_tensor_array:
-        return _run_paddle_pop(target, *args)
-    else:
-        return _run_python_pop(target, *args)
 
 
 @contextmanager
@@ -809,71 +815,11 @@ def convert_auto_cast(
     )
 
 
-def _run_paddle_pop(array, *args):
-    if len(args) == 0:
-        idx = -1
+def create_bool_as_type(x, value=True):
+    '''
+    Create a bool variable, which type is the same as x.
+    '''
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
     else:
-        idx = args[0]
-
-    assert isinstance(idx, int)
-
-    def cond(i, new_array):
-        return paddle.less_than(i, arr_len)
-
-    def body(i, new_array):
-        item = paddle.tensor.array_read(array=array, i=i)
-        paddle.tensor.array_write(
-            item, paddle.tensor.array_length(new_array), new_array
-        )
-
-        i = paddle.increment(i)
-        return i, new_array
-
-    arr_len = paddle.tensor.array_length(array)
-    if idx < 0:
-        idx = idx + arr_len
-    else:
-        from paddle.tensor import fill_constant
-
-        idx = fill_constant(shape=[1], dtype="int64", value=idx)
-
-    pop_item = paddle.tensor.array_read(array, idx)
-
-    tmp = paddle.assign(array)
-    new_array = _slice_tensor_array(tmp, 0, idx)
-    i = idx + 1
-    from paddle.static.nn import while_loop
-
-    _, new_array = while_loop(cond, body, [i, new_array])
-    paddle.assign(new_array, output=array)
-
-    return pop_item
-
-
-# TODO(liym27): A better way to slice tensor array.
-#  Maybe support start == end for slice op.
-def _slice_tensor_array(array, start, end):
-    def true_fn():
-        null_array = paddle.tensor.create_array("float32")
-        return null_array
-
-    def false_fn(array, start, end):
-        new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
-        return new_array
-
-    new_array = paddle.static.nn.cond(
-        start == end, true_fn, lambda: false_fn(array, start, end)
-    )
-    return new_array
-
-
-def _run_python_pop(target, *args):
-    # 1. pop for a dict
-    if len(args) == 2:
-        idx, default = args
-        return target.pop(idx, default)
-
-    # 2. pop for a list or dict
-    else:
-        idx = args[0] if args else -1
-        return target.pop(idx)
+        return value

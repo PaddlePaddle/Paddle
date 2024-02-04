@@ -373,9 +373,9 @@ class TestFillConstantImperative(unittest.TestCase):
             data1 = np.array([1, 2]).astype('int32')
             data2 = np.array([1.1]).astype('float32')
             data3 = np.array([88]).astype('int32')
-            shape = base.dygraph.to_variable(data1)
-            val = base.dygraph.to_variable(data2)
-            value = base.dygraph.to_variable(data3)
+            shape = paddle.to_tensor(data1)
+            val = paddle.to_tensor(data2)
+            value = paddle.to_tensor(data3)
             res1 = paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='float32', value=1.1
             )

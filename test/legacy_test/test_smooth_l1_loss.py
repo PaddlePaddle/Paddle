@@ -57,7 +57,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -84,13 +84,13 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_sum(self):
@@ -105,7 +105,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -132,13 +132,13 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_none(self):
@@ -153,7 +153,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -180,13 +180,13 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_delta(self):
@@ -202,7 +202,7 @@ class SmoothL1Loss(unittest.TestCase):
         expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -229,13 +229,13 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
-        test_dynamic_or_pir_mode()
+        test_static()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
 

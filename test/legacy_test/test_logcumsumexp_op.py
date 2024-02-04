@@ -122,7 +122,7 @@ class TestLogcumsumexp(unittest.TestCase):
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, dtype='float32')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(y.dtype == paddle.float32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
@@ -199,7 +199,6 @@ class TestLogcumsumexp(unittest.TestCase):
 
         self.run_static(use_gpu=True)
 
-    # @test_with_pir_api
     def test_name(self):
         with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])

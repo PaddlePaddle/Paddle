@@ -18,12 +18,12 @@
 #include <unordered_map>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
-#include "paddle/fluid/pir/drr/ir_operation.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace drr {
@@ -33,7 +33,7 @@ class MatchContextImpl final {
   MatchContextImpl() = default;
   ~MatchContextImpl() = default;
 
-  const TensorInterface& Tensor(const std::string& tensor_name) const {
+  const pir::Value& Tensor(const std::string& tensor_name) const {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
@@ -41,10 +41,10 @@ class MatchContextImpl final {
             "Not found tensor."
             "The Drr tensor [%s] must exist in pattern graph to be obtained.",
             tensor_name));
-    return *tensor_map_.at(tensor_name);
+    return tensor_map_.at(tensor_name);
   }
 
-  const IrOperation& Operation(const OpCall* op_call) const {
+  pir::Operation* IrOperation(const OpCall* op_call) const {
     PADDLE_ENFORCE_NE(
         operation_map_.count(op_call),
         0,
@@ -52,7 +52,7 @@ class MatchContextImpl final {
                               "The Drr operation [%s] must exist in the "
                               "pattern graph to be obtained.",
                               op_call->name()));
-    return *operation_map_.at(op_call);
+    return operation_map_.at(op_call);
   }
 
   template <typename T>
@@ -60,7 +60,7 @@ class MatchContextImpl final {
     return IrAttrTypeCast<T>::To(GetIrAttr(attr_name));
   }
 
-  const IrValue& GetIrValue(const std::string& tensor_name) const {
+  pir::Value GetIrValue(const std::string& tensor_name) const {
     auto iter = tensor_map_.find(tensor_name);
     PADDLE_ENFORCE_NE(
         iter,
@@ -69,7 +69,7 @@ class MatchContextImpl final {
                               "The Drr tensor [%s] is not found in the map, "
                               "unable to obtain the corresponding IrValue.",
                               tensor_name));
-    return *iter->second;
+    return iter->second;
   }
 
   pir::Attribute GetIrAttr(const std::string& attr_name) const {
@@ -84,8 +84,8 @@ class MatchContextImpl final {
     return iter->second;
   }
 
-  const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&
-  operation_map() const {
+  const std::unordered_map<const OpCall*, pir::Operation*>& operation_map()
+      const {
     return operation_map_;
   }
 
@@ -93,18 +93,15 @@ class MatchContextImpl final {
     return attr_map_;
   }
 
-  const std::unordered_map<std::string, std::shared_ptr<IrValue>>& tensor_map()
-      const {
+  const std::unordered_map<std::string, pir::Value>& tensor_map() const {
     return tensor_map_;
   }
 
-  void BindIrValue(const std::string& value_name,
-                   const std::shared_ptr<IrValue>& value) {
+  void BindIrValue(const std::string& value_name, const pir::Value& value) {
     tensor_map_.emplace(value_name, value);
   }
 
-  void BindIrOperation(const OpCall* op_call,
-                       const std::shared_ptr<IrOperation>& op) {
+  void BindIrOperation(const OpCall* op_call, pir::Operation* op) {
     operation_map_.emplace(op_call, op);
     const auto& attrs = op_call->attributes();
     for (const auto& kv : attrs) {
@@ -112,7 +109,15 @@ class MatchContextImpl final {
           [&](auto&& arg) {
             if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
                                          NormalAttribute>) {
-              BindIrAttr(arg.name(), op->get()->attribute(kv.first));
+              PADDLE_ENFORCE(
+                  op->HasAttribute(kv.first),
+                  phi::errors::NotFound(
+                      "Not found attribute [%s] in Op [%s], please check the "
+                      "validity of the attribute name[%s].",
+                      kv.first,
+                      op->name(),
+                      kv.first));
+              BindIrAttr(arg.name(), op->attribute(kv.first));
             }
           },
           kv.second);
@@ -124,9 +129,8 @@ class MatchContextImpl final {
     attr_map_.emplace(attr_name, attr);
   }
 
-  std::unordered_map<std::string, std::shared_ptr<IrValue>> tensor_map_;
-  std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>
-      operation_map_;
+  std::unordered_map<std::string, pir::Value> tensor_map_;
+  std::unordered_map<const OpCall*, pir::Operation*> operation_map_;
   std::unordered_map<std::string, pir::Attribute> attr_map_;
 };
 

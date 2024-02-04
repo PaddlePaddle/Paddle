@@ -448,7 +448,8 @@ PDNode *PDNode::assert_is_not_ctrl_var() {
 
 PDNode *PDNode::assert_var_not_persistable() {
   assert_is_var();
-  asserts_.emplace_back([](Node *x) { return !x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [](Node *x) { return x->Var() && !x->Var()->Persistable(); });
   return this;
 }
 
@@ -4383,7 +4384,7 @@ PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
   }
   auto reshape2_50_op =
       pattern->NewNode(reshape2_50_op_repr())->assert_is_op("reshape2");
-  auto reshape2_50_out = pattern->NewNode(reshaep2_50_out_repr())
+  auto reshape2_50_out = pattern->NewNode(reshape2_50_out_repr())
                              ->assert_is_op_output("reshape2", "Out")
                              ->AsOutput();
   reshape2_00_op->LinksFrom({in});

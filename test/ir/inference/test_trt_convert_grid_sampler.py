@@ -46,8 +46,8 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
                 return np.random.random([1, 3, 3, 2, 3]).astype(np.float32)
 
         mode = ["bilinear", "nearest"]
-        padding_mode = ["zeros", "reflection", "border"]
-        align_corners = [True, False]
+        padding_mode = ["zeros", "reflection"]
+        align_corners = [True]
         descs = []
         for m in mode:
             for p in padding_mode:

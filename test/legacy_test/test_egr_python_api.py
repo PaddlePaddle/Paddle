@@ -738,6 +738,11 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(tensor3.numpy(), arr2)
         self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
+    def test_0_size_tensor_share_buffert_to(self):
+        x = paddle.rand([0, 4])
+        y = paddle.rand([0, 4])
+        x._share_buffer_to(y)
+
     def test_share_underline_tensor_to(self):
         arr = np.ones([4, 16, 16, 32]).astype('float32')
         arr1 = np.zeros([4, 16]).astype('float32')
@@ -948,10 +953,10 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         base = paddle.base.layer_helper_base.LayerHelperBase(
             "test_layer", "test_layer"
         )
-        return base.to_variable(value).numpy()
+        return paddle.to_tensor(value).numpy()
 
     def func_base_to_variable(self, value):
-        paddle.base.dygraph.base.to_variable(value)
+        paddle.to_tensor(value)
 
     def test_backward_with_single_tensor(self):
         arr4 = np.random.rand(4, 16, 16, 32).astype('float32')

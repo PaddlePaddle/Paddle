@@ -1658,8 +1658,8 @@ class Resharder:
                         # TODO(zhaoyingli): Remove the method to a pass.
                         # Current method to get all pp_ranks' relationship must rely on reshard.
                         # When reshard insert send/recv pair, the process_group has the pp relationship.
-                        # But the mothod to obtain pp_ranks' relationship is only supported in 'reshard_input',
-                        # casue 'reshard_output' only has current process_group view instead of global view.
+                        # But the method to obtain pp_ranks' relationship is only supported in 'reshard_input',
+                        # cause 'reshard_output' only has current process_group view instead of global view.
                         op_role = dist_attr[-1]
                         if int(op_role) == int(OpRole.Forward):
                             self.dist_context.up_down_streams.add_pair_stream(
@@ -1695,7 +1695,7 @@ class Resharder:
                     )
                 )
 
-        # In the same process group, it will use allgahther and slice op.
+        # In the same process group, it will use allgather and slice op.
         else:
             # NOTE: It just supports even partition scene.
             partition_index_list = []
@@ -1868,7 +1868,7 @@ class Resharder:
         """
 
         # Parse all communicator groups for all ranks
-        # Ensure every rank has a global view of communicator groups for entire cluters.
+        # Ensure every rank has a global view of communicator groups for entire cluster.
         # When initialize communicators for pipeline parallel, every rank could
         # conduct a correct global synchronization.
         for rank_id in op_desc_seq:
@@ -2449,7 +2449,7 @@ class Resharder:
             op_input_attrs = self._get_subblock_input_attrs(op, var_name)
             if not op_input_attrs:
                 # NOTE: [hack method]
-                # Adapt to quantization pass, which presist_vars, including inputs and outputs, all are in global_block.
+                # Adapt to quantization pass, which persist_vars, including inputs and outputs, all are in global_block.
                 # Therefore, the while_op's inputs will contain the all persist_vars, which will be inputs or output of the quantization op in subblock.
                 op_input_attrs = self._get_subblock_output_attrs(op, var_name)
         else:
@@ -2927,7 +2927,7 @@ class Resharder:
                                                 dist_tensor.dist_attr,
                                             )
                                         else:
-                                            # Ensure every rank has a global view of communicator groups for entire cluters.
+                                            # Ensure every rank has a global view of communicator groups for entire cluster.
                                             # When initialize communicators for pipeline parallel, every rank could
                                             # conduct a correct global synchronization.
                                             new_process_group(
@@ -2971,7 +2971,7 @@ class Resharder:
                                             dist_tensor.dist_attr,
                                         )
                                     else:
-                                        # Ensure every rank has a global view of communicator groups for entire cluters.
+                                        # Ensure every rank has a global view of communicator groups for entire cluster.
                                         # When initialize communicators for pipeline parallel, every rank could
                                         # conduct a correct global synchronization.
                                         new_process_group(
@@ -3010,7 +3010,7 @@ class Resharder:
             self.dist_params_grads,
         )
 
-        # remove no need vars and ops in the startip program
+        # remove no need vars and ops in the startup program
         Remover.remove_no_need_in_startup(
             self.auto_parallel_main_prog, self.auto_parallel_startup_prog
         )
@@ -3249,10 +3249,10 @@ class Resharder:
                     )
                 elif isinstance(op_desc, ConcatOpDesc):
                     partition_index_list = op_desc._partition_index_list
-                    for idx, partion_idex in enumerate(partition_index_list):
+                    for idx, partition_idex in enumerate(partition_index_list):
                         self._concat_partitions_for_cost(
                             partition_tensor_list,
-                            partion_idex,
+                            partition_idex,
                             dtype,
                             key,
                             local_rank_comp_cost,

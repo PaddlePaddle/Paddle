@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/program.h"
+#include "glog/logging.h"
 #include "paddle/pir/core/ir_context.h"
 
 namespace pir {
@@ -27,11 +28,11 @@ Program::~Program() {
   }
 }
 
-std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) {
+std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto new_program = std::make_shared<Program>(ctx);
-  auto clone_options = CloneOptions(true, true);
-  for (auto& op : *block()) {
+  auto clone_options = CloneOptions::All();
+  for (const auto& op : *block()) {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
   }
@@ -46,8 +47,8 @@ Parameter* Program::GetParameter(const std::string& name) const {
 }
 
 void Program::SetParameter(const std::string& name,
-                           std::unique_ptr<Parameter>&& parameter) {
-  parameters_[name].reset(parameter.release());
+                           std::shared_ptr<Parameter> parameter) {
+  parameters_[name] = parameter;
 }
 
 }  // namespace pir

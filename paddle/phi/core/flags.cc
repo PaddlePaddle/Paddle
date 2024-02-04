@@ -744,16 +744,6 @@ PHI_DEFINE_EXPORTED_int32(
     "instead of sum. Default is 0.");
 
 /**
- * Tensor.numpy() has a hack, and this flag can close this hack
- * [true]: set 0D Tensor to 1D Numpy
- * [false]: not set 0D Tensor to 1D Numpy, close the hack
- *
- * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6) .
- */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
-
-/**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_on
  * Since Version: 2.0.0
@@ -1414,6 +1404,21 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          "::pir::Program to Kernel Dialect");
 
 /**
+ * Apply check infer symbolic pass FLAG
+ * Name: check_infer_symbolic_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, will apply check_infer_symbolic pass.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    check_infer_symbolic,
+    false,
+    "Whether to use check_infer_symbolic_pass. This pass can check "
+    "the symbolic inference accuracy by comparing the the value "
+    "shape between dynamic shape and static shape.");
+
+/**
  * Apply shape optimization pass to new IR FLAG
  * Name: pir_apply_shape_optimization_pass
  * Since Version: 3.0.0
@@ -1442,6 +1447,20 @@ PHI_DEFINE_EXPORTED_string(
     pir_subgraph_saving_dir,
     "",
     "Specify the directory of saving PIR sugraph from @to_static.");
+
+/**
+ * PIR use OneDNN kernel black list FLAG
+ * Name: pir_onednn_kernel_blacklist
+ * Since Version: 2.7.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: This environment variable controls the partial operators not using
+ * onednn.
+ */
+PHI_DEFINE_EXPORTED_string(pir_onednn_kernel_blacklist,
+                           "",
+                           "This environment variable controls the partial "
+                           "operators not using onednn.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1514,3 +1533,70 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           -1,
                           "Whether to fill fixed value after allocation. "
                           "This is usefull for debugging.");
+
+PHI_DEFINE_EXPORTED_string(
+    cudnn_dir,  // NOLINT
+    "",
+    "Specify path for loading libcudnn.so. For instance, "
+    "/usr/local/cudnn/lib. If empty [default], dlopen "
+    "will search cudnn from LD_LIBRARY_PATH");
+
+PHI_DEFINE_EXPORTED_string(  // NOLINT
+    cuda_dir,
+    "",
+    "Specify path for loading cuda library, such as libcublas, libcublasLt "
+    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+
+PHI_DEFINE_EXPORTED_string(cublas_dir,  // NOLINT
+                           "",
+                           "Specify path for loading libcublas.so.");
+PHI_DEFINE_EXPORTED_string(
+    nccl_dir,  // NOLINT
+    "",
+    "Specify path for loading nccl library, such as libnccl.so. "
+    "For instance, /usr/local/cuda/lib64. If default, "
+    "dlopen will search cuda from LD_LIBRARY_PATH");
+
+PHI_DEFINE_EXPORTED_string(cupti_dir,
+                           "",
+                           "Specify path for loading cupti.so.");  // NOLINT
+
+PHI_DEFINE_EXPORTED_string(  // NOLINT
+    tensorrt_dir,
+    "",
+    "Specify path for loading tensorrt library, such as libnvinfer.so.");
+
+PHI_DEFINE_EXPORTED_string(
+    mklml_dir,
+    "",
+    "Specify path for loading libmklml_intel.so.");  // NOLINT
+
+PHI_DEFINE_EXPORTED_string(lapack_dir,
+                           "",
+                           "Specify path for loading liblapack.so.");  // NOLINT
+
+PHI_DEFINE_EXPORTED_string(
+    mkl_dir,  // NOLINT
+    "",
+    "Specify path for loading libmkl_rt.so. "
+    "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+    "If default, "
+    "dlopen will search mkl from LD_LIBRARY_PATH");
+
+PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
+                           "",
+                           "Specify path for loading user-defined op library.");
+
+PHI_DEFINE_EXPORTED_string(cusparselt_dir,  // NOLINT
+                           "",
+                           "Specify path for loading libcusparseLt.so.");
+PHI_DEFINE_EXPORTED_string(curand_dir,  // NOLINT
+                           "",
+                           "Specify path for loading libcurand.so.10.");
+PHI_DEFINE_EXPORTED_string(cusolver_dir,  // NOLINT
+                           "",
+                           "Specify path for loading libcusolver.so.*.");
+PHI_DEFINE_EXPORTED_string(cusparse_dir,  // NOLINT
+                           "",
+                           "Specify path for loading libcusparse.so.*.");

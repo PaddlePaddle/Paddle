@@ -45,8 +45,8 @@ def check():
     helper = LayerHelper(base.unique_name.generate("test"), act="relu")
     func = helper.append_activation
     with base.dygraph.guard(base.core.CPUPlace()):
-        a = base.dygraph.to_variable(a_np)
-        b = base.dygraph.to_variable(b_np)
+        a = paddle.to_tensor(a_np)
+        b = paddle.to_tensor(b_np)
         y = paddle.add(x=a, y=b)
         y = paddle.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)

@@ -67,7 +67,7 @@ def register_pattern(cls):
         pattern = cls()
         _PATTERNS[pattern.name] = pattern
         # sort patterns according to the number of sharded tensors
-        # set its dist attr by the fisrt one when a tensor can be matched by multiple patterns.
+        # set its dist attr by the first one when a tensor can be matched by multiple patterns.
         _PATTERNS = dict(
             sorted(
                 _PATTERNS.items(), key=lambda x: -x[1].attrs["sharded_tensors"]
@@ -201,7 +201,7 @@ class RowMatmulPattern(BasePattern):
         # define reshape
         reshape = self.add_node(1, **{"type": "reshape2"})
 
-        # define reshape input egde
+        # define reshape input edge
         x_edge = self.add_edge(input.id, reshape.id, **{"input_name": "X"})
 
         # define reshape out
@@ -991,14 +991,14 @@ class ClusterPartitionUtil:
                     device_mesh.append([1, partition[1]])
                 device_meshes.append(device_mesh)
         else:
-            incerement = 1 if partition_result[-1] == [1] else 0
+            increment = 1 if partition_result[-1] == [1] else 0
             for partition in partition_result:
                 if len(partition) < 2:
                     continue
                 device_mesh = []
                 for i in range(partition[0]):
                     device_mesh.append([partition[1], m])
-                device_mesh[-1][0] += incerement
+                device_mesh[-1][0] += increment
                 device_meshes.append(device_mesh)
 
         return device_meshes

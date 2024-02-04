@@ -31,6 +31,7 @@ namespace pir {
 
 namespace {
 constexpr char newline[] = "\n";  // NOLINT
+constexpr size_t indent_size = 4;
 }  // namespace
 
 void BasicIrPrinter::PrintType(Type type) {
@@ -145,6 +146,14 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 }
 
+void IrPrinter::AddIndentation() {
+  cur_indentation_ += std::string(indent_size, ' ');
+}
+
+void IrPrinter::DecreaseIndentation() {
+  cur_indentation_.resize(cur_indentation_.size() - indent_size);
+}
+
 void IrPrinter::PrintProgram(const Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
@@ -154,15 +163,22 @@ void IrPrinter::PrintProgram(const Program* program) {
 }
 
 void IrPrinter::PrintOperation(Operation* op) {
+  os << indentation();
+
   if (auto* dialect = op->dialect()) {
-    dialect->PrintOperation(op, *this);
-    return;
+    if (auto print_fn = dialect->PrintOperation(op)) {
+      print_fn(op, *this);
+      os << newline;
+      return;
+    }
   }
 
   PrintGeneralOperation(op);
+
+  os << newline;
 }
 
-void IrPrinter::PrintGeneralOperation(Operation* op) {
+void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -175,7 +191,7 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintAttributeMap(op);
   os << " :";
 
-  // PrintOpSingature
+  // PrintOpSignature
   PrintOperandsType(op);
   os << " -> ";
 
@@ -183,8 +199,8 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(Operation* op) {
-  PrintGeneralOperation(op);
+void IrPrinter::PrintGeneralOperation(Operation* op) {
+  PrintOperationWithNoRegion(op);
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -201,12 +217,13 @@ void IrPrinter::PrintRegion(const Region& region) {
 }
 
 void IrPrinter::PrintBlock(const Block& block) {
-  os << "{\n";
+  os << indentation() << "{\n";
+  AddIndentation();
   for (auto& item : block) {
     PrintOperation(&item);
-    os << newline;
   }
-  os << "}\n";
+  DecreaseIndentation();
+  os << indentation() << "}\n";
 }
 
 void IrPrinter::PrintValue(Value v) {
@@ -234,9 +251,9 @@ void IrPrinter::PrintValue(Value v) {
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
-  os << " (";
+  os << "(";
   auto num_op_result = op->num_results();
-  std::vector<OpResult> op_results;
+  std::vector<Value> op_results;
   op_results.reserve(num_op_result);
   for (size_t idx = 0; idx < num_op_result; idx++) {
     op_results.push_back(op->result(idx));
@@ -329,8 +346,51 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
   aliases_[key] = alias;
 }
-void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
-  printer.PrintGeneralOperation(op);
+
+class CustomPrinter : public IrPrinter {
+ public:
+  explicit CustomPrinter(std::ostream& os, const PrintHooks& hooks)
+      : IrPrinter(os), hooks_(hooks) {}
+  void PrintType(Type type) override {
+    if (hooks_.type_print_hook) {
+      hooks_.type_print_hook(type, *this);
+    } else {
+      IrPrinter::PrintType(type);
+    }
+  }
+
+  void PrintAttribute(Attribute attr) override {
+    if (hooks_.attribute_print_hook) {
+      hooks_.attribute_print_hook(attr, *this);
+    } else {
+      IrPrinter::PrintAttribute(attr);
+    }
+  }
+
+  void PrintOperation(Operation* op) override {
+    if (hooks_.op_print_hook) {
+      hooks_.op_print_hook(op, *this);
+    } else {
+      IrPrinter::PrintOperation(op);
+    }
+  }
+
+  void PrintValue(Value v) override {
+    if (hooks_.value_print_hook) {
+      hooks_.value_print_hook(v, *this);
+    } else {
+      IrPrinter::PrintValue(v);
+    }
+  }
+
+ private:
+  const PrintHooks hooks_;
+};
+
+std::ostream& operator<<(std::ostream& os, const CustomPrintHelper& p) {
+  CustomPrinter printer(os, p.hooks_);
+  printer.PrintProgram(&p.prog_);
+  return os;
 }
 
 void Program::Print(std::ostream& os) const {

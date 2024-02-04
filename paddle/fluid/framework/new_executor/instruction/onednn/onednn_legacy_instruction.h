@@ -67,7 +67,7 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
-  std::set<std::string> layout_transform_inputs_{};
+  std::set<std::string> data_format_tensors_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
 };
 

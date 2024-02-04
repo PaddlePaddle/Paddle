@@ -16,7 +16,6 @@ import os
 
 import paddle
 from paddle.autograd import PyLayer
-from paddle.base import core
 from paddle.distributed import fleet
 from paddle.nn import functional as F
 
@@ -34,7 +33,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+    return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
 
 
 def is_fused_linear_param_grad_add_supported():
@@ -214,7 +213,10 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         if not fuse_matmul_bias:
             return paddle._C_ops.linear(x, weight, bias)
         else:
-            return paddle._legacy_C_ops.fused_gemm_epilogue(x, weight, bias)
+            result, _ = paddle._C_ops.fused_gemm_epilogue(
+                x, weight, bias, False, False, "none"
+            )
+            return result
 
     @staticmethod
     def backward(ctx, dy):

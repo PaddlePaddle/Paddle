@@ -34,7 +34,7 @@ def fused_gate_attention(
     use_flash_attn=False,
 ):
     r"""
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Gate Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:

@@ -56,6 +56,17 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
+SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
+    "elementwise_add": ['X', 'Y'],
+    "elementwise_add_grad": ['X', 'Y'],
+    "elementwise_sub": ['X', 'Y'],
+    "elementwise_sub_grad": ['X', 'Y'],
+    "elementwise_mul": ['X', 'Y'],
+    "elementwise_mul_grad": ['X', 'Y'],
+    "where": ['X', 'Y'],
+    "where_grad": ['X', 'Y'],
+}
+
 
 def _global_flags():
     return _global_flags_
@@ -233,11 +244,6 @@ paddle_type_to_proto_type = {
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
 }
-
-
-# FIXME(dev): We haven't fully verified eager mode on XPU et.al but
-# only GPU/CPU. Remove this after we improve this feature.
-_is_first_import_ = True
 
 
 def in_dygraph_mode():
@@ -5649,8 +5655,7 @@ class IrGraph:
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call(
-                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
-                shell=True,
+                ['dot', '-Tpdf', dot_file_path, '-o', pdf_save_path]
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
@@ -6963,7 +6968,7 @@ class Program:
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
         Args:
-            index (int) - The index of  :ref:`api_guide_Block_en`  to get
+            index (int): The index of  :ref:`api_guide_Block_en`  to get
 
         Returns:
             :ref:`api_guide_Block_en`: The :code:`index` block
@@ -7421,7 +7426,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 
@@ -7537,7 +7542,7 @@ class EagerParamBase(core.eager.Tensor):
             be applied on the EagerParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this EagerParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped
+        need_clip (bool): Whether the parameter gradient need to be clipped
             in optimizer. Default is True.
     """
 
@@ -8146,3 +8151,99 @@ def _get_paddle_place_list(places):
         ret.append(p)
 
     return ret
+
+
+def dtype_to_str(in_dtype):
+    if in_dtype == core.VarDesc.VarType.FP16:
+        return "fp16"
+    elif in_dtype == core.VarDesc.VarType.BF16:
+        return "bf16"
+    elif in_dtype == core.VarDesc.VarType.FP32:
+        return "fp32"
+    elif in_dtype == core.VarDesc.VarType.FP64:
+        return "fp64"
+    else:
+        return None
+
+
+def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
+    op_device = op.attr('op_device')
+    cast_name = var_name.name + '.cast_' + dtype_to_str(out_dtype)
+    out_var = block.create_var(
+        name=cast_name,
+        dtype=out_dtype,
+        persistable=False,
+        stop_gradient=var_name.stop_gradient,
+    )
+    op_role = (
+        int(core.op_proto_and_checker_maker.OpRole.Forward)
+        if not op.has_attr('op_role')
+        else op.attr('op_role')
+    )
+    block._insert_op_without_sync(
+        idx,
+        type="cast",
+        inputs={"X": var_name},
+        outputs={"Out": out_var},
+        attrs={
+            "in_dtype": var_name.dtype,
+            "out_dtype": out_var.dtype,
+            "op_device": op_device,
+            "op_role": op_role,
+        },
+    )
+    op.desc._rename_input(var_name.name, out_var.name)
+
+
+def process_type_promotion(program):
+    org_program = program
+    if program is None:
+        program = default_main_program()
+    # not support pir for now
+    if not isinstance(program, Program):
+        return org_program
+    global_block = program.global_block()
+    all_params = global_block.all_parameters()
+    for block in program.blocks:
+        ops = block.ops
+        idx = 0
+        while idx < len(ops):
+            op = ops[idx]
+            var_name = None
+            all_dtypes = []
+            all_input_name_need_cast = []
+
+            need_transed_var_names = SUPPORT_PROMOTION_OPS_AND_INPUTNAME.get(
+                op.type, None
+            )
+            # type promotion only support some dyadic api
+            if need_transed_var_names is None:
+                idx += 1
+                continue
+
+            # get all dtype and input_name
+            for input_idx in range(len(op.input_arg_names)):
+                if op.input_names[input_idx] in need_transed_var_names:
+                    input_arg_name = op.input_arg_names[input_idx]
+                    all_dtypes.append(
+                        op.block._var_recursive(input_arg_name).dtype
+                    )
+                    all_input_name_need_cast.append(input_arg_name)
+
+            # only support promote between float
+            if core.need_type_promotion(*all_dtypes):
+                common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
+                for input_name_need_cast in all_input_name_need_cast:
+                    var_name = op.block._var_recursive(input_name_need_cast)
+                    if var_name.dtype != common_dtype:
+                        # add cast op for different dtype
+                        add_cast_for_type_promotion(
+                            op,
+                            block,
+                            idx,
+                            var_name,
+                            common_dtype,
+                        )
+                        idx += 1
+            idx += 1
+    return program

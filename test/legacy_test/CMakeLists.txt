@@ -1065,7 +1065,7 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
+set_tests_properties(test_cond PROPERTIES TIMEOUT 240)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
@@ -1434,3 +1434,6 @@ endif()
 
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()
+
+set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)

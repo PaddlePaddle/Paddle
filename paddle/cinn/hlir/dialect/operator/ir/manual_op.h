@@ -14,6 +14,7 @@
 
 #pragma once
 #include <variant>
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/dll_decl.h"
@@ -21,6 +22,7 @@
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {
@@ -40,13 +42,33 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
                     std::unique_ptr<pir::Block> &&block);
 
   pir::Block *block();
-  std::vector<pir::Operation *> ops();
+  std::vector<pir::Operation *> GetOperators();
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-class IR_API ConcatOp : public pir::Op<ConcatOp> {
+// FusionOp represents a subgraphs that can be fused to one kernel.
+// Every GroupOp can be lowered to at least one FusionOp
+class IR_API FusionOp : public pir::Op<FusionOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "cinn_op.fusion"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types);
+
+  pir::Block *block();
+  std::vector<pir::Operation *> GetOperators();
+
+  void VerifySig();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
+class IR_API ConcatOp
+    : public pir::Op<ConcatOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
 
@@ -62,6 +84,8 @@ class IR_API ConcatOp : public pir::Op<ConcatOp> {
                     int axis);
 
   void VerifySig() const {}
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class IR_API SplitOp : public pir::Op<SplitOp> {
@@ -83,7 +107,9 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
   void VerifySig() const {}
 };
 
-class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
+class IR_API GenerateShapeOp
+    : public pir::Op<GenerateShapeOp,
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.generate_shape"; }
@@ -111,7 +137,9 @@ class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 
   void VerifySig() {}
 
-  pir::OpResult out() { return result(0); }
+  pir::Value out() { return result(0); }
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
   static pir::Attribute ConvertSymbolBindingsToAttribute(
       pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
@@ -123,6 +151,7 @@ class IR_API GenerateShapeOp : public pir::Op<GenerateShapeOp> {
 }  // namespace cinn
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);

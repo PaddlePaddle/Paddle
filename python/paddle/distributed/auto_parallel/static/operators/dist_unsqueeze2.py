@@ -45,12 +45,12 @@ class DistributedUnSqueeze2(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("unsqueeze2")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(input_spec, axes)
         bw_results = rule.infer_backward(input_spec, output_spec, axes)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op,
             [x_name],

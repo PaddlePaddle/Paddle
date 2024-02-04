@@ -614,7 +614,7 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
   // gather copy inputs
   const int64_t max_gather_len =
       FLAGS_gpugraph_offload_gather_copy_maxsize * 1024 * 1024;
-  std::vector<const OperatorBase *> recyle_ops;
+  std::vector<const OperatorBase *> recycle_ops;
   std::multimap<std::string, int> name2refs;
   auto &block = program.Block(0);
   // get param length
@@ -712,7 +712,7 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
       it->second.copy_vars.clear();
       if (it->second.copy_vars.empty() && it->second.backup_vars.empty() &&
           it->second.cast_vars.empty()) {
-        recyle_ops.push_back(it->first);
+        recycle_ops.push_back(it->first);
       }
     }
     add_gc_refs_func(op);
@@ -728,13 +728,13 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
   if (out_vars != nullptr && start_op_idx < op_idx) {
     remove_gc_vars_func(start_op_idx, op_idx);
   }
-  // earse empty offload ops
-  for (auto &op : recyle_ops) {
+  // erase empty offload ops
+  for (auto &op : recycle_ops) {
     offload_vars_.erase(op);
   }
   VLOG(0) << "device id=" << thread_id_
           << ", gather offload ops size=" << offload_vars_.size()
-          << ", recyle size=" << recyle_ops.size();
+          << ", recycle size=" << recycle_ops.size();
 
   return offload_cnt;
 }
@@ -803,9 +803,9 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       tm.Start();
       interpreter::DependencyBuilderSimplify depend_builder;
       // depend_builder.Build(ops_, start_index, sharding_mode_);  hbm not safe
-      // shoud run in debug model need to fix
+      // should run in debug model need to fix
       depend_builder.Build(ops_, start_index, false);
-      new_order = depend_builder.get_new_exexutor_order();
+      new_order = depend_builder.get_new_executor_order();
       std::vector<std::unique_ptr<OperatorBase>> new_ops;
       std::vector<size_t> final_order;
       std::vector<std::string> new_op_names;
@@ -1428,7 +1428,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     for (size_t i = 0; i < op_names_.size(); ++i) {
       VLOG(1) << "card:" << thread_id_ << ", op: " << op_names_[i]
               << ", mean time: " << op_total_time[i] / total_inst
-              << "s, totol time:" << op_total_time[i] << "sec";
+              << "s, total time:" << op_total_time[i] << "sec";
     }
 #else
     if (thread_id_ == 0) {
@@ -1624,7 +1624,7 @@ void HogwildWorker::TrainFiles() {
     //     {
     //       std::lock_guard<std::mutex> lock(mutex);
     //       VLOG(0) << "worker " << thread_id_ << ": " << var_name
-    //               << " cantains inf or nan";
+    //               << " contains inf or nan";
     //       // auto all_vars = thread_scope_->LocalVarNames();
     //       std::stringstream ss;
     //       ss << "====== worker " << thread_id_ << "======\n";

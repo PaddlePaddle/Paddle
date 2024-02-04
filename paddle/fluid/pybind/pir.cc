@@ -43,21 +43,23 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -71,6 +73,7 @@
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -82,10 +85,25 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#endif
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -112,7 +130,7 @@ using pir::Value;
 using pybind11::return_value_policy;
 
 USE_PIR_PASS(dead_code_elimination_pass);
-USE_PIR_PASS(attention_fuse_pass);
+USE_PIR_PASS(multihead_matmul_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_weight_only_linear_pass);
@@ -120,22 +138,28 @@ USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
+USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
-USE_PIR_PASS(fc_with_special_op_fuse_pass);
+USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
+USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
+
+#ifdef PADDLE_WITH_DNNL
+USE_PIR_PASS(batch_norm_act_fuse_pass);
+#endif
 
 PHI_DECLARE_bool(print_ir);
 PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
+PHI_DECLARE_bool(check_infer_symbolic);
 
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_ir_opresult_pytype = nullptr;
 PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
@@ -275,14 +299,21 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
-      .def("move_parameters_from",
+      .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
-             self->set_parameters(std::move(other->parameters()));
+             self->set_parameters(other->parameters());
            })
       .def(
           "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "clone",
+          [](std::shared_ptr<Program> self) {
+            pir::IrMapping mapper;
+            return self->Clone(mapper);
+          },
           return_value_policy::reference)
       .def(
           "global_block",
@@ -295,7 +326,8 @@ void BindProgram(py::module *m) {
           },
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
-          });
+          })
+      .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
 std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
@@ -357,6 +389,7 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
+      .def("num_ops", [](Block &self) { return self.num_ops(); })
       .def(
           "__enter__",
           [](Block &self) -> Block & {
@@ -409,7 +442,8 @@ void BindBlock(py::module *m) {
            [](Block &self) -> py::list {
              py::list param_list;
              for (auto &op : self) {
-               if (op.HasAttribute(kAttrIsPersisable)) {
+               if (op.name() == "builtin.parameter" &&
+                   op.HasAttribute(kAttrIsPersisable)) {
                  auto attrs = op.attribute(kAttrIsPersisable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
@@ -417,7 +451,7 @@ void BindBlock(py::module *m) {
                    bool is_persistable =
                        attrs[i].dyn_cast<pir::BoolAttribute>().data();
                    if (is_persistable) {
-                     param_list.append(op.result(i));
+                     param_list.append(static_cast<pir::Value>(op.result(i)));
                    }
                  }
                }
@@ -449,18 +483,31 @@ void BindOperation(py::module *m) {
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
       .def("operand", &Operation::operand)
-      .def("result", &Operation::result)
+      .def("result",
+           [](Operation &self, uint32_t index) {
+             return static_cast<pir::Value>(self.result(index));
+           })
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
-      .def("results", &Operation::results)
+      .def("results",
+           [](Operation &self) -> py::list {
+             py::list op_list;
+             for (uint32_t i = 0; i < self.num_results(); i++) {
+               op_list.append(static_cast<pir::Value>(self.result(i)));
+             }
+             return op_list;
+           })
       .def(
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
+      .def("has_attr", &Operation::HasAttribute)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
              for (auto &pair : self.attributes()) {
+               // SymbolAttribute is only used in PIR, no need to pass to Python
+               if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
                attrs_dict[pair.first.c_str()] =
                    paddle::dialect::GetAttributeData(pair.second);
              }
@@ -606,7 +653,7 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
-pir::OpResult apply(Value self, py::object func) {
+pir::Value apply(Value self, py::object func) {
   py::gil_scoped_acquire gil;
   auto stop_gradient = self.attribute<BoolAttribute>(kAttrStopGradients);
   if (stop_gradient && !stop_gradient.data()) {
@@ -630,12 +677,12 @@ pir::OpResult apply(Value self, py::object func) {
         "Apply function of Tensor raises an unknown exception."));
   }
   if (res == Py_None) {
-    return self.dyn_cast<OpResult>();
+    return self;
   }
   auto out = CastPyArg2Value(res, "", 0);
   Py_DECREF(py_func);
   Py_DECREF(res);
-  return out.dyn_cast<OpResult>();
+  return out;
 }
 
 void BindValue(py::module *m) {
@@ -689,14 +736,6 @@ void BindValue(py::module *m) {
                   "is persistable"));
             }
           })
-      .def("is_tensorarray",
-           [](Value self) {
-             if (self.type().isa<DenseTensorArrayType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
       .def_property(
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
@@ -752,39 +791,16 @@ void BindValue(py::module *m) {
            })
       .def(
           "get_defining_op",
-          [](Value self) -> pir::Operation * {
-            if (auto op_result = self.dyn_cast<pir::OpResult>()) {
-              return op_result.owner();
-            }
-            return nullptr;
-          },
+          [](Value self) -> pir::Operation * { return self.defining_op(); },
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("is_dense_tensor_type",
-           [](Value self) {
-             if (self.type().isa<DenseTensorType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
-           [](Value self) {
-             if (self.type().isa<SelectedRowsType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<SelectedRowsType>(); })
       .def("is_dense_tensor_array_type",
-           [](Value self) {
-             if (self.type().isa<DenseTensorArrayType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
+           [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
@@ -820,13 +836,10 @@ void BindOpOperand(py::module *m) {
         when build network.
 
   )DOC");
-  op_operand
-      .def("source",
-           [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
-      .def("set_source",
-           [](OpOperand &self, const OpResult &result) {
-             self.set_source(result);
-           })
+  op_operand.def("source", [](OpOperand &self) { return self.source(); })
+      .def(
+          "set_source",
+          [](OpOperand &self, const Value &result) { self.set_source(result); })
       .def("owner", &OpOperand::owner, return_value_policy::reference)
       .def("index", &OpOperand::index);
 }
@@ -834,21 +847,6 @@ void BindOpOperand(py::module *m) {
 bool GetValueBoolAttr(Value value, const std::string &attr_name) {
   auto bool_attr = value.attribute<BoolAttribute>(attr_name);
   return !bool_attr || bool_attr.data();
-}
-
-void BindOpResult(py::module *m) {
-  py::class_<OpResult, Value> op_result(*m, "OpResult", R"DOC(
-    OpResult class represents the value(output) defined by a result of operation.
-
-    Notes:
-        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
-        when build network.
-  )DOC");
-  g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result.def(
-      "__init__",
-      [](OpResult &self) { new (&self) OpResult(); },
-      pybind11::return_value_policy::reference);
 }
 
 void BindType(py::module *m) {
@@ -1021,18 +1019,17 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
                                    no_need_buffer_values.end());
 }
 
-using OpResultMap =
-    std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
-std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    Program &program) {  // NOLINT
+using ValueMap = std::pair<std::vector<pir::Value>, std::vector<pir::Value>>;
+std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   pir::IrMapping mapper;
   auto cloned_program = program.Clone(mapper);
-  std::vector<pir::OpResult> associated_array_key, associated_array_value;
-  for (auto &pair : mapper.Map<pir::Value>()) {
-    associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
-    associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
+  std::vector<pir::Value> associated_array_key, associated_array_value;
+  for (auto &pair : mapper.GetMap<pir::Value>()) {
+    associated_array_key.push_back(pair.first);
+    associated_array_value.push_back(pair.second);
   }
   return std::make_pair(
       cloned_program,
@@ -1111,7 +1108,7 @@ SplitedResult SplitForwardBackward(
   // forward program construct.
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
-  auto clone_options = pir::CloneOptions(true, true);
+  auto clone_options = pir::CloneOptions::All();
   range_block_do(
       program.block(),
       forward_range,
@@ -1119,12 +1116,12 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
-  auto &forward_value_map = forward_mapper.MutableMap<pir::Value>();
+  auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
-  auto &backward_value_map = backward_mapper.MutableMap<pir::Value>();
+  auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
   auto create_data_fn = [&backward_builder,
                          &backward_inputs,
@@ -1469,10 +1466,10 @@ void BindUtils(pybind11::module *m) {
         translator::ProgramTranslator program_translator(&legacy_program,
                                                          program.get());
         program_translator.Translate();
-        return std::make_pair(program, program_translator.VarDesc2OpResult());
+        return std::make_pair(program, program_translator.VarDesc2Value());
       },
       R"DOC(
-        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::OpResult.
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
 
         Args:
 
@@ -1480,7 +1477,7 @@ void BindUtils(pybind11::module *m) {
 
         Returns:
             Program: The New IR Program
-            dict[str, pir::OpResult]: Mapping between VarDesc(by name) and pir::OpResult.
+            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
 
         Raises:
             PreconditionNotMet: If legacy_program has multi block will raise error.
@@ -1560,21 +1557,57 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   bool has_dynamic_shape = HasDynamicShape(program);
 
-  auto shape_analysis =
-      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
-                        : nullptr;
+  if (FLAGS_print_ir) {
+    pass_manager->EnableIRPrinting();
+  }
 
-  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
-
+  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
+  }
+  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  if (has_dynamic_shape) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(
+        std::make_unique<
+            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   pass_manager->AddPass(
-      cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
-  VLOG(4) << "has_dynamic_shape :" << has_dynamic_shape
-          << ", shape_analysis: " << shape_analysis;
+      cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
+  bool force_static_shape = false;
+  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+    force_static_shape = true;
+  }
+  if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
+    pass_manager->AddPass(std::move(pass.value()));
+  }
+
+  if (has_dynamic_shape && !force_static_shape) {
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+  }
+  pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pass_manager->AddPass(
+      std::make_unique<
+          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1585,9 +1618,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 void InferSymbolicShapePass(
     std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     Program &program) {                          // NOLINT
-  if (FLAGS_pir_apply_shape_optimization_pass) {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
@@ -1638,7 +1671,10 @@ void BindPassManager(pybind11::module *m) {
              return pass_names;
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
-      .def("empty", &PassManager::Empty);
+      .def("empty", &PassManager::empty)
+      .def("clear", &PassManager::clear)
+      .def("enable_ir_printing",
+           [](PassManager &self) { self.EnableIRPrinting(); });
 }
 
 void BindPir(pybind11::module *module) {
@@ -1648,7 +1684,6 @@ void BindPir(pybind11::module *module) {
   BindOperation(&ir_module);
   BindValue(&ir_module);
   BindOpOperand(&ir_module);
-  BindOpResult(&ir_module);
   BindType(&ir_module);
   BindAttribute(&ir_module);
   BindInsertionPoint(&ir_module);

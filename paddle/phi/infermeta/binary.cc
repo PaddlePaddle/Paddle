@@ -381,7 +381,7 @@ void CholeskySolveInferMeta(const MetaTensor& x,
       x_dims[x_dims_n - 2],
       y_dims[y_dims_n - 2],
       phi::errors::InvalidArgument("the first dim of Matrix X must be equal to "
-                                   "the fisrt dim of Matrix Y,"
+                                   "the first dim of Matrix Y,"
                                    "But Got %ld and %ld",
                                    x_dims[x_dims_n - 2],
                                    y_dims[y_dims_n - 2]));
@@ -508,7 +508,7 @@ void ConvInferMeta(const MetaTensor& input,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -550,7 +550,7 @@ void ConvInferMeta(const MetaTensor& input,
         strides[i],
         0,
         phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -561,10 +561,10 @@ void ConvInferMeta(const MetaTensor& input,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv). "
+          "length must be equal to 2 for Op(Conv). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
-          "difference of input's dimention and Attr(strides)'s length = %u.",
+          "difference of input's dimension and Attr(strides)'s length = %u.",
           in_dims.size(),
           in_dims,
           strides.size(),
@@ -720,7 +720,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -732,7 +732,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -1097,6 +1097,49 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs) {
+  auto table_dims = w.dims();
+
+  PADDLE_ENFORCE_EQ(w.dims().size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Only 2 dimensions of the 'Embedding' is supported."));
+
+  for (auto& id : ids) {
+    PADDLE_ENFORCE_EQ(id->dims().size(),
+                      2,
+                      errors::InvalidArgument(
+                          "The dimension of the 'Ids' tensor must be 2."));
+  }
+
+  // for fluid.embedding
+  for (size_t i = 0; i < ids.size(); ++i) {
+    MetaTensor* output = outputs[i];
+    auto id_dims = ids[i]->dims();
+    if (lookup_table_version == "lookup_table") {
+      output->set_dims(common::make_ddim({id_dims[0], table_dims[1]}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    } else if (lookup_table_version == "lookup_table_v2") {
+      output->set_dims(
+          common::make_ddim({static_cast<int64_t>(id_dims[0]),
+                             static_cast<int64_t>(id_dims[1]),
+                             static_cast<int64_t>(table_dims[1])}));
+      output->share_lod(*ids[i]);
+      output->set_dtype(w.dtype());
+    }
+  }
+}
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -1236,7 +1279,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
       x_rank == static_cast<int>(y_dims.size()),
       phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
-          "input tenosr X: %s",
+          "input tensor X: %s",
           y_dims.to_str(),
           x_dims.to_str()));
   bool shape_match = true;
@@ -1497,7 +1540,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           bool transpose_y,
                           const float matmul_alpha,
                           const std::string& fuse_activation,
-                          const float fuse_lapha,
+                          const float fuse_alpha,
                           const float fuse_beat,
                           const float fused_output_scale,
                           const std::vector<int>& fused_reshape_X,
@@ -2236,12 +2279,12 @@ void MatmulInferMeta(const MetaTensor& x,
                     0UL,
                     phi::errors::InvalidArgument(
                         "The Input(x) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
+                        " but received dims size is 0. "));
   PADDLE_ENFORCE_GT(ndims_y,
                     0UL,
                     phi::errors::InvalidArgument(
                         "The Input(y) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
+                        " but received dims size is 0. "));
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
@@ -2420,7 +2463,7 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
             "The 2nd dimension of Input(BBoxes) must be equal to "
             "last dimension of Input(Scores), which represents the "
             "predicted bboxes."
-            "But received box_dims[1](%s) != socre_dims[2](%s)",
+            "But received box_dims[1](%s) != score_dims[2](%s)",
             box_dims[1],
             score_dims[2]));
   }
@@ -2529,7 +2572,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'all', size of weight Alpha must be one. "
-                          "But recevied alpha's size: %d.",
+                          "But received alpha's size: %d.",
                           product(alpha.dims())));
   } else if (mode == "channel") {
     auto x_rank = x_dim.size();
@@ -2537,14 +2580,14 @@ void PReluInferMeta(const MetaTensor& x,
                       2,
                       phi::errors::InvalidArgument(
                           "For mode 'channel', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 2. But received X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(data_format == "NCHW" || data_format == "NHWC",
                       true,
                       phi::errors::InvalidArgument(
                           "For mode 'channel', data_format must be one of "
-                          "NCHW and NHWC. But recevied data_format: %s",
+                          "NCHW and NHWC. But received data_format: %s",
                           data_format));
     if (data_format == "NCHW" || config.is_run_mkldnn_kernel) {
       PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[1],
@@ -2552,7 +2595,7 @@ void PReluInferMeta(const MetaTensor& x,
                         phi::errors::InvalidArgument(
                             "For mode 'channel', size of weight Alpha must be "
                             "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
+                            "received alpha's size: %d, x_dim[1]: %d",
                             product(alpha.dims()),
                             x_dim[1]));
     } else {
@@ -2561,7 +2604,7 @@ void PReluInferMeta(const MetaTensor& x,
                         phi::errors::InvalidArgument(
                             "For mode 'channel', size of weight Alpha must be "
                             "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[%d]: %d",
+                            "received alpha's size: %d, x_dim[%d]: %d",
                             product(alpha.dims()),
                             x_rank - 1,
                             x_dim[x_rank - 1]));
@@ -2574,7 +2617,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 1. But recevied X's "
+                          "equal or larger than 1. But received X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
@@ -2582,7 +2625,7 @@ void PReluInferMeta(const MetaTensor& x,
         x_rank,
         phi::errors::InvalidArgument(
             "For mode 'element', rank of weight Alpha must be ",
-            "equal to the rank of input(x). But recevied alpha's rank: %d, "
+            "equal to the rank of input(x). But received alpha's rank: %d, "
             "x's rank: %d.",
             alpha_rank,
             x_rank));
@@ -2597,14 +2640,14 @@ void PReluInferMeta(const MetaTensor& x,
         x_product,
         phi::errors::InvalidArgument(
             "For mode 'element', the size of weight Alpha must be "
-            "equal to the size of input(x). But recevied alpha's size: %d, "
+            "equal to the size of input(x). But received alpha's size: %d, "
             "x's size: %d.",
             alpha_product,
             x_product));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Attr(mode) of prelu must be one of 'all', 'channel', or 'element'. "
-        "But recevied "
+        "But received "
         "mode: '%s'.",
         mode));
   }
@@ -2614,24 +2657,55 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out) {
+  auto x_dim = x.dims();
+  auto scales_dim = scales.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(x) must be 2, but received %d.", x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(scales_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(scales) must be 1, but received %d.",
+                        scales_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[1],
+      scales_dim[0],
+      phi::errors::InvalidArgument(
+          "The second dim of Input(x) must be equal to the first dim of scales,"
+          "but received %d and %d.",
+          x_dim[2],
+          scales_dim[1]));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(x_dim);
+  out->set_layout(x.layout());
+}
+
+inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratio,
                                bool flip,
-                               std::vector<float>* output_aspect_ratior) {
+                               std::vector<float>* output_aspect_ratio) {
   constexpr float epsilon = 1e-6;
-  output_aspect_ratior->clear();
-  output_aspect_ratior->push_back(1.0f);
-  for (auto ar : input_aspect_ratior) {
+  output_aspect_ratio->clear();
+  output_aspect_ratio->push_back(1.0f);
+  for (auto ar : input_aspect_ratio) {
     bool already_exist = false;
-    for (auto item : *output_aspect_ratior) {
+    for (auto item : *output_aspect_ratio) {
       if (fabs(ar - item) < epsilon) {
         already_exist = true;
         break;
       }
     }
     if (!already_exist) {
-      output_aspect_ratior->push_back(ar);
+      output_aspect_ratio->push_back(ar);
       if (flip) {
-        output_aspect_ratior->push_back(1.0f / ar);
+        output_aspect_ratio->push_back(1.0f / ar);
       }
     }
   }
@@ -2857,7 +2931,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y) {
   auto dim = common::vectorize<int>(x.dims());
 
@@ -2868,8 +2942,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   }
 
   y->set_dims(common::make_ddim(dim));
-  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
-  y->set_dtype(out_phi_dtype);
+  y->set_dtype(out_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
@@ -3039,13 +3112,13 @@ void LstsqInferMeta(const MetaTensor& x,
       x_rank,
       2,
       phi::errors::InvalidArgument("Expects input tensor x to be not less than "
-                                   "2 dimentions, but got dimention %d",
+                                   "2 dimensions, but got dimension %d",
                                    x_rank));
   PADDLE_ENFORCE_GE(
       y_rank,
       2,
       phi::errors::InvalidArgument("Expects input tensor y to be not less than "
-                                   "2 dimentions, but got dimention %d",
+                                   "2 dimensions, but got dimension %d",
                                    y_rank));
 
   PADDLE_ENFORCE_EQ(
@@ -3053,7 +3126,7 @@ void LstsqInferMeta(const MetaTensor& x,
       y_rank,
       phi::errors::InvalidArgument(
           "Expects input tensor x and y to have the same dimension "
-          "but got x's dimention [%d] and y's dimention [%d]",
+          "but got x's dimension [%d] and y's dimension [%d]",
           x_rank,
           y_rank));
 
@@ -3063,8 +3136,8 @@ void LstsqInferMeta(const MetaTensor& x,
                       y_dims[i],
                       phi::errors::InvalidArgument(
                           "Expects input tensor x and y to have the same batch "
-                          "dimension, but got x's batch dimention [%d] and "
-                          "y's batch dimention [%d] in %d-th dim",
+                          "dimension, but got x's batch dimension [%d] and "
+                          "y's batch dimension [%d] in %d-th dim",
                           x_dims[i],
                           y_dims[i],
                           i));
@@ -3077,7 +3150,7 @@ void LstsqInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "Expects input tensor x and y to have the same row dimension "
           "of the inner-most 2-dims matrix, "
-          "but got x's row dimention [%d] and y's row dimention [%d]",
+          "but got x's row dimension [%d] and y's row dimension [%d]",
           m,
           y_dims[y_rank - 2]));
 

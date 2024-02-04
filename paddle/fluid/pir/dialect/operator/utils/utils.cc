@@ -18,6 +18,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -28,7 +29,7 @@
 #include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
 namespace paddle {
@@ -48,11 +49,13 @@ const std::unordered_set<std::string> LegacyOpList = {
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
+    CAllreduceProd_Op::name(),
     CAllreduceSumOp::name(),
     CAllreduceSum_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
+    CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
     CSoftmaxWithCrossEntropyOp::name(),
     CSoftmaxWithCrossEntropyGradOp::name(),
@@ -60,10 +63,13 @@ const std::unordered_set<std::string> LegacyOpList = {
     ShareDataOp::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
+    TdmSamplerOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
+    MatchMatrixTensorOp::name(),
+    MatchMatrixTensorGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
     LrnOp::name(),
@@ -71,8 +77,11 @@ const std::unordered_set<std::string> LegacyOpList = {
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
+    paddle::onednn::dialect::QuantizeOp::name(),
+    paddle::onednn::dialect::RequantizeOp::name(),
 #endif
-    CReduceMinOp::name()};
+    CReduceMinOp::name(),
+    PushSparseV2Op::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -280,16 +289,76 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
-std::string GetValueDataType(const pir::Value& value) {
+phi::DataType GetValueDataType(const pir::Type& type) {
+  if (type.isa<pir::DenseTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<pir::DenseTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+  } else if (type.isa<DenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<DenseTensorArrayType>().dtype());
+  } else if (type.isa<pir::VectorType>()) {
+    auto vec_value = type.dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return phi::DataType::UNDEFINED;
+    }
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>().dtype());
+  } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype());
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
+  }
+}
+
+phi::DataType GetValueDataType(const pir::Value& value) {
+  if (value.impl() == nullptr) {
+    return phi::DataType::UNDEFINED;
+  }
   if (value.type().isa<pir::DenseTensorType>()) {
-    return phi::DataTypeToString(dialect::TransToPhiDataType(
-        value.type().dyn_cast<pir::DenseTensorType>().dtype()));
+    return dialect::TransToPhiDataType(
+        value.type().dyn_cast<pir::DenseTensorType>().dtype());
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
-    return phi::DataTypeToString(dialect::TransToPhiDataType(
-        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+    return dialect::TransToPhiDataType(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
   } else if (value.type().isa<DenseTensorArrayType>()) {
-    return phi::DataTypeToString(dialect::TransToPhiDataType(
-        value.type().dyn_cast<DenseTensorArrayType>().dtype()));
+    return dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorArrayType>().dtype());
+  } else if (value.type().isa<pir::VectorType>()) {
+    auto vec_value = value.type().dyn_cast<pir::VectorType>();
+    if (vec_value.size() > 0) {
+      return GetValueDataType(vec_value[0]);
+    } else {
+      return phi::DataType::UNDEFINED;
+    }
+  } else if (value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    return dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dtype());
+  } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    return dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+            .dtype());
+  } else if (value.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    return dialect::TransToPhiDataType(
+        value.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
+            .dtype());
   } else {
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
@@ -301,7 +370,7 @@ void DoValueCheck(const pir::Value& value,
                   const std::string& input_name,
                   const std::set<std::string>& expected_dtype,
                   const std::string& op_name) {
-  std::string value_type = GetValueDataType(value);
+  std::string value_type = phi::DataTypeToString(GetValueDataType(value));
   if (expected_dtype.find(value_type) == expected_dtype.end()) {
     std::ostringstream joined;
     std::copy(expected_dtype.begin(),
@@ -368,6 +437,55 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
   } else {
     CheckDataType(dtype, dtype_name, op_name);
   }
+}
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape,
+                                     bool* is_from_tensor) {
+  std::vector<int64_t> vec_shape;
+  if (shape.isa<pir::OpResult>() &&
+      shape.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+    vec_shape = paddle::dialect::GetInt64Vector(
+        shape.defining_op()
+            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+            .attribute("value"));
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
+    for (auto item : inputs) {
+      auto tmp = ParseValueShape(item, is_from_tensor);
+      vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
+    }
+  } else if (shape.type().isa<pir::VectorType>()) {
+    size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
+    common::DDim shape_dim =
+        shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    size_t shape_size = common::product(shape_dim);
+    if (common::contain_unknown_dim(shape_dim)) {
+      shape_size = 1;
+    }
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else if (shape.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    common::DDim shape_dim =
+        shape.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .dims();
+    size_t shape_size = common::product(shape_dim);
+    if (common::contain_unknown_dim(shape_dim)) {
+      shape_size = 1;
+    }
+    vec_shape = std::vector<int64_t>(shape_size, -1);
+    *is_from_tensor = true;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
+                                   "or AllocatedDenseTensorType"));
+  }
+  return vec_shape;
 }
 
 }  // namespace dialect

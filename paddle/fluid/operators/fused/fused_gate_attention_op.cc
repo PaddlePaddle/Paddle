@@ -166,7 +166,7 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out", "Result after attention.");
     AddAttr<bool>("has_gating",
-                  "if true, the attention op uses gate architecure, "
+                  "if true, the attention op uses gate architecture, "
                   "[default true].")
         .SetDefault(true);
     AddAttr<bool>("merge_qkv",
@@ -224,22 +224,22 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("QKVWeight"),
                      "Input",
                      "QKVWeight",
-                     "fused_gate_attention_arad");
+                     "fused_gate_attention_grad");
       ctx->SetOutputDim(framework::GradVarName("QKVWeight"),
                         ctx->GetInputDim("QKVWeight"));
     } else {
       OP_INOUT_CHECK(ctx->HasInput("QueryWeight"),
                      "Input",
                      "QueryWeight",
-                     "fused_gate_attention_arad");
+                     "fused_gate_attention_grad");
       OP_INOUT_CHECK(ctx->HasInput("KeyWeight"),
                      "Input",
                      "KeyWeight",
-                     "fused_gate_attention_arad");
+                     "fused_gate_attention_grad");
       OP_INOUT_CHECK(ctx->HasInput("ValueWeight"),
                      "Input",
                      "ValueWeight",
-                     "fused_gate_attention_arad");
+                     "fused_gate_attention_grad");
 
       for (auto& name : {"QueryWeight", "KeyWeight", "ValueWeight"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
@@ -249,7 +249,7 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("OutLinearWeight"),
                    "Input",
                    "OutLinearWeight",
-                   "fused_aate_attention_arad");
+                   "fused_gate_attention_grad");
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
       for (auto& name : {"GateWeight", "GateBias"}) {

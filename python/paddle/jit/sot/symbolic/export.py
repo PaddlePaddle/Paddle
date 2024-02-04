@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import os
+import sys
 from itertools import chain
 
+import paddle
 from paddle.utils import flatten
 
 from ..utils import ConstTypes, ExportError, NameGenerator
@@ -43,14 +45,74 @@ class PyStatement:
         return "\n".join(self.get_lines())
 
 
+class NameGener:
+    def __init__(self, SIR):
+        self.SIR = SIR
+        self.name_map = {}
+        self.param_name_generator = NameGenerator("self.parameter_")
+        self.non_param_name_generator = NameGenerator("var_")
+
+    def __call__(self, var):
+        return self.get_str(var)
+
+    def get_str(self, var):
+        if isinstance(var, list):
+            return self.get_list_str(var)
+        elif isinstance(var, tuple):
+            return self.get_tuple_str(var)
+        elif isinstance(var, dict):
+            return self.get_dict_str(var)
+        elif isinstance(var, set):
+            return self.get_set_str(var)
+        else:
+            return self.get_obj_str(var)
+
+    def get_list_str(self, list_):
+        return "[{}]".format(", ".join(self.get_str(var) for var in list_))
+
+    def get_tuple_str(self, tuple_):
+        return "({},)".format(", ".join(self.get_str(var) for var in tuple_))
+
+    def get_dict_str(self, dict_):
+        return "{{{},}}".format(
+            ", ".join(
+                f"{self.get_str(k)}: {self.get_str(v)}"
+                for k, v in dict_.items()
+            )
+        )
+
+    def get_set_str(self, set_):
+        return "{{{},}}".format(", ".join(self.get_str(var) for var in set_))
+
+    def get_obj_str(self, var):
+        if isinstance(var, Symbol):
+            if var not in self.name_map:
+                self.register_symbol(var)
+            return self.name_map[var]
+
+        elif isinstance(var, str):
+            return f"'{var}'"
+        else:
+            return str(var)
+
+    def register_symbol(self, symbol):
+        if symbol in self.SIR.param_symbol:
+            name = self.param_name_generator.next()
+        else:
+            name = self.non_param_name_generator.next()
+        self.name_map[symbol] = name
+
+
 class PyFileGen:
     def __init__(self, SIR):
         self.SIR = SIR
         self.roots = []
 
-        self.layer_name_map = {}
-        self.layer_name_generator = NameGenerator("_")
-        self.SIR_name = SIR.name.replace("_", "")
+        self.name_gener = NameGener(self.SIR)
+
+        self.SIR_sig = "||".join(
+            f"{stmt.type}:{stmt.name}" for stmt in SIR.statements
+        )
 
     def new_root(self, *args):
         stmt = PyStatement(*args)
@@ -68,6 +130,8 @@ class PyFileGen:
         self.create_header()
         self.new_root("\n")
         self.create_layer()
+        self.new_root("\n")
+        self.create_inputs()
         self.new_root("\n")
         self.create_test()
         self.new_root("\n")
@@ -93,21 +157,22 @@ class PyFileGen:
 
     def create_header(self):
         self.new_root(
+            f"# {self.SIR_sig}",
             "import paddle",
             "import unittest",
             "import numpy as np",
         )
 
     def create_layer(self):
-        layer_class = self.new_root(f"class {self.SIR_name}(paddle.nn.Layer):")
+        layer_class = self.new_root("class LayerCase(paddle.nn.Layer):")
 
         init_fn = layer_class.add_sub("def __init__(self):")
         init_fn.add_sub("super().__init__()")
 
         for param in self.SIR.param_symbol:
-            meta = self.SIR.symbol_meta_map[param.name]
+            meta = self.SIR.symbol_meta_map[param]
             init_fn.add_sub(
-                f"self.{param.name} = self.create_parameter(",
+                f"{self.name_gener(param)} = self.create_parameter(",
                 f"   shape={meta.shape},",
                 f"   dtype={meta.dtype},",
                 ")",
@@ -116,20 +181,16 @@ class PyFileGen:
         for stmt in self.SIR.statements:
             if stmt.type == "layer":
                 layer = stmt.layer()
-                if id(layer) not in self.layer_name_map:
-                    layer_name = (
-                        layer.__class__.__name__
-                        + self.layer_name_generator.next()
-                    )
-                    self.layer_name_map[id(layer)] = layer_name
-                    init_fn.add_sub(self.init_sub_layer(layer, layer_name))
+                init_fn.add_sub(self.init_sub_layer(layer))
 
         forward_definition = ["def forward(", "    self,"]
 
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
-                meta = self.SIR.symbol_meta_map[inp.name]
-                forward_definition.append(f"    {inp.name},    # {str(meta)}")
+                meta = self.SIR.symbol_meta_map[inp]
+                forward_definition.append(
+                    f"    {self.name_gener(inp)},    # {str(meta)}"
+                )
         forward_definition.append("):")
 
         forward_fn = layer_class.add_sub(*forward_definition)
@@ -139,61 +200,95 @@ class PyFileGen:
 
         forward_fn.add_sub(
             "return {}".format(
-                ", ".join(self.true_name(out) for out in self.SIR.outputs)
+                ", ".join(self.name_gener(out) for out in self.SIR.outputs)
             )
         )
 
-    def create_test(self):
-        test_class = self.new_root(
-            f"class Test{self.SIR_name}(unittest.TestCase):"
-        )
+    def create_inputs(self):
+        create_paddle_inputs = self.new_root("def create_paddle_inputs():")
+        self.new_root("\n")
+        craete_numpy_inputs = self.new_root("def create_numpy_inputs():")
 
-        setup = test_class.add_sub("def setUp(self):")
-        test_inputs = [
-            "self.inputs = (",
-        ]
+        paddle_inputs = ["inputs = ("]
+        numpy_inputs = ["inputs = ("]
+
         for inp in self.SIR.inputs:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp.name]
-                test_inputs.append(
-                    f"    paddle.rand(shape={meta.shape}, dtype={meta.dtype}),"
-                )
-        test_inputs.append(")")
-        setup.add_sub(*test_inputs)
+                shape_str = "[1]" if len(meta.shape) == 0 else str(meta.shape)
+                if meta.dtype in (
+                    paddle.int8,
+                    paddle.int16,
+                    paddle.int32,
+                    paddle.int64,
+                ):
+                    paddle_inputs.append(
+                        f"    paddle.randint(low=0, high=10, shape={shape_str}, dtype={meta.dtype}),"
+                    )
+                    numpy_inputs.append(
+                        "    np.random.randint(low=0, high=10, size={}, dtype='{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
+                elif meta.dtype is paddle.bool:
+                    paddle_inputs.append(
+                        f"    paddle.randint(low=0, high=2, shape={shape_str}, dtype=paddle.int32).cast(paddle.bool),"
+                    )
+                    numpy_inputs.append(
+                        "    np.random.randint(low=0, high=2, size={}, dtype='int').astype('bool'),".format(
+                            shape_str
+                        )
+                    )
+                else:
+                    paddle_inputs.append(
+                        f"    paddle.rand(shape={shape_str}, dtype={meta.dtype}),"
+                    )
+                    numpy_inputs.append(
+                        "    np.random.random(size={}).astype('{}'),".format(
+                            shape_str, str(meta.dtype).replace('paddle.', '')
+                        )
+                    )
+
+        paddle_inputs.append(")")
+        paddle_inputs.append("return inputs")
+        numpy_inputs.append(")")
+        numpy_inputs.append("return inputs")
+
+        create_paddle_inputs.add_sub(*paddle_inputs)
+        craete_numpy_inputs.add_sub(*numpy_inputs)
+
+    def create_test(self):
+        test_class = self.new_root("class TestLayer(unittest.TestCase):")
+
+        setup = test_class.add_sub("def setUp(self):")
+        setup.add_sub("self.inputs = create_paddle_inputs()")
+        setup.add_sub("self.net = LayerCase()")
 
         train = test_class.add_sub(
-            "def train(self, net, to_static, with_cinn=False):"
+            "def train(self, net, to_static, with_prim=False, with_cinn=False):"
         )
         train.add_sub(
             "if to_static:",
+            "    paddle.set_flags({'FLAGS_prim_all': with_prim})",
             "    if with_cinn:",
             "        build_strategy = paddle.static.BuildStrategy()",
             "        build_strategy.build_cinn_pass = True",
             "        net = paddle.jit.to_static(net, build_strategy=build_strategy, full_graph=True)",
             "    else:",
             "        net = paddle.jit.to_static(net, full_graph=True)",
+            "paddle.seed(123)",
             "outs = net(*self.inputs)",
             "return outs",
         )
 
-        test_ast_static = test_class.add_sub("def test_ast_static(self):")
-        test_ast_static.add_sub(
-            "net = SIR0()",
-            "dy_out = self.train(net, to_static=False)",
-            "st_out = self.train(net, to_static=True, with_cinn=False)",
-            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
-        )
-
         test_ast_cinn_static = test_class.add_sub(
-            "def test_ast_cinn_static(self):"
+            "def test_ast_prim_cinn(self):"
         )
         test_ast_cinn_static.add_sub(
-            "net = SIR0()",
-            "dy_out = self.train(net, to_static=False)",
-            "st_out = self.train(net, to_static=True, with_cinn=True)",
-            "for dy, st in zip(paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)):",
-            "    np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)",
+            "st_out = self.train(self.net, to_static=True)",
+            "cinn_out = self.train(self.net, to_static=True, with_prim=True, with_cinn=True)",
+            "for st, cinn in zip(paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)):",
+            "    np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)",
         )
 
     def create_tail(self):
@@ -201,15 +296,6 @@ class PyFileGen:
             "if __name__ == '__main__':",
             "    unittest.main()",
         )
-
-    def true_name(self, var):
-        if isinstance(var, Symbol):
-            if var in self.SIR.param_symbol:
-                return "self." + var.name
-            else:
-                return var.name
-        else:
-            return str(var)
 
     def init_sub_layer(self, layer, layer_name):
         # TODO @wuzhanfei need more effecient way to create a sub layer
@@ -219,8 +305,8 @@ class PyFileGen:
     def create_input_string(self, args, kwargs):
         return ", ".join(
             chain(
-                (self.true_name(arg) for arg in args),
-                (f"{k}={self.true_name(v)}" for k, v in kwargs.items()),
+                (self.name_gener(arg) for arg in args),
+                (f"{k}={self.name_gener(v)}" for k, v in kwargs.items()),
             )
         )
 
@@ -234,7 +320,7 @@ class PyFileGen:
             elif isinstance(outputs, dict):
                 search_dict(outputs, path, result)
             elif isinstance(outputs, Symbol):
-                result.append(self.true_name(outputs) + " = " + "".join(path))
+                result.append(self.name_gener(outputs) + " = " + "".join(path))
 
         def search_sequnce(outputs, path, result):
             for idx, out in enumerate(outputs):
@@ -255,12 +341,22 @@ class PyFileGen:
         return getattr(self, "create_" + stmt.type + "_stmt")(stmt)
 
     def create_api_stmt(self, stmt):
+        def get_api_str(api):
+            api_name = api.__name__
+            module_str = api.__module__
+            while len(module_str) > 0:
+                module = sys.modules[module_str]
+                if hasattr(module, api_name):
+                    return module_str + "." + api_name
+                module_str = module_str.rpartition(".")[0]
+            raise ExportError(f"Can not find module of {api}")
+
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args, kwargs)
         api = stmt.api
-        api_str = api.__module__ + "." + api.__name__
+        api_str = get_api_str(api)
         if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {api_str}({input_str})"]
+            return [f"{self.name_gener(stmt.outputs)} = {api_str}({input_str})"]
         else:
             compute_code = f"out = {api_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
@@ -269,22 +365,13 @@ class PyFileGen:
     def create_method_stmt(self, stmt):
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args[1:], kwargs)
-        method_str = args[0].name + "." + stmt.method
+        method_str = self.name_gener(args[0]) + "." + stmt.method
         if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {method_str}({input_str})"]
+            return [
+                f"{self.name_gener(stmt.outputs)} = {method_str}({input_str})"
+            ]
         else:
             compute_code = f"out = {method_str}({input_str})"
-            unpack_codes = self.create_unpack_output_string(stmt.outputs)
-            return [compute_code] + unpack_codes
-
-    def create_layer_stmt(self, stmt):
-        args, kwargs = stmt.inputs
-        input_str = self.create_input_string(args, kwargs)
-        layer_str = "self." + self.layer_name_map[id(stmt.layer())]
-        if isinstance(stmt.outputs, Symbol):
-            return [f"{stmt.outputs.name} = {layer_str}({input_str})"]
-        else:
-            compute_code = f"out = {layer_str}({input_str})"
             unpack_codes = self.create_unpack_output_string(stmt.outputs)
             return [compute_code] + unpack_codes
 
@@ -294,7 +381,7 @@ def export(SIR, path):
         pygen = PyFileGen(SIR)
         string = pygen.gen_py_codes()
     except ExportError as e:
-        print("[SOT] Export SIR Failed:", e)
+        print(f"[SOT] Export {SIR.name} Failed:", e)
         return
 
     if not os.path.exists(path):
@@ -302,3 +389,4 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
+        print(f"[SOT] Export {SIR.name} Sucess with size {len(SIR.statements)}")

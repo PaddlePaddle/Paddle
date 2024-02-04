@@ -11,16 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
 
-#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
+
+#include "paddle/common/ddim.h"
 
 namespace {
 
@@ -37,13 +39,13 @@ class Conv2dAddActFusePattern
             ->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
-    pir::OpResult conv2d_out = conv2d_op.out();
+    pir::Value conv2d_out = conv2d_op.out();
     if (!conv2d_out.HasOneUse()) return false;
 
     pir::Value add_input = op.x();
     IR_ENFORCE(add_input == conv2d_out);
 
-    pir::OpResult add_out = op.out();
+    pir::Value add_out = op.out();
     if (!add_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(op, 0);
@@ -54,7 +56,7 @@ class Conv2dAddActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
@@ -64,18 +66,37 @@ class Conv2dAddActFusePattern
     if (act_name == "") return false;
 
     auto op_attributes = conv2d_op->attributes();
+    auto padding_algorithm = op_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = op_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        op_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
     op_attributes["activation"] = rewriter.str_attr(act_name);
     op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});
     op_attributes["exhaustive_search"] = rewriter.bool_attr(false);
     op_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
     op_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
-    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(
-        conv2d_op.input().dyn_cast<pir::OpResult>(),
-        conv2d_op.filter().dyn_cast<pir::OpResult>(),
-        op.y().dyn_cast<pir::OpResult>(),
-        pir::Value{}.dyn_cast<pir::OpResult>(),
-        op_attributes);
+    auto conv2d_fuse_op =
+        rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(conv2d_op.input(),
+                                                             conv2d_op.filter(),
+                                                             op.y(),
+                                                             pir::Value{},
+                                                             op_attributes);
     rewriter.ReplaceOp(next_op,
                        std::vector<pir::Value>{conv2d_fuse_op.output()});
     rewriter.EraseOp(op);
@@ -96,7 +117,7 @@ class Conv2dAdd2ActFusePattern
                                          ->dyn_cast<paddle::dialect::AddOp>();
     if (!add1_op) return false;
 
-    pir::OpResult add1_out = add1_op.out();
+    pir::Value add1_out = add1_op.out();
     if (!add1_out.HasOneUse()) return false;
 
     paddle::dialect::Conv2dOp conv2d_op =
@@ -104,7 +125,7 @@ class Conv2dAdd2ActFusePattern
             ->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
-    pir::OpResult conv2d_out = conv2d_op.out();
+    pir::Value conv2d_out = conv2d_op.out();
     if (!conv2d_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(add2_op, 0);
@@ -115,7 +136,7 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
@@ -127,18 +148,37 @@ class Conv2dAdd2ActFusePattern
     }
 
     auto op_attributes = conv2d_op->attributes();
+    auto padding_algorithm = op_attributes.at("padding_algorithm")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+    if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
+        padding_algorithm != "VALID") {
+      return false;
+    }
+    auto data_format = op_attributes.at("data_format")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    if (data_format != "NCHW" && data_format != "AnyLayout" &&
+        data_format != "NHWC") {
+      return false;
+    }
+    auto groups =
+        op_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+    if (groups < 1) {
+      return false;
+    }
     op_attributes["activation"] = rewriter.str_attr(act_name);
     op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});
     op_attributes["exhaustive_search"] = rewriter.bool_attr(false);
     op_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
     op_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
-    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(
-        conv2d_op.input().dyn_cast<pir::OpResult>(),
-        conv2d_op.filter().dyn_cast<pir::OpResult>(),
-        add1_op.y().dyn_cast<pir::OpResult>(),
-        add2_op.x().dyn_cast<pir::OpResult>(),
-        op_attributes);
+    auto conv2d_fuse_op =
+        rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(conv2d_op.input(),
+                                                             conv2d_op.filter(),
+                                                             add1_op.y(),
+                                                             add2_op.x(),
+                                                             op_attributes);
     rewriter.ReplaceOp(next_op,
                        std::vector<pir::Value>{conv2d_fuse_op.output()});
 

@@ -239,7 +239,17 @@ const std::vector<size_t>& InstructionBase::GCCheckVars() const {
 }
 
 void InstructionBase::AddEagerGCVar(Variable* var) {
-  eager_gc_vars_.push_back(var);
+  if (var->IsType<VariableRefArray>()) {
+    auto array = var->Get<VariableRefArray>();
+    for (size_t i = 0; i < array.size(); ++i) {
+      AddEagerGCVar(const_cast<Variable*>(array.at(i)));
+    }
+  } else {
+    if (std::find(eager_gc_vars_.begin(), eager_gc_vars_.end(), var) ==
+        eager_gc_vars_.end()) {
+      eager_gc_vars_.push_back(var);
+    }
+  }
 }
 
 const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
@@ -349,10 +359,6 @@ std::string InstructionBase::DebugStringEx(
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
         }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
-        }
       }
     }
     ++it;
@@ -379,10 +385,6 @@ std::string InstructionBase::DebugStringEx(
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
-        }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }

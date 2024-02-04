@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -67,6 +66,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
+
+void TensorToArrayInferMeta(const MetaTensor& x,
+                            const MetaTensor& out_grad,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* x_grad);
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
@@ -268,6 +273,15 @@ void FoldInferMeta(const MetaTensor& x,
                    const std::vector<int>& paddings,
                    const std::vector<int>& dilations,
                    MetaTensor* out);
+
+void FractionalMaxPoolInferMeta(const MetaTensor& x,
+                                const std::vector<int>& output_size,
+                                const std::vector<int>& kernel_size,
+                                float random_u,
+                                bool return_mask,
+                                MetaTensor* out,
+                                MetaTensor* mask,
+                                MetaConfig config = MetaConfig());
 
 void FrameInferMeta(const MetaTensor& x,
                     int frame_length,
@@ -566,7 +580,7 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
 
 void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
-                                 int out_dtype,
+                                 DataType out_dtype,
                                  MetaTensor* y);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
@@ -729,7 +743,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs);
 
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
-
+void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -813,5 +827,11 @@ void LrnInferMeta(const MetaTensor& x,
                   int n,
                   MetaTensor* out,
                   MetaTensor* mid_out);
+
+void ArrayPopInferMeta(const MetaTensor& array,
+                       int index,
+                       MetaTensor* array_out,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 }  // namespace phi

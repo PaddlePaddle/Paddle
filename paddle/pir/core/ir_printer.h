@@ -32,9 +32,9 @@ class BasicIrPrinter {
  public:
   explicit BasicIrPrinter(std::ostream& os) : os(os) {}
 
-  void PrintType(Type type);
+  virtual void PrintType(Type type);
 
-  void PrintAttribute(Attribute attr);
+  virtual void PrintAttribute(Attribute attr);
 
  public:
   std::ostream& os;
@@ -49,16 +49,16 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintProgram(const Program* program);
 
   /// @brief dispatch to custom printer function or PrintGeneralOperation
-  void PrintOperation(Operation* op);
+  virtual void PrintOperation(Operation* op);
   /// @brief print operation itself without its regions
-  void PrintGeneralOperation(Operation* op);
+  void PrintOperationWithNoRegion(Operation* op);
   /// @brief print operation and its regions
-  void PrintFullOperation(Operation* op);
+  void PrintGeneralOperation(Operation* op);
 
   void PrintRegion(const Region& Region);
   void PrintBlock(const Block& block);
 
-  void PrintValue(Value v);
+  virtual void PrintValue(Value v);
 
   void PrintOpResult(Operation* op);
 
@@ -72,10 +72,45 @@ class IR_API IrPrinter : public BasicIrPrinter {
 
   void AddValueAlias(Value value, const std::string& alias);
 
+  void AddIndentation();
+  void DecreaseIndentation();
+  const std::string& indentation() const { return cur_indentation_; }
+
  private:
   size_t cur_result_number_{0};
   size_t cur_block_argument_number_{0};
+  std::string cur_indentation_;
   std::unordered_map<const void*, std::string> aliases_;
 };
+
+using ValuePrintHook =
+    std::function<void(Value value, IrPrinter& printer)>;  // NOLINT
+using TypePrintHook =
+    std::function<void(Type type, IrPrinter& printer)>;  // NOLINT
+using AttributePrintHook =
+    std::function<void(Attribute attr, IrPrinter& printer)>;  // NOLINT
+using OpPrintHook =
+    std::function<void(Operation* op, IrPrinter& printer)>;  // NOLINT
+
+struct IR_API PrintHooks {
+  ValuePrintHook value_print_hook{nullptr};
+  TypePrintHook type_print_hook{nullptr};
+  AttributePrintHook attribute_print_hook{nullptr};
+  OpPrintHook op_print_hook{nullptr};
+};
+
+class IR_API CustomPrintHelper {
+ public:
+  explicit CustomPrintHelper(const Program& program, const PrintHooks& hooks)
+      : hooks_(hooks), prog_(program) {}
+  friend IR_API std::ostream& operator<<(std::ostream& os,
+                                         const CustomPrintHelper& p);
+
+ private:
+  const PrintHooks& hooks_;
+  const Program& prog_;
+};
+
+IR_API std::ostream& operator<<(std::ostream& os, const CustomPrintHelper& p);
 
 }  // namespace pir

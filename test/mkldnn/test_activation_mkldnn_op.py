@@ -42,6 +42,7 @@ from test_activation_op import (
     TestTanh_ZeroDim,
 )
 from test_gelu_op import gelu
+from utils import compare_legacy_with_pt
 
 import paddle
 import paddle.nn.functional as F
@@ -605,6 +606,7 @@ class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def __abs_bwd(self, x, out_grad):
         return out_grad * np.sign(x)
 
+    @compare_legacy_with_pt
     def test_check(self):
         check_if_mkldnn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad

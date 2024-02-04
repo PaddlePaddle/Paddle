@@ -39,16 +39,28 @@ class OpOperendImpl;
 
 class CloneOptions {
  public:
-  CloneOptions() : clone_regions_{false}, clone_operands_{false} {}
-  CloneOptions(bool clone_regions, bool clone_operands)
-      : clone_regions_(clone_regions), clone_operands_(clone_operands) {}
+  CloneOptions()
+      : clone_regions_{false},
+        clone_operands_{false},
+        clone_successors_{false} {}
+  CloneOptions(bool clone_regions, bool clone_operands, bool clone_successors)
+      : clone_regions_(clone_regions),
+        clone_operands_(clone_operands),
+        clone_successors_(clone_successors) {}
 
   bool IsCloneRegions() const { return clone_regions_; }
   bool IsCloneOperands() const { return clone_operands_; }
+  bool IsCloneSuccessors() const { return clone_successors_; }
+
+  static CloneOptions &All() {
+    static CloneOptions all{true, true, true};
+    return all;
+  }
 
  private:
   bool clone_regions_{true};
   bool clone_operands_{true};
+  bool clone_successors_{true};
 };
 
 class IR_API alignas(8) Operation final
@@ -72,7 +84,7 @@ class IR_API alignas(8) Operation final
   /// \brief Deep copy all information and create a new operation.
   ///
   Operation *Clone(IrMapping &ir_mapping,
-                   CloneOptions options = CloneOptions());
+                   CloneOptions options = CloneOptions()) const;
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
@@ -109,12 +121,12 @@ class IR_API alignas(8) Operation final
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  Value result(uint32_t index) const { return OpResult(op_result_impl(index)); }
   template <typename T = Type>
   T result_type(uint32_t index) const {
     return result(index).type().dyn_cast<T>();
   }
-  std::vector<OpResult> results();
+  std::vector<Value> results() const;
 
   ///
   /// \brief op input related public interfaces
@@ -173,7 +185,7 @@ class IR_API alignas(8) Operation final
   ///
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
-    return detail::Walk<Order>(this, std::forward<FuncT>(callback));
+    return pir::Walk<Order>(this, std::forward<FuncT>(callback));
   }
 
   ///
@@ -265,7 +277,7 @@ class IR_API alignas(8) Operation final
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
-  const uint64_t id_ = 0;
+  const uint64_t id_;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};

@@ -74,7 +74,7 @@ class DenseTensor;
 namespace paddle {
 namespace framework {
 
-// DataFeed is the base virtual class for all ohther DataFeeds.
+// DataFeed is the base virtual class for all other DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
 // Example:
 //   DataFeed* reader =

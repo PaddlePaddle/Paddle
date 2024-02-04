@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -185,6 +186,17 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void DistributeLookupTableInferMeta(
+    const std::vector<const phi::MetaTensor*>& ids,
+    const MetaTensor& w,
+    int table_id,
+    bool is_distributed,
+    const std::string& lookup_table_version,
+    int64_t padding_idx,
+    DataType dtype,
+    bool is_test,
+    std::vector<MetaTensor*> outputs);
+
 void DistributeFpnProposalsInferMeta(
     const MetaTensor& fpn_rois,
     const MetaTensor& rois_num,
@@ -270,7 +282,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           bool transpose_y,
                           const float matmul_alpha,
                           const std::string& fuse_activation,
-                          const float fuse_lapha,
+                          const float fuse_alpha,
                           const float fuse_beat,
                           const float fused_output_scale,
                           const std::vector<int>& fused_reshape_X,
@@ -433,6 +445,10 @@ void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out);
 
+void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scales,
+                                   MetaTensor* out);
+
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
@@ -457,7 +473,7 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
-                           int out_dtype,
+                           DataType out_dtype,
                            MetaTensor* y);
 
 void ShuffleBatchInferMeta(const MetaTensor& x,

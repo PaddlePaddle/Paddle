@@ -195,7 +195,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
-    VLOG(4) << " in eager_api_run_partial_grad, after runing egr::Grad";
+    VLOG(4) << " in eager_api_run_partial_grad, after running egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -528,9 +528,9 @@ static Tensor InitializedEmptyTensor() {
   return tensor;
 }
 
-static PyObject* eager_api_run_custom_op(PyObject* self,
-                                         PyObject* args,
-                                         PyObject* kwargs) {
+PyObject* eager_api_run_custom_op(PyObject* self,
+                                  PyObject* args,
+                                  PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
@@ -1085,7 +1085,7 @@ static PyObject* eager_api_async_read(PyObject* self,
       PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                         count_tensor.numel(),
                         platform::errors::InvalidArgument(
-                            "`offset` and `count` tensor size dismatch."));
+                            "`offset` and `count` tensor size mismatch."));
       auto* offset_data = offset_tensor.data<int64_t>();
       auto* count_data = count_tensor.data<int64_t>();
       for (int64_t i = 0; i < count_tensor.numel(); i++) {
@@ -1214,7 +1214,7 @@ static PyObject* eager_api_async_write(PyObject* self,
     PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                       count_tensor.numel(),
                       platform::errors::InvalidArgument(
-                          "`offset` and `count` tensor size dismatch."));
+                          "`offset` and `count` tensor size mismatch."));
     PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
                       dst_tensor->dims().size(),
                       platform::errors::InvalidArgument(
@@ -1350,6 +1350,16 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager__is_run_in_backward(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+
+  return ToPyObject(egr::Controller::Instance().GetIsInBackward());
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
@@ -1421,6 +1431,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_is_run_in_backward",
+     (PyCFunction)(void (*)())eager__is_run_in_backward,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 /**sparse functions**/

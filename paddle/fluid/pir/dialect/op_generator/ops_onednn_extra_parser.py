@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
@@ -76,11 +76,9 @@ def parse_extra_args(op_name: str, arguments: str) -> List:
     return attrs
 
 
-def parse_layout_transform(
-    op_name: str, layout_transform: Dict[str, Any]
+def parse_data_format_tensors(
+    op_name: str, data_format_tensors: str
 ) -> Tuple[str, List]:
-    if layout_transform is None:
+    if data_format_tensors is None:
         return "", []
-    return layout_transform["arg_name"], parse_plain_list(
-        layout_transform["tensors"]
-    )
+    return parse_plain_list(data_format_tensors)
