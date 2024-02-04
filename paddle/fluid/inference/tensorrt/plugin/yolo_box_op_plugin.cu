@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 #include <algorithm>
 #include <cassert>
-
-#include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -100,9 +99,26 @@ nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(
   return nvinfer1::Dims2(box_num, class_num_);
 }
 
+const char* DataTypeToString(nvinfer1::DataType type) {
+  switch (type) {
+    case nvinfer1::DataType::kFLOAT:
+      return "kFLOAT";
+    case nvinfer1::DataType::kHALF:
+      return "kHALF";
+    case nvinfer1::DataType::kINT8:
+      return "kINT8";
+    case nvinfer1::DataType::kINT32:
+      return "kINT32";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 bool YoloBoxPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
-  return ((type == data_type_ || type == nvinfer1::DataType::kINT32) &&
+  return ((type == nvinfer1::DataType::kFLOAT ||
+           type == nvinfer1::DataType::kHALF ||
+           type == nvinfer1::DataType::kINT32) &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
 
@@ -345,6 +361,8 @@ int YoloBoxPlugin::enqueue(int batch_size,
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
     return enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
+  } else if (data_type_ == nvinfer1::DataType::kINT8) {
+    return enqueue_impl<int8_t>(batch_size, inputs, outputs, workspace, stream);
   }
   assert("unsupported type.");
 }
