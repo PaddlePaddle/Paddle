@@ -722,8 +722,8 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = paddle.to_tensor(np.array([2, 3]).astype("float32"), name="x")
-        y = paddle.to_tensor(np.array([3, 4]).astype("float32"), name="y")
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
+        y = paddle.to_tensor(np.array([3, 4]).astype("float32"))
         assert len(self.clip1([(x, x), (x, y), (x, None)])) == 2
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
