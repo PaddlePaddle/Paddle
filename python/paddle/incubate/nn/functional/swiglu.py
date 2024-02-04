@@ -28,7 +28,8 @@ def swiglu(x, y=None, name=None):
 
     Args:
         x (Tensor): The first input Tensor of SwiGLU.
-        y (Tensor): The second input Tensor of SwiGLU.
+        y (Tensor, optional): The second input Tensor of SwiGLU. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type with x and y.
