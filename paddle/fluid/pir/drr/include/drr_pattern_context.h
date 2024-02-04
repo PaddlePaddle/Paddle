@@ -93,7 +93,7 @@ class Constraint {
  public:
   explicit Constraint(const ConstraintFunction& constrain_fn)
       : IsContextMatchConstraint_(constrain_fn) {}
-  bool erator()(const MatchContext& match_context) const {
+  bool operator()(const MatchContext& match_context) const {
     return IsContextMatchConstraint_(match_context);
   }
 
@@ -122,13 +122,13 @@ class DrrPatternContext {
   friend class drr::SourcePattern;
   friend class drr::ResultPattern;
 
-  TEST_API const & SourcePattern(
-      const std::string& _type,
+  TEST_API const Op& SourcePattern(
+      const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
   TEST_API const drr::Tensor& SourceTensorPattern(const std::string& name);
 
-  TEST_API const & ResultPattern(
-      const std::string& _type,
+  TEST_API const Op& ResultPattern(
+      const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
   TEST_API drr::Tensor& ResultTensorPattern(const std::string& name);
 
@@ -142,10 +142,10 @@ class DrrPatternContext {
   std::vector<Constraint> constraints_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
-  std::vector<std::shared_ptr<const drr::>> owned_s_;
+  std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
 };
 
-class  {
+class Op {
  public:
   const std::string& name() const { return op_type_name_; }
 
