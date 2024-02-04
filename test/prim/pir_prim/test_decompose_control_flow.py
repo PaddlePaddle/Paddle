@@ -93,6 +93,8 @@ class TestPrimControlFlowIf(unittest.TestCase):
                 and paddle.is_compiled_with_cuda()
             ):
                 paddle.set_device("gpu")
+            else:
+                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             cond = paddle.full(shape=[1], fill_value=1)
@@ -112,6 +114,8 @@ class TestPrimControlFlowIf(unittest.TestCase):
                 and paddle.is_compiled_with_cuda()
             ):
                 paddle.set_device("gpu")
+            else:
+                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             cond = paddle.full(shape=[1], fill_value=0)
@@ -158,6 +162,8 @@ class TestPrimControlFlowWhile(unittest.TestCase):
                 and paddle.is_compiled_with_cuda()
             ):
                 paddle.set_device("gpu")
+            else:
+                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             out_baseline = self.get_control_while_res(x, y, prim_forward=False)
@@ -200,6 +206,8 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
                 and paddle.is_compiled_with_cuda()
             ):
                 paddle.set_device("gpu")
+            else:
+                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             out_baseline = self.get_control_flow_res(x, y, prim_forward=False)

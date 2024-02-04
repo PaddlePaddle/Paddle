@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
@@ -138,11 +137,11 @@ class TestGenerateProposals(LayerTest):
             )
 
         with self.dynamic_graph():
-            scores_dy = imperative_base.to_variable(scores_np)
-            bbox_deltas_dy = imperative_base.to_variable(bbox_deltas_np)
-            im_info_dy = imperative_base.to_variable(im_info_np)
-            anchors_dy = imperative_base.to_variable(anchors_np)
-            variances_dy = imperative_base.to_variable(variances_np)
+            scores_dy = paddle.to_tensor(scores_np)
+            bbox_deltas_dy = paddle.to_tensor(bbox_deltas_np)
+            im_info_dy = paddle.to_tensor(im_info_np)
+            anchors_dy = paddle.to_tensor(anchors_np)
+            variances_dy = paddle.to_tensor(variances_np)
             rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
                 scores_dy,
                 bbox_deltas_dy,
@@ -219,8 +218,8 @@ class TestDistributeFpnProposals(LayerTest):
 
     def dynamic_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.dynamic_graph():
-            rois_dy = imperative_base.to_variable(rois_np)
-            rois_num_dy = imperative_base.to_variable(rois_num_np)
+            rois_dy = paddle.to_tensor(rois_np)
+            rois_num_dy = paddle.to_tensor(rois_num_np)
             (
                 multi_rois_dy,
                 restore_ind_dy,

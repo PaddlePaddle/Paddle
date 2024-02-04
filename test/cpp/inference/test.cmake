@@ -114,10 +114,9 @@ function(inference_base_test_build TARGET)
   endif()
   if("${base_test_DEPS};" MATCHES "paddle_inference_shared;")
     list(REMOVE_ITEM base_test_DEPS paddle_inference_shared)
-    target_link_libraries(
-      ${TARGET} $<TARGET_LINKER_FILE:paddle_inference_shared>
-      $<TARGET_LINKER_FILE:benchmark>)
-    add_dependencies(${TARGET} paddle_inference_shared benchmark)
+    target_link_libraries(${TARGET}
+                          $<TARGET_LINKER_FILE:paddle_inference_shared>)
+    add_dependencies(${TARGET} paddle_inference_shared)
   elseif("${base_test_DEPS};" MATCHES "paddle_inference_c_shared;")
     list(REMOVE_ITEM base_test_DEPS paddle_inference_c_shared)
     target_link_libraries(${TARGET}

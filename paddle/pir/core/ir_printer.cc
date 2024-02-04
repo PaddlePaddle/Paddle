@@ -347,6 +347,52 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   aliases_[key] = alias;
 }
 
+class CustomPrinter : public IrPrinter {
+ public:
+  explicit CustomPrinter(std::ostream& os, const PrintHooks& hooks)
+      : IrPrinter(os), hooks_(hooks) {}
+  void PrintType(Type type) override {
+    if (hooks_.type_print_hook) {
+      hooks_.type_print_hook(type, *this);
+    } else {
+      IrPrinter::PrintType(type);
+    }
+  }
+
+  void PrintAttribute(Attribute attr) override {
+    if (hooks_.attribute_print_hook) {
+      hooks_.attribute_print_hook(attr, *this);
+    } else {
+      IrPrinter::PrintAttribute(attr);
+    }
+  }
+
+  void PrintOperation(Operation* op) override {
+    if (hooks_.op_print_hook) {
+      hooks_.op_print_hook(op, *this);
+    } else {
+      IrPrinter::PrintOperation(op);
+    }
+  }
+
+  void PrintValue(Value v) override {
+    if (hooks_.value_print_hook) {
+      hooks_.value_print_hook(v, *this);
+    } else {
+      IrPrinter::PrintValue(v);
+    }
+  }
+
+ private:
+  const PrintHooks hooks_;
+};
+
+std::ostream& operator<<(std::ostream& os, const CustomPrintHelper& p) {
+  CustomPrinter printer(os, p.hooks_);
+  printer.PrintProgram(&p.prog_);
+  return os;
+}
+
 void Program::Print(std::ostream& os) const {
   IrPrinter printer(os);
   printer.PrintProgram(this);

@@ -65,9 +65,9 @@ class TestAutoCast(unittest.TestCase):
             with paddle.amp.amp_guard(False):
                 out_fp32 = conv2d(data)
 
-        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_fp16.dtype == base.core.VarDesc.VarType.FP16)
-        self.assertTrue(out_fp32.dtype == base.core.VarDesc.VarType.FP32)
+        self.assertTrue(data.dtype == paddle.float32)
+        self.assertTrue(out_fp16.dtype == paddle.float16)
+        self.assertTrue(out_fp32.dtype == paddle.float32)
 
     def test_amp_guard_white_op(self):
         self.amp_guard_white_op()
@@ -79,8 +79,8 @@ class TestAutoCast(unittest.TestCase):
             with paddle.amp.amp_guard(True):
                 out_fp32 = paddle.mean(data)
 
-        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_fp32.dtype == base.core.VarDesc.VarType.FP32)
+        self.assertTrue(data.dtype == paddle.float32)
+        self.assertTrue(out_fp32.dtype == paddle.float32)
 
     def test_amp_guard_black_op(self):
         self.amp_guard_black_op()
@@ -164,15 +164,11 @@ class TestAutoCast(unittest.TestCase):
                 out_purefp16_fp32 = paddle.expand_as(
                     out_purefp16_fp16, out_purefp16_fp16
                 )  # expand_as_v2 has no fp16 kernel
-        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_amp_fp16.dtype == base.core.VarDesc.VarType.FP16)
-        self.assertTrue(out_amp_fp32.dtype == base.core.VarDesc.VarType.FP32)
-        self.assertTrue(
-            out_purefp16_fp16.dtype == base.core.VarDesc.VarType.FP16
-        )
-        self.assertTrue(
-            out_purefp16_fp32.dtype == base.core.VarDesc.VarType.FP32
-        )
+        self.assertTrue(data.dtype == paddle.float32)
+        self.assertTrue(out_amp_fp16.dtype == paddle.float16)
+        self.assertTrue(out_amp_fp32.dtype == paddle.float32)
+        self.assertTrue(out_purefp16_fp16.dtype == paddle.float16)
+        self.assertTrue(out_purefp16_fp32.dtype == paddle.float32)
 
     def test_amp_guard_upsupported_fp16_op(self):
         self.amp_guard_upsupported_fp16_op()
@@ -1357,7 +1353,7 @@ class TestLayerNormFp16(unittest.TestCase):
                     with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
                         out = layer_norm(x)
 
-                    self.assertTrue(out.dtype == base.core.VarDesc.VarType.FP16)
+                    self.assertTrue(out.dtype == paddle.float16)
 
         func_isinstance()
 
