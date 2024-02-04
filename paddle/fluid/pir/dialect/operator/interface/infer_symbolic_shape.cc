@@ -20,9 +20,23 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
+template <typename T>
+struct AttributeTrait;
+
+template <>
+struct AttributeTrait<std::int64_t> {
+  using value_type = ::pir::Int64Attribute;
+};
+
+template <>
+struct AttributeTrait<int> {
+  using value_type = ::pir::Int32Attribute;
+};
+
 template <typename T = int64_t>
 std::vector<T> GetVectorAttr(const ::pir::Operation *op,
                              const std::string &name) {
+  using value_type = typename AttributeTrait<T>::value_type;
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(name),
@@ -36,12 +50,12 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
   std::vector<T> vec_res;
   if (array_list.size() > 0) {
-    PADDLE_ENFORCE_EQ(array_list[0].isa<::pir::Int64Attribute>(),
+    PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),
                       true,
                       phi::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < array_list.size(); ++i) {
-      vec_res.push_back(array_list[i].dyn_cast<::pir::Int64Attribute>().data());
+      vec_res.push_back(array_list[i].dyn_cast<value_type>().data());
     }
   }
   return vec_res;
@@ -987,8 +1001,54 @@ bool Relu_OpInferSymbolicShape(pir::Operation *op,
 
 bool ArangeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  const auto &start_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &end_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &step_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto start = [&] {
+    symbol::DimExpr expr;
+    if (start_shape_or_data.data().has_value()) {
+      expr = start_shape_or_data.data().value()[0];
+    } else {
+      expr = start_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const auto end = [&] {
+    symbol::DimExpr expr;
+    if (end_shape_or_data.data().has_value()) {
+      expr = end_shape_or_data.data().value()[0];
+    } else {
+      expr = end_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const auto step = [&] {
+    symbol::DimExpr expr;
+    if (step_shape_or_data.data().has_value()) {
+      expr = step_shape_or_data.data().value()[0];
+    } else {
+      expr = step_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
+    // but DimExpr doesn't support ceil and float now
+    out_dims.emplace_back((end - start) / step);
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
   return true;
 }
 
@@ -1219,6 +1279,23 @@ bool ReduceProdOpInferSymbolicShape(
 bool ReduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
+bool ReshapeOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  std::vector<int> shape = GetVectorAttr<int>(op, "shape");
+
+  std::vector<symbol::DimExpr> out_dims;
+  for (int dim : shape) {
+    out_dims.emplace_back(static_cast<std::int64_t>(dim));
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  op->set_attribute(
+      "symbolic_shape",
+      pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
+  return true;
 }
 
 }  // namespace cinn::dialect

@@ -556,7 +556,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = a.astype(np.float16)
             res2 = a.astype('float16')
-            res3 = a.astype(base.core.VarDesc.VarType.FP16)
+            res3 = a.astype(paddle.float16)
 
             self.assertEqual(res1.dtype, res2.dtype)
             self.assertEqual(res1.dtype, res3.dtype)
@@ -571,7 +571,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
 
-            self.assertEqual((a != b).dtype, base.core.VarDesc.VarType.BOOL)
+            self.assertEqual((a != b).dtype, paddle.bool)
             np.testing.assert_array_equal((a != b).numpy(), a_np != b_np)
 
     def test_tensor_patch_method(self):

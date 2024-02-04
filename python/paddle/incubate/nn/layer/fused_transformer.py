@@ -509,7 +509,7 @@ class FusedFeedForward(Layer):
         epsilon (float, optional): he small value added to the variance to prevent
             division by zero. Default: 1e-05.
         activation (str, optional): The activation function. Default relu.
-        act_dropout_rate (float, optional): The dropout probability after activition.
+        act_dropout_rate (float, optional): The dropout probability after activation.
             If None, use the value of `dropout_rate`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into, preprocessing or postprocessing. Default False
@@ -747,7 +747,7 @@ class FusedTransformerEncoderLayer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout_rate (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -911,7 +911,7 @@ class FusedTransformer(Layer):
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
 
-    Users can configurate the model architecture with corresponding parameters.
+    Users can configure the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
@@ -934,7 +934,7 @@ class FusedTransformer(Layer):
             in MHA to drop some attention target. If None, use the value of
             `dropout`. Default None
         act_dropout (float, optional): The dropout probability used after FFN
-            activition.  If None, use the value of `dropout`. Default None
+            activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
             normalization and post-precess includes dropout, residual connection.
@@ -946,7 +946,7 @@ class FusedTransformer(Layer):
             would be used as `weight_attr` for cross attention of `TransformerDecoder`,
             and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
             If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            and cross attention and `weight_attr[1]` would be used as `weight_attr` for
             linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `weight_attr` to create parameters.
@@ -959,7 +959,7 @@ class FusedTransformer(Layer):
             would be used as `bias_attr` for cross attention of `TransformerDecoder`,
             and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
             If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            and cross attention and `bias_attr[1]` would be used as `bias_attr` for
             linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
             for self attention, cross attention and linear in FFN. Otherwise,
             the three sub-layers all uses it as `bias_attr` to create parameters.
