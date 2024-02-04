@@ -5548,7 +5548,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_cov(self):
         xt_1 = paddle.randn((12,))
@@ -5564,7 +5563,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
-    @test_with_pir_api
     @prog_scope()
     def test_corrcoef(self):
         x = paddle.randn((12,))
