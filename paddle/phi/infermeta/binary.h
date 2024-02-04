@@ -416,6 +416,8 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,
