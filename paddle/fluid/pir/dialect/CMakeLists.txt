@@ -244,8 +244,11 @@ set(op_dialect_srcs
     ${bwd_fused_op_source_file}
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
-    ${pir_update_op_source_file}
-    ${api_source_file})
+    ${pir_update_op_source_file})
+
+if(NOT ON_INFER)
+  set(op_dialect_srcs ${api_source_file})
+endif()
 
 if(WITH_MKLDNN)
   set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
@@ -258,8 +261,6 @@ cc_library(
   op_dialect
   SRCS ${op_dialect_srcs}
   DEPS ${op_dialect_deps})
-
-add_dependencies(op_dialect eager_codegen)
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
