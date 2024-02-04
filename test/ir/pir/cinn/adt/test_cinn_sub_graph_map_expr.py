@@ -11,20 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
 
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
-
-
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
 
 
 def exp_sub(x):
@@ -58,12 +55,18 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def train(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
-        net = apply_to_static(net, use_cinn)
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.x)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_forward(self):

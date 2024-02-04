@@ -164,9 +164,9 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     int64_t seq_stride_kv = time_major
                                 ? batch_size * inputs_num_heads[1] * head_dim
                                 : inputs_num_heads[1] * head_dim;
+
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
-
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
                                             sin_cos_data,
                                             position_ids_data,

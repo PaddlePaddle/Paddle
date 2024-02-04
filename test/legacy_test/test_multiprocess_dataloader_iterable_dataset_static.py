@@ -47,8 +47,7 @@ class RandomDataset(IterableDataset):
 def simple_fc_net_static():
     startup_prog = base.Program()
     main_prog = base.Program()
-    startup_prog.random_seed = 1
-    main_prog.random_seed = 1
+    paddle.seed(1)
 
     with base.unique_name.guard():
         with base.program_guard(main_prog, startup_prog):

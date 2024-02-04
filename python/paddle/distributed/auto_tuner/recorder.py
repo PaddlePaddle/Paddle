@@ -55,14 +55,14 @@ class HistoryRecorder:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
             return (self.history[0], True)
-        if mode == "SFT" or mode == "LoRA":
+        if mode == "SFT" or mode == "LoRA" or mode == "Pretrain":
             best_cfg = self.history[0]
             if (
                 isinstance(best_cfg["max_mem_usage"], str)
                 or best_cfg["time"] == -1
             ):
                 return (best_cfg, True)
-            first_few = 1
+            first_few = 0
             for cfg in self.history:
                 if (
                     not isinstance(cfg["max_mem_usage"], str)
@@ -71,7 +71,7 @@ class HistoryRecorder:
                 ):
                     best_cfg = cfg
                 first_few += 1
-                if first_few >= 5:
+                if first_few >= 3:
                     break
             return (best_cfg, False)
         if isinstance(self.history[0]["max_mem_usage"], str) or (

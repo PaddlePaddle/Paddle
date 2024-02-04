@@ -65,9 +65,25 @@ struct Group {
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
-    CHECK(value_to_shape_or_data_exprs.count(value))
-        << "value not found in value_to_shape_or_data_exprs";
-    return value_to_shape_or_data_exprs.at(value);
+    CHECK(value_to_shape_or_data_exprs_.count(value))
+        << "value not found in value_to_shape_or_data_exprs_";
+    return value_to_shape_or_data_exprs_.at(value);
+  }
+
+  void SetShapeOrDataExprs(const ::pir::Value& value,
+                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
+    auto iter = value_to_shape_or_data_exprs_.find(value);
+    if (iter == value_to_shape_or_data_exprs_.end()) {
+      value_to_shape_or_data_exprs_.emplace(value, shape_or_data);
+    } else {
+      iter->second = shape_or_data;
+    }
+  }
+
+  void set_value_to_shape_or_data_exprs(
+      const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
+          value_to_shape_or_data_exprs) {
+    value_to_shape_or_data_exprs_ = value_to_shape_or_data_exprs;
   }
 
   // distance to last group.
@@ -97,9 +113,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_exprs;
 
   // for op lowering.
   std::vector<std::string> input_names;
@@ -282,6 +295,9 @@ struct Group {
                      SharedGroupComparator>
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
+
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+      value_to_shape_or_data_exprs_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Group& group);
