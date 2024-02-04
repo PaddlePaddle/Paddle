@@ -23,6 +23,12 @@ __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
 
 
+def unittest_use_cinn():
+    import os
+
+    return os.getenv("FLAGS_pd_unittest_use_cinn", False)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
