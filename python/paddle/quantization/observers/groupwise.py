@@ -37,7 +37,7 @@ class GroupWiseWeightObserver(ObserverFactory):
     """
 
     def __init__(self, quant_bits=8, group_size=128):
-        super().__init__(quant_bits=quant_bits, group_size=group_size)
+        super().__init__(quant_bits=quant_bits)
 
     def _get_class(self):
         return GroupWiseWeightObserverLayer
@@ -87,6 +87,12 @@ class GroupWiseWeightObserverLayer(BaseObserver):
 
     def max_value(self) -> float:
         return self._max
+
+    def bit_length(self):
+        return self._quant_bits
+
+    def quant_axis(self):
+        return -1
 
     def cal_thresholds(self):
         """Compute thresholds for MAX function."""

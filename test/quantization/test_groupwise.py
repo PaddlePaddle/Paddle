@@ -17,36 +17,20 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.nn.functional as F
-from paddle.nn import Conv2D, Linear, ReLU, Sequential
+from paddle.nn import Linear, Sequential
 from paddle.quantization import PTQ, QuantConfig
 from paddle.quantization.observers import GroupWiseWeightObserver
 
 
-class LeNetDygraph(paddle.nn.Layer):
-    def __init__(self, num_classes=10):
+class LinearDygraph(paddle.nn.Layer):
+    def __init__(self):
         super().__init__()
-        self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2D(1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            paddle.nn.MaxPool2D(2, 2),
-            Conv2D(6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            paddle.nn.MaxPool2D(2, 2),
+        self.fc = Sequential(
+            Linear(128, 128), Linear(128, 128), Linear(128, 128)
         )
 
-        if num_classes > 0:
-            self.fc = Sequential(
-                Linear(576, 120), Linear(120, 84), Linear(84, 10)
-            )
-
     def forward(self, inputs):
-        x = self.features(inputs)
-        if self.num_classes > 0:
-            x = paddle.flatten(x, 1)
-            x = self.fc(x)
-        out = F.relu(x)
+        out = self.fc(inputs)
         return out
 
 
@@ -60,7 +44,7 @@ class TestPTQGroupWise(unittest.TestCase):
 
     def _get_model_for_ptq(self):
         observer = GroupWiseWeightObserver(quant_bits=4, group_size=128)
-        model = LeNetDygraph()
+        model = LinearDygraph()
         model.eval()
         q_config = QuantConfig(activation=None, weight=observer)
         ptq = PTQ(q_config)
@@ -76,8 +60,8 @@ class TestPTQGroupWise(unittest.TestCase):
 
     def test_quantize(self):
         ptq_model, _ = self._get_model_for_ptq()
-        image = paddle.rand([1, 1, 32, 32], dtype="float32")
-        out = ptq_model(image)
+        inputs = paddle.rand([128, 128], dtype="float32")
+        out = ptq_model(inputs)
         self.assertIsNotNone(out)
 
 
