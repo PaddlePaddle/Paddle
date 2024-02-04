@@ -28,7 +28,7 @@ namespace phi {
 namespace distributed {
 
 namespace auto_parallel {
-class ProcessMeshProto;
+class TEST_API ProcessMeshProto;
 }
 
 class ProcessMesh {
