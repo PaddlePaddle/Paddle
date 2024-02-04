@@ -670,7 +670,7 @@ In addition, only basic template adaptation has been implemented at present, and
 For the management of the new form of Kernel, described as follows:
 
 - `KernelFactory` is a global singleton data structure for managing Kernel. Similar to `OpKernelMap` of fluid, it is a two-level map. The first-level mapping finds the Kernel set according to the name, and the second-level mapping finds the specific Kernel according to the KernelKey.
-- `KernelKey` is similar to the original `OpKernelType`, but the `palce` and `library_type` fields are combined into one and called `Backend`, because the original `LibraryType` is a limited enumeration class, which is strongly related to place, the splitting increases the cost of understanding instead.
+- `KernelKey` is similar to the original `OpKernelType`, but the `place` and `library_type` fields are combined into one and called `Backend`, because the original `LibraryType` is a limited enumeration class, which is strongly related to place, the splitting increases the cost of understanding instead.
 - `Kernel` holds more information than the original `OpKernel`. In addition to the Function during execution, it also holds information about specific parameters, namely `KernelArgsDef`. For Tensor type input and output, it saves Tensor type information, Device, data Type, data layout. For Attribute type input and output, it saves type information.
 
 #### 2.3.5 Kernel Compilation and Dependencies

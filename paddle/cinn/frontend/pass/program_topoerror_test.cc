@@ -47,7 +47,7 @@ void RunWithProgram(const Program& program,
   runtime_program->Execute();
 }
 
-TEST(TransposeFoldingInput, TransposeWithMultiMamtul) {
+TEST(TransposeFoldingInput, TransposeWithMultiMatmul) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }

@@ -36,7 +36,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     output feature map.
 
     Args:
-        theta (Tensor) - A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
+        theta (Tensor): A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
                            The data type can be float32 or float64.
         out_shape (Tensor | list | tuple): Type can be a 1-D Tensor, list, or tuple. It is used to represent the shape of the output in an affine transformation, in the format ``[N, C, H, W]`` or ``[N, C, D, H, W]``.
                                            When the format is ``[N, C, H, W]``, it represents the batch size, number of channels, height and width. When the format is ``[N, C, D, H, W]``, it represents the batch size, number of channels, depth, height and width.
@@ -380,7 +380,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
             f"But receive Attr(data_format): {data_format} "
         )
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
     else:
         helper = LayerHelper("pixel_shuffle", **locals())

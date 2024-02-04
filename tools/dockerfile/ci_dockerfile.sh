@@ -85,6 +85,14 @@ function make_unbuntu20_cu12_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.8 install distro" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
+
+  sed -i "${dockerfile_line}i WORKDIR /home \n \
+    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
+    pip3.10 install -r requirements.txt \&\& \
+    pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
+    pip3.10 install -r csrc/requirements.txt \&\& \
+    pip3.10 install pytest-timeout \&\& \
+    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
 

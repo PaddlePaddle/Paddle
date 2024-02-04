@@ -24,7 +24,7 @@ from paddle.distributed.fleet.utils import sequence_parallel_utils as spu
 
 
 def set_random_seed(seed, dp_id, rank_id):
-    """Set random seed for reproducability."""
+    """Set random seed for reproducibility."""
     random.seed(seed)
     np.random.seed(seed + dp_id)
     paddle.seed(seed + rank_id)

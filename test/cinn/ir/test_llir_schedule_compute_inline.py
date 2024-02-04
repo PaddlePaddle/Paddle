@@ -14,7 +14,7 @@
 
 from test.cinn.utils.testing import assert_llir_equal
 
-from cinn import ir, to_cinn_llir
+from cinn import common, ir, to_cinn_llir
 from cinn.runtime.data_array import DataArray
 from cinn.schedule import IRSchedule as sch
 
@@ -165,8 +165,124 @@ def test_reverse_compute_inline_elementwise_dynamic():
     assert_llir_equal(elementwise_add_inline, elementwise_add_inline_gt)
 
 
+def test_gather_slice_concat_mul_pattern_compute_inline():
+    class origin:
+        @to_cinn_llir
+        def fn_rotary(
+            A: DataArray((1, -1, 1, 512)),
+            var_1: DataArray((1, -1, 1, 256)),
+            var_2: DataArray((1, -1, 1, 256)),
+            var_3: DataArray((1, -1, 1, 512)),
+            C: DataArray((1, -1, 1, 512)),
+            index: DataArray((2, 1), dtype=common.Int(64)),
+            Out: DataArray((1, -1, 1, 512)),
+            seq_len: ir.Var(),
+        ):
+            for i in range(0, 1):
+                for j in range(0, seq_len):
+                    for k in range(0, 1):
+                        for a in range(0, 256):
+                            with ir.ScheduleBlockContext(
+                                "var_1"
+                            ) as var_1_block:
+                                i0, i1, i2, i3 = ir.AxisMap(
+                                    "SSSS", [i, j, k, a]
+                                )
+                                var_1[i0, i1, i2, i3] = A[
+                                    ir.Expr(index[i0, ir.Expr(0)]), i1, i2, i3
+                                ]
+            for i in range(0, 1):
+                for j in range(0, seq_len):
+                    for k in range(0, 1):
+                        for a in range(0, 256):
+                            with ir.ScheduleBlockContext(
+                                "var_2"
+                            ) as var_2_block:
+                                i0, i1, i2, i3 = ir.AxisMap(
+                                    "SSSS", [i, j, k, a]
+                                )
+                                var_2[i0, i1, i2, i3] = A[
+                                    ir.Expr(index[i0 + ir.Expr(1), ir.Expr(0)]),
+                                    i1,
+                                    i2,
+                                    ir.Expr(256) + i3,
+                                ]
+            for i in range(0, 1):
+                for j in range(0, seq_len):
+                    for k in range(0, 1):
+                        for a in range(0, 512):
+                            with ir.ScheduleBlockContext(
+                                "var_3"
+                            ) as var_3_block:
+                                i0, i1, i2, i3 = ir.AxisMap(
+                                    "SSSS", [i, j, k, a]
+                                )
+                                var_3[i0, i1, i2, i3] = ir.Select.make(
+                                    (i3 < 256),
+                                    var_1[i0, i1, i2, i3],
+                                    var_2[i0, i1, i2, (i3 - ir.Expr(256))],
+                                )
+            for i in range(0, 1):
+                for j in range(0, seq_len):
+                    for k in range(0, 1):
+                        for a in range(0, 512):
+                            with ir.ScheduleBlockContext("out") as out_block:
+                                i0, i1, i2, i3 = ir.AxisMap(
+                                    "SSSS", [i, j, k, a]
+                                )
+                                Out[i0, i1, i2, i3] = (
+                                    C[i0, i1, i2, i3] * var_3[i0, i1, i2, i3]
+                                )
+            block_var_1 = sch.get_block("var_1")
+            sch.compute_inline(block_var_1)
+            block_var_2 = sch.get_block("var_2")
+            sch.compute_inline(block_var_2)
+            block_var_3 = sch.get_block("var_3")
+            sch.compute_inline(block_var_3)
+
+    class expected:
+        @to_cinn_llir
+        def fn_rotary(
+            A: DataArray((1, -1, 1, 512)),
+            C: DataArray((1, -1, 1, 512)),
+            index: DataArray((2, 1), dtype=common.Int(64)),
+            Out: DataArray((1, -1, 1, 512)),
+            seq_len: ir.Var(),
+        ):
+            for i in range(0, 1):
+                for j in range(0, seq_len):
+                    for k in range(0, 1):
+                        for a in range(0, 512):
+                            with ir.ScheduleBlockContext("out") as out_block:
+                                i0, i1, i2, i3 = ir.AxisMap(
+                                    "SSSS", [i, j, k, a]
+                                )
+                                Out[i0, i1, i2, i3] = C[
+                                    i0, i1, i2, i3
+                                ] * ir.Select.make(
+                                    (i3 < 256),
+                                    A[
+                                        ir.Expr(index[i0, ir.Expr(0)]),
+                                        i1,
+                                        i2,
+                                        i3,
+                                    ],
+                                    A[
+                                        ir.Expr(
+                                            index[(i0 + ir.Expr(1)), ir.Expr(0)]
+                                        ),
+                                        i1,
+                                        i2,
+                                        ir.Expr(256) + (i3 - ir.Expr(256)),
+                                    ],
+                                )
+
+    assert_llir_equal(origin.fn_rotary, expected.fn_rotary)
+
+
 if __name__ == "__main__":
     test_compute_inline_elementwise()
     test_reverse_compute_inline_elementwise()
     test_compute_inline_elementwise_dynamic()
     test_reverse_compute_inline_elementwise_dynamic()
+    test_gather_slice_concat_mul_pattern_compute_inline()

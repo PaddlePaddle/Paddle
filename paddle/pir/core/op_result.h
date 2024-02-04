@@ -40,7 +40,7 @@ class IR_API OpResult : public Value {
  private:
   friend Operation;
   OpResult(detail::OpResultImpl *impl);  // NOLINT
-  // Access classof annd dyn_cast_from.
+  // Access classof and dyn_cast_from.
   friend Value;
   friend struct std::hash<OpResult>;
   static bool classof(Value value);

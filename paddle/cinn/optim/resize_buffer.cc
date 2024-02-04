@@ -125,10 +125,11 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
         for (int i = 0; i < indice_extent.size(); ++i) {
           if (stored_indice_extent[i].is_constant() &&
               indice_extent[i].is_constant()) {
-            int stored_extent = stored_indice_extent[i].as_int32();
-            int cur_extent = indice_extent[i].as_int32();
+            int64_t stored_extent = stored_indice_extent[i].as_int64();
+            int64_t cur_extent = indice_extent[i].as_int64();
             if (cur_extent > stored_extent) {
               stored_indice_extent[i] = ir::Expr(cur_extent);
+              stored_indice_extent[i]->set_type(indice_extent[i].type());
             }
           }
           // if there indice extent is not constant, which means dynamic shape

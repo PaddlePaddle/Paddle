@@ -237,9 +237,9 @@ def to_static(
             flag = ENV_ENABLE_SOT.get()
             full_graph = not flag
 
-        if sys.version_info >= (3, 12) and not full_graph:
+        if sys.version_info >= (3, 13) and not full_graph:
             warnings.warn(
-                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+                "full_graph=False is not supported in Python 3.13+. Set full_graph=True automatically"
             )
             full_graph = True
 
@@ -1887,6 +1887,21 @@ class TracedLayer:
                 clip_extra=clip_extra,
                 legacy_format=legacy_format,
             )
+
+
+def set_dynamic_shape(variable, shape_list):
+    if paddle.base.dygraph.base.in_to_static_mode():
+        if isinstance(variable, paddle.base.framework.Variable):
+            variable.desc.set_shape(shape_list)
+        elif isinstance(variable, paddle.pir.Value):
+            variable.set_shape(shape_list)
+        else:
+            raise TypeError(
+                "In to_static mode, variable must be a Variable or Value"
+            )
+    else:
+        # in dygraph mode, dynamic shape is not needed, just do nothing.
+        return
 
 
 def get_ast_static_function(function):

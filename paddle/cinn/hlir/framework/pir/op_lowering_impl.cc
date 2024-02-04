@@ -158,7 +158,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
-                                                   apply_op_schedule,
+                                                   apply_group_schedule,
                                                    {scheduled_func_bodies},
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args);
@@ -494,7 +494,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         }
         int_args_set.insert(symbol_name);
         group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
+            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
         VLOG(4) << "device kernel func's " << non_tensor_arg_idx << " is from "
@@ -550,15 +550,20 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       std::vector<Type> out_types;
       std::vector<std::vector<ir::Dim>> out_shapes;
       CollectOutputInfo(op, &out_types, &out_shapes, group);
+      CHECK_EQ(out_types.size(), out_shapes.size());
       VLOG(4) << "out_types.size(): " << out_types.size();
       NodeAttr node_attrs = details::CollectAttrs(*op);
-      auto& strategy =
+      auto& strategy_map =
           Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-                                                         op_func_arg_tensors,
-                                                         out_types,
-                                                         out_shapes,
-                                                         this->target_));
+      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+      CHECK(static_cast<bool>(strategy))
+          << " cinn_op_name: " << cinn_op_name
+          << "has no CINNStrategySymbolic registered.";
+      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
+                                                op_func_arg_tensors,
+                                                out_types,
+                                                out_shapes,
+                                                this->target_));
     } else {
       std::vector<Type> out_types;
       std::vector<std::vector<int>> out_shapes;
@@ -715,20 +720,32 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
-  if (!group->value_to_shape_or_data_exprs.empty()) {
-    const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
-    std::vector<ir::Dim> sym_shape;
-    for (auto& sym : sym_vec) {
-      sym_shape.emplace_back(input_id, sym);
+
+  auto ForEachDimExpr = [&](const auto& DoEach) {
+    const auto& dims = type_info.dims();
+    if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+      const auto& sym_vec = group->GetShapeOrDataExprs(value).shape();
+      for (const auto& dim_expr : sym_vec) {
+        DoEach(dim_expr);
+      }
+    } else {  // static shape
+      for (int i = 0; i < dims.size(); ++i) {
+        DoEach(::symbol::DimExpr{dims[i]});
+      }
     }
+  };
+  if (FLAGS_cinn_bucket_compile) {
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
-    return lang::CreatePlaceHolder(
-        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+    return lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
+                                   CompatibleInfo::ConvertIRType(dtype),
+                                   input_id);
   }
 }
 
@@ -797,14 +814,26 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    if (!group->value_to_shape_or_data_exprs.empty()) {
-      auto sym_vec = group->GetShapeOrDataExprs(out_value).shape();
-      std::vector<ir::Dim> sym_shape;
-      for (auto& sym : sym_vec) {
-        sym_shape.emplace_back(output_id, sym);
+
+    auto ForEachDimExpr = [&](const auto& DoEach) {
+      const auto& dims = type_info.dims();
+      if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+        const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
+        std::vector<ir::Dim> sym_shape;
+        for (const auto& sym : sym_vec) {
+          DoEach(sym);
+        }
+      } else {  // static shape
+        auto out_shape = ::common::vectorize<int64_t>(dims);
+        for (int64_t dim : out_shape) {
+          DoEach(symbol::DimExpr{dim});
+        }
       }
-      out_shapes->push_back(std::move(sym_shape));
-    }
+    };
+    std::vector<ir::Dim> sym_shape;
+    ForEachDimExpr(
+        [&](const auto& sym) { sym_shape.emplace_back(output_id, sym); });
+    out_shapes->emplace_back(std::move(sym_shape));
   }
 }
 
@@ -860,7 +889,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     int tensor_dim_size = tensor_dim.size();
     auto tensor_shape = group_func_arg_tensors[tensor_arg_idx]->shape;
 
-    ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int32_t**>());
+    ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t**>());
     for (int i = 0; i < tensor_shape.size(); i++) {
       ir::Expr call_set_infer_shape_value =
           ir::Call::Make(type_of<void>(),

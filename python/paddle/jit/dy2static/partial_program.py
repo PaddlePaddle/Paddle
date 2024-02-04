@@ -112,7 +112,7 @@ class LazyInitialized:
 
 class ProgramInfo:
     """
-    A helper class to recoder Program information
+    A helper class to record Program information
     """
 
     def __init__(self):
@@ -126,7 +126,7 @@ class ProgramInfo:
 
     def __call__(self, key, prog_creator):
         """
-        Recoder infer program and op size.
+        Record infer program and op size.
         """
         assert key in ['fp32', 'amp', 'fp16']
         if key not in self.programs:
@@ -564,7 +564,7 @@ class PartialProgramLayer:
         else:
             """
             Can't just return paddle.static.Program(), because self.backward_program is a property,
-            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            whenever we call this method, a tmp Program() object is created and is gc immediately
             after executed the following line in PartialProgramLayer.__call__.
 
             >>> self.backward_program.desc.block(0),
@@ -597,7 +597,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -621,7 +621,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -632,9 +632,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.block(0).create_var(
@@ -644,13 +644,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for idx, op in finded_ops:
+            for idx, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.block(0)._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -842,7 +842,7 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # For Backward process in CINN, all param@GRAD should be skipped for GC, because
         # they will be shared in scope and used by optimizer.
         backward_skip_vars = self._parse_skip_gc_vars(
             whole_program
@@ -1116,7 +1116,7 @@ class PartialProgramLayer:
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
