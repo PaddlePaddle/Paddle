@@ -237,9 +237,9 @@ def to_static(
             flag = ENV_ENABLE_SOT.get()
             full_graph = not flag
 
-        if sys.version_info >= (3, 12) and not full_graph:
+        if sys.version_info >= (3, 13) and not full_graph:
             warnings.warn(
-                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+                "full_graph=False is not supported in Python 3.13+. Set full_graph=True automatically"
             )
             full_graph = True
 

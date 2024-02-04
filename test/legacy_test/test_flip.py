@@ -58,7 +58,7 @@ class TestFlipOp_API(unittest.TestCase):
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with base.dygraph.guard():
-            inputs = base.dygraph.to_variable(img)
+            inputs = paddle.to_tensor(img)
             ret = paddle.flip(inputs, [0])
             ret = ret.flip(0)
             ret = paddle.flip(ret, 1)
