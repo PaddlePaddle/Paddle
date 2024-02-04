@@ -121,20 +121,20 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     int64_t batch_stride =
         time_major ? dout_q.strides()[1] : dout_q.strides()[0];
     int64_t seq_stride = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
-    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
-                                                sin_cos_data,
-                                                position_ids_data,
-                                                flag_sin_cos,
-                                                sign,
-                                                batch_size,
-                                                seq_len,
-                                                inputs_num_heads[0],
-                                                head_dim,
-                                                batch_stride,
-                                                seq_stride,
-                                                outs_data,
-                                                num_inputs,
-                                                div_c);
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            batch_stride,
+                                            seq_stride,
+                                            outs_data,
+                                            num_inputs,
+                                            div_c);
 
   } else {
     // rotary position embedding Q
@@ -143,19 +143,19 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     int64_t seq_stride_q =
         time_major ? dout_q.strides()[0] : dout_q.strides()[1];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                              sin_cos_data,
-                                              position_ids_data,
-                                              flag_sin_cos,
-                                              sign,
-                                              batch_size,
-                                              seq_len,
-                                              inputs_num_heads[0],
-                                              head_dim,
-                                              batch_stride_q,
-                                              seq_stride_q,
-                                              outs_data,
-                                              1,
-                                              div_c);
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            batch_stride_q,
+                                            seq_stride_q,
+                                            outs_data,
+                                            1,
+                                            div_c);
 
     // rotary position embedding K,V
     int64_t batch_stride_kv = time_major
@@ -168,19 +168,19 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
 
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
-                                               sin_cos_data,
-                                               position_ids_data,
-                                               flag_sin_cos,
-                                               sign,
-                                               batch_size,
-                                               seq_len,
-                                               inputs_num_heads[1],
-                                               head_dim,
-                                               batch_stride_kv,
-                                               seq_stride_kv,
-                                               out_kv,
-                                               num_inputs - 1,
-                                               div_c);
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[1],
+                                            head_dim,
+                                            batch_stride_kv,
+                                            seq_stride_kv,
+                                            out_kv,
+                                            num_inputs - 1,
+                                            div_c);
   }
 }
 
