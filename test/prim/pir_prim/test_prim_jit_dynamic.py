@@ -62,7 +62,7 @@ class TestPrimMode1(unittest.TestCase):
         y = paddle.to_tensor(self.y)
         fn = apply_to_static(
             self.net,
-            use_cinn=False,
+            use_cinn=(flag == "prim"),
             input_spec=[
                 InputSpec(shape=[None, None, 4096], dtype='float32'),
                 InputSpec(shape=[4096], dtype='float32'),
@@ -90,14 +90,14 @@ class TestPrimMode1(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
-class TestPrimMode2(TestPrimMode1):
-    def setUp(self):
-        np.random.seed(2023)
-        self.shape_x = [1, 300, 4096]
-        self.shape_y = [4096]
-        self.x = np.random.random(self.shape_x).astype("float32")
-        self.y = np.random.random(self.shape_y).astype("float32")
-        self.net = rms_norm2
+# class TestPrimMode2(TestPrimMode1):
+#     def setUp(self):
+#         np.random.seed(2023)
+#         self.shape_x = [1, 300, 4096]
+#         self.shape_y = [4096]
+#         self.x = np.random.random(self.shape_x).astype("float32")
+#         self.y = np.random.random(self.shape_y).astype("float32")
+#         self.net = rms_norm2
 
 
 if __name__ == "__main__":

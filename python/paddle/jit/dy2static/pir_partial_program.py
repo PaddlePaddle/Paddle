@@ -563,7 +563,7 @@ class PartialProgramLayer:
             infer_program = self.origin_runable_program.clone()
             if self._hooker:
                 self._hooker.after_infer(infer_program)
-            infer_program.apply_pir_program_pass(pass_fn)
+                infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()
