@@ -56,7 +56,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
-                                 scale->data<T>(),
+                                 scale->data<float>(),
                                  weight_shape);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
