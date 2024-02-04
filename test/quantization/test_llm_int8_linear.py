@@ -88,9 +88,9 @@ class LLMInt8LinearTestCase(unittest.TestCase):
     @test_with_pir_api
     def get_llm_int8_linear_out_static(self):
         paddle.enable_static()
-        main = base.static.Program()
-        start = base.static.Program()
-        with base.static.program_guard(main, start):
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        with paddle.static.program_guard(main, start):
             x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
 
             weight = paddle.static.data(
