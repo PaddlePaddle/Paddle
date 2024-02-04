@@ -6,7 +6,8 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_pir_prim_flags
     test_sink_decomp
     test_prim_skip_dynamic
-    test_prim_dynamic)
+    test_prim_dynamic
+    test_prim_sub_graph_dynamic_shape)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(
@@ -19,8 +20,7 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-set(TEST_PRIM_PURE_PIR_DY_SHAPE_CASES test_prim_jit_dynamic
-                                      test_prim_sub_graph_dynamic_shape)
+set(TEST_PRIM_PURE_PIR_DY_SHAPE_CASES test_prim_jit_dynamic)
 
 foreach(target ${TEST_PRIM_PURE_PIR_DY_SHAPE_CASES})
   py_test_modules(
