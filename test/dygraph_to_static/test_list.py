@@ -73,7 +73,7 @@ def test_list_append_in_for_subscript(x):
         x = x + 1
         a.append(x)
     out = paddle.concat(a)
-    return out
+    return out[0]
 
 
 def test_list_append_in_while_loop_subscript(x):
@@ -86,7 +86,7 @@ def test_list_append_in_while_loop_subscript(x):
         a.append(x)
         i += 1
     out = paddle.concat(a)
-    return out
+    return out[0]
 
 
 def test_list_append_in_for_loop_with_concat(x, iter_num):

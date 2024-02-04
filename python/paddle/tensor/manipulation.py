@@ -1300,7 +1300,7 @@ def concat(x, axis=0, name=None):
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
         if isinstance(input, paddle.pir.Value):
-            assert input.is_tensorarray(), (
+            assert input.is_dense_tensor_array_type(), (
                 "If the element of concat op is Value, "
                 "dtype of the element must be Tensorarray"
             )
