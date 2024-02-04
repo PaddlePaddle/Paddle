@@ -44,7 +44,7 @@ class DrrPatternBase {
   virtual uint32_t benefit() const { return 1; }
 
   // Build the Drr Pattern.
-  std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
+  TEST_API std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
 };
 
 }  // namespace drr
