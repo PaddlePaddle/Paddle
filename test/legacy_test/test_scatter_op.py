@@ -676,9 +676,9 @@ class TestScatterAPI(unittest.TestCase):
                     [[1, 1], [2, 2], [3, 3], [4, 4]]
                 ).astype(np.float64)
 
-                x = base.dygraph.to_variable(x_data)
-                index = base.dygraph.to_variable(index_data)
-                updates = base.dygraph.to_variable(updates_data)
+                x = paddle.to_tensor(x_data)
+                index = paddle.to_tensor(index_data)
+                updates = paddle.to_tensor(updates_data)
 
                 output1 = self.scatter(x, index, updates, overwrite=False)
                 self.assertEqual(

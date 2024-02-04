@@ -1321,7 +1321,6 @@ paddle::framework::FetchList PirInterpreter::Run(
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
 
-    // Run
     if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&

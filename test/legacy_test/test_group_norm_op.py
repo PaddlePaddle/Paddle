@@ -319,8 +319,8 @@ class TestGroupNormBF16Op(OpTest):
         self.rev_comp_rtol = 1e-2
         # prim bf16 has diff in windows
         if sys.platform == "win32":
-            self.rev_comp_atol = 1e-1
-            self.rev_comp_rtol = 1e-1
+            self.rev_comp_atol = 5e-2
+            self.rev_comp_rtol = 5e-2
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
