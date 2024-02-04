@@ -241,6 +241,11 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
   return kAttrCastMap[attr_type](attr);
 }
 
+paddle::any TransAttrToAny(const pir::Attribute& attr) {
+  AttrType attr_type = GetAttributeType(attr);
+  return kAttrCastMap[attr_type](attr);
+}
+
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 bool IsEmptyValue(const pir::Value& value) {

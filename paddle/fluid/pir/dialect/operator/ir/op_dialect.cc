@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -462,6 +465,326 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   CustomOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
 };
 
+struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
+  static std::vector<std::vector<pir::Value>> CustomOpVjp(
+      pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& outputs,
+      const std::vector<std::vector<pir::Value>>& out_grads,
+      const std::vector<std::vector<bool>>& stop_gradients) {
+    std::string pir_op_name = op->name();
+    const auto& fwd_op_meta_info =
+        paddle::framework::detail::GetOpInfoByPirName(pir_op_name);
+    const auto& fwd_inputs_name =
+        paddle::OpMetaInfoHelper::GetInputs(fwd_op_meta_info);
+    const auto& fwd_attrs_name =
+        paddle::OpMetaInfoHelper::GetAttrs(fwd_op_meta_info);
+    const auto& fwd_outputs_name =
+        paddle::OpMetaInfoHelper::GetOutputs(fwd_op_meta_info);
+
+    const auto& bwd_op_meta_info =
+        paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
+    const auto& bwd_inputs_name =
+        paddle::OpMetaInfoHelper::GetInputs(bwd_op_meta_info);
+    const auto& bwd_outputs_name =
+        paddle::OpMetaInfoHelper::GetOutputs(bwd_op_meta_info);
+    auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(bwd_op_meta_info);
+    auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(bwd_op_meta_info);
+
+    PADDLE_ENFORCE_EQ(
+        inputs_.size(),
+        fwd_inputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s inputs size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_inputs_name.size(),
+            inputs_.size()));
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        fwd_outputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s outputs size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_outputs_name.size(),
+            outputs.size()));
+
+    PADDLE_ENFORCE_EQ(
+        out_grads.size(),
+        fwd_outputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s outputs grad size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_outputs_name.size(),
+            out_grads.size()));
+
+    bool is_double_grad_op =
+        (pir_op_name.find("_grad_grad") != pir_op_name.npos) ? true : false;
+    pir::IrContext* ctx = pir::IrContext::Instance();
+    pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(pir_op_name);
+    pir::OperationArgument argument(pir_info);
+    std::vector<pir::Value> argument_inputs;
+    std::vector<pir::Type> argument_outputs;
+
+    std::vector<std::vector<int64_t>> input_shapes;
+    std::vector<DataType> input_dtypes;
+    std::unordered_map<std::string, int> input_name2id_map;
+    std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+    std::vector<std::vector<DataType>> vec_input_dtypes;
+    std::unordered_map<std::string, int> vec_input_name2id_map;
+    std::vector<paddle::any> custom_attrs;
+
+    auto GetInputLocation =
+        [&](const std::string& grad_op_input_name) -> std::pair<int, int> {
+      auto fwd_inputs_name_iter = std::find(
+          fwd_inputs_name.begin(), fwd_inputs_name.end(), grad_op_input_name);
+      auto fwd_outputs_name_iter = std::find(
+          fwd_outputs_name.begin(), fwd_outputs_name.end(), grad_op_input_name);
+      bool is_grad_var = paddle::framework::detail::IsGradVar(
+          grad_op_input_name, is_double_grad_op);
+      if (fwd_inputs_name_iter != fwd_inputs_name.end()) {
+        int index =
+            std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+        return std::make_pair(0, index);
+      } else if (fwd_outputs_name_iter != fwd_outputs_name.end()) {
+        int index =
+            std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
+        return std::make_pair(1, index);
+      } else if (is_grad_var) {
+        auto fwd_output_name = paddle::framework::detail::NoGrad(
+            grad_op_input_name, is_double_grad_op);
+        fwd_outputs_name_iter = std::find(
+            fwd_outputs_name.begin(), fwd_outputs_name.end(), fwd_output_name);
+        if (fwd_outputs_name_iter != fwd_outputs_name.end()) {
+          int index =
+              std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
+          return std::make_pair(2, index);
+        } else {
+          PADDLE_THROW(paddle::platform::errors::NotFound(
+              "Can't find the grad op input:%s, please check your register "
+              "grad op whether has correct input name",
+              grad_op_input_name));
+        }
+      } else {
+        PADDLE_THROW(paddle::platform::errors::NotFound(
+            "Can't find the grad op input:%s, please check your register grad "
+            "op whether has correct input name",
+            grad_op_input_name));
+      }
+    };
+
+    // Construct custom grad op inputs
+    int input_index = 0;
+    int vec_input_index = 0;
+    for (size_t i = 0; i < bwd_inputs_name.size(); ++i) {
+      const auto& bwd_input_name = bwd_inputs_name.at(i);
+      const auto input_location = GetInputLocation(bwd_input_name);
+      std::vector<pir::Value> input_values;
+      if (input_location.first == 0) {
+        // grad op input is in inputs_
+        input_values = inputs_[input_location.second];
+      } else if (input_location.first == 1) {
+        // grad op input is in outputs
+        input_values = outputs[input_location.second];
+      } else {
+        // grad op input is in out_grads
+        input_values = out_grads[input_location.second];
+      }
+
+      if (input_values.size() > 1) {
+        std::vector<std::vector<int64_t>> tmp_input_shapes;
+        std::vector<phi::DataType> tmp_input_dtypes;
+        vec_input_name2id_map[bwd_input_name] = vec_input_index;
+        vec_input_index++;
+        for (auto& input_value : input_values) {
+          paddle::dialect::DenseTensorType input_tensor =
+              input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+          tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+          tmp_input_dtypes.push_back(
+              paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+        }
+        vec_input_shapes.push_back(tmp_input_shapes);
+        vec_input_dtypes.push_back(tmp_input_dtypes);
+        auto input_value = paddle::dialect::builtin_combine(input_values);
+        argument_inputs.push_back(input_value);
+      } else {
+        input_name2id_map[bwd_input_name] = input_index;
+        input_index++;
+        pir::Value input_value = input_values[0];  // NOLINT
+        paddle::dialect::DenseTensorType input_tensor =
+            input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+        input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+        input_dtypes.push_back(
+            paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+        argument_inputs.push_back(input_value);
+      }
+    }
+    argument.AddInputs(argument_inputs);
+
+    // Construct custom grad op attr
+    for (size_t i = 0; i < fwd_attrs_name.size(); ++i) {
+      const auto& fwd_attr = fwd_attrs_name.at(i);
+      std::vector<std::string> attr_name_and_type =
+          paddle::ParseAttrStr(fwd_attr);
+      auto fwd_attr_name = attr_name_and_type[0];
+      auto fwd_op_attr = op->attribute(fwd_attr_name);
+      custom_attrs.push_back(paddle::dialect::TransAttrToAny(fwd_op_attr));
+      argument.AddAttribute(fwd_attr_name, fwd_op_attr);
+    }
+
+    // Run Compile InferMeta
+    std::vector<std::vector<int64_t>> output_shapes =
+        paddle::framework::RunInferShape(infershape_func,
+                                         bwd_op_meta_info,
+                                         input_shapes,
+                                         input_name2id_map,
+                                         vec_input_shapes,
+                                         vec_input_name2id_map,
+                                         custom_attrs);
+    std::vector<phi::DataType> output_dtypes =
+        paddle::framework::RunInferDtype(inferdtype_func,
+                                         bwd_op_meta_info,
+                                         input_dtypes,
+                                         input_name2id_map,
+                                         vec_input_dtypes,
+                                         vec_input_name2id_map,
+                                         custom_attrs);
+
+    size_t all_values_num = 0;
+    // output name -> value num (that output should hold)
+    std::unordered_map<std::string, size_t> output_name2value_num;
+    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
+      const auto& bwd_output_name = bwd_outputs_name.at(i);
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        const auto& bwd_input = paddle::framework::detail::NoGrad(
+            bwd_output_name, is_double_grad_op);
+        auto index = vec_input_name2id_map[bwd_input];
+        auto& input_shapes = vec_input_shapes[index];
+        output_name2value_num[bwd_output_name] = input_shapes.size();
+        all_values_num += input_shapes.size();
+      } else {
+        output_name2value_num[bwd_output_name] = 1;
+        all_values_num++;
+      }
+    }
+
+    PADDLE_ENFORCE_EQ(
+        output_shapes.size(),
+        all_values_num,
+        phi::errors::InvalidArgument(
+            "The number of output shapes after running custom operator's "
+            "InferShapeFunc is wrong, "
+            "expected contains %d Tensors' shape, but actually contains %d "
+            "Tensors' shape",
+            all_values_num,
+            output_shapes.size()));
+
+    PADDLE_ENFORCE_EQ(
+        output_dtypes.size(),
+        all_values_num,
+        phi::errors::InvalidArgument(
+            "The number of output dtypes after running custom operator's "
+            "InferDtypeFunc is wrong, "
+            "expected contains %d Tensors' dtype, but actually contains %d "
+            "Tensors' dtype",
+            all_values_num,
+            output_dtypes.size()));
+
+    // Construct custom grad op outputs
+    size_t value_index = 0;
+    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
+      const auto& bwd_output_name = bwd_outputs_name.at(i);
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        auto value_num = output_name2value_num[bwd_output_name];
+        std::vector<pir::Type> out_types;
+        for (size_t j = 0; j < value_num; ++j) {
+          auto ddims = phi::make_ddim(output_shapes[value_index]);
+          auto dtype = output_dtypes[value_index];
+          phi::DataLayout layout{DataLayout::NCHW};
+          phi::LoD lod;
+          out_types.push_back(paddle::dialect::DenseTensorType::get(
+              pir::IrContext::Instance(),
+              paddle::dialect::TransToIrDataType(dtype),
+              ddims,
+              layout,
+              lod,
+              0));
+          value_index++;
+        }
+        pir::Type out_vector_type =
+            pir::VectorType::get(pir::IrContext::Instance(), out_types);
+        argument_outputs.push_back(out_vector_type);
+      } else {
+        auto ddims = phi::make_ddim(output_shapes[value_index]);
+        auto dtype = output_dtypes[value_index];
+        phi::DataLayout layout{DataLayout::NCHW};
+        phi::LoD lod;
+        auto out_type = paddle::dialect::DenseTensorType::get(
+            pir::IrContext::Instance(),
+            paddle::dialect::TransToIrDataType(dtype),
+            ddims,
+            layout,
+            lod,
+            0);
+        argument_outputs.push_back(out_type);
+        value_index++;
+      }
+    }
+    argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+
+    // Build Operation
+    std::vector<pir::Value> op_results;
+    pir::Operation* bwd_op =
+        paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
+            std::move(argument));
+
+    // Init result
+    std::vector<std::vector<pir::Value>> res;
+    res.resize(stop_gradients.size());
+    for (size_t i = 0; i < stop_gradients.size(); ++i) {
+      res.resize(stop_gradients[i].size());
+    }
+
+    // Build result and apply stop gradients
+    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
+      const auto& bwd_output_name = bwd_outputs_name.at(i);
+      const auto& fwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+      auto fwd_inputs_name_iter =
+          std::find(fwd_inputs_name.begin(), fwd_inputs_name.end(), fwd_input);
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        PADDLE_ENFORCE_NE(
+            fwd_inputs_name_iter,
+            fwd_inputs_name.end(),
+            paddle::platform::errors::InvalidArgument(
+                "Custom op: %s output %s is a Vec output. It should have the "
+                "forward input that need calculate gradients.",
+                pir_op_name,
+                bwd_output_name));
+        int index =
+            std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+        auto split_op =
+            ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+                bwd_op->result(i));
+        res[index] = split_op.outputs();
+      } else {
+        if (fwd_inputs_name_iter != fwd_inputs_name.end()) {
+          int index =
+              std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+          res[index][0] = bwd_op->result(i);
+        } else {
+          // Situation that has only one input and only one output. If not meet
+          // this condition, it will throw error when run infer shape.
+          res[0][0] = bwd_op->result(0);
+        }
+      }
+    }
+
+    return res;
+  }
+
+  CustomOpVjpInterfaceModel() : VjpInterface::Concept(CustomOpVjp) {}
+};
+
 CustomOpDialect::CustomOpDialect(pir::IrContext* context)
     : pir::Dialect(name(), context, pir::TypeId::get<CustomOpDialect>()) {}
 
@@ -489,6 +812,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
     op_name += "_";
     traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
   }
+
   char* op_name_c = new char[op_name.size() + 1];
   snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
   op_names_.push_back(op_name_c);
@@ -509,6 +833,13 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
       pir::InterfaceValue::Get<OpYamlInfoInterface,
                                CustomOpInfoInterfaceModel>();
   interface_values.insert(std::move(op_info_interface));
+
+  if (paddle::framework::detail::HasGradOp(op_name)) {
+    pir::InterfaceValue vjp_interface =
+        pir::InterfaceValue::Get<VjpInterface, CustomOpVjpInterfaceModel>();
+    interface_values.insert(std::move(vjp_interface));
+  }
+
   // Currently we set empty verify function and will reset it if it is used in
   // future.
   pir::VerifyPtr verify_func = [](pir::Operation* op) {};
