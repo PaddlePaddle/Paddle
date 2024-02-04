@@ -1001,11 +1001,11 @@ bool Relu_OpInferSymbolicShape(pir::Operation *op,
 
 bool ArangeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto start_shape_or_data =
+  const auto &start_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-  const auto end_shape_or_data =
+  const auto &end_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-  const auto step_shape_or_data =
+  const auto &step_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
 
   const auto start = [&] {
