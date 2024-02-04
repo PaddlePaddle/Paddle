@@ -3785,12 +3785,12 @@ void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& decrease_axis,
                        MetaTensor* out,
                        MetaConfig config) {
-  auto in_dims = input.dims();
+  const auto& in_dims = input.dims();
+
   PADDLE_ENFORCE_LT(
       in_dims.size(),
       7,
       phi::errors::InvalidArgument("The rank of input should be less than 7."));
-  DDim out_dims(in_dims);
 
   std::vector<int64_t> infer_flags = infer_flags_t;
   if (infer_flags.empty()) {
@@ -3829,13 +3829,12 @@ void SliceRawInferMeta(const MetaTensor& input,
 
   auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
       in_dims, new_axes, starts, ends, nullptr, &infer_flags);
-  if (config.is_runtime) {
-    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
-        slice_dims, decrease_axis, &infer_flags);
-  } else {
-    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
-        slice_dims, decrease_axis, nullptr);
-  }
+
+  DDim out_dims(in_dims);
+  out_dims = config.is_runtime ? phi::funcs::GetDecreasedDims<int64_t>(
+                                     slice_dims, decrease_axis, &infer_flags)
+                               : phi::funcs::GetDecreasedDims<int64_t>(
+                                     slice_dims, decrease_axis, nullptr);
 
   out->set_dims(out_dims);
   if (!new_axes.empty() && new_axes[0] != 0) {

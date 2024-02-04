@@ -259,7 +259,7 @@ bool ShapeSrOpInferSymbolicShape(
 
 void BuildCstrEqForTensorListAlongAxis(
     pir::ShapeConstraintIRAnalysis *shape_analysis,
-    symbol::TensorListShapeOrDataDimExprs shape_data_list,
+    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis) {
   for (size_t i = 1; i < shape_data_list.size(); ++i) {
     shape_analysis->CreateDimExprBuilder().CstrEq(
@@ -488,14 +488,16 @@ bool FullIntArrayOpInferSymbolicShape(
   pir::Attribute attr_value = attributes.at("value");
   const auto &vec = attr_value.dyn_cast<pir::ArrayAttribute>().AsVector();
 
-  std::vector<symbol::DimExpr> data;
-  for (auto item : vec) {
-    int64_t i = item.dyn_cast<pir::Int64Attribute>().data();
-    data.push_back(symbol::DimExpr(i));
-  }
+  const std::vector<symbol::DimExpr> data = [&] {
+    std::vector<symbol::DimExpr> data;
+    for (auto item : vec) {
+      int64_t i = item.dyn_cast<pir::Int64Attribute>().data();
+      data.push_back(symbol::DimExpr(i));
+    }
+    return data;
+  }();
 
-  // TODO(zhangbopd): use op->result(0) to infer the shape
-  std::vector<symbol::DimExpr> shape{std::int64_t(vec.size())};
+  const std::vector<symbol::DimExpr> shape{std::int64_t(vec.size())};
 
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(shape, data)};
@@ -517,49 +519,96 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   pir::Value operand_ends = op->operand_source(2);
   pir::Value res = op->result(0);
 
-  symbol::ShapeOrDataDimExprs operand_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
-  symbol::ShapeOrDataDimExprs starts_shape_data =
+  const symbol::ShapeOrDataDimExprs &starts_shape_data =
       shape_analysis->GetShapeOrDataForValue(operand_starts);
-  symbol::ShapeOrDataDimExprs ends_shape_data =
+  const symbol::ShapeOrDataDimExprs &ends_shape_data =
       shape_analysis->GetShapeOrDataForValue(operand_ends);
 
-  int64_t start = 0;
-  if (starts_shape_data.data().has_value()) {
-    start = starts_shape_data.data()->at(0).Get<int64_t>();
-  }
+  // Currently, we DO NOT support the case that any element in `axes` `starts`
+  // or `ends` is a Symbol.
+  const std::vector<int64_t> axes = [&] {
+    const auto &attributes = op->attributes();
+    pir::Attribute attr_axes = attributes.at("axes");
 
-  int64_t end = 0;
-  if (ends_shape_data.data().has_value()) {
-    end = ends_shape_data.data()->at(0).Get<int64_t>();
-  }
-
-  std::vector<int64_t> dims =
-      common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
-
-  // TODO(zhangbopd): check whether it's right for other cases
-  std::vector<symbol::DimExpr> sym_shape;
-  for (auto dim : dims) {
-    symbol::DimExpr dim_expr;
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
+    const auto &axes_vec = attr_axes.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<int64_t> axes;
+    int64_t rank = int64_t(operand_shape_or_data.shape().size());
+    for (auto item : axes_vec) {
+      int64_t axis = item.dyn_cast<pir::Int64Attribute>().data();
+      axes.emplace_back(axis >= 0 ? axis : std::max(int64_t(0), axis + rank));
     }
-    sym_shape.push_back(dim_expr);
-  }
+    return axes;
+  }();
 
-  std::vector<symbol::DimExpr> out_data;
-  if (operand_shape_or_data.data().has_value()) {
-    for (int64_t i = start; i < end; i++) {
-      out_data.push_back(operand_shape_or_data.data().value()[i]);
+  const std::vector<int64_t> starts = [&] {
+    std::vector<int64_t> starts;
+    for (auto item : starts_shape_data.data().value()) {
+      IR_ENFORCE(item.isa<int64_t>(),
+                 "Currently, we DO NOT support the case that any element in "
+                 "`starts` is a Symbol.");
+      starts.push_back(item.Get<int64_t>());
     }
-  }
+    return starts;
+  }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(sym_shape, out_data)};
+  const std::vector<int64_t> ends = [&] {
+    std::vector<int64_t> ends;
+    for (auto item : ends_shape_data.data().value()) {
+      IR_ENFORCE(item.isa<int64_t>(),
+                 "Currently, we DO NOT support the case that any element in "
+                 "`ends` is a Symbol.");
+      ends.push_back(item.Get<int64_t>());
+    }
+    return ends;
+  }();
+
+  // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
+  // op, the reseult should be written into data.
+  const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
+    const std::vector<symbol::DimExpr> out_data = [&] {
+      std::vector<symbol::DimExpr> out_data;
+      for (int64_t i = starts[0]; i < ends[0]; i++) {
+        out_data.push_back(operand_shape_or_data.data().value()[i]);
+      }
+      return out_data;
+    }();
+    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
+  };
+
+  // Othewise, the reseult should be written into the shape.
+  const auto &GetShapeDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
+    std::vector<symbol::DimExpr> out_shape = operand_shape_or_data.shape();
+
+    const std::vector<symbol::DimExpr> &dim_expr_starts =
+        starts_shape_data.data().value();
+    const std::vector<symbol::DimExpr> &dim_expr_ends =
+        ends_shape_data.data().value();
+
+    for (size_t i = 0; i < axes.size(); ++i) {
+      int64_t axis = axes[i];
+      if ((starts[i] >= 0 && ends[i] >= 0) ||
+          (starts[i] <= 0 && ends[i] <= 0)) {
+        out_shape[axis] = dim_expr_ends[i] - dim_expr_starts[i];
+      } else if (starts[i] <= 0 && ends[i] >= 0) {
+        out_shape[axis] =
+            dim_expr_ends[i] - dim_expr_starts[i] - out_shape[axis];
+      } else if (starts[i] >= 0 && ends[i] <= 0) {
+        out_shape[axis] =
+            out_shape[axis] - dim_expr_starts[i] + dim_expr_ends[i];
+      }
+    }
+
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_shape)};
+  };
+
+  symbol::ShapeOrDataDimExprs shape_data =
+      operand_shape_or_data.data().has_value() ? GetDataDimExprs()
+                                               : GetShapeDimExprs();
 
   op->set_attribute(
       "symbolic_shape",
@@ -608,8 +657,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
       "symbolic_shape",
       pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), shape_data));
 
-  pir::Value res = op->result(0);
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 
@@ -853,7 +901,7 @@ bool Squeeze_OpInferSymbolicShape(
 bool UnsqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   IR_ENFORCE(op->num_operands() == 2,
-             "UnsqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
+             "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
              "now, but got %d operands",
              op->num_operands());
 
@@ -890,7 +938,6 @@ bool UnsqueezeOpInferSymbolicShape(
                symbol::ToString(axis_expr));
     int axis = static_cast<int>(axis_expr.Get<std::int64_t>());
     int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
-    // No need to do vaildity check here, it's already done in InferMeta
 
     // Move old axis, and insert new axis
     for (int i = cur_output_rank; i >= cur; --i) {
@@ -1080,29 +1127,10 @@ bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
-  PADDLE_ENFORCE_GT(
-      input_size,
-      0,
-      phi::errors::PreconditionNotMet(
-          " [%s] op must have at least one input, but received %d.",
-          op->name(),
-          input_size));
 
   const int axis =
       op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
-  PADDLE_ENFORCE_GT(axis,
-                    0,
-                    phi::errors::PreconditionNotMet(
-                        "[%s] op shalle satisfy axis > 0 , but received %d.",
-                        op->name(),
-                        axis));
-  PADDLE_ENFORCE_GT(
-      input_size,
-      0,
-      phi::errors::PreconditionNotMet(
-          " [%s] op must have at least one input, but received %d.",
-          op->name(),
-          input_size));
+
   // TODO(zhangbopd): Need support GetShapeOrDataForValue().data() case.
   const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> out_dims =
