@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 from paddle.base import core
 from paddle.base.framework import Program
 
@@ -133,8 +134,8 @@ class TestVarDesc(unittest.TestCase):
         block = program_desc.block(0)
         var = block.var(b'my_var')
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
-        var.set_dtype(core.VarDesc.VarType.INT32)
-        self.assertEqual(core.VarDesc.VarType.INT32, var.dtype())
+        var.set_dtype(paddle.int32)
+        self.assertEqual(paddle.int32, var.dtype())
         self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
 
     def test_multiple_dtype(self):
@@ -143,9 +144,9 @@ class TestVarDesc(unittest.TestCase):
         var = block.var(b'my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [
-            core.VarDesc.VarType.INT32,
-            core.VarDesc.VarType.FP64,
-            core.VarDesc.VarType.FP32,
+            paddle.int32,
+            paddle.float64,
+            paddle.float32,
         ]
         var.set_dtypes(src_types)
         self.assertEqual(src_types, var.dtypes())
