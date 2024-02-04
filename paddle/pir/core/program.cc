@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/program.h"
+#include "glog/logging.h"
 #include "paddle/pir/core/ir_context.h"
 
 namespace pir {
@@ -46,8 +47,8 @@ Parameter* Program::GetParameter(const std::string& name) const {
 }
 
 void Program::SetParameter(const std::string& name,
-                           std::unique_ptr<Parameter>&& parameter) {
-  parameters_[name].reset(parameter.release());
+                           std::shared_ptr<Parameter> parameter) {
+  parameters_[name] = parameter;
 }
 
 }  // namespace pir

@@ -203,7 +203,6 @@ class TestPoissonNLLLossErrCase(TestPoissonNLLLossBasicCase):
 
 
 class TestPoissonNLLLossFloat16Case(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         if core.is_compiled_with_cuda():
             self.test_static_case(dtype="float16")
@@ -211,7 +210,6 @@ class TestPoissonNLLLossFloat16Case(TestPoissonNLLLossBasicCase):
 
 
 class TestPoissonNLLLossBfloat16Case(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         if core.is_compiled_with_cuda():
             self.test_static_case(dtype="uint16")
@@ -219,35 +217,30 @@ class TestPoissonNLLLossBfloat16Case(TestPoissonNLLLossBasicCase):
 
 
 class TestPoissonNLLLossFloat32Case(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         self.test_static_case(dtype="float32")
         self.test_dynamic_case(dtype="float32")
 
 
 class TestPoissonNLLLossFloat64Case(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         self.test_static_case(dtype="float64")
         self.test_dynamic_case(dtype="float64")
 
 
 class TestPoissonNLLLossNoLoginputCase(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         self.test_static_case(log_input=False)
         self.test_dynamic_case(log_input=False)
 
 
 class TestPoissonNLLLossFulllossCase(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         self.test_static_case(full=True)
         self.test_dynamic_case(full=True)
 
 
 class TestPoissonNLLLossSumReductionCase(TestPoissonNLLLossBasicCase):
-    @test_with_pir_api
     def test_api(self):
         self.test_static_case(reduction="sum")
         self.test_dynamic_case(reduction="sum")

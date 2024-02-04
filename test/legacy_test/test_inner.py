@@ -124,6 +124,7 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors_static_case1(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -134,6 +135,7 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, paddle.inner, x, y)
 
+    @test_with_pir_api
     def test_errors_static_case2(self):
         # test static computation graph: inputs must be broadcastable
         paddle.enable_static()

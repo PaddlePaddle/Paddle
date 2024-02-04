@@ -150,7 +150,7 @@ class _HPRecomputeFunction(PyLayer):
 
                 # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
                 #  which is inplace operating. When the inputs' stop_gradient is True, an
-                #  error will occurs because the stop_gradient=True and inpalce-op are not
+                #  error will occurs because the stop_gradient=True and inplace-op are not
                 #  supported in the same time. The solution is to mark the inputs non_differentiable
                 #  if its stop_gradient is True.
                 # Note:
@@ -250,14 +250,14 @@ class _HPRecomputeFunction(PyLayer):
 def recompute_hybrid(ctx, function, *args, **kwargs):
     """
     recompute intermediate activations to save the memory in hybrid parallel scene.
-    # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
+    # NOTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().
     # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
 
     Parameters:
-        ctx(dict): include 'mp_group', 'offload', and 'partition' keys. the key 'mp_group' (Group), represents the avtivations are splitted
+        ctx(dict): include 'mp_group', 'offload', and 'partition' keys. the key 'mp_group' (Group), represents the activations are splitted
                    in which group. the key 'offload' (bool, optional, default=False), represents whether to offload to cpu. the key 'partition' (bool, optional, default=False),
                    represents whether to split activations in the mp_group.
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model

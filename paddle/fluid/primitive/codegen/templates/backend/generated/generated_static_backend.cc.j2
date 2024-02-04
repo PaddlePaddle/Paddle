@@ -59,7 +59,7 @@ if(op_res){
 return {{outputs[0].name}};
     {%- elif outputs[0].typename == 'Tensor[]' and not outputs[0].optional -%}
 std::vector<Tensor> {{outputs[0].name}}(op_res.size());
-std::transform(op_res.begin(), op_res.end(), {{outputs[0].name}}.begin(), [](const pir::OpResult& res) {
+std::transform(op_res.begin(), op_res.end(), {{outputs[0].name}}.begin(), [](const pir::Value& res) {
 return Tensor(std::make_shared<LazyTensor>(res));
   });
 return {{outputs[0].name}};
@@ -67,7 +67,7 @@ return {{outputs[0].name}};
 paddle::optional<std::vector<Tensor>> {{outputs[0].name}};
 if({{op_res}}) {
   std::vector<pir::Value> {{outputs[0].name}}_inner(op_res.get().size());
-  std::transform(op_res.get().begin(), op_res.get().end(), {{outputs[0].name}}_inner.begin(), [](const pir::OpResult& res) {
+  std::transform(op_res.get().begin(), op_res.get().end(), {{outputs[0].name}}_inner.begin(), [](const pir::Value& res) {
     return Tensor(std::make_shared<LazyTensor>(res));
   });
   {{outputs[0].name}} = paddle::make_optional<std::vector<Tensor>>({{outputs[0].name}}_inner);
@@ -87,14 +87,14 @@ if(op_res_{{i}}){
 }
       {% elif outputs[i].typename == 'Tensor[]' and not outputs[i].optional %}
 std::vector<Tensor> {{outputs[i].name}}(op_res_{{i}}.size());
-std::transform(op_res_{{i}}.begin(), op_res_{{i}}.end(), {{outputs[i].name}}.begin(), [](const pir::OpResult& res) {
+std::transform(op_res_{{i}}.begin(), op_res_{{i}}.end(), {{outputs[i].name}}.begin(), [](const pir::Value& res) {
 return Tensor(std::make_shared<LazyTensor>(res));
   });
       {% elif outputs[i].typename == 'Tensor[]' and outputs[i].optional %}
 paddle::optional<std::vector<Tensor>> {{outputs[i].name}};
 if(op_res_{{i}}){
   std::vector<Tensor> {{outputs[i].name}}_inner(op_res_{{i}}.get().size());
-  std::transform(op_res_{{i}}.get().begin(), op_res_{{i}}.get().end(), {{outputs[i].name}}_inner.begin(), [](const pir::OpResult& res) {
+  std::transform(op_res_{{i}}.get().begin(), op_res_{{i}}.get().end(), {{outputs[i].name}}_inner.begin(), [](const pir::Value& res) {
     return Tensor(std::make_shared<LazyTensor>(res));
   });
   {{outputs[i].name}} = paddle::make_optional<std::vector<Tensor>>({{outputs[i].name}}_inner);
@@ -113,7 +113,7 @@ return std::make_tuple({%- for i in range(outputs|length) -%}{{outputs[i].name}}
 {{prepare_ir_api_inputs(inputs)}}
   {%- for attr in attrs %}
     {% if mutable_attribute_as_inputs and attr is mutable_attribute %}
-pir::OpResult {{attr.name}}_res = std::static_pointer_cast<LazyTensor>({{attr.name~'_'}}.impl())->value().dyn_cast<pir::OpResult>();
+pir::Value {{attr.name}}_res = std::static_pointer_cast<LazyTensor>({{attr.name~'_'}}.impl())->value();
     {% endif %}
   {% endfor %}
   {%- set input_names = [] -%}

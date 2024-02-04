@@ -185,7 +185,7 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -432,7 +432,7 @@ void PSGPUWorker::TrainFiles() {
         {
           std::lock_guard<std::mutex> lock(mutex);
           VLOG(0) << "worker " << thread_id_ << ": " << var_name
-                  << " cantains inf or nan";
+                  << " contains inf or nan";
           auto all_vars = thread_scope->LocalVarNames();
           std::stringstream ss;
           ss << "====== worker " << thread_id_ << "======\n";
@@ -556,7 +556,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   for (size_t i = 0; i < op_name.size(); ++i) {
     VLOG(0) << "card:" << thread_id_ << ", op: " << op_name[i]
             << ", mean time: " << op_total_time[i] / total_ins_num
-            << "s, totol time:" << op_total_time[i] << "sec";
+            << "s, total time:" << op_total_time[i] << "sec";
   }
   VLOG(0) << "card: " << thread_id_ << " read time: " << read_time
           << ", percent: " << read_time / total_time * 100;

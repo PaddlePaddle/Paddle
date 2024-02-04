@@ -386,7 +386,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
             for (size_t i = 0; i < keys_vec.size(); ++i) {
               if (!infer_mode_ || sage_mode_) {
                 CHECK_EQ(keys_vec[i]->size(), ranks_vec[i]->size())
-                    << keys_vec[i]->size() << " should be euqal to "
+                    << keys_vec[i]->size() << " should be equal to "
                     << ranks_vec[i]->size();
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
@@ -398,7 +398,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                 }
               } else {
                 CHECK_EQ(ranks_vec[i]->size(), 0UL)
-                    << ranks_vec[i]->size() << " should be euqal to 0";
+                    << ranks_vec[i]->size() << " should be equal to 0";
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
                   int shard_idx = key % thread_keys_thread_num_;
@@ -2752,7 +2752,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       VLOG(3) << "Begin GPUPS PushSparseGrad";
 
       auto buf = memory::Alloc(place, total_length * grad_value_size);
-      VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
+      VLOG(3) << "Push Sparse Max mf dimension: " << max_mf_dim_
               << "grad_value_size:" << grad_value_size;
       float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
 
@@ -2790,7 +2790,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Begin GPUPS PushSparseGrad";
 
     auto buf = memory::Alloc(place, total_length * grad_value_size);
-    VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
+    VLOG(3) << "Push Sparse Max mf dimension: " << max_mf_dim_
             << "grad_value_size:" << grad_value_size;
     float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
     phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];

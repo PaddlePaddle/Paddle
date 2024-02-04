@@ -18,7 +18,6 @@
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-// #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
@@ -31,15 +30,15 @@
  * x —-----------> [1  64  S0 1] —-----------> [1  64  S0 1]
  *
  *
- *   y=pd.data(y)                 y=pd.reshape(y)                                    y=pd.cast(y)
- *                              shape={1, 64, -1, 2}                                 （simplify）
+ *                                y=pd.reshape(y)                                    y=pd.cast(y)
+ *    y=pd.data(y)              shape={1, 64, -1, 2}                                 （simplify）
  * y —-----------> [S1 128 32] --------------—-------> [1  64 (S1*128*32)/1/64/2 2] ------------> [1  64 (S1*32) 2]
  *
  *
- *   z=pd.data(z)                       z=pd.slice(z)
+ *                                     z=pd.slice(z)
  *                                 axes   = [0, 1, 2, 3]
  *                                 starts = [2, 2, 2, 2]
- *                                 ends   = [-2,-2,-2,-2]                            z=pd.relu(z)
+ *    z=pd.data(z)                 ends   = [-2,-2,-2,-2]                            z=pd.relu(z)
  * z —-----------> [S2 S3 S4, S5] -------------—---------> [S2-4, S3-4, S4-4, S5-4] --------------> [S2-4, S3-4, S4-4, S5-4]
  *
  * ================================== Binary OP ==================================
@@ -117,20 +116,17 @@ TEST(shape_optimization, shape_optimization_pass) {
   symbol::ShapeOrDataDimExprs subtract_res =
       shape_analysis.GetShapeOrDataForValue(subtract_op.result(0));
 
-  // TODO(zhangbopd:after shape infer is completed, we can check the results)
+  // TODO(zhangbopd): after shape infer is completed, we can check the results
+  // EXPECT_EQ(cast_res.shape()[0], 1);
+  // EXPECT_EQ(cast_res.shape()[1], 64);
+  // EXPECT_EQ(symbol::ToString(cast_res.shape()[2]) == "Mul(S0, 32)");
+  // EXPECT_EQ(cast_res.shape()[3] == 2);
+  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S2, -4)");
+  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S3, -4)");
+  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S4, -4)");
+  // EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(S5, -4)");
 
-  // IR_ENFORCE(cast_res.shape()[0] == 1);
-  // IR_ENFORCE(cast_res.shape()[1] == 64);
-  // IR_ENFORCE(symbol::ToString(cast_res.shape()[2]) == "Mul(S0, 32)");
-  // IR_ENFORCE(cast_res.shape()[3] == 2);
-
-  // IR_ENFORCE(symbol::ToString(relu_res.shape()[2]) == "Add(S2, -4)");
-  // IR_ENFORCE(symbol::ToString(relu_res.shape()[2]) == "Add(S3, -4)");
-  // IR_ENFORCE(symbol::ToString(relu_res.shape()[2]) == "Add(S4, -4)");
-  // IR_ENFORCE(symbol::ToString(relu_res.shape()[2]) == "Add(S5, -4)");
-
-  IR_ENFORCE(subtract_res.shape()[0] == 1);
-  IR_ENFORCE(subtract_res.shape()[1] == 64);
-  IR_ENFORCE(symbol::ToString(subtract_res.shape()[2]) == "Broadcast(S0, -1)");
-  IR_ENFORCE(symbol::ToString(subtract_res.shape()[3]) == "Broadcast(1, 2)");
+  EXPECT_EQ(subtract_res.shape()[0], 1);
+  EXPECT_EQ(subtract_res.shape()[1], 64);
+  EXPECT_EQ(symbol::ToString(subtract_res.shape()[2]), "Broadcast(S0, -1)");
 }

@@ -61,7 +61,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default
     export FLAGS_call_stack_level=2
-    export FLAGS_set_to_1d=False
 }
 
 function cmake_base() {
@@ -987,7 +986,7 @@ function check_run_sot_ci() {
 function run_sot_test() {
     PY_VERSION=$1
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
-    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+    PY_VERSION_NO_DOT=$(echo $PY_VERSION | sed 's/\.//g')
 
     export STRICT_MODE=1
     export COST_MODEL=False
@@ -997,16 +996,34 @@ function run_sot_test() {
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
-    # Install PaddleSOT
+    # cd to sot test dir
     cd $PADDLE_ROOT/test/sot/
 
     # Run unittest
     failed_tests=()
 
+    # Skip single tests that are currently not supported
+    declare -a skip_files
+    skiplist_filename="./skip_files_py$PY_VERSION_NO_DOT"
+    if [ -f "$skiplist_filename" ];then
+        # Prevent missing lines
+        echo "" >> "$skiplist_filename"
+        while IFS= read -r line; do  
+            skip_files+=("$line")
+            echo "$line"
+        done < "$skiplist_filename"
+    else
+        skip_files=()
+    fi
+
     for file in ./test_*.py; do
         # check file is python file
         if [ -f "$file" ]; then
-            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            if [[ "${skip_files[*]}"  =~ "${file}" ]]; then
+                echo "skip ${PY_VERSION_NO_DOT} ${file}"
+                continue
+            fi
+            echo Running:" STRICT_MODE=1 COST_MODEL=False MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True python " $file
             # run unittests
             python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
 
@@ -1527,7 +1544,7 @@ set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
         export FLAGS_trt_ibuilder_cache=1
-        precison_cases=""
+        precision_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python $PADDLE_ROOT/tools/get_pr_ut.py
@@ -2529,7 +2546,7 @@ set -x
         # set trt_convert ut to run 15% cases.
         export TEST_NUM_PERCENT_CASES=0.15
         export FLAGS_trt_ibuilder_cache=1
-        precison_cases=""
+        precision_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
@@ -3312,6 +3329,64 @@ EOF
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
+}
+
+function distribute_test() {
+    echo "Start gpups tests"
+    parallel_test_base_gpups
+    echo "End gpups tests"
+
+    echo "Dowloading ...."
+    cd ${work_dir}
+    git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
+    cd PaddleNLP
+    sed -i '/lac/d' scripts/regression/requirements_ci.txt
+
+    pip install -r requirements.txt
+    pip install -r scripts/regression/requirements_ci.txt
+    pip install -r ./csrc/requirements.txt
+    python setup.py install
+    python -m pip install pytest-timeout
+    cd csrc && python setup_cuda.py install
+
+    cd ${work_dir}
+    wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate
+    unzip -P'41maLgwWnCLaFTCehlwQ6n4l3oZpS/r5gPq4K4VLj5M1024' Bos.zip
+    mkdir paddlenlp && mv Bos/* ./paddlenlp/
+    rm -rf ./paddlenlp/upload/*
+    rm -rf ./paddlenlp/models/bigscience/*
+
+    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
+    export FLAGS_dynamic_static_unified_comm=True
+
+    echo "Start LLM Test"
+    # Disable Test: test_gradio
+    cd ${work_dir}/PaddleNLP
+    pids=()
+    env CUDA_VISIBLE_DEVICES=0,1 python -m pytest -s -v tests/llm/test_finetune.py &
+    pids+=($!)
+    env CUDA_VISIBLE_DEVICES=2,3 python -m pytest -s -v tests/llm/test_lora.py tests/llm/test_predictor.py &
+    pids+=($!)
+    env CUDA_VISIBLE_DEVICES=4,5 python -m pytest -s -v tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
+    pids+=($!)
+    env CUDA_VISIBLE_DEVICES=6,7 python -m pytest -s -v tests/llm/test_ptq.py tests/llm/testing_utils.py &
+    pids+=($!)
+
+    for pid in "${pids[@]}"; do
+      wait $pid
+    done
+    echo "End LLM Test"
+
+    echo "Start auto_parallel Test"
+    cd ${work_dir}
+    timeout 50m bash tools/auto_parallel/ci_auto_parallel.sh
+    EXIT_CODE=$?
+    echo "End auto_parallel Test"
+
+    if [[ "$EXIT_CODE" != "0" ]]; then
+      exit 8;
+    fi
+
 }
 
 function test_fluid_lib_train() {
@@ -4165,6 +4240,9 @@ function main() {
       bind_test)
         bind_test
         ;;
+      distribute_test)
+	distribute_test
+	;;
       gen_doc_lib)
         gen_doc_lib $2
         ;;
@@ -4211,7 +4289,7 @@ function main() {
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
         export ON_INFER=ON
-        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
+        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data
         is_run_distribute_in_op_test
         parallel_test
         check_coverage
@@ -4302,7 +4380,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        PYTHON_VERSIONS=(3.12 3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

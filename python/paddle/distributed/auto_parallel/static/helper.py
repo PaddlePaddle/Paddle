@@ -16,6 +16,7 @@ import inspect
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
@@ -30,6 +31,7 @@ from paddle.static.amp.fp16_utils import (
 )
 
 from .converter import Converter
+from .process_group import get_world_process_group
 from .utils import get_logger, to_list
 
 
@@ -251,7 +253,9 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
+        concrete_program = getattr(
+            self.proxy_layer, func_name
+        ).concrete_program  # noqa: B018
         prepare_op_amp_options(
             concrete_program.main_program,
             ProgramTranslator.get_instance()._amp_records,
@@ -263,9 +267,11 @@ class ProgramHelper:
         """
         Create and Sync parameters into startup program.
         """
-        if len(self.startup_program.global_block().ops) > 1:
+        startup_program = self.startup_program
+        if len(startup_program.global_block().ops) > 1:
             self.lazy_init = True
             return
+
         for param in self.concrete_program.parameters:
             Parameter(
                 name=param.name,
@@ -274,7 +280,7 @@ class ProgramHelper:
                 shape=param.shape,
                 dtype=param.dtype,
                 stop_gradient=param.stop_gradient,
-                block=self.startup_program.global_block(),
+                block=startup_program.global_block(),
             )
 
     def apply_optimizer(self, optimizer):
@@ -335,8 +341,26 @@ class ProgramHelper:
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
             return
+
+        is_comm = False
         for param in self.concrete_program.parameters:
+            if param.is_dist():
+                serial_main_program = self.concrete_program.main_program
+                var = serial_main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                is_comm = True
+                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                if tmp._is_initialized():
+                    param.get_tensor()._share_data_with(tmp.get_tensor())
+                else:
+                    param = None
+            paddle.device.synchronize()
+
             # create var in scope and share parameters to scope
+            if param is None:
+                continue
             if param.name not in main_program.global_block().vars:
                 continue
             if param.is_dense():
@@ -361,6 +385,19 @@ class ProgramHelper:
                 dense_tensor = global_scope().var(param.name).get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
+        world_group = get_world_process_group()
+        if (
+            is_comm
+            and world_group.nranks > 1
+            and paddle.distributed.get_world_size() > 1
+        ):
+            paddle.disable_static()
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
+            )
+            paddle.enable_static()
+
     @property
     def concrete_program(self):
         return self.static_func().concrete_program
@@ -374,7 +411,9 @@ class ProgramHelper:
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
-            self._logger.warning("`lazy init` failed.")
+            self._logger.warning(
+                "The startup_program is not built by `lazy init`."
+            )
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err

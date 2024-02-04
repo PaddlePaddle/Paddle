@@ -144,8 +144,8 @@ class TestPybind(unittest.TestCase):
 
         self.assertEqual(add_op.result(0).initialized(), True)
 
-        uninit_op_result = paddle.pir.OpResult()
-        self.assertEqual(uninit_op_result.initialized(), False)
+        uninit_value = paddle.pir.Value()
+        self.assertEqual(uninit_value.initialized(), False)
 
     def test_type(self):
         pir_program = get_ir_program()

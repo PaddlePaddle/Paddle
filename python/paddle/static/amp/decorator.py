@@ -846,10 +846,10 @@ def decorate(  # noqa: F811
              will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
              default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision
+        master_weight(bool, optional): For level='O2', whether to use multi-precision
             during weight updating. If master_weight is None, in O2 level optimizer
             will use multi-precision. Default is None.
-        master_grad(bool, optinal): For level='O2', whether to use master_grad
+        master_grad(bool, optional): For level='O2', whether to use master_grad
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.

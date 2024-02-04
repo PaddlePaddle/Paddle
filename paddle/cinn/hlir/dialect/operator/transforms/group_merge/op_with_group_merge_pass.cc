@@ -43,7 +43,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
 
     if (!op2id.count(source_op)) {
       continue;
@@ -73,7 +73,7 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    auto* source_op = operand.source().defining_op();
     producers.insert(source_op);
   }
   return producers;
@@ -109,7 +109,7 @@ std::vector<pir::Operation*> TopologicalSort(
         continue;
       }
 
-      if (inner_set.count(operand.source().dyn_cast<pir::OpResult>().owner())) {
+      if (inner_set.count(operand.source().defining_op())) {
         count++;
       }
     }
@@ -161,7 +161,7 @@ phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value& value) {
+const phi::DDim& GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -236,7 +236,9 @@ int GetSharedSize(::pir::Operation* op) {
 }
 
 using ConditionFunction =
-    std::function<bool(::pir::Operation*, const GroupPtr&)>;
+    std::function<bool(::pir::Operation*,
+                       const GroupPtr&,
+                       const ::pir::ShapeConstraintIRAnalysis&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -281,7 +283,7 @@ class OpFusionPassHelper {
         // input op
 
         for (size_t i = 0; i < op->num_operands(); ++i) {
-          auto input = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+          auto input = op->operand_source(i).defining_op();
           if (input && (local_ops_.count(input))) {
             group->input_ops[input] = 1;
           }
@@ -293,7 +295,7 @@ class OpFusionPassHelper {
         // use current op as master op for schedule
         group->master_ops.insert(op);
 
-        // get opration unique id
+        // get operation unique id
         group->group_id = "id_" + std::to_string(index++);
         fusion_groups_[op] = group;
       }
@@ -354,6 +356,8 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
+    const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        ops_.front()->GetParentProgram());
     for (auto consumer : ops_) {
       auto consumer_kind =
           hlir::framework::pir::CompatibleInfo::OpKind(*consumer);
@@ -411,7 +415,7 @@ class OpFusionPassHelper {
           }
         }
 
-        if (!can_fuse || !CanFuse(producer, consumer)) {
+        if (!can_fuse || !CanFuse(producer, consumer, shape_analysis)) {
           continue;
         }
 
@@ -441,7 +445,7 @@ class OpFusionPassHelper {
           // VLOG(3) << "Insert Global Output Node : " << producer->id();
           consumer_fusion->output_ops.insert(producer);
         } else if (producer_data_used_num > 1 && producer->num_operands() > 0 &&
-                   is_same_size(producer, consumer_fusion)) {
+                   is_same_size(producer, consumer_fusion, shape_analysis)) {
           // producer is not a const value op.
           consumer_fusion->internal_ops.insert(producer);
         }
@@ -480,13 +484,15 @@ class OpFusionPassHelper {
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
           {OpPatternKind::kBroadcast,
-           [](::pir::Operation* producer, const GroupPtr& consumer) -> bool {
+           [](::pir::Operation* producer,
+              const GroupPtr& consumer,
+              const ::pir::ShapeConstraintIRAnalysis& shape_analysis) -> bool {
              // NOTE, producer and consumer NEVER be same size
-             if (is_same_size(producer, consumer)) {
+             if (is_same_size(producer, consumer, shape_analysis)) {
                return true;
              }
 
-             // NOTE, original code is below, if produer is not output op,
+             // NOTE, original code is below, if producer is not output op,
              // result always be true
              // !helper->output_ops_set_.count(producer);
              return true;
@@ -592,7 +598,9 @@ class OpFusionPassHelper {
     }
   }
 
-  bool CanFuse(::pir::Operation* producer, const ::pir::Operation* consumer) {
+  bool CanFuse(::pir::Operation* producer,
+               const ::pir::Operation* consumer,
+               const ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];
@@ -601,13 +609,17 @@ class OpFusionPassHelper {
             hlir::framework::pir::CompatibleInfo::OpKind(*consumer))) {
       auto& consumer_group = fusion_groups_[consumer];
       // second step: check producer can be fused into consumer group
-      VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
+      VLOG(3) << "Call ConditionFunction, Producer Op: [" << producer->name()
+              << "] Pattern : "
               << hlir::framework::pir::CompatibleInfo::OpKind(*producer)
-              << " , Consumer Group Pattern : "
-              << consumer_group->op_pattern_kind;
+              << " , Consumer Group [" << consumer->name()
+              << "] Pattern : " << consumer_group->op_pattern_kind;
 
-      return relation.fusion_op_kind[consumer_group->op_pattern_kind](
-          producer, fusion_groups_[consumer]);
+      bool result = relation.fusion_op_kind[consumer_group->op_pattern_kind](
+          producer, fusion_groups_[consumer], shape_analysis);
+      VLOG(3) << " CanFuse: " << result;
+
+      return result;
     }
 
     return false;
@@ -630,7 +642,7 @@ class OpFusionPassHelper {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
@@ -662,8 +674,6 @@ GroupList OpFusionPassInternal(
     }
     VLOG(6) << ss.str();
   }
-  VLOG(3) << "OpFusionPass Finish...!";
-
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;

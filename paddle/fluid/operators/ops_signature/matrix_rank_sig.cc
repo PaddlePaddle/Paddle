@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 
-// we have to return every specific KernelSignature for infrt now
+// we have to return every specific KernelSignature for inference now
 KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsForInferShape()) {
     return KernelSignature("matrix_rank_tol",
