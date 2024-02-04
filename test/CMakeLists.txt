@@ -122,9 +122,8 @@ function(set_pit_tests_properties)
       set_property(
         TEST ${IR_OP_TEST}
         APPEND
-        PROPERTY ENVIRONMENT
-                 "FLAGS_PIR_OPTEST_RELAX_CHECK=True FLAGS_cudnn_deterministic=1"
-      )
+        PROPERTY ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True"
+                 "FLAGS_cudnn_deterministic=1")
     endif()
   endforeach()
 
