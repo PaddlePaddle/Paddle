@@ -331,6 +331,48 @@ static std::vector<DataType> RunDefaultInferDtype(
     const std::unordered_map<std::string, int>& vec_input_name2id_map) {
   std::vector<DataType> output_dtypes;
   auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
+  // Op is grad op
+  if (custom_op_meta.IsGradOp() || custom_op_meta.IsDoubleGradOp()) {
+    bool is_double_grad = custom_op_meta.IsDoubleGradOp();
+    const auto& bwd_outputs_name =
+        paddle::OpMetaInfoHelper::GetOutputs(custom_op_meta);
+    const auto& bwd_inputs_name =
+        paddle::OpMetaInfoHelper::GetInputs(custom_op_meta);
+    // The reason is same as RunDefaultInferShape
+    for (auto& out_name : bwd_outputs_name) {
+      auto bwd_input_name = detail::NoGrad(out_name, is_double_grad);
+      if (detail::IsDuplicableVar(bwd_input_name)) {
+        // Duplicable forward var must as backward input
+        int input_index = vec_input_name2id_map.at(bwd_input_name);
+        auto input_dtype = vec_input_dtypes[input_index];
+        output_dtypes.insert(
+            output_dtypes.end(), input_dtype.begin(), input_dtype.end());
+      } else {
+        if (std::find(bwd_inputs_name.begin(),
+                      bwd_inputs_name.end(),
+                      bwd_input_name) != bwd_inputs_name.end()) {
+          int input_index = input_name2id_map.at(bwd_input_name);
+          auto input_dtype = input_dtypes[input_index];
+          output_dtypes.push_back(input_dtype);
+        } else {
+          PADDLE_ENFORCE_EQ(
+              bwd_inputs_name.size() == 1UL && bwd_outputs_name.size() == 1UL,
+              true,
+              paddle::platform::errors::Unavailable(
+                  "Custom grad operator inferdtype error. "
+                  "If a custom grad operator contains only one input and "
+                  "only one output, the input dtype will be directly set "
+                  "to the output dtype. Otherwise, Please set the forward "
+                  "input as the grad operator's input or set the "
+                  "InferDtypeFn of custom grad operator by "
+                  ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
+          output_dtypes.push_back(input_dtypes[0]);
+        }
+      }
+    }
+    return output_dtypes;
+  }
+
   if (inplace_map.empty()) {  // general case, assure single input and output
     VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
     if (input_dtypes.size() == 1) {
