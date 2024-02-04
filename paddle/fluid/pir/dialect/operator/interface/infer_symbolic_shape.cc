@@ -621,37 +621,30 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 bool FullOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &attributes = op->attributes();
-  pir::Attribute attr_shape = attributes.at("shape");
-  const auto &shape_vec =
-      attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
-          .data()
-          .GetData();
 
-  std::vector<symbol::DimExpr> sym_shape;
-  for (auto dim : shape_vec) {
-    symbol::DimExpr dim_expr;
+  const std::vector<symbol::DimExpr> shape = [&] {
+    std::vector<symbol::DimExpr> shape;
+    pir::Attribute attr_shape = attributes.at("shape");
+    const auto &shape_vec =
+        attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
+            .data()
+            .GetData();
 
-    if (dim == -1) {
-      symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
-      dim_expr = res_dim_expr;
-    } else {
-      symbol::DimExpr res_dim_expr(dim);
-      dim_expr = res_dim_expr;
+    for (auto &dim : shape_vec) {
+      shape.push_back(symbol::DimExpr(dim));
     }
-    sym_shape.push_back(dim_expr);
-  }
+    return shape;
+  }();
 
-  // DimExpr only keep shape info, which is always int type
+  // Keep shape info always with `int64_t` type.
   int64_t value = attributes.at("value")
                       .dyn_cast<paddle::dialect::ScalarAttribute>()
                       .data()
                       .to<int64_t>();
-  std::vector<symbol::DimExpr> sym_data;
-  sym_data.emplace_back(value);
+  std::vector<symbol::DimExpr> data{symbol::DimExpr(value)};
 
   symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(sym_shape)};
-  shape_data.SetData(sym_data);
+      symbol::TensorShapeOrDataDimExprs(data, shape)};
 
   op->set_attribute(
       "symbolic_shape",
@@ -681,18 +674,27 @@ bool MultiplySr_OpInferSymbolicShape(
 bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
-  // int axis = op->operand_source(1).type().dyn_cast<pir::Int32Type>();
-
   const auto &shape_data_list =
       shape_analysis->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
+  int64_t axis = op->operand_source(1)
+                     .defining_op<paddle::dialect::Full_Op>()
+                     .attributes()
+                     .at("value")
+                     .dyn_cast<paddle::dialect::ScalarAttribute>()
+                     .data()
+                     .to<int64_t>();
+  size_t rank = size_t(shape_data_list[0].shape().size());
+  axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
-    size_t axis = static_cast<size_t>(shape_data_list[0].shape().size() - 1);
-    // TODO(zhangbopd): Dim size of non-axis dims may be infered out.
-    for (size_t i = 0; i < shape_data_list.size(); ++i) {
-      if (i != axis) continue;
+    for (size_t i = 0; i < rank; ++i) {
+      if (i != static_cast<size_t>(axis)) {
+        BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
+        continue;
+      }
       out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
     }
     return out_dims;
