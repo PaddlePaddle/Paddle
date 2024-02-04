@@ -20,6 +20,11 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 
+// to make codes shorter
+using ShapeOrData = symbol::ShapeOrDataDimExprs;
+using TensorExprs = symbol::TensorShapeOrDataDimExprs;
+using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
+
 template <typename T>
 struct AttributeTrait;
 
@@ -1108,16 +1113,113 @@ bool ExpandOpInferSymbolicShape(
 
 bool MatmulOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  // x_dims can't be const or ref here, in case to be broadcasted
+  std::vector<symbol::DimExpr> x_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    const auto &x_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  // y_dims can't be const or ref here, in case to be broadcasted
+  std::vector<symbol::DimExpr> y_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    const auto y_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+    if (y_shape_or_data.data().has_value()) {
+      dims = y_shape_or_data.data().value();
+    } else {
+      dims = y_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  size_t ndims_x = x_dims.size();
+  size_t ndims_y = y_dims.size();
+
+  const bool x_broadcasted = [&] {
+    bool broadcasted = false;
+    if (ndims_x == 1) {
+      x_dims.insert(x_dims.begin(), 1);
+      ndims_x = 2;
+      broadcasted = true;
+    }
+    return broadcasted;
+  }();
+
+  const bool y_broadcasted = [&] {
+    bool broadcasted = false;
+    if (ndims_y == 1) {
+      y_dims.emplace_back(1);
+      ndims_x = 2;
+      broadcasted = true;
+    }
+    return broadcasted;
+  }();
+
+  std::vector<symbol::DimExpr> out_dims;
+  if (ndims_x > ndims_y) {
+    out_dims.assign(x_dims.begin(), x_dims.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    out_dims.assign(y_dims.begin(), y_dims.end() - 2);
+  } else {
+    symbol::DimExprBuilder builder{nullptr};
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+    }
+  }
+
+  symbol::DimExpr out_M =
+      op->attributes().at("transpose_x").dyn_cast<pir::BoolAttribute>().data()
+          ? x_dims[ndims_x - 1]
+          : x_dims[ndims_x - 2];
+  symbol::DimExpr out_N =
+      op->attributes().at("transpose_y").dyn_cast<pir::BoolAttribute>().data()
+          ? y_dims[ndims_y - 2]
+          : y_dims[ndims_y - 1];
+  if (!x_broadcasted) {
+    out_dims.emplace_back(out_M);
+  }
+  if (!y_broadcasted) {
+    out_dims.emplace_back(out_N);
+  }
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                         ShapeOrData{TensorExprs(out_dims)});
+
   return true;
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-  return true;
+  bool keepdim =
+      op->attributes().at("keepdim").dyn_cast<pir::BoolAttribute>().data();
+
+  const std::vector<int64_t> axis = [&] {
+    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
+    std::vector<int64_t> axis_vec;
+    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+      axis_vec = GetVectorAttr(
+          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    } else {
+      // TODO(lanxianghit): there's other source: pir::VectorType,
+      // paddle::dialect::DenseTensorType, but after PRIM, maybe always
+      // FullIntArrayOp, to be confirmed
+      PADDLE_THROW(
+          phi::errors::Unimplemented("MaxOpInferSymbolicShape: 'axis' only "
+                                     "support FullIntArrayOp's result now."));
+    }
+    return axis_vec;
+  }();
+
+  bool reduce_all = axis.size() == 0 ? true : false;
+
+  return ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
 }
 
 bool TrilOpInferSymbolicShape(pir::Operation *op,

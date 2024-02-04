@@ -202,5 +202,51 @@ class TestExpandOpInferSymbolicShape(TestBase):
         return out
 
 
+class MatmulNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        out = paddle.matmul(x, y)
+
+        return out
+
+
+class TestMatmulOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.x = paddle.rand([1, 3], 'float32')
+        self.y = paddle.rand([3, 2], 'float32')
+
+        self.expected_sym_shapes = [
+            'shape[S3, S2], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = MatmulNet()
+
+        input_spec = [
+            InputSpec(shape=[None, None], dtype='float32'),
+            InputSpec(shape=[None, None], dtype='float32'),
+        ]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+
+        # check the infer result
+        sym_shape_str_list = get_sym_shape_str_for_op(
+            net, input_spec, 'pd_op.matmul'
+        )
+        np.testing.assert_equal(
+            len(sym_shape_str_list), len(self.expected_sym_shapes)
+        )
+        for i in range(len(self.expected_sym_shapes)):
+            np.testing.assert_string_equal(
+                sym_shape_str_list[i],
+                self.expected_sym_shapes[i],
+                'output shape is not expected!',
+            )
+        out = net(self.x, self.y)
+        return out
+
+
 if __name__ == '__main__':
     unittest.main()
