@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
+
+#include "paddle/phi/backends/dynload/cutlass.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
+
+typedef void (*func)(phi::fusion::cutlass_internal::ConvAllParams);
 
 template <typename T, typename Context>
 void FusedConv2dAddActKernel(const Context& ctx,
@@ -112,7 +120,18 @@ void FusedConv2dAddActKernel(const Context& ctx,
                           oh,
                           ow,
                           groups,
-                          &ctx};
+                          ctx.stream()};
+
+  // void *dlhandler;
+  // char *error;
+
+  // const std::string DLL_PATH = "libMathFunctions.so";
+  // GetCutlassHandle;
+  // dlhandler = dlopen(DLL_PATH.c_str(),RTLD_LAZY);
+
+  void* dlhandler = phi::dynload::GetCutlassHandle();
+  func conv_func = NULL;
+  CHECK_EQ(dlhandler == NULL, false);
 
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
@@ -147,7 +166,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
-    Conv2dBiasRelu(params);
+    // Conv2dBiasRelu(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasRelu"));
+    conv_func(params);
   } else if (activation == "swish") {
     Conv2dBiasSilu(params);
   } else if (activation == "identity") {

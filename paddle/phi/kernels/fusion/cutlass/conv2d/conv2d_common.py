@@ -15,6 +15,7 @@
 import sys
 
 sys.path.append("../")
+sys.path.append("../..")
 from util import SubstituteTemplate
 
 # For beginners, these template parameters may be difficult to understand.
@@ -90,14 +91,15 @@ CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
-  auto ctx = params.ctx;
-  auto stream = ctx->stream();
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-       phi::memory_utils::Alloc(
-          ctx->GetPlace(),
-          bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  void *workspace = tmp_gpu_ptrs_data->ptr();
+//  auto ctx = params.ctx;
+auto stream = params.stream;
+//  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
+//       phi::memory_utils::Alloc(
+//          ctx->GetPlace(),
+//          bytes,
+//          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
+  void *workspace = nullptr;
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
@@ -161,7 +163,7 @@ void ${func_name}(const ConvAllParams& params) {
 # this function is invoked by phi kernel
 
 CommonWrapperForPhi = """
-void ${op_name}(const ConvAllParams& params) {
+void ${op_name}(ConvAllParams params) {
     ${dispatch_body}
 }
 """

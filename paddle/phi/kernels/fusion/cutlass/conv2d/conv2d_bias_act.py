@@ -15,6 +15,7 @@
 import sys
 
 sys.path.append("../")
+sys.path.append("../../")
 import enum
 
 from conv2d_common import (
