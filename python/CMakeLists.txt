@@ -150,11 +150,15 @@ if(WIN32)
         ${PADDLE_BINARY_DIR}/python/paddle/
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
               ${PADDLE_BINARY_DIR}/test
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
       COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
               bdist_wheel
       COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
+      DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
   endif()
 else()
   if(WITH_SETUP_INSTALL)
