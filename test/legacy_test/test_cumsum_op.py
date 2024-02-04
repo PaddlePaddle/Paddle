@@ -44,10 +44,10 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, dtype='float64')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
+        self.assertTrue(y.dtype == paddle.float64)
 
         y = paddle.cumsum(data, dtype=np.int32)
-        self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
+        self.assertTrue(y.dtype == paddle.int32)
 
         y = paddle.cumsum(data, axis=-2)
         z = np.cumsum(data_np, axis=-2)
