@@ -14,7 +14,7 @@
 
 from paddle import _C_ops
 
-from ....framework import LayerHelper, in_dynamic_or_pir_mode
+from ....framework import LayerHelper, _non_static_mode
 
 
 def swiglu(x, y=None, name=None):
@@ -46,7 +46,7 @@ def swiglu(x, y=None, name=None):
                    [1.46211720]) Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.73105860, 3.52318811])
     """
-    if in_dynamic_or_pir_mode():
+    if _non_static_mode():
         return _C_ops.swiglu(x, y)
     else:
         helper = LayerHelper("swiglu", **locals())
