@@ -167,7 +167,7 @@ class LayerObjectHelper(LayerHelperBase):
         ret = []
         if isinstance(inputs, (list, tuple)):
             for inp in inputs:
-                ret.append(paddle.to_tensor(inp))
+                ret.append(self.to_variable(inp))
         else:
             ret.append(self.to_variable(inputs))
         return ret
