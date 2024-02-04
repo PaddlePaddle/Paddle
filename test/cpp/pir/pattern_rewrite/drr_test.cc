@@ -105,10 +105,10 @@ class RemoveRedundentTransposePattern : public paddle::drr::DrrPatternBase {
           }
           return new_perm;
         });
-    const auto &tranpose_continuous =
+    const auto &transpose_continuous =
         res.Op("pd_op.transpose", {{"perm", new_perm_attr}});
 
-    res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
+    res.Tensor("ret") = transpose_continuous(res.Tensor("arg_transpose"));
   }
 
   std::string name() const override {

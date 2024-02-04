@@ -259,8 +259,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     ::pir::Builder builder = ::pir::Builder(ctx, program->block());
     VLOG(4) << "Before GroupOpPattern: " << *program;
     std::vector<::pir::Operation*> group_ops = group_op.GetOperators();
-    auto yeild_op = group_ops.back();
-    std::vector<::pir::Type> output_type{yeild_op->operand_source(0).type()};
+    auto yield_op = group_ops.back();
+    std::vector<::pir::Type> output_type{yield_op->operand_source(0).type()};
 
     // construct hlir::Group
     Group group({group_ops.begin(), group_ops.end() - 1});
