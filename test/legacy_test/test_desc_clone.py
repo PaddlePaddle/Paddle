@@ -28,10 +28,6 @@ paddle.dataset.mnist.fetch()
 paddle.enable_static()
 
 
-# random seed must set before configuring the network.
-paddle.seed(SEED)
-
-
 def cnn_model(data):
     conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
