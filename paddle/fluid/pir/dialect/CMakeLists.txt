@@ -252,12 +252,14 @@ if(WITH_MKLDNN)
                       ${op_onednn_info_file})
 endif()
 
-set(op_dialect_deps phi common pir type_info string_helper eager_codegen)
+set(op_dialect_deps phi common pir type_info string_helper)
 
 cc_library(
   op_dialect
   SRCS ${op_dialect_srcs}
   DEPS ${op_dialect_deps})
+
+add_dependencies(op_dialect eager_codegen)
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
