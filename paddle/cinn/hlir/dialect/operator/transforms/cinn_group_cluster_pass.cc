@@ -408,6 +408,43 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
   return out_id_list;
 }
 
+void GetClusterNodeInfo(::pir::Operation* op,
+                        GroupClusterNode* cluster_node,
+                        ScheduleInfoNode* sch_node) {
+  cluster_node->group_kind =
+      cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
+  if (cluster_node->group_kind == cinn::hlir::framework::kReduction) {
+    // set reduce axis and loop range
+    cluster_node->reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
+    cluster_node->loop_ranges =
+        phi::vectorize(op->operand_source(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+
+    sch_node->type = "broadcast";
+    sch_node->axis_info =
+        cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
+    sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+  } else {
+    std::cerr << "cluter node " << op->name() << std::endl;
+    throw std::runtime_error("not support op kind yet");
+  }
+}
+
 std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
   cinn::dialect::GroupOp group_op =
       input_op->dyn_cast<cinn::dialect::GroupOp>();
@@ -440,43 +477,7 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
 
     // process cluster node
     ScheduleInfoNode sch_node;
-    if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-        cinn::hlir::framework::kReduction) {
-      // set reduce axis and loop range
-      cluster_node.reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
-      cluster_node.loop_ranges =
-          phi::vectorize(op->operand_source(0)
-                             .type()
-                             .dyn_cast<paddle::dialect::DenseTensorType>()
-                             .dims());
-      cluster_node.group_kind = cinn::hlir::framework::kReduction;
-    } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-               cinn::hlir::framework::kElementWise) {
-      if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-        cluster_node.loop_ranges =
-            phi::vectorize(op->result(0)
-                               .type()
-                               .dyn_cast<paddle::dialect::DenseTensorType>()
-                               .dims());
-      }
-    } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-               cinn::hlir::framework::kBroadcast) {
-      cluster_node.loop_ranges =
-          phi::vectorize(op->result(0)
-                             .type()
-                             .dyn_cast<paddle::dialect::DenseTensorType>()
-                             .dims());
-
-      sch_node.type = "broadcast";
-      sch_node.axis_info =
-          cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-      sch_node.factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
-
-      cluster_node.group_kind = cinn::hlir::framework::kBroadcast;
-    } else {
-      std::cerr << "cluter node " << op->name() << std::endl;
-      throw std::runtime_error("not support op kind yet");
-    }
+    GetClusterNodeInfo(op, &cluster_node, &sch_node);
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
       if (!inner_values.count(op->operand_source(i))) {
@@ -527,8 +528,6 @@ std::vector<GroupClusterNode> GroupSplit(::pir::Operation* input_op) {
       if (op_path[pre_op].group_kind > cluster_node.group_kind) {
         cluster_node.group_kind = op_path[pre_op].group_kind;
       }
-
-      // cluster_node.loop_ranges = op_path[pre_op].loop_ranges;
     }
 
     op_list.push_back(op);
