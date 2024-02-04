@@ -19,15 +19,22 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-py_test_modules(
-  test_prim_jit_dynamic
-  MODULES
-  test_prim_jit_dynamic
-  ENVS
-  FLAGS_enable_pir_api=true
-  FLAGS_prim_enable_dynamic=true
-  FLAGS_cinn_bucket_compile=True
-  FLAGS_pir_apply_shape_optimization_pass=1)
+set(TEST_PRIM_PURE_PIR_DY_SHAPE_CASES test_prim_jit_dynamic
+                                      test_prim_sub_graph_dynamic_shape)
+
+foreach(target ${TEST_PRIM_PURE_PIR_DY_SHAPE_CASES})
+  py_test_modules(
+    ${target}
+    MODULES
+    ${target}
+    ENVS
+    GLOG_v=1
+    FLAGS_enable_pir_api=true
+    FLAGS_prim_enable_dynamic=true
+    FLAGS_cinn_bucket_compile=True
+    FLAGS_pir_apply_shape_optimization_pass=1)
+endforeach()
+
 set_tests_properties(test_prim_jit_dynamic PROPERTIES LABELS "RUN_TYPE=CINN")
 
 set(TEST_PRIM_TRANS_PIR_CASES test_custom_vjp_trait test_decomp_op
