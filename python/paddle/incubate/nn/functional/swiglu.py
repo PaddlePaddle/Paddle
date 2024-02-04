@@ -20,17 +20,23 @@ from ....framework import LayerHelper, in_dynamic_or_pir_mode
 def swiglu(x, y=None, name=None):
     """
     This function performs SwiGLU activation to the input Tensor.
+
     .. math::
+
         out = silu(x) * y when y is not None
         out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(x, 2, axis=-1)
+
     Args:
         x (Tensor): The first input Tensor of SwiGLU.
         y (Tensor, optional): The second input Tensor of SwiGLU. Default: None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
     Returns:
         A Tensor with the same data type with x and y.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
             >>> x = paddle.to_tensor([1, 2], dtype='float32')
