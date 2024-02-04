@@ -541,6 +541,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
+  CP_MEMBER(use_optimized_model_);
   CP_MEMBER(ir_debug_);
   CP_MEMBER(specify_input_name_);
 
@@ -1147,6 +1148,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << with_glog_info_;
 
   ss << enable_ir_optim_;
+  ss << use_optimized_model_;
   ss << ir_debug_;
 
   ss << specify_input_name_;
@@ -1467,6 +1469,8 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow(
       {"save_optimized_model", save_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
+  os.InsertRow(
+      {"use_optimized_model", use_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
   os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});

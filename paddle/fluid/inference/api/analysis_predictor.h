@@ -494,6 +494,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
+  void ClearTrtRepetitiveParams();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related

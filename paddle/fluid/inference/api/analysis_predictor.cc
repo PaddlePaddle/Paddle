@@ -548,6 +548,38 @@ void AnalysisPredictor::InitPlace() {
   }
 }
 
+void AnalysisPredictor::ClearTrtRepetitiveParams() {
+  auto var_names = scope_->LocalVarNames();
+  std::vector<std::string> all_repetitive_params;
+  for (size_t idx = 0; idx < inference_program_->Size(); ++idx) {
+    auto &block = inference_program_->Block(idx);
+    for (auto &op_desc : block.AllOps()) {
+      if (op_desc->Type() == "tensorrt_engine") {
+        auto repetitive_params = PADDLE_GET_CONST(
+            std::vector<std::string>, op_desc->GetAttr("parameters"));
+        all_repetitive_params.insert(all_repetitive_params.end(),
+                                     repetitive_params.begin(),
+                                     repetitive_params.end());
+      }
+    }
+  }
+  std::vector<std::string> repetitive_params;
+  for (size_t idx = 0; idx < inference_program_->Size(); ++idx) {
+    auto &block = inference_program_->Block(idx);
+    for (auto &var_desc : block.AllVars()) {
+      if (var_desc->Persistable() && std::count(all_repetitive_params.begin(),
+                                                all_repetitive_params.end(),
+                                                var_desc->Name())) {
+        if (scope_->FindVar(var_desc->Name())) {
+          repetitive_params.emplace_back(var_desc->Name());
+        }
+      }
+    }
+  }
+  scope_->EraseVars(repetitive_params);
+  LOG(INFO) << "Clear repetitive params: " << repetitive_params.size();
+}
+
 void AnalysisPredictor::InitResourceManager(void *stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   predictor_stream_ =
@@ -695,7 +727,12 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
-    OptimizeInferenceProgram();
+    if (config_.use_optimized_model_ && !config_.ir_optim()) {
+      LoadParameters();
+      ClearTrtRepetitiveParams();
+    } else {
+      OptimizeInferenceProgram();
+    }
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
@@ -1549,6 +1586,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
+  argument_->SetUseOptimizedModel(config_.use_optimized_model_);
   argument_->SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_->SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program

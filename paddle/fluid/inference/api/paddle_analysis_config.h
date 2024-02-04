@@ -598,7 +598,11 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether the ir graph optimization is actived.
   ///
-  void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
+  void SwitchIrOptim(bool enable_ir_optim = true,
+                     bool use_optimized_model = false) {
+    enable_ir_optim_ = enable_ir_optim;
+    use_optimized_model_ = use_optimized_model;
+  }
   ///
   /// \brief A boolean state telling whether the ir graph optimization is
   /// actived.
@@ -1314,6 +1318,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
+  bool use_optimized_model_{false};
   bool ir_debug_{false};
 
   bool use_new_executor_{false};
