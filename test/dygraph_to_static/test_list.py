@@ -331,10 +331,6 @@ class TestListInForLoopWithConcat(TestListInWhileLoop):
             test_list_append_in_for_loop_with_concat,
         ]
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
-    def test_transformed_static_result(self):
-        self.compare_transformed_static_result()
-
 
 class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
     def init_dygraph_func(self):
