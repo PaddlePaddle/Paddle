@@ -937,13 +937,13 @@ class BatchNorm(Layer):
 
             >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.base.dygraph.base import to_variable
+            >>> import paddle
             >>> import numpy as np
 
 
             >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
             >>> with base.dygraph.guard():
-            ...     x = to_variable(x)
+            ...     x = paddle.to_tensor(x)
             ...     batch_norm = nn.layer.norm.BatchNorm(10)
             ...     hidden1 = batch_norm(x)
     """
