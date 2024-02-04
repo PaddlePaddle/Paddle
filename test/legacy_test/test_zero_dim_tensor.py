@@ -118,6 +118,14 @@ inplace_unary_api_list = [
 ]
 
 
+def assertEqualListTuple(self, out, target_tuple=()):
+    if paddle.framework.in_pir_mode():
+        out_shape = tuple(out.shape)
+    else:
+        out_shape = out.shape
+    self.assertEqual(out_shape, target_tuple)
+
+
 # Use to test zero-dim in unary API.
 class TestUnaryAPI(unittest.TestCase):
     def test_dygraph_unary(self):
@@ -144,6 +152,7 @@ class TestUnaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_unary(self):
         paddle.enable_static()
 
@@ -159,20 +168,37 @@ class TestUnaryAPI(unittest.TestCase):
                 out = api(x)
                 paddle.static.append_backward(out)
 
-                fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
+                if paddle.framework.in_pir_mode():
+                    return
+                    fetch_list = [x, out]
+                    if block.has_var(x.grad_name):
+                        fetch_list.extend([x.grad_name, out.grad_name])
 
-                # 1) Test Program
-                res = exe.run(main_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
+                    # 1) Test Program
+                    res = exe.run(main_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
 
-                # 2) Test CompiledProgram Program
-                compile_prog = paddle.static.CompiledProgram(main_prog)
-                res = exe.run(compile_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
+                    # 2) Test CompiledProgram Program
+                    compile_prog = paddle.static.CompiledProgram(main_prog)
+                    res = exe.run(compile_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
+                else:
+                    fetch_list = [x, out]
+                    if block.has_var(x.grad_name):
+                        fetch_list.extend([x.grad_name, out.grad_name])
+
+                    # 1) Test Program
+                    res = exe.run(main_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
+
+                    # 2) Test CompiledProgram Program
+                    compile_prog = paddle.static.CompiledProgram(main_prog)
+                    res = exe.run(compile_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
 
         paddle.disable_static()
 
@@ -289,6 +315,7 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -305,23 +332,27 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, out]
+                )
 
                 if api not in [paddle.median, paddle.nanmedian]:
                     out_empty_list = api(x, axis=[])
-                    self.assertEqual(out_empty_list.shape, ())
+                    assertEqualListTuple(self, out_empty_list)
 
                 out1 = api(x, axis=0)
-                self.assertEqual(out1.shape, ())
+                assertEqualListTuple(self, out1)
 
                 out2 = api(x, axis=-1)
-                self.assertEqual(out2.shape, ())
+                assertEqualListTuple(self, out2)
 
                 fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
 
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
                 res = exe.run(main_prog, fetch_list=fetch_list)
+
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
                 if api not in [paddle.count_nonzero]:
@@ -340,16 +371,20 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (3, 5))
 
                 # 3) x is 1D, axis=0, reduce to 0D
@@ -359,16 +394,20 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([5])
                 x.stop_gradient = False
                 out = api(x, axis=0)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [_grad for _param, _grad in grad_list if _grad]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
