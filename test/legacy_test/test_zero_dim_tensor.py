@@ -349,7 +349,11 @@ class TestReduceAPI(unittest.TestCase):
                 fetch_list = [x, out]
 
                 fetch_list.extend(
-                    [_grad for _param, _grad in grad_list if _grad]
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(_grad, paddle.pir.Value)
+                    ]
                 )
                 res = exe.run(main_prog, fetch_list=fetch_list)
 
@@ -377,7 +381,11 @@ class TestReduceAPI(unittest.TestCase):
 
                 fetch_list = [out]
                 fetch_list.extend(
-                    [_grad for _param, _grad in grad_list if _grad]
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(_grad, paddle.pir.Value)
+                    ]
                 )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
@@ -400,7 +408,11 @@ class TestReduceAPI(unittest.TestCase):
 
                 fetch_list = [out]
                 fetch_list.extend(
-                    [_grad for _param, _grad in grad_list if _grad]
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(_grad, paddle.pir.Value)
+                    ]
                 )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
