@@ -246,7 +246,7 @@ set(op_dialect_srcs
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file})
 
-if(NOT ON_INFER)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   set(op_dialect_srcs ${op_dialect_srcs} ${api_source_file})
 endif()
 
