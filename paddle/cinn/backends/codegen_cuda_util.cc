@@ -94,12 +94,12 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,
-                      Expr(func_node->cuda_axis_info.grid_dim(0)),   // grid_x
-                      Expr(func_node->cuda_axis_info.grid_dim(1)),   // grid_y
-                      Expr(func_node->cuda_axis_info.grid_dim(2)),   // grid_z
-                      Expr(func_node->cuda_axis_info.block_dim(0)),  // block_x
-                      Expr(func_node->cuda_axis_info.block_dim(1)),  // block_y
-                      Expr(func_node->cuda_axis_info.block_dim(2)),  // block_z
+                      func_node->cuda_axis_info.grid_dim(0),   // grid_x
+                      func_node->cuda_axis_info.grid_dim(1),   // grid_y
+                      func_node->cuda_axis_info.grid_dim(2),   // grid_z
+                      func_node->cuda_axis_info.block_dim(0),  // block_x
+                      func_node->cuda_axis_info.block_dim(1),  // block_y
+                      func_node->cuda_axis_info.block_dim(2),  // block_z
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,

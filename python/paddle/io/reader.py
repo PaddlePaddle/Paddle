@@ -215,19 +215,19 @@ class AuToTune:
 
 class DataLoader:
     """
-    DataLoader prodives an iterator which iterates given dataset
+    DataLoader provides an iterator which iterates given dataset
     once by the batch_sampler.
 
-    DataLoader supports single-process and multi-prcess data loading,
+    DataLoader supports single-process and multi-process data loading,
     multi-process workers will be used to load data asynchronously if
     :attr:`num_workers` is set as a positive number.
 
     DataLoader supports map-style dataset and iterable-style dataset.
 
-    For map-style datast(can get a sample from dataset with a given
+    For map-style dataset(can get a sample from dataset with a given
     index), please see :code:`paddle.io.Dataset`.
 
-    For iterable-style datast(get samples from dataset iteratively,
+    For iterable-style dataset(get samples from dataset iteratively,
     like a Python iterator), please see :code:`paddle.io.IterableDataset`.
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
@@ -235,7 +235,7 @@ class DataLoader:
     Notes:
         GPU tensor operation is not supported in subprocess currently,
         please don't use GPU tensor operations in pipeline which will
-        be performed in subprocess, such as dataset transforms, collte_fn,
+        be performed in subprocess, such as dataset transforms, collate_fn,
         etc. Numpy array and CPU tensor operation is supported.
 
     **Disable automatic batching**
@@ -282,7 +282,7 @@ class DataLoader:
             is not set, a default `paddle.io.BatchSampler` will be used
             and initialize by :attr:`batch_size`, :attr:`shuffle` and
             :attr:`drop_last`. Default 1.
-        shuffle(bool, optional): whther to shuffle indices order before genrate
+        shuffle(bool, optional): whether to shuffle indices order before generate
             batch indices, a substitution parameter for :attr:`batch_sampler`
             see :attr:`batch_size`. Default False.
         drop_last(bool, optional): whether drop the last incomplete batch dataset size
@@ -293,7 +293,7 @@ class DataLoader:
             0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int, optional): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
-        use_buffer_reader (bool, optional): whether to use bufferred reader.
+        use_buffer_reader (bool, optional): whether to use buffered reader.
             If use_buffer_reader=True, the DataLoader would prefetch
             batch data asynchronously, so it would speed up data feeding
             and occupies a little more CPU or GPU memory, i.e., the memory
@@ -303,22 +303,23 @@ class DataLoader:
         use_shared_memory (bool, optional): whether to use shared memory to speed up
             putting data into inter-process queue, set :attr:`use_shared_memory`
             as True only when the shared memory space on your machine(e.g.
-            space of '/dev/shm' on Linux operating sysytem) is large enough.
+            space of '/dev/shm' on Linux operating system) is large enough.
             Shared memory will only be enabled in multi-process mode(num_workers
             > 0). Default True.
         timeout(int, optional): the timeout value for getting data form output queue
             of subprocesses. Default 0.
         worker_init_fn(callable, optional): init function which will be called with
-            worker id on each subproces starting if not set as None. Default
+            worker id on each subprocess starting if not set as None. Default
             None.
 
     Returns:
-        DataLoader: an iterable object for data iterating, each elemnet of the generated data is a Tensor.
+        DataLoader: an iterable object for data iterating, each element of the generated data is a Tensor.
 
     Examples:
 
         .. code-block:: python
 
+            >>> # doctest: +SOLO('can not use multiprocessing testing `paddle.io.DataLoader`')
             >>> import numpy as np
 
             >>> import paddle
@@ -428,7 +429,7 @@ class DataLoader:
         ):
             warnings.warn(
                 "DataLoader with multi-process mode is not supported on MacOs and Windows currently."
-                " Please use signle-process mode with num_workers = 0 instead"
+                " Please use single-process mode with num_workers = 0 instead"
             )
             num_workers = 0
         self.num_workers = num_workers

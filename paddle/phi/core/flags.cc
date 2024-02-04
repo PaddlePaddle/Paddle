@@ -744,16 +744,6 @@ PHI_DEFINE_EXPORTED_int32(
     "instead of sum. Default is 0.");
 
 /**
- * Tensor.numpy() has a hack, and this flag can close this hack
- * [true]: set 0D Tensor to 1D Numpy
- * [false]: not set 0D Tensor to 1D Numpy, close the hack
- *
- * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6) .
- */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
-
-/**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_on
  * Since Version: 2.0.0
@@ -1412,6 +1402,21 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
+
+/**
+ * Apply check infer symbolic pass FLAG
+ * Name: check_infer_symbolic_pass
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, will apply check_infer_symbolic pass.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    check_infer_symbolic,
+    false,
+    "Whether to use check_infer_symbolic_pass. This pass can check "
+    "the symbolic inference accuracy by comparing the the value "
+    "shape between dynamic shape and static shape.");
 
 /**
  * Apply shape optimization pass to new IR FLAG

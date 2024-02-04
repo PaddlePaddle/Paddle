@@ -110,19 +110,19 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mask_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input mask must be 4-dimention"));
+                          "The input mask must be 4-dimension"));
     PADDLE_ENFORCE_EQ(attn_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimention"));
+                          "The input attn must be 4-dimension"));
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        platform::errors::InvalidArgument("The input x must be 4-dimention"));
+        platform::errors::InvalidArgument("The input x must be 4-dimension"));
     PADDLE_ENFORCE_EQ(new_mask_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimention"));
+                          "The input attn must be 4-dimension"));
 
     // check input dims relations
     PADDLE_ENFORCE_EQ(mask_dim[0],

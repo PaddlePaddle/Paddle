@@ -24,6 +24,7 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
 from ...infer_meta import (
@@ -38,7 +39,6 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
-    OrderedSet,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -405,12 +405,12 @@ class FunctionGraph:
         ]
 
         tensor_items = self._find_tensor_outputs(ret_items)
-        compiled_fn, statment_ir = self.sir_ctx.compile_fn(
+        compiled_fn, statement_ir = self.sir_ctx.compile_fn(
             [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
             **self._kwargs,
         )
-        input_names = statment_ir.inputs
-        compiled_fn_name = f"__compiled_fn_{statment_ir.name}"
+        input_names = statement_ir.inputs
+        compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
         for name in input_names:
@@ -463,7 +463,7 @@ class FunctionGraph:
         """
         assert is_paddle_api(func)
         # not fallback api, start symbolic trace.
-        # TODO(xiokgun): may have python buildin object inside metas.
+        # TODO(xiokgun): may have python builtin object inside metas.
         # TODO(xiokgun): 4 kinds of python arguments. support it !!
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
@@ -550,7 +550,7 @@ class FunctionGraph:
             )
 
         def message_handler(*args, **kwargs):
-            return "Call ast faild"
+            return "Call ast failed"
 
         try:
             return inner_error_default_handler(
@@ -633,7 +633,7 @@ class FunctionGraph:
         from .opcode_executor import OpcodeExecutorBase
 
         if len(OpcodeExecutorBase.call_stack) == 0:
-            # In test case, we can meet this senario.
+            # In test case, we can meet this scenario.
             return []
         current_executor = OpcodeExecutorBase.call_stack[-1]
         current_line = current_executor._current_line

@@ -1008,7 +1008,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   if (static_cast<int>(input_pv_channel_->Size()) >= channel_num) {
     input_pv_channel_->SetBlockSize(input_pv_channel_->Size() / channel_num +
                                     (discard_remaining_ins ? 0 : 1));
-    VLOG(3) << "now input_pv_channle block size is "
+    VLOG(3) << "now input_pv_channel block size is "
             << input_pv_channel_->BlockSize();
   }
 
@@ -1750,7 +1750,7 @@ void MultiSlotDataset::PreprocessChannel(
   }
   if (slots_shuffle_original_data_.empty()) {
     // before first slots shuffle, instances could be in
-    // input_channel, oupput_channel or consume_channel
+    // input_channel, output_channel or consume_channel
     if (input_channel_ && input_channel_->Size() != 0) {
       slots_shuffle_original_data_.reserve(input_channel_->Size());
       input_channel_->Close();

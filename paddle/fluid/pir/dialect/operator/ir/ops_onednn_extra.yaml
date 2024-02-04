@@ -11,6 +11,34 @@
 - op : add_triple_grad
   extra_args : str mkldnn_data_type="float32", bool use_quantizer=false, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0
 
+- op : abs
+
+- op : abs_grad
+
+# - op : add_n
+
+# - op : add_raw
+
+- op : batch_norm
+  extra_args : bool fuse_with_relu=false
+  data_format_tensors : x
+
+- op : batch_norm_grad
+  extra_args : bool fuse_with_relu=false
+  data_format_tensors : x, out_grad
+
+# - op : bilinear_interp
+
+# - op : cast
+
+# - op : clip
+
+# - op : clip_grad
+
+# - op : concat
+
+# - op : concat_grad
+
 - op : conv2d
   extra_args : bool is_test=false
   data_format_tensors : input
@@ -27,6 +55,40 @@
   extra_args : bool is_test=false
   data_format_tensors : input, out_grad
 
+# - op : depthwise_conv2d
+
+# - op : depthwise_conv2d_grad
+
+# - op : divide
+
+# - op : divide_grad
+
+# - op : divide_raw
+
+# - op : elu
+
+# - op : elu_grad
+
+# - op : exp
+
+# - op : exp_grad
+
+# - op : expand
+
+# - op : expand_grad
+
+# - op : fc
+
+# - op : flatten
+
+# - op : flatten_grad
+
+# - op : flatten2
+
+# - op : flatten2_grad
+
+# - op : full
+
 - op : fused_conv2d
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
   data_format_tensors : input
@@ -34,6 +96,42 @@
 - op : fused_conv3d
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
   data_format_tensors : input
+
+# - op : fused_elementwise_add
+
+# - op : fused_elementwise_div
+
+# - op : fused_elementwise_mul
+
+# - op : fused_elementwise_sub
+
+# - op : fused_matmul
+
+# - op : fused_softplus
+
+# - op : fused_transpose
+
+# - op : fusion_gru
+
+# - op : fusion_lstm
+
+# - op : gaussian
+
+# - op : gelu
+
+# - op : gelu_grad
+
+# - op : hardswish
+
+# - op : hardswish_grad
+
+# - op : layer_norm
+
+# - op : leaky_relu
+
+# - op : leaky_relu_grad
+
+# - op : log_softmax
 
 - op : lrn
   extra_args : bool is_test=false
@@ -43,22 +141,142 @@
   extra_args : bool is_test=false
   data_format_tensors : x, out, mid_out, out_grad
 
-- op : pad3d
-  extra_args :
-  data_format_tensors : x
-  dynamic_fallback : True
-
 # - op : matmul
 #   extra_args : str mkldnn_data_type="float32"
 #   layout_transform :
 #     arg_name: cur_paddle_data_layout
 #     tensors: x, y
 
-# - op : batch_norm
-#   extra_args : bool fuse_with_relu=false
-#   layout_transform :
-#     arg_name: data_layout
-#     tensors: x
+# - op : matmul_grad
+
+# - op : matmul_with_flatten
+
+# - op : matmul_with_flatten_grad
+
+# - op : max
+
+# - op : max_raw
+
+# - op : mean
+
+# - op : mean_grad
+
+# - op : mean_raw
+
+# - op : min
+
+# - op : min_raw
+
+# - op : mish
+
+# - op : mish_grad
+
+# - op : multi_gru
+
+# - op : multiply
+
+# - op : multiply_grad
+
+# - op : multiply_raw
+
+# - op : nearest_interp
+
+# - op : pad
+
+- op : pad3d
+  extra_args :
+  data_format_tensors : x
+  dynamic_fallback : True
+
+# - op : pool2d
+
+# - op : pool2d_grad
 
 # - op : prelu
 #   extra_args : bool is_test=false, str mkldnn_data_type="float32"
+
+# - op : prelu_grad
+
+# - op : prior_box
+
+- op : relu
+
+- op : relu_grad
+
+# - op : relu6
+
+# - op : relu6_grad
+
+# - op : reshape
+
+# - op : reshape_grad
+
+# - op : reshape_infer
+
+# - op : reshape2_grad
+
+# - op : round
+
+# - op : scale
+
+# - op : sgd
+
+# - op : sgd_dense_param_sparse_grad
+
+# - op : shape
+
+# - op : shuffle_channel
+
+# - op : sigmoid
+
+# - op : sigmoid_grad
+
+# - op : slice
+
+# - op : slice_grad
+
+# - op : softmax
+
+# - op : softmax_grad
+
+# - op : softplus
+
+# - op : split
+
+# - op : split_with_num
+
+# - op : sqrt
+
+# - op : sqrt_grad
+
+# - op : squeeze
+
+# - op : squeeze_grad
+
+# - op : squeeze_infer
+
+# - op : stack
+
+# - op : subtract
+
+# - op : subtract_grad
+
+# - op : subtract_raw
+
+# - op : sum
+
+# - op : sum_grad
+
+# - op : sum_raw
+
+# - op : swish
+
+# - op : swish_grad
+
+# - op : tanh
+
+# - op : tanh_grad
+
+# - op : transpose
+
+# - op : transpose_grad

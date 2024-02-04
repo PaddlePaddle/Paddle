@@ -35,8 +35,7 @@ class TEST_API OperatorDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();
@@ -56,8 +55,7 @@ class CustomOpDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
   void RegisterCustomOp(const paddle::OpMetaInfo& op_meta);
 

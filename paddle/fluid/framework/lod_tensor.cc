@@ -475,7 +475,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
             tensor_dims[j],
             new_dim[j],
             platform::errors::InvalidArgument(
-                "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                "DenseTensor.ddim[%d] should equal to %d, but is %d",
                 j,
                 new_dim[j],
                 tensor_dims[j]));
