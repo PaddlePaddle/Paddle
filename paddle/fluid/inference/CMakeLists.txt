@@ -37,6 +37,10 @@ get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper utf8proc)
 
+if(NOT WITH_GFLAGS)
+  set(utils_modules ${utils_modules} paddle_flags)
+endif()
+
 add_subdirectory(api)
 
 # Create static inference library if needed
@@ -66,8 +70,14 @@ if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  create_static_lib(
+    paddle_inference
+    ${phi_modules}
+    ${fluid_modules}
+    ${ir_targets}
+    ${STATIC_INFERENCE_API}
+    ${utils_modules}
+    common_static)
 endif()
 
 if(NOT APPLE)
