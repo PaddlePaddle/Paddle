@@ -24,6 +24,7 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
 from paddle.framework import use_pir_api
+from paddle.jit.utils import OrderedSet
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
 from paddle.utils import is_sequence, map_structure
@@ -207,9 +208,9 @@ def _run_paddle_while(
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
 
-    union_name = (set(return_name_ids) if return_name_ids else set()) | (
-        set(push_pop_names) if push_pop_names else set()
-    )
+    union_name = (
+        OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+    ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
     union_name = list(union_name)
 
     def new_body_fn(*args):
@@ -444,9 +445,9 @@ def _run_paddle_cond(
     if return_name_ids is None and push_pop_names is None:
         union_name = None
     else:
-        union_name = (set(return_name_ids) if return_name_ids else set()) | (
-            set(push_pop_names) if push_pop_names else set()
-        )
+        union_name = (
+            OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
+        ) | (OrderedSet(push_pop_names) if push_pop_names else OrderedSet())
         union_name = list(union_name)
 
     def new_true_fn():
@@ -659,7 +660,7 @@ class VariableTuple:
         self.var = var
         self.len = convert_len(var)
         if isinstance(self.len, (Variable, Value)):
-            self.rag = paddle.arange(start, start + self.len, 1, paddle.int64)
+            self.rag = paddle.arange(start, start + self.len, 1, "int64")
         else:
             self.rag = range(start, start + self.len)
 
@@ -748,6 +749,11 @@ def convert_var_dtype(var, dtype):
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
+        assert dtype in [
+            'bool',
+            'int',
+            'float',
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         return eval(dtype)(var)
 
 

@@ -96,7 +96,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                       cos.get_ptr()->dims(),
                       phi::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
 
@@ -106,7 +106,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         (dims_size == 2 || dims_size == 4),
         true,
         phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but recieved %d.",
+                                     "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
@@ -126,7 +126,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           phi::errors::InvalidArgument(
               "The seq_len of sin and cos must be greater than or equal to "
               "this of q. The head_dim of sin and cos must be the same as this "
-              "of q. But recieved sin's "
+              "of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));
@@ -136,7 +136,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                         2,
                         phi::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
-                            "be 2, but recieved %d.",
+                            "be 2, but received %d.",
                             position_ids_dims.size()));
 
       PADDLE_ENFORCE_EQ(
@@ -145,7 +145,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
-              "those of q. But recieved position_ids's "
+              "those of q. But received position_ids's "
               "shape is {%s}, q's shape is {%s}.",
               position_ids_dims,
               q.dims()));
@@ -158,7 +158,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The seq_len and head_dim of sin and cos "
-              "must be the same as those of q. But recieved sin's "
+              "must be the same as those of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));
@@ -181,27 +181,25 @@ void FusedRopeKernel(const Context& dev_ctx,
   }
 
   int sign = 1;
-  if (is_same_num_heads) {
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 3, vec_size> kernel_func_qkv =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          3,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 3, vec_size>;
+  VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
+      use_neox_rotary_style
+          ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+          : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
-    kernel_func_qkv<<<grid, block, 0, stream>>>(ins_data,
-                                                sin_cos_data,
-                                                position_ids_data,
-                                                flag_sin_cos,
-                                                sign,
-                                                batch_size,
-                                                seq_len,
-                                                inputs_num_heads[0],
-                                                head_dim,
-                                                outs_data,
-                                                num_inputs,
-                                                div_c);
+  if (is_same_num_heads) {
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            outs_data,
+                                            num_inputs,
+                                            div_c);
+
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -227,53 +225,35 @@ void FusedRopeKernel(const Context& dev_ctx,
               inputs_num_heads[1],
               inputs_num_heads[2]));
     }
-
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 1, vec_size> kernel_func_q =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          1,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 1, vec_size>;
-    VectorizedFusedRopeCudaKernelFunc<T, MPType, 2, vec_size> kernel_func_kv =
-        use_neox_rotary_style
-            ? VectorizedFusedRopeWithRotateEveryTwoKernel<T,
-                                                          MPType,
-                                                          2,
-                                                          vec_size>
-            : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, 2, vec_size>;
-
     // rotary position embedding Q
-    phi::Array<const T*, 1> input_q{ins_data[0]};
-    phi::Array<T*, 1> out_q{outs_data[0]};
-    kernel_func_q<<<grid, block, 0, stream>>>(input_q,
-                                              sin_cos_data,
-                                              position_ids_data,
-                                              flag_sin_cos,
-                                              sign,
-                                              batch_size,
-                                              seq_len,
-                                              inputs_num_heads[0],
-                                              head_dim,
-                                              out_q,
-                                              1,
-                                              div_c);
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            outs_data,
+                                            1,
+                                            div_c);
 
     // rotary position embedding K,V
-    phi::Array<const T*, 2> input_kv{ins_data[1], ins_data[2]};
-    phi::Array<T*, 2> out_kv{outs_data[1], outs_data[2]};
-    kernel_func_kv<<<grid, block, 0, stream>>>(input_kv,
-                                               sin_cos_data,
-                                               position_ids_data,
-                                               flag_sin_cos,
-                                               sign,
-                                               batch_size,
-                                               seq_len,
-                                               inputs_num_heads[1],
-                                               head_dim,
-                                               out_kv,
-                                               num_inputs - 1,
-                                               div_c);
+    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
+    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
+    kernel_func<<<grid, block, 0, stream>>>(input_kv,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[1],
+                                            head_dim,
+                                            out_kv,
+                                            num_inputs - 1,
+                                            div_c);
   }
 }
 }  // namespace fusion
