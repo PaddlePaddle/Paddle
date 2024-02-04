@@ -26,7 +26,11 @@ __WHILE_OP_NAME = "pd_op.while"
 def unittest_use_cinn():
     import os
 
-    return os.getenv("FLAGS_pd_unittest_use_cinn", False)
+    use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
+    true_value_set = {True, 1, "True", "true"}
+    false_value_set = {False, 0, "False", "false"}
+    assert use_cinn in (true_value_set | false_value_set)
+    return use_cinn in true_value_set
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
