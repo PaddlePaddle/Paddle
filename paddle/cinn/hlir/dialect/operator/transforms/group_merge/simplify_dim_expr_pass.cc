@@ -59,15 +59,14 @@ void PrintOneValue(pir::Value value,
 symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrDataDimExprs(
     const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
   std::vector<symbol::DimExpr> simplified_shape_dim_exprs;
-  std::optional<std::vector<symbol::DimExpr>> opt_simplified_data_dim_exprs;
   for (const symbol::DimExpr& shape_dim_expr : tensor_shape_or_data.shape()) {
     simplified_shape_dim_exprs.push_back(
         symbol::SimplifyDimExpr(shape_dim_expr));
   }
   if (!tensor_shape_or_data.data().has_value()) {
-    symbol::ShapeOrData<symbol::DimExpr>
-        simplified_tensor_shape_or_data_dim_exprs(simplified_shape_dim_exprs);
-    return simplified_tensor_shape_or_data_dim_exprs;
+    symbol::ShapeOrData<symbol::DimExpr> simplified_shape_or_data(
+        simplified_shape_dim_exprs);
+    return simplified_shape_or_data;
   } else {
     std::vector<symbol::DimExpr> simplified_data_dim_exprs;
     for (const symbol::DimExpr& data_dim_expr :
@@ -75,10 +74,9 @@ symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrDataDimExprs(
       simplified_data_dim_exprs.push_back(
           symbol::SimplifyDimExpr(data_dim_expr));
     }
-    symbol::ShapeOrData<symbol::DimExpr>
-        simplified_tensor_shape_or_data_dim_exprs(simplified_shape_dim_exprs,
-                                                  simplified_data_dim_exprs);
-    return simplified_tensor_shape_or_data_dim_exprs;
+    symbol::ShapeOrData<symbol::DimExpr> simplified_shape_or_data(
+        simplified_shape_dim_exprs, simplified_data_dim_exprs);
+    return simplified_shape_or_data;
   }
 }
 
@@ -90,16 +88,16 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
             SimplifyTensorShapeOrDataDimExprs(tensor_shape_or_data));
       },
       [](const symbol::TensorListShapeOrDataDimExprs&
-             tensor_list_shape_or_data_dim_exprs) {
+             tensor_list_shape_or_data) {
         symbol::TensorListShapeOrDataDimExprs
-            simplified_tensor_list_shape_or_data_dim_exprs;
+            simplified_tensor_list_shape_or_data;
         for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
-             tensor_list_shape_or_data_dim_exprs) {
-          simplified_tensor_list_shape_or_data_dim_exprs.push_back(
+             tensor_list_shape_or_data) {
+          simplified_tensor_list_shape_or_data.push_back(
               SimplifyTensorShapeOrDataDimExprs(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(
-            simplified_tensor_list_shape_or_data_dim_exprs);
+            simplified_tensor_list_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
@@ -144,9 +142,7 @@ class SimplifyDimExprPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
     VLOG(4) << "SimplifyDimExprPass Run";
-    // PrintAllValue(module_op);
     SimplifyDimExpr(module_op);
-    // PrintAllValue(module_op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
