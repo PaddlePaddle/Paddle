@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <map>
+#include <string>
+
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/pir/core/op_base.h"
 
