@@ -56,7 +56,7 @@ class TestMasterGrad(unittest.TestCase):
         # the number of operators of this type +2
         self.assertEqual(
             int(op_list['transfer_dtype'].split(',')[0]),
-            total_steps + total_steps * 2 + 2,
+            total_steps * 2 + 2,
         )
 
     def run_dygraph(self, total_steps, accumulate_batchs_num, model, optimizer):

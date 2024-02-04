@@ -839,17 +839,8 @@ def shard_scaler(scaler):
         elif optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError("unscale_() is being called after step().")
 
-        src_mesh = optimizer._parameter_list[0].grad.process_mesh
-        assert (
-            src_mesh is not None
-        ), "The process_mesh of the parameter is None."
-        current_process = None
-        for param in optimizer._parameter_list:
-            if param._is_initialized() and current_process is None:
-                current_process = param.process_mesh
-        assert (
-            current_process is not None
-        ), "The process_mesh of the parameter is None."
+        src_mesh = None
+        current_process_mesh = None
 
         self._found_inf = to_variable(np.array([0]).astype(np.bool_))
         mesh2param_grads = {}
@@ -860,6 +851,13 @@ def shard_scaler(scaler):
                 for param in group['params']:
                     tgt_grad = param._grad_ivar()
                     if tgt_grad is not None:
+                        if src_mesh is None:
+                            src_mesh = tgt_grad.process_mesh
+                        if (
+                            current_process_mesh is None
+                            and tgt_grad._is_initialized()
+                        ):
+                            current_process_mesh = tgt_grad.process_mesh
                         if tgt_grad.process_mesh not in mesh2param_grads:
                             mesh2param_grads[tgt_grad.process_mesh] = [tgt_grad]
                         else:
@@ -870,6 +868,13 @@ def shard_scaler(scaler):
             for param in optimizer._parameter_list:
                 tgt_grad = param._grad_ivar()
                 if tgt_grad is not None:
+                    if src_mesh is None:
+                        src_mesh = tgt_grad.process_mesh
+                    if (
+                        current_process_mesh is None
+                        and tgt_grad._is_initialized()
+                    ):
+                        current_process_mesh = tgt_grad.process_mesh
                     if tgt_grad.process_mesh not in mesh2param_grads:
                         mesh2param_grads[tgt_grad.process_mesh] = [tgt_grad]
                     else:
@@ -916,14 +921,16 @@ def shard_scaler(scaler):
             )
             self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
 
-        if self._found_inf.process_mesh == current_process:
+        if self._found_inf.process_mesh == current_process_mesh:
             for process_mesh in mesh2param_grads.keys():
                 _ = dist.reshard(
                     self._found_inf, process_mesh, self._found_inf.placements
                 )
         else:
             self._found_inf = dist.reshard(
-                self._found_inf, current_process, self._found_inf.placements
+                self._found_inf,
+                current_process_mesh,
+                self._found_inf.placements,
             )
         optimizer_state["state"] = OptimizerState.UNSCALED
 

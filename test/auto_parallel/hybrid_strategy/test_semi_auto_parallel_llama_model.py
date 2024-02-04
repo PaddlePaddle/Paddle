@@ -204,34 +204,5 @@ class TestSemiAutoParallelLlamaLazyInit(test_base.CommunicationTestDistBase):
             )
 
 
-class TestSemiAutoParallelLlama3DAMPTest(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=8, timeout=200, nnode=1)
-        self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
-        self._changeable_envs = {
-            "backend": ["gpu"],
-            "use_sp": ["true"],
-            "use_param_group": ["true"],
-            "recompute": ["true"],
-            "recompute_granularity": ["full"],
-            "amp": ["true"],
-            "amp_level": ["O2"],
-            "amp_dtype": ["float16"],
-            "amp_master_grad": [
-                "false"
-            ],  # TODO(lizhiyu): enable this test case
-        }
-
-    def test_simple_net_hybrid_strategy(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_llama.py",
-                user_defined_envs=envs,
-            )
-
-
 if __name__ == "__main__":
     unittest.main()

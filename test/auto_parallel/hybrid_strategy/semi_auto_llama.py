@@ -141,7 +141,6 @@ class TestLlamaAuto:
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
         set_global_mesh(global_mesh)
-        dist.init_parallel_env()
 
     def run_llama(self, to_static=0):
         if self.config.use_lazy_init:
