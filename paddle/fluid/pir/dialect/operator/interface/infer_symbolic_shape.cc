@@ -1106,7 +1106,7 @@ bool MatmulOpInferSymbolicShape(
     bool broadcasted = false;
     if (ndims_y == 1) {
       y_dims.emplace_back(1);
-      ndims_x = 2;
+      ndims_y = 2;
       broadcasted = true;
     }
     return broadcasted;
