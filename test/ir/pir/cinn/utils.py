@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -24,8 +25,6 @@ __WHILE_OP_NAME = "pd_op.while"
 
 
 def unittest_use_cinn():
-    import os
-
     use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
     true_value_set = {True, 1, "True", "true"}
     false_value_set = {False, 0, "False", "false"}
