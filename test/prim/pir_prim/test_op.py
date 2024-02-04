@@ -32,17 +32,17 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-# def rms_norm1(hidden_states, weight):
-#     y = paddle.tile(hidden_states, [2,3])
-#     z = paddle.full_like(y, 1)
-#     # From llama2, reduce dim is not equal to dynamic shape dim
-#     return y + z
-
-
 def rms_norm1(hidden_states, weight):
-    z = paddle.full_like(hidden_states, 1)
+    y = paddle.tile(hidden_states, [2, 3])
+    z = paddle.full_like(y, 1)
     # From llama2, reduce dim is not equal to dynamic shape dim
-    return z
+    return y + z
+
+
+# def rms_norm1(hidden_states, weight):
+#     z = paddle.full_like(hidden_states, 1)
+#     # From llama2, reduce dim is not equal to dynamic shape dim
+#     return z
 
 
 # def rms_norm1(hidden_states, weight):

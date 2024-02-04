@@ -37,6 +37,9 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
                                                           "pd_op.batch_norm_"};
+//
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze"};
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
@@ -298,6 +301,11 @@ void DecompProgram::decomp_program() {
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
         check_decomp_dynamic_shape(op)) {
+      enable_prim = false;
+    }
+    if (check_decomp_dynamic_shape(op) &&
+        dynamic_shape_blacklist.find(op->name()) !=
+            dynamic_shape_blacklist.end()) {
       enable_prim = false;
     }
     if (enable_prim) {

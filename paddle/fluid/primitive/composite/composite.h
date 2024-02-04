@@ -842,52 +842,57 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
   std::vector<int64_t> repeat_times_ = repeat_times.GetData();
   std::vector<int64_t> shape1 = common::vectorize<int64_t>(x.dims());
   auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
-  VLOG(0) << "=====================2 ";
-  auto t1 = x;
-  VLOG(0) << "=====================diff " << diff;
-  if (diff > 0) {
-    for (int64_t i = 0; i < diff; i++) {
-      shape1.insert(shape1.begin(), 1);
+  Tensor t1;
+  if (find_value(shape1, -1)) {
+    Tensor shape1_t = shape<T>(x);
+    return shape1_t;
+
+  } else {
+    VLOG(0) << "=====================diff " << diff;
+    if (diff > 0) {
+      for (int64_t i = 0; i < diff; i++) {
+        shape1.insert(shape1.begin(), 1);
+      }
     }
+
+    auto length = int64_t(shape1.size());
+    VLOG(0) << "=====================3 length === " << length;
+    std::vector<int64_t> shape2 = shape1;
+    std::vector<int64_t> shape3 = shape1;
+    std::vector<int64_t> final_shape = shape1;
+    auto r_length = repeat_times_.size();
+    for (size_t j = 0; j < repeat_times_.size(); j++) {
+      int64_t i = int64_t(j);
+      // print_vec<int64_t>(repeat_times_,"repeat_times_ in for0");
+      // VLOG(0) << "=====================i "<<i<<" length-1-i "<<length-1-i<< "
+      // -i-1 "<<-i-1<<" repeat_times_[-i-1]
+      // "<<repeat_times_[r_length-i-1]<<std::endl;
+      // print_vec<int64_t>(shape3,"shape3 in for0");
+      shape2.insert(shape2.begin() + (length - 1 - i), 1);
+      shape3.insert(shape3.begin() + (length - 1 - i),
+                    repeat_times_[r_length - i - 1]);
+      // print_vec<int64_t>(shape3,"shape3 in for1");
+      // VLOG(0) << "=====================3.5 ";
+      // print_vec<int64_t>(final_shape,"final_shape0");
+      final_shape[length - i - 1] =
+          final_shape[length - i - 1] * repeat_times_[r_length - i - 1];
+      // print_vec<int64_t>(final_shape,"final_shape1");
+    }
+    // VLOG(0) << "=====================4 ";
+
+    t1 = reshape<T>(x, shape1);
+    VLOG(0) << "=====================4.5 ";
+    print_vec<int64_t>(shape1, "shape1");
+    print_vec<int64_t>(repeat_times_, "repeat_times_");
+    print_vec<int64_t>(shape3, "shape3");
+    print_vec<int64_t>(final_shape, "final_shape");
+
+    auto t2 = reshape<T>(t1, shape2);
+    auto t3 = t2.expand(shape3);
+    auto res = reshape<T>(t3, final_shape);
+    VLOG(0) << "=====================5 ";
+    return res;
   }
-
-  auto length = int64_t(shape1.size());
-  VLOG(0) << "=====================3 length === " << length;
-  std::vector<int64_t> shape2 = shape1;
-  std::vector<int64_t> shape3 = shape1;
-  std::vector<int64_t> final_shape = shape1;
-  auto r_length = repeat_times_.size();
-  for (size_t j = 0; j < repeat_times_.size(); j++) {
-    int64_t i = int64_t(j);
-    // print_vec<int64_t>(repeat_times_,"repeat_times_ in for0");
-    // VLOG(0) << "=====================i "<<i<<" length-1-i "<<length-1-i<< "
-    // -i-1 "<<-i-1<<" repeat_times_[-i-1]
-    // "<<repeat_times_[r_length-i-1]<<std::endl;
-    // print_vec<int64_t>(shape3,"shape3 in for0");
-    shape2.insert(shape2.begin() + (length - 1 - i), 1);
-    shape3.insert(shape3.begin() + (length - 1 - i),
-                  repeat_times_[r_length - i - 1]);
-    // print_vec<int64_t>(shape3,"shape3 in for1");
-    // VLOG(0) << "=====================3.5 ";
-    // print_vec<int64_t>(final_shape,"final_shape0");
-    final_shape[length - i - 1] =
-        final_shape[length - i - 1] * repeat_times_[r_length - i - 1];
-    // print_vec<int64_t>(final_shape,"final_shape1");
-  }
-  // VLOG(0) << "=====================4 ";
-
-  t1 = reshape<T>(t1, shape1);
-  VLOG(0) << "=====================4.5 ";
-  print_vec<int64_t>(shape1, "shape1");
-  print_vec<int64_t>(repeat_times_, "repeat_times_");
-  print_vec<int64_t>(shape3, "shape3");
-  print_vec<int64_t>(final_shape, "final_shape");
-
-  auto t2 = reshape<T>(t1, shape2);
-  auto t3 = t2.expand(shape3);
-  auto res = reshape<T>(t3, final_shape);
-  VLOG(0) << "=====================5 ";
-  return res;
 }
 
 template <typename T>
