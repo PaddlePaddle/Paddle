@@ -64,7 +64,7 @@ class TestLlamaMLP(unittest.TestCase):
     def eval(self, use_cinn):
         net = LlamaMLP()
         input_spec = [
-            InputSpec(shape=[1, None, 768], dtype='float32'),
+            InputSpec(shape=[1, 2048, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
