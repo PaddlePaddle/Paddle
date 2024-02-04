@@ -4081,6 +4081,8 @@ class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
         self.python_api = paddle.square
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.square
         self.init_dtype()
         self.init_shape()
 
@@ -4110,7 +4112,9 @@ class TestSquare(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -4118,10 +4122,16 @@ class TestSquare_Complex64(TestSquare):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestSquare_Complex128(TestSquare):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestSquare_ZeroDim(TestSquare):
@@ -4137,6 +4147,8 @@ class TestSquareBF16(OpTest):
     def setUp(self):
         self.op_type = "square"
         self.python_api = paddle.square
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.square
         self.init_dtype()
 
         np.random.seed(1024)
@@ -4154,7 +4166,10 @@ class TestSquareBF16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_pir=True, check_pir_onednn=self.check_pir_onednn
+            place,
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -5296,7 +5311,7 @@ else:
     create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p, check_pir=True)
-create_test_act_fp16_class(TestSquare, check_pir=True)
+create_test_act_fp16_class(TestSquare, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
@@ -5468,7 +5483,7 @@ else:
     create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p, check_pir=True)
-create_test_act_bf16_class(TestSquare, check_pir=True)
+create_test_act_bf16_class(TestSquare, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
