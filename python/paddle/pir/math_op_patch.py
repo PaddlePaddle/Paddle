@@ -524,7 +524,7 @@ def monkey_patch_value():
                 >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
-                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp = paddle.to_tensor(x)
                 >>>     tmp.stop_gradient=False
                 >>>     inputs2.append(tmp)
                 >>> ret2 = paddle.add_n(inputs2)
