@@ -34,7 +34,7 @@ class MatchContext final {
   const pir::Value& Tensor(const std::string& tensor_name) const;
 
   template <typename T>
-  T Attr(const std::string& attr_name) const;
+  TEST_API T Attr(const std::string& attr_name) const;
 
  private:
   std::shared_ptr<const MatchContextImpl> impl_;
