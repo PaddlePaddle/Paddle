@@ -77,12 +77,25 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
       }
       return false;
     });
+    std::unordered_set<std::string> load_buffer_names;
     ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
       if (const ir::Load* load = x->As<ir::Load>()) {
         std::string load_name = load->tensor.as_tensor()->name;
         if (dead_schedule_block_names_.count(load_name)) {
           VLOG(6) << "dead_schedule_block_names_.erase: " << load_name;
           dead_schedule_block_names_.erase(load_name);
+        }
+        load_buffer_names.insert(load->tensor.as_tensor()->buffer->name);
+      }
+      return false;
+    });
+    ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
+      if (const ir::Store* store = x->As<ir::Store>()) {
+        std::string store_name = store->tensor.as_tensor()->name;
+        if (dead_schedule_block_names_.count(store_name) > 0 &&
+            load_buffer_names.count(store->tensor.as_tensor()->buffer->name) >
+                0) {
+          dead_schedule_block_names_.erase(store_name);
         }
       }
       return false;
