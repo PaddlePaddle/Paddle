@@ -247,7 +247,7 @@ set(op_dialect_srcs
     ${pir_update_op_source_file})
 
 if(NOT ON_INFER)
-  set(op_dialect_srcs ${api_source_file})
+  set(op_dialect_srcs ${op_dialect_srcs} ${api_source_file})
 endif()
 
 if(WITH_MKLDNN)
