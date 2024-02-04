@@ -199,7 +199,6 @@ class TestExpandOpInferSymbolicShape(TestBase):
                 'output shape is not expected!',
             )
         out = net(self.x, self.y)
-        print("out:", out)
         return out
 
 
