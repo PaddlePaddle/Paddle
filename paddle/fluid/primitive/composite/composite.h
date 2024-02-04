@@ -34,6 +34,17 @@ static void print_vec(std::vector<T> vec, const std::string& message) {
   std::cout << std::endl;
 }
 
+Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
+  auto org_dtype = x.dtype();
+
+  auto res = cast<T>(sum<T>(x, axis, org_dtype, keepdim), DataType::BOOL);
+  if (org_dtype != DataType::BOOL) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
@@ -62,7 +73,13 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
 
   Tensor value;
-  if (find_value(x_dim, -1)) {
+  bool switch_dynamic = false;
+  for (const int64_t& idx : axis_) {
+    if (x_dim[idx] == -1) {
+      switch_dynamic = true;
+    }
+  }
+  if (switch_dynamic) {
     // dynamic shape branch
     std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
     Tensor idx =
@@ -257,6 +274,24 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto molecular = exp<T>(x_tmp - max_tmp);
   auto res = molecular / sum<T>(molecular, {axis}, molecular.dtype(), true);
 
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  auto res = log<T>(softmax_decomp<T>(x_tmp, axis));
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -552,12 +587,11 @@ Tensor hardswish_decomp(const Tensor& x) {
   const double SCALE = 6.0;
 
   // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
-  auto org_dim = common::vectorize(x.dims());
   auto minimun_out =
-      minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
-                            full<T>(org_dim, 0.0, x.dtype())),
-                 full<T>(org_dim, THRESHOLD, x.dtype()));
-  return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
+      minimum<T>(maximum<T>(x + full<T>(empty_shape, OFFSET, x.dtype()),
+                            full<T>(empty_shape, 0.0, x.dtype())),
+                 full<T>(empty_shape, THRESHOLD, x.dtype()));
+  return (minimun_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
 template <typename T>
@@ -855,6 +889,26 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
   return res;
 }
 
+template <typename T>
+Tensor square_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor two;
+  two = full<T>(empty_shape, 2, x_cast.dtype());
+
+  auto ans = elementwise_pow<T>(x_cast, two);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
 }  // namespace details
 
 }  // namespace primitive
