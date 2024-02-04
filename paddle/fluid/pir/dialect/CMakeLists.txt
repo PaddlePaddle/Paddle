@@ -252,7 +252,7 @@ if(WITH_MKLDNN)
                       ${op_onednn_info_file})
 endif()
 
-set(op_dialect_deps phi common pir type_info string_helper)
+set(op_dialect_deps phi common pir type_info string_helper eager_codegen)
 
 cc_library(
   op_dialect
