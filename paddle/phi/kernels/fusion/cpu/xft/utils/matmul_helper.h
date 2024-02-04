@@ -25,8 +25,8 @@
 #include "../common/normal_float4x2.h"
 #include "../common/uint4x2.h"
 // #include "../common/transformer_ctx.h"
-#include "third_party/xdnn/xdnn.h"
-#include "utils/split_util.h"
+#include "./split_util.h"
+#include "xdnn.h"  //NOLINT
 
 #include "glog/logging.h"
 
@@ -91,7 +91,9 @@ class MMHelper {
         if (trans) {
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             memcpy(quantizedWeight.Data() + i * quantizedWeight.Stride(),
                    base + i * rows,
@@ -99,7 +101,9 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             memcpy(quantizedWeight.Data() + i * quantizedWeight.Stride(),
                    src + i * cols + splitOffset,
@@ -110,7 +114,9 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             memcpy(quantizedWeight.Data() + i * quantizedWeight.Stride(),
                    src + i * rows + splitOffset,
@@ -119,7 +125,9 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             memcpy(quantizedWeight.Data() + i * quantizedWeight.Stride(),
                    base + i * cols,
@@ -134,7 +142,9 @@ class MMHelper {
         if (trans) {  // right
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             float16_t::cvt_float_to_float16(
                 base + i * rows,
@@ -143,7 +153,9 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             float16_t::cvt_float_to_float16(
                 src + i * cols + splitOffset,
@@ -155,7 +167,9 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             float16_t::cvt_float_to_float16(
                 src + i * rows + splitOffset,
@@ -165,7 +179,9 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             float16_t::cvt_float_to_float16(
                 base + i * cols,
@@ -181,7 +197,9 @@ class MMHelper {
         if (trans) {  // right
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             for (int j = 0; j < quantizedWeight.Cols(); ++j) {
               quantizedWeight.Data()[i * quantizedWeight.Stride() + j] =
@@ -190,7 +208,9 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             for (int j = 0; j < quantizedWeight.Cols(); ++j) {
               quantizedWeight.Data()[i * quantizedWeight.Stride() + j] =
@@ -202,7 +222,9 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             for (int j = 0; j < quantizedWeight.Cols(); ++j) {
               quantizedWeight.Data()[i * quantizedWeight.Stride() + j] =
@@ -212,7 +234,9 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
             for (int j = 0; j < quantizedWeight.Cols(); ++j) {
               quantizedWeight.Data()[i * quantizedWeight.Stride() + j] =
@@ -2094,7 +2118,9 @@ class MMHelper {
 #elif defined(AVX512_BF16_WEIGHT_ONLY_BF16)
       if (M > USE_AMX_M) {
         // Timline t("onednn_amx_sgemm_f32bf16f32_compute_residential");
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for collapse(2)
+#endif
         for (int i = 0; i < M; ++i) {
           for (int j = 0; j < N; ++j) {
             res[i * ldres + j] = res[i * ldres + j] * gamma;

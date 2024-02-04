@@ -24,7 +24,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "common/bit_cast.h"
+#include "./bit_cast.h"
 
 class float16_t {
  public:

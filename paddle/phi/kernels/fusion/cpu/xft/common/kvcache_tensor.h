@@ -140,8 +140,9 @@ class KVCacheTensor {
           batchSize);
       return;
     }
-
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
 #pragma omp parallel for
+#endif
     for (int seq = 0; seq < seqLen; ++seq) {
       for (int b = batchSize - 1; b > 0; --b) {
         T *dst = getSequence(seq, b, 0);

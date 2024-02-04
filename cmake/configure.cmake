@@ -194,18 +194,6 @@ if(WITH_MKLML AND MKLML_IOMP_LIB)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_FLAGS}")
 endif()
 
-if(WITH_XFT
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG)
-  if(WIN32)
-    # openmp not support well for now on windows
-    set(OPENMP_FLAGS "")
-  else()
-    set(OPENMP_FLAGS "-fopenmp")
-  endif()
-  set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} ${OPENMP_FLAGS} ")
-endif()
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SIMD_FLAG}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
 

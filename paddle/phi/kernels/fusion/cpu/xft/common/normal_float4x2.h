@@ -21,7 +21,7 @@
 #include <cstdlib>
 #include <limits>
 
-#include "common/uint4x2.h"
+#include "./uint4x2.h"
 
 class nf4x2_t : public uint4x2_t {
  public:

@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <string>
 
-#include "common/my_types.h"
+#include "./my_types.h"
 
 struct DecoderContext {
   // # of mini-batch

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Intel Corporation
+# Copyright (c) 2024 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
-cmake_minimum_required(VERSION 3.18)
-
-# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0")
-  cmake_policy(SET CMP0135 NEW)
-endif()
-
-project(dependency NONE)
-
 include(ExternalProject)
 set(XDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/xdnn)
 set(XDNN_DATA_TYPES_DIR ${XDNN_INSTALL_DIR}/data_types)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XDNN_INSTALL_DIR}")
 set(XDNN_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/xdnn)
+
+# if(WIN32)
+#   set(OPENMP_FLAGS "")
+# else()
+#   set(OPENMP_FLAGS "-fopenmp")
+# endif()
+# # set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
+# # set(CMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
+# # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPENMP_FLAGS}")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_FLAGS} -Wno-maybe-uninitialized -mfma ${AVX512F_FLAG}")
 
 set(XDNN_FILE
     "xdnn_v1.4.2.tar.gz"
@@ -86,9 +86,24 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${XDNN_STATIC_LIB}
-  BUILD_BYPRODUCTS ${XDNN_LIB})
+  BUILD_BYPRODUCTS ${XDNN_LIB}
+  # CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+  #            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+  #            -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+  #            -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+  #            -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+  #            -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+  #            -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+  #            -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+  #            -DCMAKE_INSTALL_PREFIX=${XDNN_INSTALL_DIR}
+  #            -DCMAKE_POSITION_INDEPENDENT_CODE=OFF
+  #            -DBUILD_TESTING=OFF
+  #            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+  #            ${EXTERNAL_OPTIONAL_ARGS}
+  # BUILD_BYPRODUCTS ${XDNN_STATIC_LIB}
+)
 
-include_directories(${XDNN_DATA_TYPES_DIR})
+include_directories(${XDNN_INSTALL_DIR})
 
 add_library(xdnn STATIC IMPORTED GLOBAL)
 set_property(TARGET xdnn PROPERTY IMPORTED_LOCATION ${XDNN_STATIC_LIB})
