@@ -1483,11 +1483,11 @@ class TestVarBaseTo(unittest.TestCase):
 
     def func_test_to_api(self):
         x_double = self.x._to(dtype='double')
-        self.assertEqual(x_double.dtype, paddle.base.paddle.float64)
+        self.assertEqual(x_double.dtype, paddle.float64)
         np.testing.assert_allclose(self.np_x, x_double, rtol=1e-05)
 
         x_ = self.x._to()
-        self.assertEqual(self.x.dtype, paddle.base.paddle.float64)
+        self.assertEqual(self.x.dtype, paddle.float64)
         np.testing.assert_allclose(self.np_x, x_, rtol=1e-05)
 
         if paddle.base.is_compiled_with_cuda():
@@ -1502,7 +1502,7 @@ class TestVarBaseTo(unittest.TestCase):
             x_gpu1 = self.x._to(device='gpu:0', dtype="float64")
             self.assertTrue(x_gpu1.place.is_gpu_place())
             self.assertEqual(x_gpu1.place.gpu_device_id(), 0)
-            self.assertEqual(x_gpu1.dtype, paddle.base.paddle.float64)
+            self.assertEqual(x_gpu1.dtype, paddle.float64)
 
             x_gpu2 = self.x._to(device='gpu:0', dtype="float16")
             self.assertTrue(x_gpu2.place.is_gpu_place())
@@ -1517,7 +1517,7 @@ class TestVarBaseTo(unittest.TestCase):
 
         x_cpu1 = self.x._to(device=paddle.CPUPlace(), dtype="float64")
         self.assertTrue(x_cpu1.place.is_cpu_place())
-        self.assertEqual(x_cpu1.dtype, paddle.base.paddle.float64)
+        self.assertEqual(x_cpu1.dtype, paddle.float64)
 
         x_cpu2 = self.x._to(device='cpu', dtype="float16")
         self.assertTrue(x_cpu2.place.is_cpu_place())
