@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#define _DEBUG_FUSED_MULTI_TRANSFORMER
-#define _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
+// #define _DEBUG_FUSED_MULTI_TRANSFORMER
+// #define _DEBUG_FUSED_MULTI_TRANSFORMER_PRINT_TENSOR
 
 namespace paddle {
 namespace operators {

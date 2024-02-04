@@ -85,18 +85,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                         paddle::platform::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
-      //   PADDLE_ENFORCE_EQ(c_dim[2],
-      //                     trans_qkvw ? y_dim[1] : y_dim[2],
-      //                     paddle::platform::errors::InvalidArgument(
-      //                         "The third dim of CacheKV must be equal with
-      //                         num " "head %d, but got %d", trans_qkvw ?
-      //                         y_dim[1] : y_dim[2], c_dim[2]));  // num_head
-      //   PADDLE_ENFORCE_EQ(c_dim[4],
-      //                     trans_qkvw ? y_dim[2] : y_dim[3],
-      //                     paddle::platform::errors::InvalidArgument(
-      //                         "The fifth dim of CacheKV must be equal with
-      //                         head " "size %d, but got %d", trans_qkvw ?
-      //                         y_dim[2] : y_dim[3], c_dim[4]));  // head_size
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
