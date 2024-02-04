@@ -961,7 +961,7 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             def test_input_same_dtype():
                 paddle.concat([x7, x8])
 
-            self.assertRaises(ValueError, test_input_same_dtype)
+            self.assertRaises(TypeError, test_input_same_dtype)
 
 
 if __name__ == '__main__':
