@@ -22,11 +22,11 @@ namespace cinn {
 namespace backends {
 
 std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module) {
-  if (FLAGS_cinn_bucket_compile) {
-    detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name);
-    Expr expr(module);
-    return visitor(&expr);
-  }
+  // // if (FLAGS_cinn_bucket_compile) {
+  //   detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name);
+  //   Expr expr(module);
+  //   return visitor(&expr);
+  // // }
   detail::CollectHostFunctionVisitor visitor(module->name);
   Expr expr(module);
   return visitor(&expr);

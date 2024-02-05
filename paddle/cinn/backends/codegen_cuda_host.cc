@@ -264,6 +264,7 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
   auto ret_type = CinnTypeToLLVMType(Void(), m_);
   std::vector<llvm::Type*> args_type;
   for (auto r_arg : call_ir->read_args) {
+    std::cerr << "r args " << r_arg << std::endl;
     if (r_arg.is_var()) {
       if (r_arg.as_var()->type().is_cpp_handle() ||
           r_arg.as_var()->type().is_string()) {
@@ -307,11 +308,15 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
       }
     }
   }
+  std::cerr << "11\n";
   auto func_type = llvm::FunctionType::get(ret_type, args_type, false);
+  std::cerr << "22\n";
   auto call_func = m_->getOrInsertFunction(call_ir->name, func_type);
+  std::cerr << "3\n";
 
   std::vector<llvm::Value*> call_args;
   for (auto& r_arg : call_ir->read_args) {
+    std::cerr << "r args 22 " << r_arg << std::endl;
     if (r_arg.is_var()) {
       if (r_arg.as_var()->type().is_string()) {
         auto kvalue = m_->getOrInsertGlobal(r_arg.as_var()->name + "_ptr_",
@@ -364,7 +369,9 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
       }
     }
   }
+  std::cerr << "create call\n";
   b_->CreateCall(call_func, call_args);
+  std::cerr << "fin create \n";
 
   return nullptr;
 }

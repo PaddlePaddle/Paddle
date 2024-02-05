@@ -124,6 +124,7 @@ void DynamicShapeGroupScheduler::Schedule() {
   // }
   std::cerr << "dy shape schedule\n";
   LoopReorderAligment();
+  std::cerr << "after reorder\n";
   Tiling();
 }
 
@@ -297,8 +298,6 @@ ir::ScheduleBlockNode* DynamicShapeGroupScheduler::FindGlobalMasterNode(
 }
 
 void DynamicShapeGroupScheduler::LoopReorderAligment() {
-  std::cerr << "loop reorder func body: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
   std::vector<std::string> node_list;
 
   auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
@@ -307,31 +306,55 @@ void DynamicShapeGroupScheduler::LoopReorderAligment() {
 
   schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
 
+  std::cerr << "11\n";
+  std::cerr << "node list size " << node_list.size() << std::endl;
   // broadcast
   for (auto& name : node_list) {
     // skip reduce init block
+    std::cerr << "name  " << name << std::endl;
+
+    if (group_tile_info_ == nullptr) {
+      std::cerr << "nullptr\n";
+      continue;
+    }
     if (group_tile_info_->broadcast_info.count(name)) {
       // broadcast loops
-      // std::cerr << "broadcast axes \n";
-      // for (auto& axis :
-      // group_tile_info_->broadcast_info[name].broadcast_axes) {
-      //   std::cerr << "axis" << axis << std::endl;
-      // }
-      // std::cerr << "out shape \n";
-      // for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
-      //   std::cerr << "dim " << s << std::endl;
-      // }
+      std::cerr << "broadcast axes \n";
+      for (auto& axis : group_tile_info_->broadcast_info[name].broadcast_axes) {
+        std::cerr << "axis " << axis << std::endl;
+      }
+      std::cerr << "out shape \n";
+      for (auto& s : group_tile_info_->broadcast_info[name].output_shape) {
+        std::cerr << "dim " << s << std::endl;
+      }
+      if (group_tile_info_->broadcast_info[name].full_broadcast) {
+        // split first
+        std::vector<int32_t> vec_out_split(
+            group_tile_info_->broadcast_info[name].output_shape.size(), 1);
+        std::cerr << "split size " << vec_out_split.size() << std::endl;
+
+        auto loops = ir_sch_->GetLoops(name);
+        std::cerr << "before split\n " << loops[0] << std::endl;
+        ir_sch_->Split(loops[0], vec_out_split);
+
+        loops = ir_sch_->GetLoops(name);
+        std::cerr << "after split\n " << loops[0] << std::endl;
+      }
 
       ir_sch_->Broadcast(name, group_tile_info_->broadcast_info[name]);
     }
 
+    std::cerr << "fin broadcast " << name << std::endl;
     if (group_tile_info_->broadcast_to_elementwise.count(name)) {
+      std::cerr << "begin to broadcat to elementwise\n";
       ir_sch_->BroadcastToElementwise(
           name,
           group_tile_info_->broadcast_to_elementwise[name].broadcast_axes);
+      std::cerr << "fin to broadcat to elementwise\n";
     }
   }
 
+  std::cerr << "22\n";
   size_t base_rank = 0;
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {
@@ -352,7 +375,7 @@ void DynamicShapeGroupScheduler::LoopReorderAligment() {
   }
 
   if (!NeedOrderLoops()) {
-    // std::cerr << "no need reorder \n";
+    std::cerr << "no need reorder \n";
     return;
   }
 
@@ -397,7 +420,7 @@ bool DynamicShapeGroupScheduler::NeedOrderLoops() {
     if (group_tile_info_->reduce_axis_.size() == 0) {
       return false;
     }
-    // std::cerr << "reduce rank " << group_tile_info_->data_rank << std::endl;
+    std::cerr << "reduce rank " << group_tile_info_->data_rank << std::endl;
 
     std::vector<int64_t> vec_axis = group_tile_info_->reduce_axis_;
 
@@ -429,7 +452,10 @@ void DynamicShapeGroupScheduler::Tiling() {
   schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
 
   // std::cerr << "node size " << node_list.size() << std::endl;
-
+  std::cerr << "11 \n";
+  if (group_tile_info_ == nullptr) {
+    std::cerr << "tile info nullptr\n";
+  }
   auto vec_axis = group_tile_info_->reduce_axis_;
 
   // merge flatten axis and reduce axis
@@ -447,6 +473,9 @@ void DynamicShapeGroupScheduler::Tiling() {
       vec_flatten_axis.push_back(i);
     }
   }
+
+  std::cerr << "before flatten fuse: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   if (vec_flatten_axis.size() >= 2) {
     for (auto& name : node_list) {
@@ -474,10 +503,12 @@ void DynamicShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after flatten fuse: " <<
-  // ir_sch_->GetModule().GetExprs().front()
-  //           << std::endl;
+  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 
+  if (group_tile_info_ == nullptr) {
+    std::cerr << "nullptr\n";
+  }
   if (group_tile_info_->flatten_inner_num > 1) {
     // split flatten inner here
     for (auto& name : node_list) {
@@ -494,8 +525,8 @@ void DynamicShapeGroupScheduler::Tiling() {
 
     reduce_current_axis += 1;
   }
-  // std::cerr << "split flatten inner: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "split flatten inner: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // std::cerr << "current reduce " << reduce_current_axis << std::endl;
   // split reduce inner here
@@ -517,7 +548,8 @@ void DynamicShapeGroupScheduler::Tiling() {
       }
 
       std::vector<int> split_factors{
-          group_tile_info_->reduce_block / group_tile_info_->reduce_inner_num,
+          std::ceil(group_tile_info_->reduce_numel * 1.0 /
+                    group_tile_info_->reduce_inner_num),
           group_tile_info_->reduce_inner_num};
 
       auto split_loops =
@@ -605,8 +637,8 @@ void DynamicShapeGroupScheduler::Tiling() {
     // do nothing for now
   }
 
-  // std::cerr << "after merge warp num info: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "after merge warp num info: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   // bind cuda block and thread info
   for (auto& name : node_list) {
@@ -634,8 +666,8 @@ void DynamicShapeGroupScheduler::Tiling() {
     }
   }
 
-  // std::cerr << "after bind block and thread info: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "after bind block and thread info: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {
@@ -644,13 +676,16 @@ void DynamicShapeGroupScheduler::Tiling() {
     if (name.find("_out") != std::string::npos) {
       continue;
     }
+
     // if (!output_tensor_names_.count(name)) {
     //  std::cerr << "temp name " << name << std::endl;
     auto block = ir_sch_->GetBlock(name);
     if (group_tile_info_->shared_var_names.count(name)) {
       ir_sch_->SetBuffer(block, "shared", false);
     } else {
-      ir_sch_->SetBuffer(block, "local", false);
+      if (!group_tile_info_->direct_output_var_names.count(name)) {
+        ir_sch_->SetBuffer(block, "local", false);
+      }
     }
     //}
 

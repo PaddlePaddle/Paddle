@@ -62,12 +62,17 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
  protected:
   void Visit(const ir::_LoweredFunc_* op, Expr* expr) override {
     if (op->body.As<ir::Call>()) {
+      std::cerr << "as call\n";
+      std::cerr << "expr->as_lowered_func_ref() " << expr->as_lowered_func_ref()
+                << std::endl;
       host_module_builder.AddFunctionWithoutOptim(expr->as_lowered_func_ref());
     } else {
+      std::cerr << "not call\n";
       if (!op->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
       auto host_func = CreateHostFunctionGivenDeviceKernel(op);
+      std::cerr << "hot func  \n" << host_func << std::endl;
       host_module_builder.AddFunctionWithoutOptim(
           host_func.as_lowered_func_ref());
       device_module_builder.AddFunctionWithoutOptim(
@@ -112,7 +117,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                         func->cuda_axis_info.grid_dim(0),   // grid_x
                         func->cuda_axis_info.grid_dim(1),   // grid_y
                         func->cuda_axis_info.grid_dim(2),   // grid_z
-                        func->cuda_axis_info.block_dim(0),  // block_x
+                        Expr(1),                            // block_x
                         func->cuda_axis_info.block_dim(1),  // block_y
                         func->cuda_axis_info.block_dim(2),  // block_z
                         kernel_stream},
@@ -122,8 +127,23 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                        0);
     std::vector<ir::Argument> arguments = {
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
-        ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
-        ir::Argument(kernel_stream, ir::Argument::IO::kOutput)};
+        ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
+
+    std::cerr << "thread idx " << func->cuda_axis_info.block_dim(0)
+              << std::endl;
+
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+        func->cuda_axis_info.block_dim(0),
+        [&](const Expr* x) { return x->is_var(); });
+    for (auto expr : exprs) {
+      arguments.push_back(ir::Argument(expr, ir::Argument::IO::kInput));
+      std::cerr << "expr " << expr << std::endl;
+    }
+    // if( ! func->cuda_axis_info.block_dim(0).is_constant() )
+    // {
+
+    // }
+    arguments.push_back(ir::Argument(kernel_stream, ir::Argument::IO::kOutput));
 
     return ir::_LoweredFunc_::Make(func->name, arguments, call_extern_api, {});
   }
@@ -165,6 +185,8 @@ struct CollectBucketStrategyHostFunctionVisitor
     if (op->functions.size() == 1 && op->predicates.size() == 0) {
       expr->as_module()->predicates.push_back(ir::Expr(true));
     }
+
+    std::cerr << "op " << op->functions.size() << std::endl;
     CHECK_EQ(op->functions.size(), op->predicates.size());
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);

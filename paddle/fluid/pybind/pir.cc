@@ -1616,6 +1616,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
   auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
+  // pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());

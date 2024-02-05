@@ -397,6 +397,7 @@ std::unordered_map<cinn::dialect::ir::GroupPtr,
 ComplieGroupAsOpAttribute(
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     const std::vector<cinn::dialect::ir::GroupPtr>& group_list) {
+  std::cerr << "before build cuda jit info\n";
   auto fn_ptr_res = pir_compiler->BuildCUDAJITInfo(group_list);
 
   std::unordered_map<cinn::dialect::ir::GroupPtr,
@@ -620,12 +621,12 @@ CreateGroupShapeOrDataExprs(
   return value2shape;
 }
 
-class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
+class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   explicit FusionOpPattern(::pir::IrContext* context)
-      : pir::OpRewritePattern<cinn::dialect::GroupOp>(context) {}
+      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
-  bool MatchAndRewrite(cinn::dialect::GroupOp fusion_op,
+  bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto target = cinn::common::DefaultNVGPUTarget();
@@ -724,7 +725,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
   }
 
  private:
-  std::shared_ptr<Group> RebuildGroup(cinn::dialect::GroupOp fusion_op) const {
+  std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
     auto group = std::make_shared<Group>();
     auto attr = fusion_op.attribute("group_info")
                     .dyn_cast<cinn::dialect::GroupInfoAttribute>()

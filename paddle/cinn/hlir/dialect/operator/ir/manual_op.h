@@ -61,11 +61,16 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();

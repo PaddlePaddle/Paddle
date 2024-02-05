@@ -24,6 +24,9 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_symbolic_lower SRCS symbolic_lower_test.cc)
 
+  paddle_test(test_symbolic_lower_tiling_frist SRCS
+              symbolic_lower_tiling_frist_test.cc)
+
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc)
 
   paddle_test(test_compilation_task SRCS compilation_task_test.cc)

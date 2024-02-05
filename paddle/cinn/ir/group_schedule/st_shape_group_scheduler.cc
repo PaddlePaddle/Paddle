@@ -446,7 +446,7 @@ void StaticShapeGroupScheduler::Tiling() {
       // std::cerr << "split expr" << split_expr << std::endl;
       // std::cerr << "extent " << split_expr->extent.as_int32() << std::endl;
 
-      if (split_expr->extent.as_int32() == 1) {
+      if (split_expr->extent.as_int64() == 1) {
         continue;
       }
 

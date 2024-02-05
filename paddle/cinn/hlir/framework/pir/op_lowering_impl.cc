@@ -200,7 +200,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
-  if (reduce_numel < 0 || flatten_numel < 0) {
+  if (reduce_numel < 0) {
     std::cerr << "reduce numel " << reduce_numel << "\t" << flatten_numel
               << std::endl;
     throw std::runtime_error("negative reduce numel or flaten numel");
@@ -218,22 +218,37 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   if (reduce_numel == 1) {
     // warp_num * 32 * flattern_inner = flatten_block
     reduce_block = 1;
-    flatten_block = Next2Power(flatten_numel);
-    if (flatten_block > 1024) {
+    if (flatten_numel < 0) {
       flatten_block = 1024;
-    }
-    reduce_inner_num = 1;
-    warp_num = flatten_block / 128;
-    if (warp_num == 0) {
-      warp_num = 1;
-    }
-    flatten_inner_num = flatten_block / (warp_num * 32);
-    if (flatten_inner_num == 0) {
-      flatten_inner_num = 1;
-    }
 
-    int64_t block_num = int64_t(std::ceil(flatten_numel * 1.0 / flatten_block));
-    group_tile_info->block_num = block_num;
+      reduce_inner_num = 1;
+      warp_num = flatten_block / 128;
+
+      flatten_inner_num = flatten_block / (warp_num * 32);
+      if (flatten_inner_num == 0) {
+        flatten_inner_num = 1;
+      }
+
+      group_tile_info->block_num = -1;
+    } else {
+      flatten_block = Next2Power(flatten_numel);
+      if (flatten_block > 1024) {
+        flatten_block = 1024;
+      }
+      reduce_inner_num = 1;
+      warp_num = flatten_block / 128;
+      if (warp_num == 0) {
+        warp_num = 1;
+      }
+      flatten_inner_num = flatten_block / (warp_num * 32);
+      if (flatten_inner_num == 0) {
+        flatten_inner_num = 1;
+      }
+
+      int64_t block_num =
+          int64_t(std::ceil(flatten_numel * 1.0 / flatten_block));
+      group_tile_info->block_num = block_num;
+    }
   } else if (reduce_numel <= 256) {
     // warp reduce
     reduce_block = Next2Power(reduce_numel);
@@ -592,13 +607,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                         &group_func_arg_tensors,
                         &tensor_map);
   }
-  std::vector<ir::Expr> func_bodies = LowerOps(group,
-                                               ops,
-                                               do_op_schedule,
-                                               schedule_determine_func,
-                                               &group_func_arg_tensors,
-                                               &tensor_map,
-                                               &tmp_tensor_info);
+  std::vector<ir::Expr> func_bodies =
+      LowerOps(group,
+               ops,
+               do_op_schedule,
+               &OpLowererImpl::DyShapeScheduleDetermineFunction,
+               &group_func_arg_tensors,
+               &tensor_map,
+               &tmp_tensor_info);
 
   std::unordered_set<::pir::Value> inner_genevalue;
   std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
@@ -966,14 +982,26 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   }
 
   ir::ModuleExpr mod_expr(func_bodies);
-  ir::IRSchedule ir_sch(mod_expr);
-  ir_sch.MergeExprs();
-  VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  if (apply_group_schedule) {
-    DoGroupSchedule(ir_sch, group, tensor_map, tmp_tensor_info);
-    VLOG(3) << "After group schedule, ir is: \n"
-            << ir_sch.GetModule().GetExprs().at(0);
+  std::shared_ptr<ir::IRSchedule> ir_sch =
+      std::make_shared<ir::IRSchedule>(mod_expr);
+
+  auto have_dy_shape = false;
+  for (auto d : group->loop_ranges) {
+    if (d < 0) {
+      have_dy_shape = true;
+    }
   }
+  if (have_dy_shape) {
+    ir_sch = std::make_shared<ir::IRSchedule>(
+        mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
+  }
+  ir_sch->MergeExprs();
+  VLOG(3) << "After lower, ir is: \n" << ir_sch->GetModule().GetExprs().at(0);
+  // if (apply_group_schedule) {
+  DoGroupSchedule(*(ir_sch.get()), group, tensor_map, tmp_tensor_info);
+  VLOG(3) << "After group schedule, ir is: \n"
+          << ir_sch->GetModule().GetExprs().at(0);
+  // }
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
@@ -982,7 +1010,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   return PostProcess(group,
                      tensor_map,
                      do_op_schedule,
-                     {ir_sch.GetModule().GetExprs().at(0)},
+                     {ir_sch->GetModule().GetExprs().at(0)},
                      &group_func_arg_tensors,
                      &group_func_args);
 }
@@ -1225,40 +1253,42 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
-    if (FLAGS_cinn_bucket_compile) {
-      std::vector<Type> out_types;
-      std::vector<std::vector<ir::Dim>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      CHECK_EQ(out_types.size(), out_shapes.size());
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      auto& strategy_map =
-          Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-      CHECK(static_cast<bool>(strategy))
-          << " cinn_op_name: " << cinn_op_name
-          << "has no CINNStrategySymbolic registered.";
-      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
-                                                op_func_arg_tensors,
-                                                out_types,
-                                                out_shapes,
-                                                this->target_));
-    } else {
-      std::vector<Type> out_types;
-      std::vector<std::vector<int>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-                                                         op_func_arg_tensors,
-                                                         out_types,
-                                                         out_shapes,
-                                                         this->target_));
+    // if (FLAGS_cinn_bucket_compile) {
+    std::vector<Type> out_types;
+    std::vector<std::vector<ir::Dim>> out_shapes;
+    CollectOutputInfo(op, &out_types, &out_shapes, group);
+    for (auto d : out_shapes[0]) {
+      std::cerr << "ddddddddd " << d << std::endl;
     }
+    CHECK_EQ(out_types.size(), out_shapes.size());
+    VLOG(4) << "out_types.size(): " << out_types.size();
+    NodeAttr node_attrs = details::CollectAttrs(*op);
+    auto& strategy_map =
+        Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
+    StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+    CHECK(static_cast<bool>(strategy))
+        << " cinn_op_name: " << cinn_op_name
+        << "has no CINNStrategySymbolic registered.";
+    op_impl = OpStrategy::SelectImpl(strategy(
+        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
+    // } else {
+    //   std::vector<Type> out_types;
+    //   std::vector<std::vector<int>> out_shapes;
+    //   CollectOutputInfo(op, &out_types, &out_shapes, group);
+    //   VLOG(4) << "out_types.size(): " << out_types.size();
+    //   NodeAttr node_attrs = details::CollectAttrs(*op);
+    //   op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
+    //                                                      op_func_arg_tensors,
+    //                                                      out_types,
+    //                                                      out_shapes,
+    //                                                      this->target_));
+    // }
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
 
+    // func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors,
+    //   funcs));
     // if (apply_op_schedule && (this->*schedule_determine_func)(op)) {
     //   // 3.Perform the schedule of Op
     //   func_bodies.push_back(DoOpSchedule(op_impl, op_func_arg_tensors,
@@ -1415,7 +1445,11 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
   std::cerr << std::endl;
 
   std::cerr << "loop range ";
+  bool have_dy_shape = false;
   for (auto d : group->loop_ranges) {
+    if (d < 0) {
+      have_dy_shape = true;
+    }
     std::cerr << " " << d;
   }
   std::cerr << std::endl;
@@ -1434,11 +1468,13 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         return ValueName(op->result(0)) + "_out";
       });
 
+  std::cerr << "build goup schedule " << (group_tile_info != nullptr)
+            << std::endl;
   std::unique_ptr<ir::GroupScheduler> group_scheduler =
       ir::GroupScheduler::Make(&ir_sch,
                                output_tensor_names,
                                target_,
-                               /* is_dy_shape = */ false,
+                               /* is_dy_shape = */ have_dy_shape,
                                group_tile_info);
   group_scheduler->Schedule();
   return ir_sch.GetModule().GetExprs().at(0);
@@ -1463,17 +1499,18 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
       }
     }
   };
-  if (FLAGS_cinn_bucket_compile) {
-    std::vector<ir::Dim> sym_shape;
-    ForEachDimExpr(
-        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
-    return lang::CreatePlaceHolder(
-        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-  } else {
-    return lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
-                                   CompatibleInfo::ConvertIRType(dtype),
-                                   input_id);
-  }
+  // if (FLAGS_cinn_bucket_compile) {
+  std::vector<ir::Dim> sym_shape;
+  ForEachDimExpr(
+      [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+  return lang::CreatePlaceHolder(
+      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  // } else {
+  //   return
+  //   lang::CreatePlaceHolder(::common::vectorize<int>(type_info.dims()),
+  //                                  CompatibleInfo::ConvertIRType(dtype),
+  //                                  input_id);
+  // }
 }
 
 std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
@@ -1545,12 +1582,14 @@ void OpLowererImpl::CollectOutputInfo(
     auto ForEachDimExpr = [&](const auto& DoEach) {
       const auto& dims = type_info.dims();
       if (::common::contain_unknown_dim(dims)) {  // dynamic shape
+        std::cerr << "have unkow dim\n";
         const auto& sym_vec = group->GetShapeOrDataExprs(out_value).shape();
         std::vector<ir::Dim> sym_shape;
         for (const auto& sym : sym_vec) {
           DoEach(sym);
         }
       } else {  // static shape
+        std::cerr << "static shape\n";
         auto out_shape = ::common::vectorize<int64_t>(dims);
         for (int64_t dim : out_shape) {
           DoEach(symbol::DimExpr{dim});

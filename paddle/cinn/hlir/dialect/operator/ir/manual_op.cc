@@ -33,6 +33,7 @@ namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -107,6 +108,18 @@ void FusionOp::Build(pir::Builder& builder,
                      const std::vector<pir::Type>& output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
+}
+
+void FusionOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Type>& output_types,
+                     const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
 }
 
 pir::Block* FusionOp::block() {

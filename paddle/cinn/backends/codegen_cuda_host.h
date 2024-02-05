@@ -41,9 +41,9 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
 
   using CodeGenLLVM::Visit;
   llvm::Value *Visit(const ir::_LoweredFunc_ *func) override {
-    if (FLAGS_cinn_bucket_compile) {
-      return LowerHostFunc(func);
-    }
+    // if (FLAGS_cinn_bucket_compile) {
+    return LowerHostFunc(func);
+    // }
     return LowerGPUKernelLauncher(func);
   }
 
