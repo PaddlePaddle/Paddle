@@ -3509,7 +3509,8 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_max_bound,
                       const float quant_min_bound,
                       MetaTensor* out,
-                      MetaTensor* residual_out) {
+                      MetaTensor* residual_out,
+                      MetaTensor* inv_var) {
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
@@ -3518,6 +3519,10 @@ void RmsNormInferMeta(const MetaTensor& x,
     normalized_dims *= x_dims_vec[i];
   }
 
+  std::vector<int64_t> inv_var_dims;
+  for (size_t i = size_t(0); i < begin_norm_axis; i++) {
+    inv_var_dims.push_back(x_dims_vec[i]);
+  }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
                     phi::errors::InvalidArgument(
@@ -3538,6 +3543,10 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
   out->set_layout(x.layout());
   out->share_lod(x);
+
+  inv_var->set_dtype(phi::DataType::FLOAT32);
+  inv_var->set_dims(inv_var_dims);
+  inv_var->set_layout(x.layout());
 
   residual_out->set_dims(out_dims);
   residual_out->set_dtype(x.dtype());

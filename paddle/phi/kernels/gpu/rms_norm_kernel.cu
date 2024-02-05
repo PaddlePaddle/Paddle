@@ -948,7 +948,8 @@ void RmsNormKernel(const Context& dev_ctx,
                    const float quant_max_bound,
                    const float quant_min_bound,
                    DenseTensor* out,
-                   DenseTensor* residual_out) {
+                   DenseTensor* residual_out,
+                   DenseTensor* inv_var) {
 #if defined(PADDLE_WITH_HIP)
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else

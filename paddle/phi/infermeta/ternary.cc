@@ -673,32 +673,6 @@ void LayerNormGradInferMeta(const MetaTensor& x,
   }
 }
 
-void FusedRmsNormInferMeta(const MetaTensor& x,
-                           const MetaTensor& scale,
-                           float epsilon,
-                           MetaTensor* out,
-                           MetaTensor* invvar,
-                           MetaConfig config) {
-  auto x_dims = x.dims();
-  LayerNormInferMeta(x,
-                     scale,
-                     MetaTensor(),
-                     epsilon,
-                     x_dims.size() - 1,
-                     out,
-                     nullptr,
-                     invvar,
-                     config);
-}
-
-void FusedRmsNormGradInferMeta(const MetaTensor& x,
-                               const MetaTensor& y,
-                               MetaTensor* dx,
-                               MetaTensor* dy) {
-  MetaTensor z;
-  LayerNormGradInferMeta(x, y, z, dx, dy, nullptr);
-}
-
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,

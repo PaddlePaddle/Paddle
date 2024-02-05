@@ -648,7 +648,8 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_max_bound,
                       const float quant_min_bound,
                       MetaTensor* out,
-                      MetaTensor* residual_out);
+                      MetaTensor* residual_out,
+                      DenseTensor* inv_var);
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
