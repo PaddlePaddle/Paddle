@@ -59,22 +59,29 @@ class TestWhile(unittest.TestCase):
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def eval(self, use_cinn):
         net = WhileRMSNorm()
         input_spec = [
-            InputSpec(shape=[1, None, 768], dtype='float32'),
+            InputSpec(shape=[1, 2048, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        cinn_out = self.eval(use_cinn=True)
         dy_out = self.eval(use_cinn=False)
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-        )
+        if utils.unittest_use_cinn():
+            cinn_out = self.eval(use_cinn=True)
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':
