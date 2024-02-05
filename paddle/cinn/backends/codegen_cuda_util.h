@@ -117,7 +117,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                         func->cuda_axis_info.grid_dim(0),   // grid_x
                         func->cuda_axis_info.grid_dim(1),   // grid_y
                         func->cuda_axis_info.grid_dim(2),   // grid_z
-                        Expr(1),                            // block_x
+                        func->cuda_axis_info.block_dim(0),  // block_x
                         func->cuda_axis_info.block_dim(1),  // block_y
                         func->cuda_axis_info.block_dim(2),  // block_z
                         kernel_stream},

@@ -52,8 +52,7 @@ class LlamaRMSNorm(nn.Layer):
 #         self.prepare_data()
 #         net = LlamaRMSNorm()
 #         net = utils.apply_to_static(net, use_cinn)
-#         if use_cinn:
-#             net = apply_to_static(net, use_cinn)
+
 #         # net.eval()
 #         out = net(self.hidden_states)
 
