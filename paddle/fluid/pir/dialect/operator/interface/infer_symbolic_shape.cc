@@ -68,7 +68,7 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
                  phi::errors::PreconditionNotMet(
                      "axis Type MUST ArrayAttribute for [%s] op", op->name()));
   auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
-  std::vector<int64_t> vec_res;
+  std::vector<T> vec_res;
   if (array_list.size() > 0) {
     PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),
                       true,

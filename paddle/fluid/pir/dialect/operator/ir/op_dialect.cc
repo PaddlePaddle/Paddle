@@ -46,7 +46,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    const symbol::TensorListShapeOrDataDimExprs shape_data_list = [&] {
+    const auto shape_data_list = [&] {
       symbol::TensorListShapeOrDataDimExprs shape_data_list;
       for (size_t i = 0; i < op->num_operands(); ++i) {
         IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
