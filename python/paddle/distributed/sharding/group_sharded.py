@@ -111,7 +111,7 @@ def group_sharded_parallel(
         "gpu",
         "xpu",
     ], "group_sharded_parallel only support gpu and xpu now"
-    # check optition type
+    # check option type
     assert isinstance(
         model, paddle.nn.Layer
     ), "The model must be the instance of paddle.nn.Layer."
