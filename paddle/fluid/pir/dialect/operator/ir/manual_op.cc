@@ -3460,15 +3460,53 @@ void ExpandOp::Build(pir::Builder &builder,
 
 bool ExpandOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &data_shape = shape_analysis->GetShapeOrDataForValue(shape());
-  IR_ENFORCE(data_shape.data().has_value(),
-             "Value shape comes from ShapeOp, it must have data");
-  const auto &data = data_shape.data().value();
+  const auto x_shape_or_data = shape_analysis->GetShapeOrDataForValue(x());
+  const auto expand_shape_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(shape());
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(data)};
+  const std::vector<symbol::DimExpr> &x_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
 
-  shape_analysis->SetShapeOrDataForValue(out(), shape_data);
+  const std::vector<symbol::DimExpr> &expand_shape = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (expand_shape_shape_or_data.data().has_value()) {
+      dims = expand_shape_shape_or_data.data().value();
+    } else {
+      dims = expand_shape_shape_or_data.shape();
+    }
+
+    if (dims.empty()) {
+      dims = std::vector<symbol::DimExpr>(x_dims.size(), -1);
+    }
+    return dims;
+  }();
+
+  std::vector<symbol::DimExpr> out_shape = expand_shape;
+  for (size_t i = 0; i < expand_shape.size(); i++) {
+    if (expand_shape[i] == -1) {  // copy the dim from x
+      // the shape is right aligned
+      int index = i - (expand_shape.size() - x_dims.size());
+      IR_ENFORCE(index >= 0,
+                 "in ExpandOpInferSymbolicShape, the dim to copy must >= 0, "
+                 "but got %d",
+                 index);
+
+      out_shape[i] = x_dims[index];
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
   return true;
 }
 
@@ -4270,6 +4308,27 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 
 }  // namespace
 
+std::vector<symbol::DimExpr> ComputeBroadcastShape(
+    const std::vector<symbol::DimExpr> &large_shape,
+    const std::vector<symbol::DimExpr> &small_shape) {
+  IR_ENFORCE(large_shape.size() >= small_shape.size(),
+             "Size of large_shape is expected to be greater or equal size of "
+             "small_shape, but got [%d] >= [%d].",
+             large_shape.size(),
+             small_shape.size());
+  std::vector<symbol::DimExpr> output_data;
+  output_data.reserve(large_shape.size());
+  auto rank_gap = large_shape.size() - small_shape.size();
+  for (size_t i = 0; i < rank_gap; ++i) {
+    output_data.emplace_back(large_shape.at(i));
+  }
+  for (size_t i = 0; i < small_shape.size(); ++i) {
+    output_data.emplace_back(
+        GetBroadcastDimExpr(large_shape.at(i + rank_gap), small_shape.at(i)));
+  }
+  return output_data;
+}
+
 bool ShapeBroadcastOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value x = operand_source(0);
@@ -4287,12 +4346,10 @@ bool ShapeBroadcastOp::InferSymbolicShape(
              "Value y comes from ShapeOp, it must have data");
   const auto &x_data = x_data_shape.data().value();
   const auto &y_data = y_data_shape.data().value();
-  IR_ENFORCE(x_data.size() == y_data.size(), "Support same rank temporarily");
 
-  std::vector<symbol::DimExpr> output_data;
-  for (std::size_t i = 0; i < x_data.size(); ++i) {
-    output_data.emplace_back(GetBroadcastDimExpr(x_data.at(i), y_data.at(i)));
-  }
+  std::vector<symbol::DimExpr> output_data =
+      x_data.size() > y_data.size() ? ComputeBroadcastShape(x_data, y_data)
+                                    : ComputeBroadcastShape(y_data, x_data);
 
   pir::Value res = result(0);
   // TODO(HongyuJia): use op->result(0) to infer the shape

@@ -21,6 +21,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -29,12 +30,11 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
-PHI_DECLARE_bool(enable_pe_launch_cinn);
-PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
+COMMON_DECLARE_bool(enable_pe_launch_cinn);
+COMMON_DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 

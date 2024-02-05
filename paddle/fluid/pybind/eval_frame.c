@@ -176,7 +176,11 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_INCREF(func);
-#if PY_VERSION_HEX < 0x030c0000
+#if PY_VERSION_HEX >= 0x030c0000
+  Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
+  func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+  _PyFrame_Initialize(shadow, func, NULL, code, 0);
+#else
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
@@ -212,9 +216,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
-#if PY_VERSION_HEX < 0x030c0000
   Internal_PyFrame_Clear(shadow);
-#endif
   free(shadow);
   Py_DECREF(func);
   Py_DECREF(namemap);
@@ -298,11 +300,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
-#if PY_VERSION_HEX >= 0x030c0000
-  if (true) {
-#else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
-#endif
 #else
   if (frame->f_code->co_flags & 0x20) {
     out = eval_frame_default(tstate, frame, throw_flag);
@@ -317,8 +315,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
   // In Python, gen close is also a Python function call that will enter this
   // function with GeneratorExit set, which will cause the PyObject_CallObject
-  // raise SystemError. So we disable the custom behavior for GeneratorExit. def
-  // func():
+  // raise SystemError. So we disable the custom behavior for GeneratorExit.
+  // def func():
   //     iter = iter([1, 2, 3])
   //     for i in iter:
   //         return i # <--- Early return, cause a GeneratorExit thrown,

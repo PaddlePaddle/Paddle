@@ -47,7 +47,6 @@ from .utils import (  # noqa: F401
     ConstTypes,
     GraphLogger,
     NameGenerator,
-    OrderedSet,
     ResumeFnNameFactory,
     Singleton,
     SotUndefinedVar,

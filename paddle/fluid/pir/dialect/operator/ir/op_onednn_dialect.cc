@@ -166,15 +166,19 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-void OneDNNOperatorDialect::PrintOperation(pir::Operation *op,
-                                           pir::IrPrinter &printer) const {
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
-    if_op.Print(printer);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto if_op = op->dyn_cast<IfOp>();
+      if_op.Print(printer);
+    };
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
-    while_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto while_op = op->dyn_cast<WhileOp>();
+      while_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 
 }  // namespace dialect

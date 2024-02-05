@@ -406,7 +406,7 @@ def search_all(tuner_cfg):
     for cur_cfg in new_all_cfgs:
         pruned = False
         for func in _PRUNE_FUNC:
-            result = func(tuner_cfg, cur_cfg, [])
+            result = func(tuner_cfg, cur_cfg, pruned_all_cfgs)
             if result:
                 pruned = True
                 break
@@ -416,7 +416,130 @@ def search_all(tuner_cfg):
     logger.info(
         f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
     )
+    if tuner_cfg.get("schedule_prior", False):
+        pruned_all_cfgs = sort_by_sepecial(pruned_all_cfgs, tuner_cfg)
     return pruned_all_cfgs
+
+
+def sort_by_sepecial(cfgs, tuner_cfg):
+    assert tuner_cfg.get("schedule_prior", False)
+    prior_strategy = tuner_cfg["schedule_prior"]
+    prior_strategy.sort(reverse=True)
+    for strategy in prior_strategy:
+        idx = 0
+        matched_count = 0
+        while idx < len(cfgs):
+            cfg = cfgs[idx]
+            if _matched(cfg, strategy):
+                cfgs.pop(idx)
+                cfgs.insert(0, cfg)
+                matched_count += 1
+            idx += 1
+        tmp = cfgs[:matched_count]
+        tmp.reverse()
+        cfgs[:matched_count] = tmp
+    return cfgs
+
+
+def memory_sort(cfg):
+    # ascending order in default
+    return (
+        -cfg['mp_degree'],
+        -cfg['pp_degree'],
+        -cfg['vpp_degree'],
+        -cfg["sharding_degree"],
+        -cfg["sharding_stage"],
+        cfg["micro_batch_size"],
+        -cfg["use_recompute"],
+    )
+
+
+def performance_sort(cfg):
+    return -cfg["micro_batch_size"]
+
+
+def _matched(cur_cfg, strategy):
+    mapping = {
+        "dp_degree": "dp",
+        "mp_degree": "mp",
+        "pp_degree": "pp",
+        "vpp_degree": "vpp",
+        "micro_batch_size": "mbs",
+        "sharding_degree": "sharding",
+        "sharding_stage": "stage",
+        "use_recompute": "recompute",
+        "recompute_granularity": "granularity",
+    }
+    granularity_mapping = {0: "full", 1: "full_attn", 2: "core_attn"}
+    reversed_mapping = {}
+    for key in mapping:
+        reversed_mapping[mapping[key]] = key
+
+    assert isinstance(strategy, str)
+    dims = strategy.split("_")
+    has_matched = 0
+    for dim in dims:
+        matched = None
+        for key in reversed_mapping:
+            if dim.startswith(key):
+                matched = key
+                break
+        if matched:
+            value = dim[len(matched)]
+            # * means this strategy turned on
+            if matched in ["dp", "mp", "pp", "vpp", "sharding"]:
+                if value == "*":
+                    if cur_cfg[reversed_mapping[matched]] > 1:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "recompute":
+                if value == "*":
+                    if cur_cfg[reversed_mapping[matched]]:
+                        has_matched += 1
+                        continue
+                else:
+                    value = bool(int(value))
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "stage":
+                if value == "*":
+                    if cur_cfg[reversed_mapping["sharding"]] > 1:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "mbs":
+                if value == "*":
+                    has_matched += 1
+                    continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "granularity":
+                if value == "*":
+                    if cur_cfg[reversed_mapping["use_recompute"]]:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    granularity = granularity_mapping[value]
+                    if cur_cfg[reversed_mapping[matched]] == granularity:
+                        has_matched += 1
+                        continue
+    if has_matched == len(dims):
+        return True
+    return False
 
 
 def _param2range(param_from_json_file, max_value, param_key):

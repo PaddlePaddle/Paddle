@@ -71,6 +71,7 @@
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
   args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
