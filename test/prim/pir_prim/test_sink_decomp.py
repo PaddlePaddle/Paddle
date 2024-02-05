@@ -22,7 +22,7 @@ from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.decomposition import decompose
 
-# paddle.enable_static()
+paddle.enable_static()
 
 
 class TestPrimMode(unittest.TestCase):
@@ -268,37 +268,65 @@ class TestEmbeddingSink(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [3, 2]
+        self.shape_w = [10, 3]
         self.x = np.array([[3, 4, -1], [2, -2, 4]], dtype=int).reshape(
             self.shape_x
+        )
+        self.w = np.array(
+            [
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [9, 10, 11],
+                [12, 13, 14],
+                [15, 16, 17],
+                [18, 19, 20],
+                [21, 22, 23],
+                [24, 25, 26],
+                [27, 28, 29],
+            ],
+            dtype=np.float32,
         )
         self.prog = None
 
     def base_net(self, flag=None):
         if flag == "forward":
             core._set_prim_forward_enabled(True)
+        elif flag == "backward":
+            core._set_prim_backward_enabled(True)
+        elif flag == "all":
+            core._set_prim_all_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', self.shape_x, dtype=int)
+            w = paddle.static.data('w', self.shape_w, dtype='float32')
             x.stop_gradient = False
-            w = paddle.full(shape=(10, 3), fill_value=2).astype("float32")
             w.stop_gradient = False
-            sum_out = F.embedding(
-                x=x, weight=w, sparse=True, name="embedding", padding_idx=3
-            )
+            sum_out = F.embedding(x, w)
             [new_out] = decompose(main_program, [sum_out])
-            print("================================")
+            gradients = grad(new_out, (x, w))
+
             print(main_program)
-            print("================================")
-            gradients = grad(new_out, x)
 
             exe = paddle.static.Executor()
-            [fwd, dx] = exe.run(
-                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            [fwd, dx, dy] = exe.run(
+                feed={'x': self.x, 'w': self.w}, fetch_list=[new_out, gradients]
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
         self.prog = main_program
-        return fwd, dx
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.embedding' not in whole_ops
+        elif flag == "backward":
+            core._set_prim_backward_enabled(False)
+            assert 'pd_op.embedding' in whole_ops
+        elif flag == "all":
+            core._set_prim_all_enabled(False)
+            assert 'pd_op.embedding' not in whole_ops
+        else:
+            assert 'pd_op.embedding' in whole_ops
+        return fwd, dx, dy
 
     def test_prim_forward(self):
         # res_ref = self.base_net()
@@ -333,7 +361,6 @@ def embedding_test():
     print(index.shape)
 
     w = paddle.put_along_axis(w, index, 0.0, axis=0)
-
     print(w)
 
     x = x.reshape([-1, 1])
@@ -345,5 +372,5 @@ def embedding_test():
 
 
 if __name__ == "__main__":
-    # unittest.main()
-    embedding_test()
+    unittest.main()
+    # embedding_test()

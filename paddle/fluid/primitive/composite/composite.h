@@ -837,6 +837,8 @@ Tensor embedding_decomp(const Tensor& x,
     PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
   }
 
+  VLOG(6) << "padding_idx: " << padding_idx << " sparse: " << sparse;
+
   // int64_t padding_idx_tmp = padding_idx;
   // if(padding_idx < 0) {
   //   padding_idx_tmp = weight.dims()[0] + padding_idx;
@@ -851,7 +853,7 @@ Tensor embedding_decomp(const Tensor& x,
   // 0.0, 0);
 
   if (x.dims().size() <= 1) {
-    auto out = index_select_decomp<T>(weight, x, 0);
+    auto out = gather<T>(weight, x);
     if (x.dims().size() == 0) {
       out = std::get<0>(squeeze_decomp<T>(out, {0}));
     }
