@@ -32,7 +32,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_dep_skip_op,
     is_forward_op,
-    is_loss_grad_op,
     is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
@@ -544,11 +543,17 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
+                reduce_op_type = (
+                    "c_reduce_sum"
+                    if op.type in ["c_allreduce_sum", "c_reduce_sum"]
+                    else "c_reduce_avg"
+                )
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
                 reduce_op = _insert_reduce_op(
                     main_block,
+                    reduce_op_type,
                     idx,
                     input_name,
                     sharding_info.group.id,
@@ -979,8 +984,9 @@ class ShardingPass(PassBase):
 
         first_backward_op = None
         for op in ops:
-            if is_loss_grad_op(op):
+            if is_backward_op(op):
                 first_backward_op = op
+                break
         # not backward op, sharding for inference
         if first_backward_op is None:
             return
@@ -1467,6 +1473,7 @@ def _insert_init_and_broadcast_op(
 
 def _insert_reduce_op(
     block,
+    op_type,
     insert_idx,
     reduce_var,
     ring_id,
