@@ -1,7 +1,7 @@
 nv_test(
   test_elementwise_add_op_inplace
   SRCS test_elementwise_add_op_inplace.cc
-  DEPS op_registry common)
+  DEPS op_registry)
 cc_test(
   test_elementwise_div_grad_grad
   SRCS test_elementwise_div_grad_grad.cc
