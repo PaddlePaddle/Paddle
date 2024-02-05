@@ -17,11 +17,11 @@ limitations under the License. */
 #include <algorithm>
 
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define USE_DEVICE
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
