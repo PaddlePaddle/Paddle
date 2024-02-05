@@ -5275,28 +5275,29 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (4, 5))
         self.assertEqual(res[3].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_cov(self):
         xt_1 = paddle.randn((12,))
         xt_1.stop_gradient = False
-
         out = paddle.linalg.cov(xt_1)
-        paddle.static.append_backward(out)
-
+        _, xt_1_grad = paddle.static.append_backward(
+            out, parameter_list=[xt_1]
+        )[0]
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, xt_1_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_corrcoef(self):
         x = paddle.randn((12,))
         x.stop_gradient = False
         out = paddle.linalg.corrcoef(x)
-        paddle.static.append_backward(out)
-
+        _, x_grad = paddle.static.append_backward(out, parameter_list=[x])[0]
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        res = self.exe.run(prog, fetch_list=[out, x_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
