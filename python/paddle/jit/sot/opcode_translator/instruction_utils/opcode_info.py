@@ -41,18 +41,36 @@ class PopJumpCond(Enum):
     NOT_NONE = "NOT_NONE"
 
 
-# Cache for some opcodes, it's for Python 3.11+
-# https://github.com/python/cpython/blob/3.11/Include/internal/pycore_opcode.h#L41-L53
-PYOPCODE_CACHE_SIZE = {
-    "BINARY_SUBSCR": 4,
-    "STORE_SUBSCR": 1,
-    "UNPACK_SEQUENCE": 1,
-    "STORE_ATTR": 4,
-    "LOAD_ATTR": 4,
-    "COMPARE_OP": 2,
-    "LOAD_GLOBAL": 5,
-    "BINARY_OP": 1,
-    "LOAD_METHOD": 10,
-    "PRECALL": 1,
-    "CALL": 4,
-}
+if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+    # Cache for some opcodes, it's for Python 3.11+
+    # https://github.com/python/cpython/blob/3.11/Include/internal/pycore_opcode.h#L41-L53
+    PYOPCODE_CACHE_SIZE = {
+        "BINARY_SUBSCR": 4,
+        "STORE_SUBSCR": 1,
+        "UNPACK_SEQUENCE": 1,
+        "STORE_ATTR": 4,
+        "LOAD_ATTR": 4,
+        "COMPARE_OP": 2,
+        "LOAD_GLOBAL": 5,
+        "BINARY_OP": 1,
+        "LOAD_METHOD": 10,
+        "PRECALL": 1,
+        "CALL": 4,
+    }
+elif sys.version_info >= (3, 12) and sys.version_info < (3, 13):
+    # Cache for some opcodes, it's for Python 3.12+
+    # https://github.com/python/cpython/blob/3.12/Include/internal/pycore_opcode.h#L41-L53
+    PYOPCODE_CACHE_SIZE = {
+        "BINARY_SUBSCR": 1,
+        "STORE_SUBSCR": 1,
+        "UNPACK_SEQUENCE": 1,
+        "FOR_ITER": 1,
+        "STORE_ATTR": 4,
+        "LOAD_ATTR": 9,
+        "COMPARE_OP": 1,
+        "LOAD_GLOBAL": 4,
+        "BINARY_OP": 1,
+        "SEND": 1,
+        "LOAD_SUPER_ATTR": 1,
+        "CALL": 3,
+    }
