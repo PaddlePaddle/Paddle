@@ -57,6 +57,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   CHECK_EQ(dilations.size() == 2UL, true);
 
   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
+  CHECK_EQ(data_format == "NHWC", true);
   const int batch = in_dims[0];
   const int ic = in_dims[3];
   const int ih = in_dims[1];
@@ -128,6 +129,12 @@ void FusedConv2dAddActKernel(const Context& ctx,
 
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
+    // conv2d_depthwise need a tmp workspace.
+    phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
+        ctx.GetPlace(),
+        oc * kh * kw * ic * sizeof(T),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    params.workspace = tmp_ptr->ptr();
     // cutlass conv2d_depthwise not support residual
     if (residual) {
       CHECK_EQ(residual->data<T>() == nullptr, true);
@@ -145,6 +152,8 @@ void FusedConv2dAddActKernel(const Context& ctx,
           "Cutlass conv2d_depthwise does not support this activation: %s.",
           activation.c_str()));
     }
+    conv_func(params);
+    output->set_layout(DataLayout::NHWC);
     return;
   }
 

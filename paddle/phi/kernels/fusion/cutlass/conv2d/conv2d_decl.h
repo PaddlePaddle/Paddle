@@ -48,6 +48,7 @@ typedef struct {
   cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;
+  void *workspace = nullptr;
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
@@ -58,10 +59,10 @@ extern "C" void Conv2dBiasSilu(ConvAllParams params);
 extern "C" void Conv2dBias(ConvAllParams params);
 extern "C" void Conv2dBiasSigmoid(ConvAllParams params);
 
-void Conv2dDepthwiseBias(const ConvAllParams &params);
-void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBias(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
 
 extern "C" int HelloFromCutlassConv2d(int a, int b);
 

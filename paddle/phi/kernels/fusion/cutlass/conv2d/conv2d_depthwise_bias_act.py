@@ -60,15 +60,7 @@ cba_kernel_no_alpha = (
         CommonCutlassConv2dDepthwiseKernelDeclare, dict_for_declare_part
     )
     + '''
-size_t filter_size = oc * kh * kw * kc * sizeof(half);
-//phi::Allocator::AllocationPtr filter_gpu_ptrs_data =
-//    phi::memory_utils::Alloc(
-//        params.ctx->GetPlace(),
-//        filter_size,
-//        phi::Stream(reinterpret_cast<phi::StreamId>(params.ctx->stream())));
-// void *filter_workspace = filter_gpu_ptrs_data->ptr();
-void *filter_workspace = nullptr;
-
+      void *filter_workspace = params.workspace;
 
       typename ImplicitGemm::Arguments arguments{
           problem_size,

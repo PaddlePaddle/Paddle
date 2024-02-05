@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+set -e
+#git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
 
 mkdir build && cd build && cmake .. && make -j && cd -
