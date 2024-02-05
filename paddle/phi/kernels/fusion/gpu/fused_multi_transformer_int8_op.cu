@@ -24,25 +24,25 @@ template <typename T, typename Context>
 void FusedMultiTransformerINT8Kernel(
     const Context &dev_ctx,
     const DenseTensor &input_x,
-    const DenseTensor &ln_scale,
-    const DenseTensor &ln_bias,
-    const DenseTensor &qkv_w,
-    const DenseTensor &qkv_bias,
-    const DenseTensor &cache_kv,
-    const DenseTensor &time_step,
-    const DenseTensor &src_mask,
-    const DenseTensor &out_linear_w,
-    const DenseTensor &out_linear_bias,
-    const DenseTensor &ffn_ln_scale,
-    const DenseTensor &ffn_ln_bias,
-    const DenseTensor &ffn1_weight,
-    const DenseTensor &ffn1_bias,
-    const DenseTensor &ffn2_weight,
-    const DenseTensor &ffn2_bias,
-    const DenseTensor &qkv_out_scale,
-    const DenseTensor &out_linear_out_scale,
-    const DenseTensor &ffn1_out_scale,
-    const DenseTensor &ffn2_out_scale,
+    const std::vector<DenseTensor *> &ln_scales,
+    const std::vector<DenseTensor *> &ln_biases,
+    const std::vector<DenseTensor *> &qkv_weights,
+    const std::vector<DenseTensor *> &qkv_biases,
+    const std::vector<DenseTensor *> &cache_kvs,
+    const paddle::optional<DenseTensor> &time_step,
+    const paddle::optional<DenseTensor> &src_mask,
+    const std::vector<DenseTensor *> &out_linear_weights,
+    const std::vector<DenseTensor *> &out_linear_biases,
+    const std::vector<DenseTensor *> &ffn_ln_scales,
+    const std::vector<DenseTensor *> &ffn_ln_biases,
+    const std::vector<DenseTensor *> &ffn1_weights,
+    const std::vector<DenseTensor *> &ffn1_biases,
+    const std::vector<DenseTensor *> &ffn2_weights,
+    const std::vector<DenseTensor *> &ffn2_biases,
+    const std::vector<DenseTensor *> &qkv_out_scales,
+    const std::vector<DenseTensor *> &out_linear_out_scales,
+    const std::vector<DenseTensor *> &ffn1_out_scales,
+    const std::vector<DenseTensor *> &ffn2_out_scales,
     bool pre_layer_norm,
     float epsilon,
     float dropout_rate,
@@ -86,8 +86,8 @@ void FusedMultiTransformerINT8Kernel(
   // x: qkv's input [batch_size, seq_len, dim_embed]
   // y: qkv's weight: [3, num_head, dim_head, dim_embed]
   const auto qkv_w_dims = qkv_weights[0]->dims();
-  int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
-  int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
+  //   int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
+  //   int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
   int hidden_size = num_head * dim_head;
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
