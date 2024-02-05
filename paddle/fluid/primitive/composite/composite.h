@@ -36,6 +36,11 @@ static void print_vec(std::vector<T> vec, const std::string& message) {
 }
 
 template <typename T>
+static Tensor get_slice(const Tensor& x, int64_t idx) {
+  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
+}
+
+template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
 
@@ -854,6 +859,7 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     } else {
       t1 = x;
     }
+    VLOG(0) << "=====================1.1 ";
     auto length2 = t1.dims().size();
     for (size_t i = 0; i < repeat_times_.size(); i++) {
       unsqueeze_idx2.push_back(length2 - repeat_times_.size() + i * 2);
@@ -868,18 +874,25 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     Tensor t3 = t2 * ref_t;
     Tensor origin_shape_t = shape<T>(x);
     std::vector<int64_t> t1_shape = common::vectorize<int64_t>(t1.dims());
-    std::vector<Tensor> final_shape;
-    for (size_t i = length2 - 1; i >= 0; i--) {
-      auto relative_idx = repeat_time_length - 1 - (length2 - i - 1);
+    std::vector<Tensor> res_s;
+    VLOG(0) << "=====================1.3 ";
+    for (int64_t i = int64_t(length2) - 1; i >= 0; i--) {
+      auto relative_idx =
+          int64_t(repeat_time_length) - 1 - int64_t(length2 - i - 1);
+      VLOG(0) << "=====================relative_idx " << relative_idx
+              << " repeat_time_length " << repeat_time_length << " length2 "
+              << length2 << " i " << i;
 
       if (relative_idx >= 0) {
-        final_shape.insert(shape1.begin(),
-                           origin_shape_t[i] * repeat_times_[relative_idx]);
+        res_s.insert(
+            res_s.begin(),
+            get_slice<T>(origin_shape_t, i) * repeat_times_[relative_idx]);
       } else {
-        final_shape.insert(shape1.begin(), origin_shape_t[i]);
+        res_s.insert(res_s.begin(), get_slice<T>(origin_shape_t, i));
       }
     }
-    Tensor s4 = concat<T>(final_shape, 0);
+    VLOG(0) << "=====================1.4 ";
+    Tensor s4 = concat<T>(res_s, 0);
     return backend::reshape_with_tensor<T>(t3, s4);
 
   } else {
