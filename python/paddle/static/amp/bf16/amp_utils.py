@@ -287,7 +287,10 @@ def cast_initializers_to_bf16(
                         and out_var.name in to_bf16_var_names
                     ):
                         to_bf16_var_names.remove(out_var.name)
-                if op.has_attr('dtype') and op.attr('dtype') == paddle.float32:
+                if (
+                    op.has_attr('dtype')
+                    and op.attr('dtype') == core.VarDesc.VarType.FP32
+                ):
                     op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
 
@@ -584,7 +587,10 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
                 core.VarDesc.VarType.FP32,
             )
         elif op in bf16_op_set:
-            if op.has_attr('dtype') and op.attr('dtype') == paddle.float32:
+            if (
+                op.has_attr('dtype')
+                and op.attr('dtype') == core.VarDesc.VarType.FP32
+            ):
                 op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
             num_cast_ops = _insert_cast_op(

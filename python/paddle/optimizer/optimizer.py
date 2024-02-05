@@ -1922,7 +1922,10 @@ class Optimizer:
             dtype, (core.VarDesc.VarType, core.DataType)
         ), "The dtype should be an instance of core.VarDesc.VarType or core.DataType."
         if isinstance(dtype, core.VarDesc.VarType):
-            return dtype == paddle.float16 or dtype == paddle.bfloat16
+            return (
+                dtype == core.VarDesc.VarType.FP16
+                or dtype == core.VarDesc.VarType.BF16
+            )
         else:
             return (
                 dtype == core.DataType.FLOAT16 or dtype == core.DataType.UINT16
