@@ -35,7 +35,6 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    ${flags_dep}
     glog
     warpctc
     warprnnt
@@ -148,6 +147,8 @@ else()
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 endif()
+
+target_compile_definitions(phi PUBLIC PHI_INNER)
 
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)
