@@ -158,12 +158,12 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
-  TensorDistAttr out_dist_attr =
-      CopyTensorDistAttrWithPartialForOutput(x_dist_attr_src);
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
-  TensorDistAttr x_dst_dist_attr =
-      CopyTensorDistAttrWithPartialForOutput(x_dist_attr_src);
+  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+  TensorDistAttr x_dst_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dst_dist_attr.set_dims_mapping(out_dims_mapping);
+  x_dst_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
 
   VLOG(4) << "ElementwiseWithPartialSPMDRule InferForward:";
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "

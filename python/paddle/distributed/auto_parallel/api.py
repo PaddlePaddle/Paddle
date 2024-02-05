@@ -23,7 +23,6 @@ import paddle.distributed as dist
 from paddle import _C_ops, nn
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.base import unique_name
-from paddle.base.dygraph import to_variable
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import (
     EagerParamBase,
@@ -790,7 +789,7 @@ def shard_scaler(scaler):
         scaler (paddle.amp.GradScaler): The GradScaler to be sharded.
 
     Returns:
-        An GradScaler with distributed view.
+        A GradScaler with distributed view.
 
     Examples:
         .. code-block:: python
@@ -842,7 +841,7 @@ def shard_scaler(scaler):
         src_mesh = None
         current_process_mesh = None
 
-        self._found_inf = to_variable(np.array([0]).astype(np.bool_))
+        self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
         mesh2param_grads = {}
         if getattr(optimizer, '_param_groups', None) and isinstance(
             optimizer._param_groups[0], dict
@@ -883,9 +882,13 @@ def shard_scaler(scaler):
         for _, param_grads in mesh2param_grads.items():
             temp_param_grads_half = []
             temp_param_grads_fp32 = []
-            temp_found_inf = to_variable(np.array([0]).astype(np.bool_))
-            temp_found_inf_half = to_variable(np.array([0]).astype(np.bool_))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
+            temp_found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
+            temp_found_inf_half = paddle.to_tensor(
+                np.array([0]).astype(np.bool_)
+            )
+            temp_found_inf_fp32 = paddle.to_tensor(
+                np.array([0]).astype(np.bool_)
+            )
             if self._scale.is_dist():
                 temp_scale = self._scale._local_value()
             else:
@@ -916,17 +919,20 @@ def shard_scaler(scaler):
                 temp_found_inf = _C_ops.bitwise_or(
                     temp_found_inf, temp_found_inf_fp32
                 )
+            # All the 'temp_found_inf' will be `resharded` to `src_mesh` to calculate the value of `self._found_inf`.
             temp_found_inf = dist.reshard(
                 temp_found_inf, src_mesh, temp_found_inf.placements
             )
             self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
 
+        # The rank of src_mesh, should not overwrite the original variable `self._found_inf`
         if self._found_inf.process_mesh == current_process_mesh:
             for process_mesh in mesh2param_grads.keys():
                 _ = dist.reshard(
                     self._found_inf, process_mesh, self._found_inf.placements
                 )
         else:
+            # The rank of other mesh, should overwrite the original variable `self._found_inf`
             self._found_inf = dist.reshard(
                 self._found_inf,
                 current_process_mesh,
