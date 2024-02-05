@@ -74,3 +74,5 @@ elif sys.version_info >= (3, 12) and sys.version_info < (3, 13):
         "LOAD_SUPER_ATTR": 1,
         "CALL": 3,
     }
+else:
+    PYOPCODE_CACHE_SIZE = {}
