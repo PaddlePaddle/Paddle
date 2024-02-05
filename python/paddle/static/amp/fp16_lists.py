@@ -47,7 +47,7 @@ def check_amp_dtype(dtype):
 
 
 def get_low_precision_vartype(dtype):
-    if isinstance(dtype, core.VarDesc.VarType):
+    if isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         return dtype
     elif isinstance(dtype, str):
         dtype = dtype.lower()
@@ -71,7 +71,7 @@ def get_low_precision_vartype(dtype):
 def get_low_precision_dtypestr(dtype):
     if isinstance(dtype, str):
         return check_amp_dtype(dtype)
-    elif isinstance(dtype, core.VarDesc.VarType, core.DataType):
+    elif isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         if dtype == paddle.float16:
             return "float16"
         elif dtype == paddle.bfloat16:
