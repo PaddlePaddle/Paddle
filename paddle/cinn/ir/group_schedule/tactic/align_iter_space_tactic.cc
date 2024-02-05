@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
-#include <vector>
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
@@ -31,10 +30,6 @@ void AlignIterSpaceTactic::Init(ScheduleContext* context) {
 void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
   ir::Expr block = sch->GetBlock(block_id);
-  if (analyzer::IsReductionSBlock(block)) {
-    AlignReduceBlock(sch, block_id);
-    return;
-  }
 
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
   ir::Expr src_total_extent{1};
@@ -69,52 +64,19 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
     if (context_->iter_space_info.sp_space.size() < loops.size() - 1) {
       loops = sch->GetLoops(block_id);
       std::vector<ir::Expr> rb_loops(
-          loops.begin() + context_->iter_space_info.sp_space.size(),
-          loops.end());
+          loops.end() - context_->iter_space_info.rb_space.size(), loops.end());
       sch->Fuse(rb_loops);
     }
     if (context_->iter_space_info.sp_space.size() > 1) {
       loops = sch->GetLoops(block_id);
       std::vector<ir::Expr> sp_loops(
           loops.begin(),
-          loops.begin() + context_->iter_space_info.sp_space.size());
+          loops.end() - context_->iter_space_info.rb_space.size());
       sch->Fuse(sp_loops);
     }
   } else {
     sch->Fuse(loops);
   }
-}
-
-void AlignIterSpaceTactic::AlignReduceBlock(ir::IRSchedule* sch,
-                                            const std::string& block_id) {
-  ir::Expr block = sch->GetBlock(block_id);
-  ir::ScheduleBlockRealize* s_block_realize =
-      block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(s_block_realize);
-  ir::ScheduleBlock* s_block =
-      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(s_block);
-  bool is_continuous_reduce_axis = true;
-  int last_reduce_loop_cnt = 0;
-  for (auto iter_var = s_block->iter_vars.rbegin();
-       iter_var != s_block->iter_vars.rend();
-       ++iter_var) {
-    if ((*iter_var)->is_reduce_axis) {
-      ++last_reduce_loop_cnt;
-    } else {
-      break;
-    }
-  }
-
-  if (last_reduce_loop_cnt > 1) {
-    std::vector<ir::Expr> loops = sch->GetLoops(block_id);
-    std::vector<ir::Expr> reduce_fuse_loops(loops.end() - last_reduce_loop_cnt,
-                                            loops.end());
-    sch->Fuse(reduce_fuse_loops);
-    VLOG(6) << "After fuse last dim reduce: \n"
-            << sch->GetModule().GetExprs()[0];
-  }
-  return;
 }
 
 }  // namespace ir

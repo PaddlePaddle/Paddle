@@ -30,8 +30,6 @@ class AlignIterSpaceTactic final : public ScheduleTactic {
 
  private:
   ScheduleContext* context_;
-
-  void AlignReduceBlock(ir::IRSchedule* sch, const std::string& block_id);
 };
 
 }  // namespace ir
