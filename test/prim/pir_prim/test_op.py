@@ -73,24 +73,27 @@ class TestPrimMode1(unittest.TestCase):
             core._set_prim_all_enabled(True)
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
-        fn = apply_to_static(
-            self.net,
-            use_cinn=False,
-            input_spec=[
-                InputSpec(shape=[None, None, 4096], dtype='float32'),
-                InputSpec(shape=[4096], dtype='float32'),
-            ],
-        )
-        fn.eval()
+        if flag == "prim":
+            fn = apply_to_static(
+                self.net,
+                use_cinn=False,
+                input_spec=[
+                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=[4096], dtype='float32'),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
         res = fn(x, y)
-        ops = [
-            op.name()
-            for op in fn.program_cache.last()[-1][-1]
-            .infer_program.program.global_block()
-            .ops
-        ]
 
         if flag == "prim":
+            ops = [
+                op.name()
+                for op in fn.program_cache.last()[-1][-1]
+                .infer_program.program.global_block()
+                .ops
+            ]
             # assert "pd_op.mean" not in ops
             core._set_prim_all_enabled(False)
         # else:
@@ -101,6 +104,7 @@ class TestPrimMode1(unittest.TestCase):
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
+            print(ref.shape, actual.shape)
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 

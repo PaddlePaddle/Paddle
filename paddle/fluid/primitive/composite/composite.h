@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <numeric>
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -844,8 +845,27 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
   auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
   Tensor t1;
   if (find_value(shape1, -1)) {
-    Tensor shape1_t = shape<T>(x);
-    return shape1_t;
+    std::vector<int64_t> unsqueeze_idx2;
+    if (diff > 0) {
+      std::vector<int64_t> unsqueeze_idx1(diff);
+      std::iota(unsqueeze_idx1.begin(), unsqueeze_idx1.end(), 0);
+      t1 = unsqueeze<T>(x, unsqueeze_idx1);
+    } else {
+      t1 = x;
+    }
+    auto length2 = t1.dims().size();
+    for (size_t i = 0; i < repeat_times_.size(); i++) {
+      unsqueeze_idx2.push_back(length2 - repeat_times_.size() + i * 2);
+    }
+
+    Tensor t2 = unsqueeze<T>(t1, unsqueeze_idx2);
+    std::vector<int64_t> ref_shape(t2.dims().size(), 1);
+    for (size_t i = 0; i < unsqueeze_idx2.size(); i++) {
+      ref_shape[unsqueeze_idx2[i]] = repeat_times_[i];
+    }
+    Tensor ref_t = full<T>(ref_shape, 1.0, t2.dtype());
+    Tensor t3 = t2 * ref_t;
+    return t3;
 
   } else {
     VLOG(0) << "=====================diff " << diff;
