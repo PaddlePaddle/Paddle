@@ -40,7 +40,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return base.dygraph.to_variable(x_np)
+    return paddle.to_tensor(x_np)
 
 
 class TestEagerGrad(TestCase):
@@ -322,7 +322,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
         np.random.shuffle(x_np)
 
-        x = base.dygraph.to_variable(x_np)
+        x = paddle.to_tensor(x_np)
         x.stop_gradient = False
 
         alpha = 0.2
@@ -538,7 +538,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         with base.dygraph.guard():
             paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
-            a = base.dygraph.to_variable(value)
+            a = paddle.to_tensor(value)
             a.stop_gradient = False
 
             out = model_f(a)
@@ -556,7 +556,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         with base.dygraph.guard():
             paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
-            a = base.dygraph.to_variable(value)
+            a = paddle.to_tensor(value)
             a.stop_gradient = False
 
             out = model_f(a)

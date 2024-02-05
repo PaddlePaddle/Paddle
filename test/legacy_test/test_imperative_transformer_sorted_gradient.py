@@ -21,7 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph import guard, to_variable
+from paddle.base.dygraph import guard
 from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
@@ -178,18 +178,18 @@ def create_data(is_static=False):
         ]
     else:
         enc_inputs = [
-            to_variable(src_word_np, name='src_word'),
-            to_variable(src_pos_np, name='src_pos'),
-            to_variable(src_slf_attn_bias_np, name='src_slf_attn_bias'),
+            paddle.to_tensor(src_word_np),
+            paddle.to_tensor(src_pos_np),
+            paddle.to_tensor(src_slf_attn_bias_np),
         ]
         dec_inputs = [
-            to_variable(trg_word_np, name='trg_word'),
-            to_variable(trg_pos_np, name='trg_pos'),
-            to_variable(trg_slf_attn_bias_np, name='trg_slf_attn_bias'),
-            to_variable(trg_src_attn_bias_np, name='trg_src_attn_bias'),
+            paddle.to_tensor(trg_word_np),
+            paddle.to_tensor(trg_pos_np),
+            paddle.to_tensor(trg_slf_attn_bias_np),
+            paddle.to_tensor(trg_src_attn_bias_np),
         ]
-        label = to_variable(lbl_word_np, name='lbl_word')
-        weight = to_variable(lbl_weight_np, name='lbl_weight')
+        label = paddle.to_tensor(lbl_word_np)
+        weight = paddle.to_tensor(lbl_weight_np)
         return enc_inputs, dec_inputs, label, weight
 
 
@@ -680,7 +680,7 @@ class PrepareEncoderDecoderLayer(Layer):
         )
 
         # use in dygraph_mode to fit different length batch
-        # self._pos_emb._w = to_variable(
+        # self._pos_emb._w = paddle.to_tensor(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
 
     def forward(self, src_word, src_pos):
