@@ -136,7 +136,7 @@ def _is_gpu_bfloat16_supported():
 
 def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
-    # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
+    # Highest priority. Because all the layers except BN will use bfloat16 params in bfloat16 training,
     # here we provide a option to keep fp32 param.
     if not layer._cast_to_low_precision:
         need_keep_fp32 = True
@@ -238,7 +238,7 @@ def check_models(models):
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
-                "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
+                "For distributed AMP training, you should first use paddle.amp.decorate() to decorate origin model, and then call paddle.DataParallel get distributed model."
             )
 
 
@@ -440,7 +440,7 @@ def amp_guard(
 
         # TODO(zhiqiu) set amp related flags automatically in this guard
         # Currently, if FLAGS_cudnn_batchnorm_spatial_persistent is set True in amp_guard,
-        # batch_norm can run in fast mode, but batch_norm_grad can not if backward if not executed insise amp_guard.
+        # batch_norm can run in fast mode, but batch_norm_grad can not if backward if not executed inside amp_guard.
         # So, users need to set related flags manually.
 
         # original_flags = get_flags(AMP_RELATED_FLAGS)
@@ -522,7 +522,7 @@ def amp_decorate(
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure fp16/bf16, the decorator will cast all parameters of models to FP16/BF16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
+        master_weight(bool, optional): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 

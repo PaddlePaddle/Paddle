@@ -17,7 +17,7 @@ import numpy as np
 from utils import static_guard
 
 import paddle
-from paddle.base.framework import default_main_program, in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode
 from paddle.incubate.nn import FusedTransformerEncoderLayer
 from paddle.nn import TransformerEncoderLayer
 
@@ -74,7 +74,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def test_out(self):
         if in_dygraph_mode():
             return
-        default_main_program().random_seed = 42
+        paddle.seed(42)
         base_encoder = TransformerEncoderLayer(
             self.d_model,
             self.nhead,

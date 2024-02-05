@@ -83,6 +83,11 @@ uint32_t BlockArgument::index() const {
   return IMPL_->index_;
 }
 
+const AttributeMap &BlockArgument::attributes() const {
+  CHECK_NULL_IMPL(attributes_);
+  return IMPL_->attributes_;
+}
+
 Attribute BlockArgument::attribute(const std::string &key) const {
   return impl_ ? IMPL_->attribute(key) : nullptr;
 }

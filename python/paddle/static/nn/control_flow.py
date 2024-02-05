@@ -812,7 +812,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             )
             cf_yield([next_cond, *unified_next_vars])
 
-            # Reset type of UndefinedVar from next_vars
+            # Reset type and stop_gradient of UndefinedVar from next_vars
             for idx, value in undefined_var_mapping.items():
                 if idx in constant_next_var_indices:
                     continue
@@ -820,6 +820,13 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 value.set_type(value_new_type)
                 cur_block.args()[idx].set_type(value_new_type)
                 while_op.as_operation().results()[idx].set_type(value_new_type)
+
+                value_new_stop_gradient = flatten(next_vars)[idx].stop_gradient
+                value.stop_gradient = value_new_stop_gradient
+                cur_block.args()[idx].stop_gradient = value_new_stop_gradient
+                while_op.as_operation().results()[
+                    idx
+                ].stop_gradient = value_new_stop_gradient
 
         # Restore the outputs by variable and constants
         optimized_results = while_op.optimize_update()

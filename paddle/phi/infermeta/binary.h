@@ -545,6 +545,8 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,
                      const std::vector<int>& ksize,

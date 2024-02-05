@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
