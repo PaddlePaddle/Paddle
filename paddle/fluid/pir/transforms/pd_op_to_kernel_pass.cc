@@ -2482,41 +2482,40 @@ void ProcessBlock(
         kernel_key.backend() == phi::Backend::CPU &&
         !SupportsCPUBF16(kernel_name) &&
         SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
-      std::vector<pir::Type> op_item_inner_output_types;
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          op_item_inner_output_types.push_back(op_item->result_type(i));
-        }
-      }
       std::string target_op_name = op_item->name();
       target_op_name.replace(0, 5, "onednn_op");
       auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-      if (!op_info) {
-        IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
-      }
-      auto attributes = op_item->attributes();
-      auto yaml_interface =
-          op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-      OpRunTimeInfo runtime_info =
-          std::get<3>(yaml_interface->get_op_info_(target_op_name));
-      for (auto& attr : runtime_info.extra_args_default_value) {
-        attributes[attr.first] = attr.second;
-      }
-      pir::Operation* op_item_inner =
-          pir::Operation::Create(op_item->operands_source(),
-                                 attributes,
-                                 op_item_inner_output_types,
-                                 op_info);
-      op_item->ReplaceAllUsesWith(op_item_inner->results());
-      for (auto iter = block->begin(); iter != block->end(); ++iter) {
-        if (*iter == *op_item) {
-          block->Assign(iter, op_item_inner);
-          break;
+      if (op_info) {
+        std::vector<pir::Type> op_item_inner_output_types;
+        if (op_item->num_results() > 0) {
+          for (size_t i = 0; i < op_item->num_results(); ++i) {
+            op_item_inner_output_types.push_back(op_item->result_type(i));
+          }
         }
+        auto attributes = op_item->attributes();
+        auto yaml_interface =
+            op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+        OpRunTimeInfo runtime_info =
+            std::get<3>(yaml_interface->get_op_info_(target_op_name));
+        for (auto& attr : runtime_info.extra_args_default_value) {
+          attributes[attr.first] = attr.second;
+        }
+        pir::Operation* op_item_inner =
+            pir::Operation::Create(op_item->operands_source(),
+                                   attributes,
+                                   op_item_inner_output_types,
+                                   op_info);
+        op_item->ReplaceAllUsesWith(op_item_inner->results());
+        for (auto iter = block->begin(); iter != block->end(); ++iter) {
+          if (*iter == *op_item) {
+            block->Assign(iter, op_item_inner);
+            break;
+          }
+        }
+        op_item = op_item_inner;
+        op_info_parser = GetOpYamlInfoParser(op_item_inner);
+        kernel_key.set_backend(phi::Backend::ONEDNN);
       }
-      op_item = op_item_inner;
-      op_info_parser = GetOpYamlInfoParser(op_item_inner);
-      kernel_key.set_backend(phi::Backend::ONEDNN);
     }
 #endif
     // build input
