@@ -39,25 +39,20 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
     std::unordered_set<int> need_remove_ids;
     for (int i = 0; i < node->stmts.size(); ++i) {
-      VLOG(6) << "node->stmts.size() = " << node->stmts.size();
-      VLOG(6) << "i = " << i << ", node->stmts[i] = " << node->stmts[i];
-      if (const auto* sbr = node->stmts[i].As<ir::ScheduleBlockRealize>()) {
-        std::string name = sbr->schedule_block.As<ir::ScheduleBlock>()->name;
-        VLOG(6) << "visit schedule block: " << name;
-        if (dead_schedule_block_names_.count(name) > 0) {
-          need_remove_ids.insert(i);
-        }
+      if (IsDeadScheduleBlock(node->stmts[i])) {
+        need_remove_ids.insert(i);
       }
     }
     if (!need_remove_ids.empty()) {
-      std::vector<ir::Expr> new_stmts;
-      for (int i = 0; i < node->stmts.size(); ++i) {
-        if (need_remove_ids.count(i) == 0) {
-          VLOG(6) << "i = " << i << ", node->stmts[i] = " << node->stmts[i];
-          new_stmts.push_back(node->stmts[i]);
+      node->stmts = [&] {
+        std::vector<ir::Expr> new_stmts;
+        for (int i = 0; i < node->stmts.size(); ++i) {
+          if (need_remove_ids.count(i) == 0) {
+            new_stmts.push_back(node->stmts[i]);
+          }
         }
-      }
-      node->stmts = new_stmts;
+        return new_stmts;
+      }();
     }
 
     for (auto& stmt : node->stmts) {
@@ -65,44 +60,50 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
     }
   }
 
+  bool IsDeadScheduleBlock(const ir::Expr& expr) {
+    const auto* sbr = expr.As<ir::ScheduleBlockRealize>();
+    return sbr != nullptr &&
+           dead_schedule_block_names_.count(
+               sbr->schedule_block.As<ir::ScheduleBlock>()->name) > 0;
+  }
+
   void FindDeadScheduleBlocks(const ir::Expr& expr) {
-    ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
-      if (const ir::Store* store = x->As<ir::Store>()) {
-        std::string store_name = store->tensor.as_tensor()->name;
-        if (output_names_.count(store_name) == 0) {
-          dead_schedule_block_names_.insert(store->tensor.as_tensor()->name);
-          VLOG(6) << "dead_schedule_block_names_.insert: "
-                  << store->tensor.as_tensor()->name;
-        }
-      }
-      return false;
-    });
     std::unordered_set<std::string> load_buffer_names;
-    ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
+    std::unordered_set<std::string> load_tensor_names;
+    auto InsertLoadTensorAndBufferNames = [&](const ir::Expr* x) -> bool {
       if (const ir::Load* load = x->As<ir::Load>()) {
-        std::string load_name = load->tensor.as_tensor()->name;
-        if (dead_schedule_block_names_.count(load_name)) {
-          VLOG(6) << "dead_schedule_block_names_.erase: " << load_name;
-          dead_schedule_block_names_.erase(load_name);
-        }
         load_buffer_names.insert(load->tensor.as_tensor()->buffer->name);
+        load_tensor_names.insert(load->tensor.as_tensor()->name);
       }
       return false;
-    });
-    ir::ir_utils::CollectIRNodes(expr, [&](const ir::Expr* x) {
-      if (const ir::Store* store = x->As<ir::Store>()) {
-        std::string store_name = store->tensor.as_tensor()->name;
-        if (dead_schedule_block_names_.count(store_name) > 0 &&
-            load_buffer_names.count(store->tensor.as_tensor()->buffer->name) >
-                0) {
-          dead_schedule_block_names_.erase(store_name);
-        }
+    };
+    ir::ir_utils::CollectIRNodes(expr, InsertLoadTensorAndBufferNames);
+
+    auto IsShareBufferWithLoadedTensor =
+        [&](const ir::_Tensor_* tensor) -> bool {
+      return load_buffer_names.count(tensor->buffer->name) > 0;
+    };
+    auto IsLoadedTensor = [&](const ir::_Tensor_* tensor) -> bool {
+      return load_tensor_names.count(tensor->name) > 0;
+    };
+    auto IsOutputTensor = [&](const ir::_Tensor_* tensor) -> bool {
+      return output_names_.count(tensor->name) > 0;
+    };
+    auto IsDeadStore = [&](const ir::Store* store) -> bool {
+      const ir::_Tensor_* tensor = store->tensor.as_tensor();
+      return !IsOutputTensor(tensor) && !IsLoadedTensor(tensor) &&
+             !IsShareBufferWithLoadedTensor(tensor);
+    };
+    auto InsertDeadStoreName = [&](const ir::Expr* x) -> bool {
+      const ir::Store* store = x->As<ir::Store>();
+      if (store != nullptr && IsDeadStore(store)) {
+        VLOG(6) << "Find dead schedule block: "
+                << store->tensor.as_tensor()->name;
+        dead_schedule_block_names_.insert(store->tensor.as_tensor()->name);
       }
       return false;
-    });
-    for (auto s : dead_schedule_block_names_) {
-      VLOG(6) << "dead_schedule_block_name: " << s;
-    }
+    };
+    ir::ir_utils::CollectIRNodes(expr, InsertDeadStoreName);
   }
 
  private:
@@ -112,10 +113,10 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
 void EliminateDeadScheduleBlock(Expr* e,
                                 const std::vector<std::string>& output_names) {
-  VLOG(6) << "start EliminateDeadScheduleBlock";
+  VLOG(6) << "Start EliminateDeadScheduleBlock" << *e;
   ScheduleBlockDCE eliminator(output_names);
   eliminator(e);
-  VLOG(6) << "end EliminateDeadScheduleBlock";
+  VLOG(6) << "End EliminateDeadScheduleBlock: " << *e;
 }
 
 }  // namespace optim
