@@ -44,8 +44,8 @@ class Identity(Layer):
         kwargs: any keyword argument (unused)
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
 
     Examples:
         .. code-block:: python
@@ -118,8 +118,8 @@ class Linear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
         .. code-block:: python

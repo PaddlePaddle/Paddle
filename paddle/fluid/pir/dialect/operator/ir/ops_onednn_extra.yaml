@@ -17,8 +17,6 @@
 
 # - op : add_n
 
-# - op : add_raw
-
 - op : batch_norm
   extra_args : bool fuse_with_relu=false
   data_format_tensors : x
@@ -27,13 +25,15 @@
   extra_args : bool fuse_with_relu=false
   data_format_tensors : x, out_grad
 
-# - op : bilinear_interp
+- op : bilinear_interp
 
 # - op : cast
 
-# - op : clip
+- op : clip
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : clip_grad
+- op : clip_grad
+  extra_args : str mkldnn_data_type="float32"
 
 # - op : concat
 
@@ -59,19 +59,17 @@
 
 # - op : depthwise_conv2d_grad
 
-# - op : divide
+- op : divide
 
-# - op : divide_grad
+- op : divide_grad
 
-# - op : divide_raw
+- op : elu
 
-# - op : elu
+- op : elu_grad
 
-# - op : elu_grad
+- op : exp
 
-# - op : exp
-
-# - op : exp_grad
+- op : exp_grad
 
 # - op : expand
 
@@ -87,7 +85,7 @@
 
 # - op : flatten2_grad
 
-# - op : full
+- op : full
 
 - op : fused_conv2d
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
@@ -115,23 +113,25 @@
 
 # - op : fusion_lstm
 
-# - op : gaussian
+- op : gaussian
 
-# - op : gelu
+- op : gelu
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : gelu_grad
+- op : gelu_grad
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : hardswish
+- op : hardswish
 
-# - op : hardswish_grad
+- op : hardswish_grad
 
 # - op : layer_norm
 
-# - op : leaky_relu
+- op : leaky_relu
 
-# - op : leaky_relu_grad
+- op : leaky_relu_grad
 
-# - op : log_softmax
+- op : log_softmax
 
 - op : lrn
   extra_args : bool is_test=false
@@ -153,33 +153,25 @@
 
 # - op : matmul_with_flatten_grad
 
-# - op : max
+- op : max
 
-# - op : max_raw
+- op : mean
 
-# - op : mean
+- op : mean_grad
 
-# - op : mean_grad
+- op : min
 
-# - op : mean_raw
+- op : mish
 
-# - op : min
+- op : mish_grad
 
-# - op : min_raw
+- op : multi_gru
 
-# - op : mish
+- op : multiply
 
-# - op : mish_grad
+- op : multiply_grad
 
-# - op : multi_gru
-
-# - op : multiply
-
-# - op : multiply_grad
-
-# - op : multiply_raw
-
-# - op : nearest_interp
+- op : nearest_interp
 
 # - op : pad
 
@@ -215,21 +207,22 @@
 
 # - op : reshape2_grad
 
-# - op : round
+- op : round
 
-# - op : scale
+- op : scale
 
-# - op : sgd
+- op : sgd
 
 # - op : sgd_dense_param_sparse_grad
 
 # - op : shape
+#   extra_args : str mkldnn_data_type="float32"
 
-# - op : shuffle_channel
+- op : shuffle_channel
 
-# - op : sigmoid
+- op : sigmoid
 
-# - op : sigmoid_grad
+- op : sigmoid_grad
 
 # - op : slice
 
@@ -239,15 +232,15 @@
 
 # - op : softmax_grad
 
-# - op : softplus
+- op : softplus
 
 # - op : split
 
 # - op : split_with_num
 
-# - op : sqrt
+- op : sqrt
 
-# - op : sqrt_grad
+- op : sqrt_grad
 
 # - op : squeeze
 
@@ -257,25 +250,23 @@
 
 # - op : stack
 
-# - op : subtract
+- op : subtract
 
-# - op : subtract_grad
+- op : subtract_grad
 
-# - op : subtract_raw
+- op : sum
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : sum
-
-# - op : sum_grad
-
-# - op : sum_raw
+- op : sum_grad
+  extra_args : str mkldnn_data_type="float32"
 
 # - op : swish
 
 # - op : swish_grad
 
-# - op : tanh
+- op : tanh
 
-# - op : tanh_grad
+- op : tanh_grad
 
 # - op : transpose
 

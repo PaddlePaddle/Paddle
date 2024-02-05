@@ -27,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/io/save_runtime_graph.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -38,8 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
