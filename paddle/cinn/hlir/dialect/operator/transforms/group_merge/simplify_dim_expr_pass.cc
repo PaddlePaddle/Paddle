@@ -39,22 +39,22 @@ void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
   }
 }
 
-void PrintOneValue(pir::Value value,
-                   const pir::ShapeConstraintIRAnalysis& shape_analysis) {
-  std::string str_shape_or_data = "shape: ";
-  const symbol::ShapeOrDataDimExprs& ShapeOrData =
-      shape_analysis.GetShapeOrDataForValue(value);
-  for (const symbol::DimExpr& dim_expr : ShapeOrData.shape()) {
-    str_shape_or_data.append(symbol::ToString(dim_expr)).append(" ");
-  }
-  str_shape_or_data.append("  data: ");
-  if (ShapeOrData.data().has_value()) {
-    for (const symbol::DimExpr& dim_expr : ShapeOrData.data().value()) {
-      str_shape_or_data.append(symbol::ToString(dim_expr)).append(" ");
-    }
-  }
-  VLOG(4) << "SimplifyDimExpr print :" << str_shape_or_data;
-}
+// void PrintOneValue(pir::Value value,
+//                    const pir::ShapeConstraintIRAnalysis& shape_analysis) {
+//   std::string str_shape_or_data = "shape: ";
+//   const symbol::ShapeOrDataDimExprs& ShapeOrData =
+//       shape_analysis.GetShapeOrDataForValue(value);
+//   for (const symbol::DimExpr& dim_expr : ShapeOrData.shape()) {
+//     str_shape_or_data.append(symbol::ToString(dim_expr)).append(" ");
+//   }
+//   str_shape_or_data.append("  data: ");
+//   if (ShapeOrData.data().has_value()) {
+//     for (const symbol::DimExpr& dim_expr : ShapeOrData.data().value()) {
+//       str_shape_or_data.append(symbol::ToString(dim_expr)).append(" ");
+//     }
+//   }
+//   VLOG(4) << "SimplifyDimExpr print :" << str_shape_or_data;
+// }
 
 symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrDataDimExprs(
     const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
@@ -116,18 +116,15 @@ void SimplifyOneValue(pir::Value value,
   shape_analysis->SetShapeOrDataForValue(value, simplified_shape_or_data);
 }
 
-void SimplifyDimExpr(pir::ModuleOp module_op) {
-  VLOG(4) << "SimplifyDimExpr start";
+void SimplifyDimExprForaValue(pir::ModuleOp module_op) {
+  VLOG(4) << "SimplifyDimExprForEachValue start";
   pir::ShapeConstraintIRAnalysis shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (const pir::Block& block : module_op->region(i)) {
       for (const pir::Operation& op : block) {
-        VLOG(1) << op.name();
         VisitEachValue(op, [&](pir::Value value) {
-          PrintOneValue(value, shape_analysis);
           SimplifyOneValue(value, &shape_analysis);
-          PrintOneValue(value, shape_analysis);
         });
       }
     }
@@ -142,7 +139,7 @@ class SimplifyDimExprPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
     VLOG(4) << "SimplifyDimExprPass Run";
-    SimplifyDimExpr(module_op);
+    // SimplifyDimExpr(module_op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
