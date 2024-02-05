@@ -28,6 +28,7 @@
   data_format_tensors : x, out_grad
 
 - op : bilinear_interp
+  data_format_tensors : x
 
 # - op : cast
 
