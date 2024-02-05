@@ -26,7 +26,6 @@
 #include <iostream>
 #include <vector>
 
-#include "cub/cub.cuh"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -171,6 +170,7 @@ UniqueFlattendCUDATensor(const Context& context,
     thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
     inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
 #endif
+
 
 #ifdef PADDLE_WITH_HIP
     size_t temp_storage_bytes = 0;
