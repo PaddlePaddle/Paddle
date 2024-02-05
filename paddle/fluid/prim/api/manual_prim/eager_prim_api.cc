@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
 
 namespace paddle {
