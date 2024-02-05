@@ -25,7 +25,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
