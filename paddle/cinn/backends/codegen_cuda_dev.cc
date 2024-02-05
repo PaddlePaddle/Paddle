@@ -322,7 +322,7 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
       // The first shared memory buffer
       str_ += "extern __shared__ byte dyn_shared_buffer[]";
-      dyn_shared_mem_offset = Expr(0);
+      dyn_shared_mem_offset_ = Expr(0);
     }
     std::string type_name = GetTypeRepr(buffer->dtype);
     str_ += type_name;
@@ -331,11 +331,11 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     str_ += " = (";
     str_ += type_name;
     str_ += "*)&dyn_shared_buffer[";
-    IrPrinter::Visit(dyn_shared_mem_offset);
+    IrPrinter::Visit(dyn_shared_mem_offset_);
     str_ += " ]";
 
     dyn_shared_mem_offset_ = dyn_shared_mem_offset_ + buffer_size;
-    optim::Simplify(&dyn_shared_mem_offset);
+    optim::Simplify(&dyn_shared_mem_offset_);
   } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
     // print func of static allocation
     auto print_gpu_memory = [&](const std::string &mark) {
