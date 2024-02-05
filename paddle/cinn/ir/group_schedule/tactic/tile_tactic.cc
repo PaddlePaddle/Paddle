@@ -32,11 +32,14 @@ void TileTactic::Init(ScheduleContext* context) {
     }
   };
   auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
+    int64_t nums_thread_per_block = 1024;
     if (total_rb_extent.is_constant()) {
       int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
-      return GetFirstFactor(extent);
+      nums_thread_per_block = GetFirstFactor(extent);
+    } else {
+      nums_thread_per_block = context_->bucket_info.rb_lower_bound;
     }
-    return context_->bucket_info.rb_lower_bound;
+    return nums_thread_per_block > 1024 ? 1024 : nums_thread_per_block;
   };
   auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
     // When designing the tile config, we can further subdivided.
