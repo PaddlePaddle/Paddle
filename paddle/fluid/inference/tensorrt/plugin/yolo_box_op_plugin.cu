@@ -346,8 +346,6 @@ int YoloBoxPlugin::enqueue(int batch_size,
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
     return enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
-  } else if (data_type_ == nvinfer1::DataType::kINT8) {
-    return enqueue_impl<int8_t>(batch_size, inputs, outputs, workspace, stream);
   }
   assert("unsupported type.");
 }
