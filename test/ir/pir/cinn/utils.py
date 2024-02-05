@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -21,6 +22,14 @@ import paddle
 JIT_KERNEL_NAME = "jit_kernel"
 __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
+
+
+def unittest_use_cinn():
+    use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
+    true_value_set = {True, 1, "1", "True", "true"}
+    false_value_set = {False, 0, "0", "False", "false"}
+    assert use_cinn in (true_value_set | false_value_set)
+    return use_cinn in true_value_set
 
 
 def apply_to_static(net, use_cinn, input_spec=None):

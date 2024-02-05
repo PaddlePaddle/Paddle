@@ -21,7 +21,7 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_skip_dynamic);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -77,7 +77,7 @@ static bool check_dynamic_shape(const pir::OpOperand& item,
   auto dims = GetValueDims(item.source());
   std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
   if (find_value(shape, -1)) {
-    VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << dims
+    VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << dims
             << "] in inputs of op " << op.name();
     return true;
   } else {
@@ -157,11 +157,11 @@ void DecompProgram::check_decomp_outputs(
       auto decomp_dim = GetValueDims(decomp_outs[i]);
       std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
       if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
                 << "] in " << i << "-index output of origin op " << op_name;
       }
       if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
 

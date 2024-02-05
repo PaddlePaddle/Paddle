@@ -398,7 +398,7 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
                   const DenseTensor* ddX,
                   DenseTensor* dX,
                   DenseTensor* ddOut) const {
-    auto* d = dev.eigen_device();
+    auto* device = dev.eigen_device();
     auto d2d1x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosDoubleGrad"));
     auto x = EigenVector<T>::Flatten(
@@ -407,21 +407,17 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
     // calculate d2x first, so d2d1y can inplace d2d1x
     auto d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Output", "d2x", "CosDoubleGrad"));
-    if (ddOut) {
-      if (dOut) {
-        auto d1y = EigenVector<T>::Flatten(
-            GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
-        d2x.device(*d) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
-      } else {
-        d2x.device(*d) = x * static_cast<T>(0);
-      }
+    if (dX) {
+      auto d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
+      d2x.device(*device) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
     }
 
-    if (dX) {
+    if (ddOut) {
       // calculate d2d1y
       auto d2d1y = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "CosDoubleGrad"));
-      d2d1y.device(*d) = -d2d1x * x.unaryExpr(Sine<T>());
+      d2d1y.device(*device) = -d2d1x * x.unaryExpr(Sine<T>());
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -5010,6 +5006,40 @@ struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #endif
+
+template <typename T>
+struct SwiGLUFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE T operator()(T x, T y) const {
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_y = static_cast<MPType>(y);
+    MPType one = static_cast<MPType>(1);
+    return static_cast<T>(mp_y * mp_x / (one + exp(-mp_x)));
+  }
+};
+
+template <typename T, bool HasDX = true, bool HasDY = true>
+struct SwiGLUGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE void operator()(T x, T y, T dz, T* dx, T* dy) const {
+    MPType one = static_cast<MPType>(1);
+
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_dz = static_cast<MPType>(dz);
+
+    MPType sigmoid = one / (one + exp(-mp_x));
+    MPType tmp = mp_x * sigmoid;
+    if (HasDX) {
+      MPType mp_y = static_cast<MPType>(y);
+      *dx = static_cast<T>(mp_dz * mp_y * sigmoid * (one + mp_x - tmp));
+    }
+    if (HasDY) {
+      *dy = static_cast<T>(mp_dz * tmp);
+    }
+  }
+};
 
 }  // namespace funcs
 }  // namespace phi

@@ -318,16 +318,16 @@ class API_DygraphTest(unittest.TestCase):
         data2 = np.array([[3.0, 4.0]])
         data3 = np.array([[5.0, 6.0]])
         with base.dygraph.guard():
-            x1 = base.dygraph.to_variable(data1)
-            x2 = base.dygraph.to_variable(data2)
-            x3 = base.dygraph.to_variable(data3)
+            x1 = paddle.to_tensor(data1)
+            x2 = paddle.to_tensor(data2)
+            x3 = paddle.to_tensor(data3)
             result = paddle.stack([x1, x2, x3])
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3])
         np.testing.assert_allclose(expected_result, result_np, rtol=1e-05)
 
         with base.dygraph.guard():
-            y1 = base.dygraph.to_variable(data1)
+            y1 = paddle.to_tensor(data1)
             result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack([data1], axis=0)

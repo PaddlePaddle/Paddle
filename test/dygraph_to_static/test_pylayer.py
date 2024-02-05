@@ -623,9 +623,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         infer_layer.eval()
         # inference & compare
-        x = paddle.base.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32')
-        )
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         train_layer_result = train_layer(x).numpy()
         infer_layer_result = infer_layer(x).numpy()
 
