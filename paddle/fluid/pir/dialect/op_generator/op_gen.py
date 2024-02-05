@@ -46,7 +46,23 @@ import gen as vjp_gen
 
 # Note(Galaxy1458) The need_export_symbol_op_list is used
 # for some unittests these need to export symbol op compiled with dynamic lib.
-need_export_symbol_op_list = ['AbsOp', 'FullOp', 'UniformOp']
+need_export_symbol_op_list = [
+    'AbsOp',
+    'FullOp',
+    'UniformOp',
+    'ScaleOp',
+    'AddOp',
+    'Conv2dOp',
+    'BatchNormOp',
+    'FetchOp',
+    'MatmulOp',
+    'SoftmaxOp',
+    'ReshapeOp',
+    'TransposeOp',
+    'LessThanOp',
+    'AddGradOp',
+    'MatmulGradOp',
+]
 
 # =====================================
 # String Template for h file code gen
@@ -286,6 +302,7 @@ PD_MANUAL_OP_LIST = {
     'expand',
     'increment',
     'increment_',
+    'assign_out_',
 }
 
 attr_types_map = {
@@ -1204,7 +1221,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
         op_interfaces_tmp = op_interfaces
         exclusive_interface_str_tmp = exclusive_interface_str
         decomp_interface_str = "paddle::dialect::DecompInterface"
-        decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+        decomp_interface_declare_str = "\n  static std::vector<std::vector<pir::Value>> Decomp(pir::Operation* op);"
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
@@ -1641,7 +1658,10 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                 )
 
                 if dialect_name == "onednn_op":
-                    if len(op_info.onednn_extra_args) > 0:
+                    if (
+                        op_info.onednn_extra_args is not None
+                        and len(op_info.onednn_extra_args) > 0
+                    ):
                         args_name = []
                         for arg in op_info.onednn_extra_args:
                             args_name.append(arg["name"])
@@ -1932,7 +1952,14 @@ def OpGenerator(
                 op_name = op['op']
                 item = {}
                 item["is_onednn_only"] = False
-                item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
+                if 'extra_args' in op:
+                    item["extra_args"] = parse_extra_args(
+                        op_name, op['extra_args']
+                    )
+                    item["attrs"] = parse_extra_args(op_name, op['extra_args'])
+                else:
+                    item["extra_args"] = None
+                    item["attrs"] = None
                 if 'data_format_tensors' in op:
                     item["data_format_tensors"] = parse_data_format_tensors(
                         op_name, op['data_format_tensors']
@@ -1943,7 +1970,6 @@ def OpGenerator(
                     item["dynamic_fallback"] = op['dynamic_fallback']
                 else:
                     item["dynamic_fallback"] = False
-                item["attrs"] = parse_extra_args(op_name, op['extra_args'])
                 ops_onednn_extra_map[op_name] = item
         op_yaml_files.insert(0, onednn_yaml_file)
 
@@ -1990,6 +2016,15 @@ def OpGenerator(
                 if first_file:
                     op["is_onednn_only"] = True
                     onednn_only_op_list.append("\"" + op['name'] + "\"")
+                    if op['name'] in ops_onednn_extra_map:
+                        onednn_item = ops_onednn_extra_map[op['name']]
+                        op["is_onednn_only"] = onednn_item["is_onednn_only"]
+                        op["extra_args"] = onednn_item["extra_args"]
+                        op["data_format_tensors"] = onednn_item[
+                            "data_format_tensors"
+                        ]
+                        op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
+                        op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 elif op['name'] in ops_onednn_extra_map:
                     onednn_item = ops_onednn_extra_map[op['name']]
                     op["is_onednn_only"] = onednn_item["is_onednn_only"]
@@ -1998,7 +2033,8 @@ def OpGenerator(
                         "data_format_tensors"
                     ]
                     op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
-                    op["attrs"] = op["attrs"] + onednn_item["attrs"]
+                    if onednn_item["attrs"] is not None:
+                        op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
                     continue
             item = OpInfoParser(op, op_compat_item)

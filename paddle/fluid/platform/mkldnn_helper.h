@@ -67,7 +67,7 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
       OneDNNContext::tls().set_key_suffix(
           "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
     }
-    // Let's register adress of current executor
+    // Let's register address of current executor
     OneDNNContext::tls().set_curr_exec(ptr);
 
     // For first thread

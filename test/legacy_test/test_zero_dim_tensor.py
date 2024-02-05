@@ -2589,7 +2589,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2_2.numpy(), 2)
         self.assertEqual(x2.grad.shape, [2])
 
-    def test_maseked_select(self):
+    def test_masked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
         mask = paddle.full([], True, dtype='bool')
@@ -4860,7 +4860,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2,))
 
     @prog_scope()
-    def test_maseked_select(self):
+    def test_masked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
         mask = paddle.full([], True, dtype='bool')

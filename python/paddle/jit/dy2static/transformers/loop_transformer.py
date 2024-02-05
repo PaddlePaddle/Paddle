@@ -19,13 +19,21 @@ from paddle.base import unique_name
 from paddle.utils import gast
 
 from ..utils import (
+    GetterSetterHelper,
+    ast_to_source_code,
+)
+from .base import (
+    BaseTransformer,
+    ForLoopTuplePreTransformer,
+    ForNodeVisitor,
+)
+from .utils import (
+    ARGS_NAME,
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
     WHILE_BODY_PREFIX,
     WHILE_CONDITION_PREFIX,
     FunctionNameLivenessAnalysis,
-    GetterSetterHelper,
-    ast_to_source_code,
     create_get_args_node,
     create_name_str,
     create_nonlocal_stmt_nodes,
@@ -33,12 +41,6 @@ from ..utils import (
     get_attribute_full_name,
     get_parent_mapping,
 )
-from .base import (
-    BaseTransformer,
-    ForLoopTuplePreTransformer,
-    ForNodeVisitor,
-)
-from .ifelse_transformer import ARGS_NAME
 
 __all__ = []
 

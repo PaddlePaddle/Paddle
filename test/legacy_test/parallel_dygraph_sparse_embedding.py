@@ -25,7 +25,6 @@ from legacy_test.test_dist_base import (
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 
 
@@ -131,8 +130,8 @@ class TestSparseEmbedding(TestParallelDyGraphRunnerBase):
         x_data = x_data.reshape((-1, num_steps, 1))
         y_data = y_data.reshape((-1, 1))
 
-        x = to_variable(x_data)
-        y = to_variable(y_data)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
 
         dy_loss = model(x, y)
 

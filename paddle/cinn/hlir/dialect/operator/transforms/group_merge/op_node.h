@@ -143,6 +143,8 @@ class OpNode {
     return paddle::get<T>(attr);
   }
 
+  ::pir::Operation* node() const { return node_; }
+
  private:
   friend struct std::hash<OpNode>;
 
