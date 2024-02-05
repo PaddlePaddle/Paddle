@@ -14,6 +14,7 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
