@@ -22,7 +22,7 @@ from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.decomposition import decompose
 
-paddle.enable_static()
+# paddle.enable_static()
 
 
 class TestPrimMode(unittest.TestCase):
@@ -264,5 +264,86 @@ class TestHardSwishSink(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
 
+class TestEmbeddingSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [3, 2]
+        self.x = np.array([[3, 4, -1], [2, -2, 4]], dtype=int).reshape(
+            self.shape_x
+        )
+        self.prog = None
+
+    def base_net(self, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype=int)
+            x.stop_gradient = False
+            w = paddle.full(shape=(10, 3), fill_value=2).astype("float32")
+            w.stop_gradient = False
+            sum_out = F.embedding(
+                x=x, weight=w, sparse=True, name="embedding", padding_idx=3
+            )
+            [new_out] = decompose(main_program, [sum_out])
+            print("================================")
+            print(main_program)
+            print("================================")
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        return fwd, dx
+
+    def test_prim_forward(self):
+        # res_ref = self.base_net()
+        res = self.base_net("forward")
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+
+def embedding_test():
+    np.random.seed(2023)
+    shape_x = [3, 1]
+    x = np.array([[3, 4, 1]], dtype=int).reshape(shape_x)
+    x = paddle.to_tensor(x)
+    w = np.array(
+        [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [9, 10, 11],
+            [12, 13, 14],
+            [15, 16, 17],
+            [18, 19, 20],
+            [21, 22, 23],
+            [24, 25, 26],
+            [27, 28, 29],
+        ],
+        dtype=np.float32,
+    )
+    w = paddle.to_tensor(w)
+
+    index = paddle.to_tensor([[2]])
+    print(index.shape)
+
+    w = paddle.put_along_axis(w, index, 0.0, axis=0)
+
+    print(w)
+
+    x = x.reshape([-1, 1])
+    print(x.shape)
+
+    out = paddle.gather(w, x)
+    out = out.reshape([3, 1, -1])
+    print(out)
+
+
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    embedding_test()
