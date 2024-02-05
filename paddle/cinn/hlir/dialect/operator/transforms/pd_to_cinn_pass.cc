@@ -691,10 +691,10 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
-  ps.Add(SumOpPattern().Build(context));
-  ps.Add(MaxOpPattern().Build(context));
-  ps.Add(MinOpPattern().Build(context));
-  ps.Add(ProdOpPattern().Build(context));
+  ps.Add(paddle::drr::Create<SumOpPattern>(context));
+  ps.Add(paddle::drr::Create<MaxOpPattern>(context));
+  ps.Add(paddle::drr::Create<MinOpPattern>(context));
+  ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<Pool2dOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
@@ -705,7 +705,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
-  // ps.Add(UniformOpPattern().Build(context));
+  // ps.Add(paddle::drr::Create<UniformOpPattern>(context));
 
   return ps;
 }
