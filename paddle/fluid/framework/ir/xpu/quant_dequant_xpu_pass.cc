@@ -191,7 +191,6 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
         if (out->Name() == out_var_name) {
           for (auto* var : out->outputs) {
             auto op_desc = var->Op();
-            std::string quantized_op_type = op_desc->Type();
             op_desc->SetAttr("enable_int8", true);
             op_desc->Flush();
           }
