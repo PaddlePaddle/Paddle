@@ -128,8 +128,8 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 		<td>attr_compute_func: Customized calculation logic</td>
 	</tr>
 	<tr>
-		<td> <pre>drr::Tensor& NoneTensor()</pre></td>
-		<td> When the input Tensor of an Op is optional and not needed, NoneTensor needs to be used to occupy the place.</td>
+		<td> <pre>drr::Tensor& InputNoneTensor()</pre></td>
+		<td> When the input Tensor of an Op is optional and not needed, InputNoneTensor needs to be used to occupy the place.</td>
 		<td> / </td>
 	</tr>
 	<tr>

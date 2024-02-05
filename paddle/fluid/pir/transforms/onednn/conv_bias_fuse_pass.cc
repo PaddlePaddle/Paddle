@@ -112,7 +112,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv({&res.Tensor("input"),
                 &res.Tensor("filter"),
                 &res.Tensor("bias"),
-                &res.NoneTensor()},
+                &res.InputNoneTensor()},
                {&res.Tensor("add_out")});
   }
 };
@@ -217,7 +217,7 @@ class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv({&res.Tensor("input"),
                 &res.Tensor("filter"),
                 &res.Tensor("bias2"),
-                &res.NoneTensor()},
+                &res.InputNoneTensor()},
                {&res.Tensor("result")});
   }
 };

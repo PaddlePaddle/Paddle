@@ -81,7 +81,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv2d_add_act({&res.Tensor("input"),
                           &res.Tensor("filter"),
                           &res.Tensor("bias"),
-                          &res.NoneTensor()},
+                          &res.InputNoneTensor()},
                          {&res.Tensor("add_out")});
   }
 };

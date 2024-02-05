@@ -86,7 +86,7 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
     fused_linear_param_grad_add({&res.Tensor("x"),
                                  &res.Tensor("fwd_add_out_grad"),
                                  &res.Tensor("dweight"),
-                                 &res.NoneTensor()},
+                                 &res.InputNoneTensor()},
                                 {&res.Tensor("add_out"), &res.Tensor("dbias")});
   }
 };
@@ -141,7 +141,7 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"),
          &res.Tensor("out_grad"),
          &res.Tensor("dweight"),
-         &res.NoneTensor()},
+         &res.InputNoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
 };
@@ -185,7 +185,7 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"),
          &res.Tensor("out_grad"),
          &res.Tensor("dweight"),
-         &res.NoneTensor()},
+         &res.InputNoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
 };
@@ -229,7 +229,7 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"),
          &res.Tensor("out_grad"),
          &res.Tensor("dweight"),
-         &res.NoneTensor()},
+         &res.InputNoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
 };
@@ -287,7 +287,7 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"),
          &res.Tensor("dadd_out"),
          &res.Tensor("dweight"),
-         &res.NoneTensor()},
+         &res.InputNoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
 };
@@ -344,7 +344,7 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"),
          &res.Tensor("dadd_out"),
          &res.Tensor("dweight"),
-         &res.NoneTensor()},
+         &res.InputNoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
 };

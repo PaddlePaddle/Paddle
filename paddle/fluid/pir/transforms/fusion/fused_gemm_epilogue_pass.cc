@@ -104,7 +104,7 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out")});
     fused_gemm_epilogue_grad({&res.Tensor("x"),
                               &res.Tensor("w"),
-                              &res.NoneTensor(),
+                              &res.InputNoneTensor(),
                               &res.Tensor("out_grad")},
                              {&res.Tensor("x_grad"),
                               &res.Tensor("w_grad"),

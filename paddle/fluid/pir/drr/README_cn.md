@@ -131,8 +131,8 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 		<td>attr_compute_func: 自定义的计算逻辑</td>
 	</tr>
 	<tr>
-		<td> <pre>drr::Tensor& NoneTensor()</pre></td>
-		<td> 当一个 Op 的输入 Tensor 是一个可选项并且不需要时，需要使用 NoneTensor 来占位</td>
+		<td> <pre>drr::Tensor& InputNoneTensor()</pre></td>
+		<td> 当一个 Op 的输入 Tensor 是一个可选项并且不需要时，需要使用 InputNoneTensor 来占位</td>
 		<td> / </td>
 	</tr>
 	<tr>
