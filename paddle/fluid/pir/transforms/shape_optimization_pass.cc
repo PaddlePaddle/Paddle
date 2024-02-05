@@ -18,6 +18,8 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
+const int vlog_level = 0;
+
 namespace pir {
 namespace {
 
@@ -29,8 +31,9 @@ void PrintProgram(pir::ModuleOp m, std::string mgs) {
   print_stream << "\n\n";
   m.program()->Print(print_stream);
   print_stream << "\n\n";
-  VLOG(3) << "===================== " << mgs << " =====================\n"
-          << print_stream.str();
+  VLOG(vlog_level) << "===================== " << mgs
+                   << " =====================\n"
+                   << print_stream.str();
 }
 
 void DebugPrintOpInfo(
@@ -72,7 +75,7 @@ void DebugPrintOpInfo(
       print_stream << "]";
     }
     print_stream << " }";
-    VLOG(3) << print_stream.str();
+    VLOG(vlog_level) << print_stream.str();
   }
 }
 
@@ -86,7 +89,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         auto infer_symbolic_shape_interface =
             op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
         if (infer_symbolic_shape_interface) {
-          VLOG(3) << op.name() << " has InferSymbolicShapeInterface.";
+          VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
           PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
                              &shape_analysis),
                          "InferSymbolicShape for %s failed.",
@@ -98,7 +101,8 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                 &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
           }
         } else {
-          VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+          VLOG(vlog_level) << op.name() +
+                                  " DOES NOT have InferSymbolicShapeInterface!";
           PADDLE_THROW(phi::errors::Unimplemented(
               op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
         }
@@ -113,8 +117,9 @@ class ShapeOptimizationPass : public pir::Pass {
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
-    VLOG(3) << "===================== ShapeOptimizationPass Run start... "
-               "=====================";
+    VLOG(vlog_level)
+        << "===================== ShapeOptimizationPass Run start... "
+           "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     PrintProgram(module_op, "Origin Program");
@@ -127,8 +132,8 @@ class ShapeOptimizationPass : public pir::Pass {
     };
 
     PrintProgram(module_op, "ShapeOptimizationPass Program");
-    VLOG(3) << "===================== ShapeOptimizationPass Run End. "
-               "=====================";
+    VLOG(vlog_level) << "===================== ShapeOptimizationPass Run End. "
+                        "=====================";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
