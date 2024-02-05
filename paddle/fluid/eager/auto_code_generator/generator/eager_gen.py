@@ -95,7 +95,6 @@ type_promote_white_list = {
     "less_equal": ["x", "y"],
     "greater_than": ["x", "y"],
     "greater_equal": ["x", "y"],
-    "matmul": ["x", "y"],
     "logical_and": ["x", "y"],
     "logical_or": ["x", "y"],
     "logical_xor": ["x", "y"],

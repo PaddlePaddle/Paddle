@@ -88,8 +88,6 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "less_equal": ['X', 'Y'],
     "greater_than": ['X', 'Y'],
     "greater_equal": ['X', 'Y'],
-    "matmul_v2": ['X', 'Y'],
-    "matmul_v2_grad": ['X', 'Y'],
     "logical_and": ['X', 'Y'],
     "logical_or": ['X', 'Y'],
     "logical_xor": ['X', 'Y'],
