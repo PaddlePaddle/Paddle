@@ -52,7 +52,7 @@ std::string SimplifyDemangleStr(std::string str) {
 
 namespace common {
 namespace enforce {
-TEST_API int GetCallStackLevel() { return 1; }
+TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
 
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
