@@ -76,6 +76,10 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y);
+
+paddle::Tensor cast_ad_func(const paddle::Tensor& x,
+                            phi::DataType index_dtype,
+                            phi::DataType value_dtype);
 }  // namespace sparse
 
 paddle::Tensor cast_ad_func(const paddle::Tensor& x, phi::DataType dtype);
