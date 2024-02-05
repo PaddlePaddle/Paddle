@@ -213,7 +213,7 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
   print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
     printer.IrPrinter::PrintOperation(op);
     printer.os << " { ";
-    for (int i = 0; i < op->num_results(); ++i) {
+    for (uint32_t i = 0; i < op->num_results(); ++i) {
       if (this->HasShapeOrDataForValue(op->result(i))) {
         printer.os << "(" << this->GetShapeOrDataForValue(op->result(i)) << ")";
       } else {
