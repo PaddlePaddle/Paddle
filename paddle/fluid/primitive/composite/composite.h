@@ -834,6 +834,41 @@ Tensor square_decomp(const Tensor& x) {
   }
 }
 
+template <typename T>
+Tensor sigmoid_cross_entropy_with_logits_decomp(
+    const Tensor& x,
+    const Tensor& label,
+    const paddle::optional<Tensor>& pos_weight,
+    bool normalize,
+    int ignore_index) {
+  auto pos_weight_ptr = pos_weight.get_ptr();
+  auto dims = x.dims();
+  const Tensor zero = full<T>(common::vectorize(dims), 0, x.type());
+  const Tensor one = full<T>(common::vectorize(dims), 1, x.type());
+  Tensor pos_weight_tensor;
+  if (pos_weight_ptr) {
+    pos_weight_tensor = *pos_weight_ptr;
+  } else {
+    pos_weight_tensor = one;
+  }
+  auto term1 = where<T>(x > zero, x, zero);
+  auto term2 = x * label;
+  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
+  const Tensor ignore_index_tensor =
+      full<T>(common::vectorize(dims), ignore_index, label.type());
+  auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
+  if (normalize) {
+    const Tensor eps1 = full<T>(common::vectorize(dims), 1e-6, x.type());
+    auto diff = label - ignore_index_tensor;
+    const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
+    const Tensor eps2 = full<T>(empty_shape, 1e-5, x.type());
+    auto norm = where<T>(tmp_norm > eps2, tmp_norm, eps2);
+    out = out / norm;
+  }
+  return out;
+}
+
 }  // namespace details
 
 }  // namespace primitive

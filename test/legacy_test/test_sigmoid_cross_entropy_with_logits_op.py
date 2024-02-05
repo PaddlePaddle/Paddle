@@ -37,6 +37,8 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -59,7 +61,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -71,6 +73,8 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -98,7 +102,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -110,6 +114,8 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -132,7 +138,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -144,6 +150,8 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
 
@@ -170,7 +178,7 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
         self.outputs = {'Out': term1 - term2 + term3}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -180,6 +188,8 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -206,7 +216,7 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -218,6 +228,8 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
@@ -240,7 +252,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -250,6 +262,8 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         ignore_index = -1
@@ -276,7 +290,7 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -288,6 +302,8 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
@@ -310,7 +326,7 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
