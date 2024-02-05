@@ -27,7 +27,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/special_ops_fusion_rule.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
+
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
 

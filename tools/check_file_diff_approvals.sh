@@ -221,10 +221,10 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
-	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
-            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
-      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then 
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then
+	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
+            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen
+      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then
 	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
             check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
       else
@@ -422,6 +422,20 @@ ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static("
 if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (SigureMo, Aurelius84 or 2742195759) approval for using 'paddle.jit.enable_to_static', we recommend using 'enable_to_static_guard' in the related test files.\n"
     check_approval 1 SigureMo Aurelius84 2742195759
+fi
+
+HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
+if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
+    if [ $? -ne 0 ]; then
+        echo_line="Your PR does not meet Dy2St unittest dev guide, please check https://github.com/PaddlePaddle/Paddle/issues/61464 for details.\n"
+        echo_line=${echo_line}"Errors are as follows:\n"
+        echo_line=${echo_line}${error_lines}"\n"
+        echo_line=${echo_line}"You can run following command to fix the errors:\n"
+        echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for the changes.\n"
+        check_approval 1 SigureMo Aurelius84 2742195759 gouzil
+    fi
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`

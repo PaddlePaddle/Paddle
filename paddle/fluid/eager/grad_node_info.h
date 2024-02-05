@@ -292,12 +292,12 @@ class GradNodeBase {
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
-  GetGradientHookFuntions() {
+  GetGradientHookFunctions() {
     VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
-  void SetGradientHookFuntions(
+  void SetGradientHookFunctions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
     VLOG(7) << "SetGradientHookFunctions ";

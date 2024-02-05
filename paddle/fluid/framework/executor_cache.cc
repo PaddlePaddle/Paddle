@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/framework/executor_cache.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
@@ -28,8 +28,8 @@
 
 DECLARE_FILE_SYMBOLS(print_statistics);
 
-PHI_DECLARE_bool(pir_apply_inplace_pass);
-PHI_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -386,7 +386,7 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   return ir_res;
 }
 
-std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> &output_names,
