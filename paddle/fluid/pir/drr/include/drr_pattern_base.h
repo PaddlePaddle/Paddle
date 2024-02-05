@@ -28,9 +28,7 @@ class IrContext;
 namespace paddle {
 namespace drr {
 
-class DrrPatternContext;
-
-class DrrPatternBase {
+class DrrPatternBase : public std::enable_shared_from_this<DrrPatternBase> {
  public:
   virtual ~DrrPatternBase() = default;
 
@@ -42,10 +40,20 @@ class DrrPatternBase {
 
   // Give the drr pattern benefit.
   virtual uint32_t benefit() const { return 1; }
-
-  // Build the Drr Pattern.
-  std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
 };
+
+template <typename T, typename... Args>
+static std::unique_ptr<DrrRewritePattern> Create(pir::IrContext* ir_context,
+                                                 Args&&... args) {
+  auto drr_pattern = std::make_shared<T>(std::forward<Args>(args)...);
+  DrrPatternContext drr_context;
+  drr_pattern->operator()(&drr_context);
+  return std::make_unique<DrrRewritePattern>(drr_pattern->name(),
+                                             drr_context,
+                                             ir_context,
+                                             drr_pattern->benefit(),
+                                             drr_pattern->shared_from_this());
+}
 
 }  // namespace drr
 }  // namespace paddle

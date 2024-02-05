@@ -10,6 +10,9 @@ DRR ( Declarative Rewrite Rule ) 是来处理这种 DAG-to-DAG 类型的一套 P
 ~~~ c++
 // 1. 继承 DrrPatternBase 类
 class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
+public:
+	std::string name() const override { return "RemoveRedundentCastPattern"; }
+
   // 2. 重载 operator()
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 3. 使用 Op、Tensor 和 Attribute 定义一个包含两个连续 CastOp 的 SourcePattern
@@ -31,8 +34,6 @@ class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "RemoveRedundentCastPattern"; }
 };
 ~~~
 
@@ -171,6 +172,8 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 ~~~ c++
 class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 定义 Source Pattern
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -193,8 +196,6 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
-
-  std::string name() const override { return "FusedLinearPattern"; }
 };
 ~~~
 
@@ -202,6 +203,8 @@ Example 2: Full + Expand -> Full
 ~~~ c++
 class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FoldExpandToConstantPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // 定义 Source Pattern
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -227,7 +230,5 @@ class FoldExpandToConstantPattern : public paddle::drr::DrrPatternBase {
                                 {"place", pat.Attr("place_1")}});
     res.Tensor("ret") = full2();
   }
-
-  std::string name() const override { return "FoldExpandToConstantPattern"; }
 };
 ~~~

@@ -23,6 +23,10 @@ namespace {
 
 class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "MultiHeadMatmulFuseNoBiasQKPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -251,15 +255,15 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
                       &res.NoneTensor()},
                      {&res.Tensor("reshape_4_out")});
   }
-
-  std::string name() const override {
-    return "MultiHeadMatmulFuseNoBiasQKPattern";
-  }
 };
 
 class MultiHeadMatmulFuseWithBiasQKPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "MultiHeadMatmulFuseWithBiasQKPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -490,10 +494,6 @@ class MultiHeadMatmulFuseWithBiasQKPattern
                       &res.Tensor("add_4_in_2")},
                      {&res.Tensor("reshape_4_out")});
   }
-
-  std::string name() const override {
-    return "MultiHeadMatmulFuseWithBiasQKPattern";
-  }
 };
 
 class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
@@ -503,8 +503,8 @@ class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MultiHeadMatmulFuseNoBiasQKPattern().Build(context));
-    ps.Add(MultiHeadMatmulFuseWithBiasQKPattern().Build(context));
+    ps.Add(paddle::drr::Create<MultiHeadMatmulFuseNoBiasQKPattern>(context));
+    ps.Add(paddle::drr::Create<MultiHeadMatmulFuseWithBiasQKPattern>(context));
     // Add other attention variant fuse pattern.
 
     return ps;

@@ -24,10 +24,12 @@
 namespace paddle {
 namespace drr {
 
-DrrRewritePattern::DrrRewritePattern(const std::string& pattern_name,
-                                     const DrrPatternContext& drr_context,
-                                     pir::IrContext* context,
-                                     pir::PatternBenefit benefit)
+DrrRewritePattern::DrrRewritePattern(
+    const std::string& pattern_name,
+    const DrrPatternContext& drr_context,
+    pir::IrContext* context,
+    pir::PatternBenefit benefit,
+    const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
     : pir::RewritePattern(
           drr_context.source_pattern_graph()->AnchorNode()->name(),
           benefit,
@@ -36,7 +38,8 @@ DrrRewritePattern::DrrRewritePattern(const std::string& pattern_name,
       pattern_name_(pattern_name),
       source_pattern_graph_(drr_context.source_pattern_graph()),
       constraints_(drr_context.constraints()),
-      result_pattern_graph_(drr_context.result_pattern_graph()) {
+      result_pattern_graph_(drr_context.result_pattern_graph()),
+      drr_pattern_owner_(drr_pattern_owner) {
   PADDLE_ENFORCE_NE(
       source_pattern_graph_->owned_op_call().empty(),
       true,
@@ -536,14 +539,6 @@ void DrrRewritePattern::DeleteSourcePatternOp(
       }
     }
   }
-}
-
-std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
-    pir::IrContext* ir_context) const {
-  DrrPatternContext drr_context;
-  this->operator()(&drr_context);
-  return std::make_unique<DrrRewritePattern>(
-      name(), drr_context, ir_context, benefit());
 }
 
 }  // namespace drr

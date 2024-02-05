@@ -33,6 +33,8 @@ using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
 class SumOpPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "SumOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
@@ -55,12 +57,12 @@ class SumOpPattern : public paddle::drr::DrrPatternBase {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "SumOpPattern"; }
 };
 
 class MaxOpPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MaxOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
@@ -82,12 +84,12 @@ class MaxOpPattern : public paddle::drr::DrrPatternBase {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "MaxOpPattern"; }
 };
 
 class MinOpPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MinOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
@@ -109,12 +111,12 @@ class MinOpPattern : public paddle::drr::DrrPatternBase {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "MinOpPattern"; }
 };
 
 class ProdOpPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "ProdOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
@@ -136,8 +138,6 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
-
-  std::string name() const override { return "ProdOpPattern"; }
 };
 
 class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
@@ -635,6 +635,8 @@ class ExpandOpPattern
 
 class UniformOpPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "ProdOpPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
     paddle::drr::SourcePattern pattern = ctx->SourcePattern();
@@ -679,8 +681,6 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
                 {"diag_val", pattern.Attr("min_value")}});
     res.Tensor("ret") = cinn_uniform();
   }
-
-  std::string name() const override { return "ProdOpPattern"; }
 };
 
 PdOpToCinnOpPass::PdOpToCinnOpPass()

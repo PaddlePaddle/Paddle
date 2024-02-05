@@ -26,6 +26,8 @@ namespace {
 // add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulAddGradAddPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul0 = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -87,13 +89,13 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
                                  &res.NoneTensor()},
                                 {&res.Tensor("add_out"), &res.Tensor("dbias")});
   }
-
-  std::string name() const override { return "FusedMatmulAddGradAddPattern"; }
 };
 
 // matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulGradAddPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
@@ -142,13 +144,13 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
-
-  std::string name() const override { return "FusedMatmulGradAddPattern"; }
 };
 
 // matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
 class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulAddaPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -186,13 +188,13 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
-
-  std::string name() const override { return "FusedMatmulAddaPattern"; }
 };
 
 // matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
 class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulAddbPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -230,13 +232,13 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
          &res.NoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
   }
-
-  std::string name() const override { return "FusedMatmulAddbPattern"; }
 };
 
 // add_grad + matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
 class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulAddGradAddaPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -288,13 +290,13 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
          &res.NoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
-
-  std::string name() const override { return "FusedMatmulAddGradAddaPattern"; }
 };
 
 // add_grad + matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
 class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedMatmulAddGradAddbPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -345,8 +347,6 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
          &res.NoneTensor()},
         {&res.Tensor("dweight_out"), &res.Tensor("dbias")});
   }
-
-  std::string name() const override { return "FusedMatmulAddGradAddbPattern"; }
 };
 
 class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
@@ -356,12 +356,12 @@ class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedMatmulAddGradAddPattern().Build(context));
-    ps.Add(FusedMatmulGradAddPattern().Build(context));
-    ps.Add(FusedMatmulAddaPattern().Build(context));
-    ps.Add(FusedMatmulAddbPattern().Build(context));
-    ps.Add(FusedMatmulAddGradAddaPattern().Build(context));
-    ps.Add(FusedMatmulAddGradAddbPattern().Build(context));
+    ps.Add(paddle::drr::Create<FusedMatmulAddGradAddPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulGradAddPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulAddaPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulAddbPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulAddGradAddaPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulAddGradAddbPattern>(context));
 
     return ps;
   }

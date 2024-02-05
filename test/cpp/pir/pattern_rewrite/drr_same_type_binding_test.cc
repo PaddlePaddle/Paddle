@@ -54,6 +54,8 @@
 // only focusing on the process of matching and replacing)
 class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "SameTypeBindingTestPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -178,8 +180,6 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("output5") = full_5();
     res.Tensor("output6") = full_6();
   }
-
-  std::string name() const override { return "SameTypeBindingTestPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
@@ -292,7 +292,7 @@ class DrrPatternRewritePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(SameTypeBindingTestPattern().Build(context));
+    ps.Add(paddle::drr::Create<SameTypeBindingTestPattern>(context));
 
     return ps;
   }
