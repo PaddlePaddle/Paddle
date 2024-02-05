@@ -23,10 +23,10 @@ limitations under the License. */
 #include <float.h>
 
 #include <cub/cub.cuh>
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
@@ -1899,7 +1899,7 @@ class CublasFusedMLP {
       beta = &beta64;
     }
 
-    if (std::is_same<T, phi::dtype::phi::float16>::value &&
+    if (std::is_same<T, phi::float16>::value &&
         FLAGS_gemm_use_half_precision_compute_type) {
       alpha = &alpha16;
       beta = &beta16;

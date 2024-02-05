@@ -1394,9 +1394,9 @@ void FusedMultiTransformerKernel(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_multi_transformer,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::FusedMultiTransformerKernel,
-                   float,
-                   plat::dtype::float16) {}
+// PD_REGISTER_KERNEL(fused_multi_transformer,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::fusion::FusedMultiTransformerKernel,
+//                    float,
+//                    plat::dtype::float16) {}
