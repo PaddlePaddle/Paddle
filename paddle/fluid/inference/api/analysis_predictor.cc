@@ -105,6 +105,7 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
@@ -123,11 +124,10 @@
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(pir_apply_inplace_pass);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace {
