@@ -2479,9 +2479,9 @@ void ProcessBlock(
     }
 
     // Use OneDNN if CPU not support bf16
-    if (!op_item->HasTrait<OneDNNTrait>() &&
+    if (kernel_key.dtype() == phi::DataType::BFLOAT16 &&
         kernel_key.backend() == phi::Backend::CPU &&
-        !SupportsCPUBF16(kernel_name) &&
+        !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
         SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
       std::string target_op_name = op_item->name();
       target_op_name.replace(0, 5, "onednn_op");
