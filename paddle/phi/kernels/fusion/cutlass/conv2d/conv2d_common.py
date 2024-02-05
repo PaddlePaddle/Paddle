@@ -124,7 +124,7 @@ std::vector<std::function<cutlass::Status(const ConvAllParams)>>
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(const ConvAllParams& params) {
+void ${func_name}(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;

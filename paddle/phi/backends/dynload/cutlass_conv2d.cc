@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/phi/backends/dynload/cutlass.h"
+#include "paddle/phi/backends/dynload/cutlass_conv2d.h"
 #include <string>
 #include "paddle/phi/core/enforce.h"
 

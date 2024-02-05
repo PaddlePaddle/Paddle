@@ -20,7 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
 
-#include "paddle/phi/backends/dynload/cutlass.h"
+#include "paddle/phi/backends/dynload/cutlass_conv2d.h"
 
 namespace phi {
 namespace fusion {
@@ -132,7 +132,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
     // conv2d_depthwise need a tmp workspace.
     phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
-        oc * kh * kw * ic * sizeof(T),
+        oc * kh * kw * sizeof(T),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     params.workspace = tmp_ptr->ptr();
     // cutlass conv2d_depthwise not support residual

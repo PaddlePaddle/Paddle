@@ -59,10 +59,10 @@ extern "C" void Conv2dBiasSilu(ConvAllParams params);
 extern "C" void Conv2dBias(ConvAllParams params);
 extern "C" void Conv2dBiasSigmoid(ConvAllParams params);
 
-extern "C" void Conv2dDepthwiseBias(const ConvAllParams &params);
-extern "C" void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
-extern "C" void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
-extern "C" void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBias(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasRelu(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasSigmoid(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasSilu(ConvAllParams params);
 
 extern "C" int HelloFromCutlassConv2d(int a, int b);
 

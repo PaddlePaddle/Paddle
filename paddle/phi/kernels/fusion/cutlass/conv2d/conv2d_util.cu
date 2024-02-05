@@ -295,9 +295,8 @@ int ProfileToGetBestConfig(
   }
 
   if (min_time_index < 0) {
-    std::cout << "Can't find any cutlass config for" << OpType2String(op_type)
+    std::cout << "Can't find any cutlass config for " << OpType2String(op_type)
               << std::endl;
-    ;
   }
   return min_time_index;
 }

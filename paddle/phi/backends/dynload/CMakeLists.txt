@@ -14,7 +14,7 @@ list(
   cusparse.cc
   nvtx.cc
   cufft.cc
-  cutlass.cc)
+  cutlass_conv2d.cc)
 
 if(NOT WITH_NV_JETSON)
   list(APPEND CUDA_SRCS nvjpeg.cc)
