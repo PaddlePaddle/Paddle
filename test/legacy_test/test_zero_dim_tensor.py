@@ -166,35 +166,25 @@ class TestUnaryAPI(unittest.TestCase):
                 x = paddle.rand([])
                 x.stop_gradient = False
                 out = api(x)
-                paddle.static.append_backward(out)
+                fetch_list = [x, out]
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=fetch_list
+                )
+                fetch_list.extend(
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(_grad, paddle.pir.Value)
+                    ]
+                )
 
-                if paddle.framework.in_pir_mode():
-                    return
-                    fetch_list = [x, out]
-                    if block.has_var(x.grad_name):
-                        fetch_list.extend([x.grad_name, out.grad_name])
+                # 1) Test Program
+                res = exe.run(main_prog, fetch_list=fetch_list)
+                for item in res:
+                    self.assertEqual(item.shape, ())
 
-                    # 1) Test Program
-                    res = exe.run(main_prog, fetch_list=fetch_list)
-                    for item in res:
-                        self.assertEqual(item.shape, ())
-
-                    # 2) Test CompiledProgram Program
-                    compile_prog = paddle.static.CompiledProgram(main_prog)
-                    res = exe.run(compile_prog, fetch_list=fetch_list)
-                    for item in res:
-                        self.assertEqual(item.shape, ())
-                else:
-                    fetch_list = [x, out]
-                    if block.has_var(x.grad_name):
-                        fetch_list.extend([x.grad_name, out.grad_name])
-
-                    # 1) Test Program
-                    res = exe.run(main_prog, fetch_list=fetch_list)
-                    for item in res:
-                        self.assertEqual(item.shape, ())
-
-                    # 2) Test CompiledProgram Program
+                # 2) Test CompiledProgram Program
+                if not paddle.framework.in_pir_mode():
                     compile_prog = paddle.static.CompiledProgram(main_prog)
                     res = exe.run(compile_prog, fetch_list=fetch_list)
                     for item in res:
