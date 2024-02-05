@@ -20,7 +20,7 @@
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PD_DECLARE_bool(use_cuda_malloc_async_allocator);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
