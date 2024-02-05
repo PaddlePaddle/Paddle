@@ -33,15 +33,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
-#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -76,14 +77,13 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto task = pg->AllReduce(in_tensor, out_tensor, opts);
     task->Wait();
   } else {
-    auto dtype =
-        phi::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = phi::ToNCCLDataType(tensor.dtype());
     int64_t numel = tensor.numel();
     const void *sendbuff = tensor.data<T>();
     auto place = ctx.GetPlace();
     void *recvbuff = tensor.mutable_data<T>(place);
     gpuStream_t stream = nullptr;
-    phi::NCCLComm *comm = nullptr;
+    platform::NCCLComm *comm = nullptr;
     phi::distributed::NCCLCommContext *comm_ctx = nullptr;
 
     const auto &comm_context_manager =
@@ -747,6 +747,34 @@ inline __device__ void zero(T &dst) {  // NOLINT
   dst = tmp.raw;
 }
 
+// WARP_SIZE_ is a macro, so we use WARP_SIZE_ instead.
+template <int WARPS_PER_BLOCK, int WARP_SIZE_ = 32>
+inline __device__ float block_sum(float *red_smem, float sum) {
+  int warp = threadIdx.x / WARP_SIZE_;
+  int lane = threadIdx.x % WARP_SIZE_;
+
+#pragma unroll
+  for (int mask = WARP_SIZE_ / 2; mask >= 1; mask /= 2) {
+    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+  }
+
+  if (lane == 0) {
+    red_smem[warp] = sum;
+  }
+  __syncthreads();
+
+  if (lane < WARPS_PER_BLOCK) {
+    sum = red_smem[lane];
+  }
+
+#pragma unroll
+  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+  }
+
+  return __shfl_sync(uint32_t(-1), sum, 0);
+}
+
 template <typename T,
           int Dh,
           int Dh_MAX,
@@ -762,8 +790,8 @@ __global__ void masked_multihead_attention_kernel(
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
   static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
 
-  constexpr int WARP_SIZE = 32;
-  constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
+  constexpr int WARP_SIZE_ = 32;
+  constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE_;
 
   extern __shared__ char smem_[];
 
@@ -797,7 +825,7 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
-  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE, "");
+  // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE_, "");
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
 
   // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
@@ -917,16 +945,16 @@ __global__ void masked_multihead_attention_kernel(
 
     qk = dot<Qk_vec, Qk_vec>(q, k);
 
-    if (QK_VECS_PER_WARP <= WARP_SIZE) {
+    if (QK_VECS_PER_WARP <= WARP_SIZE_) {
 #pragma unroll
       for (int mask = QK_VECS_PER_WARP / 2; mask >= 1; mask /= 2) {
         qk += __shfl_xor_sync(shfl_mask(QK_VECS_PER_WARP), qk, mask);
       }
     }
   }
-  if (QK_VECS_PER_WARP > WARP_SIZE) {
+  if (QK_VECS_PER_WARP > WARP_SIZE_) {
     constexpr int WARPS_PER_RED =
-        (QK_VECS_PER_WARP + WARP_SIZE - 1) / WARP_SIZE;
+        (QK_VECS_PER_WARP + WARP_SIZE_ - 1) / WARP_SIZE_;
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
   if (tid == 0) {
@@ -967,7 +995,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
-  constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
+  constexpr int K_PER_WARP = WARP_SIZE_ / THREADS_PER_KEY;
 
   T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
@@ -1004,12 +1032,12 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+  for (int mask = WARP_SIZE_ / 2; mask >= THREADS_PER_KEY; mask /= 2) {
     qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
   }
 
-  const int warp = tid / WARP_SIZE;
-  const int lane = tid % WARP_SIZE;
+  const int warp = tid / WARP_SIZE_;
+  const int lane = tid % WARP_SIZE_;
 
   if (lane == 0) {
     red_smem[warp] = qk_max;
@@ -1854,7 +1882,7 @@ class CublasFusedMLP {
     cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     cudaStream_t stream = dev_ctx_.stream();
-    memory::allocation::AllocationPtr workspace = memory::Alloc(
+    phi::Allocator::AllocationPtr workspace = phi::memory_utils::Alloc(
         dev_ctx_.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));

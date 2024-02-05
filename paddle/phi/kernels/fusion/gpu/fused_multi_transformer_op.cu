@@ -1399,4 +1399,4 @@ void FusedMultiTransformerKernel(
 //                    ALL_LAYOUT,
 //                    phi::fusion::FusedMultiTransformerKernel,
 //                    float,
-//                    plat::dtype::float16) {}
+//                    phi::dtype::float16) {}
