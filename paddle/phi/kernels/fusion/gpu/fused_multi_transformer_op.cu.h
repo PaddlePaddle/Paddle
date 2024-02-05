@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -709,33 +710,6 @@ struct Qk_dot<phi::float16, 4> {
 #endif
   }
 };
-
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
-inline __device__ float block_sum(float *red_smem, float sum) {
-  int warp = threadIdx.x / WARP_SIZE;
-  int lane = threadIdx.x % WARP_SIZE;
-
-#pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
-  }
-
-  if (lane == 0) {
-    red_smem[warp] = sum;
-  }
-  __syncthreads();
-
-  if (lane < WARPS_PER_BLOCK) {
-    sum = red_smem[lane];
-  }
-
-#pragma unroll
-  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
-  }
-
-  return __shfl_sync(uint32_t(-1), sum, 0);
-}
 
 inline __device__ void convert_from_float(float &dst, float src) {  // NOLINT
   dst = src;

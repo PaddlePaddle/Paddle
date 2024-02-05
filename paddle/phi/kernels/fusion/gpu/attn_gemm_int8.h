@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 using phi::backends::gpu::GpuLaunchConfig;
 
@@ -186,9 +186,9 @@ class AttnMatmulINT8 {
   int k_;  // k
 
   int compute_bias_;
-  std::vector<std::shared_ptr<CublasLtHelper>> helpers_;
+  std::vector<std::shared_ptr<paddle::operators::CublasLtHelper>> helpers_;
   std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi
