@@ -17,6 +17,7 @@ import functools
 import multiprocessing
 import os
 import re
+import shlex
 import shutil
 import time
 
@@ -146,6 +147,8 @@ class LocalFS(FS):
                 >>> subdirs, files = client.ls_dir("./")
 
         """
+        fs_path = shlex.quote(fs_path)
+
         if not self.is_exist(fs_path):
             return [], []
 
