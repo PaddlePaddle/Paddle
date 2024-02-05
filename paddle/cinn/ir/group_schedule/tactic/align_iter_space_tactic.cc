@@ -35,9 +35,10 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
   }
 
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
-  ir::Expr src_fused_loop = sch->Fuse(loops);
-  ir::Expr src_total_extent = src_fused_loop.As<ir::For>()->extent;
-
+  ir::Expr src_total_extent{1};
+  for (const auto& loop : loops) {
+    src_total_extent = src_total_extent * loop.As<ir::For>()->extent;
+  }
   ir::Expr target_sp_extent{1};
   for (const auto& iter : context_->iter_space_info.sp_space) {
     target_sp_extent = target_sp_extent * std::get<0>(iter);
@@ -60,9 +61,6 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
   }
 
   if (total_extent_eq.has_value() && total_extent_eq.value()) {
-    sch->Split(src_fused_loop,
-               context_->iter_space_info.memory_consistent_order_space);
-    loops = sch->GetLoops(block_id);
     if (need_reorder) {
       sch->Reorder(block_id, context_->iter_space_info.rb_last_order);
     }
@@ -80,6 +78,8 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
           loops.begin() + context_->iter_space_info.sp_space.size());
       sch->Fuse(sp_loops);
     }
+  } else {
+    sch->Fuse(loops);
   }
 }
 

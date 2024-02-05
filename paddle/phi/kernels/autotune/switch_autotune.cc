@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
-PD_DECLARE_bool(use_autotune);
+COMMON_DECLARE_bool(use_autotune);
 
 namespace phi {
 namespace autotune {

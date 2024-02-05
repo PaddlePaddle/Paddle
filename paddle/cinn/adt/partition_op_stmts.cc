@@ -290,7 +290,7 @@ void CleanSmallAnchorGroups(
   });
 }
 
-void UpdataAnchorIndex2AnchorGroup(
+void UpdateAnchorIndex2AnchorGroup(
     const AnchorGroup& igroup_spec,
     std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec) {
   CleanSmallAnchorGroups(igroup_spec, anchor_index2igroup_spec);
@@ -361,7 +361,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
                             opt_anchor_op_stmt.value(),
                             visited_op_stmts,
                             EquationCtx4OpStmt};
-    UpdataAnchorIndex2AnchorGroup(igroup_spec, &anchor_index2igroup_spec);
+    UpdateAnchorIndex2AnchorGroup(igroup_spec, &anchor_index2igroup_spec);
 
     EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
   }

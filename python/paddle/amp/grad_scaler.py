@@ -18,10 +18,10 @@ from enum import Enum
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core
 from paddle.base.data_feeder import check_type
-from paddle.base.dygraph import to_variable
 from paddle.base.framework import _dygraph_tracer, dygraph_only
 from paddle.framework import in_dynamic_mode
 
@@ -130,20 +130,20 @@ class AmpScaler:
             self._decr_count = 0
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-            self._found_inf = to_variable(np.array([0]).astype(np.bool_))
-            self._temp_found_inf_value_false = to_variable(
+            self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
+            self._temp_found_inf_value_false = paddle.to_tensor(
                 np.array([0]).astype(np.bool_)
             )
-            self._temp_found_inf_fp16 = to_variable(
+            self._temp_found_inf_fp16 = paddle.to_tensor(
                 np.array([0]).astype(np.bool_)
             )
-            self._temp_found_inf_bf16 = to_variable(
+            self._temp_found_inf_bf16 = paddle.to_tensor(
                 np.array([0]).astype(np.bool_)
             )
-            self._temp_found_inf_fp32 = to_variable(
+            self._temp_found_inf_fp32 = paddle.to_tensor(
                 np.array([0]).astype(np.bool_)
             )
-            self._scale = to_variable(
+            self._scale = paddle.to_tensor(
                 np.array([self._init_loss_scaling]).astype(np.float32)
             )
             self._cache_founf_inf = None
@@ -438,7 +438,7 @@ class AmpScaler:
             new_init_loss_scaling(int):  The new_init_loss_scaling used to update initial loss scaling factor.s
         """
         self._init_loss_scaling = new_init_loss_scaling
-        self._scale = to_variable(
+        self._scale = paddle.to_tensor(
             np.array([self._init_loss_scaling]).astype(np.float32)
         )
 
@@ -563,7 +563,7 @@ class AmpScaler:
             )
 
         self._init_loss_scaling = state_dict["scale"][0]
-        self._scale = to_variable(
+        self._scale = paddle.to_tensor(
             np.array([self._init_loss_scaling]).astype(np.float32)
         )
         self._incr_ratio = state_dict["incr_ratio"]

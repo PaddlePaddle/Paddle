@@ -56,7 +56,7 @@ class Conv2dAddActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
@@ -136,7 +136,7 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {

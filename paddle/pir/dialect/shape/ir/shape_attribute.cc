@@ -13,8 +13,12 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/op_base.h"
 
 namespace pir::shape {
+
+const char SymbolAttribute::attr_name[] = "sym_shape_str";
 
 symbol::ShapeOrDataDimExprs SymbolAttribute::data() const {
   return storage()->data();
@@ -23,6 +27,15 @@ symbol::ShapeOrDataDimExprs SymbolAttribute::data() const {
 SymbolAttribute SymbolAttribute::get(pir::IrContext* ctx,
                                      const symbol::ShapeOrDataDimExprs& value) {
   return AttributeManager::get<SymbolAttribute>(ctx, value);
+}
+
+void SetShapeAttrForOp(pir::Operation* op,
+                       const symbol::ShapeOrDataDimExprs& shape_data) {
+  std::ostringstream attr_str;
+  attr_str << shape_data;
+  op->set_attribute(
+      SymbolAttribute::attr_name,
+      pir::StrAttribute::get(pir::IrContext::Instance(), attr_str.str()));
 }
 
 }  // namespace pir::shape

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <fstream>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -24,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"
-#include "paddle/utils/flags.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
