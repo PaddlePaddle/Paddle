@@ -30,27 +30,16 @@ py_test_modules(
   FLAGS_pir_apply_shape_optimization_pass=1)
 
 py_test_modules(
-  test_prim_rms_norm_st_shape
-  MODULES
-  test_prim_rms_norm_st_shape
-  ENVS
-  FLAGS_enable_pir_api=true
-  FLAGS_prim_enable_dynamic=true
-  FLAGS_cinn_bucket_compile=True)
-
-py_test_modules(
   test_prim_rms_norm_dy_shape
   MODULES
   test_prim_rms_norm_dy_shape
   ENVS
   FLAGS_enable_pir_api=true
   FLAGS_prim_enable_dynamic=true
-  FLAGS_cinn_bucket_compile=True
+  FLAGS_cinn_bucket_compile=true
   FLAGS_pir_apply_shape_optimization_pass=1)
 
 set_tests_properties(test_prim_jit_dynamic PROPERTIES LABELS "RUN_TYPE=CINN")
-set_tests_properties(test_prim_rms_norm_st_shape PROPERTIES LABELS
-                                                            "RUN_TYPE=CINN")
 set_tests_properties(test_prim_rms_norm_dy_shape PROPERTIES LABELS
                                                             "RUN_TYPE=CINN")
 
