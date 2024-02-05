@@ -37,6 +37,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -233,6 +237,12 @@ void WhileInstruction::ShareDatasToOutputs() {
 }
 
 void WhileInstruction::Run() {
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  paddle::platform::DontClearMKLDNNCache(body_inter_->GetPlace());
+#endif
   ShareInputsToOutputs();
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
