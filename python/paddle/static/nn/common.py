@@ -344,7 +344,7 @@ def instance_norm(
 
     # use fp32 for in parameter
     if dtype == paddle.float16:
-        dtype = paddle.framework.core.VarDesc.VarType.FP32
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -2766,7 +2766,7 @@ def batch_norm(
 
     # use fp32 for bn parameter
     if dtype == paddle.float16 or dtype == paddle.bfloat16:
-        dtype = core.VarDesc.VarType.FP32
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
