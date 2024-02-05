@@ -15,7 +15,6 @@
 #pragma once
 
 #include <memory>
-#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -102,7 +101,8 @@ class DrrRewritePattern : public pir::RewritePattern {
   const std::vector<Constraint> constraints_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
-  std::shared_ptr<const DrrPatternBase> drr_pattern_owner_;
+  // Not used, just for hold it's life cycle.
+  const std::shared_ptr<const DrrPatternBase> drr_pattern_owner_;
 };
 
 }  // namespace drr

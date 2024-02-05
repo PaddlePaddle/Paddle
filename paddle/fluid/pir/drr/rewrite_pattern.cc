@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <queue>
+
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
@@ -539,6 +541,18 @@ void DrrRewritePattern::DeleteSourcePatternOp(
       }
     }
   }
+}
+
+std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
+    pir::IrContext* ir_context,
+    const std::shared_ptr<DrrPatternBase>& drr_pattern) {
+  DrrPatternContext drr_context;
+  drr_pattern->operator()(&drr_context);
+  return std::make_unique<DrrRewritePattern>(drr_pattern->name(),
+                                             drr_context,
+                                             ir_context,
+                                             drr_pattern->benefit(),
+                                             drr_pattern->shared_from_this());
 }
 
 }  // namespace drr
