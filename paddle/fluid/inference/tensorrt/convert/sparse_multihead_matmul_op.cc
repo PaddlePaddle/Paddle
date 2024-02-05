@@ -82,14 +82,14 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
     int hidden_out = weight_dims[2];  // channels_out
     int m = hidden_in;
     int n = three * hidden_out;
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+    auto transpose_weight = [](const float* src, float* dst, int m, int n) {
       for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
           dst[j * m + i] = src[i * n + j];
         }
       }
     };
-    tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+    transpose_weight(weight_data_tmp.data(), weight_data, m, n);
 
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

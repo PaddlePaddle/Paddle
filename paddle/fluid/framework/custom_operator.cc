@@ -45,14 +45,14 @@ limitations under the License. */
 #include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/flags.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {

@@ -53,6 +53,7 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
@@ -65,12 +66,14 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+
+COMMON_DECLARE_bool(set_to_1d);
+COMMON_DECLARE_bool(use_stride_kernel);
+
 
 namespace paddle {
 namespace pybind {
