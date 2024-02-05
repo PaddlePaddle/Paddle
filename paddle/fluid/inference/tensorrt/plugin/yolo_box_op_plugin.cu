@@ -99,21 +99,6 @@ nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(
   return nvinfer1::Dims2(box_num, class_num_);
 }
 
-const char* DataTypeToString(nvinfer1::DataType type) {
-  switch (type) {
-    case nvinfer1::DataType::kFLOAT:
-      return "kFLOAT";
-    case nvinfer1::DataType::kHALF:
-      return "kHALF";
-    case nvinfer1::DataType::kINT8:
-      return "kINT8";
-    case nvinfer1::DataType::kINT32:
-      return "kINT32";
-    default:
-      return "UNKNOWN";
-  }
-}
-
 bool YoloBoxPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
   return ((type == nvinfer1::DataType::kFLOAT ||
