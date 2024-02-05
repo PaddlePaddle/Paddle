@@ -439,41 +439,47 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
   }
 }
 
-std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+std::vector<int64_t> ParseValueShape(const pir::Value& shape,
                                      bool* is_from_tensor) {
   std::vector<int64_t> vec_shape;
-  if (shape_.isa<pir::OpResult>() &&
-      shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (shape.isa<pir::OpResult>() &&
+      shape.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     vec_shape = paddle::dialect::GetInt64Vector(
-        shape_.defining_op()
+        shape.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"));
-  } else if (shape_.isa<pir::OpResult>() &&
-             shape_.defining_op()->isa<paddle::dialect::StackOp>()) {
-    std::vector<pir::Value> inputs = shape_.defining_op()
-                                         ->operand_source(0)
-                                         .defining_op()
-                                         ->operands_source();
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+    auto shape_item = shape.defining_op()
+                          ->dyn_cast<paddle::dialect::FullOp>()
+                          .attribute("value")
+                          .dyn_cast<pir::FloatAttribute>()
+                          .data();
+    vec_shape = {static_cast<int64_t>(shape_item)};
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
       auto tmp = ParseValueShape(item, is_from_tensor);
       vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
     }
-  } else if (shape_.type().isa<pir::VectorType>()) {
-    size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
+  } else if (shape.type().isa<pir::VectorType>()) {
+    size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
-  } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
+  } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
     common::DDim shape_dim =
-        shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+        shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     size_t shape_size = common::product(shape_dim);
     if (common::contain_unknown_dim(shape_dim)) {
       shape_size = 1;
     }
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
-  } else if (shape_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+  } else if (shape.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     common::DDim shape_dim =
-        shape_.type()
+        shape.type()
             .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
             .dims();
     size_t shape_size = common::product(shape_dim);
