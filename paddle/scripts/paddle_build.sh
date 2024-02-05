@@ -4159,7 +4159,7 @@ function main() {
       test)
         parallel_test
         if [ "${WITH_CINN}" == "ON" ] ; then
-        check_coverage
+            check_coverage
         fi
         ;;
       single_test)
