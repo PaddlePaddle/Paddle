@@ -155,6 +155,18 @@ void DecompProgram::check_decomp_outputs(
 
       auto orig_dim = GetValueDims(orig_outs[i]);
       auto decomp_dim = GetValueDims(decomp_outs[i]);
+
+      PADDLE_ENFORCE(
+          orig_dim.size() == decomp_dim.size(),
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin %d-index output rank of shape"
+              "[%s] is not equal to "
+              "decomp output rank of shape[%s] ",
+              op_name,
+              i,
+              orig_dim,
+              decomp_dim));
+
       std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
       if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
         VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
@@ -165,15 +177,20 @@ void DecompProgram::check_decomp_outputs(
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
 
-      PADDLE_ENFORCE(orig_dim == decomp_dim,
-                     paddle::platform::errors::PreconditionNotMet(
-                         "[Prim] For op %s, its origin %d-index output shape "
-                         "[%s] is not equal to "
-                         "decomp output shape [%s] ",
-                         op_name,
-                         i,
-                         orig_dim,
-                         decomp_dim));
+      for (int j = 0; j < orig_dim.size(); j++) {
+        if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
+          PADDLE_ENFORCE(
+              orig_dim[j] == decomp_dim[j],
+              paddle::platform::errors::PreconditionNotMet(
+                  "[Prim] For op %s, its origin %d-index output shape "
+                  "[%s] is not equal to "
+                  "decomp output shape [%s] ",
+                  op_name,
+                  i,
+                  orig_dim,
+                  decomp_dim));
+        }
+      }
     }
   }
   return;
