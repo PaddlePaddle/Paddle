@@ -33,6 +33,7 @@ namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -109,6 +110,18 @@ void FusionOp::Build(pir::Builder& builder,
   argument.output_types = output_types;
 }
 
+void FusionOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Type>& output_types,
+                     const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
 pir::Block* FusionOp::block() {
   pir::Region& region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
@@ -139,6 +152,12 @@ void FusionOp::Print(pir::IrPrinter& printer) {
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
+}
+
+bool ConcatOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
+  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
