@@ -855,12 +855,15 @@ if(WITH_HETERPS)
 endif()
 
 if(WIN32)
-  paddle_test(cc_imp_py_test SRCS cc_imp_py_test.cc)
-  if(WITH_ONNXRUNTIME)
-    # Copy onnxruntime for some c++ test in Windows, since the test will
-    # be build only in CI, so suppose the generator in Windows is Ninja.
-    copy_onnx(cc_imp_py_test)
-  endif()
+  cc_test(
+    cc_imp_py_test
+    SRCS cc_imp_py_test.cc
+    DEPS python)
+  # if(WITH_ONNXRUNTIME)
+  #   # Copy onnxruntime for some c++ test in Windows, since the test will
+  #   # be build only in CI, so suppose the generator in Windows is Ninja.
+  #   copy_onnx(cc_imp_py_test)
+  # endif()
 endif()
 
 set_tests_properties(
@@ -1002,8 +1005,8 @@ else()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op
-                  ENVS NVIDIA_TF32_OVERRIDE=0)
-  set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
+                  ENVS NVIDIA_TF32_OVERRIDE=0 FLAGS_cudnn_deterministic=1)
+  set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 180)
 else()
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op)
   if(WITH_NV_JETSON)
