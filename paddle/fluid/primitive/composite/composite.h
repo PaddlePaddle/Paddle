@@ -843,23 +843,16 @@ Tensor embedding_decomp(const Tensor& x,
     PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
   }
 
-  VLOG(6) << "padding_idx: " << padding_idx << " sparse: " << sparse;
-
-  // int64_t padding_idx_tmp = padding_idx;
-  // if(padding_idx < 0) {
-  //   padding_idx_tmp = weight.dims()[0] + padding_idx;
-  // }
-  // if (padding_idx_tmp < 0 || padding_idx_tmp >= weight.dims()[0]) {
-  //   PADDLE_THROW(phi::errors::OutOfRange("The value of padding_idx is out of
-  //   range."));
-  // }
-
-  // Tensor padding_idx_tensor = full<T>({1, 1}, padding_idx_tmp,
-  // weight.dtype()); auto w = put_along_axis<T>(weight, padding_idx_tensor,
-  // 0.0, 0);
+  const int64_t NoPadding = -1;
+  Tensor weight_tmp = weight;
+  if (padding_idx != NoPadding) {
+    Tensor padding_idx_tensor = full<T>({1, 1}, padding_idx, DataType::INT64);
+    Tensor zeros = full<T>({1, weight.dims()[1]}, 0.0, weight.dtype());
+    weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
+  }
 
   if (x.dims().size() <= 1) {
-    auto out = gather<T>(weight, x);
+    auto out = gather<T>(weight_tmp, x);
     if (x.dims().size() == 0) {
       out = std::get<0>(squeeze_decomp<T>(out, {0}));
     }
@@ -867,7 +860,7 @@ Tensor embedding_decomp(const Tensor& x,
   } else {
     std::vector<int64_t> tar_shape{-1, 1};
     auto x_reshape = reshape<T>(x, tar_shape);
-    auto out = gather<T>(weight, x_reshape);
+    auto out = gather<T>(weight_tmp, x_reshape);
 
     auto res_dims = common::vectorize<int64_t>(x.dims());
     res_dims.push_back(-1);

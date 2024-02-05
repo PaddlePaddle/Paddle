@@ -82,6 +82,8 @@ class TestPrimOne(unittest.TestCase):
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
         res = self.base_net("prim")
+        # print(res_ref)
+        # print(res)
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
@@ -121,11 +123,9 @@ class TestPrimOne3(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "int"
-        self.shape_x = [3, 2]
+        self.shape_x = [3, 1]
         # self.x = np.random.random(self.shape_x).astype(self.dtype)
-        self.x = np.array([[3, 4, 1], [2, 0, 4]], dtype=int).reshape(
-            self.shape_x
-        )
+        self.x = np.array([[3, 4, 0]], dtype=int).reshape(self.shape_x)
         self.net = embedding_net
         self.necessary_ops = "pd_op.embedding"
         self.enable_cinn = False
