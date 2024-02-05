@@ -836,12 +836,6 @@ class LlamaForCausalLMAuto(nn.Layer):
     def __init__(self, config):
         super().__init__()
         self.config = config
-
-        # with paddle.LazyGuard():
-        #    self.llama = LlamaModelAuto(config)
-        #    self.lm_head = LlamaLMHeadAuto(config)
-        #    self.criterion = LlamaPretrainingCriterionAuto(config)
-
         self.llama = LlamaModelAuto(config)
         self.lm_head = LlamaLMHeadAuto(config)
         # self.criterion = LlamaPretrainingCriterionAuto(config)
