@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/utils/any.h"

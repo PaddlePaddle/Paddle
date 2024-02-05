@@ -122,7 +122,7 @@ fused_feedforward_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAMPState(),
           paddle::imperative::AmpLevel::O0);
       return fused_feedforward_dygraph_function(NEW_X,
                                                 NEW_Dropout1Seed,

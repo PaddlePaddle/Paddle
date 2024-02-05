@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -56,8 +56,8 @@ def softmax_mask_fuse(x, mask, name=None):
             >>> rst.shape
             [2, 8, 8, 32]
     """
-    if in_dynamic_mode():
-        out = _legacy_C_ops.fused_softmax_mask(x, mask)
+    if in_dynamic_or_pir_mode():
+        out = _C_ops.fused_softmax_mask(x, mask)
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

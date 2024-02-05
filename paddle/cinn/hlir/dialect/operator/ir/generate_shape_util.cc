@@ -608,11 +608,11 @@ bool MakeGenerateShapeOpAttribute(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<symbol::DimExpr>& out_dim_exprs,
     const std::vector<pir::Value>& origin_inputs,
-    std::vector<pir::Value>* minial_inputs,
+    std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings) {
-  *minial_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
-  if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minial_inputs)) {
+  *minimal_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
+  if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minimal_inputs)) {
     VLOG(4) << "input dim_exprs are not as simple as symbols, please make sure "
                "they are handled by other passes";
     return false;
@@ -624,7 +624,7 @@ bool MakeGenerateShapeOpAttribute(
   std::set<std::string> symbol_names_in_out_dim_exprs{};
   CollectSymbolNames(out_dim_exprs, &symbol_names_in_out_dim_exprs);
   GenerateSymbolBindings(ShapeOrDataDimExprs4Value,
-                         *minial_inputs,
+                         *minimal_inputs,
                          symbol_names_in_out_dim_exprs,
                          /*out*/ symbol_bindings);
   return true;

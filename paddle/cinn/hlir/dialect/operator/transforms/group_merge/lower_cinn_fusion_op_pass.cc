@@ -40,7 +40,7 @@
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -128,12 +128,14 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
       auto broadcast_out = broadcast.result(0);
       auto expand_out = op->result(0);
       expand_out.ReplaceAllUsesWith(broadcast_out);
-      group->value_to_shape_or_data_exprs.emplace(
-          broadcast_out, group->GetShapeOrDataExprs(expand_out));
+      group->SetShapeOrDataExprs(broadcast_out,
+                                 group->GetShapeOrDataExprs(expand_out));
       CHECK(op->use_empty());
       auto generate_shape_op = op->operand_source(1).defining_op();
       op->Erase();
-      generate_shape_op->Erase();
+      if (generate_shape_op->use_empty()) {
+        generate_shape_op->Erase();
+      }
     }
   }
 }
@@ -172,7 +174,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     return shape_analysis.GetShapeOrDataForValue(value);
   };
 
-  std::vector<pir::Value> lhs_minial_inputs;
+  std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
@@ -180,11 +182,11 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {lhs_expr},
                                                   group_inputs,
-                                                  &lhs_minial_inputs,
+                                                  &lhs_minimal_inputs,
                                                   &lhs_output_dim_expr_attrs,
                                                   &lhs_symbol_bindings);
   CHECK(success);
-  std::vector<pir::Value> rhs_minial_inputs;
+  std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
   cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
@@ -192,20 +194,22 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   ShapeOrDataDimExprs4Value,
                                                   {rhs_expr},
                                                   group_inputs,
-                                                  &rhs_minial_inputs,
+                                                  &rhs_minimal_inputs,
                                                   &rhs_output_dim_expr_attrs,
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
   auto lhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              lhs_minial_inputs, lhs_output_dim_expr_attrs, lhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
+                                                 lhs_output_dim_expr_attrs,
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
-          .Build<cinn::dialect::GenerateShapeOp>(
-              rhs_minial_inputs, rhs_output_dim_expr_attrs, rhs_symbol_bindings)
+          .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
+                                                 rhs_output_dim_expr_attrs,
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder
@@ -240,13 +244,13 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
               std::vector<symbol::DimExpr>{shape_dim_expr.size()},
               shape_dim_expr)});
     } else {
-      new_group->value_to_shape_or_data_exprs.emplace(
+      new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(shape_dim_expr)});
@@ -639,8 +643,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    group->value_to_shape_or_data_exprs =
-        CreateGroupShapeOrDataExprs(group, shape_analysis);
+    group->set_value_to_shape_or_data_exprs(
+        CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }

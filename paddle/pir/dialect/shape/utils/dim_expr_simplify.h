@@ -20,4 +20,4 @@ namespace symbol {
 
 IR_API DimExpr SimplifyDimExpr(const DimExpr& dim_expr);
 
-}
+}  // namespace symbol
