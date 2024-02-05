@@ -63,11 +63,14 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
     }
     if (context_->iter_space_info.sp_space.size() < loops.size() - 1) {
       loops = sch->GetLoops(block_id);
+
+      // Find the reduce loops in the current Block
       std::vector<ir::Expr> rb_loops(
           loops.end() - context_->iter_space_info.rb_space.size(), loops.end());
       sch->Fuse(rb_loops);
     }
     if (context_->iter_space_info.sp_space.size() > 1) {
+      // Find the spatial loops in the current Block
       loops = sch->GetLoops(block_id);
       std::vector<ir::Expr> sp_loops(
           loops.begin(),
