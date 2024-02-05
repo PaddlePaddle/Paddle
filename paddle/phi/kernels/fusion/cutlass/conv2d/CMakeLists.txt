@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.23)
-set(PYTHON_EXECUTABLE python)
+#set(PYTHON_EXECUTABLE python)
+
+if(NOT DEFINED PYTHON_EXECUTABLE)
+  message(
+    FATAL_ERROR
+      "please set PYTHON_EXECUTABLE with -DPYTHON_EXECUTABLE=python executable path"
+  )
+endif()
+
+if(NOT DEFINED COMPUTE_CAPABILITY)
+  message(
+    FATAL_ERROR
+      "please set COMPUTE_CAPABILITY with -DCOMPUTE_CAPABILITY=your gpu compute capability"
+  )
+endif()
 
 #project (Demo1)
 #message(${CMAKE_CURRENT_SOURCE_DIR})
@@ -21,10 +35,11 @@ execute_process(
 
 find_package(CUDA)
 
-set(CUDA_NVCC_FLAGS -gencode arch=compute_75,code=sm_75;)
+set(CUDA_NVCC_FLAGS
+    -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)
-file(GLOB all_cu "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
-list(APPEND all_cu "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_util.cu")
+file(GLOB all_cutlass_conv2d_cu
+     "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
+list(APPEND all_cutlass_conv2d_cu "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_util.cu")
 
-#message(${all_cu})
-cuda_add_library(CutlassConv2d SHARED ${all_cu})
+cuda_add_library(CutlassConv2d SHARED ${all_cutlass_conv2d_cu})

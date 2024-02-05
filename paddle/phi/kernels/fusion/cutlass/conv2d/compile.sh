@@ -14,4 +14,6 @@
 set -e
 #git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
 
-mkdir build && cd build && cmake .. && make -j && cd -
+mkdir build && cd build 
+cmake .. -DPYTHON_EXECUTABLE=python -DCOMPUTE_CAPABILITY=75 && make -j 
+cd -

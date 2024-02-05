@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
-sys.path.append("../")
-sys.path.append("../..")
+dirname, filename = os.path.split(os.path.abspath(sys.argv[0]))
+sys.path.append(dirname + "/../")
 from util import SubstituteTemplate
 
 # For beginners, these template parameters may be difficult to understand.
