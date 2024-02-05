@@ -57,6 +57,7 @@
 #include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
@@ -132,6 +133,7 @@ using pybind11::return_value_policy;
 
 USE_PIR_PASS(dead_code_elimination_pass);
 USE_PIR_PASS(multihead_matmul_fuse_pass);
+USE_PIR_PASS(transpose_flatten_concat_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
 USE_PIR_PASS(fused_weight_only_linear_pass);
