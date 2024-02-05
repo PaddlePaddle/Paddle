@@ -3384,6 +3384,31 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void SwiGLUInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     MetaTensor* out) {
+  if (y) {
+    PADDLE_ENFORCE_EQ(
+        x.dims(),
+        y.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of Input(X) should be equal of the shape of Input(Y)."));
+    out->share_meta(x);
+  } else {
+    auto dims = x.dims();
+    PADDLE_ENFORCE_EQ(
+        dims[dims.size() - 1] % 2,
+        0,
+        phi::errors::InvalidArgument(
+            "The last dim of Input(X) should be exactly divided by 2."));
+    dims[dims.size() - 1] /= 2;
+    out->set_dims(dims);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+    out->share_lod(x);
+  }
+}
+
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,
                      const std::vector<int>& ksize,
