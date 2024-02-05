@@ -22,7 +22,7 @@ from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.decomposition import decompose
 
-# paddle.enable_static()
+paddle.enable_static()
 
 
 class TestPrimMode(unittest.TestCase):
@@ -264,49 +264,5 @@ class TestHardSwishSink(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
 
-def embedding_test():
-    np.random.seed(2023)
-    shape_x = [3, 1]
-    x = np.array([[3, 4, -1]], dtype=int).reshape(shape_x)
-    x = paddle.to_tensor(x)
-
-    x_out = paddle.less_than(x, 0)
-    print(x_out)
-    any_out = paddle.any(x_out)
-
-    print(any_out)
-
-    # w = np.array(
-    #     [
-    #         [0, 1, 2],
-    #         [3, 4, 5],
-    #         [6, 7, 8],
-    #         [9, 10, 11],
-    #         [12, 13, 14],
-    #         [15, 16, 17],
-    #         [18, 19, 20],
-    #         [21, 22, 23],
-    #         [24, 25, 26],
-    #         [27, 28, 29],
-    #     ],
-    #     dtype=np.float32,
-    # )
-    # w = paddle.to_tensor(w)
-
-    # index = paddle.to_tensor([[2]])
-    # print(index.shape)
-
-    # w = paddle.put_along_axis(w, index, 0.0, axis=0)
-    # print(w)
-
-    # x = x.reshape([-1, 1])
-    # print(x.shape)
-
-    # out = paddle.gather(w, x)
-    # out = out.reshape([3, 1, -1])
-    # print(out)
-
-
 if __name__ == "__main__":
-    # unittest.main()
-    embedding_test()
+    unittest.main()

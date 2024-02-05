@@ -41,6 +41,26 @@ def any_net(x):
     return paddle.any(x)
 
 
+def embedding_net(x):
+    w = np.array(
+        [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [9, 10, 11],
+            [12, 13, 14],
+            [15, 16, 17],
+            [18, 19, 20],
+            [21, 22, 23],
+            [24, 25, 26],
+            [27, 28, 29],
+        ],
+        dtype=np.float32,
+    )
+    w = paddle.to_tensor(w)
+    return F.embedding(x, w, padding_idx=1)
+
+
 class TestPrimOne(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -82,8 +102,6 @@ class TestPrimOne(unittest.TestCase):
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
         res = self.base_net("prim")
-        # print(res_ref)
-        # print(res)
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
@@ -99,33 +117,12 @@ class TestPrimOne2(TestPrimOne):
         self.enable_cinn = False
 
 
-def embedding_net(x):
-    w = np.array(
-        [
-            [0, 1, 2],
-            [3, 4, 5],
-            [6, 7, 8],
-            [9, 10, 11],
-            [12, 13, 14],
-            [15, 16, 17],
-            [18, 19, 20],
-            [21, 22, 23],
-            [24, 25, 26],
-            [27, 28, 29],
-        ],
-        dtype=np.float32,
-    )
-    w = paddle.to_tensor(w)
-    return F.embedding(x, w, padding_idx=0)
-
-
 class TestPrimOne3(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "int"
-        self.shape_x = [3, 1]
-        # self.x = np.random.random(self.shape_x).astype(self.dtype)
-        self.x = np.array([[3, 4, 0]], dtype=int).reshape(self.shape_x)
+        self.shape_x = [1, 300, 4096]
+        self.x = np.random.randint(0, 10, size=self.shape_x)
         self.net = embedding_net
         self.necessary_ops = "pd_op.embedding"
         self.enable_cinn = False

@@ -846,8 +846,10 @@ Tensor embedding_decomp(const Tensor& x,
   const int64_t NoPadding = -1;
   Tensor weight_tmp = weight;
   if (padding_idx != NoPadding) {
-    Tensor padding_idx_tensor = full<T>({1, 1}, padding_idx, DataType::INT64);
-    Tensor zeros = full<T>({1, weight.dims()[1]}, 0.0, weight.dtype());
+    std::vector<int64_t> put_shape{1, weight.dims()[1]};
+    Tensor padding_idx_tensor =
+        full<T>(put_shape, padding_idx, DataType::INT64);
+    Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
     weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
   }
 
