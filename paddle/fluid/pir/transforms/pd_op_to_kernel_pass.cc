@@ -1834,8 +1834,8 @@ std::vector<pir::Type> BuildOutputs(
   std::vector<pir::Type> op_output_types;
   pir::AttributeMap attribute_map = op_item->attributes();
 
-  auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
-      kernel_fn_str, kernel_key);
+  auto phi_kernel =
+      phi::KernelFactory::Instance().SelectKernel(kernel_fn_str, kernel_key);
   VLOG(6) << "[" << kernel_fn_str
           << "] selected kernel(is_valid: " << phi_kernel.IsValid()
           << " ): " << kernel_key;
@@ -2486,7 +2486,6 @@ void ProcessBlock(
       target_op_name.replace(0, 5, "onednn_op");
       auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
       if (op_info) {
-        std::cout << "lalalala trans to " << target_op_name << std::endl;
         std::vector<pir::Type> op_item_inner_output_types;
         if (op_item->num_results() > 0) {
           for (size_t i = 0; i < op_item->num_results(); ++i) {
