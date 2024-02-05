@@ -38,9 +38,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "To find this error in time, we use init_allocated_mem to indicate "
     "that initializing the allocated memory with a small value "
     "during unit testing.");
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PD_DECLARE_bool(benchmark);
 
 namespace paddle {

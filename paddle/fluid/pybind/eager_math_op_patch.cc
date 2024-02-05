@@ -354,8 +354,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor_ref);
+    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
+      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;

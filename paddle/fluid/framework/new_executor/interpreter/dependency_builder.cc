@@ -39,7 +39,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             false,
                             "Enable sequential execution for standalone "
                             "executor, only applied to GPU OPs.");
-PHI_DECLARE_int32(enable_adjust_op_order);
+COMMON_DECLARE_int32(enable_adjust_op_order);
 // add debug info
 PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
                             false,
@@ -565,6 +565,40 @@ PirDependencyBuilder::PirDependencyBuilder() {
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
 
+void PirDependencyBuilder::AddDependencyForCommunicationOp() {
+  size_t dependence_op_idx = ULLONG_MAX;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (instructions_.at(op_idx)->Operation() &&
+        IsCommunicationOp(instructions_.at(op_idx)->Operation())) {
+      if (dependence_op_idx != ULLONG_MAX) {
+        AddDownstreamOp(dependence_op_idx, op_idx);
+      }
+      dependence_op_idx = op_idx;
+    }
+  }
+
+  // TODO(zhiqiu): there still some cases not handled
+  // add dependency for c_sync_comm_stream
+
+  // in program, we can add only one c_sync_comm_stream to sync all
+  // communication ops.
+  // c_allreduce_sum(a)
+  // c_allreduce_sum(b)
+  // c_allreduce_sum(c)
+  // c_sync_comm_stream(a)
+  const std::string kSyncComm = dialect::CSyncCommStreamOp::name();
+  dependence_op_idx = ULLONG_MAX;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (instructions_.at(op_idx)->Name() == kSyncComm) {
+      dependence_op_idx = op_idx;
+    } else {
+      if (dependence_op_idx != ULLONG_MAX) {
+        AddDownstreamOp(dependence_op_idx, op_idx);
+      }
+    }
+  }
+}
+
 void PirDependencyBuilder::AddDependencyForRandomOp() {
   const std::set<std::string> random_op_set = {
       dialect::BernoulliOp::name(),
@@ -614,6 +648,11 @@ const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
 
   if (FLAGS_new_executor_sequential_run) {
     AddDependencyForSequentialRun();
+  }
+
+  if (FLAGS_add_dependency_for_communication_op) {
+    AddDependencyForCommunicationOp();
+    VLOG(6) << "Finish AddDependencyForSequentialRun";
   }
 
   // TODO(zhangbo): Add dependency for special op ？

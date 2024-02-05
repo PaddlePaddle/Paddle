@@ -62,18 +62,18 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -1350,6 +1350,16 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager__is_run_in_backward(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+
+  return ToPyObject(egr::Controller::Instance().GetIsInBackward());
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
@@ -1421,6 +1431,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_is_run_in_backward",
+     (PyCFunction)(void (*)())eager__is_run_in_backward,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 /**sparse functions**/

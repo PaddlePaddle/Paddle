@@ -986,7 +986,7 @@ function check_run_sot_ci() {
 function run_sot_test() {
     PY_VERSION=$1
     PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
-    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+    PY_VERSION_NO_DOT=$(echo $PY_VERSION | sed 's/\.//g')
 
     export STRICT_MODE=1
     export COST_MODEL=False
@@ -1002,10 +1002,28 @@ function run_sot_test() {
     # Run unittest
     failed_tests=()
 
+    # Skip single tests that are currently not supported
+    declare -a skip_files
+    skiplist_filename="./skip_files_py$PY_VERSION_NO_DOT"
+    if [ -f "$skiplist_filename" ];then
+        # Prevent missing lines
+        echo "" >> "$skiplist_filename"
+        while IFS= read -r line; do  
+            skip_files+=("$line")
+            echo "$line"
+        done < "$skiplist_filename"
+    else
+        skip_files=()
+    fi
+
     for file in ./test_*.py; do
         # check file is python file
         if [ -f "$file" ]; then
-            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            if [[ "${skip_files[*]}"  =~ "${file}" ]]; then
+                echo "skip ${PY_VERSION_NO_DOT} ${file}"
+                continue
+            fi
+            echo Running:" STRICT_MODE=1 COST_MODEL=False MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True python " $file
             # run unittests
             python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
 
@@ -3342,21 +3360,10 @@ function distribute_test() {
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
-    # Disable Test: test_gradio
     cd ${work_dir}/PaddleNLP
-    pids=()
-    env CUDA_VISIBLE_DEVICES=0,1 python -m pytest -s -v tests/llm/test_finetune.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=2,3 python -m pytest -s -v tests/llm/test_lora.py tests/llm/test_predictor.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=4,5 python -m pytest -s -v tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=6,7 python -m pytest -s -v tests/llm/test_ptq.py tests/llm/testing_utils.py &
-    pids+=($!)
-
-    for pid in "${pids[@]}"; do
-      wait $pid
-    done
+    # Disable Test: test_gradio
+    rm tests/llm/test_gradio.py
+    python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
@@ -4137,6 +4144,7 @@ function main() {
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
+        export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         build_pr_and_develop
         check_sequence_op_unittest
         ;;
@@ -4262,7 +4270,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
-        export ON_INFER=ON
+        export ON_INFER=ON PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_added_ut
@@ -4322,6 +4330,7 @@ function main() {
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
+        export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         gen_fluid_lib_by_setup ${parallel_number}
         ;;
       gpu_inference)
@@ -4362,15 +4371,12 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11 3.12)
+        PYTHON_VERSIONS=(3.12 3.8 3.9 3.10 3.11)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
             run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-            # Currently, only compile on Python 3.12
-            if [ "${PY_VERSION}" != "3.12" ]; then
-                run_sot_test $PY_VERSION
-            fi
+            run_sot_test $PY_VERSION
             rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
         done
         ;;

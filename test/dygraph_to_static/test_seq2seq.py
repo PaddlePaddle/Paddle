@@ -52,8 +52,7 @@ def prepare_input(batch):
 
 def train(args, attn_model=False):
     with base.dygraph.guard(place):
-        paddle.static.default_startup_program().random_seed = 2020
-        paddle.static.default_main_program().random_seed = 2020
+        paddle.seed(2020)
 
         if attn_model:
             model = paddle.jit.to_static(

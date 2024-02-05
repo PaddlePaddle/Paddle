@@ -94,9 +94,6 @@ std::shared_ptr<::pir::Program> BuildNoOpSupportCinnGraph() {
       builder.Build<paddle::dialect::HardswishOp>(ones_op_x->result(0));
   auto square_op_y =
       builder.Build<paddle::dialect::SquareOp>(hardswish_op_y->result(0));
-  auto unsqueeze_op_x =
-      builder.Build<paddle::dialect::UnsqueezeOp>(square_op_y->result(0), axis);
-
   return program;
 }
 
@@ -110,15 +107,11 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
   CHECK_EQ(pm.Run(origin_program.get()), true);
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 5u);  // Because of `FullIntArrayOp`
+  CHECK_EQ(origin_program->block()->size(), 3u);  // Because of `FullIntArrayOp`
 
-  std::vector<std::string> op_names = {
-      paddle::dialect::OnesOp::name(),
-      paddle::dialect::HardswishOp::name(),
-      paddle::dialect::SquareOp::name(),
-      paddle::dialect::FullIntArrayOp::name(),
-      paddle::dialect::UnsqueezeOp::name(),
-  };
+  std::vector<std::string> op_names = {paddle::dialect::OnesOp::name(),
+                                       paddle::dialect::HardswishOp::name(),
+                                       paddle::dialect::SquareOp::name()};
   int index = 0;
   for (auto& op : *origin_program->block()) {
     CHECK_EQ(op.name(), op_names[index++]);
@@ -216,7 +209,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   CHECK_EQ(pm.Run(origin_program.get()), true);
   LOG(INFO) << "after pass: " << *origin_program;
 
-  CHECK_EQ(origin_program->block()->size(), 6u);
+  CHECK_EQ(origin_program->block()->size(), 5u);
   pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
@@ -234,9 +227,10 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   group_op = &origin_program->block()->back();
   group_block = group_op->dyn_cast<cinn::dialect::GroupOp>().block();
-  CHECK_EQ(group_block->size(), 2u);
+  CHECK_EQ(group_block->size(), 3u);
 
   std::vector<std::string> op_names_back = {
+      paddle::dialect::UnsqueezeOp::name(),
       paddle::dialect::ReluOp::name(),
       pir::YieldOp::name(),
   };

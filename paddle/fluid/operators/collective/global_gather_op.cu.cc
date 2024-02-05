@@ -19,11 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace operators {

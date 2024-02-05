@@ -909,6 +909,7 @@
     func : expand
     data_type : x
   backward : expand_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
@@ -1201,6 +1202,26 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+
+- op : graph_khop_sampler
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
+  output : Tensor(out_src), Tensor(out_dst), Tensor(sample_index), Tensor(reindex_x), Tensor(out_eids)
+  infer_meta :
+    func : GraphKhopSamplerInferMeta
+  kernel :
+    func : graph_khop_sampler
+    data_type : row
+  optional : eids
+
+- op : graph_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
+  output : Tensor(out), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : GraphSampleNeighborsInferMeta
+  kernel :
+    func : graph_sample_neighbors
+    data_type : row
+  optional : eids, perm_buffer
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
@@ -2995,6 +3016,7 @@
     func : where
   inplace: (x -> out)
   backward : where_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors={}, int class_num = 1, float conf_thresh = 0.01, int downsample_ratio = 32, bool clip_bbox = true, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)

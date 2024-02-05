@@ -33,8 +33,8 @@ TEST(Convert, AddExpr) {
       ir::Add::Make(ir::Expr(std::int64_t(4)), ir::Expr(std::int64_t(5)));
   ir::Expr dst_expr =
       ir::Add::Make(expr1,
-                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
-                                    ir::Expr(INT64_MAX),
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
                                     "sym_0",
                                     /* is_reduce  = */ false,
                                     /* is_symbolic_constant = */ true));
@@ -47,8 +47,8 @@ TEST(Convert, SubExpr) {
 
   ir::Expr expr1 =
       ir::Sub::Make(ir::Expr(std::int64_t(0)),
-                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
-                                    ir::Expr(INT64_MAX),
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
                                     "sym_0",
                                     /* is_reduce  = */ false,
                                     /* is_symbolic_constant = */ true));
@@ -65,8 +65,8 @@ TEST(Convert, MulExpr) {
       ir::Mul::Make(ir::Expr(std::int64_t(4)), ir::Expr(std::int64_t(5)));
   ir::Expr dst_expr =
       ir::Mul::Make(expr1,
-                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
-                                    ir::Expr(INT64_MAX),
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
                                     "sym_0",
                                     /* is_reduce  = */ false,
                                     /* is_symbolic_constant = */ true));
