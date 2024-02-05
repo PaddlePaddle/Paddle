@@ -2710,7 +2710,11 @@ bool AnalysisPredictor::LoadParameters() {
 }
 
 uint64_t AnalysisPredictor::TryShrinkMemory() {
-  ClearIntermediateTensor();
+#ifdef PADDLE_WITH_CUDA
+  if (config_.use_gpu()) {
+    paddle::platform::EmptyCache();
+  }
+#endif
   return paddle::memory::Release(place_);
 }
 
