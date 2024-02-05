@@ -28,7 +28,6 @@ class IrContext;
 namespace paddle {
 namespace drr {
 
-class DrrRewritePattern;
 class DrrPatternContext;
 
 class DrrPatternBase {

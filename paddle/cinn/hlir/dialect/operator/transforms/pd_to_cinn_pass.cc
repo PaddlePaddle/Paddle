@@ -125,7 +125,7 @@ class ProdOpPattern : public paddle::drr::DrrPatternBase {
                     {"place", pattern.Attr("place_2")}});
 
     const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
-                                    {{"keepdim", pattern.Attr("keep_dim")}});
+                                    {{"keep_dim", pattern.Attr("keep_dim")}});
     pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns

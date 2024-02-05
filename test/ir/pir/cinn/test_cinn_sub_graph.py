@@ -140,6 +140,8 @@ class TestCinnSubGraphBase(unittest.TestCase):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
+
+class TestCinnExpSubNet(TestCinnSubGraphBase):
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
@@ -148,7 +150,6 @@ class TestCinnSubGraphBase(unittest.TestCase):
         out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
-
         return out
 
     # def test_eval(self):
@@ -198,8 +199,8 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
         # return out, self.x.gradient(), None, None
         return out, self.x.gradient(), weight.gradient(), bias.gradient()
 
-    def test_forward(self):
-        cinn_out, cinn_x_grad, cinn_w_grad, cinn_b_grad = self.train(
+    def test_train(self):
+         cinn_out, cinn_x_grad, cinn_w_grad, cinn_b_grad = self.train(
             use_cinn=True
         )
         dy_out, dy_x_grad, dy_w_grad, dy_b_grad = self.train(use_cinn=False)
@@ -238,6 +239,64 @@ class TestCinnLayerNorm(TestCinnSubGraphBase):
 #         net = CINNDropoutSubGraphNet()
 #         net = utils.apply_to_static(net, use_cinn)
 #         out = net(self.x)
+class TestCinnLayerNorm(TestCinnSubGraphBase):
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNLayerNormSubGraphNet(self.shape[-1])
+        net = utils.apply_to_static(net, use_cinn)
+        net.eval()
+        weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+        bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+        out = net(self.x, weight, bias)
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        # TODO(Aurelius84): Apply assert_allclose logic,
+        # but need figure out why atol only satisfy 1e-7
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-7)
+
+
+class TestAddDropoutLayerNorm(TestCinnSubGraphBase):
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNAddDropoutLayerNormSubGraphNet(self.shape[-1])
+        net = utils.apply_to_static(net, use_cinn)
+        net.eval()
+        weight = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+        bias = paddle.ones(shape=[self.shape[-1]], dtype="float32")
+        out = net(self.x, self.x, weight, bias)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-8, rtol=1e-4
+        )
+
+
+class TestCinnDropout(TestCinnSubGraphBase):
+    def train(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNDropoutSubGraphNet()
+        net = utils.apply_to_static(net, use_cinn)
+        out = net(self.x)
+
+        loss = out.mean()
+        loss.backward()
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
+        return out
+
+    def test_train(self):
+        cinn_out = self.train(use_cinn=True)
+        dy_out = self.train(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 #         loss = out.mean()
 #         loss.backward()

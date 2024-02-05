@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
@@ -70,6 +71,7 @@ static void RunAndCheckResult(::pir::Program* program,
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.EnableIRPrinting();
 
@@ -1012,14 +1014,6 @@ static void RunAndCheckResult(::pir::Program* program,
 // }
 
 std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  auto program = std::make_shared<::pir::Program>(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-
-  // full -> softmax(max -> subtract -> exp -> sum -> divide)
-  const float value_one = 1.0;
   const std::vector<int64_t> shape = {3, 4, 5};
   auto x =
       builder

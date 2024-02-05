@@ -173,11 +173,11 @@ void gather_grad(const Tensor& x,
   }
   // scatter grad to grad_x
   auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_tranposed = tmp_grad_x;
+  auto tmp_grad_x_transposed = tmp_grad_x;
   if (tmp_grad_x.dims().size() > 0) {
-    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+    tmp_grad_x_transposed = transpose<T>(tmp_grad_x, reverse_perm);
   }
-  set_output<T>(tmp_grad_x_tranposed, grad_x);
+  set_output<T>(tmp_grad_x_transposed, grad_x);
 }
 
 template <typename T>

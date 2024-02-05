@@ -21,15 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
- public:
-  RemoveUnchangedReshapePass();
-
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-};
-
+std::unique_ptr<pir::Pass> CreateRemoveUnchangedReshapePass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

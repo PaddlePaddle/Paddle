@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/common/data_type.h"
@@ -31,7 +32,6 @@
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -417,7 +417,7 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
-  if (op_name == "generate_shape") {
+  if (op_name == "generate_shape" || op_name == "store") {
     return hlir::framework::kNonFusible;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);

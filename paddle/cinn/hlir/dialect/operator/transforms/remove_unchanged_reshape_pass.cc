@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -38,7 +39,7 @@ class RemoveUnchangedReshapePattern
   using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
 
   bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
-                       pir::PatternRewriter& rewriter) const override {
+                       pir::PatternRewriter &rewriter) const override {
     auto in_dim = op->operand_source(0)
                       .type()
                       .dyn_cast<paddle::dialect::DenseTensorType>()
@@ -47,11 +48,6 @@ class RemoveUnchangedReshapePattern
                        .type()
                        .dyn_cast<paddle::dialect::DenseTensorType>()
                        .dims();
-
-    auto reshape_op = op->operand_source(0)
-                          .dyn_cast<pir::OpResult>()
-                          .owner()
-                          ->dyn_cast<cinn::dialect::ReshapeOp>();
 
     if (in_dim == out_dim) {
       rewriter.ReplaceAllUsesWith(op->result(0), op->operand_source(0));
@@ -63,23 +59,32 @@ class RemoveUnchangedReshapePattern
   }
 };
 
-RemoveUnchangedReshapePass::RemoveUnchangedReshapePass()
-    : pir::PatternRewritePass("remove_unchanged_reshape_pass", 1) {}
+class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
+ public:
+  RemoveUnchangedReshapePass()
+      : pir::PatternRewritePass("remove_unchanged_reshape_pass", 1) {}
 
-pir::RewritePatternSet RemoveUnchangedReshapePass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
 
-  // remove out_shape equal in_shape reshape op
-  ps.Add<RemoveUnchangedReshapePattern>(context);
+    // remove out_shape equal in_shape reshape op
+    ps.Add<RemoveUnchangedReshapePattern>(context);
 
-  return ps;
-}
+    return ps;
+  }
 
-bool RemoveUnchangedReshapePass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation *op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateRemoveUnchangedReshapePass() {
+  return std::make_unique<RemoveUnchangedReshapePass>();
 }
 
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
+
+REGISTER_IR_PASS(remove_unchanged_reshape_pass,
+                 ::cinn::dialect::ir::RemoveUnchangedReshapePass);
