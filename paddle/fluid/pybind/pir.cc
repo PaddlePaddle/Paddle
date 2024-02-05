@@ -79,7 +79,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
@@ -154,9 +154,9 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(batch_norm_act_fuse_pass);
 #endif
 
-PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_bool(pir_apply_shape_optimization_pass);
-PHI_DECLARE_bool(check_infer_symbolic);
+COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(check_infer_symbolic);
 
 namespace paddle {
 namespace pybind {
