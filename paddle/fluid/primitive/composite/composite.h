@@ -869,6 +869,25 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
   return out;
 }
 
+template <typename T>
+Tensor mean_all_decomp(const Tensor& x) {
+  auto numel = x.numel();
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  auto ans = sum<T>(x) / numel;
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
