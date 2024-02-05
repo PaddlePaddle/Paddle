@@ -845,6 +845,7 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
   auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
   Tensor t1;
   if (find_value(shape1, -1)) {
+    size_t repeat_time_length = repeat_times_.size();
     std::vector<int64_t> unsqueeze_idx2;
     if (diff > 0) {
       std::vector<int64_t> unsqueeze_idx1(diff);
@@ -865,7 +866,21 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     }
     Tensor ref_t = full<T>(ref_shape, 1.0, t2.dtype());
     Tensor t3 = t2 * ref_t;
-    return t3;
+    Tensor origin_shape_t = shape<T>(x);
+    std::vector<int64_t> t1_shape = common::vectorize<int64_t>(t1.dims());
+    std::vector<Tensor> final_shape;
+    for (size_t i = length2 - 1; i >= 0; i--) {
+      auto relative_idx = repeat_time_length - 1 - (length2 - i - 1);
+
+      if (relative_idx >= 0) {
+        final_shape.insert(shape1.begin(),
+                           origin_shape_t[i] * repeat_times_[relative_idx]);
+      } else {
+        final_shape.insert(shape1.begin(), origin_shape_t[i]);
+      }
+    }
+    Tensor s4 = concat<T>(final_shape, 0);
+    return backend::reshape_with_tensor<T>(t3, s4);
 
   } else {
     VLOG(0) << "=====================diff " << diff;
