@@ -82,7 +82,9 @@ class TestPrimControlFlowIf(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32")
-        self.places = [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def get_control_if_res(self, x, y, cond, prim_forward=False):
         if prim_forward:
@@ -97,13 +99,8 @@ class TestPrimControlFlowIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if (
-                isinstance(place, paddle.base.CUDAPlace)
-                and paddle.is_compiled_with_cuda()
-            ):
+            elif isinstance(place, paddle.base.CUDAPlace):
                 paddle.set_device("gpu")
-            else:
-                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             cond = paddle.full(shape=[1], fill_value=1)
@@ -118,13 +115,8 @@ class TestPrimControlFlowIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if (
-                isinstance(place, paddle.base.CUDAPlace)
-                and paddle.is_compiled_with_cuda()
-            ):
+            elif isinstance(place, paddle.base.CUDAPlace):
                 paddle.set_device("gpu")
-            else:
-                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             cond = paddle.full(shape=[1], fill_value=0)
@@ -151,7 +143,9 @@ class TestPrimControlFlowWhile(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32") + 3
-        self.places = [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def get_control_while_res(self, x, y, prim_forward=False):
         if prim_forward:
@@ -166,13 +160,8 @@ class TestPrimControlFlowWhile(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if (
-                isinstance(place, paddle.base.CUDAPlace)
-                and paddle.is_compiled_with_cuda()
-            ):
+            elif isinstance(place, paddle.base.CUDAPlace):
                 paddle.set_device("gpu")
-            else:
-                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             out_baseline = self.get_control_while_res(x, y, prim_forward=False)
@@ -195,7 +184,9 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32") + 3
-        self.places = [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
 
     def get_control_flow_res(self, x, y, prim_forward=False):
         if prim_forward:
@@ -210,13 +201,8 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
         for place in self.places:
             if isinstance(place, paddle.base.CPUPlace):
                 paddle.set_device("cpu")
-            if (
-                isinstance(place, paddle.base.CUDAPlace)
-                and paddle.is_compiled_with_cuda()
-            ):
+            elif isinstance(place, paddle.base.CUDAPlace):
                 paddle.set_device("gpu")
-            else:
-                continue
             x = paddle.to_tensor(self.x_np, dtype="float32")
             y = paddle.to_tensor(self.y_np, dtype="float32")
             out_baseline = self.get_control_flow_res(x, y, prim_forward=False)
@@ -272,14 +258,13 @@ class TestPrimControlFlowWhileBackward(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        print(main_program)
         out_grad = exe.run(
             main_program,
             feed={'i': self.i_np, 'x': self.x_np},
             fetch_list=[out_grad],
         )
         core._set_prim_all_enabled(False)
-        return out_grad[0]
+        return main_program, out_grad[0]
 
     def get_while_grad_res(self):
         core._set_prim_all_enabled(False)
@@ -302,21 +287,23 @@ class TestPrimControlFlowWhileBackward(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        print(main_program)
         out_grad = exe.run(
             main_program,
             feed={'i': self.i_np, 'x': self.x_np},
             fetch_list=[out_grad],
         )
-        return out_grad[0]
+        return main_program, out_grad[0]
 
     def test_while_loop_backward2(self):
         with static_guard():
-            out_grad_baseline = self.get_while_grad_res()
-            out_grad = self.get_while_prim_grad_res()
+            program_origin, out_grad_baseline = self.get_while_grad_res()
+            program_prim, out_grad = self.get_while_prim_grad_res()
         np.testing.assert_allclose(
             out_grad_baseline, out_grad, rtol=1e-6, atol=0
         )
+        assert len(
+            program_origin.global_block().ops[-2].as_while_op().body().ops
+        ) != len(program_prim.global_block().ops[-2].as_while_op().body().ops)
 
     @classmethod
     def tearDownClass(cls):
