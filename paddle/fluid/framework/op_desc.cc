@@ -435,7 +435,7 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
-OpDesc::OpDesc() {}
+OpDesc::OpDesc() = default;
 
 OpDesc::~OpDesc() = default;
 OpDesc::OpDesc(const OpDesc &other) {
