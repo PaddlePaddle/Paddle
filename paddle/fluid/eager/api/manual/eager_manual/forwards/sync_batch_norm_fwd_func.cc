@@ -32,7 +32,7 @@ std::tuple<paddle::Tensor,
            paddle::Tensor&,
            paddle::Tensor,
            paddle::Tensor,
-           paddle::Tensor>
+           paddle::optional<paddle::Tensor>>
 sync_batch_norm__ad_func(const paddle::Tensor& x,
                          paddle::Tensor& mean,      // NOLINT
                          paddle::Tensor& variance,  // NOLINT
@@ -80,7 +80,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                paddle::Tensor&,
                paddle::Tensor,
                paddle::Tensor,
-               paddle::Tensor>
+               paddle::optional<paddle::Tensor>>
         api_result = sync_batch_norm__ad_func(new_x,
                                               new_mean,
                                               new_variance,
@@ -112,7 +112,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                       paddle::Tensor&,
                       paddle::Tensor,
                       paddle::Tensor,
-                      paddle::Tensor>{
+                      paddle::optional<paddle::Tensor>>{
         out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
   }
 
@@ -197,7 +197,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   egr::AutogradMeta* saved_variance_autograd_meta =
       egr::EagerUtils::autograd_meta(&saved_variance);
   egr::AutogradMeta* reserve_space_autograd_meta =
-      egr::EagerUtils::autograd_meta(&reserve_space);
+      egr::EagerUtils::autograd_meta(reserve_space.get_ptr());
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad =
       egr::EagerUtils::ComputeRequireGrad(trace_backward,
@@ -291,11 +291,12 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     grad_node->SetGradInMeta(variance_out, 2);
     grad_node->SetGradInMeta(saved_mean, 3);
     grad_node->SetGradInMeta(saved_variance, 4);
-    grad_node->SetGradInMeta(reserve_space, 5);
+    if (reserve_space.get_ptr() != nullptr)
+      grad_node->SetGradInMeta(*(reserve_space.get_ptr()), 5);
     // Set TensorWrappers for Forward Outputs if needed
     grad_node->SetTensorWrappersaved_mean(saved_mean);
     grad_node->SetTensorWrappersaved_variance(saved_variance);
-    grad_node->SetTensorWrapperreserve_space(reserve_space);
+    if (reserve_space) grad_node->SetTensorWrapperreserve_space(*reserve_space);
   }
 
   VLOG(4) << "Finish AD API: sync_batch_norm_";
@@ -363,7 +364,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                     paddle::Tensor&,
                     paddle::Tensor,
                     paddle::Tensor,
-                    paddle::Tensor>{
+                    paddle::optional<paddle::Tensor>>{
       out, mean_out, variance_out, saved_mean, saved_variance, reserve_space};
 }
 

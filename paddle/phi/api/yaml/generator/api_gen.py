@@ -23,6 +23,11 @@ inplace_out_type_map = {
     "std::vector<Tensor>": "std::vector<Tensor>&",
 }
 
+optional_out_type_map = {
+    "Tensor": "paddle::optional<Tensor>",
+    "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>",
+}
+
 inplace_optional_out_type_map = {
     "Tensor": "paddle::optional<Tensor>&",
     "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>&",
@@ -123,6 +128,8 @@ class ForwardAPI(BaseAPI):
                 else:
                     out_type_list.append(inplace_out_type_map[out_type])
             else:
+                if out_name in self.optional_vars:
+                    out_type = optional_out_type_map[out_type]
                 out_type_list.append(out_type)
 
         if len(out_type_list) == 1:
@@ -142,6 +149,8 @@ class ForwardAPI(BaseAPI):
                 else:
                     out_type_list.append(inplace_out_type_map[out_type])
             elif self.is_dygraph_api or out_name not in self.intermediate_outs:
+                if out_name in self.optional_vars:
+                    out_type = optional_out_type_map[out_type]
                 out_type_list.append(out_type)
 
         if len(out_type_list) == 1:
@@ -272,11 +281,7 @@ class ForwardAPI(BaseAPI):
                 )
 
                 get_out_code = f"&std::get<{i}>(api_output)"
-                if (
-                    self.outputs['names'][i] in self.inplace_map
-                    and self.inplace_map[self.outputs['names'][i]]
-                    in self.optional_vars
-                ):
+                if self.outputs['names'][i] in self.optional_vars:
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
 
                 if out_dtype_list[i] == 'std::vector<Tensor>':

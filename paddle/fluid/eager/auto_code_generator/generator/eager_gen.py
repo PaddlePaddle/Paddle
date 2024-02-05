@@ -1128,10 +1128,13 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     assert (
                         name in forward_outputs_position_map.keys()
                     ), AssertMessage(name, forward_outputs_position_map.keys())
-
-                set_tensor_wrappers = (
-                    f"{indent}grad_node->SetTensorWrapper{name}({name});"
-                )
+                if is_optional:
+                    # f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradInMeta(*({name}.get_ptr()), {pos});"
+                    set_tensor_wrappers = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetTensorWrapper{name}(*({name}.get_ptr()));"
+                else:
+                    set_tensor_wrappers = (
+                        f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                    )
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
             set_input_tensor_wrappers_list
@@ -1218,9 +1221,12 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 {indent}  egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);
 {indent}}}"""
 
-            set_grad_in_meta = (
-                f"{indent}grad_node->SetGradInMeta({name}, {pos});"
-            )
+            if name in self.optional_inputs:
+                set_grad_in_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradInMeta(*({name}.get_ptr()), {pos});"
+            else:
+                set_grad_in_meta = (
+                    f"{indent}grad_node->SetGradInMeta({name}, {pos});"
+                )
 
             set_out_rank_list.append(set_out_rank)
             set_history_list.append(set_history)
@@ -1668,7 +1674,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     else:
                         returns_type_list[pos] = "paddle::Tensor&"
                 else:
-                    returns_type_list[pos] = "paddle::Tensor"
+                    if name in self.optional_inputs:
+                        returns_type_list[
+                            pos
+                        ] = "paddle::optional<paddle::Tensor>"
+                    else:
+                        returns_type_list[pos] = "paddle::Tensor"
             else:
                 assert IsVectorTensorType(rtype)
                 if (
@@ -1687,7 +1698,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     else:
                         returns_type_list[pos] = "std::vector<paddle::Tensor>&"
                 else:
-                    returns_type_list[pos] = "std::vector<paddle::Tensor>"
+                    if name in self.optional_inputs:
+                        returns_type_list[
+                            pos
+                        ] = "paddle::optional<std::vector<paddle::Tensor>>"
+                    else:
+                        returns_type_list[pos] = "std::vector<paddle::Tensor>"
 
         if num_outputs == 1:
             returns_str = returns_list[0]
@@ -1770,18 +1786,30 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
                 if num_fwd_outputs == 1:
                     if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
+                        if name in self.optional_inputs:
+                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta({name}.get_ptr());"
+                        else:
+                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
                     else:
                         assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
+                        if name in self.optional_inputs:
+                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta({name}.get_ptr());\n"
+                        else:
+                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
                         output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
                 else:
                     # Tuple api_result
                     if IsPlainTensorType(rtype):
-                        output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
+                        if name in self.optional_inputs:
+                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta({name}.get_ptr());"
+                        else:
+                            output_autograd_meta = f"{indent}egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&{name});"
                     else:
                         assert IsVectorTensorType(rtype)
-                        output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
+                        if name in self.optional_inputs:
+                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta({name}.get_ptr());\n"
+                        else:
+                            output_autograd_meta = f"{indent}std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{name});\n"
                         output_autograd_meta += f"{indent}std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
                 outputs_autograd_meta_list.append(output_autograd_meta)

@@ -65,6 +65,17 @@ void SetGradOutputDistAttrIter::visit(
  * Implementation of Eager Utils.
  **/
 
+// AutogradMeta* EagerUtils::autograd_meta(paddle::optional<paddle::Tensor>*
+// target) {
+//   auto* p_autograd_meta = target->get_autograd_meta();
+//   if (!p_autograd_meta) {
+//     auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
+//     p_autograd_meta = p_autograd_meta_ptr.get();
+//     target->set_autograd_meta(p_autograd_meta_ptr);
+//   }
+//   return static_cast<AutogradMeta*>(p_autograd_meta);
+// }
+
 AutogradMeta* EagerUtils::autograd_meta(paddle::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
   if (!p_autograd_meta) {
