@@ -3,7 +3,7 @@ The classes in this directory are the interface of group fusion pass, you can us
 
 The Class and APIs are following:
 
-`OpGroup` : A set of op nodes, which will pass to cinn backend for generating kernel code. Two groups can fuse togather according to the rule of merging written in the passes.
+`OpGroup` : A set of op nodes, which will pass to cinn backend for generating kernel code. Two groups can fuse together according to the rule of merging written in the passes.
 
 `OpNode` : Map the op in the program.
 
@@ -35,11 +35,11 @@ The Class and APIs are following:
 |            | other methods are same with std::vector<int64_t> | |
 |  |  |  |
 | LightwareFusePassCtx | PickOpGroup() | Get the current group in the pass context |
-|                      | void EnableFuse(const OpGroup& first, const OpGroup& second) | Mark the two groups which can fuse togather |
+|                      | void EnableFuse(const OpGroup& first, const OpGroup& second) | Mark the two groups which can fuse together |
 |  | fuse_helper()     | Get the fuse_helper provided by pass context  |
 |  |  |  |
 | InputFusePassCtx   | PickConsumersWithSameInputs() | Get all consumer groups for input tensors of graph |
-|                      | void EnableFuse(const OpGroup& first, const OpGroup& second) | Mark the two groups which can fuse togather |
+|                      | void EnableFuse(const OpGroup& first, const OpGroup& second) | Mark the two groups which can fuse together |
 |  | fuse_helper()     | Get the fuse_helper provided by pass context  |
 |  |  |  |
 | FuseHelper | DetectCycleIfFuse(const OpGroup& first, const OpGroup& second) | Whether there is cycle in graph after fusing two groups |

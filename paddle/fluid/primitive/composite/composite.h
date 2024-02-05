@@ -65,7 +65,13 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
 
   Tensor value;
-  if (find_value(x_dim, -1)) {
+  bool switch_dynamic = false;
+  for (const int64_t& idx : axis_) {
+    if (x_dim[idx] == -1) {
+      switch_dynamic = true;
+    }
+  }
+  if (switch_dynamic) {
     // dynamic shape branch
     std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
     Tensor idx =
@@ -496,7 +502,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     } else {
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
-        // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
+        // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
         auto zero = full<T>(empty_shape, 0.0, org_dtype);
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {

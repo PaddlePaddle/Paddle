@@ -45,7 +45,7 @@ def check_broadcast(block):
                 if "@BroadCast" in var_name:
                     if var_name in broadcast_vars:
                         raise ValueError(
-                            "var_name areadly exist: {}"
+                            "var_name already exist: {}"
                             "the old pos is {}, the new pos is {}".format(
                                 var_name,
                                 broadcast_vars[var_name]["broadcast_pos"],
@@ -1015,7 +1015,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
     def is_gradient_merge_vars(var):
         # NOTE(JZ-LIANG): to revise save/load logic in framework instead of write this naive rule
 
-        return var.name.endswith("@GradiantMerge")
+        return var.name.endswith("@GradientMerge")
 
     def is_trainable(var):
         return (
