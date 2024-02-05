@@ -65,10 +65,10 @@ limitations under the License. */
 #include "afs_api.h"            // NOLINT
 #include "downpour_accessor.h"  // NOLINT
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
 
 namespace paddle {
 namespace framework {

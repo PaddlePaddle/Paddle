@@ -976,7 +976,7 @@ class DynamicGraphAdapter:
         # which would happen when set_state_dict before minimize, the state would be
         # stored in optimizer._accumulators_holder and loaded lazily.
         # To contrive this when loading from static-graph saved states, extend
-        # state dict to include keys named accoring to dygraph naming rules.
+        # state dict to include keys named according to dygraph naming rules.
         # TODO: if len(self.model._optimizer._accumulators) > 0
         converted_state = dict(optim_state)
         opt_unq_name = self.model._optimizer._name
@@ -1429,7 +1429,7 @@ class Model:
         for optimizer states is not necessary if no need to restore the optimizer.
 
         NOTE: parameters are retrieved out from the file storing model states
-        accoring to their structured names.
+        according to their structured names.
 
         For fine-tuning or transfer-learning models where some of the layers have
         changed, keep parameters needed to restore have same structured names in
