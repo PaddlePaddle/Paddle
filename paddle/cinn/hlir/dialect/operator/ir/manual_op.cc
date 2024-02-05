@@ -138,12 +138,6 @@ void StoreOp::Build(pir::Builder& builder,
 
 void StoreOp::VerifySig() {}
 
-void StoreOp::Print(pir::IrPrinter& printer) {
-  auto& os = printer.os;
-  auto op = operation();
-  printer.PrintOperation(op);
-}
-
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   VLOG(4) << "Infer symbolic shape for cinn_op.concat";
@@ -474,3 +468,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::StoreOp);

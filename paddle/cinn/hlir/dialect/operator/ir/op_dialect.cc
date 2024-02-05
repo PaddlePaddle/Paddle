@@ -56,6 +56,7 @@ void OperatorDialect::initialize() {
   RegisterOp<FusionOp>();
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
+  RegisterOp<StoreOp>();
   RegisterOp<GenerateShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
@@ -97,6 +98,12 @@ pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
       fusion_op.Print(printer);
     };
   }
+  //  else if( op->isa<StoreOp>() )
+  // {
+  //   return [](pir::Operation *op, pir::IrPrinter &printer) {
+  //     printer.PrintOperation(op);
+  //   };
+  // }
   return nullptr;
 }
 

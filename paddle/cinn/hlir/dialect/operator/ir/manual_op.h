@@ -81,7 +81,7 @@ class IR_API StoreOp : public pir::Op<StoreOp> {
                     pir::Type output_type);
 
   void VerifySig();
-  void Print(pir::IrPrinter &printer);  // NOLINT
+  // void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
 class IR_API ConcatOp
@@ -172,3 +172,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::FusionOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::ConcatOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GenerateShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::StoreOp);

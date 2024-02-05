@@ -18,26 +18,24 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class AddStoreInFusionOpPattern
-    : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
+class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
  public:
-  using pir::OpRewritePattern<cinn::dialect::FusionOp>::OpRewritePattern;
+  using pir::OpRewritePattern<::pir::YieldOp>::OpRewritePattern;
 
-  bool MatchAndRewrite(cinn::dialect::FusionOp op,
+  bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto yield_op = op.GetOperators().back();
-
-    for (auto i = 0; i < yield_op->num_operands(); ++i) {
+    for (auto i = 0; i < op->num_operands(); ++i) {
       auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-          yield_op->operand_source(i), yield_op->operand_source(i).type());
+          op->operand_source(i), op->operand_source(i).type());
 
-      yield_op->operand(i).set_source(new_full.result(0));
+      op->operand(i).set_source(new_full.result(0));
     }
 
     return true;
@@ -47,7 +45,7 @@ class AddStoreInFusionOpPattern
 class AddStoreInFusionOpPass : public pir::Pass {
  public:
   AddStoreInFusionOpPass()
-      : pir::Pass("cinn_dynamic_reshape_op_pass", /*opt_level=*/1) {}
+      : pir::Pass("add_store_in_fusion_op", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -60,7 +58,7 @@ class AddStoreInFusionOpPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
+    cfg.max_iterations = 1;
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
