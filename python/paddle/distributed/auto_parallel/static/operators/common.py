@@ -507,8 +507,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     need_scale = dist_ctx.gradient_scale
 
     # With nccl_version > 2.10.00, we can use c_allreduce_avg to replace c_allreduce_sum and eliminate the scale op.
-    print(f"nccl_version: {paddle.version.nccl()}")
-    if need_scale and paddle.version.nccl() > 21000:
+    if need_scale and int(paddle.version.nccl()) > 21000:
         allreduce_type = "c_allreduce_avg"
         need_scale = False
 
