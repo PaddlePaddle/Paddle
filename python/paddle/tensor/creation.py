@@ -62,10 +62,14 @@ def _complex_to_real_dtype(dtype):
 
 
 def _real_to_complex_dtype(dtype):
-    if dtype == paddle.float32:
+    if dtype == core.VarDesc.VarType.FP32:
         return core.VarDesc.VarType.COMPLEX64
-    elif dtype == paddle.float64:
+    elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
+    elif dtype == paddle.pir.core.DataType.FP32:
+        return paddle.pir.core.DataType.COMPLEX64
+    elif dtype == paddle.pir.core.DataType.FP64:
+        return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
 
