@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
-PHI_DECLARE_bool(enable_ins_parser_file);
+COMMON_DECLARE_bool(enable_ins_parser_file);
 namespace paddle {
 namespace framework {
 

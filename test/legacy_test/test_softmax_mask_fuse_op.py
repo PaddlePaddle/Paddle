@@ -142,8 +142,8 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float32")
             mask_in_np = np.where(mask == 1, -10000.0, mask)
             rst_np = _get_softmax(x_in_np, mask_in_np, False)
-            input_x = base.dygraph.to_variable(x_in_np)
-            input_mask = base.dygraph.to_variable(mask_in_np)
+            input_x = paddle.to_tensor(x_in_np)
+            input_mask = paddle.to_tensor(mask_in_np)
 
             rst = incubate.softmax_mask_fuse(input_x, input_mask)
             np.testing.assert_allclose(rst, rst_np, rtol=1e-05)

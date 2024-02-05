@@ -194,9 +194,7 @@ class TestRegularizer(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)
         with base.dygraph.guard():
-            input = base.dygraph.to_variable(
-                np.random.randn(3, 2).astype('float32')
-            )
+            input = paddle.to_tensor(np.random.randn(3, 2).astype('float32'))
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 

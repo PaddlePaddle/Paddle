@@ -155,7 +155,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 with base.dygraph.guard(place):
                     input_np = np.random.random([40, 40]).astype(self.in_type)
                     result_np = input_np
-                    input = base.dygraph.to_variable(input_np)
+                    input = paddle.to_tensor(input_np)
                     m = paddle.nn.Dropout(p=0.0)
                     m.eval()
                     result = m(input)

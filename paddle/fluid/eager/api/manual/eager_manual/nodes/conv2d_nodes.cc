@@ -24,11 +24,11 @@
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/phi/api/include/sparse_api.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(

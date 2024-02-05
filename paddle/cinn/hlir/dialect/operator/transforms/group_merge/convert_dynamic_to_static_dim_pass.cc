@@ -20,11 +20,12 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
+
 #include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_string(cinn_convert_dynamic_dim_to_static_dim);
 
