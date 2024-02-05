@@ -206,7 +206,6 @@ struct Group {
   std::vector<::pir::Value> GetGroupOutputValues() const {
     std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
                                                         this->ops.end());
-    std::unordered_set<::pir::Operation*> output_ops_set;
 
     std::vector<::pir::Value> output_values;
     for (auto* op : this->ops) {
@@ -215,16 +214,11 @@ struct Group {
         if (!result) {
           continue;
         }
-        if (result.use_empty() && output_ops_set.count(result.defining_op())) {
-          output_values.push_back(result);
-          continue;
-        }
         for (auto use_iter = result.use_begin(); use_iter != result.use_end();
              ++use_iter) {
           auto* use_op = use_iter->owner();
           if (group_ops_set.find(use_op) == group_ops_set.end()) {
             output_values.push_back(result);
-            output_ops_set.insert(op);
             break;
           }
         }
