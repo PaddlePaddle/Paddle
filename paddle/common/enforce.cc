@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 
 REGISTER_LOG_SIMPLY_STR(std::string);
-
+COMMON_DECLARE_int32(call_stack_level);
 namespace {
 class StrSizeCmp {
  public:
