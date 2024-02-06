@@ -266,10 +266,6 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
-  // IR_ENFORCE(dim1.size() == dim2.size(),
-  //            "Does not support rank inconsistency: rank1=%d, rank2=%d",
-  //            dim1.size(),
-  //            dim2.size());
   PADDLE_ENFORCE_EQ(dim1.size() == dim2.size(),
                     true,
                     "Does not support rank inconsistency: rank1=%d, rank2=%d",

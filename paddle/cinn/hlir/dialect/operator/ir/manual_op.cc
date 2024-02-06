@@ -170,7 +170,6 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
   argument.inputs = inputs;
   std::vector<pir::Type> inputs_type(inputs.size());
 
-  // IR_ENFORCE(inputs.size() > 0);
   PADDLE_ENFORCE_GT(inputs.size(),
                     0,
                     phi::errors::InvalidArgument(
