@@ -70,6 +70,7 @@ class SubgraphDetector {
   std::unordered_map<pir::Operation*, SubGraphPtr> subgraph_map_;
 };
 
+std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
 void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
 
 }  // namespace pir

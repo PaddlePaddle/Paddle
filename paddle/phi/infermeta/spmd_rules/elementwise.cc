@@ -124,6 +124,55 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   return {{x_dst_dist_attr}, {out_dist_attr}};
 }
 
+// NOTE(lizhiyu): This function is only for `cast` right now to support partial
+// propagatation
+SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
+  // Step0: Verify Input Args Based on Elementwise Logic
+  auto x_shape = common::vectorize(x.dims());
+  int x_ndim = x_shape.size();
+  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    x_dims_mapping.size(),
+                    phi::errors::InvalidArgument(
+                        "ElementwiseUnary, The Tensor X's rank [%d] and X's "
+                        "dims_mapping size [%d] are not matched.",
+                        x_ndim,
+                        x_dims_mapping.size()));
+
+  // Step1: Build Einsum Notation
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
+  std::string out_axes = x_axes;
+
+  // Step2: Sharding Propogation
+  // Step2.1: Merge input shardings
+  std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
+      x_axes, x_dims_mapping);
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({axes_sharding_info});
+
+  // step2.2: Infer output dims mapping from merged input dims mapping
+  std::vector<int64_t> out_dims_mapping =
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+
+  // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
+  // input dist_attr.
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+  TensorDistAttr x_dst_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dst_dist_attr.set_dims_mapping(out_dims_mapping);
+  x_dst_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+
+  VLOG(4) << "ElementwiseWithPartialSPMDRule InferForward:";
+  VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] ";
+  VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
+
+  return {{x_dst_dist_attr}, {out_dist_attr}};
+}
+
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
