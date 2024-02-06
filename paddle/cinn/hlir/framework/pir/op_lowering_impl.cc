@@ -778,82 +778,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       throw std::runtime_error("only supportbroadcast type for now");
     }
   }
-  // for (auto* op : ops) {
-  //   if (CompatibleInfo::OpKind(*op) == framework::kBroadcast) {
-  //     auto pre_op =
-  //     op->operand_source(0).dyn_cast<::pir::OpResult>().owner(); if
-  //     (pre_op->name() == "cinn_op.reduce_sum") {
-  //       continue;
-  //     }
-
-  //     // back trace all the elementwise ops
-
-  //     std::unordered_set<::pir::Operation*> visited;
-  //     std::stack<::pir::Operation*> op_stack;
-
-  //     if (ops_set.count(pre_op)) {
-  //       op_stack.push(pre_op);
-  //     }
-
-  //     auto broadcast_axes =
-  //         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-  //     auto output_shape = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
-
-  //     auto in_dim = op->operand_source(0)
-  //                       .type()
-  //                       .dyn_cast<paddle::dialect::DenseTensorType>()
-  //                       .dims();
-
-  //     std::vector<int64_t> changed_axes;
-  //     std::vector<int64_t> changed_factor;
-  //     for (size_t i = 0; i < broadcast_axes.size(); ++i) {
-  //       if (in_dim[i] != output_shape[broadcast_axes[i]]) {
-  //         if (in_dim[i] != 1) {
-  //           throw std::runtime_error("Only support 1 - D broadcast ");
-  //         }
-  //         changed_axes.push_back(i);
-  //         changed_factor.push_back(output_shape[broadcast_axes[i]]);
-  //       }
-  //     }
-
-  //     cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
-  //     while (!op_stack.empty()) {
-  //       auto cur_op = op_stack.top();
-  //       op_stack.pop();
-
-  //       if (visited.count(cur_op)) {
-  //         continue;
-  //       }
-
-  //       if (CompatibleInfo::OpKind(*cur_op) == framework::kElementWise) {
-  //         std::cerr << "broadcast info " << ValueName(cur_op->result(0))
-  //                    << std::endl;
-  //         broadcast_info[ValueName(cur_op->result(0))] = info;
-  //         broadcast_to_elementwise[ValueName(op->result(0))] = info;
-
-  //         for (size_t i = 0; i < cur_op->num_operands(); ++i) {
-  //           auto in_op =
-  //               cur_op->operand_source(i).dyn_cast<::pir::OpResult>().owner();
-  //           if (pre_op->name() == "cinn_op.reduce_sum" ||
-  //               visited.count(in_op) || (!ops_set.count(in_op))) {
-  //             continue;
-  //           }
-
-  //           if (pre_op->name() == "cinn_op.broadcast") {
-  //             throw std::runtime_error("Not support two broadcast pattern");
-  //           }
-
-  //           op_stack.push(in_op);
-  //         }
-  //       }
-  //     }
-
-  //     // if (inner_genevalue.count(op->operand_source(0))) {
-  //     //   shared_var_names.insert(ValueName(op->operand_source(0)));
-  //     //   thread_sync_before_names.push_back(ValueName(op->result(0)));
-  //     // }
-  //   }
-  // }
 
   for (auto& op : group->output_ops) {
     if (erase_reshape.count(op)) {
@@ -892,112 +816,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   }
 
   // 2.Do group schedule.
-  std::vector<Expr> added_expr;
-  // for (size_t i = 0; i < func_bodies.size(); ++i) {
-  //   // std::cerr << ops[i]->name() << std::endl;
-  //   // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
-  //   std::endl;
-  //   // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
-
-  //   // if (copyed_var_names.count(ValueName(remain_ops[i]->result(0)))) {
-  //   //   auto tensor = tensor_map.at(remain_ops[i]->result(0));
-
-  //   //   auto body = BuildOuputExpr(tensor);
-
-  //   //   std::cerr << "oupput body  " << body << std::endl;
-
-  //   //   added_expr.push_back(body);
-
-  //   //   // if( CompatibleInfo::OpKind(*remain_ops[i]) ==
-  //   framework::kReduction)
-  //   //   // {
-  //   //   //   auto reduce_axis =
-  //   cinn::dialect::ir::GetVectorAttr(remain_ops[i],
-  //   //   //   "dim"); std::vector<int64_t> changed_axes; std::vector<int64_t>
-  //   //   //   changed_factor; auto reduce_in_dims =
-  //   //   //
-  //   remain_ops[i]->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-  //   //   //   int rank = reduce_in_dims.size();
-  //   //   //   for (size_t i = 0; i < reduce_axis.size(); ++i) {
-  //   //   //     auto axis = reduce_axis[i];
-  //   //   //     if( axis < 0 )
-  //   //   //     {
-  //   //   //       axis += rank;
-  //   //   //     }
-
-  //   //   //       changed_axes.push_back(axis);
-  //   //   //       changed_factor.push_back(reduce_in_dims[axis]);
-
-  //   //   //   }
-
-  //   //   //   cinn::ir::BroadcastInfo info{changed_axes, changed_factor,
-  //   true};
-
-  //   //   //   broadcast_info[ ValueName(remain_ops[i]->result(0)) + "_out"] =
-  //   info;
-  //   //   // }
-
-  //   //   // if( CompatibleInfo::OpKind(*remain_ops[i]) ==
-  //   framework::kBroadcast)
-  //   //   // {
-  //   //   //   throw std::runtime_error("not support broadcast type");
-  //   //   // }
-  //   // }
-  //   //   auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
-  //   //   auto copy_body = copy_expr.As<ir::Block>()
-  //   //                        ->stmts[0]
-  //   //                        .As<ir::ScheduleBlockRealize>()
-  //   //                        ->schedule_block.As<ir::ScheduleBlock>()
-  //   //                        ->body;
-
-  //   //   std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
-  //   //             << std::endl;
-  //   //   std::cerr << copy_body << std::endl;
-  //   //   cinn::ir::FindBlocksVisitor
-  //   //   visitor1(ValueName(remain_ops[i]->result(0))); auto find_blocks =
-  //   //   visitor1(&copy_expr);
-
-  //   //   // std::cerr << find_blocks[0] << std::endl;
-
-  //   //   auto inner_body = find_blocks[0]
-  //   //                         .As<ir::ScheduleBlockRealize>()
-  //   //                         ->schedule_block.As<ir::ScheduleBlock>()
-  //   //                         ->body;
-
-  //   //   auto block1 = find_blocks[0]
-  //   //                     .As<ir::ScheduleBlockRealize>()
-  //   //                     ->schedule_block.As<ir::ScheduleBlock>();
-
-  //   //   block1->name += "_out";
-
-  //   //   // cinn::ir::FindLoopsVisitor visitor( find_blocks[0]);
-  //   //   // auto find_loops = visitor( &(copy_expr.As<ir::Block>()
-  //   //   //                        ->stmts[0]) );
-
-  //   //   // std::cerr << "inner loop " << find_loops.size() << std::endl;
-
-  //   //   auto exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
-  //   //       inner_body, [&](const Expr* x) { return
-  //   x->As<cinn::ir::Store>();
-  //   //       });
-
-  //   //   for (auto expr : exprs) {
-  //   //     auto store = expr.As<cinn::ir::Store>();
-
-  //   //     auto t1 = store->tensor.as_tensor_ref();
-
-  //   //     t1->name = t1->name + "_out";
-  //   //   }
-
-  //   //   std::cerr << copy_expr << std::endl;
-  //   //   added_expr.push_back(copy_expr);
-  //   // }
-  // }
-
-  for (auto expr : added_expr) {
-    // std::cerr << "added " << expr << std::endl;
-    func_bodies.push_back(expr);
-  }
 
   ir::ModuleExpr mod_expr(func_bodies);
   std::shared_ptr<ir::IRSchedule> ir_sch =
@@ -1151,40 +969,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       // group->output_names.push_back(tensor->name);
       std::cerr << "tensor name   " << tensor->name << std::endl;
       std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
-      if (copyed_var_names.count(tensor->name)) {
-        std::cerr << "copyed var name \n";
-        auto new_tensor = lang::CreatePlaceHolder(
-            tensor->shape, tensor->type(), tensor->name + "_out");
-        group_func_arg_tensors->push_back(new_tensor);
-        group_func_args->emplace_back(new_tensor->buffer,
-                                      ir::Argument::IO::kOutput);
-        // std::cerr << "new tensor " << new_tensor->buffer.defined() <<
-        // std::endl;
-      } else if (erase_reshape.count(op)) {
-        if (copyed_var_names.count(ValueName(op->operand_source(0)))) {
-          // std::cerr << "rease copyed tensor" << std::endl;
-          tensor = tensor_map.at(op->operand_source(0));
-          auto new_tensor = lang::CreatePlaceHolder(
-              tensor->shape, tensor->type(), tensor->name + "_out");
-          group_func_arg_tensors->push_back(new_tensor);
-          group_func_args->emplace_back(new_tensor->buffer,
-                                        ir::Argument::IO::kOutput);
-        } else {
-          tensor = tensor_map.at(op->operand_source(0));
-          group_func_arg_tensors->push_back(tensor);
-          group_func_args->emplace_back(tensor->buffer,
-                                        ir::Argument::IO::kOutput);
-        }
-      } else {
-        group_func_arg_tensors->push_back(tensor);
-        group_func_args->emplace_back(tensor->buffer,
-                                      ir::Argument::IO::kOutput);
-      }
+
+      group_func_arg_tensors->push_back(tensor);
+      group_func_args->emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
 
       arg_name_set.insert(tensor->buffer->name);
     }
   }
-  std::cerr << "11\n";
+
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : (*group_func_args)) {
