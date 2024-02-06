@@ -158,8 +158,6 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
 
   ParamKey GetAsKey() const { return ParamKey(dtype_, dims_, layout_); }
 
-  void SetDims(const phi::DDim& dims) { dims_ = dims; }
-
   ///
   /// \brief DenseTensorTypeStorage include five parameters: dtype, layout
   ///

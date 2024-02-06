@@ -55,8 +55,6 @@ class DenseTensorArrayType
 
   const phi::DDim &dims() const;
 
-  void SetDims(const phi::DDim &dims);
-
   const phi::DataLayout &data_layout() const;
 };
 
