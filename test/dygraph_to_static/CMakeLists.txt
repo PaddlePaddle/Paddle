@@ -61,6 +61,7 @@ if(WITH_GPU)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static

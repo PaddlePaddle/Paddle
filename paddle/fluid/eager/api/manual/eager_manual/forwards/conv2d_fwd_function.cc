@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -20,9 +21,8 @@
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               const paddle::Tensor& filter,

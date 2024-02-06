@@ -38,6 +38,9 @@ class DecompProgram {
         whitelist_(whitelist) {}
 
   void decomp_program();
+  void decomp_block(pir::Block* block,
+                    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+                    std::vector<pir::Value>& tar_vars);  // NOLINT
   bool check_decomp_dynamic_shape(pir::Operation* op);
   void check_decomp_outputs(const std::string& op_name,
                             const std::vector<pir::Value>& orig_outs,

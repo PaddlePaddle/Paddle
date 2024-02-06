@@ -20,14 +20,14 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
 #include "paddle/fluid/jit/engine/predictor_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(jit_engine_type);
+COMMON_DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {

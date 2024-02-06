@@ -28,11 +28,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
