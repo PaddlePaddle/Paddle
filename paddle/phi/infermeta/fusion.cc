@@ -1088,10 +1088,10 @@ void FusedMultiTransformerInferMeta(
     const std::vector<MetaTensor*>& qkv_biases,
     const std::vector<MetaTensor*>& cache_kvs,
     const std::vector<MetaTensor*>& pre_caches,
-    const paddle::optional<MetaTensor>& rotary_tensor,
-    const paddle::optional<MetaTensor>& time_step,
-    const paddle::optional<MetaTensor>& seq_lengths,
-    const paddle::optional<MetaTensor>& src_mask,
+    const MetaTensor& rotary_tensor,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
     const std::vector<MetaTensor*>& out_linear_weights,
     const std::vector<MetaTensor*>& out_linear_biases,
     const std::vector<MetaTensor*>& ffn_ln_scales,
@@ -1181,27 +1181,28 @@ void FusedMultiTransformerInferMeta(
   }
   out->set_dims(x.dims());
 }
+
 void FusedMultiTransformerInt8InferMeta(
     const MetaTensor& x,
-    const MetaTensor& ln_scale,
-    const MetaTensor& ln_bias,
-    const MetaTensor& qkv_w,
-    const MetaTensor& qkv_bias,
-    const MetaTensor& cache_kv,
+    const std::vector<MetaTensor*>& ln_scales,
+    const std::vector<MetaTensor*>& ln_biases,
+    const std::vector<MetaTensor*>& qkv_weights,
+    const std::vector<MetaTensor*>& qkv_biases,
+    const std::vector<MetaTensor*>& cache_kvs,
     const MetaTensor& time_step,
     const MetaTensor& src_mask,
-    const MetaTensor& out_linear_w,
-    const MetaTensor& out_linear_bias,
-    const MetaTensor& ffn_ln_scale,
-    const MetaTensor& ffn_ln_bias,
-    const MetaTensor& ffn1_weight,
-    const MetaTensor& ffn1_bias,
-    const MetaTensor& ffn2_weight,
-    const MetaTensor& ffn2_bias,
-    const MetaTensor& qkv_out_scale,
-    const MetaTensor& out_linear_out_scale,
-    const MetaTensor& ffn1_out_scale,
-    const MetaTensor& ffn2_out_scale,
+    const std::vector<MetaTensor*>& out_linear_weights,
+    const std::vector<MetaTensor*>& out_linear_biases,
+    const std::vector<MetaTensor*>& ffn_ln_scales,
+    const std::vector<MetaTensor*>& ffn_ln_biases,
+    const std::vector<MetaTensor*>& ffn1_weights,
+    const std::vector<MetaTensor*>& ffn1_biases,
+    const std::vector<MetaTensor*>& ffn2_weights,
+    const std::vector<MetaTensor*>& ffn2_biases,
+    const std::vector<MetaTensor*>& qkv_out_scales,
+    const std::vector<MetaTensor*>& out_linear_out_scales,
+    const std::vector<MetaTensor*>& ffn1_out_scales,
+    const std::vector<MetaTensor*>& ffn2_out_scales,
     bool pre_layer_norm,
     float epsilon,
     float dropout_rate,
@@ -1220,7 +1221,7 @@ void FusedMultiTransformerInt8InferMeta(
     int quant_round_type,
     float quant_max_bound,
     float quant_min_bound,
-    MetaTensor* cache_kv_out,
+    std::vector<MetaTensor*> cache_kv_outs,
     MetaTensor* out) {}
 
 void FusedFeedForwardInferMeta(const MetaTensor& x,
@@ -1404,7 +1405,7 @@ void FusedElemwiseAddActivationInferMeta(
   out->set_dtype(out_dtype);
 
   bool elemntwise_add_detected = false;
-  for (auto names : functor_list) {
+  for (const auto& names : functor_list) {
     if (names == "elementwise_add") {
       elemntwise_add_detected = true;
       break;

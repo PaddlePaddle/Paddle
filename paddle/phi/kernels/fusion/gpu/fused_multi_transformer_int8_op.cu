@@ -22,7 +22,6 @@ limitations under the License. */
 
 namespace phi {
 namespace fusion {
-
 template <typename T, typename Context>
 void FusedMultiTransformerINT8Kernel(
     const Context &dev_ctx,
@@ -68,6 +67,9 @@ void FusedMultiTransformerINT8Kernel(
     DenseTensor *out) {
   using U = phi::funcs::LayerNormParamType<T>;
 
+  auto *time_step_t = time_step.get_ptr();
+  auto *src_mask_t = src_mask.get_ptr();
+
   // 0. input
   const auto input_x_dims = x.dims();
   int bsz = input_x_dims[0];
@@ -95,7 +97,7 @@ void FusedMultiTransformerINT8Kernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
+  bool compute_bias = !qkv_biases.empty() && time_step_t == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   AttnMatmulINT8<T> qkv_compute(
       dev_ctx, bsz_seq, output_size, input_size, compute_bias);
@@ -111,18 +113,18 @@ void FusedMultiTransformerINT8Kernel(
       FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
 
   auto out_seq_len = seq_len;
-  if (time_step) {
-    PADDLE_ENFORCE_EQ(time_step->place(),
+  if (time_step_t) {
+    PADDLE_ENFORCE_EQ(time_step_t->place(),
                       phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
                           "The place of input(TimeStep) must be CPUPlace."));
     // cache_seq_len
-    int time_step_value = time_step->data<int>()[0];
-    PADDLE_ENFORCE_GT(
-        time_step_value,
-        0,
-        phi::errors::PreconditionNotMet(
-            "The value of time_step must > 0, but now is %d", time_step_value));
+    int time_step_value = time_step_t->data<int>()[0];
+    PADDLE_ENFORCE_GT(time_step_value,
+                      0,
+                      phi::errors::PreconditionNotMet(
+                          "The value of time_step_t must > 0, but now is %d",
+                          time_step_value));
     PADDLE_ENFORCE_EQ(
         seq_len,
         1,
@@ -292,9 +294,9 @@ void FusedMultiTransformerINT8Kernel(
 
     // step2. qkv
     const phi::DenseTensor *qkv_bias =
-        qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+        !qkv_biases.empty() ? qkv_biases[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
-    const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
+    const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       qkv_compute.ComputeForward(qkv_weights[i],
                                  x,
@@ -340,26 +342,26 @@ void FusedMultiTransformerINT8Kernel(
         cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
     phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
-    if (time_step) {  // generation decoder stage
+    if (time_step_t) {  // generation decoder stage
       // [2, batch_size, num_head, max_seq_len, head_size]
       int max_seq_len = cache_kv->dims()[3];
       fmha<T>(dev_ctx,
               qkv_out,
               *qkv_bias,
-              *src_mask,
+              *src_mask_t,
               cache_kv_out,
               &fmha_out,
               bsz,
               max_seq_len,
               num_head,
               dim_head,
-              time_step->data<int>()[0],
+              time_step_t->data<int>()[0],
               1. / std::sqrt(dim_head));
     } else if (cache_kv_out) {  // generation context stage
       // TODO(wangxi): can remove dropout in inference
       fmha_compute.ComputeForward(qkv_out,
                                   nullptr,
-                                  src_mask,
+                                  src_mask_t,
                                   &transpose_out_2,
                                   nullptr,
                                   &qk_out,
@@ -399,7 +401,7 @@ void FusedMultiTransformerINT8Kernel(
       // TODO(wangxi): can remove dropout in inference
       fmha_compute.ComputeForward(qkv_out,
                                   cache_kv,
-                                  src_mask,
+                                  src_mask_t,
                                   &transpose_out_2,
                                   cache_kv_out,
                                   &qk_out,

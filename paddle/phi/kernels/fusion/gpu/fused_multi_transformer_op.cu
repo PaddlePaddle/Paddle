@@ -61,19 +61,24 @@ void FusedMultiTransformerKernel(
     DenseTensor *out) {
   using U = phi::funcs::LayerNormParamType<T>;
 
+  auto *rotary_tensor_t = rotary_tensor.get_ptr();
+  auto *seq_lengths_t = seq_lengths.get_ptr();
+  auto *src_mask_t = src_mask.get_ptr();
+  auto *time_step_t = time_step.get_ptr();
+
   const auto input_x_dims = x.dims();
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
   int bsz_seq = bsz * seq_len;
   bool remove_padding = false;
-  if (seq_lengths) {
+  if (seq_lengths_t) {
     remove_padding = true;
   }
   phi::DenseTensor d_token_tensor;
   phi::DenseTensor padding_offset_tensor;
   phi::DenseTensor x_remove_padding;
-  bool encoder_remove_padding = (remove_padding && !time_step);
+  bool encoder_remove_padding = (remove_padding && !time_step_t);
   int token_num = 0;
 
   // remove padding in encoder
@@ -90,7 +95,7 @@ void FusedMultiTransformerKernel(
                            &token_num,
                            d_token_num,
                            padding_offset_tensor.data<int>(),
-                           seq_lengths->data<int>(),
+                           seq_lengths_t->data<int>(),
                            bsz,
                            seq_len);
     padding_offset_tensor.Resize({token_num});
@@ -128,7 +133,7 @@ void FusedMultiTransformerKernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
+  bool compute_bias = !qkv_biases.empty() && time_step_t == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
   // compute_bias as false.
@@ -156,18 +161,18 @@ void FusedMultiTransformerKernel(
   }
 
   auto out_seq_len = seq_len;
-  if (time_step) {
-    PADDLE_ENFORCE_EQ(time_step->place(),
+  if (time_step_t) {
+    PADDLE_ENFORCE_EQ(time_step_t->place(),
                       phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
                           "The place of input(TimeStep) must be CPUPlace."));
     // cache_seq_len
-    int time_step_value = time_step->data<int>()[0];
-    PADDLE_ENFORCE_GT(
-        time_step_value,
-        0,
-        phi::errors::PreconditionNotMet(
-            "The value of time_step must > 0, but now is %d", time_step_value));
+    int time_step_value = time_step_t->data<int>()[0];
+    PADDLE_ENFORCE_GT(time_step_value,
+                      0,
+                      phi::errors::PreconditionNotMet(
+                          "The value of time_step_t must > 0, but now is %d",
+                          time_step_value));
     PADDLE_ENFORCE_EQ(
         seq_len,
         1,
@@ -340,9 +345,9 @@ void FusedMultiTransformerKernel(
 
     // step2. qkv
     const phi::DenseTensor *qkv_bias =
-        qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+        !qkv_biases.empty() ? qkv_biases[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
-    const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
+    const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       const phi::DenseTensor *tmp_input_x =
           (encoder_remove_padding) ? &x_remove_padding : &x;
@@ -361,22 +366,22 @@ void FusedMultiTransformerKernel(
         cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
     phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
-    if (time_step) {  // generation decoder stage
+    if (time_step_t) {  // generation decoder stage
       // [2, batch_size, num_head, max_seq_len, head_size]
       int max_seq_len = cache_kv->dims()[3];
       fmha<T>(dev_ctx,
               qkv_out,
               *qkv_bias,
-              *src_mask,
-              seq_lengths,
-              rotary_tensor,
+              *src_mask_t,
+              seq_lengths_t,
+              rotary_tensor_t,
               cache_kv_out,
               &fmha_out,
               bsz,
               max_seq_len,
               num_head,
               dim_head,
-              time_step->data<int>()[0],
+              time_step_t->data<int>()[0],
               rotary_emb_dims,
               1. / std::sqrt(dim_head));
     } else if (cache_kv_out) {  // generation context stage
@@ -401,9 +406,9 @@ void FusedMultiTransformerKernel(
       // q_transpose_out_data [bs, head_num, seq_len, dim_head]
       // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
       if (rotary_emb_dims != 0) {
-        auto *rotary_emb_data = rotary_tensor->data<T>();
+        auto *rotary_emb_data = rotary_tensor_t->data<T>();
         const int *sequence_lengths_data =
-            encoder_remove_padding ? seq_lengths->data<int>() : nullptr;
+            encoder_remove_padding ? seq_lengths_t->data<int>() : nullptr;
         rotary_qk(dev_ctx,
                   q_transpose_out_data,
                   kv_transpose_out_data,
@@ -421,7 +426,7 @@ void FusedMultiTransformerKernel(
       phi::DenseTensor *tmp_padding_offset_tensor =
           encoder_remove_padding ? &padding_offset_tensor : nullptr;
       fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
-                                                  src_mask,
+                                                  src_mask_t,
                                                   tmp_padding_offset_tensor,
                                                   &q_transpose_out,
                                                   &kv_transpose_out,
@@ -488,9 +493,9 @@ void FusedMultiTransformerKernel(
       // q_transpose_out_data [bs, head_num, seq_len, dim_head]
       // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
       if (rotary_emb_dims != 0) {
-        auto *rotary_emb_data = rotary_tensor->data<T>();
+        auto *rotary_emb_data = rotary_tensor_t->data<T>();
         const int *sequence_lengths_data =
-            encoder_remove_padding ? seq_lengths->data<int>() : nullptr;
+            encoder_remove_padding ? seq_lengths_t->data<int>() : nullptr;
         rotary_qk(dev_ctx,
                   q_transpose_out_data,
                   kv_transpose_out_data,
@@ -508,7 +513,7 @@ void FusedMultiTransformerKernel(
       phi::DenseTensor *tmp_padding_offset_tensor =
           encoder_remove_padding ? &padding_offset_tensor : nullptr;
       fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
-                                                  src_mask,
+                                                  src_mask_t,
                                                   tmp_padding_offset_tensor,
                                                   &q_transpose_out,
                                                   &kv_transpose_out,
@@ -717,6 +722,10 @@ void FusedMultiTransformerKernel(
     std::vector<DenseTensor *> cache_kv_outs,
     DenseTensor *out) {
   using U = LayerNormParamType<T>;
+  auto *rotary_tensor_t = rotary_tensor.get_ptr();
+  auto *seq_lengths_t = seq_lengths.get_ptr();
+  auto *src_mask_t = src_mask.get_ptr();
+  auto *time_step_t = time_step.get_ptr();
 
   // 0. input
   const auto input_x_dims = x.dims();
@@ -725,13 +734,13 @@ void FusedMultiTransformerKernel(
   int dim_embed = input_x_dims[2];
   int bsz_seq = bsz * seq_len;
   bool remove_padding = false;
-  if (seq_lengths) {
+  if (seq_lengths_t) {
     remove_padding = true;
   }
   phi::DenseTensor d_token_tensor;
   phi::DenseTensor padding_offset_tensor;
   phi::DenseTensor x_remove_padding;
-  bool encoder_remove_padding = (remove_padding && !time_step);
+  bool encoder_remove_padding = (remove_padding && !time_step_t);
   int token_num = 0;
 
   // remove padding in encoder
@@ -748,7 +757,7 @@ void FusedMultiTransformerKernel(
                            &token_num,
                            d_token_num,
                            padding_offset_tensor.data<int>(),
-                           seq_lengths->data<int>(),
+                           seq_lengths_t->data<int>(),
                            bsz,
                            seq_len);
     padding_offset_tensor.Resize({token_num});
@@ -788,7 +797,7 @@ void FusedMultiTransformerKernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
+  bool compute_bias = !qkv_biases.empty() && time_step_t == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
   // set compute_bias as false.
@@ -816,18 +825,18 @@ void FusedMultiTransformerKernel(
   }
 
   auto out_seq_len = seq_len;
-  if (time_step) {
-    PADDLE_ENFORCE_EQ(time_step->place(),
+  if (time_step_t) {
+    PADDLE_ENFORCE_EQ(time_step_t->place(),
                       phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
                           "The place of input(TimeStep) must be CPUPlace."));
     // cache_seq_len
-    int time_step_value = time_step->data<int>()[0];
-    PADDLE_ENFORCE_GT(
-        time_step_value,
-        0,
-        phi::errors::PreconditionNotMet(
-            "The value of time_step must > 0, but now is %d", time_step_value));
+    int time_step_value = time_step_t->data<int>()[0];
+    PADDLE_ENFORCE_GT(time_step_value,
+                      0,
+                      phi::errors::PreconditionNotMet(
+                          "The value of time_step_t must > 0, but now is %d",
+                          time_step_value));
     PADDLE_ENFORCE_EQ(
         seq_len,
         1,
@@ -1010,9 +1019,9 @@ void FusedMultiTransformerKernel(
 
     // step2. qkv
     const phi::DenseTensor *qkv_bias =
-        qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+        !qkv_biases.empty() ? qkv_biases[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
-    const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
+    const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       const phi::DenseTensor *tmp_input_x =
           (encoder_remove_padding) ? &x_remove_padding : &x;
@@ -1031,22 +1040,22 @@ void FusedMultiTransformerKernel(
         cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
     phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
-    if (time_step) {  // generation decoder stage
+    if (time_step_t) {  // generation decoder stage
       // [2, batch_size, num_head, max_seq_len, head_size]
       int max_seq_len = cache_kv->dims()[3];
       fmha<T>(dev_ctx,
               qkv_out,
               *qkv_bias,
-              *src_mask,
-              seq_lengths,
-              rotary_tensor,
+              *src_mask_t,
+              seq_lengths_t,
+              rotary_tensor_t,
               cache_kv_out,
               &fmha_out,
               bsz,
               max_seq_len,
               num_head,
               dim_head,
-              time_step->data<int>()[0],
+              time_step_t->data<int>()[0],
               rotary_emb_dims,
               1. / std::sqrt(dim_head));
     } else if (cache_kv_out) {  // generation context stage
@@ -1072,9 +1081,9 @@ void FusedMultiTransformerKernel(
       // q_transpose_out_data [bs, head_num, seq_len, dim_head]
       // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
       if (rotary_emb_dims != 0) {
-        auto *rotary_emb_data = rotary_tensor->data<T>();
+        auto *rotary_emb_data = rotary_tensor_t->data<T>();
         const int *sequence_lengths_data =
-            encoder_remove_padding ? seq_lengths->data<int>() : nullptr;
+            encoder_remove_padding ? seq_lengths_t->data<int>() : nullptr;
         rotary_qk(dev_ctx,
                   q_transpose_out_data,
                   kv_transpose_out_data,
@@ -1092,7 +1101,7 @@ void FusedMultiTransformerKernel(
       phi::DenseTensor *tmp_padding_offset_tensor =
           encoder_remove_padding ? &padding_offset_tensor : nullptr;
       fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
-                                                  src_mask,
+                                                  src_mask_t,
                                                   tmp_padding_offset_tensor,
                                                   &q_transpose_out,
                                                   &kv_transpose_out,
@@ -1159,9 +1168,9 @@ void FusedMultiTransformerKernel(
       // q_transpose_out_data [bs, head_num, seq_len, dim_head]
       // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
       if (rotary_emb_dims != 0) {
-        auto *rotary_emb_data = rotary_tensor->data<T>();
+        auto *rotary_emb_data = rotary_tensor_t->data<T>();
         const int *sequence_lengths_data =
-            encoder_remove_padding ? seq_lengths->data<int>() : nullptr;
+            encoder_remove_padding ? seq_lengths_t->data<int>() : nullptr;
         rotary_qk(dev_ctx,
                   q_transpose_out_data,
                   kv_transpose_out_data,
@@ -1179,7 +1188,7 @@ void FusedMultiTransformerKernel(
       phi::DenseTensor *tmp_padding_offset_tensor =
           encoder_remove_padding ? &padding_offset_tensor : nullptr;
       fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
-                                                  src_mask,
+                                                  src_mask_t,
                                                   tmp_padding_offset_tensor,
                                                   &q_transpose_out,
                                                   &kv_transpose_out,
