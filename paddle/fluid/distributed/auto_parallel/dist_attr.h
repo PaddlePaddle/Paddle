@@ -112,8 +112,8 @@ class OperatorDistAttr {
     return output_dist_attrs_.at(name);
   }
 
-  void set_output_dist_attr(const std::string& name,
-                            const TensorDistAttr& dist_attr);
+  TEST_API void set_output_dist_attr(const std::string& name,
+                                     const TensorDistAttr& dist_attr);
 
   const ProcessMesh& process_mesh() const { return process_mesh_; }
 
