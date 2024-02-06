@@ -18,7 +18,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
-const int vlog_level = 0;
+const int vlog_level = 3;
 
 namespace pir {
 namespace {
