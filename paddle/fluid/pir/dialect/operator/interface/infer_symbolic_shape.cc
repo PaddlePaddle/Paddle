@@ -515,8 +515,8 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     for (int64_t i = start; i < end; i++) {
       out_data.push_back(operand_shape_or_data.data().value()[i]);
     }
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs(sym_shape, out_data)};
+    symbol::ShapeOrDataDimExprs shape_data{symbol::TensorShapeOrDataDimExprs(
+        std::vector<symbol::DimExpr>{out_data.size()}, out_data)};
     shape_analysis->SetShapeOrDataForValue(res, shape_data);
   } else {
     symbol::ShapeOrDataDimExprs shape_data{
@@ -524,10 +524,6 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     shape_analysis->SetShapeOrDataForValue(res, shape_data);
   }
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(sym_shape, out_data)};
-
-  shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
 }
 
