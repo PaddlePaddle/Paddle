@@ -22,8 +22,8 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
 }
 #endif
 
-PHI_DECLARE_bool(use_cuda_malloc_async_allocator);
-PHI_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
+COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
+COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace phi {
 namespace backends {
