@@ -1,17 +1,7 @@
 get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
-cc_test(
+paddle_test(
   test_mkldnn_op_inplace
-  SRCS test_mkldnn_op_inplace.cc
-  DEPS executor
-       op_registry
-       elementwise_add_op
-       activation_op
-       phi
-       common
-       scope
-       device_context
-       enforce
-       generated_static_op)
+  SRCS test_mkldnn_op_inplace.cc)
 cc_test(
   test_mkldnn_cpu_quantize_pass
   SRCS test_mkldnn_cpu_quantize_pass.cc
