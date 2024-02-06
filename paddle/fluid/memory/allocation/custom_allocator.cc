@@ -16,6 +16,8 @@
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/trace_event.h"
 
 namespace paddle {
 namespace memory {
@@ -33,6 +35,12 @@ void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
     phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
         allocation->ptr(), allocation->size());
   }
+  DEVICE_MEMORY_STAT_UPDATE(
+      Reserved, place_.GetDeviceId(), -allocation->size());
+  platform::RecordMemEvent(allocation->ptr(),
+                           place_,
+                           allocation->size(),
+                           platform::TracerMemEventType::ReservedFree);
   delete allocation;
 }
 
@@ -42,6 +50,9 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   void* ptr =
       phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
   if (LIKELY(ptr)) {
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, place_.GetDeviceId(), size);
+    platform::RecordMemEvent(
+        ptr, place_, size, platform::TracerMemEventType::ReservedAllocate);
     return new Allocation(ptr, size, place_);
   }
 
