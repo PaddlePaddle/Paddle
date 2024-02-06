@@ -344,6 +344,12 @@ def get_patch():
     return str(_get_version_detail(2))
 
 
+def get_nccl_version():
+    if env_dict.get("WITH_NCCL") == 'ON':
+        return int(env_dict.get("NCCL_VERSION"))
+    return 0
+
+
 def get_cuda_version():
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
@@ -664,7 +670,7 @@ def cinn():
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
-                'nccl': int(env_dict.get("NCCL_VERSION")),
+                'nccl': get_nccl_version(),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
