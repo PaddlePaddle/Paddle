@@ -26,7 +26,7 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedMultiTransformerINT8Kernel(
     const Context &dev_ctx,
-    const DenseTensor &input_x,
+    const DenseTensor &x,
     const std::vector<DenseTensor *> &ln_scales,
     const std::vector<DenseTensor *> &ln_biases,
     const std::vector<DenseTensor *> &qkv_weights,
@@ -69,7 +69,7 @@ void FusedMultiTransformerINT8Kernel(
   using U = phi::funcs::LayerNormParamType<T>;
 
   // 0. input
-  const auto input_x_dims = input_x.dims();
+  const auto input_x_dims = x.dims();
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
@@ -252,7 +252,7 @@ void FusedMultiTransformerINT8Kernel(
   auto *tmp_out_data =
       dev_ctx.template Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
-  auto *x_data = input_x.data<T>();
+  auto *x_data = x.data<T>();
   phi::DenseTensor *buf0 = nullptr;
   phi::DenseTensor *buf1 = nullptr;
 
@@ -297,7 +297,7 @@ void FusedMultiTransformerINT8Kernel(
     const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       qkv_compute.ComputeForward(qkv_weights[i],
-                                 input_x,
+                                 x,
                                  &input_workspace,
                                  bias,
                                  &qkv_out,
@@ -656,9 +656,9 @@ void FusedMultiTransformerINT8Kernel(
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_multi_transformer_int8,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::FusedMultiTransformerINT8Kernel,
-                   float,
-                   phi::dtype::float16) {}
+// PD_REGISTER_KERNEL(fused_multi_transformer_int8,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::fusion::FusedMultiTransformerINT8Kernel,
+//                    float,
+//                    phi::dtype::float16) {}

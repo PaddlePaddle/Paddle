@@ -1182,7 +1182,7 @@ void FusedMultiTransformerInferMeta(
   out->set_dims(x.dims());
 }
 void FusedMultiTransformerInt8InferMeta(
-    const MetaTensor& input_x,
+    const MetaTensor& x,
     const MetaTensor& ln_scale,
     const MetaTensor& ln_bias,
     const MetaTensor& qkv_w,
@@ -1222,6 +1222,7 @@ void FusedMultiTransformerInt8InferMeta(
     float quant_min_bound,
     MetaTensor* cache_kv_out,
     MetaTensor* out) {}
+
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
                                const MetaTensor& dropout2_seed,

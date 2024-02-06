@@ -29,7 +29,7 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedMultiTransformerKernel(
     const Context &dev_ctx,
-    const DenseTensor &input_x,
+    const DenseTensor &x,
     const std::vector<DenseTensor *> &ln_scales,
     const std::vector<DenseTensor *> &ln_biases,
     const std::vector<DenseTensor *> &qkv_weights,
@@ -61,7 +61,7 @@ void FusedMultiTransformerKernel(
     DenseTensor *out) {
   using U = phi::funcs::LayerNormParamType<T>;
 
-  const auto input_x_dims = input_x.dims();
+  const auto input_x_dims = x.dims();
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
@@ -99,7 +99,7 @@ void FusedMultiTransformerKernel(
                               x_remove_padding.numel() * sizeof(T));
     InvokeRemovePadding(dev_ctx,
                         x_remove_padding.data<T>(),
-                        input_x.data<T>(),
+                        x.data<T>(),
                         padding_offset_tensor.data<int>(),
                         token_num,
                         dim_embed);
@@ -289,7 +289,7 @@ void FusedMultiTransformerKernel(
   if (encoder_remove_padding) {
     x_data = x_remove_padding.data<T>();
   } else {
-    x_data = input_x.data<T>();
+    x_data = x.data<T>();
   }
   phi::DenseTensor *buf0 = nullptr;
   phi::DenseTensor *buf1 = nullptr;
@@ -345,7 +345,7 @@ void FusedMultiTransformerKernel(
     const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       const phi::DenseTensor *tmp_input_x =
-          (encoder_remove_padding) ? &x_remove_padding : &input_x;
+          (encoder_remove_padding) ? &x_remove_padding : &x;
       qkv_compute.ComputeForward(
           qkv_weights[i], tmp_input_x, bias, &qkv_out, &qkv_out);
     } else {
@@ -686,7 +686,7 @@ void FusedMultiTransformerKernel(
 template <typename T, typename Context>
 void FusedMultiTransformerKernel(
     const Context &dev_ctx,
-    const DenseTensor &input_x,
+    const DenseTensor &x,
     const std::vector<DenseTensor *> &ln_scales,
     const std::vector<DenseTensor *> &ln_biases,
     const std::vector<DenseTensor *> &qkv_weights,
@@ -717,19 +717,14 @@ void FusedMultiTransformerKernel(
     std::vector<DenseTensor *> cache_kv_outs,
     DenseTensor *out) {
   using U = LayerNormParamType<T>;
-  auto &dev_ctx = ctx.cuda_device_context();
 
-  auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
   // 0. input
-  auto *input_x = ctx.Input<phi::DenseTensor>("X");
-  const auto input_x_dims = input_x->dims();
+  const auto input_x_dims = x.dims();
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
   int bsz_seq = bsz * seq_len;
-  const std::string act_method = ctx.Attr<std::string>("act_method");
   bool remove_padding = false;
-  auto *seq_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
   if (seq_lengths) {
     remove_padding = true;
   }
@@ -762,7 +757,7 @@ void FusedMultiTransformerKernel(
                               x_remove_padding.numel() * sizeof(T));
     InvokeRemovePadding(dev_ctx,
                         x_remove_padding.data<T>(),
-                        input_x.data<T>(),
+                        x.data<T>(),
                         padding_offset_tensor.data<int>(),
                         token_num,
                         dim_embed);
@@ -773,8 +768,6 @@ void FusedMultiTransformerKernel(
       encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
 
   // 1. layer norm
-  const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
-  const float epsilon = ctx.Attr<float>("epsilon");
 
   auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
   phi::DenseTensor ln_mean, ln_var;
@@ -788,9 +781,6 @@ void FusedMultiTransformerKernel(
   // 2. qkv
   // x: qkv's input [batch_size, seq_len, dim_embed]
   // y: qkv's weight: [3, num_head, dim_head, dim_embed]
-  auto qkv_weights = ctx.MultiInput<phi::DenseTensor>("QKVW");
-  auto qkv_biases = ctx.MultiInput<phi::DenseTensor>("QKVBias");
-  const bool trans_qkvw = ctx.Attr<bool>("trans_qkvw");
   const auto qkv_w_dims = qkv_weights[0]->dims();
   int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
   int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
@@ -815,20 +805,11 @@ void FusedMultiTransformerKernel(
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
-  // 2.1 rotary
-  auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
-  const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
-
   // 3. fmha
   AttnDropoutParam attn_param(
       true, "upscale_in_train", 0.0, true, true, 0, nullptr);
   auto fmha_compute =
       FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
-  auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
-  auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
-  auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
-  // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
-  auto pre_caches = ctx.MultiInput<phi::DenseTensor>("PreCaches");
   int cache_offset = 0;
   if (pre_caches.size() > 0) {
     cache_offset = pre_caches[0]->dims()[3];
@@ -909,9 +890,6 @@ void FusedMultiTransformerKernel(
       dev_ctx.template Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
 
   // 4. out_linear
-  auto out_linear_weights = ctx.MultiInput<phi::DenseTensor>("OutLinearW");
-  auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
-  int ring_id = ctx.Attr<int>("ring_id");
   // (transA, transB, compute_bias) = (false, false, false)
   auto out_linear_compute = phi::fusion::AttnMatMul<T>(
       dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
@@ -920,8 +898,6 @@ void FusedMultiTransformerKernel(
   DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
   FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
       dev_ctx, token_num, dim_embed, dropout_param2, epsilon);
-  auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
-  auto ffn_ln_biases = ctx.MultiInput<phi::DenseTensor>("FFNLnBias");
   phi::DenseTensor bias_dropout_residual_out, dropout_mask_out;
   T *bias_dropout_residual_out_data = nullptr;
   if (pre_layer_norm) {
@@ -935,8 +911,6 @@ void FusedMultiTransformerKernel(
       &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
   // 6. ffn matmul1
-  auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
-  auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
   auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
   int dim_ffn = ffn1_weight_dim[1];
@@ -960,8 +934,6 @@ void FusedMultiTransformerKernel(
       &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
   // 8. ffn2 matmul
-  auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
-  auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
   auto ffn2_linear_compute = phi::fusion::AttnMatMul<T>(
       dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
@@ -971,7 +943,6 @@ void FusedMultiTransformerKernel(
       dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
 
   // calc
-  auto *out = ctx.Output<phi::DenseTensor>("Out");
   auto *from_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   phi::DenseTensor *from_tensor = out;
   phi::DenseTensor tmp_out, tmp_out_rm_padding;
@@ -988,7 +959,7 @@ void FusedMultiTransformerKernel(
   if (encoder_remove_padding) {
     x_data = x_remove_padding.data<T>();
   } else {
-    x_data = input_x.data<T>();
+    x_data = x.data<T>();
   }
   phi::DenseTensor *buf0 = nullptr;
   phi::DenseTensor *buf1 = nullptr;
@@ -1044,7 +1015,7 @@ void FusedMultiTransformerKernel(
     const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       const phi::DenseTensor *tmp_input_x =
-          (encoder_remove_padding) ? &x_remove_padding : input_x;
+          (encoder_remove_padding) ? &x_remove_padding : &x;
       qkv_compute.ComputeForward(
           qkv_weights[i], tmp_input_x, bias, &qkv_out, &qkv_out);
     } else {
@@ -1394,9 +1365,9 @@ void FusedMultiTransformerKernel(
 }  // namespace fusion
 }  // namespace phi
 
-// PD_REGISTER_KERNEL(fused_multi_transformer,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::fusion::FusedMultiTransformerKernel,
-//                    float,
-//                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(fused_multi_transformer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedMultiTransformerKernel,
+                   float,
+                   phi::dtype::float16) {}

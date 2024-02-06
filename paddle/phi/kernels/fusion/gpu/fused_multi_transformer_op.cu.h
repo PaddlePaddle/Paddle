@@ -83,7 +83,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto place = ctx.GetPlace();
     void *recvbuff = tensor.mutable_data<T>(place);
     gpuStream_t stream = nullptr;
-    platform::NCCLComm *comm = nullptr;
+    paddle::platform::NCCLComm *comm = nullptr;
     phi::distributed::NCCLCommContext *comm_ctx = nullptr;
 
     const auto &comm_context_manager =
@@ -112,7 +112,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
       VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
     } else {
-      comm = phi::NCCLCommContext::Instance().Get(ring_id, place);
+      comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
 
       stream = ctx.stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
