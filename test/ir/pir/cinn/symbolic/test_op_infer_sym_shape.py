@@ -364,6 +364,10 @@ class TransposeNet(paddle.nn.Layer):
     def forward(self, x):
         out = paddle.transpose(x, perm=[1, 0, 2])
 
+        x = x.reshape([2, 3, 2, 2])
+        shape = paddle.shape(x)
+        out = shape.transpose(perm=(0,))
+
         return out
 
 
@@ -372,9 +376,7 @@ class TestTransposeOpInferSymbolicShape(TestBase):
         self.cases = [np.random.rand(2, 3, 4)]
 
         self.expected = [
-            [
-                'shape[S1, S0, S2], data[NULL]',
-            ]
+            ['shape[S1, S0, S2], data[NULL]', 'shape[4], data[2, 3, 2, 2]']
         ]
 
     def test_eval_symbolic(self):

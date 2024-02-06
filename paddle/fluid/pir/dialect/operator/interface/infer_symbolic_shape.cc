@@ -916,6 +916,16 @@ bool TileOpInferSymbolicShape(pir::Operation *op,
 
 bool TransposeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  std::vector<pir::Attribute> perm =
+      op->attributes().at("perm").dyn_cast<pir::ArrayAttribute>().AsVector();
+  if (perm.size() == 1) {
+    // perm must be [0], which means nothing to do with input, just copy the
+    // info from input
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0),
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
+    return true;
+  }
   const std::vector<symbol::DimExpr> &x_dims = [&] {
     std::vector<symbol::DimExpr> dims;
     const auto &x_shape_or_data =
@@ -930,9 +940,7 @@ bool TransposeOpInferSymbolicShape(
 
   int x_rank = x_dims.size();
 
-  const std::vector<int32_t> formated_axis = [op, x_rank] {
-    std::vector<pir::Attribute> perm =
-        op->attributes().at("perm").dyn_cast<pir::ArrayAttribute>().AsVector();
+  const std::vector<int32_t> formated_axis = [op, x_rank, &perm] {
     std::vector<int32_t> out(perm.size(), 0);
     std::transform(perm.begin(),
                    perm.end(),
