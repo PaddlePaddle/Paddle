@@ -278,6 +278,7 @@ void BindAutoParallel(py::module *m) {
                 return ProcessMesh(self);
               },
               py::arg("memo"))
+          .def("__hash__", &ProcessMesh::hash)
           .def("__str__", &ProcessMesh::to_string);
 
   g_process_mesh_pytype = reinterpret_cast<PyTypeObject *>(process_mesh.ptr());
