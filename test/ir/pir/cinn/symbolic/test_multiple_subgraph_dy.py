@@ -27,27 +27,17 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class WhileRMSNorm(nn.Layer):
+class MultipleSubgraph(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.hidden_size = 768
-        self.weight = paddle.create_parameter(
-            shape=[self.hidden_size],
-            dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
-        )
-        self.variance_epsilon = 1e-6
         self.mlp = nn.Linear(self.hidden_size, self.hidden_size)
 
-    def rms_norm(self, hidden_states):
-        variance = hidden_states.pow(2).sum(-1, keepdim=True) / 768
-        hidden_states = (
-            paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
-        )
-        return hidden_states * self.weight
+    def exp_sub(self, x):
+        y = paddle.exp(x)
+        return y - x
 
-    def forward(self, hidden_states):
-        return self.rms_norm(self.mlp(self.rms_norm(hidden_states)))
+    def forward(self, x):
+        return self.exp_sub(self.mlp(self.exp_sub(x)))
 
 
 class TestWhile(unittest.TestCase):
@@ -57,8 +47,8 @@ class TestWhile(unittest.TestCase):
 
     def prepare_data(self):
         self.shape = [1, 2048, 768]
-        self.hidden_states = paddle.randn(self.shape, dtype="float32")
-        self.hidden_states.stop_gradient = False
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 2)
@@ -68,13 +58,13 @@ class TestWhile(unittest.TestCase):
         )
 
     def eval(self, use_cinn):
-        net = WhileRMSNorm()
+        net = MultipleSubgraph()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.hidden_states)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
