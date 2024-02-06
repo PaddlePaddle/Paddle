@@ -938,7 +938,7 @@ class ShardingPass(PassBase):
                     sync=False,
                     op_namescope="sharding_stage2_broadcast_dep",
                 )
-                if self.enable_overlap:
+                if self.enable_overlap and depend_op is not None:
                     depend_op.dist_attr.execution_stream = comm_stream
                     depend_op.dist_attr.scheduling_priority = (
                         self.comm_op_scheduling_priority
