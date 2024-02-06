@@ -49,10 +49,13 @@ class YoloBoxOpConverter : public OpConverter {
             ? PADDLE_GET_CONST(float, op_desc.GetAttr("iou_aware_factor"))
             : 0.5;
 
-    int type_id = static_cast<int>(engine_->WithFp16());
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    if (engine_->precision() == phi::DataType::INT8) {
+      with_fp16 = true;
+    }
     auto input_dim = X_tensor->getDimensions();
     auto* yolo_box_plugin = new plugin::YoloBoxPlugin(
-        type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+        with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
         anchors,
         class_num,
         conf_thresh,
