@@ -69,5 +69,5 @@ class TestDygraphFramework(unittest.TestCase):
     def test_dygraph_to_string(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with base.dygraph.guard():
-            var_inp = base.dygraph.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             print(str(var_inp))

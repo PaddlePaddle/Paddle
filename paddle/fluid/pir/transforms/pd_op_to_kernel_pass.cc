@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -47,7 +48,6 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
@@ -55,8 +55,8 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 
-PHI_DECLARE_bool(print_ir);
-PHI_DECLARE_string(pir_onednn_kernel_blacklist);
+COMMON_DECLARE_bool(print_ir);
+// COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
 
 namespace paddle {
 namespace dialect {
@@ -1093,6 +1093,7 @@ phi::KernelKey GetKernelKey(
 
 #ifdef PADDLE_WITH_DNNL
   std::regex reg(",");
+  std::string FLAGS_pir_onednn_kernel_blacklist;
   std::unordered_set<std::string> elems{
       std::sregex_token_iterator(FLAGS_pir_onednn_kernel_blacklist.begin(),
                                  FLAGS_pir_onednn_kernel_blacklist.end(),

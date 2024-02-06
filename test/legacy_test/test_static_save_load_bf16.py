@@ -49,8 +49,7 @@ class TestSaveLoadBF16(unittest.TestCase):
         batch_num = 100
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,

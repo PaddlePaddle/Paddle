@@ -58,8 +58,7 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            base.default_startup_program().random_seed = self.seed
-            base.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
             yield
 
     def get_static_graph_result(
@@ -79,8 +78,7 @@ class LayerTest(unittest.TestCase):
         with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
-            base.default_startup_program().random_seed = self.seed
-            base.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
             yield
 
 
