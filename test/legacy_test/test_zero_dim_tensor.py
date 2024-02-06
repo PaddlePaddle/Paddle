@@ -3030,7 +3030,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
-    def assertEqualListTuple(self, out, target_tuple=()):
+    def assertEqualShape(self, out, target_tuple=()):
         if paddle.framework.in_pir_mode():
             out_shape = tuple(out.shape)
         else:
@@ -3124,7 +3124,7 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_create_parameter_var(self):
         zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
-        self.assertEqualListTuple(zero_dim_param)
+        self.assertEqualShape(zero_dim_param)
         prog = paddle.static.default_startup_program()
         res = self.exe.run(prog, fetch_list=[zero_dim_param])
         self.assertEqual(res[0].shape, ())
@@ -3449,6 +3449,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(
             out1.sum(), parameter_list=[x1, out1]
         )
+        grad_list = [_grad for _param, _grad in grad_list]
+
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[x1, out1] + grad_list)
 
@@ -3626,8 +3628,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.rand([2])
         x.stop_gradient = False
         out = paddle.as_complex(x)
-        self.assertEqualListTuple(x, (2,))
-        self.assertEqualListTuple(out, ())
+        self.assertEqualShape(x, (2,))
+        self.assertEqualShape(out, ())
         grad_list = paddle.static.append_backward(
             out.sum(), parameter_list=[x, out]
         )
@@ -3920,7 +3922,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list2 = [_grad for _param, _grad in grad_list2]
 
         out_empty_list = paddle.quantile(x1, 0.5, axis=[])
-        self.assertEqualListTuple(out_empty_list, ())
+        self.assertEqualShape(out_empty_list, ())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4527,8 +4529,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5], 1.0)
         self.assertEqual(res[6].shape, ())
         self.assertEqual(res[6], 1.0)
-        self.assertEqualListTuple(out2, ())
-        self.assertEqualListTuple(out3, ())
+        self.assertEqualShape(out2, ())
+        self.assertEqualShape(out3, ())
 
     @test_with_pir_api
     @prog_scope()
@@ -5094,7 +5096,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @test_with_pir_api
     @prog_scope()
-    def test_maseked_select(self):
+    def test_masked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
         mask = paddle.full([], True, dtype='bool')
@@ -5285,7 +5287,7 @@ class TestSundryAPIStatic(unittest.TestCase):
     def test_static_nn_prelu(self):
         x1 = paddle.full([], 1.0, 'float32')
         x1.stop_gradient = False
-        out1 = paddle.static.nn.prelu(x1, 'all')  # 没适配
+        out1 = paddle.static.nn.prelu(x1, 'all')
         grad_list = paddle.static.append_backward(
             out1.sum(), parameter_list=[x1, out1]
         )
@@ -5422,8 +5424,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualListTuple(out1, ())
-        self.assertEqualListTuple(out2, ())
+        self.assertEqualShape(out1, ())
+        self.assertEqualShape(out2, ())
 
         # 2) x is ND , y is 0D
         x1 = paddle.full([2, 3], 2.0)
@@ -5432,8 +5434,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualListTuple(out1, (2, 3))
-        self.assertEqualListTuple(out2, (2, 3))
+        self.assertEqualShape(out1, (2, 3))
+        self.assertEqualShape(out2, (2, 3))
 
         # 3) x is 0D , y is ND
         x1 = paddle.full([], 2.0)
@@ -5442,8 +5444,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualListTuple(out1, (2, 3))
-        self.assertEqualListTuple(out2, (2, 3))
+        self.assertEqualShape(out1, (2, 3))
+        self.assertEqualShape(out2, (2, 3))
 
     @test_with_pir_api
     @prog_scope()
@@ -5471,7 +5473,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
         (_, x_grad), (_, y_grad) = grad_list
 
-        self.assertEqualListTuple(out, ())
+        self.assertEqualShape(out, ())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
@@ -5488,7 +5490,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
         (_, x_grad), (_, y_grad) = grad_list
 
-        self.assertEqualListTuple(out, ())
+        self.assertEqualShape(out, ())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
