@@ -1006,9 +1006,10 @@ class ShardingPass(PassBase):
         while i < len(ops):
             op = ops[i]
             if is_data_parallel_reduce_op(op):
-                assert (
-                    op.type == "c_reduce_sum"
-                ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                assert op.type in [
+                    "c_reduce_avg",
+                    "c_reduce_sum",
+                ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
 
                 grad_name = op.output_arg_names[0]
                 param_name = _get_base_name_from_grad_name(grad_name)
@@ -1041,9 +1042,10 @@ class ShardingPass(PassBase):
                     param_name
                 ):
                     cur_group.is_in_local_shard = True
-                    assert (
-                        ops[i + 1].type == "c_allreduce_sum"
-                    ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    assert ops[i + 1].type in [
+                        "c_allreduce_avg",
+                        "c_allreduce_sum",
+                    ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
                         ops[i + 1].output_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
@@ -1487,7 +1489,7 @@ def _insert_reduce_op(
     ), f"root id should be a positive int, but now root id is {root_id}"
     new_op = block._insert_op_without_sync(
         insert_idx,
-        type='c_reduce_sum',
+        type=op_type,
         inputs={'X': [reduce_var]},
         outputs={'Out': [reduce_var]},
         attrs={
