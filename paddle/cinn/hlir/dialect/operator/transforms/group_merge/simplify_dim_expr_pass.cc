@@ -50,13 +50,14 @@ void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
 
 symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
     const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
-  const auto& SimplifyDimExpr = [](const std::vector<symbol::DimExpr>& original)
+  const auto& SimplifyDimExpr =
+      [](const std::vector<symbol::DimExpr>& original_dim_expr)
       -> std::vector<symbol::DimExpr> {
-    std::vector<symbol::DimExpr> simplified{};
-    for (const symbol::DimExpr& dim_expr : original) {
-      simplified.push_back(symbol::SimplifyDimExpr(dim_expr));
+    std::vector<symbol::DimExpr> simplified_dim_expr{};
+    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
+      simplified_dim_expr.push_back(symbol::SimplifyDimExpr(dim_expr));
     }
-    return simplified;
+    return simplified_dim_expr;
   };
 
   std::vector<symbol::DimExpr> simplified_shape =
