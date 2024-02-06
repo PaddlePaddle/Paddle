@@ -30,6 +30,7 @@ import utils
 class MultipleSubgraph(nn.Layer):
     def __init__(self):
         super().__init__()
+        self.hidden_size = 768
         self.mlp = nn.Linear(self.hidden_size, self.hidden_size)
 
     def exp_sub(self, x):
