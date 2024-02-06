@@ -16,16 +16,12 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_0d_to_1d_pass.h"
 
-#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/utils/flags.h"
 
 namespace cinn {
 namespace dialect {
