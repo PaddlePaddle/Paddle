@@ -98,6 +98,7 @@ bool CanProveBufferNumelLT(const ir::Buffer& lhs, const ir::Buffer& rhs) {
 // Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(
     const std::vector<cinn::ir::Tensor>& tensor_args, Expr body) {
+  std::cerr << "get temp 11\n";
   std::unordered_set<std::string> tensor_arg_names;
   std::unordered_set<std::string> buffer_arg_names;
   for (auto& tensor : tensor_args) {

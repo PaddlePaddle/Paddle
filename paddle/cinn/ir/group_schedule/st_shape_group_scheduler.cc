@@ -588,6 +588,7 @@ void StaticShapeGroupScheduler::Tiling() {
       ir_sch_->SetBuffer(block, "shared", false);
     } else {
       if (!group_tile_info_->direct_output_var_names.count(name)) {
+        std::cerr << "set local " << name << std::endl;
         ir_sch_->SetBuffer(block, "local", false);
       }
     }
@@ -599,10 +600,10 @@ void StaticShapeGroupScheduler::Tiling() {
     }
   }
 
-  for (auto& name : group_tile_info_->copyed_var_names) {
-    auto block = ir_sch_->GetBlock(name);
-    ir_sch_->SetBuffer(block, "local", false);
-  }
+  // for (auto& name : group_tile_info_->copyed_var_names) {
+  //   auto block = ir_sch_->GetBlock(name);
+  //   ir_sch_->SetBuffer(block, "local", false);
+  // }
 
   for (auto& name : group_tile_info_->thread_sync_before_names) {
     auto loops = ir_sch_->GetLoops(name);

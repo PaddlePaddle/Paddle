@@ -71,7 +71,7 @@ static void RunAndCheckResult(::pir::Program* program,
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  // pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.EnableIRPrinting();
 
@@ -1047,29 +1047,29 @@ TEST(GroupOp, TestSharedBufferProgram) {
 //   RunAndCheckResult(program.get(), false);
 // }
 
-// std::shared_ptr<::pir::Program> BuildStoreProgram() {
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+std::shared_ptr<::pir::Program> BuildStoreProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-//   const std::vector<int64_t> shape = {16, 16};
-//   auto x = builder
-//                .Build<paddle::dialect::FullOp>(
-//                    shape, 1.0, phi::DataType::FLOAT32, phi::GPUPlace())
-//                .result(0);
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  const std::vector<int64_t> shape = {16, 16};
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(
+                   shape, 1.0, phi::DataType::FLOAT32, phi::GPUPlace())
+               .result(0);
 
-//   auto out =
-//       builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
+  auto out =
+      builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
 
-//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-//   return program;
-// }
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  return program;
+}
 
-// TEST(GroupOp, TestBuildStore) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildStoreProgram();
+TEST(GroupOp, TestBuildStore) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildStoreProgram();
 
-//   RunAndCheckResult(program.get(), true, 0.5);
-// }
+  RunAndCheckResult(program.get(), true, 0.5);
+}

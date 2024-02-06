@@ -73,7 +73,12 @@ int64_t Next2Power(int64_t n) {
   return int64_t(std::pow(2.0, std::ceil(std::log2(n))));
 }
 
-Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
+Expr BuildOuputExpr(::pir::Operation* op,
+                    const std::string& out_name,
+                    std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
+  auto in_value = op->operand_source(0);
+  auto out_value = op->result(0);
+  cinn::ir::Tensor tensor = tensor_map->at(in_value);
   auto axis = tensor->axis();
   int rank = axis.size();
   std::vector<cinn::ir::Expr> indices;
@@ -86,12 +91,15 @@ Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
 
   auto body = ir::Load::Make(tensor, indices);
 
-  auto out_name = tensor->name + "_out";
-  auto out_tensor = ir::Tensor(out_name,
-                               tensor->type(),
-                               tensor->shape,
-                               tensor->domain,
-                               tensor->operation);
+  // auto out_tensor = ir::Tensor(out_name,
+  //                              tensor->type(),
+  //                              tensor->shape,
+  //                              tensor->domain,
+  //                              tensor->operation);
+  auto out_tensor =
+      lang::CreatePlaceHolder(tensor->shape, tensor->type(), out_name);
+
+  tensor_map->emplace(out_value, out_tensor);
   body = ir::Store::Make(out_tensor, body, indices);
 
   std::vector<ir::Var> block_vars;
@@ -867,9 +875,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
           base_info.with_constrain = true;
           broadcast_info[tensor->name + "_out"] = base_info;
         }
-      } else {
-        direct_output_var_names.insert(tensor->name);
       }
+      // else {
+      //   direct_output_var_names.insert(tensor->name);
+      // }
 
       // shared_var_names.insert(  tensor->name );
       // }
@@ -884,98 +893,106 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 
   // 2.Do group schedule.
   std::vector<Expr> added_expr;
-  for (size_t i = 0; i < func_bodies.size(); ++i) {
-    // std::cerr << ops[i]->name() << std::endl;
-    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) << std::endl;
-    // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
+  // for (size_t i = 0; i < func_bodies.size(); ++i) {
+  //   // std::cerr << ops[i]->name() << std::endl;
+  //   // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
+  //   std::endl;
+  //   // std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
 
-    if (copyed_var_names.count(ValueName(remain_ops[i]->result(0)))) {
-      auto tensor = tensor_map.at(remain_ops[i]->result(0));
+  //   // if (copyed_var_names.count(ValueName(remain_ops[i]->result(0)))) {
+  //   //   auto tensor = tensor_map.at(remain_ops[i]->result(0));
 
-      auto body = BuildOuputExpr(tensor);
+  //   //   auto body = BuildOuputExpr(tensor);
 
-      std::cerr << "oupput body  " << body << std::endl;
+  //   //   std::cerr << "oupput body  " << body << std::endl;
 
-      added_expr.push_back(body);
+  //   //   added_expr.push_back(body);
 
-      // if( CompatibleInfo::OpKind(*remain_ops[i]) == framework::kReduction)
-      // {
-      //   auto reduce_axis = cinn::dialect::ir::GetVectorAttr(remain_ops[i],
-      //   "dim"); std::vector<int64_t> changed_axes; std::vector<int64_t>
-      //   changed_factor; auto reduce_in_dims =
-      //   remain_ops[i]->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-      //   int rank = reduce_in_dims.size();
-      //   for (size_t i = 0; i < reduce_axis.size(); ++i) {
-      //     auto axis = reduce_axis[i];
-      //     if( axis < 0 )
-      //     {
-      //       axis += rank;
-      //     }
+  //   //   // if( CompatibleInfo::OpKind(*remain_ops[i]) ==
+  //   framework::kReduction)
+  //   //   // {
+  //   //   //   auto reduce_axis =
+  //   cinn::dialect::ir::GetVectorAttr(remain_ops[i],
+  //   //   //   "dim"); std::vector<int64_t> changed_axes; std::vector<int64_t>
+  //   //   //   changed_factor; auto reduce_in_dims =
+  //   //   //
+  //   remain_ops[i]->operand_source(0).type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+  //   //   //   int rank = reduce_in_dims.size();
+  //   //   //   for (size_t i = 0; i < reduce_axis.size(); ++i) {
+  //   //   //     auto axis = reduce_axis[i];
+  //   //   //     if( axis < 0 )
+  //   //   //     {
+  //   //   //       axis += rank;
+  //   //   //     }
 
-      //       changed_axes.push_back(axis);
-      //       changed_factor.push_back(reduce_in_dims[axis]);
+  //   //   //       changed_axes.push_back(axis);
+  //   //   //       changed_factor.push_back(reduce_in_dims[axis]);
 
-      //   }
+  //   //   //   }
 
-      //   cinn::ir::BroadcastInfo info{changed_axes, changed_factor, true};
+  //   //   //   cinn::ir::BroadcastInfo info{changed_axes, changed_factor,
+  //   true};
 
-      //   broadcast_info[ ValueName(remain_ops[i]->result(0)) + "_out"] = info;
-      // }
+  //   //   //   broadcast_info[ ValueName(remain_ops[i]->result(0)) + "_out"] =
+  //   info;
+  //   //   // }
 
-      // if( CompatibleInfo::OpKind(*remain_ops[i]) == framework::kBroadcast)
-      // {
-      //   throw std::runtime_error("not support broadcast type");
-      // }
-    }
-    //   auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
-    //   auto copy_body = copy_expr.As<ir::Block>()
-    //                        ->stmts[0]
-    //                        .As<ir::ScheduleBlockRealize>()
-    //                        ->schedule_block.As<ir::ScheduleBlock>()
-    //                        ->body;
+  //   //   // if( CompatibleInfo::OpKind(*remain_ops[i]) ==
+  //   framework::kBroadcast)
+  //   //   // {
+  //   //   //   throw std::runtime_error("not support broadcast type");
+  //   //   // }
+  //   // }
+  //   //   auto copy_expr = ir::ir_utils::IRCopy(func_bodies[i]);
+  //   //   auto copy_body = copy_expr.As<ir::Block>()
+  //   //                        ->stmts[0]
+  //   //                        .As<ir::ScheduleBlockRealize>()
+  //   //                        ->schedule_block.As<ir::ScheduleBlock>()
+  //   //                        ->body;
 
-    //   std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
-    //             << std::endl;
-    //   std::cerr << copy_body << std::endl;
-    //   cinn::ir::FindBlocksVisitor
-    //   visitor1(ValueName(remain_ops[i]->result(0))); auto find_blocks =
-    //   visitor1(&copy_expr);
+  //   //   std::cerr << "copy\n " << ValueName(remain_ops[i]->result(0))
+  //   //             << std::endl;
+  //   //   std::cerr << copy_body << std::endl;
+  //   //   cinn::ir::FindBlocksVisitor
+  //   //   visitor1(ValueName(remain_ops[i]->result(0))); auto find_blocks =
+  //   //   visitor1(&copy_expr);
 
-    //   // std::cerr << find_blocks[0] << std::endl;
+  //   //   // std::cerr << find_blocks[0] << std::endl;
 
-    //   auto inner_body = find_blocks[0]
-    //                         .As<ir::ScheduleBlockRealize>()
-    //                         ->schedule_block.As<ir::ScheduleBlock>()
-    //                         ->body;
+  //   //   auto inner_body = find_blocks[0]
+  //   //                         .As<ir::ScheduleBlockRealize>()
+  //   //                         ->schedule_block.As<ir::ScheduleBlock>()
+  //   //                         ->body;
 
-    //   auto block1 = find_blocks[0]
-    //                     .As<ir::ScheduleBlockRealize>()
-    //                     ->schedule_block.As<ir::ScheduleBlock>();
+  //   //   auto block1 = find_blocks[0]
+  //   //                     .As<ir::ScheduleBlockRealize>()
+  //   //                     ->schedule_block.As<ir::ScheduleBlock>();
 
-    //   block1->name += "_out";
+  //   //   block1->name += "_out";
 
-    //   // cinn::ir::FindLoopsVisitor visitor( find_blocks[0]);
-    //   // auto find_loops = visitor( &(copy_expr.As<ir::Block>()
-    //   //                        ->stmts[0]) );
+  //   //   // cinn::ir::FindLoopsVisitor visitor( find_blocks[0]);
+  //   //   // auto find_loops = visitor( &(copy_expr.As<ir::Block>()
+  //   //   //                        ->stmts[0]) );
 
-    //   // std::cerr << "inner loop " << find_loops.size() << std::endl;
+  //   //   // std::cerr << "inner loop " << find_loops.size() << std::endl;
 
-    //   auto exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
-    //       inner_body, [&](const Expr* x) { return x->As<cinn::ir::Store>();
-    //       });
+  //   //   auto exprs = cinn::ir::ir_utils::CollectIRNodesInOrder(
+  //   //       inner_body, [&](const Expr* x) { return
+  //   x->As<cinn::ir::Store>();
+  //   //       });
 
-    //   for (auto expr : exprs) {
-    //     auto store = expr.As<cinn::ir::Store>();
+  //   //   for (auto expr : exprs) {
+  //   //     auto store = expr.As<cinn::ir::Store>();
 
-    //     auto t1 = store->tensor.as_tensor_ref();
+  //   //     auto t1 = store->tensor.as_tensor_ref();
 
-    //     t1->name = t1->name + "_out";
-    //   }
+  //   //     t1->name = t1->name + "_out";
+  //   //   }
 
-    //   std::cerr << copy_expr << std::endl;
-    //   added_expr.push_back(copy_expr);
-    // }
-  }
+  //   //   std::cerr << copy_expr << std::endl;
+  //   //   added_expr.push_back(copy_expr);
+  //   // }
+  // }
 
   for (auto expr : added_expr) {
     // std::cerr << "added " << expr << std::endl;
@@ -1062,6 +1079,31 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   return {pack[0].operator ir::Expr().as_lowered_func_ref()};
 }
 
+// std::vector<::pir::Operation*> GetStoreOps(
+// std::unordered_set<::pir::Operation*> op_set )
+// {
+//   std::vector<::pir::Operation*>  vec_res;
+//   for (auto& op : op_set)
+//   {
+//     for( size_t i = 0; i < op->num_results(); ++i )
+//     {
+//       auto res_i = op->result(i);
+
+//       for( auto use_it = res_i.use_begin(); use_it != res_i.use_end(); ++
+//       use_it)
+//       {
+//         std::cerr << " use name " << use_it->owner()->name() << std::endl;
+//         if( use_it->owner()->name() == "cinn_op.store")
+//         {
+//            vec_res.push_back( use_it->owner() );
+//         }
+//       }
+//     }
+//   }
+
+//   return vec_res;
+// }
+
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
@@ -1080,16 +1122,24 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
+  std::cerr << "post process\n";
 
   group->output_names.clear();
   // TODO(phlrain): output values not stable here
+  // auto store_ops = GetStoreOps(  );
+  // std::cerr << "store op size " << store_ops.size() << std::endl;
   for (auto& op : group->output_ops) {
     // collect all output tensor.
+    std::cerr << "name " << op->name() << std::endl;
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
         continue;
       }
+
       auto tensor = tensor_map.at(opresult);
+
+      std::cerr << "tensor name !!!!!!!!!!!!!!!!!!!!!  "
+                << tensor->buffer.defined() << std::endl;
       if (arg_name_set.count(tensor->buffer->name) != 0) {
         continue;
       }
@@ -1099,10 +1149,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
       // output args
       // group->output_names.push_back(tensor->name);
-      // std::cerr << "tensor name   " << tensor->name << std::endl;
-      // std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
+      std::cerr << "tensor name   " << tensor->name << std::endl;
+      std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
       if (copyed_var_names.count(tensor->name)) {
-        // std::cerr << "copyed var name \n";
+        std::cerr << "copyed var name \n";
         auto new_tensor = lang::CreatePlaceHolder(
             tensor->shape, tensor->type(), tensor->name + "_out");
         group_func_arg_tensors->push_back(new_tensor);
@@ -1134,7 +1184,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       arg_name_set.insert(tensor->buffer->name);
     }
   }
-
+  std::cerr << "11\n";
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : (*group_func_args)) {
@@ -1158,6 +1208,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       }
     }
   }
+
+  std::cerr << "22\n";
 
   std::map<int, CINNKernelInfo::ArgDimIdx> mps;
   // update args for dynamic dim
@@ -1186,7 +1238,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       }
     }
   }
-
+  std::cerr << "33\n";
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
 #ifdef CINN_WITH_CUDA
@@ -1253,7 +1305,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       std::cerr << "store\n ";
 
       auto in_tensor = tensor_map->at(op->operand_source(0));
-      auto expr = BuildOuputExpr(in_tensor);
+      auto expr = BuildOuputExpr(op, ValueName(op->result(0)), tensor_map);
+
+      direct_output_var_names.insert(ValueName(op->result(0)));
       func_bodies.push_back(expr);
       continue;
     }
