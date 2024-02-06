@@ -16,6 +16,7 @@ limitations under the License. */
 #include <stdlib.h>
 
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef _WIN32
 static unsigned sleep(unsigned seconds) {
