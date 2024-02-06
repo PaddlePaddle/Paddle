@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/mha_cudnn_frontend.h"
 

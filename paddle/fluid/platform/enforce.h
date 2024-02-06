@@ -61,9 +61,9 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
@@ -101,9 +101,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {

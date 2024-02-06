@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/value.h"
 namespace pir {
 class Block;
@@ -33,6 +34,7 @@ class IR_API BlockArgument : public Value {
   Block *owner() const;
   uint32_t index() const;
 
+  const AttributeMap &attributes() const;
   Attribute attribute(const std::string &key) const;
   void set_attribute(const std::string &key, Attribute value);
 
