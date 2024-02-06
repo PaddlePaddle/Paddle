@@ -34,36 +34,36 @@ namespace funcs {
 // The real computation happens in dealing with LoDTensor.
 template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& input1,
-                  const phi::SelectedRows& input2,
-                  phi::SelectedRows* output);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::SelectedRows& input1,
+                           const phi::SelectedRows& input2,
+                           phi::SelectedRows* output);
 };
 
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& input1,
-                  const phi::DenseTensor& input2,
-                  phi::DenseTensor* output);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::SelectedRows& input1,
+                           const phi::DenseTensor& input2,
+                           phi::DenseTensor* output);
 };
 
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTo {
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& input1,
-                  const int64_t input2_offset,
-                  phi::SelectedRows* input2);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::SelectedRows& input1,
+                           const int64_t input2_offset,
+                           phi::SelectedRows* input2);
 };
 
 // input2 = [all input in input1] + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsSumTo {
-  void operator()(const DeviceContext& context,
-                  const std::vector<phi::SelectedRows*>& input1,
-                  const std::vector<int64_t>& input2_offsets,
-                  phi::SelectedRows* input2);
+  TEST_API void operator()(const DeviceContext& context,
+                           const std::vector<phi::SelectedRows*>& input1,
+                           const std::vector<int64_t>& input2_offsets,
+                           phi::SelectedRows* input2);
 };
 
 // FIXME: The result of SelectedRowsAddToTensor maybe non deterministic,
@@ -71,9 +71,9 @@ struct SelectedRowsSumTo {
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& input1,
-                  phi::DenseTensor* input2);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::SelectedRows& input1,
+                           phi::DenseTensor* input2);
 };
 
 namespace scatter {
@@ -85,20 +85,20 @@ struct MergeAdd {
   phi::SelectedRows operator()(const DeviceContext& context,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false);
-  void operator()(const DeviceContext& context,
-                  const phi::SelectedRows& input,
-                  phi::SelectedRows* output,
-                  const bool sorted_result = false);
-  void operator()(const DeviceContext& context,
-                  const std::vector<const phi::SelectedRows*>& inputs,
-                  phi::SelectedRows* output,
-                  const bool sorted_result = false);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::SelectedRows& input,
+                           phi::SelectedRows* output,
+                           const bool sorted_result = false);
+  TEST_API void operator()(const DeviceContext& context,
+                           const std::vector<const phi::SelectedRows*>& inputs,
+                           phi::SelectedRows* output,
+                           const bool sorted_result = false);
 };
 
 template <typename DeviceContext, typename T>
 struct MergeAverage {
-  phi::SelectedRows operator()(const DeviceContext& context,
-                               const phi::SelectedRows& input);
+  TEST_API phi::SelectedRows operator()(const DeviceContext& context,
+                                        const phi::SelectedRows& input);
   void operator()(const DeviceContext& context,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output);
