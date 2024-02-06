@@ -49,8 +49,9 @@ class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
                 reduction=reduction,
                 pos_weight=self.pos_weight,
             )
-            self.assertTrue(
-                np.allclose(dynamic_result.numpy(), static_result.numpy())
+
+            np.testing.assert_allclose(
+                dynamic_result.numpy(), static_result.numpy()
             )
 
 
