@@ -653,22 +653,20 @@ def append_backward_ops(
                         grad_op = bwd_block.ops[-1]
                         bwd_ops = [grad_op]
 
-                        inplace_input = []
+                        inputs_used_by_other_op = []
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
                             sub_state = state.copy(sub_fwd_block)
-                            for inside_op in sub_fwd_block.ops:
-                                if inside_op.name() == "pd_op.assign_out_":
+                            for input_ in origin_inputs:
+                                if input_ in state.value_to_valuegrad:
                                     origin_grad = state.value_to_valuegrad[
-                                        inside_op.operand_source(1)
+                                        input_
                                     ].copy()
-                                    inplace_input.append(
-                                        (
-                                            inside_op.operand_source(1),
-                                            origin_grad,
-                                        )
+                                    inputs_used_by_other_op.append(
+                                        (input_, origin_grad)
                                     )
+
                             sub_backward_ops = []
                             append_backward_ops(
                                 op,
@@ -681,12 +679,12 @@ def append_backward_ops(
                                 sub_backward_ops,
                                 sub_state,
                             )
-                            for input_tuple in inplace_input:
+                            for input_tuple in inputs_used_by_other_op:
                                 state.value_to_valuegrad[
                                     input_tuple[0]
                                 ] = input_tuple[1]
 
-                        for input_tuple in inplace_input:
+                        for input_tuple in inputs_used_by_other_op:
                             state.value_to_valuegrad[input_tuple[0]] = []
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
