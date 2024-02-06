@@ -28,6 +28,7 @@
 # - op : bilinear_interp
 
 - op : cast
+  dynamic_fallback : True
 
 - op : clip
   extra_args : str mkldnn_data_type="float32"
