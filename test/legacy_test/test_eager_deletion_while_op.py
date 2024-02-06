@@ -121,7 +121,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         optim = paddle.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)
 
-        if not in_pir_mode:
+        if not in_pir_mode():
             gc_vars = core._get_eager_deletion_vars(
                 base.default_main_program().desc, [loss.name]
             )
