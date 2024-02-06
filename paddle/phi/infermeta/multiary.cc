@@ -3520,7 +3520,7 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> inv_var_dims;
-  for (size_t i = size_t(0); i < begin_norm_axis; i++) {
+  for (size_t i = size_t(0); i < static_cast<size_t>(begin_norm_axis); i++) {
     inv_var_dims.push_back(x_dims_vec[i]);
   }
   PADDLE_ENFORCE_EQ(normalized_dims,
@@ -3545,7 +3545,7 @@ void RmsNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 
   inv_var->set_dtype(phi::DataType::FLOAT32);
-  inv_var->set_dims(inv_var_dims);
+  inv_var->set_dims(common::make_ddim(inv_var_dims));
   inv_var->set_layout(x.layout());
 
   residual_out->set_dims(out_dims);
