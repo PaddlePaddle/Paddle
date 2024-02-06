@@ -27,7 +27,7 @@
 
 # - op : bilinear_interp
 
-# - op : cast
+- op : cast
 
 - op : clip
   extra_args : str mkldnn_data_type="float32"
