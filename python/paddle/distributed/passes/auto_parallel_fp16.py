@@ -56,11 +56,17 @@ __amp_utils__ = None
 
 
 def set_op_dtype_to_fp16(op):
-    if op.has_attr('in_dtype') and op.attr('in_dtype') == paddle.float32:
+    if (
+        op.has_attr('in_dtype')
+        and op.attr('in_dtype') == core.VarDesc.VarType.FP32
+    ):
         op._set_attr('in_dtype', __target_dtype__)
-    if op.has_attr('out_dtype') and op.attr('out_dtype') == paddle.float32:
+    if (
+        op.has_attr('out_dtype')
+        and op.attr('out_dtype') == core.VarDesc.VarType.FP32
+    ):
         op._set_attr('out_dtype', __target_dtype__)
-    if op.has_attr('dtype') and op.attr('dtype') == paddle.float32:
+    if op.has_attr('dtype') and op.attr('dtype') == core.VarDesc.VarType.FP32:
         op._set_attr('dtype', __target_dtype__)
 
 
@@ -803,7 +809,7 @@ def cast_startup_program():
                 out_var = startup_program.global_block().var(output_name)
                 if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(__target_dtype__)
-                if op.attr('dtype') == paddle.float32:
+                if op.attr('dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', __target_dtype__)
 
 
