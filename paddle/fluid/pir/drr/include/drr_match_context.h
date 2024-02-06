@@ -17,6 +17,8 @@
 #include <memory>
 #include <string>
 
+#include "paddle/utils/test_macros.h"
+
 namespace pir {
 class Value;
 }
