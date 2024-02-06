@@ -129,9 +129,10 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                             const DenseTensor& dy,
                             const float epsilon,
                             DenseTensor* grad_x,
-                            DenseTensor* grad_scale) {
+                            DenseTensor* grad_scale,
+                            begin_norm_axis) {
   const auto x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int rows = static_cast<int>(matrix_dim[0]);
   int cols = static_cast<int>(matrix_dim[1]);
   dev_ctx.template Alloc<T>(grad_x);
@@ -162,18 +163,37 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
 template <typename T, typename Context>
 void FusedRmsNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const DenseTensor& scale,
-                            const DenseTensor& invvar,
+                            const paddle::optional<DenseTensor>& bias,
+                            const paddle::optional<DenseTensor>& residual,
+                            const DenseTensor& norm_weight,
+                            const paddle::optional<DenseTensor>& norm_bias,
+                            const DenseTensor& inv_var,
                             const DenseTensor& dy,
                             const float epsilon,
+                            const int begin_norm_axis,
+                            const float quant_scale,
                             DenseTensor* grad_x,
-                            DenseTensor* grad_scale) {
+                            DenseTensor* grad_norm_weight) {
 #if defined(PADDLE_WITH_HIP)
   PADDLE_THROW(phi::errors::Unimplemented(
       "Please compile with CUDA, ROCM platform isn't support it."));
 #else
-  cuda_rms_norm_gradient<T, Context>(
-      dev_ctx, x, scale, invvar, dy, epsilon, grad_x, grad_scale);
+  if (bias || residual || norm_bias) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bias or residual or norm_bias is not supported yet"));
+  }
+  if (quant_scale > 0.0f) {
+    PADDLE_THROW(phi::errors::Unimplemented("quant is not supported yet"));
+  }
+  cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                     norm_weight,
+                                     scale,
+                                     inv_var,
+                                     dy,
+                                     epsilon,
+                                     grad_x,
+                                     grad_norm_weight,
+                                     begin_norm_axis);
 #endif
 }
 }  // namespace phi

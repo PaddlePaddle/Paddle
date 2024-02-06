@@ -3544,14 +3544,31 @@ void RmsNormInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->share_lod(x);
 
-  inv_var->set_dtype(phi::DataType::FLOAT32);
-  inv_var->set_dims(common::make_ddim(inv_var_dims));
-  inv_var->set_layout(x.layout());
+  if (inv_var != nullptr) {
+    inv_var->set_dtype(phi::DataType::FLOAT32);
+    inv_var->set_dims(common::make_ddim(inv_var_dims));
+    inv_var->set_layout(x.layout());
+  }
 
   residual_out->set_dims(out_dims);
   residual_out->set_dtype(x.dtype());
   residual_out->set_layout(x.layout());
   residual_out->share_lod(x);
+}
+
+void RmsNormGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& norm_weight,
+                          MetaTensor* x_grad,
+                          MetaTensor* norm_weight_grad) {
+  x_grad->set_dtype(x.dtype());
+  x_grad->set_layout(x.layout());
+  x_grad->share_lod(x);
+  x_grad->set_dims(x.dims());
+
+  norm_weight_grad->set_dtype(norm_weight.dtype());
+  norm_weight_grad->set_layout(norm_weight.layout());
+  norm_weight_grad->share_lod(norm_weight);
+  norm_weight_grad->set_dims(norm_weight.dims());
 }
 
 void RmspropInferMeta(const MetaTensor& param,
