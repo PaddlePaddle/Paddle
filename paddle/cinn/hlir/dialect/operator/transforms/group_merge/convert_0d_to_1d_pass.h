@@ -21,7 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for substitute zero-dim tensor to one-dim tensor
+// This is a helper pass for converting zero-dim tensor to one-dim tensor
 std::unique_ptr<::pir::Pass> CreateConvert0DTo1DPass();
 }  // namespace ir
 }  // namespace dialect

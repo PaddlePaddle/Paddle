@@ -57,7 +57,6 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
 
     auto full_op = rewriter.Build<paddle::dialect::FullOp>(
         std::vector<int64_t>({1}), factor, dtype, place);
-
     rewriter.ReplaceAllUsesWith(op.result(0), full_op.result(0));
     rewriter.EraseOp(op);
   }
