@@ -19,8 +19,10 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/data_transform.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 
@@ -350,10 +352,6 @@ TEST_API paddle::Tensor cast_ad_func(const paddle::Tensor& x,
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "cast dygraph", paddle::platform::TracerEventType::Operator, 1);
-
-  if (x.dtype() == dtype) {
-    return x;
-  }
 
   // AMP Logic
 
