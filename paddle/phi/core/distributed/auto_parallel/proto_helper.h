@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/utils/test_macros.h"
 namespace phi {
 namespace distributed {
 class TensorDistAttr;
