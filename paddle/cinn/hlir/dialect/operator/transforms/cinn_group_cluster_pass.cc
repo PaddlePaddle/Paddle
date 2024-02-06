@@ -161,13 +161,13 @@ struct GroupClusterNode {
   }
 
   void MergeNode(const GroupClusterNode& node,
-                 const ScheduleInfoNode& sch_node) {
+                 const ScheduleInfoNode& inner_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
-    if (sch_node.type != "") {
+    if (inner_sch_node.type != "") {
       // all the data need add sch node
       for (auto op : ops) {
-        alignment_schedule_info[op].push_back(sch_node);
+        alignment_schedule_info[op].push_back(inner_sch_node);
       }
     }
     for (auto op : node.ops) {
@@ -177,11 +177,6 @@ struct GroupClusterNode {
         if (node.alignment_schedule_info.count(op)) {
           alignment_schedule_info[op] = node.alignment_schedule_info.at(op);
         }
-
-        // if( sch_node.type != "" )
-        // {
-        //   alignment_schedule_info[op].push_back( sch_node);
-        // }
       }
     }
 
@@ -199,6 +194,29 @@ struct GroupClusterNode {
 
     if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
       loop_ranges = node.loop_ranges;
+    }
+  }
+
+  void MergePreNode(const GroupClusterNode& node,
+                    const ScheduleInfoNode& pre_sch_node) {
+    std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
+
+    for (auto op : node.ops) {
+      if (!inner_ops.count(op)) {
+        ops.push_back(op);
+        // copy align info
+        if (node.alignment_schedule_info.count(op)) {
+          alignment_schedule_info[op] = node.alignment_schedule_info.at(op);
+        }
+
+        if (pre_sch_node.type != "") {
+          alignment_schedule_info[op].push_back(pre_sch_node);
+        }
+      }
+    }
+
+    if (group_kind < node.group_kind) {
+      group_kind = node.group_kind;
     }
   }
 
@@ -489,6 +507,8 @@ bool CanOpMergeNode(
     const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
     ::pir::Operation* pre_op,
     ::pir::Operation* cur_op) {
+  auto node1 = op_path_info.at(pre_op);
+  auto node2 = op_path_info.at(cur_op);
   // reduce can not fuse with any op in first stage
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
@@ -540,6 +560,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   std::vector<GroupClusterNode> first_stage_output;
 
   std::unordered_set<::pir::Operation*> yield_output_ops;
+  std::unordered_set<::pir::Operation*> first_output_ops;
   auto yield_op = op_list.back();
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
     if (yield_op->operand_source(i).defining_op()->result(0).use_count() == 1) {
@@ -567,13 +588,16 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
       }
 
       if (CanOpMergeNode(op_path, pre_op, op)) {
-        cluster_node.MergeNode(op_path.at(pre_op), sch_node);
+        cluster_node.MergePreNode(op_path.at(pre_op), sch_node);
       }
 
       // TODO(phlrain): should remove this strategy
       if (ShouldOutputPreNode(op_path, pre_op, op)) {
         // Can not merge here, should output pre_op cluster Node
-        first_stage_output.push_back(op_path[pre_op]);
+        if (!first_output_ops.count(pre_op)) {
+          first_stage_output.push_back(op_path[pre_op]);
+          first_output_ops.insert(pre_op);
+        }
         continue;
       }
     }
@@ -583,7 +607,10 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
-      first_stage_output.push_back(op_path[op]);
+      if (!first_output_ops.count(op)) {
+        first_stage_output.push_back(op_path[op]);
+        first_output_ops.insert(op);
+      }
     }
   }
 
