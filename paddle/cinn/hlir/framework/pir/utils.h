@@ -113,6 +113,29 @@ class PrettyNamer {
   ::cinn::common::NameGenerator name_generator_;
 };
 
+struct ScheduleInfoNode {
+  std::string type;
+
+  std::vector<int64_t> axis_info;
+  std::vector<int64_t> factor_info;
+
+  std::string DebugStr() {
+    std::stringstream ss;
+
+    ss << "type  " << type << "| axis info ";
+    for (auto d : axis_info) {
+      ss << " " << d;
+    }
+    ss << " | factor info ";
+    for (auto f : factor_info) {
+      ss << " " << f;
+    }
+    ss << "\n";
+
+    return ss.str();
+  }
+};
+
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir
