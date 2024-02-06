@@ -4277,8 +4277,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             out2.sum(), parameter_list=[x2, out2]
         )
 
-        x1_grad, out1_grad = grad_list1
-        x2_grad, out2_grad = grad_list2
+        (_, x1_grad), (_, out1_grad) = grad_list1
+        (_, x2_grad), (_, out2_grad) = grad_list2
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4297,12 +4297,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_array_equal(res[0], 1.0)
         np.testing.assert_array_equal(res[1], 1.0)
         self.assertEqual(res[2].shape, (10,))
-        # self.assertEqual(res[3].shape, (2, 3))
-        self.assertEqual(res[3].shape, (10,))
-        # self.assertEqual(res[4].shape, ())
-        self.assertEqual(res[4].shape, (2, 3))
-        # self.assertEqual(res[5].shape, ())
-        self.assertEqual(res[5].shape, (2, 3))
+        self.assertEqual(res[3].shape, (2, 3))
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
 
     @test_with_pir_api
     @prog_scope()
