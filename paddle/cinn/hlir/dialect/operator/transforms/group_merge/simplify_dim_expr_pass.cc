@@ -28,6 +28,17 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
+void VisitEachOp(pir::ModuleOp module_op, const DoEachT& DoEach) {
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
+    for (pir::Block& block : module_op->region(i)) {
+      for (pir::Operation& op : block) {
+        DoEach(op);
+      }
+    }
+  }
+}
+
+template <typename DoEachT>
 void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
   for (std::size_t i = 0; i < op.num_operands(); ++i) {
     DoEach(op.operand_source(i));
@@ -37,24 +48,26 @@ void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
   }
 }
 
-symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrDataDimExprs(
-    const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
-  std::vector<symbol::DimExpr> simplified_shape_dim_exprs;
-  for (const symbol::DimExpr& shape_dim_expr : tensor_shape_or_data.shape()) {
-    simplified_shape_dim_exprs.push_back(
-        symbol::SimplifyDimExpr(shape_dim_expr));
-  }
-  if (!tensor_shape_or_data.data().has_value()) {
-    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape_dim_exprs);
-  } else {
-    std::vector<symbol::DimExpr> simplified_data_dim_exprs;
-    for (const symbol::DimExpr& data_dim_expr :
-         tensor_shape_or_data.data().value()) {
-      simplified_data_dim_exprs.push_back(
-          symbol::SimplifyDimExpr(data_dim_expr));
+symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
+    const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
+  const auto& SimplifyDimExpr = [](const std::vector<symbol::DimExpr>& original)
+      -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> simplified{};
+    for (const symbol::DimExpr& dim_expr : original) {
+      simplified.push_back(symbol::SimplifyDimExpr(dim_expr));
     }
-    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape_dim_exprs,
-                                                simplified_data_dim_exprs);
+    return simplified;
+  };
+
+  std::vector<symbol::DimExpr> simplified_shape =
+      SimplifyDimExpr(shape_or_data.shape());
+  if (!shape_or_data.data().has_value()) {
+    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
+  } else {
+    std::vector<symbol::DimExpr> simplified_data =
+        SimplifyDimExpr(shape_or_data.data().value());
+    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
+                                                simplified_data);
   }
 }
 
@@ -63,14 +76,14 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
   auto lambdas = symbol::Overloaded{
       [](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(
-            SimplifyTensorShapeOrDataDimExprs(tensor_shape_or_data));
+            SimplifyTensorShapeOrData(tensor_shape_or_data));
       },
       [](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
         symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
         for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
              tensor_list) {
           simplified_tensor_list.push_back(
-              SimplifyTensorShapeOrDataDimExprs(tensor_shape_or_data));
+              SimplifyTensorShapeOrData(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       }};
@@ -81,28 +94,23 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
   VLOG(4) << "SimplifyDimExpr start";
   pir::ShapeConstraintIRAnalysis shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (pir::Block& block : module_op->region(i)) {
-      for (pir::Operation& op : block) {
-        VisitEachValue(op, [&](pir::Value value) {
-          if (!shape_analysis.HasShapeOrDataForValue(value)) {
-            VLOG(4) << "SimplifyDimExpr "
-                       "shape_analysis.HasShapeOrDataForValue(value) "
-                       "return false";
-          } else {
-            const symbol::ShapeOrDataDimExprs& shape_or_data =
-                shape_analysis.GetShapeOrDataForValue(value);
-            symbol::ShapeOrDataDimExprs simplified_shape_or_data =
-                SimplifyShapeOrData(shape_or_data);
-            shape_analysis.SetShapeOrDataForValue(value,
-                                                  simplified_shape_or_data);
-            pir::shape::SetShapeAttrForOp(&op, simplified_shape_or_data);
-          }
-        });
+  VisitEachOp(module_op, [&](pir::Operation& op) {
+    VisitEachValue(op, [&](pir::Value value) {
+      if (!shape_analysis.HasShapeOrDataForValue(value)) {
+        VLOG(4) << "SimplifyDimExpr: shape_analysis can't find ShapeOrData for "
+                   "value of the op:"
+                << op.name();
+      } else {
+        const symbol::ShapeOrDataDimExprs& shape_or_data =
+            shape_analysis.GetShapeOrDataForValue(value);
+        symbol::ShapeOrDataDimExprs simplified_shape_or_data =
+            SimplifyShapeOrData(shape_or_data);
+        shape_analysis.SetShapeOrDataForValue(value, simplified_shape_or_data);
+        pir::shape::SetShapeAttrForOp(&op, simplified_shape_or_data);
       }
-    }
-    VLOG(4) << "SimplifyDimExpr end";
-  }
+    });
+  });
+  VLOG(4) << "SimplifyDimExpr end";
 }
 
 class SimplifyDimExprPass : public pir::Pass {
@@ -111,7 +119,6 @@ class SimplifyDimExprPass : public pir::Pass {
 
   void Run(pir::Operation* op) override {
     pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
-    VLOG(4) << "SimplifyDimExprPass Run";
     SimplifyDimExpr(module_op);
   }
 
