@@ -149,9 +149,11 @@
 
 # - op : matmul_grad
 
-# - op : matmul_with_flatten
+- op : mul
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : matmul_with_flatten_grad
+- op : mul_grad
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
 - op : max
 

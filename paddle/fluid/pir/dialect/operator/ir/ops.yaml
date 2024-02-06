@@ -951,6 +951,15 @@
     func : mish
   backward : mish_grad
 
+- op : mul
+  args : (Tensor x, Tensor y, int x_num_col_dims = 1, int y_num_col_dims = 1)
+  output : Tensor
+  infer_meta :
+    func : MatmulWithFlattenInferMeta
+  kernel :
+    func : mul
+  backward : mul_grad
+
 - op : multiply
   args : (Tensor x, Tensor y)
   output : Tensor

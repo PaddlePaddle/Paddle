@@ -106,6 +106,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'share_data',
     'onednn_to_paddle_layout',
     'lrn',
+    'mul',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

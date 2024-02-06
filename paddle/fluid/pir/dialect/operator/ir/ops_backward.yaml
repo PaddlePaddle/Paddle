@@ -487,6 +487,16 @@
     func : mish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : mul_grad
+  forward : mul (Tensor x, Tensor y, int x_num_col_dims=1, int y_num_col_dims=1) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int x_num_col_dims=1, int y_num_col_dims=1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : mul_grad
+
 - backward_op : multiply_double_grad
   forward : multiply_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
