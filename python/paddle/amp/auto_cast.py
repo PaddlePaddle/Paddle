@@ -423,7 +423,13 @@ def amp_guard(
     ):
 
         def master_grad_hook():
-            core.eager.set_master_grads(amp_global_state().model_parameters)
+            initialized_params = [
+                param
+                for param in amp_global_state().model_parameters
+                if param._is_initialized()
+            ]
+            assert initialized_params is not None, "initialized_params is None"
+            core.eager.set_master_grads(initialized_params)
             amp_global_state().already_register_final_backward_hook = False
 
         core.eager._add_backward_final_hook(master_grad_hook)
@@ -467,6 +473,29 @@ def amp_guard(
             tracer._amp_dtype = original_amp_dtype
             if amp_level == AMP_LEVEL.O2:
                 tracer._use_promote = original_use_promote
+
+
+def update_main_grad_hook(param):
+    """Create the update_main_grad hook for backprop."""
+
+    # Hook used for back-prop and grad-merge.
+    @paddle.autograd.no_grad()
+    def param_hook(tmp_grad):
+        if tmp_grad is not None and tmp_grad._is_initialized():
+            # Some previous pylayer may return None, should check grad validation.
+            grad_tensor = param.grad
+            if grad_tensor is None:
+                param.main_grad = core.eager.Tensor(
+                    value=tmp_grad.cast(paddle.float32).value(),
+                    place=tmp_grad.place,
+                    name="main_grad@" + param.name,
+                )
+            else:
+                param.main_grad.add_(tmp_grad)
+
+            tmp_grad._clear_data()
+
+    return param_hook
 
 
 class StateDictHook:
