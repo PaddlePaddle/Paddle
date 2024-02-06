@@ -62,7 +62,6 @@ USE_OP_ITSELF(sgd);
 USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
-USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform_raw, GPU, ALL_LAYOUT);
