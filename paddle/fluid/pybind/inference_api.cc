@@ -1268,8 +1268,8 @@ void BindPaddleInferTensor(py::module *m) {
 void BindPredictorPool(py::module *m) {
   py::class_<paddle_infer::services::PredictorPool>(*m, "PredictorPool")
       .def(py::init<const paddle_infer::Config &, size_t>())
-      .def("retrive",
-           &paddle_infer::services::PredictorPool::Retrive,
+      .def("retrieve",
+           &paddle_infer::services::PredictorPool::Retrieve,
            py::return_value_policy::reference);
 }
 

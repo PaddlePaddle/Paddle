@@ -61,7 +61,7 @@ std::vector<::pir::Operation*> GetConsumersInSet(
 std::vector<::pir::Operation*> GetProducers(::pir::Operation* op) {
   std::vector<::pir::Operation*> producers;
   for (auto& source : op->operands_source()) {
-    auto* producer_op = source.dyn_cast<::pir::OpResult>().owner();
+    auto* producer_op = source.defining_op();
     CHECK(producer_op);
     producers.push_back(producer_op);
   }
@@ -1565,7 +1565,7 @@ void SyncThreadWithShared(
       continue;
     }
     auto op_data = op_out_set.find(block->name)->second;
-    auto* op = op_data.dyn_cast<::pir::OpResult>().owner();
+    auto* op = op_data.defining_op();
     auto op_shape = CompatibleInfo::ValueShape(op_data);
 
     auto masters = GetMasters(op, pretty_name, ops_inline, ops_set);

@@ -45,6 +45,7 @@ set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
+set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
@@ -60,6 +61,7 @@ if(WITH_GPU)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_resnet PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static

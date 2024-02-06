@@ -27,7 +27,8 @@ gather_srcs(
   replace_cross_thread_reduction.cc
   replace_mod_to_max.cc
   resize_buffer.cc
-  update_buffer_axis_pass.cc)
+  update_buffer_axis_pass.cc
+  trans_buffer_with_dynamic_shape.cc)
 
 if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)

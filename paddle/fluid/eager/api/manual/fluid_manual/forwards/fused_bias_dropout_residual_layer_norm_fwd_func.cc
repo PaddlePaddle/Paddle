@@ -83,7 +83,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAMPState(),
           paddle::imperative::AmpLevel::O0);
       return fused_bias_dropout_residual_layer_norm_dygraph_function(
           NEW_X, NEW_Residual, NEW_Bias, NEW_LnScale, NEW_LnBias, attr_map);

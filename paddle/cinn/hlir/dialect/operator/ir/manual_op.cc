@@ -16,8 +16,8 @@
 
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
@@ -27,11 +27,13 @@
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};
@@ -41,6 +43,18 @@ void GroupOp::Build(pir::Builder& builder,
                     const std::vector<pir::Type>& output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
+}
+
+void GroupOp::Build(pir::Builder& builder,             // NOLINT
+                    pir::OperationArgument& argument,  // NOLINT
+                    const std::vector<pir::Type>& output_types,
+                    const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
 }
 
 void GroupOp::Build(pir::Builder& builder,             // NOLINT
@@ -96,6 +110,18 @@ void FusionOp::Build(pir::Builder& builder,
   argument.output_types = output_types;
 }
 
+void FusionOp::Build(pir::Builder& builder,             // NOLINT
+                     pir::OperationArgument& argument,  // NOLINT
+                     const std::vector<pir::Type>& output_types,
+                     const cinn::dialect::GroupInfo& group_info) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+
+  argument.AddAttribute("group_info",
+                        cinn::dialect::GroupInfoAttribute::get(
+                            pir::IrContext::Instance(), group_info));
+}
+
 pir::Block* FusionOp::block() {
   pir::Region& region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
@@ -126,6 +152,12 @@ void FusionOp::Print(pir::IrPrinter& printer) {
     printer.PrintOperation(sub_op);
   }
   os << " \n }";
+}
+
+bool ConcatOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.concat";
+  return ConcatOpInferSymbolicShape(this->operation(), shape_analysis);
 }
 
 void ConcatOp::Build(pir::Builder& builder,             // NOLINT
@@ -427,17 +459,17 @@ bool GenerateShapeOp::InferSymbolicShape(
     for (const auto& attr_dim_expr : attr_dim_exprs) {
       const auto& substituted =
           SubstituteDimExpr(attr_dim_expr, DimExprs4SymbolName);
-      const auto& simplified = common::SimplifyDimExpr(substituted);
+      const auto& simplified = symbol::SimplifyDimExpr(substituted);
       dim_exprs.push_back(simplified);
     }
     return dim_exprs;
   }();
 
   // TODO(HongyuJia): use op->result(0) to infer the shape
-  std::vector<symbol::DimExpr> shape(
-      std::int64_t(substituted_dim_exprs.size()));
-  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{shape,
-                                                      substituted_dim_exprs};
+  std::vector<symbol::DimExpr> shape{
+      std::int64_t(substituted_dim_exprs.size())};
+  symbol::ShapeOrDataDimExprs shape_or_data_dim_exprs{
+      symbol::TensorShapeOrDataDimExprs(shape, substituted_dim_exprs)};
 
   shape_analysis->SetShapeOrDataForValue(this->out(), shape_or_data_dim_exprs);
 

@@ -31,7 +31,7 @@ def vjp(func, xs, v=None):
             returns a sequence of Tensors or a Tensor.
         xs(Tensor|Sequence[Tensor]): Used as positional arguments to evaluate
             ``func``. ``xs`` is accepted as one Tensor or a sequence of Tensors.
-        v(Tensor|Sequence[Tensor]|None, optional): The cotangent vector invovled
+        v(Tensor|Sequence[Tensor]|None, optional): The cotangent vector involved
             in the VJP computation. ``v`` matches the size and shape of
             ``func`` 's output. Defaults to None, which is equivalent to all
             ones the same size of ``func`` 's output.
@@ -67,8 +67,8 @@ def vjp(func, xs, v=None):
     """
     _check_inputs(func, xs, v)
 
-    # ``_seprate`` breaks the dependencies between ``xs`` and other
-    # variables. See more ``_seprate`` .
+    # ``_separate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_separate`` .
     if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -91,7 +91,7 @@ def jvp(func, xs, v=None):
         xs(Tensor|Sequence[Tensor]): Used as positional arguments to
             evaluate ``func``.  The ``xs`` is accepted as one Tensor or a
             Sequence of Tensors.
-        v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
+        v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector involved
             in the JVP computation. The ``v`` matches the size and shape of
             ``xs`` . Default value is None and in this case is equivalent to
             all ones the same size of ``xs`` .
@@ -127,8 +127,8 @@ def jvp(func, xs, v=None):
 
     """
     _check_inputs(func, xs, v)
-    # ``_seprate`` breaks the dependencies between ``xs`` and other
-    # variables. See more ``_seprate`` .
+    # ``_separate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_separate`` .
     if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -153,7 +153,7 @@ def _double_backward_trick(ys, xs, v):
 
 def _zeros_like_with_grad(xs):
     """Create a zero or zeros sequence Tensor like ``xs`` with a flag
-    ``stop_graident=False`` .
+    ``stop_gradient=False`` .
     """
     if not isinstance(xs, typing.Sequence):
         ys = paddle.zeros_like(xs)
@@ -309,7 +309,7 @@ class Hessian:
                 not is_batched and jac.shape[0] != 1
             ):
                 raise RuntimeError(
-                    "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
+                    "The function given to Hessian should return as single element Tensor or batched single element Tensor."
                 )
             return jac[:, 0, :] if is_batched else jac[0, :]
 
@@ -485,7 +485,7 @@ def _multi_index(indexes, shape):
 
     Currently supporting following input format:
         * ([positive|negative|slice], ...), the right-most elements can be
-            omited.
+            omitted.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
@@ -666,7 +666,7 @@ def _check_inputs(func, xs, v=None):
     if isinstance(xs, typing.Sequence) and not all(
         isinstance(x, framework.Variable) for x in xs
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
     if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
         raise TypeError(
@@ -676,7 +676,7 @@ def _check_inputs(func, xs, v=None):
     if isinstance(v, typing.Sequence) and not all(
         isinstance(e, framework.Variable) for e in v
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
 
 def _check_v_shape(v, refs):

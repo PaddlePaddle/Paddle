@@ -17,22 +17,8 @@ from collections import defaultdict
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
-    FOR_ITER_INDEX_PREFIX,
-    FOR_ITER_ITERATOR_PREFIX,
-    FOR_ITER_TARGET_PREFIX,
-    FOR_ITER_TUPLE_INDEX_PREFIX,
-    FOR_ITER_TUPLE_PREFIX,
-    FOR_ITER_VAR_LEN_PREFIX,
-    FOR_ITER_VAR_NAME_PREFIX,
-    FOR_ITER_ZIP_TO_LIST_PREFIX,
-    FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
-    create_funcDef_node,
-    create_get_args_node,
-    create_name_str,
-    create_nonlocal_stmt_nodes,
-    create_set_args_node,
 )
 
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
@@ -41,8 +27,25 @@ from paddle.jit.dy2static.utils import (
 # See details in https://github.com/serge-sans-paille/gast/
 from paddle.utils import gast
 
-from ..utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
 from .base import BaseTransformer
+from .utils import (
+    FALSE_FUNC_PREFIX,
+    FOR_ITER_INDEX_PREFIX,
+    FOR_ITER_ITERATOR_PREFIX,
+    FOR_ITER_TARGET_PREFIX,
+    FOR_ITER_TUPLE_INDEX_PREFIX,
+    FOR_ITER_TUPLE_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_VAR_NAME_PREFIX,
+    FOR_ITER_ZIP_TO_LIST_PREFIX,
+    TRUE_FUNC_PREFIX,
+    FunctionNameLivenessAnalysis,
+    create_function_def_node,
+    create_get_args_node,
+    create_name_str,
+    create_nonlocal_stmt_nodes,
+    create_set_args_node,
+)
 
 __all__ = []
 
@@ -374,13 +377,13 @@ def transform_if_else(node, root):
         defaults=[],
     )
 
-    true_func_node = create_funcDef_node(
+    true_func_node = create_function_def_node(
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
         return_name_ids=[],
     )
-    false_func_node = create_funcDef_node(
+    false_func_node = create_function_def_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,

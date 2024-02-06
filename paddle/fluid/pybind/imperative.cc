@@ -64,7 +64,6 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
-PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
@@ -635,6 +634,23 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
+  m.def("_get_amp_state",
+        []() { return egr::Controller::Instance().GetCurrentAMPState(); });
+  m.def("_set_amp_op_list",
+        [](std::unordered_set<std::string> &allow_ops,
+           std::unordered_set<std::string> &block_ops) {
+          imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+              allow_ops);
+          imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+              block_ops);
+          VLOG(5) << "AMP operators changed, "
+                  << imperative::AmpOperators::Instance();
+        });
+  m.def("_get_amp_op_list", []() {
+    return std::make_tuple(
+        *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+        *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+  });
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
@@ -647,6 +663,18 @@ void BindImperative(py::module *m_ptr) {
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
+
+  py::class_<imperative::AMPState, std::shared_ptr<imperative::AMPState>>(
+      m, "AMPState", R"DOC()DOC")
+      .def_property("_use_promote",
+                    &imperative::AMPState::GetUsePromote,
+                    &imperative::AMPState::SetUsePromote)
+      .def_property("_amp_level",
+                    &imperative::AMPState::GetAmpLevel,
+                    &imperative::AMPState::SetAmpLevel)
+      .def_property("_amp_dtype",
+                    &imperative::AMPState::GetAmpDtype,
+                    &imperative::AMPState::SetAmpDtype);
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")

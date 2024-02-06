@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -143,7 +142,7 @@ class TestCumminAPI(unittest.TestCase):
         z, ind = cummin_dim2(data_np, axis=-2)
         np.testing.assert_array_equal(z, y.numpy())
         np.testing.assert_array_equal(ind, indices.numpy())
-        self.assertTrue(indices.dtype == core.VarDesc.VarType.INT32)
+        self.assertTrue(indices.dtype == paddle.int32)
 
         data_np = np.random.randint(0, 10, size=(100, 100)).astype(np.int32)
         data = paddle.to_tensor(data_np)

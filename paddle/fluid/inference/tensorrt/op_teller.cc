@@ -377,7 +377,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       const std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
-        VLOG(3) << "The size of paddings shoule be 2, but got "
+        VLOG(3) << "The size of paddings should be 2, but got "
                 << paddings.size();
         return false;
       }
@@ -1662,9 +1662,27 @@ struct SimpleOpTypeSetTeller : public Teller {
           fill_constant_inputs.end()) {
         if (!desc.Input("ValueTensor").empty()) return false;
       }
+
       if (desc.HasInput("ShapeTensor")) {
         if (desc.Input("ShapeTensor").size() > 1) return false;
+        if (desc.Input("ShapeTensor").size() == 1) {
+#if IS_TRT_VERSION_LT(8500)
+          VLOG(3) << "fill_constant ShapeTensor is not supported when TensorRT "
+                     "< 8.5.0";
+          return false;
+#endif
+        }
       }
+
+#if IS_TRT_VERSION_LT(8500)
+      if (desc.HasInput("ShapeTensorList")) {
+        if (desc.Input("ShapeTensorList").size() >= 1) {
+          VLOG(3) << "fill_constant ShapeTensorList is not supported when "
+                     "TensorRT < 8.5.0";
+          return false;
+        }
+      }
+#endif
 
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))

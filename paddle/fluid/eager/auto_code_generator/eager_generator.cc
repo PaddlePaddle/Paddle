@@ -1763,7 +1763,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const char* CALL_BACK_TEMPLATE =
         "    {\n"
         "      paddle::imperative::AutoCastGuard "
-        "guard(egr::Controller::Instance().GetCurrentTracer(), "
+        "guard(egr::Controller::Instance().GetCurrentAMPState(), "
         "paddle::imperative::AmpLevel::O0);\n"
         "      return %s_dygraph_function(%s);\n"
         "    }";
@@ -2373,7 +2373,7 @@ static std::string GenerateSingleOpBase(
                   GradOut
 
           Its grad output "GradOut" corresponds to forward output "Out",
-          where there is a hiden inplace involved. So we find "GradOut"'s
+          where there is a hidden inplace involved. So we find "GradOut"'s
          index
          in
           grads, and perform the inplace operation by constructing outs =
@@ -2534,7 +2534,7 @@ static std::string GenerateSingleOpBase(
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
   if (fwd_op_type == "cast") {
-    // swtich in out dtype
+    // switch in out dtype
     const char* CAST_GRAD =
         "  auto temp_type = %s[\"in_dtype\"];\n"
         "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"

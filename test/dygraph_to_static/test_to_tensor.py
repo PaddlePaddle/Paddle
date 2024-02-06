@@ -223,17 +223,13 @@ class TestInt16(Dy2StTestBase):
         if paddle.base.framework.use_pir_api():
             self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
         else:
-            self.assertTrue(
-                x.dtype == paddle.framework.core.VarDesc.VarType.INT16
-            )
+            self.assertTrue(x.dtype == paddle.int16)
 
         y = paddle.to_tensor([1, 2], dtype="int16")
         if paddle.base.framework.use_pir_api():
             self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
         else:
-            self.assertTrue(
-                y.dtype == paddle.framework.core.VarDesc.VarType.INT16
-            )
+            self.assertTrue(y.dtype == paddle.int16)
 
 
 if __name__ == '__main__':

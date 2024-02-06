@@ -181,6 +181,7 @@ void BuildPhiContext(pir::Operation* op,
       if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
         InListType optional_inputs;
+        optional_inputs.emplace_back(InType());
         ctx->EmplaceBackInputs(optional_inputs);
       } else {
         phi::DenseTensor* temp = nullptr;

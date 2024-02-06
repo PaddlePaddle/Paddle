@@ -33,7 +33,7 @@ class HybridParallelInferenceHelper:
         num_pp (int): number of pipeline parallel degree. Default ``1``.
         micro_batch_size (int): number of micro batch size. Default ``1``.
         beam_size (int): number of beam search size. Default ``1``.
-        init_comm (bool): wheter if initilize comminication group. Default ``True``.
+        init_comm (bool): whether if initialize communication group. Default ``True``.
         role_maker (RoleMakerBase or subclass): user custom define RoleMakerBase.
             If ``role_maker==None``, then use PaddleCloudRoleMaker. Default ``None``.
 
