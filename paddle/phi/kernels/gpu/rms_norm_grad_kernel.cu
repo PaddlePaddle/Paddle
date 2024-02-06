@@ -130,7 +130,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                             const float epsilon,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale,
-                            begin_norm_axis) {
+                            const int begin_norm_axis) {
   const auto x_dims = x.dims();
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int rows = static_cast<int>(matrix_dim[0]);
@@ -186,8 +186,8 @@ void FusedRmsNormGradKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented("quant is not supported yet"));
   }
   cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                     x,
                                      norm_weight,
-                                     scale,
                                      inv_var,
                                      dy,
                                      epsilon,
@@ -220,7 +220,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_grad,
 
 #else
 
-PD_REGISTER_KERNEL(fused_rms_norm_grad,
+PD_REGISTER_KERNEL(rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedRmsNormGradKernel,
