@@ -25,6 +25,8 @@ namespace {
 
 class MatmulAddPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MatmulAddPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -62,23 +64,22 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           return static_cast<int>(x_dims.size()) - 1;
         });
-    const auto &false_attr = res.BoolAttr(false);
 
     const auto &fc = res.Op(paddle::dialect::FcOp::name(),
                             {{
                                 {"in_num_col_dims", in_num_col_dims_attr},
                                 {"activation_type", res.StrAttr("")},
-                                {"padding_weights", false_attr},
+                                {"padding_weights", res.BoolAttr(false)},
                             }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "MatmulAddPattern"; }
 };
 
 class FcWithReluPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FcWithReluPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fc =
@@ -110,8 +111,6 @@ class FcWithReluPattern : public paddle::drr::DrrPatternBase {
     fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("relu_out")});
   }
-
-  std::string name() const override { return "FcWithReluPattern"; }
 };
 
 class FcFusePass : public pir::PatternRewritePass {
@@ -120,8 +119,8 @@ class FcFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MatmulAddPattern().Build(context));
-    ps.Add(FcWithReluPattern().Build(context));
+    ps.Add(paddle::drr::Create<MatmulAddPattern>(context));
+    ps.Add(paddle::drr::Create<FcWithReluPattern>(context));
     return ps;
   }
 };
