@@ -17,6 +17,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/utils/test_macros.h"
+
 namespace paddle {
 namespace operators {
 
