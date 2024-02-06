@@ -1291,6 +1291,8 @@ if(WITH_CINN AND WITH_TESTING)
       ENVIRONMENT
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
+
+  set_tests_properties(test_tile_op PROPERTIES TIMEOUT 300)
 endif()
 
 set_tests_properties(

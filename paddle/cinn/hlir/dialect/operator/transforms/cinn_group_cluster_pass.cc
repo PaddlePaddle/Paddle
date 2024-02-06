@@ -191,8 +191,10 @@ struct GroupClusterNode {
 
     if ((node.group_kind == cinn::hlir::framework::kReduction) ||
         (node.group_kind == cinn::hlir::framework::kBroadcast)) {
-      reduce_axis = node.reduce_axis;
       loop_ranges = node.loop_ranges;
+    }
+    if (node.group_kind == cinn::hlir::framework::kReduction) {
+      reduce_axis = node.reduce_axis;
     }
 
     if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
@@ -230,9 +232,6 @@ struct GroupClusterNode {
   std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
       new_align_info;
 
-  // get basic group id
-  // TODO(phlrain) : need update group id
-
   std::string group_id;
   for (auto op : group_ops) {
     auto new_op = op->Clone(*ir_mapping, clone_options);
@@ -262,25 +261,10 @@ struct GroupClusterNode {
   group_info.op_pattern_kind = node.group_kind;
   group_info.alignment_schedule_info = new_align_info;
 
-  // std::cerr << "!!!!!!!!!!!!!!!!loop ranges\n";
-  // for (auto d : group_info.loop_ranges) {
-  //   std::cerr << d << std::endl;
-  // }
-
   // step 2: Replace the old op with GroupOp.
   auto new_fusion_op =
       rewriter->Build<cinn::dialect::FusionOp>(output_types, group_info);
   pir::Block* fusion_block = new_fusion_op.block();
-
-  //  std::stringstream ss;
-  //  ::pir::IrPrinter printer(ss);
-
-  // for (auto op : group_ops) {
-  //   printer.PrintOperation( op );
-  //   ss << "\n";
-  // }
-
-  // std::cerr << "program \n" << ss.str() << std::endl;
 
   for (auto op : vec_new_op_list) {
     fusion_block->insert(fusion_block->end(), op);
@@ -353,7 +337,6 @@ bool CanFuse(const GroupClusterNode& first,
     }
 
     if (first.loop_ranges != second.loop_ranges) {
-      // std::cerr << "add alingn info here\n";
       sch_node->type = "broadcast";
       sch_node->axis_info = first.reduce_axis;
       sch_node->factor_info = first.loop_ranges;
@@ -383,7 +366,6 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
   std::vector<std::vector<int>> next_ids;
   next_ids.resize(node_list.size());
   for (int i = 0; i < node_list.size(); ++i) {
-    std::cerr << "node i " << i << "\n" << node_list[i].DebugStr() << std::endl;
     for (int j = 0; j < node_list.size(); ++j) {
       if (i == j) {
         continue;
@@ -395,7 +377,6 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
       for (auto val : pre_out_list) {
         if (next_in_set.count(val)) {
           next_ids[i].push_back(j);
-          std::cerr << "connet i , j" << i << "\t" << j << std::endl;
           break;
         }
       }
@@ -435,13 +416,6 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
     }
   }
 
-  // std::cerr << "sort list " ;
-  // for(auto & d : out_id_list )
-  // {
-  //   std::cerr << " " << d;
-  // }
-  // std::cerr << std::endl;
-
   if (out_id_list.size() != node_list.size()) {
     throw std::runtime_error("id list not match");
   }
@@ -459,6 +433,99 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
   }
 
   return out_id_list;
+}
+
+void GetClusterNodeBasicInfo(::pir::Operation* op,
+                             GroupClusterNode* cluster_node,
+                             ScheduleInfoNode* sch_node) {
+  cluster_node->group_kind =
+      cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
+  if (cluster_node->group_kind == cinn::hlir::framework::kReduction) {
+    // set reduce axis and loop range
+    cluster_node->reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
+    cluster_node->loop_ranges =
+        phi::vectorize(op->operand_source(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+
+  } else if (cluster_node->group_kind == cinn::hlir::framework::kBroadcast) {
+    cluster_node->loop_ranges =
+        phi::vectorize(op->result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims());
+
+    sch_node->type = "broadcast";
+    sch_node->axis_info =
+        cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
+    sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "only support elementwise, broadcast, reduce type"));
+  }
+}
+
+std::vector<::pir::Operation*> GetPreOps(
+    const std::unordered_set<pir::Value>& inner_values, ::pir::Operation* op) {
+  std::vector<::pir::Operation*> vec_res;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    if (!inner_values.count(op->operand_source(i))) {
+      continue;
+    }
+
+    vec_res.push_back(op->operand_source(i).defining_op());
+  }
+  return vec_res;
+}
+
+bool CanOpMergeNode(
+    const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
+    ::pir::Operation* pre_op,
+    ::pir::Operation* cur_op) {
+  // reduce can not fuse with any op in first stage
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
+      cinn::hlir::framework::kReduction) {
+    return false;
+  }
+
+  // TODO(phlrain): need update here
+  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
+  if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
+       cinn::hlir::framework::kBroadcast) &&
+      (op_path_info.at(cur_op).loop_ranges !=
+       op_path_info.at(pre_op).loop_ranges)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool ShouldOutputPreNode(
+    const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
+    ::pir::Operation* pre_op,
+    ::pir::Operation* cur_op) {
+  if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
+      cinn::hlir::framework::kReduction) {
+    return false;
+  }
+
+  // TODO(phlrain): need update here
+  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
+  if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
+       cinn::hlir::framework::kBroadcast) &&
+      (op_path_info.at(cur_op).loop_ranges !=
+       op_path_info.at(pre_op).loop_ranges)) {
+    return true;
+  }
+
+  return false;
 }
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
@@ -481,7 +548,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   }
 
   for (auto* op : op_list) {
-    if (op->name() == "cf.yield") {
+    if (op->isa<::pir::YieldOp>()) {
       continue;
     }
 
@@ -490,111 +557,25 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
 
     // process cluster node
     ScheduleInfoNode sch_node;
-    if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-        cinn::hlir::framework::kReduction) {
-      // set reduce axis and loop range
-      cluster_node.reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
-      cluster_node.loop_ranges =
-          phi::vectorize(op->operand_source(0)
-                             .type()
-                             .dyn_cast<paddle::dialect::DenseTensorType>()
-                             .dims());
-      cluster_node.group_kind = cinn::hlir::framework::kReduction;
-    } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-               cinn::hlir::framework::kElementWise) {
-      if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-        if (op->name() != "cinn_op.reshape") {
-          cluster_node.loop_ranges =
-              phi::vectorize(op->result(0)
-                                 .type()
-                                 .dyn_cast<paddle::dialect::DenseTensorType>()
-                                 .dims());
-        } else {
-          // is reshape  op
-          cluster_node.loop_ranges =
-              phi::vectorize(op->result(0)
-                                 .type()
-                                 .dyn_cast<paddle::dialect::DenseTensorType>()
-                                 .dims());
-        }
-      }
-    } else if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-               cinn::hlir::framework::kBroadcast) {
-      // if (cluster_node.group_kind == cinn::hlir::framework::kElementWise) {
-      // std::cerr << "is broadcast !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-      cluster_node.loop_ranges =
-          phi::vectorize(op->result(0)
-                             .type()
-                             .dyn_cast<paddle::dialect::DenseTensorType>()
-                             .dims());
-      //}
+    GetClusterNodeBasicInfo(op, &cluster_node, &sch_node);
 
-      // all the op in cluster node must add broadcast
-
-      sch_node.type = "broadcast";
-      sch_node.axis_info =
-          cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
-      sch_node.factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
-
-      cluster_node.group_kind = cinn::hlir::framework::kBroadcast;
-    } else {
-      std::cerr << "cluter node " << op->name() << std::endl;
-      throw std::runtime_error("not support op kind yet");
-    }
-
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      if (!inner_values.count(op->operand_source(i))) {
-        continue;
-      }
-
-      auto pre_op = op->operand_source(i).defining_op();
-
-      if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
-          cinn::hlir::framework::kReduction) {
-        continue;
-      }
-
+    // process current Node and pre Node
+    auto pre_ops = GetPreOps(inner_values, op);
+    for (auto pre_op : pre_ops) {
       if (!op_path.count(pre_op)) {
         continue;
       }
 
-      if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) !=
-           cinn::hlir::framework::kBroadcast) &&
-          (cluster_node.loop_ranges != op_path[pre_op].loop_ranges)) {
-        // can not merge for now
+      if (CanOpMergeNode(op_path, pre_op, op)) {
+        cluster_node.MergeNode(op_path.at(pre_op), sch_node);
+      }
+
+      // TODO(phlrain): should remove this strategy
+      if (ShouldOutputPreNode(op_path, pre_op, op)) {
+        // Can not merge here, should output pre_op cluster Node
         first_stage_output.push_back(op_path[pre_op]);
         continue;
       }
-      // get pre op all op list
-
-      std::unordered_set<::pir::Operation*> op_all_set(op_list.begin(),
-                                                       op_list.end());
-      for (auto inner_op : op_path[pre_op].ops) {
-        if (!op_all_set.count(inner_op)) {
-          op_list.push_back(inner_op);
-
-          op_all_set.insert(inner_op);
-        }
-      }
-
-      if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
-          cinn::hlir::framework::kBroadcast) {
-        for (auto op : op_list) {
-          // std::cerr << "add align info " << op->name() << "\t"
-          //           << sch_node.DebugStr() << std::endl;
-          cluster_node.alignment_schedule_info[op].push_back(sch_node);
-        }
-      }
-
-      cluster_node.alignment_schedule_info.insert(
-          op_path[pre_op].alignment_schedule_info.begin(),
-          op_path[pre_op].alignment_schedule_info.end());
-
-      if (op_path[pre_op].group_kind > cluster_node.group_kind) {
-        cluster_node.group_kind = op_path[pre_op].group_kind;
-      }
-
-      // cluster_node.loop_ranges = op_path[pre_op].loop_ranges;
     }
 
     op_list.push_back(op);
@@ -659,9 +640,6 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     }
 
     if (temp_out.size() >= second_stage_output.size()) {
-      // std::cerr << "temp out size " << temp_out.size() << std::endl;
-      // throw std::runtime_error("fuse more node here");
-
       break;
     }
     second_stage_output.swap(temp_out);
@@ -674,43 +652,12 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     return second_stage_output;
   }
 
-  // stage 3
-
-  std::vector<GroupClusterNode> third_stage_output = second_stage_output;
-  // auto reset_node = second_stage_output;
-  // while (true) {
-  //   GroupClusterNode new_node = reset_node[0];
-
-  //   std::vector<GroupClusterNode> temp;
-  //   for (size_t i = 1; i < reset_node.size(); ++i) {
-  //     auto& pre_node = reset_node[i];
-  //     ScheduleInfoNode sch_node;
-  //     auto can_fuse = CanFuse(new_node, pre_node, &sch_node);
-  //     if (can_fuse) {
-  //       new_node.MergeNode(pre_node, sch_node);
-
-  //     } else {
-  //       temp.push_back(pre_node);
-  //     }
-  //   }
-
-  //   third_stage_output.push_back(new_node);
-
-  //   if (temp.size() == 0) {
-  //     break;
-  //   }
-
-  //   temp.swap(reset_node);
-  // }
-
-  // sort node
-
   std::vector<std::vector<int>> pre_ids_info;
-  auto out_id_list = SortNodeList(&third_stage_output, &pre_ids_info);
+  auto out_id_list = SortNodeList(&second_stage_output, &pre_ids_info);
 
   std::vector<GroupClusterNode> sorted_out;
   for (auto id : out_id_list) {
-    sorted_out.push_back(third_stage_output[id]);
+    sorted_out.push_back(second_stage_output[id]);
   }
 
   return sorted_out;
