@@ -1,14 +1,12 @@
 if(WITH_CINN)
   set(eager_deps ${eager_deps} python)
 endif()
-cc_test(
+paddle_test(
   test_egr_ds_eager_tensor
-  SRCS eager_tensor_test.cc
-  DEPS fleet_executor final_dygraph_function ${eager_deps})
-cc_test(
+  SRCS eager_tensor_test.cc)
+paddle_test(
   test_egr_ds_auotgrad_meta
-  SRCS autograd_meta_test.cc
-  DEPS fleet_executor final_dygraph_function ${eager_deps})
+  SRCS autograd_meta_test.cc)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_test(
