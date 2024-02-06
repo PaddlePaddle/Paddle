@@ -1920,7 +1920,7 @@
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad,float epsilon, int begin_norm_axis, float quant_scale)
   output : Tensor(x_grad), Tensor(norm_weight_grad)
   infer_meta :
-    func:
+    func: RmsNormGradInferMeta
     param: [x, norm_weight]
   kernel :
     func : rms_norm_grad
