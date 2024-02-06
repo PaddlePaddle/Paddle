@@ -168,7 +168,7 @@ void EinsumGradKernel(const Context& dev_ctx,
         common::vectorize<int>(x[0]->dims()),
         left,
         before_tile);
-#ifndef PADDLE_WITH_XPU // xpu is not support conj now, we just disable it.
+#ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
     *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
 #endif
   } else {
@@ -183,9 +183,9 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto operands_for_A = std::vector<const DenseTensor*>();
     auto operands_for_B = std::vector<const DenseTensor*>();
     DenseTensor dA, dB;
-#ifndef PADDLE_WITH_XPU // xpu is not support conj now, we just disable it.
+#ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
     auto out_grad_conj = Conj<T, Context>(dev_ctx, out_grad);
-#else 
+#else
     auto out_grad_conj = out_grad;
 #endif
     // dA = einsum(B, dC)
@@ -230,11 +230,9 @@ void EinsumGradKernel(const Context& dev_ctx,
           ops[0],
           dA);
       VLOG(4) << "After call dA";
-#ifndef PADDLE_WITH_XPU // xpu is not support conj now, we just disable it.
+#ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
       *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
 #endif
-      
-
     }
     if (x_grad[1]) {
       *(x_grad[1]) = PerformTileAndReduction<T, Context>(
@@ -245,7 +243,7 @@ void EinsumGradKernel(const Context& dev_ctx,
           common::vectorize<int>(x[1]->dims()),
           ops[1],
           dB);
-#ifndef PADDLE_WITH_XPU // xpu is not support conj now, we just disable it.
+#ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
       *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
 #endif
       VLOG(4) << "After call dA";

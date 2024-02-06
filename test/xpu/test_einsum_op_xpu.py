@@ -151,6 +151,7 @@ support_types = get_xpu_op_support_types('einsum')
 for stype in support_types:
     create_test_class(globals(), XPUTestEinsumOp, stype)
 
+
 class TestEinsumAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -164,7 +165,9 @@ class TestEinsumAPI(unittest.TestCase):
             inputs.append(x)
         output = paddle.einsum(self.equation, *inputs)
         expect = np.einsum(self.equation, *[x.numpy() for x in inputs])
-        np.testing.assert_allclose(output.numpy(), expect, atol=0.0006, rtol=0.0001)
+        np.testing.assert_allclose(
+            output.numpy(), expect, atol=0.0006, rtol=0.0001
+        )
         output = output.mean()
         output.backward()
 
@@ -173,11 +176,13 @@ class TestEinsumAPI(unittest.TestCase):
         self.types = [np.float32, np.float32]
         self.equation = "...,..."
 
+
 class TestEinsumWithBroadcast1(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(5, 10, 3, 3)]
         self.types = [np.float32]
         self.equation = "i...->..."
+
 
 class TestEinsumWithBroadcast2(TestEinsumAPI):
     def set_mandatory(self):
@@ -185,11 +190,13 @@ class TestEinsumWithBroadcast2(TestEinsumAPI):
         self.types = [np.float32, np.float32]
         self.equation = "...ij,...i->j..."
 
+
 class TestEinsumWithBroadcast4(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(10, 3, 2, 3, 4), (12, 10)]
         self.types = [np.float32, np.float32]
         self.equation = "a...d,...cb->...abcd"
+
 
 class TestEinsumWithBroadcast5(TestEinsumAPI):
     def set_mandatory(self):
@@ -204,12 +211,12 @@ class TestEinsumWithDiagonal3(TestEinsumAPI):
         self.types = [np.float32]
         self.equation = "a...a->..."
 
+
 class TestEinsumWithDiagonal4(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(5, 3, 2, 1, 4, 5)]
         self.types = [np.float32]
         self.equation = "a...a->a..."
-
 
 
 if __name__ == "__main__":
