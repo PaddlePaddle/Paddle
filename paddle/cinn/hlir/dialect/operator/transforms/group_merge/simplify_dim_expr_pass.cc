@@ -107,9 +107,9 @@ void SimplifyDimExpr(pir::ModuleOp module_op) {
         symbol::ShapeOrDataDimExprs simplified_shape_or_data =
             SimplifyShapeOrData(shape_or_data);
         shape_analysis.SetShapeOrDataForValue(value, simplified_shape_or_data);
-        pir::shape::SetShapeAttrForOp(&op, simplified_shape_or_data);
       }
     });
+    // TODO(JiaWenxuan): simplify the attribute "sym_shape_str" of the op
   });
   VLOG(4) << "SimplifyDimExpr end";
 }
