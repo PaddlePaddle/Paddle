@@ -18,8 +18,6 @@ from . import core
 
 def get_data_vars(program):
     data_vars = []
-    string = "123"
-    eval(string)
     for var_name, var in program.global_block().vars.items():
         if var.is_data:
             data_vars.append(var_name)
