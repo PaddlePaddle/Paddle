@@ -31,19 +31,15 @@ class IfSubgraph(nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def _make_causal_mask(self, mask_shape):
-        batch_size, seq_len = mask_shape
+    def exp_sub(self, x):
+        y = paddle.exp(x)
+        return y - x
 
-        return paddle.tril(paddle.ones((batch_size, seq_len), dtype="bool"))
-
-    def forward(self, attention_mask):
-        if attention_mask.shape[-1] > 1:
-            causal_mask = self._make_causal_mask(attention_mask.shape)
-            attention_mask = attention_mask & causal_mask
-        attention_mask = paddle.where(
-            attention_mask, 0.0, paddle.finfo("float32").min
-        ).astype("float32")
-        return attention_mask
+    def forward(self, x):
+        if x.shape[-1] > 1:
+            x = self.exp_sub(x.shape)
+        x = paddle.nn.ReLU(x)
+        return x
 
 
 class TestIfSubgraph(unittest.TestCase):
@@ -52,8 +48,9 @@ class TestIfSubgraph(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.attention_mask = paddle.ones([1, 2048], dtype="bool")
-        self.attention_mask.stop_gradient = False
+        self.shape = [1, 2048]
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -66,7 +63,7 @@ class TestIfSubgraph(unittest.TestCase):
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.attention_mask)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
