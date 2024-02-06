@@ -1925,7 +1925,7 @@
   kernel :
     func : rms_norm_grad
     data_type : x
-  optional : bias, residual, norm_bias,
+  optional : bias, residual, norm_bias
 
 - backward_op : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false) -> Tensor(out)
