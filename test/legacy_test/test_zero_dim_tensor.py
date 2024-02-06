@@ -423,281 +423,281 @@ inplace_binary_api_list = [
 ]
 
 
-# # Use to test zero-dim of binary API
-# class TestBinaryAPI(unittest.TestCase):
-#     def test_dygraph_binary(self):
-#         paddle.disable_static()
-#         for api in binary_api_list:
-#             # 1) x is 0D, y is 0D
-#             x = paddle.rand([])
-#             y = paddle.rand([])
-#             x.stop_gradient = False
-#             y.stop_gradient = False
-#             if isinstance(api, dict):
-#                 out = api['func'](x, y)
-#                 out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
-#                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
-#             else:
-#                 out = api(x, y)
+# Use to test zero-dim of binary API
+class TestBinaryAPI(unittest.TestCase):
+    def test_dygraph_binary(self):
+        paddle.disable_static()
+        for api in binary_api_list:
+            # 1) x is 0D, y is 0D
+            x = paddle.rand([])
+            y = paddle.rand([])
+            x.stop_gradient = False
+            y.stop_gradient = False
+            if isinstance(api, dict):
+                out = api['func'](x, y)
+                out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
+                np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
+            else:
+                out = api(x, y)
 
-#             out.retain_grads()
-#             out.backward()
+            out.retain_grads()
+            out.backward()
 
-#             self.assertEqual(x.shape, [])
-#             self.assertEqual(y.shape, [])
-#             self.assertEqual(out.shape, [])
-#             if x.grad is not None:
-#                 self.assertEqual(x.grad.shape, [])
-#                 self.assertEqual(y.grad.shape, [])
-#                 self.assertEqual(out.grad.shape, [])
+            self.assertEqual(x.shape, [])
+            self.assertEqual(y.shape, [])
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(y.grad.shape, [])
+                self.assertEqual(out.grad.shape, [])
 
-#             # 2) x is ND, y is 0D
-#             x = paddle.rand([2, 3, 4])
-#             y = paddle.rand([])
-#             x.stop_gradient = False
-#             y.stop_gradient = False
-#             if isinstance(api, dict):
-#                 out = api['func'](x, y)
-#                 out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
-#                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
-#             else:
-#                 out = api(x, y)
+            # 2) x is ND, y is 0D
+            x = paddle.rand([2, 3, 4])
+            y = paddle.rand([])
+            x.stop_gradient = False
+            y.stop_gradient = False
+            if isinstance(api, dict):
+                out = api['func'](x, y)
+                out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
+                np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
+            else:
+                out = api(x, y)
 
-#             out.retain_grads()
-#             out.backward()
+            out.retain_grads()
+            out.backward()
 
-#             self.assertEqual(x.shape, [2, 3, 4])
-#             self.assertEqual(y.shape, [])
-#             self.assertEqual(out.shape, [2, 3, 4])
-#             if x.grad is not None:
-#                 self.assertEqual(x.grad.shape, [2, 3, 4])
-#                 self.assertEqual(y.grad.shape, [])
-#                 self.assertEqual(out.grad.shape, [2, 3, 4])
+            self.assertEqual(x.shape, [2, 3, 4])
+            self.assertEqual(y.shape, [])
+            self.assertEqual(out.shape, [2, 3, 4])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [2, 3, 4])
+                self.assertEqual(y.grad.shape, [])
+                self.assertEqual(out.grad.shape, [2, 3, 4])
 
-#             # 3) x is 0D , y is ND
-#             x = paddle.rand([])
-#             y = paddle.rand([2, 3, 4])
-#             x.stop_gradient = False
-#             y.stop_gradient = False
-#             if isinstance(api, dict):
-#                 out = api['func'](x, y)
-#                 out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
-#                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
-#             else:
-#                 out = api(x, y)
+            # 3) x is 0D , y is ND
+            x = paddle.rand([])
+            y = paddle.rand([2, 3, 4])
+            x.stop_gradient = False
+            y.stop_gradient = False
+            if isinstance(api, dict):
+                out = api['func'](x, y)
+                out_cls = getattr(paddle.Tensor, api['cls_method'])(x, y)
+                np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
+            else:
+                out = api(x, y)
 
-#             out.retain_grads()
-#             out.backward()
+            out.retain_grads()
+            out.backward()
 
-#             self.assertEqual(x.shape, [])
-#             self.assertEqual(y.shape, [2, 3, 4])
-#             self.assertEqual(out.shape, [2, 3, 4])
-#             if x.grad is not None:
-#                 self.assertEqual(x.grad.shape, [])
-#                 self.assertEqual(y.grad.shape, [2, 3, 4])
-#                 self.assertEqual(out.grad.shape, [2, 3, 4])
+            self.assertEqual(x.shape, [])
+            self.assertEqual(y.shape, [2, 3, 4])
+            self.assertEqual(out.shape, [2, 3, 4])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(y.grad.shape, [2, 3, 4])
+                self.assertEqual(out.grad.shape, [2, 3, 4])
 
-#             # 4) x is 0D , y is scalar
-#             x = paddle.rand([])
-#             x.stop_gradient = False
-#             y = 0.5
-#             if isinstance(api, dict):
-#                 out = getattr(paddle.Tensor, api['cls_method'])(x, y)
+            # 4) x is 0D , y is scalar
+            x = paddle.rand([])
+            x.stop_gradient = False
+            y = 0.5
+            if isinstance(api, dict):
+                out = getattr(paddle.Tensor, api['cls_method'])(x, y)
 
-#                 out.retain_grads()
-#                 out.backward()
+                out.retain_grads()
+                out.backward()
 
-#                 self.assertEqual(x.shape, [])
-#                 self.assertEqual(out.shape, [])
-#                 if x.grad is not None:
-#                     self.assertEqual(x.grad.shape, [])
-#                     self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
+                if x.grad is not None:
+                    self.assertEqual(x.grad.shape, [])
+                    self.assertEqual(out.grad.shape, [])
 
-#         for api in binary_int_api_list:
-#             # 1) x is 0D, y is 0D
-#             x_np = np.random.randint(-10, 10, [])
-#             y_np = np.random.randint(-10, 10, [])
-#             out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+        for api in binary_int_api_list:
+            # 1) x is 0D, y is 0D
+            x_np = np.random.randint(-10, 10, [])
+            y_np = np.random.randint(-10, 10, [])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
 
-#             x = paddle.to_tensor(x_np)
-#             y = paddle.to_tensor(y_np)
-#             out = api(x, y)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = api(x, y)
 
-#             self.assertEqual(out.shape, [])
-#             np.testing.assert_array_equal(out.numpy(), out_np)
+            self.assertEqual(out.shape, [])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
-#             # 2) x is ND, y is 0D
-#             x_np = np.random.randint(-10, 10, [3, 5])
-#             y_np = np.random.randint(-10, 10, [])
-#             out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+            # 2) x is ND, y is 0D
+            x_np = np.random.randint(-10, 10, [3, 5])
+            y_np = np.random.randint(-10, 10, [])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
 
-#             x = paddle.to_tensor(x_np)
-#             y = paddle.to_tensor(y_np)
-#             out = api(x, y)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = api(x, y)
 
-#             self.assertEqual(out.shape, [3, 5])
-#             np.testing.assert_array_equal(out.numpy(), out_np)
+            self.assertEqual(out.shape, [3, 5])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
-#             # 3) x is 0D , y is ND
-#             x_np = np.random.randint(-10, 10, [])
-#             y_np = np.random.randint(-10, 10, [3, 5])
-#             out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+            # 3) x is 0D , y is ND
+            x_np = np.random.randint(-10, 10, [])
+            y_np = np.random.randint(-10, 10, [3, 5])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
 
-#             x = paddle.to_tensor(x_np)
-#             y = paddle.to_tensor(y_np)
-#             out = api(x, y)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = api(x, y)
 
-#             self.assertEqual(out.shape, [3, 5])
-#             np.testing.assert_array_equal(out.numpy(), out_np)
+            self.assertEqual(out.shape, [3, 5])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
-#         for api in inplace_binary_api_list:
-#             with paddle.no_grad():
-#                 x = paddle.rand([])
-#                 y = paddle.rand([])
-#                 out = api(x, y)
-#                 self.assertEqual(x.shape, [])
-#                 self.assertEqual(out.shape, [])
+        for api in inplace_binary_api_list:
+            with paddle.no_grad():
+                x = paddle.rand([])
+                y = paddle.rand([])
+                out = api(x, y)
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
 
-#                 x = paddle.rand([3, 5])
-#                 y = paddle.rand([])
-#                 out = api(x, y)
-#                 self.assertEqual(x.shape, [3, 5])
-#                 self.assertEqual(out.shape, [3, 5])
+                x = paddle.rand([3, 5])
+                y = paddle.rand([])
+                out = api(x, y)
+                self.assertEqual(x.shape, [3, 5])
+                self.assertEqual(out.shape, [3, 5])
 
-#         paddle.enable_static()
+        paddle.enable_static()
 
-#     def test_static_binary(self):
-#         paddle.enable_static()
-#         for api in binary_api_list:
-#             main_prog = paddle.static.Program()
-#             block = main_prog.global_block()
-#             with paddle.static.program_guard(
-#                 main_prog, paddle.static.Program()
-#             ):
-#                 # 1) x is 0D, y is 0D
-#                 x = paddle.rand([])
-#                 y = paddle.rand([])
-#                 x.stop_gradient = False
-#                 y.stop_gradient = False
-#                 if isinstance(api, dict):
-#                     out = api['func'](x, y)
-#                     out_cls = getattr(
-#                         paddle.static.Variable, api['cls_method']
-#                     )(x, y)
-#                     self.assertEqual(out.shape, out_cls.shape)
-#                 else:
-#                     out = api(x, y)
-#                 paddle.static.append_backward(out)
+    def test_static_binary(self):
+        paddle.enable_static()
+        for api in binary_api_list:
+            main_prog = paddle.static.Program()
+            block = main_prog.global_block()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # 1) x is 0D, y is 0D
+                x = paddle.rand([])
+                y = paddle.rand([])
+                x.stop_gradient = False
+                y.stop_gradient = False
+                if isinstance(api, dict):
+                    out = api['func'](x, y)
+                    out_cls = getattr(
+                        paddle.static.Variable, api['cls_method']
+                    )(x, y)
+                    self.assertEqual(out.shape, out_cls.shape)
+                else:
+                    out = api(x, y)
+                paddle.static.append_backward(out)
 
-#                 self.assertEqual(x.shape, ())
-#                 self.assertEqual(y.shape, ())
-#                 self.assertEqual(out.shape, ())
-#                 if block.has_var(x.grad_name):
-#                     out_grad = block.var(out.grad_name)
-#                     x_grad = block.var(x.grad_name)
-#                     y_grad = block.var(y.grad_name)
+                self.assertEqual(x.shape, ())
+                self.assertEqual(y.shape, ())
+                self.assertEqual(out.shape, ())
+                if block.has_var(x.grad_name):
+                    out_grad = block.var(out.grad_name)
+                    x_grad = block.var(x.grad_name)
+                    y_grad = block.var(y.grad_name)
 
-#                     self.assertEqual(x_grad.shape, ())
-#                     self.assertEqual(y_grad.shape, ())
-#                     self.assertEqual(out_grad.shape, ())
+                    self.assertEqual(x_grad.shape, ())
+                    self.assertEqual(y_grad.shape, ())
+                    self.assertEqual(out_grad.shape, ())
 
-#                 # 2) x is 0D, y is ND
-#                 x = paddle.rand([])
-#                 y = paddle.rand([2, 3, 4])
-#                 x.stop_gradient = False
-#                 y.stop_gradient = False
-#                 if isinstance(api, dict):
-#                     out = api['func'](x, y)
-#                     out_cls = getattr(
-#                         paddle.static.Variable, api['cls_method']
-#                     )(x, y)
-#                     self.assertEqual(out.shape, out_cls.shape)
-#                 else:
-#                     out = api(x, y)
-#                 paddle.static.append_backward(out)
+                # 2) x is 0D, y is ND
+                x = paddle.rand([])
+                y = paddle.rand([2, 3, 4])
+                x.stop_gradient = False
+                y.stop_gradient = False
+                if isinstance(api, dict):
+                    out = api['func'](x, y)
+                    out_cls = getattr(
+                        paddle.static.Variable, api['cls_method']
+                    )(x, y)
+                    self.assertEqual(out.shape, out_cls.shape)
+                else:
+                    out = api(x, y)
+                paddle.static.append_backward(out)
 
-#                 self.assertEqual(x.shape, ())
-#                 self.assertEqual(y.shape, (2, 3, 4))
-#                 self.assertEqual(out.shape, (2, 3, 4))
-#                 if block.has_var(x.grad_name):
-#                     out_grad = block.var(out.grad_name)
-#                     x_grad = block.var(x.grad_name)
-#                     y_grad = block.var(y.grad_name)
+                self.assertEqual(x.shape, ())
+                self.assertEqual(y.shape, (2, 3, 4))
+                self.assertEqual(out.shape, (2, 3, 4))
+                if block.has_var(x.grad_name):
+                    out_grad = block.var(out.grad_name)
+                    x_grad = block.var(x.grad_name)
+                    y_grad = block.var(y.grad_name)
 
-#                     self.assertEqual(x_grad.shape, ())
-#                     self.assertEqual(y_grad.shape, (2, 3, 4))
-#                     self.assertEqual(out_grad.shape, (2, 3, 4))
+                    self.assertEqual(x_grad.shape, ())
+                    self.assertEqual(y_grad.shape, (2, 3, 4))
+                    self.assertEqual(out_grad.shape, (2, 3, 4))
 
-#                 # 3) x is ND, y is 0d
-#                 x = paddle.rand([2, 3, 4])
-#                 y = paddle.rand([])
-#                 x.stop_gradient = False
-#                 y.stop_gradient = False
-#                 if isinstance(api, dict):
-#                     out = api['func'](x, y)
-#                     out_cls = getattr(
-#                         paddle.static.Variable, api['cls_method']
-#                     )(x, y)
-#                     self.assertEqual(out.shape, out_cls.shape)
-#                 else:
-#                     out = api(x, y)
-#                 paddle.static.append_backward(out)
+                # 3) x is ND, y is 0d
+                x = paddle.rand([2, 3, 4])
+                y = paddle.rand([])
+                x.stop_gradient = False
+                y.stop_gradient = False
+                if isinstance(api, dict):
+                    out = api['func'](x, y)
+                    out_cls = getattr(
+                        paddle.static.Variable, api['cls_method']
+                    )(x, y)
+                    self.assertEqual(out.shape, out_cls.shape)
+                else:
+                    out = api(x, y)
+                paddle.static.append_backward(out)
 
-#                 self.assertEqual(x.shape, (2, 3, 4))
-#                 self.assertEqual(y.shape, ())
-#                 self.assertEqual(out.shape, (2, 3, 4))
-#                 if block.has_var(x.grad_name):
-#                     out_grad = block.var(out.grad_name)
-#                     x_grad = block.var(x.grad_name)
-#                     y_grad = block.var(y.grad_name)
+                self.assertEqual(x.shape, (2, 3, 4))
+                self.assertEqual(y.shape, ())
+                self.assertEqual(out.shape, (2, 3, 4))
+                if block.has_var(x.grad_name):
+                    out_grad = block.var(out.grad_name)
+                    x_grad = block.var(x.grad_name)
+                    y_grad = block.var(y.grad_name)
 
-#                     self.assertEqual(x_grad.shape, (2, 3, 4))
-#                     self.assertEqual(y_grad.shape, ())
-#                     self.assertEqual(out_grad.shape, (2, 3, 4))
+                    self.assertEqual(x_grad.shape, (2, 3, 4))
+                    self.assertEqual(y_grad.shape, ())
+                    self.assertEqual(out_grad.shape, (2, 3, 4))
 
-#                 # 4) x is 0D , y is scalar
-#                 x = paddle.rand([])
-#                 x.stop_gradient = False
-#                 y = 0.5
-#                 if isinstance(api, dict):
-#                     out = getattr(paddle.static.Variable, api['cls_method'])(
-#                         x, y
-#                     )
-#                     paddle.static.append_backward(out)
+                # 4) x is 0D , y is scalar
+                x = paddle.rand([])
+                x.stop_gradient = False
+                y = 0.5
+                if isinstance(api, dict):
+                    out = getattr(paddle.static.Variable, api['cls_method'])(
+                        x, y
+                    )
+                    paddle.static.append_backward(out)
 
-#                     self.assertEqual(x.shape, ())
-#                     self.assertEqual(out.shape, ())
-#                     if block.has_var(x.grad_name):
-#                         out_grad = block.var(out.grad_name)
-#                         x_grad = block.var(x.grad_name)
+                    self.assertEqual(x.shape, ())
+                    self.assertEqual(out.shape, ())
+                    if block.has_var(x.grad_name):
+                        out_grad = block.var(out.grad_name)
+                        x_grad = block.var(x.grad_name)
 
-#                         self.assertEqual(out_grad.shape, ())
-#                         self.assertEqual(x_grad.shape, ())
+                        self.assertEqual(out_grad.shape, ())
+                        self.assertEqual(x_grad.shape, ())
 
-#         for api in binary_int_api_list:
-#             main_prog = paddle.static.Program()
-#             with paddle.static.program_guard(
-#                 main_prog, paddle.static.Program()
-#             ):
-#                 # 1) x is 0D, y is 0D
-#                 x = paddle.randint(-10, 10, [])
-#                 y = paddle.randint(-10, 10, [])
-#                 out = api(x, y)
-#                 self.assertEqual(out.shape, ())
+        for api in binary_int_api_list:
+            main_prog = paddle.static.Program()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
+                # 1) x is 0D, y is 0D
+                x = paddle.randint(-10, 10, [])
+                y = paddle.randint(-10, 10, [])
+                out = api(x, y)
+                self.assertEqual(out.shape, ())
 
-#                 # 2) x is ND , y is 0D
-#                 x = paddle.randint(-10, 10, [3, 5])
-#                 y = paddle.randint(-10, 10, [])
-#                 out = api(x, y)
-#                 self.assertEqual(out.shape, (3, 5))
+                # 2) x is ND , y is 0D
+                x = paddle.randint(-10, 10, [3, 5])
+                y = paddle.randint(-10, 10, [])
+                out = api(x, y)
+                self.assertEqual(out.shape, (3, 5))
 
-#                 # 3) x is 0D , y is ND
-#                 x = paddle.randint(-10, 10, [])
-#                 y = paddle.randint(-10, 10, [3, 5])
-#                 out = api(x, y)
-#                 self.assertEqual(out.shape, (3, 5))
+                # 3) x is 0D , y is ND
+                x = paddle.randint(-10, 10, [])
+                y = paddle.randint(-10, 10, [3, 5])
+                out = api(x, y)
+                self.assertEqual(out.shape, (3, 5))
 
-#         paddle.disable_static()
+        paddle.disable_static()
 
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
