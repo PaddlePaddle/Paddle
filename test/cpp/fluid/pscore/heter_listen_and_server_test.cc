@@ -21,13 +21,13 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/flags.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -35,7 +35,7 @@ namespace distributed = paddle::distributed;
 
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 USE_OP_ITSELF(scale);
 USE_NO_KERNEL_OP(heter_listen_and_serv);

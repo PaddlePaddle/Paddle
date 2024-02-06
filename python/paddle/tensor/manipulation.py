@@ -345,7 +345,7 @@ def slice(input, axes, starts, ends):
 
     else:
         raise ValueError(
-            f"Input axes must be a python list or tuple, but reveived {type(axes)}"
+            f"Input axes must be a python list or tuple, but received {type(axes)}"
         )
 
     if in_dynamic_mode():
@@ -633,7 +633,7 @@ def unstack(x, axis=0, num=None):
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    Reset the values of `input` according to the shard it beloning to.
+    Reset the values of `input` according to the shard it belongs to.
     Every value in `input` must be a non-negative integer, and
     the parameter `index_num` represents the integer above the maximum
     value of `input`. Thus, all values in `input` must be in the range
@@ -1944,7 +1944,7 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-    Stacks all the input tensors ``x`` along ``axis`` dimemsion.
+    Stacks all the input tensors ``x`` along ``axis`` dimension.
     All tensors must be of the same shape and same dtype.
 
     For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked
@@ -3708,7 +3708,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Args:
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
         index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
+        updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be equal with the (i+1)th dim of the input.
         overwrite (bool, optional): The mode that updating the output when there are same indices.If True, use the overwrite mode to update the output of the same index,if False, use the accumulate mode to update the output of the same index. Default value is True.
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
@@ -4087,7 +4087,7 @@ def expand_as(x, y, name=None):
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
-    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 0.
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
@@ -4227,7 +4227,7 @@ def expand(x, shape, name=None):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
-            TypeError("Shape only supports OpReslut, or list, or tuple.")
+            TypeError("Shape only supports OpResult, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -6155,7 +6155,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
         indices (Tuple of Tensor): The tuple of Tensor containing the indices to index.
             The data type of ``tensor in indices`` must be int32, int64 or bool.
         value (Tensor): The tensor used to be assigned to x.
-        accummulate (Bool, optional): Whether the elements in values are added to x. Default: False.
+        accumulate (Bool, optional): Whether the elements in values are added to x. Default: False.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
