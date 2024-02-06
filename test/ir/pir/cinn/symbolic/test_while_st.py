@@ -27,25 +27,15 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class WhileRMSNorm(nn.Layer):
+class WhileExpSub(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.hidden_size = 768
-        self.weight = paddle.create_parameter(
-            shape=[self.hidden_size],
-            dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
-        )
-        self.variance_epsilon = 1e-6
 
-    def forward(self, hidden_states):
+    def forward(self, x):
         loop_count = 0
-        while hidden_states.sum() > 0 and loop_count < 1:
-            variance = hidden_states.pow(2).sum(-1, keepdim=True) / 768
-            hidden_states = (
-                paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
-            )
-            hidden_states = hidden_states * self.weight
+        while x.sum() > 0 and loop_count < 1:
+            y = paddle.exp(x)
+            x = y - x
             loop_count += 1
 
 
@@ -56,21 +46,21 @@ class TestWhile(unittest.TestCase):
 
     def prepare_data(self):
         self.shape = [1, 2048, 768]
-        self.hidden_states = paddle.randn(self.shape, dtype="float32")
-        self.hidden_states.stop_gradient = False
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = WhileRMSNorm()
+        net = WhileExpSub()
         input_spec = [
             InputSpec(shape=[1, 2048, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.hidden_states)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
