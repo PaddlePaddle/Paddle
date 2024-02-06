@@ -336,5 +336,59 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestBinaryCrossEntropyWithLogits(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(10, 5).astype("float32")
+        self.y = np.random.randint(0, 2, (10, 5)).astype("float32")
+        self.logits = paddle.to_tensor(self.x)
+        self.labels = paddle.to_tensor(self.y)
+        self.weight = None
+        self.reduction = ["none", "mean", "sum"]
+        self.pos_weight = None
+
+    def test_binary_cross_entropy_with_logits(self):
+        for reduction in self.reduction:
+            dynamic_result = (
+                paddle.nn.functional.binary_cross_entropy_with_logits(
+                    self.logits,
+                    self.labels,
+                    weight=self.weight,
+                    reduction=reduction,
+                    pos_weight=self.pos_weight,
+                )
+            )
+            static_result = paddle.jit.to_static(
+                paddle.nn.functional.binary_cross_entropy_with_logits
+            )(
+                self.logits,
+                self.labels,
+                weight=self.weight,
+                reduction=reduction,
+                pos_weight=self.pos_weight,
+            )
+            self.assertTrue(
+                np.allclose(dynamic_result.numpy(), static_result.numpy())
+            )
+
+
+class TestBinaryCrossEntropyWithLogits1(TestBinaryCrossEntropyWithLogits):
+    def setUp(self):
+        super().setUp()
+        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
+
+
+class TestBinaryCrossEntropyWithLogits2(TestBinaryCrossEntropyWithLogits):
+    def setUp(self):
+        super().setUp()
+        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
+
+
+class TestBinaryCrossEntropyWithLogits3(TestBinaryCrossEntropyWithLogits):
+    def setUp(self):
+        super().setUp()
+        self.weight = paddle.to_tensor(np.random.randn(10, 5).astype("float32"))
+        self.pos_weight = paddle.to_tensor(np.random.randn(5).astype("float32"))
+
+
 if __name__ == "__main__":
     unittest.main()
