@@ -14,12 +14,12 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
 
 
-class TestFleetPerfTest(TestMultipleGpus):
+class TestFleetPerfTest(TestMultipleAccelerators):
     def test_fleet_perf_test(self):
-        self.run_mnist_2gpu('hybrid_parallel_perf_test.py')
+        self.run_mnist_2accelerators('hybrid_parallel_perf_test.py')
 
 
 if __name__ == "__main__":

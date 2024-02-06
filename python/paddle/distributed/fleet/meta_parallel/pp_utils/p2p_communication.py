@@ -638,7 +638,7 @@ class P2pHelper:
     def send_forward_backward_recv_forward_backward(
         self, output_tensor, input_tensor_grad, recv_prev, recv_next
     ):
-        # always have to send dytpe info to downstream
+        # always have to send dtype info to downstream
         global _timers
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").start()
@@ -661,7 +661,7 @@ class P2pHelper:
         return input_tensor, output_tensor_grad
 
     def send_forward_recv_forward(self, output_tensor, recv_prev):
-        # always have to send dytpe info to downstream
+        # always have to send dtype info to downstream
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_forward").start()

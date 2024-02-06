@@ -56,28 +56,19 @@ using SymbolName2CachedValue = std::unordered_map<symbol::DimExpr, pir::Value>;
 
 struct CachedDimExprToValueConverter {
   CachedDimExprToValueConverter(
-      const std::shared_ptr<SymbolName2CachedValue>& symbol_names2cached_value,
       const TensorDim4SymbolNameT& TensorDim4SymbolNameVal,
       pir::PatternRewriter* rewriter_val)
-      : symbol_names2cached_value_(symbol_names2cached_value),
-        TensorDim4SymbolName(TensorDim4SymbolNameVal),
-        rewriter(rewriter_val) {}
+      : TensorDim4SymbolName(TensorDim4SymbolNameVal), rewriter(rewriter_val) {}
 
   TensorDim4SymbolNameT TensorDim4SymbolName;
   pir::PatternRewriter* rewriter;
 
   pir::Value ConvertToValue(const symbol::DimExpr& dim_expr) {
-    auto iter = symbol_names2cached_value_->find(dim_expr);
-    if (iter == symbol_names2cached_value_->end()) {
-      pir::Value value =
-          std::visit([&](const auto& impl) { return ConvertToValueImpl(impl); },
-                     dim_expr.variant());
-      iter = symbol_names2cached_value_->emplace(dim_expr, value).first;
-    }
-    return iter->second;
+    pir::Value value =
+        std::visit([&](const auto& impl) { return ConvertToValueImpl(impl); },
+                   dim_expr.variant());
+    return value;
   }
-
-  std::shared_ptr<SymbolName2CachedValue> symbol_names2cached_value_;
 
   pir::Value GetInputShapeByInputTensor(pir::Value input_tensor) {
     auto iter = tensor2shape_.find(input_tensor);
@@ -228,11 +219,7 @@ struct CachedDimExprToValueConverter {
 class SplitGenerateShapeIntoShapeOps
     : public pir::OpRewritePattern<cinn::dialect::GenerateShapeOp> {
  public:
-  SplitGenerateShapeIntoShapeOps(
-      pir::IrContext* context,
-      const std::shared_ptr<SymbolName2CachedValue>& symbol_names2cached_value)
-      : OpRewritePattern(context),
-        symbol_names2cached_value_(symbol_names2cached_value) {}
+  using OpRewritePattern<cinn::dialect::GenerateShapeOp>::OpRewritePattern;
 
   bool MatchAndRewrite(cinn::dialect::GenerateShapeOp op,
                        pir::PatternRewriter& rewriter) const override {
@@ -240,6 +227,9 @@ class SplitGenerateShapeIntoShapeOps
         GetOutReplacement(op, &rewriter);
     if (!out_replacement.has_value()) return false;
     rewriter.ReplaceAllUsesWith(op->result(0), out_replacement.value());
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
     return true;
   }
 
@@ -249,12 +239,9 @@ class SplitGenerateShapeIntoShapeOps
     TensorDim4SymbolNameT TensorDim4SymbolName =
         MakeGetterTensorDim4SymbolName(op);
     if (!TensorDim4SymbolName) return std::nullopt;
-    CachedDimExprToValueConverter converter{
-        symbol_names2cached_value_, TensorDim4SymbolName, rewriter};
+    CachedDimExprToValueConverter converter{TensorDim4SymbolName, rewriter};
     return GetValueOfRewritedOps(dim_exprs, &converter);
   }
-
-  std::shared_ptr<SymbolName2CachedValue> symbol_names2cached_value_;
 
   TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(
       cinn::dialect::GenerateShapeOp op) const {
@@ -371,13 +358,12 @@ SplitGenerateShapeIntoShapeOpsPass::SplitGenerateShapeIntoShapeOpsPass()
 pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
-  ps.Add<SplitGenerateShapeIntoShapeOps>(
-      context, std::make_shared<SymbolName2CachedValue>());
+  ps.Add<SplitGenerateShapeIntoShapeOps>(context);
   return ps;
 }
 
 bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return op->num_regions() > 0;
 }
 
 }  // namespace ir

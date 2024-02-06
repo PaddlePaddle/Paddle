@@ -158,7 +158,7 @@ class SparseFcOpConverter : public OpConverter {
             Y_t->dims().size()));  // a matrix
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+    auto transpose_weight = [](const float* src, float* dst, int m, int n) {
       for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
           dst[j * m + i] = src[i * n + j];
@@ -301,7 +301,7 @@ class SparseFcOpConverter : public OpConverter {
       std::vector<float> weight_data_tmp;
       weight_data_tmp.reserve(Y_t->numel());
       memcpy(weight_data_tmp.data(), weight_data, Y_t->numel() * sizeof(float));
-      tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+      transpose_weight(weight_data_tmp.data(), weight_data, m, n);
       weight_w = n;
       weight_h = m;
     } else {

@@ -34,8 +34,8 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 
 namespace paddle {
 namespace framework {
@@ -273,7 +273,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
                                             phi::Place place);
 
-std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string>& output_names,

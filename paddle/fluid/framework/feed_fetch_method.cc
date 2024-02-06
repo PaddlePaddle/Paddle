@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_api);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace phi {
 class DenseTensor;
