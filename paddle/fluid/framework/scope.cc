@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/phi/core/flags.h"
 PD_DECLARE_bool(benchmark);
 
-PHI_DECLARE_bool(eager_delete_scope);
+COMMON_DECLARE_bool(eager_delete_scope);
 
 #define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
 #define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);

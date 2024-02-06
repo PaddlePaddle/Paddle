@@ -21,7 +21,7 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_skip_dynamic);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;

@@ -743,7 +743,7 @@ class TestReshapePirValueListShape(unittest.TestCase):
             )
             shape = [1, paddle.full([], 3)]
             out = paddle.reshape(x, shape)
-            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
+            self.assertEqual(out.shape, [1, -1])
 
 
 if __name__ == "__main__":

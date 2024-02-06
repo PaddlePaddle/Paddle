@@ -20,14 +20,222 @@
 #include <string>
 #include <type_traits>
 
+#ifdef PADDLE_WITH_GFLAGS
+#include "gflags/gflags.h"
+#else
+#endif
 #include "paddle/common/macros.h"
-#include "paddle/utils/flags.h"
 #include "paddle/utils/test_macros.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
+#define COMMON_IMPORT_FLAG __declspec(dllimport)
+#else
+#define COMMON_IMPORT_FLAG
+#endif
+
+#ifdef PADDLE_WITH_GFLAGS
+#define PD_DEFINE_bool(name, val, txt) DEFINE_bool(name, val, txt)
+#define PD_DEFINE_int32(name, val, txt) DEFINE_int32(name, val, txt)
+#define PD_DEFINE_uint32(name, val, txt) DEFINE_uint32(name, val, txt)
+#define PD_DEFINE_int64(name, val, txt) DEFINE_int64(name, val, txt)
+#define PD_DEFINE_uint64(name, val, txt) DEFINE_uint64(name, val, txt)
+#define PD_DEFINE_double(name, val, txt) DEFINE_double(name, val, txt)
+#define PD_DEFINE_string(name, val, txt) DEFINE_string(name, val, txt)
+
+#define PD_DECLARE_bool(name) DECLARE_bool(name)
+#define PD_DECLARE_int32(name) DECLARE_int32(name)
+#define PD_DECLARE_uint32(name) DECLARE_uint32(name)
+#define PD_DECLARE_int64(name) DECLARE_int64(name)
+#define PD_DECLARE_uint64(name) DECLARE_uint64(name)
+#define PD_DECLARE_double(name) DECLARE_double(name)
+#define PD_DECLARE_string(name) DECLARE_string(name)
+#endif
+
+#define PD_DECLARE_VARIABLE(type, name)     \
+  namespace paddle_flags {                  \
+  extern PHI_IMPORT_FLAG type FLAGS_##name; \
+  }                                         \
+  using paddle_flags::FLAGS_##name
+
+#define COMMON_DECLARE_VARIABLE(type, name)    \
+  namespace paddle_flags {                     \
+  extern COMMON_IMPORT_FLAG type FLAGS_##name; \
+  }                                            \
+  using paddle_flags::FLAGS_##name
+
+#define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
+#define PD_DECLARE_int32(name) PD_DECLARE_VARIABLE(int32_t, name)
+#define PD_DECLARE_uint32(name) PD_DECLARE_VARIABLE(uint32_t, name)
+#define PD_DECLARE_int64(name) PD_DECLARE_VARIABLE(int64_t, name)
+#define PD_DECLARE_uint64(name) PD_DECLARE_VARIABLE(uint64_t, name)
+#define PD_DECLARE_double(name) PD_DECLARE_VARIABLE(double, name)
+#define PD_DECLARE_string(name) PD_DECLARE_VARIABLE(std::string, name)
+
+#define COMMON_DECLARE_bool(name) COMMON_DECLARE_VARIABLE(bool, name)
+#define COMMON_DECLARE_int32(name) COMMON_DECLARE_VARIABLE(int32_t, name)
+#define COMMON_DECLARE_uint32(name) COMMON_DECLARE_VARIABLE(uint32_t, name)
+#define COMMON_DECLARE_int64(name) COMMON_DECLARE_VARIABLE(int64_t, name)
+#define COMMON_DECLARE_uint64(name) COMMON_DECLARE_VARIABLE(uint64_t, name)
+#define COMMON_DECLARE_double(name) COMMON_DECLARE_VARIABLE(double, name)
+#define COMMON_DECLARE_string(name) COMMON_DECLARE_VARIABLE(std::string, name)
+// ----------------------------DEFINE FLAGS----------------------------
+#define PD_DEFINE_VARIABLE(type, name, default_value, description)           \
+  namespace paddle_flags {                                                   \
+  static const type FLAGS_##name##_default = default_value;                  \
+  type FLAGS_##name = default_value;                                         \
+  /* Register FLAG */                                                        \
+  static ::paddle::flags::FlagRegisterer flag_##name##_registerer(           \
+      #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name); \
+  }                                                                          \
+  using paddle_flags::FLAGS_##name
+
+#define PD_DEFINE_bool(name, val, txt) PD_DEFINE_VARIABLE(bool, name, val, txt)
+#define PD_DEFINE_int32(name, val, txt) \
+  PD_DEFINE_VARIABLE(int32_t, name, val, txt)
+#define PD_DEFINE_uint32(name, val, txt) \
+  PD_DEFINE_VARIABLE(uint32_t, name, val, txt)
+#define PD_DEFINE_int64(name, val, txt) \
+  PD_DEFINE_VARIABLE(int64_t, name, val, txt)
+#define PD_DEFINE_uint64(name, val, txt) \
+  PD_DEFINE_VARIABLE(uint64_t, name, val, txt)
+#define PD_DEFINE_double(name, val, txt) \
+  PD_DEFINE_VARIABLE(double, name, val, txt)
+#define PD_DEFINE_string(name, val, txt) \
+  PD_DEFINE_VARIABLE(std::string, name, val, txt)
+
+namespace paddle {
+namespace flags {
+
+/**
+ * @brief Parse commandline flags.
+ *
+ * It recieves commandline arguments passed in argc and argv from main function,
+ * argv[0] is the program name, and argv[1:] are the commandline arguments
+ * which matching the format "--name=value" or "--name value". After parsing,
+ * the corresponding flag value will be reset.
+ */
+PADDLE_API void ParseCommandLineFlags(int* argc, char*** argv);
+
+/**
+ * @brief Allow undefined flags in ParseCommandLineFlags()
+ */
+PADDLE_API void AllowUndefinedFlags();
+
+/**
+ * @brief Set flags from environment variables.
+ *
+ * It recieves a list of flags name, and will find the corresponding environment
+ * variables named "FLAGS_name", if found, it will set the environment variable
+ * values to the flags. If error_fatal is true, the program will exit when the
+ * environment variable is not set or the flag is not defined, that is the same
+ * effect as using commandline argument "--fromenv=var_name1,var_name2,...".
+ * Otherwise, the errors above will be ignored, that is the same effect as using
+ * commandline argument "--tryfromenv=var_name1,var_name2,...".
+ */
+void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal);
+
+/**
+ * @brief Set Single flag value, return true if success.
+ */
+bool SetFlagValue(const std::string& name, const std::string& value);
+
+/**
+ * @brief Find flag by name, return true if found.
+ */
+bool FindFlag(const std::string& name);
+
+/**
+ * @brief Print all registered flags' help message. If to_file is true,
+ * write help message to file.
+ */
+void PrintAllFlagHelp(bool to_file = false,
+                      const std::string& file_name = "all_flags.txt");
+
+/**
+ * @brief Get environment variable. If not found, return default value.
+ */
+template <typename T>
+T GetFromEnv(const std::string& name, const T& default_val);
+
+class PADDLE_API FlagRegisterer {
+ public:
+  template <typename T>
+  FlagRegisterer(std::string name,
+                 std::string description,
+                 std::string file,
+                 const T* default_value,
+                 T* value);
+};
+
+#ifdef PADDLE_WITH_GFLAGS
+inline void ParseCommandLineFlags(int* argc, char*** argv) {
+  gflags::ParseCommandLineFlags(argc, argv, true);
+}
+#else
+using paddle::flags::ParseCommandLineFlags;
+#endif
+
+#ifdef PADDLE_WITH_GFLAGS
+inline bool SetFlagValue(const char* name, const char* value) {
+  std::string ret = gflags::SetCommandLineOption(name, value);
+  return ret.empty() ? false : true;
+}
+#else
+using paddle::flags::SetFlagValue;
+#endif
+
+#ifdef PADDLE_WITH_GFLAGS
+inline bool FindFlag(const char* name) {
+  std::string value;
+  return gflags::GetCommandLineOption(name, &value);
+}
+#else
+using paddle::flags::FindFlag;
+#endif
+
+#ifdef PADDLE_WITH_GFLAGS
+inline void AllowUndefinedFlags() { gflags::AllowCommandLineReparsing(); }
+#else
+using paddle::flags::AllowUndefinedFlags;
+#endif
+
+#ifdef PADDLE_WITH_GFLAGS
+using gflags::BoolFromEnv;
+using gflags::DoubleFromEnv;
+using gflags::Int32FromEnv;
+using gflags::Int64FromEnv;
+using gflags::StringFromEnv;
+using gflags::Uint32FromEnv;
+using gflags::Uint64FromEnv;
+#else
+#define DEFINE_FROM_ENV_FUNC(type, name)                     \
+  inline type name##FromEnv(const std::string& env_var_name, \
+                            type default_val) {              \
+    return GetFromEnv(env_var_name, default_val);            \
+  }
+
+DEFINE_FROM_ENV_FUNC(bool, Bool);
+DEFINE_FROM_ENV_FUNC(int32_t, Int32);
+DEFINE_FROM_ENV_FUNC(uint32_t, Uint32);
+DEFINE_FROM_ENV_FUNC(int64_t, Int64);
+DEFINE_FROM_ENV_FUNC(uint64_t, Uint64);
+DEFINE_FROM_ENV_FUNC(double, Double);
+DEFINE_FROM_ENV_FUNC(std::string, String);
+
+#undef DEFINE_FROM_ENV_FUNC
+#endif
+
+}  // namespace flags
+}  // namespace paddle
+
+#if defined(_WIN32)
 #define PHI_EXPORT_FLAG __declspec(dllexport)
+#if defined(PHI_INNER)
+#define PHI_IMPORT_FLAG __declspec(dllexport)
+#else
 #define PHI_IMPORT_FLAG __declspec(dllimport)
+#endif  // PHI_INNER
 #else
 #define PHI_EXPORT_FLAG
 #define PHI_IMPORT_FLAG
@@ -139,8 +347,8 @@ struct FlagInfo {
 };
 
 using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
-TEST_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
-TEST_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
+PADDLE_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
+PADDLE_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
 
 #define __PHI_DEFINE_EXPORTED_FLAG(                                           \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \
