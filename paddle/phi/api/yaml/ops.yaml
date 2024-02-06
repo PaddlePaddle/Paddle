@@ -2693,6 +2693,16 @@
     func : svd
   backward : svd_grad
 
+- op : swiglu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta:
+     func: SwiGLUInferMeta
+  kernel:
+     func : swiglu
+  optional : y
+  backward: swiglu_grad
+
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
   output : Tensor
