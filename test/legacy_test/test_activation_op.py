@@ -83,10 +83,7 @@ class TestActivation(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out', check_pir_onednn=self.check_pir_onednn)
 
     def init_dtype(self):
         self.dtype = np.float64

@@ -61,7 +61,6 @@ TEST(printer_test, custom_hooks) {
     printer.PrintAttributeMap(op);
     printer.os << " :";
     printer.PrintOpReturnType(op);
-    printer.os << "\n";
   };
 
   hooks.attribute_print_hook = [](pir::Attribute attr,
