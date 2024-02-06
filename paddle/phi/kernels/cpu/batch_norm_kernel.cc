@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
-
+#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -84,6 +84,7 @@ void BatchNormKernel(const Context& ctx,
   ctx.template Alloc<T>(saved_mean);
   ctx.template Alloc<T>(saved_variance);
   if (reserve_space != nullptr) {
+    VLOG(0) << "reserve_space is nullptr";
     reserve_space->Resize({0});
     ctx.template Alloc<T>(reserve_space);
   }
@@ -101,6 +102,7 @@ void BatchNormKernel(const Context& ctx,
         ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
+    VLOG(0) << "reserve_space is nullptr, Eigen Tensor";
     EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
                                            0);
     reserve_space_e.setZero();
