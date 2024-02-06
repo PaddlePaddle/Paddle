@@ -58,6 +58,7 @@
 #include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/vit_attention_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
@@ -141,6 +142,7 @@ USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
+USE_PIR_PASS(vit_attention_fuse_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
