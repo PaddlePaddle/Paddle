@@ -463,6 +463,8 @@ bool ReshapeOpInferSymbolicShape(
           product = product * out_dims[i];
         } else if (i == out_dims.size() - 1) {
           out_dims[i] = numel / product;
+        } else {
+          // doing nothing
         }
       } else {
         product = product * out_dims[i];
@@ -589,15 +591,19 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
     const std::vector<symbol::DimExpr> &dim_expr_ends =
         ends_shape_data.data().value();
 
+    // For both start and end can be negtive or positive, we need to handle the
+    // following different arrangements.
     for (size_t i = 0; i < axes.size(); ++i) {
       int64_t axis = axes[i];
       if ((starts[i] >= 0 && ends[i] >= 0) ||
-          (starts[i] <= 0 && ends[i] <= 0)) {
+          (starts[i] <= 0 && ends[i] <= 0)) {  // both negtive or positive.
         out_shape[axis] = dim_expr_ends[i] - dim_expr_starts[i];
-      } else if (starts[i] <= 0 && ends[i] >= 0) {
+      } else if (starts[i] <= 0 &&
+                 ends[i] >= 0) {  // negtive start, positive end
         out_shape[axis] =
             dim_expr_ends[i] - dim_expr_starts[i] - out_shape[axis];
-      } else if (starts[i] >= 0 && ends[i] <= 0) {
+      } else if (starts[i] >= 0 &&
+                 ends[i] <= 0) {  // positive start, negtive end
         out_shape[axis] =
             out_shape[axis] - dim_expr_starts[i] + dim_expr_ends[i];
       }
@@ -641,7 +647,7 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> data{symbol::DimExpr(value)};
 
   symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(data, shape)};
+      symbol::TensorShapeOrDataDimExprs(shape, data)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
