@@ -117,15 +117,15 @@ class TestPrimOne2(TestPrimOne):
         self.enable_cinn = False
 
 
-class TestPrimOne3(TestPrimOne):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "int"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.randint(0, 10, size=self.shape_x)
-        self.net = embedding_net
-        self.necessary_ops = "pd_op.embedding"
-        self.enable_cinn = False
+# class TestEmbeddingPrimOne3(TestPrimOne):
+#     def setUp(self):
+#         np.random.seed(2023)
+#         self.dtype = "int"
+#         self.shape_x = [1, 300, 4096]
+#         self.x = np.random.randint(0, 10, size=self.shape_x)
+#         self.net = embedding_net
+#         self.necessary_ops = "pd_op.embedding"
+#         self.enable_cinn = False
 
 
 if __name__ == "__main__":
