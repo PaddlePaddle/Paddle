@@ -717,7 +717,8 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
                          const int32_t cols,
                          const float epsilon,
                          ComputeType col_divisor,
-                         bool* success) {
+                         bool* success,
+                         float* inv_var_data) {
     if (cols % 4 == 0 && CanPackAs<LOAD>(load, 4) &&
         CanPackAs<STORE>(store, 4)) {
       return TryDispatchRmsNormBlockSMemImplBlockSize<LOAD,
