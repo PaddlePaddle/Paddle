@@ -142,6 +142,8 @@ template void BatchTranspose(bfloat16* output,
                              int64_t n,
                              const phi::GPUContext* dev_ctx);
 
+template struct SetConstant<phi::GPUContext, float8_e4m3fn>;
+template struct SetConstant<phi::GPUContext, float8_e5m2>;
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
