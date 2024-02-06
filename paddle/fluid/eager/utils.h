@@ -27,9 +27,9 @@ class TensorWrapper;
 
 /**
  * EagerUtils is utils used to do some static conversion or autograd
- * members access, this class is desinged to be a full static functional
+ * members access, this class is designed to be a full static functional
  * utils class
- * **/
+ **/
 
 template <typename ElementType>
 class IterHelper {
@@ -194,7 +194,7 @@ class TEST_API EagerUtils {
   static std::vector<paddle::Tensor> RecoverTensorWrapper(
       std::vector<TensorWrapper>* tw);
 
-  // Intermidate needed remove this once we don't need legacy
+  // Intermediate needed remove this once we don't need legacy
   // Inner Method
   static std::shared_ptr<egr::EagerVariable> TrySyncToVar(
       const paddle::Tensor& tensor);
