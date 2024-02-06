@@ -665,7 +665,7 @@ def find_heter_ops(program, default_device="cpu"):
             op_type in COMMUNICATE_OPS_TYPE
             and current_heter_device != default_device
         ):
-            # for distributed communciate ops: send & recv & barrier etc.
+            # for distributed communicate ops: send & recv & barrier etc.
             # Todo: need update this method
             # op._set_attr('op_device', current_heter_device)
             return True
@@ -688,7 +688,7 @@ def find_heter_ops(program, default_device="cpu"):
             heter_ops[op_device] = {}
         current_heter_block_ops.append(op)
 
-    origin_porgram = program.clone()
+    origin_program = program.clone()
     block = program.global_block()
     '''
        re-place sum op to fix bug for union forward backward op
@@ -828,7 +828,7 @@ def find_heter_ops(program, default_device="cpu"):
                     else:
                         var2idx[origin_var] = i
 
-    origin_porgram = program.clone()
+    origin_program = program.clone()
     block = program.global_block()
 
     program_block_ops = []
@@ -910,13 +910,13 @@ def find_heter_ops(program, default_device="cpu"):
         )
     )
 
-    return origin_porgram, heter_ops, default_ops, program_block_ops
+    return origin_program, heter_ops, default_ops, program_block_ops
 
 
 def union_forward_gradient_op(program_block_ops_list):
     """
     before analyzing the input & output of each block in program_block_list, we should
-    union the forward op and corresponding gradient op to elimincate the unnecessary variable
+    union the forward op and corresponding gradient op to eliminate the unnecessary variable
     transmit
     """
     """
@@ -1325,7 +1325,7 @@ def get_next_stage_trainers(role_maker):
 
 
 def insert_communicate_op(
-    orign_program,
+    origin_program,
     role_maker,
     heter_block,
     stage_id,
@@ -1341,7 +1341,7 @@ def insert_communicate_op(
         )
         entrance_var = block_var_detail[stage_id]["forward"]["entrance"]
         comm_info = get_communicate_var_info(
-            orign_program, stage_id + 1, entrance_var
+            origin_program, stage_id + 1, entrance_var
         )
 
     else:
@@ -1351,7 +1351,7 @@ def insert_communicate_op(
         )
         entrance_var = block_var_detail[stage_id - 1]["backward"]["exit"]
         comm_info = get_communicate_var_info(
-            orign_program, stage_id - 1, entrance_var, "backward"
+            origin_program, stage_id - 1, entrance_var, "backward"
         )
 
     heter_block._insert_op(
