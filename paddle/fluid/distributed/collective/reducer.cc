@@ -19,16 +19,24 @@
 #include "paddle/phi/backends/device_manager.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
-PD_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_string(allocator_strategy);
+
+#if defined(PADDLE_WITH_CUDA)
+PD_DECLARE_bool(use_cuda_malloc_async_allocator);
+#endif
 
 namespace paddle {
 namespace distributed {
 
 static bool IsStreamSafeAllocator() {
+#if defined(PADDLE_WITH_CUDA)
   return (FLAGS_allocator_strategy == "auto_growth" &&
           FLAGS_use_stream_safe_cuda_allocator) ||
          (FLAGS_use_cuda_malloc_async_allocator);
+#else
+  return (FLAGS_allocator_strategy == "auto_growth" &&
+          FLAGS_use_stream_safe_cuda_allocator);
+#endif
 }
 
 static Backend TransToBackend(platform::Place place) {
