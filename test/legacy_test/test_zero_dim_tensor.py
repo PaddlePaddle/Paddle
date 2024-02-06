@@ -3030,9 +3030,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
-    def assertEqualShape(self, out, target_tuple=()):
-        if paddle.framework.in_pir_mode():
-            out_shape = tuple(out.shape)
+    def assertShapeEqual(self, out, target_tuple):
+        if not paddle.framework.in_pir_mode():
+            out_shape = list(out.shape)
         else:
             out_shape = out.shape
         self.assertEqual(out_shape, target_tuple)
@@ -3124,7 +3124,7 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_create_parameter_var(self):
         zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
-        self.assertEqualShape(zero_dim_param)
+        self.assertShapeEqual(zero_dim_param, [])
         prog = paddle.static.default_startup_program()
         res = self.exe.run(prog, fetch_list=[zero_dim_param])
         self.assertEqual(res[0].shape, ())
@@ -3628,8 +3628,13 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.rand([2])
         x.stop_gradient = False
         out = paddle.as_complex(x)
-        self.assertEqualShape(x, (2,))
-        self.assertEqualShape(out, ())
+        self.assertShapeEqual(
+            x,
+            [
+                2,
+            ],
+        )
+        self.assertShapeEqual(out, [])
         grad_list = paddle.static.append_backward(
             out.sum(), parameter_list=[x, out]
         )
@@ -3922,7 +3927,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list2 = [_grad for _param, _grad in grad_list2]
 
         out_empty_list = paddle.quantile(x1, 0.5, axis=[])
-        self.assertEqualShape(out_empty_list, ())
+        self.assertShapeEqual(out_empty_list, [])
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -4526,8 +4531,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[5], 1.0)
         self.assertEqual(res[6].shape, ())
         self.assertEqual(res[6], 1.0)
-        self.assertEqualShape(out2, ())
-        self.assertEqualShape(out3, ())
+        self.assertShapeEqual(out2, [])
+        self.assertShapeEqual(out3, [])
 
     @test_with_pir_api
     @prog_scope()
@@ -5421,8 +5426,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualShape(out1, ())
-        self.assertEqualShape(out2, ())
+        self.assertShapeEqual(out1, [])
+        self.assertShapeEqual(out2, [])
 
         # 2) x is ND , y is 0D
         x1 = paddle.full([2, 3], 2.0)
@@ -5431,8 +5436,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualShape(out1, (2, 3))
-        self.assertEqualShape(out2, (2, 3))
+        self.assertShapeEqual(out1, [2, 3])
+        self.assertShapeEqual(out2, [2, 3])
 
         # 3) x is 0D , y is ND
         x1 = paddle.full([], 2.0)
@@ -5441,8 +5446,8 @@ class TestSundryAPIStatic(unittest.TestCase):
         x2.stop_gradient = False
         out1, out2 = paddle.broadcast_tensors([x1, x2])
 
-        self.assertEqualShape(out1, (2, 3))
-        self.assertEqualShape(out2, (2, 3))
+        self.assertShapeEqual(out1, [2, 3])
+        self.assertShapeEqual(out2, [2, 3])
 
     @test_with_pir_api
     @prog_scope()
@@ -5470,7 +5475,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
         (_, x_grad), (_, y_grad) = grad_list
 
-        self.assertEqualShape(out, ())
+        self.assertShapeEqual(out, [])
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
@@ -5487,7 +5492,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         grad_list = paddle.static.append_backward(out, parameter_list=[x, y])
         (_, x_grad), (_, y_grad) = grad_list
 
-        self.assertEqualShape(out, ())
+        self.assertShapeEqual(out, [])
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x_grad, y_grad])
