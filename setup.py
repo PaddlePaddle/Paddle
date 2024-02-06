@@ -664,7 +664,7 @@ def cinn():
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
-                'nccl': env_dict.get("NCCL_VERSION"),
+                'nccl': int(env_dict.get("NCCL_VERSION")),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
