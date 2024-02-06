@@ -1571,8 +1571,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
-  pass_manager->AddPass(
-      std::make_unique<cinn::dialect::ir::RemoveUnchangedReshapePass>());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(

@@ -334,58 +334,6 @@ OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {
   name_gene_ = new PrettyNamer();
 }
 
-Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
-  auto axis = tensor->axis();
-  int rank = axis.size();
-  std::vector<cinn::ir::Expr> indices;
-  for (auto& d : axis) {
-    // std::cerr << "dd " << d << std::endl;
-    indices.push_back(Expr(d));
-  }
-
-  auto shape = tensor->shape;
-
-  auto body = ir::Load::Make(tensor, indices);
-
-  auto out_name = tensor->name + "_out";
-  auto out_tensor = ir::Tensor(out_name,
-                               tensor->type(),
-                               tensor->shape,
-                               tensor->domain,
-                               tensor->operation);
-  body = ir::Store::Make(out_tensor, body, indices);
-
-  std::vector<ir::Var> block_vars;
-  std::vector<ir::Expr> iter_values;
-  std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(rank);
-  for (int i = 0; i < shape.size(); ++i) {
-    block_vars.push_back(
-        Var(Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
-    optim::ReplaceVarWithExpr(&body, axis[i], block_vars[i]);
-    axis_vars[i]->is_reduce_axis = false;
-
-    iter_values.push_back(axis_vars[i]);
-  }
-  body = ir::ScheduleBlockRealize::Make(
-      iter_values, ir::ScheduleBlock::Make(block_vars, {}, {}, out_name, body));
-  for (int i = rank - 1; i >= 0; --i) {
-    ir::Var loop_var = axis[i];
-    ir::Expr loop_extent = shape[i];
-    body = ir::For::Make(loop_var,
-                         Expr(0),
-                         loop_extent,
-                         ir::ForType::Serial,
-                         ir::DeviceAPI::CUDA,
-                         ir::Block::Make({body}));
-  }
-
-  body = ir::ScheduleBlockRealize::Make(
-      {}, ir::ScheduleBlock::Make({}, {}, {}, "root_", body));
-
-  std::cerr << "body " << body << std::endl;
-  return body;
-}
-
 std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_op_schedule,
                                                   bool apply_group_schedule,
@@ -1316,36 +1264,39 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
-    // if (FLAGS_cinn_bucket_compile) {
-    std::vector<Type> out_types;
-    std::vector<std::vector<ir::Dim>> out_shapes;
-    CollectOutputInfo(op, &out_types, &out_shapes, group);
-    for (auto d : out_shapes[0]) {
-      std::cerr << "ddddddddd " << d << std::endl;
+    if (FLAGS_cinn_bucket_compile) {
+      std::vector<Type> out_types;
+      std::vector<std::vector<ir::Dim>> out_shapes;
+      CollectOutputInfo(op, &out_types, &out_shapes, group);
+      for (auto d : out_shapes[0]) {
+        std::cerr << "ddddddddd " << d << std::endl;
+      }
+      CHECK_EQ(out_types.size(), out_shapes.size());
+      VLOG(4) << "out_types.size(): " << out_types.size();
+      NodeAttr node_attrs = details::CollectAttrs(*op);
+      auto& strategy_map =
+          Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
+      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+      CHECK(static_cast<bool>(strategy))
+          << " cinn_op_name: " << cinn_op_name
+          << "has no CINNStrategySymbolic registered.";
+      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
+                                                op_func_arg_tensors,
+                                                out_types,
+                                                out_shapes,
+                                                this->target_));
+    } else {
+      std::vector<Type> out_types;
+      std::vector<std::vector<int>> out_shapes;
+      CollectOutputInfo(op, &out_types, &out_shapes, group);
+      VLOG(4) << "out_types.size(): " << out_types.size();
+      NodeAttr node_attrs = details::CollectAttrs(*op);
+      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
+                                                         op_func_arg_tensors,
+                                                         out_types,
+                                                         out_shapes,
+                                                         this->target_));
     }
-    CHECK_EQ(out_types.size(), out_shapes.size());
-    VLOG(4) << "out_types.size(): " << out_types.size();
-    NodeAttr node_attrs = details::CollectAttrs(*op);
-    auto& strategy_map =
-        Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-    StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-    CHECK(static_cast<bool>(strategy))
-        << " cinn_op_name: " << cinn_op_name
-        << "has no CINNStrategySymbolic registered.";
-    op_impl = OpStrategy::SelectImpl(strategy(
-        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
-    // } else {
-    //   std::vector<Type> out_types;
-    //   std::vector<std::vector<int>> out_shapes;
-    //   CollectOutputInfo(op, &out_types, &out_shapes, group);
-    //   VLOG(4) << "out_types.size(): " << out_types.size();
-    //   NodeAttr node_attrs = details::CollectAttrs(*op);
-    //   op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-    //                                                      op_func_arg_tensors,
-    //                                                      out_types,
-    //                                                      out_shapes,
-    //                                                      this->target_));
-    // }
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);

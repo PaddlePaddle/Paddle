@@ -1013,33 +1013,66 @@ static void RunAndCheckResult(::pir::Program* program,
 //   RunAndCheckResult(program.get(), false);
 // }
 
-std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
-  const std::vector<int64_t> shape = {3, 4, 5};
-  auto x =
-      builder
-          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 2048, 1, 128},
-                                          0.05,
-                                          phi::DataType::FLOAT32,
-                                          phi::CPUPlace())
-          .result(0);
+// std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
+//     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  auto out = builder
-                 .Build<paddle::dialect::SumOp>(
-                     x, std::vector<int64_t>({2}), phi::DataType::FLOAT32)
-                 .result(0);
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+//   const std::vector<int64_t> shape = {3, 4, 5};
+//   auto x =
+//       builder
+//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 2048, 1,
+//           128},
+//                                           0.05,
+//                                           phi::DataType::FLOAT32,
+//                                           phi::CPUPlace())
+//           .result(0);
+
+//   auto out = builder
+//                  .Build<paddle::dialect::SumOp>(
+//                      x, std::vector<int64_t>({2}), phi::DataType::FLOAT32)
+//                  .result(0);
+
+//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+
+//   return program;
+// }
+
+// TEST(GroupOp, TestReduc) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildRedcuceProgram();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+//   program->Print(std::cout);
+//   RunAndCheckResult(program.get(), false);
+// }
+
+std::shared_ptr<::pir::Program> BuildStoreProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  const std::vector<int64_t> shape = {16, 16};
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(
+                   shape, 1.0, phi::DataType::FLOAT32, phi::GPUPlace())
+               .result(0);
+
+  auto out =
+      builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-
   return program;
 }
 
-TEST(GroupOp, TestReduc) {
+TEST(GroupOp, TestBuildStore) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildRedcuceProgram();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  std::shared_ptr<::pir::Program> program = BuildStoreProgram();
 
-  program->Print(std::cout);
-  RunAndCheckResult(program.get(), false);
+  RunAndCheckResult(program.get(), true, 0.5);
 }
