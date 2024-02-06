@@ -32,24 +32,16 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
 if(WITH_XPU)
-  cc_test(
+  paddle_test(
     beam_search_decode_op_xpu_test
-    SRCS beam_search_decode_op_xpu_test.cc
-    DEPS lod_tensor)
+    SRCS beam_search_decode_op_xpu_test.cc)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 
-cc_test(
+paddle_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
-  DEPS common_infer_shape_functions
-       ${COMMON_OP_DEPS}
-       activation_op
-       generated_op
-       elementwise_add_op
-       phi
-       common
-       generated_static_op)
+  DEPS common)
 cc_test(
   gather_test
   SRCS gather_test.cc
