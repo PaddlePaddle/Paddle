@@ -23,6 +23,7 @@ from test_layer_norm_mkldnn_op import (
     TestLayerNormMKLDNNOp,
     _reference_layer_norm_naive,
 )
+from utils import compare_legacy_with_pt
 
 from paddle import base, enable_static
 from paddle.base import core
@@ -132,6 +133,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
+    @compare_legacy_with_pt
     def test_check_forward_with_is_test(self):
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True

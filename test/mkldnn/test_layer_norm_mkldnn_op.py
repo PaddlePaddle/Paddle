@@ -19,6 +19,7 @@ from operator import mul
 
 import numpy as np
 from op_test import OpTestTool, _set_use_system_allocator
+from utils import compare_legacy_with_pt
 
 from paddle import base, enable_static
 from paddle.base import core
@@ -143,17 +144,21 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
     @OpTestTool.skip_if_not_cpu_bf16()
+    @compare_legacy_with_pt
     def test_check_forward_non_last_begin_norm_axis(self):
         self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=2)
 
+    @compare_legacy_with_pt
     def test_check_forward_with_scale_and_bias(self):
         self.check_forward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
+    @compare_legacy_with_pt
     def test_check_forward_without_scale_and_bias(self):
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_scale_bias=False
         )
 
+    @compare_legacy_with_pt
     def test_check_forward_with_is_test(self):
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True

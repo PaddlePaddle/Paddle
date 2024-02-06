@@ -71,7 +71,7 @@ class LayerNormOneDNNHandler
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -143,8 +143,10 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(layer_norm,
-                   MKLDNN,
-                   ::phi::CPUPlace,
-                   ops::LayerNormMKLDNNOpKernel<float>,
-                   ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);
+
+PD_REGISTER_STRUCT_KERNEL(layer_norm,
+                          OneDNN,
+                          ONEDNN,
+                          ops::LayerNormMKLDNNOpKernel,
+                          float,
+                          paddle::platform::bfloat16) {}
