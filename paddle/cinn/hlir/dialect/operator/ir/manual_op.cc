@@ -62,7 +62,8 @@ void GroupOp::Build(pir::Builder& builder,             // NOLINT
                     std::unique_ptr<pir::Block>&& block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
-    IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    // IR_ENFORCE(block->back().isa<pir::YieldOp>());
+    PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
     auto& op = block->back();
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
@@ -169,7 +170,10 @@ void ConcatOp::Build(pir::Builder& builder,             // NOLINT
   argument.inputs = inputs;
   std::vector<pir::Type> inputs_type(inputs.size());
 
-  IR_ENFORCE(inputs.size() > 0);
+  PADDLE_ENFORCE_GT(inputs.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "input size [%d] is less than 0", inputs.size()));
 
   auto first_ele =
       inputs[0].type().dyn_cast<paddle::dialect::DenseTensorType>();

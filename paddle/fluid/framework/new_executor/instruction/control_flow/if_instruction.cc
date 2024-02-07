@@ -36,6 +36,11 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -245,9 +250,21 @@ void IfInstruction::Run() {
         });
   }
   if (cond) {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+#endif
     true_branch_inter_->Run({}, false);
     CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+#endif
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
