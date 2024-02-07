@@ -195,10 +195,6 @@ TEST_API paddle::Tensor& cast__ad_func(paddle::Tensor& x,  // NOLINT
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "cast_ dygraph", paddle::platform::TracerEventType::Operator, 1);
 
-  if (x.dtype() == dtype) {
-    return x;
-  }
-
   // AMP Logic
 
   VLOG(5) << " No AMP for cast__ad_func because it is a inplace or cast api. ";
