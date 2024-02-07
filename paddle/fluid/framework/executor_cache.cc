@@ -25,6 +25,10 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/transforms/enable_onednn_pass.h"
+COMMON_DECLARE_bool(use_mkldnn);
+#endif
 
 DECLARE_FILE_SYMBOLS(print_statistics);
 
@@ -370,6 +374,11 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
 
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
+#ifdef PADDLE_WITH_DNNL
+  if (FLAGS_use_mkldnn) {
+    EnableOneDNNPass(program);
+  }
+#endif
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
   if (FLAGS_pir_apply_inplace_pass) {
@@ -547,6 +556,12 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   }
 
   auto program = TranslateLegacyProgramToProgram(local_program);
+
+#ifdef PADDLE_WITH_DNNL
+  if (FLAGS_use_mkldnn) {
+    EnableOneDNNPass(program.get());
+  }
+#endif
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 

@@ -80,6 +80,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/pir/transforms/enable_onednn_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #endif
 
@@ -129,6 +130,10 @@
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
+
+#ifdef PADDLE_WITH_DNNL
+COMMON_DECLARE_bool(use_mkldnn);
+#endif
 
 namespace paddle {
 namespace {
@@ -885,6 +890,12 @@ bool AnalysisPredictor::PrepareExecutor() {
         }
         cpu_pm.Run(pir_program_.get());
       }
+
+#ifdef PADDLE_WITH_DNNL
+      if (FLAGS_use_mkldnn) {
+        EnableOneDNNPass(pir_program_.get());
+      }
+#endif
 
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
