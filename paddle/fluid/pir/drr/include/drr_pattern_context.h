@@ -122,12 +122,12 @@ class DrrPatternContext {
   friend class drr::SourcePattern;
   friend class drr::ResultPattern;
 
-  TEST_API const Op& SourcePattern(
+  TEST_API const Op& SourceOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
   TEST_API const drr::Tensor& SourceTensorPattern(const std::string& name);
 
-  TEST_API const Op& ResultPattern(
+  TEST_API const Op& ResultOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
   TEST_API drr::Tensor& ResultTensorPattern(const std::string& name);
