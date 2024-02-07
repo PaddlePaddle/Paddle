@@ -94,10 +94,44 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    VLOG(4) << "XKXK: FLAGS_group_schedule_tiling_first = "
+    VLOG(4) << "FLAGS_group_schedule_tiling_first = "
             << FLAGS_group_schedule_tiling_first;
     std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
+    const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
+    const auto reduce_axis_position = [&reduce_axis,
+                                       &tensor]() -> std::vector<int> {
+      VLOG(4) << "start calculus reduce_axis_position: ";
+      std::vector<int> res;
+      auto fn_body = tensor->operation.ptr()->as<ir::ComputeOp>()->body[0];
+      if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
+        auto& reduce_body =
+            fn_body.As<ir::Reduce>()->body;  // reduce body is a tensor store.
+        auto& load_indices = reduce_body.As<ir::Load>()->indices;
+        int position = -1;
+        for (auto& obj : load_indices) {
+          position += 1;
+          for (auto& reduce_var : reduce_axis) {
+            if (obj.as_var_ref() == reduce_var) {
+              res.push_back(position);
+            }
+          }
+        }
+        for (auto i : res) {
+          VLOG(4) << "reduce axis position is " << i;
+        }
+        return res;
+      }
+    }();
     for (int i = 0; i < shape.size(); ++i) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
+        // if tiling first, we need to replace the reduce axis with 0, but don't
+        // deal with the non-reduce axis
+        optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
+        continue;
+      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -121,7 +155,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
             block_vars, {}, {}, reduce_init_name, init_body));
 
     // For the remaining reduce axis, make reduce body
-    const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     ir::Expr reduce_body =
         ConvertReduceBody(tensor->body(), tensor, axis_exprs);
     // create schedule block itervars, i0,i1...
@@ -131,6 +164,15 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // for same axis so we re-create objects
     std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
+        // if tiling first, we need to replace the reduce axis with 0, but don't
+        // deal with the non-reduce axis
+        optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
+        continue;
+      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -169,6 +211,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
           &reduce_body, axis[i], reduce_block_vars[non_zero_axis_size]);
       ++non_zero_axis_size;
     }
+
+    if (FLAGS_group_schedule_tiling_first) {
+      non_zero_axis_size = axis.size() - reduce_axis.size();
+    }
     for (int i = non_zero_axis_size; i < reduce_block_vars.size(); ++i) {
       optim::ReplaceVarWithExpr(&reduce_body,
                                 reduce_axis[i - non_zero_axis_size],
@@ -191,6 +237,12 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
+      if (FLAGS_group_schedule_tiling_first &&
+          std::find(reduce_axis_position.begin(),
+                    reduce_axis_position.end(),
+                    i) != reduce_axis_position.end()) {
+        continue;
+      }
       if (!FLAGS_group_schedule_tiling_first && !FLAGS_cinn_bucket_compile &&
           shape[i] == Expr(1)) {
         continue;
