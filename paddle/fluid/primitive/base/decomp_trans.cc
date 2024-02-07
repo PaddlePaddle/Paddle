@@ -19,10 +19,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/primitive/base/primitive_ops.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_check_ops);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -45,6 +47,18 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   } else {
     return false;
   }
+}
+
+static void check_ops(const std::string& op_name) {
+  auto it = primitive_set.find(op_name);
+  if (it == primitive_set.end()) {
+    std::cout << "Element " << elementToFind << " found!" << std::endl;
+  }
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
+                                   "should not contain none primitive op %s.",
+                                   op_name));
+  return
 }
 
 static const phi::DDim& GetValueDims(pir::Value value) {
@@ -307,6 +321,11 @@ void DecompProgram::decomp_program() {
   program_->Print(decomp_prog_stream);
   // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
+  if (FLAGS_prim_check_ops) {
+    for (auto& op : *block) {
+      check_ops(op.name());
+    }
+  }
   dst_vars_ = tar_vars;
   return;
 }
