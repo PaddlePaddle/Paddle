@@ -233,6 +233,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         super().setUp()
 
         self.attrs["use_mkldnn"] = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -244,6 +245,7 @@ class TestMKLDNNSwish_ZeroDim(TestSwish_ZeroDim):
 
         self.attrs["use_mkldnn"] = True
         self.check_eager = False
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
