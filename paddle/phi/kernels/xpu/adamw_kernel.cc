@@ -228,30 +228,81 @@ void AdamwDenseKernel(const Context& dev_ctx,
                  0.0f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
-  // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
-  // const T* param, const float* beta1_pow, const float* beta2_pow, const
-  // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
-  // beta1, float beta2, float epsilon, float coeff, int64_t n);
-  r = xpu::adamw(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(grad.template data<T>()),
-      moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<float>(),
-      moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<float>(),
-      reinterpret_cast<const XPUType*>(param.template data<T>()),
-      beta1_pow_ptr,
-      beta2_pow_ptr,
-      new_lr,
-      moment_in_fp16 ? moment1_output_for_xdnn
-                     : dev_ctx.template Alloc<float>(moment1_out),
-      moment_in_fp16 ? moment2_output_for_xdnn
-                     : dev_ctx.template Alloc<float>(moment2_out),
-      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
-      beta1_,
-      beta2_,
-      epsilon_,
-      coeff,
-      param.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+  if (multi_precision) {
+    const float* master_param_in_data = master_param->data<float>();
+    float* master_param_out_data =
+        dev_ctx.template Alloc<float>(master_param_outs);
+    // convert grad to float
+    float* grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
+    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(grad.template data<T>()),
+        grad_fp32,
+        grad.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
+    // const T* param, const float* beta1_pow, const float* beta2_pow, const
+    // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
+    // beta1, float beta2, float epsilon, float coeff, int64_t n);
+    r = xpu::adamw<float>(
+        dev_ctx.x_context(),
+        grad_fp32,
+        moment_in_fp16 ? moment1_input_for_xdnn
+                       : moment1.template data<float>(),
+        moment_in_fp16 ? moment2_input_for_xdnn
+                       : moment2.template data<float>(),
+        master_param_in_data,
+        beta1_pow_ptr,
+        beta2_pow_ptr,
+        new_lr,
+        moment_in_fp16 ? moment1_output_for_xdnn
+                       : dev_ctx.template Alloc<float>(moment1_out),
+        moment_in_fp16 ? moment2_output_for_xdnn
+                       : dev_ctx.template Alloc<float>(moment2_out),
+        master_param_out_data,
+        beta1_,
+        beta2_,
+        epsilon_,
+        coeff,
+        param.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+    // convert master_param_out(fp32) to param_out(T)
+    r = xpu::cast<float, XPUType>(
+        dev_ctx.x_context(),
+        master_param_out_data,
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
+        param_out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  } else {
+    // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
+    // const T* param, const float* beta1_pow, const float* beta2_pow, const
+    // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
+    // beta1, float beta2, float epsilon, float coeff, int64_t n);
+    r = xpu::adamw(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(grad.template data<T>()),
+        moment_in_fp16 ? moment1_input_for_xdnn
+                       : moment1.template data<float>(),
+        moment_in_fp16 ? moment2_input_for_xdnn
+                       : moment2.template data<float>(),
+        reinterpret_cast<const XPUType*>(param.template data<T>()),
+        beta1_pow_ptr,
+        beta2_pow_ptr,
+        new_lr,
+        moment_in_fp16 ? moment1_output_for_xdnn
+                       : dev_ctx.template Alloc<float>(moment1_out),
+        moment_in_fp16 ? moment2_output_for_xdnn
+                       : dev_ctx.template Alloc<float>(moment2_out),
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
+        beta1_,
+        beta2_,
+        epsilon_,
+        coeff,
+        param.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+  }
 
   if (moment_in_fp16) {
     int r = 0;
