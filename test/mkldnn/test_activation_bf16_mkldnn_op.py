@@ -217,6 +217,7 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "swish"
+        self.check_pir_onednn = True
 
     def expit(self, val):
         return 1 / (1 + np.exp(-self.beta * val))
