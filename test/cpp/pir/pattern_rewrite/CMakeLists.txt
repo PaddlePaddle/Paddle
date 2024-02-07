@@ -10,3 +10,16 @@ paddle_test(drr_fuse_linear_param_grad_add_test SRCS
 if(WITH_GPU)
   paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc)
 endif()
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(pattern_rewrite_test)
+  copy_onnx(drr_same_type_binding_test)
+  copy_onnx(drr_fuse_linear_test)
+  copy_onnx(drr_fuse_linear_param_grad_add_test)
+  
+  if(WITH_GPU)
+    copy_onnx(drr_attention_fuse_test)
+  endif()
+endif()
