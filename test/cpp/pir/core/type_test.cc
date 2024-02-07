@@ -36,6 +36,11 @@ class TypeB {};
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeB)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
 
+std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
+}
+
 TEST(type_test, type_id) {
   // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded operator==
   // method.
@@ -173,8 +178,8 @@ struct IntegerTypeStorage : public pir::TypeStorage {
   using ParamKey = std::pair<unsigned, unsigned>;
 
   static std::size_t HashValue(const ParamKey &key) {
-    return pir::hash_combine(std::hash<unsigned>()(std::get<0>(key)),
-                             std::hash<unsigned>()(std::get<1>(key)));
+    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                        std::hash<unsigned>()(std::get<1>(key)));
   }
 
   bool operator==(const ParamKey &key) const {

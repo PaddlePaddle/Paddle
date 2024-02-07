@@ -29,7 +29,7 @@ set(op_yaml_files
 )
 
 set(pd_op_creator_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/ir_op_factory_generated.cc)
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
 set(pd_op_creator_file_tmp ${pd_op_creator_file}.tmp)
 
 set(pd_dialect_name pd_op)
