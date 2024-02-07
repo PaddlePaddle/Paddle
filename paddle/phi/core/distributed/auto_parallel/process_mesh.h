@@ -70,7 +70,8 @@ class ProcessMesh {
   // ProcessMesh from_string(const std::string& mesh_str);
   TEST_API std::string to_string() const;
 
-  TEST_API static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
+  TEST_API static ProcessMesh from_proto(
+      const auto_parallel::ProcessMeshProto& proto);
   void to_proto(auto_parallel::ProcessMeshProto* proto) const;
 
  private:
