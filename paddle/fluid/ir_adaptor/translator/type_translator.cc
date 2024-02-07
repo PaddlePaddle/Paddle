@@ -102,10 +102,12 @@ TypeTranslator::TypeTranslator() {
                   << "[" << var_desc.Name() << "] from LOD_TENSOR_ARRAY";
          pir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
+         phi::DDim dims = common::make_ddim(var_desc.GetShape());
          DenseTensorTypeStorage::DataLayout layout =
              DenseTensorTypeStorage::DataLayout::UNDEFINED;
 
-         return paddle::dialect::DenseTensorArrayType::get(ctx, dtype, layout);
+         return paddle::dialect::DenseTensorArrayType::get(
+             ctx, dtype, dims, layout);
        }},
       {VarType::SELECTED_ROWS,
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
