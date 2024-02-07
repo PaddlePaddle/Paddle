@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/common/enforce.h"
 
 namespace symbol {
 
@@ -20,10 +21,10 @@ using BroadcastDimExpr = Broadcast<DimExpr>;
 using MinDimExpr = Min<DimExpr>;
 using MaxDimExpr = Max<DimExpr>;
 
-DimExpr DimExprBuilder::ConstSize(std::int64_t dim) { SYMBOL_NOT_IMPLEMENTED; }
+DimExpr DimExprBuilder::ConstSize(std::int64_t dim) { return DimExpr(dim); }
 
 DimExpr DimExprBuilder::Symbol(const std::string& symbol_name) {
-  SYMBOL_NOT_IMPLEMENTED;
+  return DimExpr(symbol_name);
 }
 
 DimExpr DimExprBuilder::Add(const DimExpr& lhs, const DimExpr& rhs) {
@@ -56,7 +57,12 @@ DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(
     const std::vector<std::int64_t>& dims) {
-  SYMBOL_NOT_IMPLEMENTED;
+  std::vector<DimExpr> ret{};
+  ret.reserve(dims.size());
+  for (std::int64_t dim : dims) {
+    ret.emplace_back(dim);
+  }
+  return ret;
 }
 
 void DimExprBuilder::CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs) {
@@ -74,21 +80,43 @@ void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
 
 void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
                             const std::vector<DimExpr>& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
+  IR_ENFORCE(lhs.size() == rhs.size(),
+             "Please make sure input sizes are equal, "
+             "lhs.size() = %d, rhs.size() = %d.",
+             lhs.size(),
+             rhs.size());
+  for (std::size_t i = 0; i < lhs.size(); ++i) {
+    CstrEq(lhs.at(i), rhs.at(i));
+  }
 }
 
 std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
                                             const std::vector<DimExpr>& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
+  std::vector<DimExpr> ret{};
+  const auto& EmplaceDimExpr = [&](const std::vector<DimExpr>& exprs) {
+    for (const auto& expr : exprs) {
+      ret.emplace_back(expr);
+    }
+  };
+  EmplaceDimExpr(lhs);
+  EmplaceDimExpr(rhs);
+  return ret;
 }
 
 std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
-    const std::vector<DimExpr>, int index) {
-  SYMBOL_NOT_IMPLEMENTED;
+    const std::vector<DimExpr> dim_exprs, int index) {
+  IR_ENFORCE(index > 0 && index < static_cast<int>(dim_exprs.size()),
+             "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
+             "your inputs.",
+             index,
+             dim_exprs.size());
+  std::vector<DimExpr> lhs(dim_exprs.begin(), dim_exprs.begin() + index);
+  std::vector<DimExpr> rhs(dim_exprs.begin() + index, dim_exprs.end());
+  return std::make_pair(lhs, rhs);
 }
 
 const std::vector<DimExprConstraint>& DimExprBuilder::constraints() const {
-  SYMBOL_NOT_IMPLEMENTED;
+  return *constraints_;
 }
 
 }  // namespace symbol
