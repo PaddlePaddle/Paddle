@@ -173,12 +173,14 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.AddIndentation();
   for (auto &item : true_block()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "} else {\n";
   printer.AddIndentation();
   for (auto &item : false_block()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "}";
@@ -371,6 +373,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   printer.AddIndentation();
   for (auto &item : body()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "}";
