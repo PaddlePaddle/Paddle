@@ -118,7 +118,7 @@ class FakeMicroDataset:
                         else None
                     )
                 elif data is not None:
-                    self._check_data_vaild(data)
+                    self._check_data_valid(data)
                     output.append(data[begin:end, :].detach())
                 else:
                     output.append(None)
@@ -133,12 +133,12 @@ class FakeMicroDataset:
             )
             return inputs[micro_step].detach()
         elif inputs is not None:
-            self._check_data_vaild(inputs)
+            self._check_data_valid(inputs)
             return inputs[begin:end, :].detach()
         else:
             return None
 
-    def _check_data_vaild(self, data):
+    def _check_data_valid(self, data):
         batch_size = data.shape[0]
         assert self._micro_batch_size * self._acc_steps == batch_size, (
             "batch_size needs to be divisible by micro_batch_size. Currently, "
@@ -818,7 +818,7 @@ class PipelineParallel(MetaParallelBase):
         if self.is_pipeline_last_stage(ignore_virtual=True):
             assert (
                 self.total_loss is not None
-            ), "train_batch() in last stage should obtain vaild loss"
+            ), "train_batch() in last stage should obtain valid loss"
             loss = (
                 self.total_loss.detach()
                 if not self._delay_scale_loss

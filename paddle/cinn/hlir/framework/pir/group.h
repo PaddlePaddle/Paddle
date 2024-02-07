@@ -204,10 +204,8 @@ struct Group {
   }
 
   std::vector<::pir::Value> GetGroupOutputValues() const {
-    std::unordered_set<::pir::Operation*> group_ops_set;
-    for (auto* op : this->ops) {
-      group_ops_set.insert(op);
-    }
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
 
     std::vector<::pir::Value> output_values;
     for (auto* op : this->ops) {

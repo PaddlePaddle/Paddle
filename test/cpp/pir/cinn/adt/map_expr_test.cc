@@ -73,7 +73,6 @@ TEST(MapExpr, ElementWise_Fusion_0) {
       value1, builder.Build<paddle::dialect::ExpOp>(value2).result(0));
 
   ::pir::PassManager pass_manager(ctx);
-  auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx);
 
   // TODO(@jiahy0825): use CreateShapeOptimizationPass() instead of
   // CreateInferSymbolicShapePass() which is a fake pass
