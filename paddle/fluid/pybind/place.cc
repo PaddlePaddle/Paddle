@@ -164,17 +164,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -590,8 +590,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                              "machine.";
                std::exit(-1);
              }
-             // use ipu(0) to comile, while run with the number user configure
-             // in sharding and pipline.
+             // use ipu(0) to compile, while run with the number user configure
+             // in sharding and pipeline.
              new (&self) platform::IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(

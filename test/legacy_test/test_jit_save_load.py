@@ -389,9 +389,7 @@ class TestJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         infer_layer.eval()
         # inference & compare
-        x = base.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32')
-        )
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x).numpy(), infer_layer(x).numpy()
         )
@@ -417,9 +415,7 @@ class TestJitSaveLoad(unittest.TestCase):
         new_layer.set_state_dict(load_state_dict)
         new_layer.eval()
         # inference & compare
-        x = base.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32')
-        )
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x).numpy(), new_layer(x).numpy()
         )
@@ -449,7 +445,7 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_nest_output(self):
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
         net = LinearNetWithNestOut(8, 8)
         dy_outs = paddle.utils.flatten(net(x))
@@ -565,7 +561,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 2. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         pred = infer_layer(x)
 
     def test_multi_in_out(self):
@@ -587,8 +583,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 3. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-        y = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
+        y = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         # 4. predict
         pred_x, pred_y = infer_layer(x, y)
 
@@ -625,8 +621,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 3. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-        y = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
+        y = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         # 4. predict
         pred_x, pred_y = infer_layer(x, y)
 
@@ -668,7 +664,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         adam = paddle.optimizer.Adam(
             learning_rate=0.1, parameters=train_layer.parameters()
         )
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         for i in range(10):
             out, loss = train_layer(x)
             loss.backward()
@@ -688,7 +684,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
         train_layer.eval()
         infer_layer = paddle.jit.load(model_path)
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
@@ -772,7 +768,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         adam = paddle.optimizer.Adam(
             learning_rate=0.1, parameters=train_layer.parameters()
         )
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         for i in range(10):
             hidden, loss = train_layer(x)
             loss.backward()
@@ -795,7 +791,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
         infer_layer = paddle.jit.load(self.model_path)
 
-        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )

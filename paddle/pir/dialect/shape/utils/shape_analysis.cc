@@ -28,14 +28,6 @@ static std::string GetValueId(Value val) {
 
 ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m) : m_(m) {}
 
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(
-    std::shared_ptr<pir::Program>&& program)
-    : ShapeConstraintIRAnalysis(program->module_op()) {
-  program_ = std::move(program);
-}
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(pir::IrContext* ctx)
-    : ShapeConstraintIRAnalysis(std::make_shared<pir::Program>(ctx)) {}
-
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
@@ -214,6 +206,26 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
                         rhs,
                         0,
                         static_cast<int>(rhs_type.GetRank()));
+}
+
+pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
+  pir::PrintHooks print_hook;
+  print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
+    printer.IrPrinter::PrintOperation(op);
+    printer.os << " { ";
+    for (uint32_t i = 0; i < op->num_results(); ++i) {
+      if (this->HasShapeOrDataForValue(op->result(i))) {
+        printer.os << "(" << this->GetShapeOrDataForValue(op->result(i)) << ")";
+      } else {
+        printer.os << "()";
+      }
+      if (i < op->num_results() - 1) {
+        printer.os << ", ";
+      }
+    }
+    printer.os << " }";
+  };
+  return print_hook;
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {

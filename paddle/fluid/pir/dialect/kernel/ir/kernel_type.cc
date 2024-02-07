@@ -73,6 +73,10 @@ const pir::Type& AllocatedDenseTensorArrayType::dtype() const {
   return storage()->dense_tensor_array_type_.dtype();
 }
 
+const pir::DDim& AllocatedDenseTensorArrayType::dims() const {
+  return storage()->dense_tensor_array_type_.dims();
+}
+
 const phi::DataLayout& AllocatedDenseTensorArrayType::data_layout() const {
   return storage()->dense_tensor_array_type_.data_layout();
 }

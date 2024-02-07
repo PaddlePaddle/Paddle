@@ -578,8 +578,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_x_np = np.ones([4, 4]).astype(self.dtype)
                 input_y_np = np.ones([4, 4]).astype(self.dtype)
-                input_x = base.dygraph.to_variable(input_x_np)
-                input_y = base.dygraph.to_variable(input_y_np)
+                input_x = paddle.to_tensor(input_x_np)
+                input_y = paddle.to_tensor(input_y_np)
                 try:
                     result = paddle.linalg.solve(input_x, input_y)
                 except RuntimeError as ex:

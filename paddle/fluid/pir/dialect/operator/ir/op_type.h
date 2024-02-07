@@ -53,6 +53,8 @@ class DenseTensorArrayType
 
   const pir::Type &dtype() const;
 
+  const phi::DDim &dims() const;
+
   const phi::DataLayout &data_layout() const;
 };
 

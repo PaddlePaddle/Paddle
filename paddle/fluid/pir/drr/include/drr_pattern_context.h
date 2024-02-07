@@ -190,13 +190,16 @@ class Op {
 
 class Tensor {
  public:
-  static const char NONE_TENSOR_NAME[];
+  static const char INPUT_NONE_TENSOR_NAME[];
+  static const char OUTPUT_NONE_TENSOR_NAME[];
 
   TensorShape shape() const { return TensorShape(name()); }
 
   TensorDataType dtype() const { return TensorDataType(name()); }
 
-  bool is_none() const { return name_ == NONE_TENSOR_NAME; }
+  bool is_none() const {
+    return name_ == INPUT_NONE_TENSOR_NAME || name_ == OUTPUT_NONE_TENSOR_NAME;
+  }
 
   void Assign(const Tensor& other);
 
@@ -211,10 +214,6 @@ class Tensor {
   void set_producer(OpCall* producer) { producer_ = producer; }
 
   const std::vector<const OpCall*>& consumers() const { return consumers_; }
-
-  void set_consumables(const std::vector<const OpCall*>& consumers) {
-    consumers_ = consumers;
-  }
 
   void AddConsumer(const OpCall* consumer) { consumers_.push_back(consumer); }
 
@@ -274,11 +273,21 @@ class ResultPattern {
   // Example:
   // instance_norm has follow input tensor : (x, scale, bias), scale and
   // bias are optional(means it may be none).
-  // When scale is onoe, we can write a instance_norm op in drr as follow:
-  // res.Op("instance_norm")(res.Tensor("x"), res.NoneTensor,
+  // When scale is none, we can write a instance_norm op in drr as follow:
+  // res.Op("instance_norm")(res.Tensor("x"), res.InputNoneTensor(),
   // res.Tensor("bias"));
-  drr::Tensor& NoneTensor() {
-    return ctx_->ResultTensorPattern(Tensor::NONE_TENSOR_NAME);
+  drr::Tensor& InputNoneTensor() {
+    return ctx_->ResultTensorPattern(Tensor::INPUT_NONE_TENSOR_NAME);
+  }
+
+  // Represent the output tensor which is none.
+  // Example:
+  // reshape has follow output tensor : (out, xshape), xshape is optional(means
+  // it may be none). We can write a reshape op in drr as follow:
+  // res.Op("reshape")({res.Tensor("x")}, {res.Tensor("out"),
+  // res.OutputNoneTensor()});
+  drr::Tensor& OutputNoneTensor() {
+    return ctx_->ResultTensorPattern(Tensor::OUTPUT_NONE_TENSOR_NAME);
   }
 
   Attribute StrAttr(const std::string& value) const {
