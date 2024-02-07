@@ -85,11 +85,13 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "Type of attribute: parameter_name is not right."));
   }
 }
 const char *Operation1::attributes_name[attributes_num] = {  // NOLINT

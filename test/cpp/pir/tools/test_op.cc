@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "test/cpp/pir/tools/test_op.h"
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
-
 namespace test {
 
 void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
@@ -49,11 +50,13 @@ void Operation1::VerifySig() const {
   auto &attributes = this->attributes();
   if (attributes.count("op1_attr1") == 0 ||
       !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op1_attr2") == 0 ||
       !attributes.at("op1_attr2").isa<pir::StrAttribute>()) {
-    throw("Type of attribute: parameter_name is not right.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "Type of attribute: parameter_name is not right."));
   }
 }
 
