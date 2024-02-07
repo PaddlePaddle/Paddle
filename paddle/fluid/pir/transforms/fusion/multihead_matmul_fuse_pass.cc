@@ -23,6 +23,10 @@ namespace {
 
 class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "MultiHeadMatmulFuseNoBiasQKPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -179,15 +183,15 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     const auto &reshape_5 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_5({&res.Tensor("matmul_1_in_2")},
-              {&res.Tensor("reshape_5_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_5_out"), &res.OutputNoneTensor()});
     const auto &reshape_6 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_6({&res.Tensor("matmul_2_in_2")},
-              {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_6_out"), &res.OutputNoneTensor()});
     const auto &reshape_7 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_7({&res.Tensor("matmul_3_in_2")},
-              {&res.Tensor("reshape_7_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_7_out"), &res.OutputNoneTensor()});
 
     // W combine.
     const auto &combine_1 = res.Op("builtin.combine");
@@ -209,15 +213,15 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     const auto &reshape_8 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_8({&res.Tensor("add_1_in_2")},
-              {&res.Tensor("reshape_8_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_8_out"), &res.OutputNoneTensor()});
     const auto &reshape_9 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_9({&res.Tensor("add_2_in_2")},
-              {&res.Tensor("reshape_9_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_9_out"), &res.OutputNoneTensor()});
     const auto &reshape_10 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_10({&res.Tensor("add_3_in_2")},
-               {&res.Tensor("reshape_10_out"), &res.NoneTensor()});
+               {&res.Tensor("reshape_10_out"), &res.OutputNoneTensor()});
 
     // Bias combine.
     const auto &combine_2 = res.Op("builtin.combine");
@@ -248,18 +252,18 @@ class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
     multihead_matmul({&res.Tensor("matmul_1_in_1"),
                       &res.Tensor("concat_1_out"),
                       &res.Tensor("concat_2_out"),
-                      &res.NoneTensor()},
+                      &res.InputNoneTensor()},
                      {&res.Tensor("reshape_4_out")});
-  }
-
-  std::string name() const override {
-    return "MultiHeadMatmulFuseNoBiasQKPattern";
   }
 };
 
 class MultiHeadMatmulFuseWithBiasQKPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "MultiHeadMatmulFuseWithBiasQKPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -418,15 +422,15 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     const auto &reshape_5 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_5({&res.Tensor("matmul_1_in_2")},
-              {&res.Tensor("reshape_5_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_5_out"), &res.OutputNoneTensor()});
     const auto &reshape_6 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_6({&res.Tensor("matmul_2_in_2")},
-              {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_6_out"), &res.OutputNoneTensor()});
     const auto &reshape_7 =
         res.Op("pd_op.reshape", {{"shape", reshape_w_shape_attr}});
     reshape_7({&res.Tensor("matmul_3_in_2")},
-              {&res.Tensor("reshape_7_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_7_out"), &res.OutputNoneTensor()});
 
     // W combine.
     const auto &combine_1 = res.Op("builtin.combine");
@@ -448,15 +452,15 @@ class MultiHeadMatmulFuseWithBiasQKPattern
     const auto &reshape_8 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_8({&res.Tensor("add_1_in_2")},
-              {&res.Tensor("reshape_8_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_8_out"), &res.OutputNoneTensor()});
     const auto &reshape_9 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_9({&res.Tensor("add_2_in_2")},
-              {&res.Tensor("reshape_9_out"), &res.NoneTensor()});
+              {&res.Tensor("reshape_9_out"), &res.OutputNoneTensor()});
     const auto &reshape_10 =
         res.Op("pd_op.reshape", {{"shape", reshape_b_shape_attr}});
     reshape_10({&res.Tensor("add_3_in_2")},
-               {&res.Tensor("reshape_10_out"), &res.NoneTensor()});
+               {&res.Tensor("reshape_10_out"), &res.OutputNoneTensor()});
 
     // Bias combine.
     const auto &combine_2 = res.Op("builtin.combine");
@@ -490,10 +494,6 @@ class MultiHeadMatmulFuseWithBiasQKPattern
                       &res.Tensor("add_4_in_2")},
                      {&res.Tensor("reshape_4_out")});
   }
-
-  std::string name() const override {
-    return "MultiHeadMatmulFuseWithBiasQKPattern";
-  }
 };
 
 class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
@@ -503,8 +503,8 @@ class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MultiHeadMatmulFuseNoBiasQKPattern().Build(context));
-    ps.Add(MultiHeadMatmulFuseWithBiasQKPattern().Build(context));
+    ps.Add(paddle::drr::Create<MultiHeadMatmulFuseNoBiasQKPattern>(context));
+    ps.Add(paddle::drr::Create<MultiHeadMatmulFuseWithBiasQKPattern>(context));
     // Add other attention variant fuse pattern.
 
     return ps;

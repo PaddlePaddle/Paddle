@@ -603,14 +603,15 @@ CreateGroupShapeOrDataExprs(
   for (auto* op : group->ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
-      if (shape_analysis.HasShapeOrDataForValue(operand)) {
+      if (operand && value2shape.find(operand) == value2shape.end() &&
+          shape_analysis.HasShapeOrDataForValue(operand)) {
         value2shape.insert(
             {operand, shape_analysis.GetShapeOrDataForValue(operand)});
       }
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
-      if (value2shape.find(result) == value2shape.end() &&
+      if (result && value2shape.find(result) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(result)) {
         value2shape.insert(
             {result, shape_analysis.GetShapeOrDataForValue(result)});
@@ -639,7 +640,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // Because the group is rebuilt, the order of group.output_values generated
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
     // so a mapping is required.
-    std::unordered_map<::pir::Value, size_t> value2id;
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
@@ -653,19 +653,11 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     pir::Operation* complied_op =
         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
 
-    // the output_values of group may be changed.
-    for (size_t i = 0; i < group->output_values.size(); ++i) {
-      value2id[group->output_values[i]] = i;
-    }
-
-    auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
-      rewriter.ReplaceAllUsesWith(
-          fusion_op.result(i),
-          complied_op->result(value2id[yield_op->operand_source(i)]));
+      rewriter.ReplaceAllUsesWith(fusion_op.result(i), complied_op->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            complied_op->result(value2id[yield_op->operand_source(i)]),
+            complied_op->result(i),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "

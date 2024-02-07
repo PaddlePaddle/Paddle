@@ -39,6 +39,8 @@ int getSMVersion() {
 
 class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -108,8 +110,6 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
                         &res.Tensor("weight_scale_tensor")},
                        {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
 };
 
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
@@ -119,7 +119,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedWeightOnlyLinearPattern().Build(context));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearPattern>(context));
     return ps;
   }
 

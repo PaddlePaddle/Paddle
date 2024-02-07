@@ -24,6 +24,10 @@ namespace {
 
 class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "FusedDotProductAttentionPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -125,14 +129,14 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
                            &res.Tensor("softmax_aux"),
                            &res.Tensor("rng_state")});
   }
-
-  std::string name() const override {
-    return "FusedDotProductAttentionPattern";
-  }
 };
 
 class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "FusedDotProductAttentionGradPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -293,15 +297,15 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
          &res.Tensor("out_grad")},
         {&res.Tensor("q_grad"), &res.Tensor("k_grad"), &res.Tensor("v_grad")});
   }
-
-  std::string name() const override {
-    return "FusedDotProductAttentionGradPattern";
-  }
 };
 
 class FusedDotProductAttentionWithDropoutPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "FusedDotProductAttentionWithDropoutPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -411,15 +415,15 @@ class FusedDotProductAttentionWithDropoutPattern
                            &res.Tensor("softmax_aux"),
                            &res.Tensor("rng_state")});
   }
-
-  std::string name() const override {
-    return "FusedDotProductAttentionWithDropoutPattern";
-  }
 };
 
 class FusedDotProductAttentionGradWithDropoutPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "FusedDotProductAttentionGradWithDropoutPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -594,10 +598,6 @@ class FusedDotProductAttentionGradWithDropoutPattern
          &res.Tensor("out_grad")},
         {&res.Tensor("q_grad"), &res.Tensor("k_grad"), &res.Tensor("v_grad")});
   }
-
-  std::string name() const override {
-    return "FusedDotProductAttentionGradWithDropoutPattern";
-  }
 };
 
 class FusedDotProductAttentionPass : public pir::PatternRewritePass {
@@ -607,10 +607,12 @@ class FusedDotProductAttentionPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedDotProductAttentionPattern().Build(context));
-    ps.Add(FusedDotProductAttentionGradPattern().Build(context));
-    ps.Add(FusedDotProductAttentionWithDropoutPattern().Build(context));
-    ps.Add(FusedDotProductAttentionGradWithDropoutPattern().Build(context));
+    ps.Add(paddle::drr::Create<FusedDotProductAttentionPattern>(context));
+    ps.Add(paddle::drr::Create<FusedDotProductAttentionGradPattern>(context));
+    ps.Add(paddle::drr::Create<FusedDotProductAttentionWithDropoutPattern>(
+        context));
+    ps.Add(paddle::drr::Create<FusedDotProductAttentionGradWithDropoutPattern>(
+        context));
     return ps;
   }
 };
