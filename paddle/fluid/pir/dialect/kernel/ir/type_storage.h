@@ -191,6 +191,7 @@ struct AllocatedDenseTensorArrayTypeStorage : public pir::TypeStorage {
                           dialect::DenseTensorArrayTypeStorage::HashValue(
                               dialect::DenseTensorArrayTypeStorage::ParamKey(
                                   dense_tensor_array_type.dtype(),
+                                  dense_tensor_array_type.dims(),
                                   dense_tensor_array_type.data_layout())));
     return hash_value;
   }
