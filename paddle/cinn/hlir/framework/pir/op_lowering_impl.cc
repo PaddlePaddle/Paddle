@@ -19,7 +19,6 @@
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_cuda_util.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -67,58 +66,6 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
 
 OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {
   name_gene_ = new PrettyNamer();
-}
-
-Expr BuildOuputExpr(cinn::ir::Tensor tensor) {
-  auto axis = tensor->axis();
-  int rank = axis.size();
-  std::vector<cinn::ir::Expr> indices;
-  for (auto& d : axis) {
-    // std::cerr << "dd " << d << std::endl;
-    indices.push_back(Expr(d));
-  }
-
-  auto shape = tensor->shape;
-
-  auto body = ir::Load::Make(tensor, indices);
-
-  auto out_name = tensor->name + "_out";
-  auto out_tensor = ir::Tensor(out_name,
-                               tensor->type(),
-                               tensor->shape,
-                               tensor->domain,
-                               tensor->operation);
-  body = ir::Store::Make(out_tensor, body, indices);
-
-  std::vector<ir::Var> block_vars;
-  std::vector<ir::Expr> iter_values;
-  std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(rank);
-  for (int i = 0; i < shape.size(); ++i) {
-    block_vars.push_back(
-        Var(Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
-    optim::ReplaceVarWithExpr(&body, axis[i], block_vars[i]);
-    axis_vars[i]->is_reduce_axis = false;
-
-    iter_values.push_back(axis_vars[i]);
-  }
-  body = ir::ScheduleBlockRealize::Make(
-      iter_values, ir::ScheduleBlock::Make(block_vars, {}, {}, out_name, body));
-  for (int i = rank - 1; i >= 0; --i) {
-    ir::Var loop_var = axis[i];
-    ir::Expr loop_extent = shape[i];
-    body = ir::For::Make(loop_var,
-                         Expr(0),
-                         loop_extent,
-                         ir::ForType::Serial,
-                         ir::DeviceAPI::CUDA,
-                         ir::Block::Make({body}));
-  }
-
-  body = ir::ScheduleBlockRealize::Make(
-      {}, ir::ScheduleBlock::Make({}, {}, {}, "root_", body));
-
-  std::cerr << "body " << body << std::endl;
-  return body;
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
@@ -580,22 +527,12 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   std::vector<Expr> func_bodies;
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name();
-    std::string cinn_op_name = CompatibleInfo::OpName(*op);
-
-    std::cerr << "cinn op name " << cinn_op_name << std::endl;
-    if (cinn_op_name == "store") {
-      std::cerr << "store\n ";
-
-      auto in_tensor = tensor_map->at(op->operand_source(0));
-      auto expr = BuildOuputExpr(in_tensor);
-      func_bodies.push_back(expr);
-      continue;
-    }
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =
         CollectInputTensor(group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
+    std::string cinn_op_name = CompatibleInfo::OpName(*op);
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
     if (FLAGS_cinn_bucket_compile) {

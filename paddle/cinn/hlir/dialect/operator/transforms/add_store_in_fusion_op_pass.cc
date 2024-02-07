@@ -32,10 +32,20 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
     for (auto i = 0; i < op->num_operands(); ++i) {
-      auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-          op->operand_source(i), op->operand_source(i).type());
+      if (op->operand_source(i)
+              .defining_op()
+              ->isa<cinn::dialect::ReshapeOp>()) {
+        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+            op->operand_source(i).defining_op()->operand_source(0),
+            op->operand_source(i).type());
 
-      op->operand(i).set_source(new_full.result(0));
+        op->operand(i).set_source(new_full.result(0));
+      } else {
+        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+            op->operand_source(i), op->operand_source(i).type());
+
+        op->operand(i).set_source(new_full.result(0));
+      }
     }
 
     return true;

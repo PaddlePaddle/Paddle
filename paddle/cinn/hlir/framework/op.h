@@ -136,9 +136,6 @@ class Operator {
    * @return Pointer to a Op, valid throughout program lifetime.
    */
   static const Operator* Get(const std::string& op_name) {
-    if (op_name == "store") {
-      return nullptr;
-    }
     const Operator* op = OpRegistry::Global()->Find(op_name);
     CHECK(op) << "Operator [" << op_name << "] is not registered";
     return op;
