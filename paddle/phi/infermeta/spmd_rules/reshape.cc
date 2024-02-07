@@ -45,7 +45,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
   }
 
   int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+      shape.begin(), shape.end(), 1, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
@@ -72,7 +72,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
+      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
@@ -269,7 +269,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // when inferring the transformation from out_shape to
   // x_shape, so infer the '-1' value before inferrng DimTrans
   int64_t nelm = std::accumulate(
-      x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
+      x_shape.begin(), x_shape.end(), 1, std::multiplies<>());
   out_shape = InferTargetShape(out_shape, nelm);
   std::vector<std::shared_ptr<DimTrans>> trans =
       MakeReshapeDimTrans(out_shape, x_shape);

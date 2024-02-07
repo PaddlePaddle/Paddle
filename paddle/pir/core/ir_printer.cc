@@ -266,7 +266,7 @@ void IrPrinter::PrintOpResult(Operation* op) {
 
 void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
-  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
+  std::map<std::string, Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
   os << " {";
 
