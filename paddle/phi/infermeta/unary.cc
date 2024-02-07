@@ -154,7 +154,39 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config) {
-  if (config.is_runtime) return;
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        (x.is_tensor_array()),
+        true,
+        phi::errors::InvalidArgument(
+            "The dtype of 1st input in ArrayToTensor must be TensorArray, but "
+            "received [%s]",
+            x.dtype()));
+    size_t x_size = x.size();
+    std::vector<phi::DDim> vec_dims;
+    for (size_t i = 0; i < x_size; ++i) {
+      phi::DDim dims = x.dims(i);
+      if (!vec_dims.empty()) {
+        PADDLE_ENFORCE_EQ(
+            (vec_dims.back() == dims),
+            true,
+            phi::errors::InvalidArgument(
+                "The dims of input in ArrayToTensor must be equal, but "
+                "received"));
+      }
+      vec_dims.push_back(dims);
+    }
+    if (vec_dims.empty()) return;
+    auto dim_vec = common::vectorize<int>(vec_dims[0]);
+    if (use_stack) {
+      dim_vec.insert(dim_vec.begin() + axis, dim_vec.size() * dim_vec[axis]);
+    } else {
+      dim_vec[axis] = dim_vec.size() * dim_vec[axis];
+    }
+    phi::DDim dims = common::make_ddim(dim_vec);
+    out->set_dims(dims);
+    return;
+  }
   auto dims = x.dims();
   // if the shape is empty
   if (dims == common::make_ddim({0UL})) return;
@@ -3784,12 +3816,12 @@ void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& decrease_axis,
                        MetaTensor* out,
                        MetaConfig config) {
-  auto in_dims = input.dims();
+  const auto& in_dims = input.dims();
+
   PADDLE_ENFORCE_LT(
       in_dims.size(),
       7,
       phi::errors::InvalidArgument("The rank of input should be less than 7."));
-  DDim out_dims(in_dims);
 
   std::vector<int64_t> infer_flags = infer_flags_t;
   if (infer_flags.empty()) {
@@ -3828,13 +3860,12 @@ void SliceRawInferMeta(const MetaTensor& input,
 
   auto slice_dims = phi::funcs::GetSliceDims<int64_t>(
       in_dims, new_axes, starts, ends, nullptr, &infer_flags);
-  if (config.is_runtime) {
-    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
-        slice_dims, decrease_axis, &infer_flags);
-  } else {
-    out_dims = phi::funcs::GetDecreasedDims<int64_t>(
-        slice_dims, decrease_axis, nullptr);
-  }
+
+  DDim out_dims(in_dims);
+  out_dims = config.is_runtime ? phi::funcs::GetDecreasedDims<int64_t>(
+                                     slice_dims, decrease_axis, &infer_flags)
+                               : phi::funcs::GetDecreasedDims<int64_t>(
+                                     slice_dims, decrease_axis, nullptr);
 
   out->set_dims(out_dims);
   if (!new_axes.empty() && new_axes[0] != 0) {

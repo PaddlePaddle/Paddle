@@ -46,17 +46,19 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    symbol::TensorListShapeOrDataDimExprs shape_data_list{};
+    const auto shape_data_list = [&] {
+      symbol::TensorListShapeOrDataDimExprs shape_data_list;
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
+                   "Currently InferSymbolicShape of CombineOp only support "
+                   "DenseTensorType.");
 
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
-                 "Currently InferSymbolicShape of CombineOp only support "
-                 "DenseTensorType.");
-
-      shape_data_list.emplace_back(
-          shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
-              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
-    }
+        shape_data_list.emplace_back(
+            shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
+                .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
+      }
+      return shape_data_list;
+    }();
 
     symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
     shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
