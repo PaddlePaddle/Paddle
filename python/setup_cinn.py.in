@@ -4,6 +4,7 @@ import re
 import sys
 import shutil
 import platform
+import subprocess
 from contextlib import contextmanager
 from setuptools import setup
 
