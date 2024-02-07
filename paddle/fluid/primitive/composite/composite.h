@@ -294,10 +294,10 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
-  if find_value (x[0].shape(), -1) {
+  if (find_value(x[0].shape(), -1)) {
     Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
     for (size_t i = 0; i < x.size(); ++i) {
-      concat_x.push_back(reshape<T>(x[i], out_shape));
+      concat_x.push_back(backend::reshape<T>(x[i], out_shape));
     }
   } else {
     std::vector<int64_t> axis_tmp = {axis};
