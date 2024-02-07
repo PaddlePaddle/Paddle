@@ -201,7 +201,7 @@ void RmsNormGradKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 
-PD_REGISTER_KERNEL(fused_rms_norm_grad,
+PD_REGISTER_KERNEL(rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RmsNormGradKernel,
@@ -210,7 +210,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_grad,
 
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 
-PD_REGISTER_KERNEL(fused_rms_norm_grad,
+PD_REGISTER_KERNEL(rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RmsNormGradKernel,

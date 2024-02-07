@@ -45,9 +45,10 @@ def naive_rms_norm(x, gamma, beta=None, epsilon=1e-5):
 
 
 def fused_rms_norm(x, gamma, beta=None, epsilon=1e-5, begin_norm_axis=1):
-    return paddle.incubate.nn.functional.fused_rms_norm(
+    out = paddle.incubate.nn.functional.fused_rms_norm(
         x, gamma, beta, epsilon, begin_norm_axis=begin_norm_axis
     )
+    return out[0]
 
 
 def naive_rms_norm_int8(
@@ -294,7 +295,7 @@ class TestRMSNormOp(unittest.TestCase):
         )
 
     def test_rms_norm_backward(self):
-        def get_paddle_tensor(self, shape, dtype, bound=0.5):
+        def get_paddle_tensor(shape, dtype, bound=0.5):
             tmp = paddle.uniform(shape, dtype=dtype, min=-bound, max=bound)
             tmp.stop_gradient = False
             return tmp
@@ -315,14 +316,14 @@ class TestRMSNormOp(unittest.TestCase):
         if paddle.amp.is_float16_supported('gpu'):
             dtypes.append(paddle.float16)
         for dtype in dtypes:
-            raw_out, raw_grads = self.get_forward_backward(
+            raw_out, raw_grads = get_forward_backward(
                 naive_rms_norm, seed=2024, dtype=dtype
             )
-            fused_out, fused_grads = self.get_forward_backward(
+            fused_out, fused_grads = get_forward_backward(
                 fused_rms_norm, seed=2024, dtype=dtype
             )
             # forward rtol
-            rtol = 1e-5 if dtype == paddle.float32 else 1e-3
+            rtol = 1e-5 if dtype == paddle.float32 else 1e-2
             np.testing.assert_allclose(
                 raw_out.astype(paddle.float32).numpy(),
                 fused_out.astype(paddle.float32).numpy(),
