@@ -40,7 +40,7 @@ limitations under the License.
 #include <cuda.h>          // NOLINT
 #include <cuda_runtime.h>  // NOLINT
 #include <cub/cub.cuh>
-#include "paddle/phi/kernels/gpu/fused_rms_norm_funcs.h"
+#include "paddle/phi/kernels/gpu/rms_norm_funcs.h"
 #endif
 
 namespace phi {
@@ -161,19 +161,19 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
 }  // namespace
 
 template <typename T, typename Context>
-void FusedRmsNormGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& bias,
-                            const paddle::optional<DenseTensor>& residual,
-                            const DenseTensor& norm_weight,
-                            const paddle::optional<DenseTensor>& norm_bias,
-                            const DenseTensor& inv_var,
-                            const DenseTensor& dy,
-                            const float epsilon,
-                            const int begin_norm_axis,
-                            const float quant_scale,
-                            DenseTensor* grad_x,
-                            DenseTensor* grad_norm_weight) {
+void RmsNormGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const paddle::optional<DenseTensor>& bias,
+                       const paddle::optional<DenseTensor>& residual,
+                       const DenseTensor& norm_weight,
+                       const paddle::optional<DenseTensor>& norm_bias,
+                       const DenseTensor& inv_var,
+                       const DenseTensor& dy,
+                       const float epsilon,
+                       const int begin_norm_axis,
+                       const float quant_scale,
+                       DenseTensor* grad_x,
+                       DenseTensor* grad_norm_weight) {
 #if defined(PADDLE_WITH_HIP)
   PADDLE_THROW(phi::errors::Unimplemented(
       "Please compile with CUDA, ROCM platform isn't support it."));
@@ -204,7 +204,7 @@ void FusedRmsNormGradKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(fused_rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedRmsNormGradKernel,
+                   phi::RmsNormGradKernel,
                    float,
                    phi::dtype::float16) {}
 
@@ -213,7 +213,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_grad,
 PD_REGISTER_KERNEL(fused_rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedRmsNormGradKernel,
+                   phi::RmsNormGradKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
@@ -223,7 +223,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_grad,
 PD_REGISTER_KERNEL(rms_norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedRmsNormGradKernel,
+                   phi::RmsNormGradKernel,
                    float,
                    phi::dtype::float16) {}
 #endif
