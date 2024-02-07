@@ -42,7 +42,8 @@ class SelectedRows : public TensorBase,
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
+  TEST_API SelectedRows(const std::vector<int64_t>& rows,
+                        const int64_t& height);
 
   TEST_API SelectedRows();
 
