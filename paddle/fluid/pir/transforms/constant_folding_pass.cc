@@ -200,7 +200,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         auto parameter_op = rewriter.Build<pir::ParameterOp>(
             output_var_name, op->result(i).type());
         parameter_op->set_attribute(
-            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+            kAttrIsPersistable,
+            rewriter.array_attr({rewriter.bool_attr(true)}));
 
         rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
 
@@ -221,7 +222,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
             output_var_name, op->result(i).type());
         constant_op->set_attribute(
-            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+            kAttrIsPersistable,
+            rewriter.array_attr({rewriter.bool_attr(true)}));
 
         rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
@@ -290,15 +292,16 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     const auto& var_name =
         pir::GetParameterNameFromValue(op->operand_source(index));
     auto* var = scope_->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            phi::errors::InvalidArgument(
-                                "Persisable var [%s] not in scope.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
+                                     var_name));
     auto from_op =
         builder.Build<Op>(var_name, op->operand_source(index).type());
     if (op->operand_source(index).use_count() <= 1) {
       deleted_vars_->push_back(var_name);
     } else {
-      from_op->set_attribute(kAttrIsPersisable,
+      from_op->set_attribute(kAttrIsPersistable,
                              rewriter.array_attr({rewriter.bool_attr(true)}));
     }
     return from_op;
@@ -446,7 +449,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
       auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
           output_var_name, op->result(i).type());
       constant_op->set_attribute(
-          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+          kAttrIsPersistable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
       rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
     }

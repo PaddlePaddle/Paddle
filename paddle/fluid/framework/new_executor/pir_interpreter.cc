@@ -1305,7 +1305,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
-    SolvePersisableVarNames();
+    SolvePersistableVarNames();
 
     if (VLOG_IS_ON(6)) {
       std::stringstream ss;
@@ -1395,7 +1395,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
-    SolvePersisableVarNames();
+    SolvePersistableVarNames();
 
     if (VLOG_IS_ON(6)) {
       std::stringstream ss;
@@ -1836,12 +1836,12 @@ void PirInterpreter::PreAnalysis() {
   return nullptr;
 }
 
-void PirInterpreter::SolvePersisableVarNames() {
-  VLOG(6) << "SolvePersisableVarNames";
+void PirInterpreter::SolvePersistableVarNames() {
+  VLOG(6) << "SolvePersistableVarNames";
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersisable);
+    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersistable);
     if (bool_attr && bool_attr.data()) {
       parameter_var_names_.insert(var_name);
     }

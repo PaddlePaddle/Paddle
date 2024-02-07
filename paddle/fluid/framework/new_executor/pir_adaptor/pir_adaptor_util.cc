@@ -240,22 +240,22 @@ const std::unordered_set<std::string> SpecialOps = {
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
-                    bool force_persisable,
+                    bool force_persistable,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.defining_op();
-  bool is_persisable = false;
+  bool is_persistable = false;
   if (def_op->isa<::pir::ParameterOp>()) {
-    is_persisable = true;
+    is_persistable = true;
   } else if (auto attr =
-                 value.attribute<pir::BoolAttribute>(kAttrIsPersisable)) {
-    is_persisable = attr.data();
+                 value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
+    is_persistable = attr.data();
   }
 
   Variable* var = nullptr;
   std::string name = var_name_prefix + "_inner_var_" +
                      std::to_string(value_exe_info->GetVar2VarName().size());
 
-  if (force_persisable || is_persisable) {
+  if (force_persistable || is_persistable) {
     VLOG(6) << "Create var: " << name << " in scope "
             << value_exe_info->GetScope()->root();
     var = const_cast<Scope*>(value_exe_info->GetScope()->root())->Var(name);
@@ -554,8 +554,8 @@ void HandleForSpecialOp(pir::Operation* op,
 
     auto value = op->operand_source(0);
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (value.defining_op()->HasAttribute(kAttrIsPersisable) &&
-        value.attribute<pir::BoolAttribute>(kAttrIsPersisable).data()) {
+    if (value.defining_op()->HasAttribute(kAttrIsPersistable) &&
+        value.attribute<pir::BoolAttribute>(kAttrIsPersistable).data()) {
       VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
               << var_name;
       scope = const_cast<Scope*>(value_exe_info->GetScope()->root());

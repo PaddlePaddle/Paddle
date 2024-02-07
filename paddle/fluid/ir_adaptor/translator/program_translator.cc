@@ -185,7 +185,7 @@ void ProgramTranslator::Translate() {
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetIsPersisableAttributeForAllValue(block);
+    SetIsPersistableAttributeForAllValue(block);
   }
 }
 
@@ -768,13 +768,13 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   return param_map_.at(var_name);
 }
 
-void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+void ProgramTranslator::SetIsPersistableAttributeForAllValue(
     const BlockDesc& block) {
-  // Currently we set is persisable for operation that generated a value
+  // Currently we set is persistable for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
-    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VLOG(10) << "[op translated][is persistable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
@@ -787,21 +787,21 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
           defining_op,
           phi::errors::PreconditionNotMet(
               "Defining operator of [%s] can not be nullptr", var_name));
-      VLOG(8) << "[op translated][is persisable]" << var_name
+      VLOG(8) << "[op translated][is persistable]" << var_name
               << " from: " << defining_op->name();
-      std::vector<pir::Attribute> is_persisable;
-      if (defining_op->HasAttribute(kAttrIsPersisable)) {
-        is_persisable = defining_op->attribute(kAttrIsPersisable)
-                            .dyn_cast<pir::ArrayAttribute>()
-                            .AsVector();
+      std::vector<pir::Attribute> is_persistable;
+      if (defining_op->HasAttribute(kAttrIsPersistable)) {
+        is_persistable = defining_op->attribute(kAttrIsPersistable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
       } else {
-        is_persisable = std::vector<pir::Attribute>(
+        is_persistable = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      is_persisable[value.index()] =
+      is_persistable[value.index()] =
           pir::BoolAttribute::get(ctx_, var->Persistable());
-      defining_op->set_attribute(kAttrIsPersisable,
-                                 pir::ArrayAttribute::get(ctx_, is_persisable));
+      defining_op->set_attribute(
+          kAttrIsPersistable, pir::ArrayAttribute::get(ctx_, is_persistable));
     }
   }
 }
