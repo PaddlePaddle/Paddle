@@ -853,6 +853,8 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     size_t repeat_time_length = repeat_times_.size();
     std::vector<int64_t> unsqueeze_idx2;
     if (diff > 0) {
+      VLOG(0) << "=====================diff " << diff;
+      VLOG(0) << "=====================x.dims() " << x.dims();
       std::vector<int64_t> unsqueeze_idx1(diff);
       std::iota(unsqueeze_idx1.begin(), unsqueeze_idx1.end(), 0);
       t1 = unsqueeze<T>(x, unsqueeze_idx1);

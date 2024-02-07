@@ -33,7 +33,7 @@ def apply_to_static(net, use_cinn, input_spec=None):
 
 
 def rms_norm1(hidden_states, weight):
-    y = paddle.tile(hidden_states, [4, 5, 2, 3])
+    y = paddle.tile(hidden_states, [5, 2, 3])
     # z = paddle.full_like(y, 1)
     # From llama2, reduce dim is not equal to dynamic shape dim
     return y
@@ -54,7 +54,7 @@ def rms_norm1(hidden_states, weight):
 
 def rms_norm2(hidden_states, weight):
     # reduce dim is not equal to dynamic shape dim
-    variance = hidden_states.pow(2).mean((0, 1), keepdim=True)
+    variance = hidden_states.pow(2).mean(0, keepdim=True)
     hidden_states = paddle.rsqrt(variance + 1e-5) * hidden_states
     return hidden_states * weight
 
@@ -62,7 +62,7 @@ def rms_norm2(hidden_states, weight):
 class TestPrimMode1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [1, 300, 4096]
+        self.shape_x = [300, 4096]
         self.shape_y = [4096]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
@@ -78,7 +78,7 @@ class TestPrimMode1(unittest.TestCase):
                 self.net,
                 use_cinn=False,
                 input_spec=[
-                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=[None, 4096], dtype='float32'),
                     InputSpec(shape=[4096], dtype='float32'),
                 ],
             )
