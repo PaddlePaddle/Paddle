@@ -168,14 +168,11 @@ void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     if (auto print_fn = dialect->PrintOperation(op)) {
       print_fn(op, *this);
-      os << newline;
       return;
     }
   }
 
   PrintGeneralOperation(op);
-
-  os << newline;
 }
 
 void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
@@ -221,6 +218,7 @@ void IrPrinter::PrintBlock(const Block& block) {
   AddIndentation();
   for (auto& item : block) {
     PrintOperation(&item);
+    os << "\n";
   }
   DecreaseIndentation();
   os << indentation() << "}\n";
