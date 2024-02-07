@@ -529,7 +529,7 @@ class TestRaiseSumsError(unittest.TestCase):
 
             def test_out_type():
                 data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="flaot32"
+                    name="input1", shape=[10], dtype="float32_raise_error"
                 )
                 data2 = paddle.static.data(
                     name="input2", shape=[10], dtype="float32"
@@ -541,7 +541,7 @@ class TestRaiseSumsError(unittest.TestCase):
 
             def test_out_dtype():
                 data1 = paddle.static.data(
-                    name="input1", shape=[10], dtype="flaot32"
+                    name="input1", shape=[10], dtype="float32_raise_error"
                 )
                 data2 = paddle.static.data(
                     name="input2", shape=[10], dtype="float32"
