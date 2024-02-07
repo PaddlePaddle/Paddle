@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
-#include "paddle/fluid/pir/drr/ir_operation_factory.h"
-#include "paddle/fluid/pir/drr/match_context_impl.h"
-#include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
+#include "paddle/fluid/pir/drr/src/match_context_impl.h"
+#include "paddle/fluid/pir/drr/src/pattern_graph.h"
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/operation.h"

@@ -18,8 +18,8 @@
 #include <unordered_map>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/drr/attr_type_uilts.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/operation_utils.h"

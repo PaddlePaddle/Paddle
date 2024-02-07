@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/ir_operation_factory.h"
-
 #include <any>
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/attr_type_uilts.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/operation.h"

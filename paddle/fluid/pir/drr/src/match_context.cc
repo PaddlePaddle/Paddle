@@ -15,7 +15,7 @@
 #include <cstdint>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
-#include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/fluid/pir/drr/src/match_context_impl.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {

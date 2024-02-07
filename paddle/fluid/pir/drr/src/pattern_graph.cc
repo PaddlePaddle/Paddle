@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/fluid/pir/drr/src/pattern_graph.h"
 
 #include <queue>
 
