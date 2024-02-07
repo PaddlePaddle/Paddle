@@ -41,13 +41,6 @@ static void MatMulXPUFunction(const DenseTensor& x,
   int batch_size = mat_dim_a.batch_size_;
   // batch matmul
   int fccal_type = FCCalcType<XPUType>();
-  decltype(&xpu_fc_batch_wrapper<XPUType, int16_t>) fc_batch_api_list[5] = {
-      &xpu_fc_batch_wrapper<XPUType, int16_t>,
-      &xpu_fc_batch_wrapper<XPUType, int32_t>,
-      &xpu_fc_batch_wrapper<XPUType, float>,
-      &xpu_fc_batch_wrapper<XPUType, int_with_ll_t>,
-      &xpu_fc_batch_wrapper<XPUType, tfloat32>,
-  };
   decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
           &xblas_fc_batch_wrapper<XPUType, int16_t, float>,
@@ -58,52 +51,30 @@ static void MatMulXPUFunction(const DenseTensor& x,
           &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
       };
 
-  auto fc_batch_api = fc_batch_api_list[fccal_type];
   auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
   if (fccal_type == XPUFCCalcType::FC_FLOAT16 &&
       std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
     xblas_fc_batch_api =
         &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;
   }
-  auto dev_version =
-      phi::backends::xpu::get_xpu_version(-1);  // get current device version
-  if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
-    xblas_fc_batch_api(xpu_ctx,
-                       batch_size,
-                       mat_dim_a.trans_,
-                       mat_dim_b.trans_,
-                       m,
-                       n,
-                       k,
-                       1.0,
-                       reinterpret_cast<const XPUType*>(x.data<T>()),
-                       mat_dim_a.stride_,
-                       reinterpret_cast<const XPUType*>(y.data<T>()),
-                       mat_dim_b.stride_,
-                       0.0,
-                       reinterpret_cast<XPUType*>(data_c),
-                       m * n,
-                       nullptr,
-                       nullptr);
-  } else {
-    fc_batch_api(xpu_ctx,
-                 batch_size,
-                 mat_dim_a.trans_,
-                 mat_dim_b.trans_,
-                 m,
-                 n,
-                 k,
-                 1.0,
-                 reinterpret_cast<const XPUType*>(x.data<T>()),
-                 mat_dim_a.stride_,
-                 reinterpret_cast<const XPUType*>(y.data<T>()),
-                 mat_dim_b.stride_,
-                 0.0,
-                 reinterpret_cast<XPUType*>(data_c),
-                 m * n,
-                 nullptr,
-                 nullptr);
-  }
+
+  xblas_fc_batch_api(xpu_ctx,
+                     batch_size,
+                     mat_dim_a.trans_,
+                     mat_dim_b.trans_,
+                     m,
+                     n,
+                     k,
+                     1.0,
+                     reinterpret_cast<const XPUType*>(x.data<T>()),
+                     mat_dim_a.stride_,
+                     reinterpret_cast<const XPUType*>(y.data<T>()),
+                     mat_dim_b.stride_,
+                     0.0,
+                     reinterpret_cast<XPUType*>(data_c),
+                     m * n,
+                     nullptr,
+                     nullptr);
 }
 
 }  // namespace phi
