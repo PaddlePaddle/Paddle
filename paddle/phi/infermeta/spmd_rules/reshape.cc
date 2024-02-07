@@ -46,7 +46,6 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
 
   int64_t product =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
-
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
