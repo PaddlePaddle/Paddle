@@ -26,8 +26,7 @@
 namespace phi {
 namespace distributed {
 
-TEST_API auto_parallel::TensorDistAttrProto to_proto(
-    const TensorDistAttr& dist_attr) {
+auto_parallel::TensorDistAttrProto to_proto(const TensorDistAttr& dist_attr) {
   TO_PROTO_HELPER(dist_attr, auto_parallel::TensorDistAttrProto);
 }
 
