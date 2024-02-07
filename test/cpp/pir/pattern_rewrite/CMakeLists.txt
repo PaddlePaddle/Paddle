@@ -18,7 +18,6 @@ if(WITH_ONNXRUNTIME AND WIN32)
   copy_onnx(drr_same_type_binding_test)
   copy_onnx(drr_fuse_linear_test)
   copy_onnx(drr_fuse_linear_param_grad_add_test)
-  
   if(WITH_GPU)
     copy_onnx(drr_attention_fuse_test)
   endif()
