@@ -107,7 +107,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCMAKE_JOB_POOL_COMPILE:STRING=compile
-             -DCMAKE_JOB_POOLS:STRING=compile=4
+             -DCMAKE_JOB_POOLS:STRING=compile=${NPROC}
              -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS
