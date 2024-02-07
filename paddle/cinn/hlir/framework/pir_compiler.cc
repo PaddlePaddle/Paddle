@@ -20,6 +20,7 @@
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -33,6 +34,9 @@ std::unique_ptr<Program> PirCompiler::Build() {
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
   for (auto& op : *program_.block()) {
+    if (op.isa<::pir::YieldOp>()) {
+      continue;
+    }
     std::vector<::pir::Operation*> ops = {&op};
     auto group = std::make_shared<pir::Group>(ops);
     group->output_ops.insert(&op);
