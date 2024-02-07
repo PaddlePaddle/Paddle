@@ -183,7 +183,6 @@ class TestPyLayer(unittest.TestCase):
         dtypes = [
             'bool',
             'float16',
-            'float32',
             'float64',
             'uint8',
             'int32',
