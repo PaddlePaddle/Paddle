@@ -110,6 +110,18 @@ class TestLlamaAuto:
         if os.getenv("use_lazy_init") == "true":
             self.config.use_lazy_init = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
+        self.amp = False
+        self.amp_dtype = "float16"
+        self.amp_level = "O1"
+        self.amp_master_grad = False
+        if os.getenv("amp") == "true":
+            self.amp = True
+        if os.getenv("amp_dtype") in ["float16", "bfloat16"]:
+            self.amp_dtype = os.getenv("amp_dtype")
+        if os.getenv("amp_level") in ["O0", "O1", "O2"]:
+            self.amp_level = os.getenv("amp_level")
+        if os.getenv("amp_master_grad") == "true":
+            self.amp_master_grad = True
 
         self.init_dist_env()
 
@@ -145,6 +157,14 @@ class TestLlamaAuto:
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
         )
         optimizer = create_optimizer(model, lr_scheduler)
+        if self.amp and not to_static:
+            model, optimizer = paddle.amp.decorate(
+                models=model,
+                optimizers=optimizer,
+                level=self.amp_level,
+                dtype=self.amp_dtype,
+                master_grad=self.amp_master_grad,
+            )
         optimizer = dist.shard_optimizer(optimizer)
 
         train_dataset = RandomDataset(self.config.seq_length)
@@ -178,23 +198,37 @@ class TestLlamaAuto:
 
         if not to_static:
             model.train()
+            scaler = None
+            if self.amp and self.amp_dtype == "float16":
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                scaler = dist.shard_scaler(scaler)
+
             for epoch_idx in range(1):
                 for step, inputs in enumerate(dist_loader()):
                     input_ids, labels = inputs
-                    logits = model(input_ids)
-                    tr_loss_step = criterion(logits, labels)
+                    with paddle.amp.auto_cast(
+                        self.amp, level=self.amp_level, dtype=self.amp_dtype
+                    ):
+                        logits = model(input_ids)
+                        tr_loss_step = criterion(logits, labels)
 
                     if self.gradient_accumulation_steps > 1:
                         tr_loss_step /= self.gradient_accumulation_steps
-
-                    tr_loss_step.backward()
+                    if scaler is not None:
+                        scaler.scale(tr_loss_step).backward()
+                    else:
+                        tr_loss_step.backward()
                     tr_loss += tr_loss_step
 
                     if global_step % self.gradient_accumulation_steps == 0:
                         print(
                             f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
                         )
-                        optimizer.step()
+                        if scaler is not None:
+                            scaler.step(optimizer)
+                            scaler.update()
+                        else:
+                            optimizer.step()
                         optimizer.clear_grad()
                         lr_scheduler.step()
                         tr_loss = 0
@@ -209,6 +243,13 @@ class TestLlamaAuto:
                 strategy.pipeline.accumulate_steps = (
                     self.gradient_accumulation_steps
                 )
+                if self.amp:
+                    amp = strategy.amp
+                    amp.enable = self.amp
+                    amp.dtype = self.amp_dtype
+                    amp.level = self.amp_level.lower()
+                    if self.amp_master_grad:
+                        amp.use_master_grad = True
 
             dist_model = dist.to_static(
                 model,

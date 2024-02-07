@@ -324,6 +324,9 @@ class ProcessMesh(core.ProcessMesh):
         )
         return str
 
+    def __hash__(self):
+        return super().__hash__()
+
 
 def compute_compatible_process_mesh(process_mesh_list):
     """Compute the compatible process mesh given a list of process meshes."""

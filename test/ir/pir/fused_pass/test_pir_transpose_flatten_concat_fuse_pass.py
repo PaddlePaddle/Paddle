@@ -48,7 +48,9 @@ class Test1TransposeFlattenConcatFusePattern(PassTest):
                     }
                     self.fetch_list = [out]
                     self.valid_op_map = {
-                        "pd_op.fusion_transpose_flatten_concat": 1
+                        "pd_op.fusion_transpose_flatten_concat": 1,
+                        "pd_op.transpose": 0,
+                        "pd_op.flatten": 0,
                     }
                     yield [main_prog, start_prog], False
 
@@ -119,6 +121,8 @@ class Test6TransposeFlattenConcatFusePattern(PassTest):
                 self.fetch_list = [out]
                 self.valid_op_map = {
                     "pd_op.fusion_transpose_flatten_concat": 1,
+                    "pd_op.transpose": 0,
+                    "pd_op.flatten": 0,
                 }
                 yield [main_prog, start_prog], False
 

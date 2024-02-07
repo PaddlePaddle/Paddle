@@ -60,6 +60,10 @@ def embedding_net(x):
     w = paddle.to_tensor(w)
     return F.embedding(x, w, padding_idx=1)
 
+  
+def full_like_net(x):
+    return paddle.full_like(x, 1)
+
 
 class TestPrimOne(unittest.TestCase):
     def setUp(self):
@@ -116,7 +120,7 @@ class TestPrimOne2(TestPrimOne):
         self.necessary_ops = "pd_op.any"
         self.enable_cinn = False
 
-
+# Todo: open this case.
 # class TestEmbeddingPrimOne3(TestPrimOne):
 #     def setUp(self):
 #         np.random.seed(2023)
@@ -126,6 +130,17 @@ class TestPrimOne2(TestPrimOne):
 #         self.net = embedding_net
 #         self.necessary_ops = "pd_op.embedding"
 #         self.enable_cinn = False
+
+
+class TestPrimOne3(TestPrimOne):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.shape_x = [1, 300, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.net = full_like_net
+        self.necessary_ops = "pd_op.full_like"
+        self.enable_cinn = False
 
 
 if __name__ == "__main__":
