@@ -173,7 +173,6 @@ class TestBatchNormOpNHWCbf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
-        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCShape2(TestBatchNormOp):
