@@ -24,7 +24,7 @@
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_name.h"
-#include "paddle/pir/include/core/type_util.h"
+#include "paddle/pir/include/core/type_utils.h"
 #include "paddle/pir/include/core/utils.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 

@@ -69,23 +69,23 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 0;
     // hash dtype
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    hash_value = detail::hash_combine(hash_value,
+                                      std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::DDim>()(std::get<1>(key)));
+    hash_value = detail::hash_combine(hash_value,
+                                      std::hash<pir::DDim>()(std::get<1>(key)));
     // hash layout
-    hash_value = pir::hash_combine(
+    hash_value = detail::hash_combine(
         hash_value,
         std::hash<std::underlying_type<DataLayout>::type>()(
             static_cast<std::underlying_type<DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
     hash_value =
-        pir::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
+        detail::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
     // hash offset
     hash_value =
-        pir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
+        detail::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
     return hash_value;
   }
 
@@ -138,7 +138,7 @@ struct VectorTypeStorage : public TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 0;
     for (size_t i = 0; i < key.size(); ++i) {
-      hash_value = hash_combine(hash_value, std::hash<Type>()(key[i]));
+      hash_value = detail::hash_combine(hash_value, std::hash<Type>()(key[i]));
     }
     return hash_value;
   }

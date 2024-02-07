@@ -76,7 +76,7 @@ pir::Operation* InsertSliceOperationForTarget(
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str) {
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       vec_str.begin(),
       vec_str.end(),
       [&os](std::string s) { os << s; },

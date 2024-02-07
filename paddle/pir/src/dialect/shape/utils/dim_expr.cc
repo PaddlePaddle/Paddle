@@ -200,35 +200,35 @@ std::size_t GetHashValueImpl(const Negative<DimExpr>& dim_expr) {
 }
 
 std::size_t GetHashValueImpl(const Reciprocal<DimExpr>& dim_expr) {
-  return pir::hash_combine(1, -GetHashValue(dim_expr->data));
+  return pir::detail::hash_combine(1, -GetHashValue(dim_expr->data));
 }
 
 std::size_t GetHashValueImpl(const List<DimExpr>& exprs) {
   std::size_t ret = 0;
   for (const auto& expr : *exprs) {
-    ret = pir::hash_combine(ret, GetHashValue(expr));
+    ret = pir::detail::hash_combine(ret, GetHashValue(expr));
   }
   return ret;
 }
 
 std::size_t GetHashValueImpl(const Add<DimExpr>& dim_expr) {
-  return pir::hash_combine(1, GetHashValueImpl(dim_expr.operands));
+  return pir::detail::hash_combine(1, GetHashValueImpl(dim_expr.operands));
 }
 
 std::size_t GetHashValueImpl(const Mul<DimExpr>& dim_expr) {
-  return pir::hash_combine(2, GetHashValueImpl(dim_expr.operands));
+  return pir::detail::hash_combine(2, GetHashValueImpl(dim_expr.operands));
 }
 
 std::size_t GetHashValueImpl(const Max<DimExpr>& dim_expr) {
-  return pir::hash_combine(3, GetHashValueImpl(dim_expr.operands));
+  return pir::detail::hash_combine(3, GetHashValueImpl(dim_expr.operands));
 }
 
 std::size_t GetHashValueImpl(const Min<DimExpr>& dim_expr) {
-  return pir::hash_combine(4, GetHashValueImpl(dim_expr.operands));
+  return pir::detail::hash_combine(4, GetHashValueImpl(dim_expr.operands));
 }
 
 std::size_t GetHashValueImpl(const Broadcast<DimExpr>& dim_expr) {
-  return pir::hash_combine(5, GetHashValueImpl(dim_expr.operands));
+  return pir::detail::hash_combine(5, GetHashValueImpl(dim_expr.operands));
 }
 
 }  // namespace

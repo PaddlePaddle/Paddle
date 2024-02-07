@@ -19,10 +19,10 @@
 
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_instrumentation.h"
 #include "paddle/pir/include/pass/pass_manager.h"
-#include "paddle/pir/include/pass/utils.h"
 
 namespace pir {
 

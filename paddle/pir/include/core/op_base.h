@@ -147,10 +147,12 @@ class Op : public OpBase {
   using OpBase::OpBase;
 
   using TraitList =
-      typename Filter<OpTraitBase, std::tuple<TraitOrInterface...>>::Type;
+      typename detail::Filter<OpTraitBase,
+                              std::tuple<TraitOrInterface...>>::Type;
 
   using InterfaceList =
-      typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
+      typename detail::Filter<OpInterfaceBase,
+                              std::tuple<TraitOrInterface...>>::Type;
 
   // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {

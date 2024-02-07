@@ -119,7 +119,8 @@ struct ArrayAttributeStorage : public AttributeStorage {
   static std::size_t HashValue(const ParamKey &key) {
     std::size_t hash_value = 0;
     for (size_t i = 0; i < key.size(); ++i) {
-      hash_value = hash_combine(hash_value, std::hash<Attribute>()(key[i]));
+      hash_value =
+          detail::hash_combine(hash_value, std::hash<Attribute>()(key[i]));
     }
     return hash_value;
   }

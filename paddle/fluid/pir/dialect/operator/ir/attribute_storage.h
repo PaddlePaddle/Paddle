@@ -35,10 +35,11 @@ struct IntArrayAttributeStorage : public pir::AttributeStorage {
 
   static std::size_t HashValue(const ParamKey &key) {
     size_t hash_value = 0;
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<bool>()(key.FromTensor()));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<bool>()(key.FromTensor()));
     for (auto value : key.GetData()) {
-      hash_value = pir::hash_combine(hash_value, std::hash<int64_t>()(value));
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<int64_t>()(value));
     }
     return hash_value;
   }

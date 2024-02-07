@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/type_util.h"
 #include <algorithm>
+#include "paddle/pir/include/core/type_utils.h"
 
 namespace pir {
 

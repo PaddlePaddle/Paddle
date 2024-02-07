@@ -357,14 +357,14 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   printer.PrintValue(cond());
   os << ", inputs=";
   auto operands = (*this)->operands_source();
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
   os << ") { \n";
   os << printer.indentation() << "^";
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },

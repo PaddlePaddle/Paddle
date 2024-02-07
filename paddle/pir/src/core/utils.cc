@@ -15,6 +15,8 @@
 #include "paddle/pir/include/core/utils.h"
 
 namespace pir {
+namespace detail {
+
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
   return lhs;
@@ -56,4 +58,13 @@ void aligned_free(void *mem_ptr) {
 #endif
 }
 
+void PrintHeader(const std::string &header, std::ostream &os) {
+  const size_t padding = 8;
+  size_t line_len = header.size() + ((padding - 3) * 2);
+  os << "===" << std::string(line_len, '-') << "===\n";
+  os << std::string(padding, ' ') << header << "\n";
+  os << "===" << std::string(line_len, '-') << "===\n";
+}
+
+}  // namespace detail
 }  // namespace pir

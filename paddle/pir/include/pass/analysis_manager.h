@@ -24,8 +24,8 @@
 #include "paddle/pir/include/core/cast_utils.h"
 #include "paddle/pir/include/core/type_id.h"
 #include "paddle/pir/include/core/type_name.h"
+#include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/pass/pass_instrumentation.h"
-#include "paddle/pir/include/pass/utils.h"
 
 namespace pir {
 

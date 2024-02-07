@@ -17,16 +17,17 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <ostream>
+#include <string>
 #include <tuple>
 #include <type_traits>
 
-#include "paddle/pir/include/core/dll_decl.h"
-
 namespace pir {
+namespace detail {
 ///
 /// \brief Equivalent to boost::hash_combine.
 ///
-IR_API std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
+std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
 
 ///
 /// \brief Aligned malloc and free functions.
@@ -136,4 +137,31 @@ void PrintInterleave(ForwardIterator begin,
   }
 }
 
+template <typename... Ts>
+struct make_void {
+  typedef void type;
+};
+
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+template <class, template <class...> class Op, class... Args>
+struct detector {
+  using value_t = std::false_type;
+};
+
+template <template <class...> class Op, class... Args>
+struct detector<void_t<Op<Args...>>, Op, Args...> {
+  using value_t = std::true_type;
+};
+
+template <template <class...> class Op, class... Args>
+using is_detected = typename detector<void, Op, Args...>::value_t;
+
+// Print content as follows.
+// ===-------------------------------------------------------------------------===
+//                                     header
+// ===-------------------------------------------------------------------------===
+void PrintHeader(const std::string &header, std::ostream &os);
+
+}  // namespace detail
 }  // namespace pir

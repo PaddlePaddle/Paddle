@@ -75,7 +75,8 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   size_t base_size = result_mem_size + op_mem_size + operand_mem_size +
                      region_mem_size + block_operand_size;
   // 2. Malloc memory.
-  char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+  char *base_ptr =
+      reinterpret_cast<char *>(detail::aligned_malloc(base_size, 8));
 
   auto name = op_info ? op_info.name() : "";
   VLOG(10) << "Create Operation [" << name
@@ -227,7 +228,7 @@ void Operation::Destroy() {
 
   VLOG(10) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
            << ", size = " << result_mem_size << "} done.";
-  aligned_free(aligned_ptr);
+  detail::aligned_free(aligned_ptr);
 }
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }

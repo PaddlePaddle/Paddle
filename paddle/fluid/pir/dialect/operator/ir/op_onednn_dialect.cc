@@ -100,7 +100,7 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
     os << "IntArray)"
        << "[";
     const auto &inner_data = data.GetData();
-    pir::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_data.begin(),
         inner_data.end(),
         [&os](int64_t i) { os << i; },

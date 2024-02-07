@@ -14,7 +14,7 @@
 
 #include "paddle/pir/include/core/op_trait.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/include/core/type_util.h"
+#include "paddle/pir/include/core/type_utils.h"
 
 namespace {
 
