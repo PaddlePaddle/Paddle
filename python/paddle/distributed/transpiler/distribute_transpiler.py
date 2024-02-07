@@ -2265,7 +2265,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
         Args:
-            program (ProgramDesc): ProgramDesc which gradients blong.
+            program (ProgramDesc): ProgramDesc which gradients belong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
@@ -2329,7 +2329,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     dtype=orig_var.dtype,
                     type=orig_var.type,
                     shape=splited_shape,
-                )  # flattend split var
+                )  # flatten split var
                 var_mapping[varname].append(var)
             program.global_block()._sync_with_cpp()
         return var_mapping

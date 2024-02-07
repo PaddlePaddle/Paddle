@@ -41,6 +41,7 @@ select = [
     # NumPy-specific rules
     "NPY001",
     "NPY003",
+    "NPY201",
 
     # Bugbear
     "B002",

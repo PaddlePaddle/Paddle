@@ -104,6 +104,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                                      bool apply_op_schedule,
                                                      bool apply_group_schedule,
                                                      bool apply_pass) {
+  VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   auto& ops = group->ops;
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -419,6 +420,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
+  // collect all output tensor.
   for (auto opresult : group->GetGroupOutputValues()) {
     if (tensor_map.count(opresult) == 0) {
       continue;
@@ -427,7 +429,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     if (arg_name_set.count(tensor->buffer->name) != 0) {
       continue;
     }
-
     group->output_values.push_back(opresult);
     // output arg tensors
     group_func_arg_tensors->push_back(tensor);

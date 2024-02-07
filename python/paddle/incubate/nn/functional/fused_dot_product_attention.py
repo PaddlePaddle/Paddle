@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode
@@ -26,6 +28,7 @@ def fused_dot_product_attention(
     dropout_prob,
     is_training,
     is_causal_masking,
+    use_workspace_opt=None,
     return_softmax=False,
 ):
     r"""
@@ -41,6 +44,9 @@ def fused_dot_product_attention(
         dropout_prob (float): The dropout probability.
         is_training (bool): A flag indicating whether it is in train phrase or not.
         is_causal_masking (bool): A flag indicating whether it is causal masking or not. If True, the mask will be ignored.
+        use_workspace_opt (bool, optional): A flag indicating whether to use workspace optimization or not.
+            Default: None. When set to None, the code path will be decided based on its internal logic.
+            Currently, it's only supported on Hopper GPU and will be ignored on other devices.
         return_softmax (bool, optional): A flag indicating whether to return softmax_output or not. Default: False.
 
 
@@ -68,6 +74,11 @@ def fused_dot_product_attention(
             mask.shape == mask_shape
         ), "mask shape must be [batch_size, 1, q_seqlen, k_seqlen]"
         mask = mask.astype('int32')
+
+    if use_workspace_opt is False:
+        os.environ['CUDNN_FUSE_ATTN_USE_WORKSPACE_OPT'] = '0'
+    elif use_workspace_opt is True:
+        os.environ['CUDNN_FUSE_ATTN_USE_WORKSPACE_OPT'] = '1'
 
     if in_dynamic_mode():
         out, softmax, _ = _C_ops.fused_dot_product_attention(

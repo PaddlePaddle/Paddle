@@ -208,8 +208,9 @@ if(NOT WIN32)
       utf8proc
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
-    set(DEPS ${DEPS}
-             ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(DEPS
+        ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${PADDLE_LIB}/paddle/lib/libcommon${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 else()
   set(DEPS

@@ -19,11 +19,11 @@
 #include <vector>
 
 #include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/hash_funcs.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_int32(search_cache_max_number);
+COMMON_DECLARE_int32(search_cache_max_number);
 
 namespace phi {
 namespace autotune {

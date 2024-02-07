@@ -327,7 +327,7 @@ def resnet_basic_block(
 class ResNetBasicBlock(Layer):
     r"""
 
-    ResNetBasicBlock is designed for optimize the performence of the basic unit of ssd resnet block.
+    ResNetBasicBlock is designed for optimize the performance of the basic unit of ssd resnet block.
     If has_shortcut = True, it can calculate 3 Conv2D, 3 BatchNorm and 2 ReLU in one time.
     If has_shortcut = False, it can calculate 2 Conv2D, 2 BatchNorm and 2 ReLU in one time. In this
     case the shape of output is same with input.

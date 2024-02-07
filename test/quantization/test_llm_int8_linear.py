@@ -21,13 +21,11 @@ import paddle
 import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
-paddle.seed(123)
-default_main_program().random_seed = 42
+paddle.seed(42)
 
 
 @unittest.skipIf(

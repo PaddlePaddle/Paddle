@@ -19,12 +19,12 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -36,7 +36,7 @@ namespace platform = paddle::platform;
 namespace framework = paddle::framework;
 namespace memory = paddle::memory;
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {

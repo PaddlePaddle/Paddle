@@ -650,8 +650,8 @@ class TestAddApi(unittest.TestCase):
         with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = base.dygraph.to_variable(np_x)
-            y = base.dygraph.to_variable(np_y)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])
@@ -776,7 +776,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
         with paddle.pir_utils.IrGuard():
             a = 1.5
             b = paddle.full([4, 5, 6], True, dtype='bool')
@@ -789,7 +789,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([2], True, dtype='bool')
         # special case: scalar + tensor(bool)
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
         np_a = np.random.random((2, 3, 4)).astype(np.float64)
         np_b = np.random.random((2, 3, 4)).astype(np.float64)
@@ -843,7 +843,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float32')
         b = np.array([1.5], dtype='float32')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(c.dtype == paddle.float32)
 
     def test_float16_add(self):
         if not core.is_compiled_with_cuda():
@@ -852,7 +852,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
         b = np.array([1.5], dtype='float16')[0]
         c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP16)
+        self.assertTrue(c.dtype == paddle.float16)
 
 
 class TestTensorAddAPIWarnings(unittest.TestCase):
