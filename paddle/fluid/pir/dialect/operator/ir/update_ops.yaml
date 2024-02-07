@@ -15,6 +15,7 @@
     data_type : dtype
     backend : place
   support_tensor : [start, end, step]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_mask
   args: (Tensor x, Scalar(int) max_len, DataType out_dtype)

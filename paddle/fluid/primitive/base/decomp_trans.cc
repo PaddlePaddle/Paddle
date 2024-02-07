@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -21,7 +22,7 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_skip_dynamic);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -179,6 +180,7 @@ void DecompProgram::check_decomp_outputs(
         VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
+
       for (int j = 0; j < orig_dim.size(); j++) {
         if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
           PADDLE_ENFORCE(
@@ -303,12 +305,34 @@ void DecompProgram::decomp_program() {
   }
   std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
+  decomp_block(block, orig_vars_dict, tar_vars);
+  std::ostringstream decomp_prog_stream;
+  program_->Print(decomp_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
+  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
+  dst_vars_ = tar_vars;
+  return;
+}
+
+void DecompProgram::decomp_block(
+    pir::Block* block,
+    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+    std::vector<pir::Value>& tar_vars) {  // NOLINT
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
+    if (op->name() == "pd_op.if") {
+      auto& sub_true_block = op->dyn_cast<dialect::IfOp>().true_block();
+      auto& sub_false_block = op->dyn_cast<dialect::IfOp>().false_block();
+      decomp_block(&sub_true_block, orig_vars_dict, tar_vars);
+      decomp_block(&sub_false_block, orig_vars_dict, tar_vars);
+    } else if (op->name() == "pd_op.while") {
+      auto& sub_body = op->dyn_cast<dialect::WhileOp>().body();
+      decomp_block(&sub_body, orig_vars_dict, tar_vars);
+    }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
@@ -354,12 +378,6 @@ void DecompProgram::decomp_program() {
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
   builder.SetInsertionPointToBlockEnd(block);
-  std::ostringstream decomp_prog_stream;
-  program_->Print(decomp_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
-  dst_vars_ = tar_vars;
-  return;
 }
 
 }  // namespace paddle

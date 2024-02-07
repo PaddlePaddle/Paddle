@@ -1134,7 +1134,7 @@ class PartialProgramLayer:
                             "\n\tBut we found parameter(%s) was created in the decorated function."
                             "\n"
                             "\n\tRevise suggestion: "
-                            "\n\t\t1. Please ensure all your sublayers are inheritted from nn.Layer."
+                            "\n\t\t1. Please ensure all your sublayers are inherited from nn.Layer."
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name
                         )

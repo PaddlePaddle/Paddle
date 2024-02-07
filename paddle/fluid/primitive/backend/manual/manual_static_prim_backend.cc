@@ -49,33 +49,10 @@ Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
 }
 
 template <>
-Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
-                                    const Tensor& value,
-                                    DataType dtype) {
-  pir::Value shape_res =
-      std::static_pointer_cast<LazyTensor>(shape.impl())->value();
-  pir::Value value_res =
-      std::static_pointer_cast<LazyTensor>(value.impl())->value();
-  auto op_res = paddle::dialect::full_with_tensor(shape_res, value_res, dtype);
-  Tensor out(std::make_shared<LazyTensor>(op_res));
-  return out;
-}
-
-template <>
 Tensor reshape_with_tensor<LazyTensor>(const Tensor& x, const Tensor& shape) {
   pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
   pir::Value shape_res =
       std::static_pointer_cast<LazyTensor>(shape.impl())->value();
-  auto op_res = paddle::dialect::reshape(x_res, shape_res);
-  Tensor out(std::make_shared<LazyTensor>(op_res));
-  return out;
-}
-
-template <>
-Tensor reshape<LazyTensor>(const Tensor& x, const Tensor& shape_) {
-  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
-  pir::Value shape_res =
-      std::static_pointer_cast<LazyTensor>(shape_.impl())->value();
   auto op_res = paddle::dialect::reshape(x_res, shape_res);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
