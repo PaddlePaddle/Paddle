@@ -203,7 +203,20 @@ class CudaEvent {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event_));
 #endif
   }
-  gpuEvent_t GetRawCudaEvent() { return event_; }
+
+  float ElapsedTime(const CudaEvent &other) {
+    float ms = 0.0f;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipEventElapsedTime(&ms, event_, other.GetRawCudaEvent()));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventElapsedTime(&ms, event_, other.GetRawCudaEvent()));
+#endif
+    return ms;
+  }
+
+  gpuEvent_t GetRawCudaEvent() const { return event_; }
 
  private:
 #ifdef PADDLE_WITH_HIP

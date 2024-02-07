@@ -212,6 +212,13 @@ class PipelineParallel(MetaParallelBase):
             self._dp_comm_overlap or self._sharding_comm_overlap
         )
 
+        self.overlap_comm_timer_enabled = (
+            self._dp_comm_overlap and self._hcg.data_parallel_timer_enabled()
+        ) or (
+            self._sharding_comm_group
+            and self._hcg.sharding_parallel_timer_enabled()
+        )
+
         if self._enable_timer:
             if not timer.is_timer_initialized():
                 timer.set_timers()
@@ -857,7 +864,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     sync_step // self.num_stages
                 )
                 for buffer in self._chunk_2_comm_buffers[chunk_idx]:
-                    buffer.comm_grads()
+                    with self._hcg.record_event_with_tag(
+                        enable_timer=self.overlap_comm_timer_enabled,
+                        tag="Pipeline_overlap_comm",
+                        group=buffer._comm_group,
+                        tensor=buffer.grad_storage,
+                        use_calc_stream=False,
+                    ):
+                        buffer.comm_grads()
 
             if self.stage_id != 0:
                 if (
@@ -865,7 +879,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     == self.num_stages * self.num_model_chunks
                 ):
                     for buffer in self._chunk_2_comm_buffers[0]:
-                        buffer.comm_grads()
+                        with self._hcg.record_event_with_tag(
+                            enable_timer=self.overlap_comm_timer_enabled,
+                            tag="Pipeline_overlap_comm",
+                            group=buffer._comm_group,
+                            tensor=buffer.grad_storage,
+                            use_calc_stream=False,
+                        ):
+                            buffer.comm_grads()
 
     def _sync_overlap_grads(self):
         if self._comm_overlap:

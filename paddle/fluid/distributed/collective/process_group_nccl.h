@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 
@@ -90,6 +91,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   phi::DeviceContext* GetDeviceContext(const Place& place,
                                        bool use_calc_stream) const override;
+
+  phi::CUDAStream* GetCUDAStreamOnCalcCtx(const Place& place) const;
+
+  phi::CUDAStream* GetCUDAStreamOnCommCtx(const Place& place) const;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,

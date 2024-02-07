@@ -222,7 +222,14 @@ class DygraphShardingOptimizer:
         @paddle.autograd.no_grad()
         def fused_allreduce(*_):
             # Directly add gradient to the buffer
-            buffer.add_grad(param, use_comm=use_comm)
+            with self._hcg.record_event_with_tag(
+                enable_timer=self._hcg.sharding_parallel_timer_enabled(),
+                tag="ShardingV1_overlap_comm",
+                group=buffer._comm_group,
+                tensor=buffer.grad_storage,
+                use_calc_stream=False,
+            ):
+                buffer.add_grad(param, use_comm=use_comm)
 
         return fused_allreduce
 
@@ -313,7 +320,14 @@ class DygraphShardingOptimizer:
 
         if self._use_fuse_gradients:
             for buffer in self.comm_buffers:
-                buffer._comm_grads()
+                with self._hcg.record_event_with_tag(
+                    enable_timer=self._hcg.sharding_parallel_timer_enabled(),
+                    tag="ShardingV1_comm",
+                    group=buffer._comm_group,
+                    tensor=buffer.grad_storage,
+                    use_calc_stream=False,
+                ):
+                    buffer._comm_grads()
                 buffer.scale_and_split_grads()
             return
 
@@ -635,7 +649,14 @@ class DygraphShardingOptimizerV2:
         @paddle.autograd.no_grad()
         def fused_allreduce(*_):
             # Directly add gradient to the buffer
-            buffer.add_grad(param, use_comm=use_comm)
+            with self._hcg.record_event_with_tag(
+                enable_timer=self._hcg.sharding_parallel_timer_enabled(),
+                tag="ShardingV2_overlap_comm",
+                group=buffer._comm_group,
+                tensor=buffer.grad_storage,
+                use_calc_stream=False,
+            ):
+                buffer.add_grad(param, use_comm=use_comm)
 
         return fused_allreduce
 
@@ -698,7 +719,14 @@ class DygraphShardingOptimizerV2:
                         buffer._copy_grad_to_buffer(param)
 
                 if not self.comm_overlap:
-                    buffer._comm_grads()
+                    with self._hcg.record_event_with_tag(
+                        enable_timer=self._hcg.sharding_parallel_timer_enabled(),
+                        tag="ShardingV2_comm",
+                        group=buffer._comm_group,
+                        tensor=buffer.grad_storage,
+                        use_calc_stream=False,
+                    ):
+                        buffer._comm_grads()
 
                 buffer.scale_and_split_grads()
 

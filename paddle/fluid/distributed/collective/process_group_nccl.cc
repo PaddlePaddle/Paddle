@@ -148,6 +148,26 @@ void ProcessGroupNCCL::GroupEnd() {
   }
 }
 
+phi::CUDAStream* ProcessGroupNCCL::GetCUDAStreamOnCalcCtx(
+    const Place& place) const {
+  const auto& iter = place_to_calc_ctx_.find(GetKeyFromPlace(place));
+  if (iter != place_to_calc_ctx_.end()) {
+    return iter->second->cuda_stream();
+  } else {
+    return nullptr;
+  }
+}
+
+phi::CUDAStream* ProcessGroupNCCL::GetCUDAStreamOnCommCtx(
+    const Place& place) const {
+  const auto& iter = place_to_comm_ctx_.find(GetKeyFromPlace(place));
+  if (iter != place_to_comm_ctx_.end()) {
+    return iter->second.get()->cuda_stream();
+  } else {
+    return nullptr;
+  }
+}
+
 phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
