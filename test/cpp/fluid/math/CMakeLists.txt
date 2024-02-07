@@ -1,18 +1,8 @@
-paddle_test(
-  selected_rows_functor_test
-  SRCS selected_rows_functor_test.cc
-  DEPS common)
-paddle_test(
-  im2col_test
-  SRCS im2col_test.cc
-  DEPS common)
-paddle_test(
-  vol2col_test
-  SRCS vol2col_test.cc
-  DEPS common)
-paddle_test(
-  beam_search_test
-  SRCS beam_search_test.cc)
+paddle_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS
+            common)
+paddle_test(im2col_test SRCS im2col_test.cc DEPS common)
+paddle_test(vol2col_test SRCS vol2col_test.cc DEPS common)
+paddle_test(beam_search_test SRCS beam_search_test.cc)
 if(WITH_GPU)
   nv_test(
     selected_rows_functor_gpu_test
@@ -25,9 +15,7 @@ if(WITH_ROCM)
     SRCS selected_rows_functor_test.cu.cc
     DEPS phi common)
 endif()
-paddle_test(
-  concat_test
-  SRCS concat_test.cc)
+paddle_test(concat_test SRCS concat_test.cc)
 
 if(WITH_TESTING AND TEST im2col_test)
   set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
