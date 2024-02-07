@@ -1055,6 +1055,52 @@ __global__ void cache_kernel(
   }
 }
 
+template <typename T>
+__global__ void write_cache_to_unpadding_kv_kernel(
+    const T *__restrict__ unpadding_k,    // [cur_num_tokens, num_heads, head_size]
+    const T *__restrict__ unpadding_v,    // [cur_num_tokens, num_heads, head_size]
+    const T *__restrict__ key_cache,    // [1, max_seq_len, num_head, dim_head] 
+    const T *__restrict__ value_cache,  // [1, max_seq_len, num_head, dim_head] 
+    T *__restrict__ unpadding_k_after_cache,  
+    T *__restrict__ unpadding_v_after_cache,  
+    // const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int token_num_in_cache,     // [bsz]
+    const int cur_num_tokens_k,
+    const int num_heads,
+    const int head_size) {
+
+  // using LoadT = phi::AlignedVector<T, VecSize>;
+  // LoadT src_vec;
+  
+  int64_t idx = threadIdx.x;
+  // int64_t global_thread_idx = blockDim.x * blockIdx.x+ threadIdx.x;
+  const int64_t hidden_size = num_heads * head_size;
+  const int64_t offset = cur_num_tokens_k * hidden_size;
+  const int64_t cur_hidden_size = token_num_in_cache * hidden_size;
+
+  if (idx <= cur_hidden_size) {
+    unpadding_k_after_cache[idx] = key_cache[idx];
+    unpadding_v_after_cache[idx] = value_cache[idx];
+  }
+
+  if (idx <= offset) {
+    unpadding_k_after_cache[cur_hidden_size + idx] = unpadding_k[idx];
+    // key_cache[cur_hidden_size + global_thread_idx + 1] = unpadding_k[idx + 1];
+
+    unpadding_v_after_cache[cur_hidden_size + idx] = unpadding_v[idx];
+    // value_cache[cur_hidden_size + global_thread_idx + 1] = unpadding_v[idx + 1];
+  }
+  // for (int32_t linear_index = global_thread_idx * VecSize,
+  //             step = gridDim.x * blockDim.x * VecSize;
+  //     linear_index < elem_cnt;
+  //     linear_index += step) {
+  //   int32_t bias = linear_index % offset;
+  //   int32_t token_idx = linear_index / offset;
+  //   int64_t tgt_idx = 0;
+  // }
+
+}
+
 template <typename T, int VecSize = 1>
 __global__ void write_pre_cache_int8_to_cache(
     uint8_t *__restrict__ key_cache,  // [num_blocks, num_heads, block_size,
@@ -1327,6 +1373,47 @@ void CacheKernel(
               elem_nums);
     }
   }
+}
+
+// overload for speculative decoding
+// 把 key_cache 和 value_cache 中的前 cur_token_num 个 token 拼接到 unpadding_k 和 unpadding_v 前面最后给到 unpadding_k_after_cache 和 unpadding_v_after_cache
+template <typename T>
+void CacheKernel(
+    const phi::GPUContext &dev_ctx,
+    const phi::DenseTensor &unpadding_k,  // [cur_token_num, num_head, dim_head]
+    const phi::DenseTensor &unpadding_v,  // [cur_token_num, num_head, head_dim]
+    const phi::DenseTensor &key_cache, // [bsz(1), max_seq_len, num_head, dim_head](has been transposed.) 
+    const phi::DenseTensor &value_cache,
+    phi::DenseTensor &unpadding_k_after_cache,
+    phi::DenseTensor &unpadding_v_after_cache,
+    const int token_num_in_cache, // cache 中当前非初始化的 token 的数量
+    const int batch_size,
+    const int num_tokens,
+    const int num_heads,
+    const int head_size) {
+  typedef PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
+
+  // stage 1: write qkv to cache [pre_cache_length:]
+  int elem_nums = batch_size * num_heads * head_size;  // just k and v
+  constexpr int PackSize = 16 / sizeof(T);
+  int pack_num = elem_nums / PackSize;
+  const int blocksize = 128;
+  int grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+
+  write_cache_to_unpadding_kv_kernel<DataType_><<<1, elem_nums, 0, dev_ctx.stream()>>>(
+    reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_k.data<T>())),
+    reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_v.data<T>())),
+    reinterpret_cast<DataType_ *>(const_cast<T*>(key_cache.data<T>())),
+    reinterpret_cast<DataType_ *>(const_cast<T*>(value_cache.data<T>())),
+    reinterpret_cast<DataType_ *>(unpadding_k_after_cache.data<T>()),
+    reinterpret_cast<DataType_ *>(unpadding_v_after_cache.data<T>()),
+    token_num_in_cache,
+    num_tokens,
+    num_heads,
+    head_size
+  );
 }
 
 template <typename T, int VecSize>
@@ -2720,19 +2807,7 @@ __global__ void GetMaxLenKernel(const int *seq_lens,
 int GetMaxLen(const phi::GPUContext &dev_ctx,
               const phi::DenseTensor &seq_lens_tensor,
               phi::DenseTensor *max_len_tensor,
-              const int batch_size) {
-  constexpr int blockSize = 128;
-  int max_len_cpu = 0;
-  GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
-      seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
-                     &max_len_cpu,
-                     dev_ctx.GetPlace(),
-                     max_len_tensor->data<int>(),
-                     sizeof(int),
-                     dev_ctx.stream());
-  return max_len_cpu;
-}
+              const int batch_size);
 
 template <typename T, int VecSize>
 __global__ void InitOutValueKernel(T *output_data,

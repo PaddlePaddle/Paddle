@@ -458,7 +458,6 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             self.cu_seqlens_q,
             self.cu_seqlens_k,
         ) = get_padding_offset(self.batch_size, 1, self.seq_lens_this_time)
-
         out_ = (
             naive_attention_impl(
                 q,
@@ -474,7 +473,7 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             .transpose([0, 2, 1, 3])
             .reshape([self.batch_size, -1])
         )
-        out = block_multihead_attention(
+        out, _, cache_k_out, cache_v_out = block_multihead_attention(
             qkv,
             self.cache_k,
             self.cache_v,
@@ -502,13 +501,26 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             1,  # seq_len,
             self.blocksize,
             False,  # use_neox_rotary_style
-        )[0]
+        )
         # NOTE: The diff of decoder is a little big
         np.testing.assert_allclose(
             out.numpy(),
             out_.numpy(),
             rtol=5e-02,
             atol=5e-02,
+        )
+        print("-----------cache_k_out's shape: ", cache_k_out.shape)
+        np.testing.assert_allclose(
+            cache_k_out.numpy(),
+            self.cache_k.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
+        )
+        np.testing.assert_allclose(
+            cache_v_out.numpy(),
+            self.cache_v.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
         )
 
 
