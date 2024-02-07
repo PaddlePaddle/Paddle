@@ -26,8 +26,7 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 
-TEST_API paddle::Tensor cast_ad_func(const paddle::Tensor& x,
-                                     phi::DataType dtype) {
+paddle::Tensor cast_ad_func(const paddle::Tensor& x, phi::DataType dtype) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "cast";
@@ -186,8 +185,8 @@ TEST_API paddle::Tensor cast_ad_func(const paddle::Tensor& x,
   return out;
 }
 
-TEST_API paddle::Tensor& cast__ad_func(paddle::Tensor& x,  // NOLINT
-                                       phi::DataType dtype) {
+paddle::Tensor& cast__ad_func(paddle::Tensor& x,  // NOLINT
+                              phi::DataType dtype) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "cast_";
@@ -339,9 +338,9 @@ TEST_API paddle::Tensor& cast__ad_func(paddle::Tensor& x,  // NOLINT
 }
 
 namespace sparse {
-TEST_API paddle::Tensor cast_ad_func(const paddle::Tensor& x,
-                                     phi::DataType index_dtype,
-                                     phi::DataType value_dtype) {
+paddle::Tensor cast_ad_func(const paddle::Tensor& x,
+                            phi::DataType index_dtype,
+                            phi::DataType value_dtype) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "cast";
