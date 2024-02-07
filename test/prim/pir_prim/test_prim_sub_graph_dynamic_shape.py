@@ -60,7 +60,7 @@ def embedding_net(x):
     w = paddle.to_tensor(w)
     return F.embedding(x, w, padding_idx=1)
 
-  
+
 def full_like_net(x):
     return paddle.full_like(x, 1)
 
