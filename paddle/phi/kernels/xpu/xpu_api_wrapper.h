@@ -399,6 +399,8 @@ DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t)
 DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t)
 DECLEAR_UNSUPPORTED_XPU_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t)
 
+#ifdef PADDLE_WITH_XPU_XHPC
+
 template <typename XPUType, typename FCT>
 static void xblas_fc_wrapper(xpu::Context* ctx,
                              const XPUType* x,
@@ -605,6 +607,7 @@ DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, tfloat32, float)
 DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int32_t, float)
 DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeBF16, int16_t, float)
 DECLEAR_UNSUPPORTED_XBLAS_FC_BATCH_WRAPPER(XPUTypeFP16, int32_t, float)
+#endif
 
 template <typename T>
 static void MatMulXPUFunction(
@@ -619,13 +622,7 @@ static void MatMulXPUFunction(
   using XPUType = typename XPUTypeTrait<T>::Type;
   int fccal_type = FCCalcType<XPUType>();
 
-  decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[5] = {
-      &xpu_fc_wrapper<XPUType, int16_t>,
-      &xpu_fc_wrapper<XPUType, int32_t>,
-      &xpu_fc_wrapper<XPUType, float>,
-      &xpu_fc_wrapper<XPUType, int_with_ll_t>,
-      &xpu_fc_wrapper<XPUType, tfloat32>,
-  };
+#ifdef PADDLE_WITH_XPU_XHPC
   decltype(&xblas_fc_wrapper<XPUType, int16_t>) xblas_fc_api_list[6] = {
       &xblas_fc_wrapper<XPUType, int16_t>,
       &xblas_fc_wrapper<XPUType, int32_t>,
@@ -633,13 +630,6 @@ static void MatMulXPUFunction(
       &xblas_fc_wrapper<XPUType, int_with_ll_t>,
       &xblas_fc_wrapper<XPUType, tfloat32>,
       &xblas_fc_wrapper<XPUType, XPUTypeFP16>,
-  };
-  decltype(&xpu_fc_batch_wrapper<XPUType, int16_t>) fc_batch_api_list[5] = {
-      &xpu_fc_batch_wrapper<XPUType, int16_t>,
-      &xpu_fc_batch_wrapper<XPUType, int32_t>,
-      &xpu_fc_batch_wrapper<XPUType, float>,
-      &xpu_fc_batch_wrapper<XPUType, int_with_ll_t>,
-      &xpu_fc_batch_wrapper<XPUType, tfloat32>,
   };
   decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
@@ -651,23 +641,38 @@ static void MatMulXPUFunction(
           &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
       };
 
-  auto fc_api = fc_api_list[fccal_type];
   auto xblas_fc_api = xblas_fc_api_list[fccal_type];
-
-  if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
-    if (is_grad) {
-      fc_api = fc_api_list[2];
-    }
-  }
-
-  auto fc_batch_api = fc_batch_api_list[fccal_type];
   auto xblas_fc_batch_api = xblas_fc_batch_api_list[fccal_type];
-
   if (fccal_type == XPUFCCalcType::FC_FLOAT16 &&
       std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
     xblas_fc_batch_api =
         &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;
   }
+#else
+  decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[5] = {
+      &xpu_fc_wrapper<XPUType, int16_t>,
+      &xpu_fc_wrapper<XPUType, int32_t>,
+      &xpu_fc_wrapper<XPUType, float>,
+      &xpu_fc_wrapper<XPUType, int_with_ll_t>,
+      &xpu_fc_wrapper<XPUType, tfloat32>,
+  };
+
+  decltype(&xpu_fc_batch_wrapper<XPUType, int16_t>) fc_batch_api_list[5] = {
+      &xpu_fc_batch_wrapper<XPUType, int16_t>,
+      &xpu_fc_batch_wrapper<XPUType, int32_t>,
+      &xpu_fc_batch_wrapper<XPUType, float>,
+      &xpu_fc_batch_wrapper<XPUType, int_with_ll_t>,
+      &xpu_fc_batch_wrapper<XPUType, tfloat32>,
+  };
+  auto fc_api = fc_api_list[fccal_type];
+  auto fc_batch_api = fc_batch_api_list[fccal_type];
+  if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
+    if (is_grad) {
+      fc_api = fc_api_list[2];
+    }
+  }
+#endif
+
   int m = fcinfo.m;
   int n = fcinfo.n;
   int k = fcinfo.k;
@@ -686,54 +691,52 @@ static void MatMulXPUFunction(
   const float* scale_y = fcinfo.scale_y;
   int scale_x_mode = fcinfo.scale_x_mode;
   int scale_y_mode = fcinfo.scale_y_mode;
-  auto dev_version =
-      phi::backends::xpu::get_xpu_version(-1);  // get current device version
   if (batch_size <= 1) {
-    if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
-      xblas_fc_api(xpu_ctx,
-                   reinterpret_cast<const XPUType*>(x),
-                   reinterpret_cast<const XPUType*>(y),
-                   reinterpret_cast<XPUType*>(out),
-                   m,
-                   n,
-                   k,
-                   trans_x,
-                   trans_y,
-                   max_x,
-                   max_y,
-                   max_out,
-                   ldx,
-                   ldy,
-                   ldout,
-                   alpha,
-                   0,
-                   bias,
-                   act,
-                   scale_x,
-                   scale_y,
-                   scale_x_mode,
-                   scale_y_mode);
-    } else {
-      fc_api(xpu_ctx,
-             reinterpret_cast<const XPUType*>(x),
-             reinterpret_cast<const XPUType*>(y),
-             reinterpret_cast<XPUType*>(out),
-             m,
-             n,
-             k,
-             trans_x,
-             trans_y,
-             max_x,
-             max_y,
-             max_out,
-             ldx,
-             ldy,
-             ldout,
-             alpha,
-             0,
-             bias,
-             act);
-    }
+#ifdef PADDLE_WITH_XPU_XHPC
+    xblas_fc_api(xpu_ctx,
+                 reinterpret_cast<const XPUType*>(x),
+                 reinterpret_cast<const XPUType*>(y),
+                 reinterpret_cast<XPUType*>(out),
+                 m,
+                 n,
+                 k,
+                 trans_x,
+                 trans_y,
+                 max_x,
+                 max_y,
+                 max_out,
+                 ldx,
+                 ldy,
+                 ldout,
+                 alpha,
+                 0,
+                 bias,
+                 act,
+                 scale_x,
+                 scale_y,
+                 scale_x_mode,
+                 scale_y_mode);
+#else
+    fc_api(xpu_ctx,
+           reinterpret_cast<const XPUType*>(x),
+           reinterpret_cast<const XPUType*>(y),
+           reinterpret_cast<XPUType*>(out),
+           m,
+           n,
+           k,
+           trans_x,
+           trans_y,
+           max_x,
+           max_y,
+           max_out,
+           ldx,
+           ldy,
+           ldout,
+           alpha,
+           0,
+           bias,
+           act);
+#endif
   } else {
     const XPUType* x_data = reinterpret_cast<const XPUType*>(x);
     if (is_x_need_broadcast) {
@@ -749,43 +752,43 @@ static void MatMulXPUFunction(
       x_data = x_broadcast_data;
     }
     // batch matmul
-    if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
-      xblas_fc_batch_api(xpu_ctx,     // Context* ctx,
-                         batch_size,  // int batch_size,
-                         trans_x,     // bool x_trans,
-                         trans_y,     // bool w_trans,
-                         m,           // int m,
-                         n,           // int n,
-                         k,           // int k,
-                         alpha,       // float alpha,
-                         x_data,      // const TX* x,
-                         ldx,         // int stride_a,
-                         reinterpret_cast<const XPUType*>(y),  // const TW* w,
-                         ldy,                                  // int stride_b,
-                         0.0,                                  // float beta,
-                         reinterpret_cast<XPUType*>(out),      // TY* y,
-                         ldout,                                // int stride_c,
-                         max_x,   // const float* x_maxptr,
-                         max_y);  // const float* w_maxptr
-    } else {
-      fc_batch_api(xpu_ctx,                              // Context* ctx,
-                   batch_size,                           // int batch_size,
-                   trans_x,                              // bool x_trans,
-                   trans_y,                              // bool w_trans,
-                   m,                                    // int m,
-                   n,                                    // int n,
-                   k,                                    // int k,
-                   alpha,                                // float alpha,
-                   x_data,                               // const TX* x,
-                   ldx,                                  // int stride_a,
-                   reinterpret_cast<const XPUType*>(y),  // const TW* w,
-                   ldy,                                  // int stride_b,
-                   0.0,                                  // float beta,
-                   reinterpret_cast<XPUType*>(out),      // TY* y,
-                   ldout,                                // int stride_c,
-                   max_x,   // const float* x_maxptr,
-                   max_y);  // const float* w_maxptr
-    }
+#ifdef PADDLE_WITH_XPU_XHPC
+    xblas_fc_batch_api(xpu_ctx,                              // Context* ctx,
+                       batch_size,                           // int batch_size,
+                       trans_x,                              // bool x_trans,
+                       trans_y,                              // bool w_trans,
+                       m,                                    // int m,
+                       n,                                    // int n,
+                       k,                                    // int k,
+                       alpha,                                // float alpha,
+                       x_data,                               // const TX* x,
+                       ldx,                                  // int stride_a,
+                       reinterpret_cast<const XPUType*>(y),  // const TW* w,
+                       ldy,                                  // int stride_b,
+                       0.0,                                  // float beta,
+                       reinterpret_cast<XPUType*>(out),      // TY* y,
+                       ldout,                                // int stride_c,
+                       max_x,   // const float* x_maxptr,
+                       max_y);  // const float* w_maxptr
+#else
+    fc_batch_api(xpu_ctx,                              // Context* ctx,
+                 batch_size,                           // int batch_size,
+                 trans_x,                              // bool x_trans,
+                 trans_y,                              // bool w_trans,
+                 m,                                    // int m,
+                 n,                                    // int n,
+                 k,                                    // int k,
+                 alpha,                                // float alpha,
+                 x_data,                               // const TX* x,
+                 ldx,                                  // int stride_a,
+                 reinterpret_cast<const XPUType*>(y),  // const TW* w,
+                 ldy,                                  // int stride_b,
+                 0.0,                                  // float beta,
+                 reinterpret_cast<XPUType*>(out),      // TY* y,
+                 ldout,                                // int stride_c,
+                 max_x,                                // const float* x_maxptr,
+                 max_y);                               // const float* w_maxptr
+#endif
   }
 }
 
