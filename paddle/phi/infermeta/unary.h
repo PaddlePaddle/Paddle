@@ -439,8 +439,7 @@ void PartialSendInferMeta(const MetaTensor& x,
                           int peer,
                           bool use_calc_stream,
                           int num,
-                          int id,
-                          MetaTensor* out);
+                          int id);
 
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,

@@ -2922,8 +2922,7 @@ void PartialSendInferMeta(const MetaTensor& x,
                           int peer,
                           bool use_calc_stream,
                           int num,
-                          int id,
-                          MetaTensor* out) {
+                          int id) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
@@ -2944,8 +2943,6 @@ void PartialSendInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument(
           "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
-  out->set_dtype(x.dtype());
-  out->set_dims(x.dims());
 }
 
 void PixelShuffleInferMeta(const MetaTensor& x,

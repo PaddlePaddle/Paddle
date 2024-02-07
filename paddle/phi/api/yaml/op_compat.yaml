@@ -3656,8 +3656,6 @@
 - op: partial_send
   inputs :
     x : X
-  outputs :
-    out : Out
 
 - op: read_from_array
   inputs:
