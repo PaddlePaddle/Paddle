@@ -1,12 +1,8 @@
 add_subdirectory(details)
 
-paddle_test(
-  data_type_test
-  SRCS data_type_test.cc)
+paddle_test(data_type_test SRCS data_type_test.cc)
 
-paddle_test(
-  tensor_test
-  SRCS tensor_test.cc)
+paddle_test(tensor_test SRCS tensor_test.cc)
 if(WITH_GPU)
   nv_test(
     tensor_util_test
@@ -18,9 +14,7 @@ elseif(WITH_ROCM)
     SRCS tensor_util_test.cc tensor_util_test.cu
     DEPS tensor dlpack_tensor isfinite_op)
 else()
-  paddle_test(
-    tensor_util_test
-    SRCS tensor_util_test.cc)
+  paddle_test(tensor_util_test SRCS tensor_util_test.cc)
 endif()
 
 cc_test(
