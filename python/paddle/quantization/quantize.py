@@ -28,6 +28,7 @@ from .config import QuantConfig
 class Quantization(metaclass=abc.ABCMeta):
     r"""
     Abstract class used to prepares a copy of the model for quantization calibration or quantization-aware training.
+
     Args:
         config(QuantConfig) - Quantization configuration
     """
@@ -43,10 +44,11 @@ class Quantization(metaclass=abc.ABCMeta):
     def convert(self, model: Layer, inplace=False, remain_weight=False):
         r"""Convert the quantization model to ONNX style. And the converted
         model can be saved as inference model by calling paddle.jit.save.
+
         Args:
-            model(Layer) - The quantized model to be converted.
-            inplace(bool, optional) - Whether to modify the model in-place, default is False.
-            remain_weight(bool, optional) - Whether to remain weights in floats, default is False.
+            model(Layer): The quantized model to be converted.
+            inplace(bool, optional): Whether to modify the model in-place, default is False.
+            remain_weight(bool, optional): Whether to remain weights in floats, default is False.
 
         Return: The converted model
 
