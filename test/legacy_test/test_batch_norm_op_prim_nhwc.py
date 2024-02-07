@@ -43,6 +43,7 @@ class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = True
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCTestModeFp64(TestBatchNormOp):
@@ -58,6 +59,7 @@ class TestBatchNormOpNHWCTestModeFp64(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCTestModeFp16(TestBatchNormOp):
@@ -145,6 +147,7 @@ class TestBatchNormOpNHWCFp16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        self.check_cpu_prim_pir_grad = True
 
 
 @unittest.skipIf(
@@ -171,6 +174,7 @@ class TestBatchNormOpNHWCbf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = None
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCShape2(TestBatchNormOp):

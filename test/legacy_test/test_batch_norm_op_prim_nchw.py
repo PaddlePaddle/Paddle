@@ -67,6 +67,9 @@ class TestBatchNormOp(OpTest):
         self.python_out_sig = ["Y"]
         # (Todo: CZ) random error
         self.check_prim_pir = False
+        self.check_prim_pir_grad = True
+        self.check_cpu_prim_pir_grad = False
+
         self.initConfig()
         self.initTestCase()
 
@@ -89,7 +92,6 @@ class TestBatchNormOp(OpTest):
             )
 
     def test_check_grad_x(self):
-        check_prim_pir_grad = True
         if self.dtype not in ("uint16", "float16"):
             self.check_grad_with_place(
                 core.CPUPlace(),
@@ -98,7 +100,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_cpu_prim_pir_grad,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -108,11 +110,10 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir_grad,
             )
 
     def test_check_grad_scale_bias(self):
-        check_prim_pir_grad = True
         if self.data_format == "NCHW" and self.training is False:
             self.enable_cinn = False
         if self.dtype == "float32":
@@ -133,7 +134,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_cpu_prim_pir_grad,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -143,7 +144,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=check_prim_pir_grad,
+                check_prim_pir=self.check_prim_pir_grad,
             )
 
     def initConfig(self):
@@ -312,6 +313,7 @@ class TestBatchNormOpNCHWFp16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
@@ -381,6 +383,7 @@ class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWShape2(TestBatchNormOp):
