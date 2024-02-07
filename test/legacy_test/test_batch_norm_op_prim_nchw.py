@@ -283,6 +283,7 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.data_format = "NCHW"
         self.use_global_stats = None
         self.check_prim_pir = True
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
@@ -313,7 +314,6 @@ class TestBatchNormOpNCHWFp16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
-        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
@@ -357,6 +357,7 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.use_global_stats = None
         # Todo(CZ): open this
         self.check_prim_pir = False
+        self.check_cpu_prim_pir_grad = True
 
 
 @unittest.skipIf(
@@ -383,7 +384,6 @@ class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NCHW"
         self.use_global_stats = None
-        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWShape2(TestBatchNormOp):
