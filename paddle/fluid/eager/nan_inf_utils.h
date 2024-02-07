@@ -70,7 +70,7 @@ void SetCheckOpList(const std::string& check_op_list);
 
 void SetSkipOpList(const std::string& skip_op_list);
 
-void CheckTensorHasNanOrInf(
+TEST_API void CheckTensorHasNanOrInf(
     const std::string& api_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>& tensors);
@@ -91,8 +91,8 @@ struct NanInfChecker<TupleT, N, N> {
 };
 
 template <typename TupleT>
-void CheckTensorHasNanOrInf(const std::string& api_name,
-                            const TupleT& tensors) {
+TEST_API void CheckTensorHasNanOrInf(const std::string& api_name,
+                                     const TupleT& tensors) {
   constexpr size_t size = std::tuple_size<TupleT>::value;
   NanInfChecker<TupleT, 0, size - 1>()(api_name, tensors);
 }
