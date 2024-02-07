@@ -461,7 +461,12 @@ Tensor full_like_decomp(const Tensor& x,
                         const paddle::Scalar& value,
                         const DataType& dtype,
                         const Place& place) {
-  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  if (find_value(x_dim, -1)) {
+    return backend::full_with_tensor<T>(shape<T>(x), value, x.dtype());
+  } else {
+    return full<T>(x_dim, value, dtype, place);
+  }
 }
 
 template <typename T>

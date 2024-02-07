@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/core/dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -25,12 +26,10 @@ using PassPipelineRunner =
     std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 void PrintProgram(pir::ModuleOp m, std::string mgs) {
-  std::ostringstream print_stream;
-  print_stream << "\n\n";
-  m.program()->Print(print_stream);
-  print_stream << "\n\n";
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(m.program());
   VLOG(3) << "===================== " << mgs << " =====================\n"
-          << print_stream.str();
+          << pir::CustomPrintHelper(*m.program(), shape_analysis.PrintHook());
 }
 
 void DebugPrintOpInfo(

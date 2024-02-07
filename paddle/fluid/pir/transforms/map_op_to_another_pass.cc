@@ -24,6 +24,8 @@ namespace {
 
 class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "DepthWiseConv2d2Conv2dPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &depthwise_conv2d_op =
@@ -58,7 +60,6 @@ class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
     conv2d({&res.Tensor("input"), &res.Tensor("filter")},
            {&res.Tensor("depthwise_conv2d_out")});
   }
-  std::string name() const override { return "DepthWiseConv2d2Conv2dPattern"; }
 };
 
 class MapOpToAnotherPass : public pir::PatternRewritePass {
@@ -67,7 +68,7 @@ class MapOpToAnotherPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(DepthWiseConv2d2Conv2dPattern().Build(context));
+    ps.Add(paddle::drr::Create<DepthWiseConv2d2Conv2dPattern>(context));
     return ps;
   }
 };

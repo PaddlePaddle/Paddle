@@ -193,7 +193,8 @@ class AmpScaler:
                 % (amp_global_state().amp_dtype)
             )
 
-        if not self._enable:
+        # NOTE(lizhiyu): We hack here to avoid changing the `dist_attr` of `self._scale` of 'no-calculation-rank'
+        if not self._enable or not var._is_initialized():
             return var
 
         return var * self._scale
