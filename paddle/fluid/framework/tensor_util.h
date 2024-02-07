@@ -53,12 +53,12 @@ class PrintOptions {
   PrintOptions() {}
 };
 
-TEST_API void TensorToStream(std::ostream& os,
-                             const phi::DenseTensor& tensor,
-                             const platform::DeviceContext& dev_ctx);
-TEST_API void TensorFromStream(std::istream& is,
-                               phi::DenseTensor* tensor,
-                               const platform::DeviceContext& dev_ctx);
+void TensorToStream(std::ostream& os,
+                    const phi::DenseTensor& tensor,
+                    const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is,
+                      phi::DenseTensor* tensor,
+                      const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx,
@@ -107,8 +107,7 @@ void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
 
-TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
-                               phi::DenseTensor* dst);
+void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
 void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 
 //

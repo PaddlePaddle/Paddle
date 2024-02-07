@@ -31,7 +31,7 @@ namespace memory {
  *
  */
 template <typename DstPlace, typename SrcPlace>
-TEST_API void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
+void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
 /**
  * \brief   Copy memory from one place to another place.
