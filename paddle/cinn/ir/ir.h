@@ -962,6 +962,15 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
+struct EmptyNode : public ExprNode<EmptyNode> {
+  static Expr Make();
+
+  void Verify() const override{};
+  std::vector<Expr*> expr_fields() override;
+  std::vector<const Expr*> expr_fields() const override;
+  static const IrNodeTy _node_type_ = IrNodeTy::EmptyNode;
+};
+
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation
 struct ScheduleBlock : public ExprNode<ScheduleBlock> {

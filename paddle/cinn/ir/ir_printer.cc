@@ -47,6 +47,8 @@ void IrPrinter::Print(const std::vector<Expr> &exprs,
   str_ = "";
 }
 
+void IrPrinter::Visit(const EmptyNode *x) { return; }
+
 void IrPrinter::Visit(const IntImm *x) {
   if (x->type().is_int(64)) {
     str_ += std::to_string(x->value);

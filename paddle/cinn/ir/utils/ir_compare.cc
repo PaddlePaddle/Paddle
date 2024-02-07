@@ -142,6 +142,10 @@ NODETY_BINARY_OP_FOR_EACH(BINARY_OP_IMPL)
 #undef UNARY_OP_IMPL
 #undef BINARY_OP_IMPL
 
+bool IrEqualVisitor::Visit(const EmptyNode* lhs, const Expr* other) {
+  return true;
+}
+
 bool IrEqualVisitor::Visit(const Cast* lhs, const Expr* other) {
   auto* rhs = other->As<Cast>();
   return lhs->type() == rhs->type() && Compare(lhs->v(), rhs->v());

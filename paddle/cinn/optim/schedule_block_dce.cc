@@ -27,7 +27,10 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
   void operator()(ir::Expr* expr) {
     FindDeadScheduleBlocks(*expr);
-    Visit(expr);
+    while (!dead_schedule_block_names_.empty()) {
+      Visit(expr);
+      FindDeadScheduleBlocks(*expr);
+    }
   }
 
  private:
@@ -37,9 +40,13 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::Block>();
     CHECK(node);
 
+    for (auto& stmt : node->stmts) {
+      IRMutator::Visit(&stmt, &stmt);
+    }
+
     std::unordered_set<int> need_remove_ids;
     for (int i = 0; i < node->stmts.size(); ++i) {
-      if (IsDeadScheduleBlock(node->stmts[i])) {
+      if (IsDeadScheduleBlock(node->stmts[i]) || IsEmptyStmt(node->stmts[i])) {
         need_remove_ids.insert(i);
       }
     }
@@ -54,10 +61,46 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
         return new_stmts;
       }();
     }
+  }
 
-    for (auto& stmt : node->stmts) {
-      IRMutator::Visit(&stmt, &stmt);
+  void Visit(const ir::IfThenElse* op, Expr* expr) override {
+    auto* node = expr->As<ir::IfThenElse>();
+    CHECK(node);
+    IRMutator::Visit(&node->true_case, &node->true_case);
+    if (node->false_case.defined()) {
+      IRMutator::Visit(&node->false_case, &node->false_case);
     }
+    if (IsEmptyIf(op)) {
+      *expr = ir::EmptyNode::Make();
+    }
+  }
+
+  void Visit(const ir::For* op, Expr* expr) override {
+    auto* node = expr->As<ir::For>();
+    CHECK(node);
+    IRMutator::Visit(&(node->body), &(node->body));
+    if (IsEmptyStmt(op->body)) {
+      *expr = ir::EmptyNode::Make();
+    }
+  }
+
+  bool IsEmptyStmt(const ir::Expr& expr) {
+    if (expr.As<ir::EmptyNode>()) {
+      return true;
+    } else if (const auto* block_node = expr.As<ir::Block>()) {
+      for (const auto& stmt : block_node->stmts) {
+        if (!IsEmptyStmt(stmt)) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool IsEmptyIf(const ir::IfThenElse* node) {
+    if (node->false_case.defined()) {
+      return IsEmptyStmt(node->true_case) && IsEmptyStmt(node->false_case);
+    }
+    return IsEmptyStmt(node->true_case);
   }
 
   bool IsDeadScheduleBlock(const ir::Expr& expr) {
@@ -68,6 +111,7 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
   }
 
   void FindDeadScheduleBlocks(const ir::Expr& expr) {
+    dead_schedule_block_names_.clear();
     std::unordered_set<std::string> load_buffer_names;
     std::unordered_set<std::string> load_tensor_names;
     auto InsertLoadTensorAndBufferNames = [&](const ir::Expr* x) -> bool {

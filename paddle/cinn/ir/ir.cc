@@ -292,6 +292,13 @@ std::vector<const Expr *> Block::expr_fields() const {
   return res;
 }
 
+Expr EmptyNode::Make() {
+  auto node = make_shared<EmptyNode>();
+  return Expr(node);
+}
+std::vector<Expr *> EmptyNode::expr_fields() { return {}; }
+std::vector<const Expr *> EmptyNode::expr_fields() const { return {}; }
+
 Expr ScheduleBlock::Make(const std::vector<Var> &iter_vars,
                          const std::vector<Expr> &read_buffers,
                          const std::vector<Expr> &write_buffers,
