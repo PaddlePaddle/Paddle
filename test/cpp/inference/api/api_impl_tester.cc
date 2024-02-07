@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include <thread>  // NOLINT
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/utils/flags.h"
 #include "test/cpp/inference/test_helper.h"
 
 #ifdef __clang__

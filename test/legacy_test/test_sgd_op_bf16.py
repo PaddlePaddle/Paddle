@@ -23,6 +23,7 @@ from op_test import (
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base
@@ -55,7 +56,9 @@ class TestSGDOpBF16(OpTest):
         self.w = 105
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), check_dygraph=False, check_pir_onednn=True
+        )
 
 
 @unittest.skipIf(
@@ -330,6 +333,7 @@ class TestSGDOpBF16API(unittest.TestCase):
             data = np.random.randint(0, 9, self.ids_shape).astype("int64")
             yield data, label
 
+    @compare_legacy_with_pt
     def test_sgd(self):
         place = base.CPUPlace()
         main = base.Program()

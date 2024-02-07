@@ -14,6 +14,8 @@
 
 #pragma once
 #include <variant>
+#include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
@@ -41,6 +43,11 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
                     pir::OperationArgument &argument,  // NOLINT
                     std::unique_ptr<pir::Block> &&block);
 
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const cinn::dialect::GroupInfo &group_info);
+
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
 
@@ -54,11 +61,16 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types);
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types,
+                    const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
