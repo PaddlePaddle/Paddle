@@ -37,7 +37,7 @@ constexpr char kStartupProgramDescs[] = "startup_program_descs";
 }  // namespace details
 
 namespace ir {
-class TEST_API Graph;
+class Graph;
 
 template <typename PassType>
 struct PassRegistrar;
