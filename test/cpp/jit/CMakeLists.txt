@@ -7,7 +7,6 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND tar zxf multi_program_load_with_property.tar.gz
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
   set(JIT_DEPS
-      phi
       common
       elementwise_add_op
       activation_op
@@ -19,5 +18,5 @@ if(WITH_TESTING AND NOT WIN32)
       fluid_jit
       generated_static_op)
 
-  paddle_test(layer_test SRCS layer_test.cc DEPS ${JIT_DEPS})
+  paddle_test(layer_test SRCS layer_test.cc ${JIT_DEPS})
 endif()
