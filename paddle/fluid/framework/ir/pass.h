@@ -37,7 +37,7 @@ constexpr char kStartupProgramDescs[] = "startup_program_descs";
 }  // namespace details
 
 namespace ir {
-class Graph;
+class TEST_API Graph;
 
 template <typename PassType>
 struct PassRegistrar;
@@ -81,7 +81,7 @@ class Pass {
 
   std::string Type() const { return type_; }
 
-  Graph *Apply(Graph *graph) const;
+  TEST_API Graph *Apply(Graph *graph) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
@@ -238,7 +238,7 @@ class Registrar {
 
 class PassRegistry {
  public:
-  static PassRegistry &Instance();
+  TEST_API static PassRegistry &Instance();
 
   bool Has(const std::string &pass_type) const {
     return map_.find(pass_type) != map_.end();
