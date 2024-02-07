@@ -872,7 +872,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state = State(block)
     if all_stop_gradient_true(block):
         logging.warning(
-            "all op in block stop_grdient is True, no grad will be calculate"
+            "all op in block stop_gradient is True, no grad will be calculate"
         )
         return state.value_to_valuegrad
 
@@ -916,7 +916,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         ValueDict(),
     )
 
-    # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
+    # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
