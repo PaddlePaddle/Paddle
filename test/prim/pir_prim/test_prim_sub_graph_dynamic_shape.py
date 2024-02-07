@@ -120,6 +120,7 @@ class TestPrimOne2(TestPrimOne):
         self.necessary_ops = "pd_op.any"
         self.enable_cinn = False
 
+
 # Todo: open this case.
 # class TestEmbeddingPrimOne3(TestPrimOne):
 #     def setUp(self):
