@@ -21,7 +21,7 @@
 #include "paddle/fluid/pir/drr/pattern_graph.h"
 
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace paddle {
 namespace drr {

@@ -26,10 +26,10 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace paddle {
 namespace dialect {

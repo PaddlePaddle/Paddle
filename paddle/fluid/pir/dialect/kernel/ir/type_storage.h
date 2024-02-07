@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {

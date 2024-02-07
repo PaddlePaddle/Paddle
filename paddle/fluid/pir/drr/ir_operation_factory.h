@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace paddle {
 namespace drr {

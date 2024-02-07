@@ -17,10 +17,10 @@
 #include <type_traits>
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/builtin_type_storage.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/type_base.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_type_storage.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/type_base.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {

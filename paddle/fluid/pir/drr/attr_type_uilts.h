@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace drr {

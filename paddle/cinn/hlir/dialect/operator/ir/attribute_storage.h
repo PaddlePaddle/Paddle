@@ -20,8 +20,8 @@
 #include <vector>
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace dialect {
