@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
@@ -24,12 +26,10 @@ using PassPipelineRunner =
     std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 void PrintProgram(pir::ModuleOp m, std::string mgs) {
-  std::ostringstream print_stream;
-  print_stream << "\n\n";
-  m.program()->Print(print_stream);
-  print_stream << "\n\n";
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(m.program());
   VLOG(3) << "===================== " << mgs << " =====================\n"
-          << print_stream.str();
+          << pir::CustomPrintHelper(*m.program(), shape_analysis.PrintHook());
 }
 
 void DebugPrintOpInfo(
@@ -38,11 +38,12 @@ void DebugPrintOpInfo(
   for (auto& res : op->results()) {
     std::ostringstream print_stream;
 
-    print_stream << "  result(" << res.index() << ") "
+    print_stream << "  result(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
     if (shape_analysis != nullptr) {
       auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
+      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
       print_stream << "shape: [";
 
       for (size_t i = 0; i < shape_data.shape().size(); ++i) {
@@ -89,9 +90,16 @@ void InferSymExprForAllValues(ModuleOp module_op) {
                              &shape_analysis),
                          "InferSymbolicShape for %s failed.",
                          op.name());
+          if (op.num_results() > 0) {
+            // TODO(lanxianghit): deal with the ops which have more than 1
+            // ACTUAL results
+            pir::shape::SetShapeAttrForOp(
+                &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
+          }
         } else {
-          VLOG(3) << op.name()
-                  << " DOES NOT have InferSymbolicShapeInterface!!!!";
+          VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+          PADDLE_THROW(phi::errors::Unimplemented(
+              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
         }
         DebugPrintOpInfo(&op, &shape_analysis);
       }

@@ -68,7 +68,7 @@ class TestErfLayer(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
         y_ref = erf(x)
         with dg.guard(place) as g:
-            x_var = dg.to_variable(x)
+            x_var = paddle.to_tensor(x)
             y_var = paddle.erf(x_var)
             y_test = y_var.numpy()
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)

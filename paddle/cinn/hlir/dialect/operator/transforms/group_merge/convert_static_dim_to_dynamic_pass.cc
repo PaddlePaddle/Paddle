@@ -18,12 +18,12 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/utils/flags.h"
+#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
 
-PD_DECLARE_string(cinn_convert_static_dim_to_dynamic);
+PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);
 
 namespace cinn::dialect::ir {
 
@@ -31,7 +31,7 @@ namespace {
 
 template <typename DoEachT>
 void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
-  const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic;
+  const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic_dim;
   size_t start = 0;
   while (true) {
     size_t end = env_var.find(",", start);
@@ -374,7 +374,8 @@ struct StaticDimToDynamicConverter {
       if (opt_exprs.has_value()) {
         return opt_exprs.value();
       } else {
-        return symbol::ShapeOrDataDimExprs{old};
+        return symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(old)};
       }
     }
     LOG(FATAL) << "Dead code";
@@ -400,7 +401,8 @@ struct StaticDimToDynamicConverter {
     }
 
     if (!converted_once) return std::nullopt;
-    return symbol::ShapeOrDataDimExprs{ret_shape};
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(ret_shape)};
   }
 
   template <typename DoEachT>

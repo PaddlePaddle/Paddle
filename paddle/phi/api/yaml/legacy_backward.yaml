@@ -281,6 +281,17 @@
     data_type : out_grad
   optional : reserve_space
 
+- backward_op : fused_softmax_mask_grad
+  forward : fused_softmax_mask (Tensor x, Tensor mask) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param: [out]
+  kernel :
+    func : fused_softmax_mask_grad
+    data_type : out
+
 - backward_op : fused_softmax_mask_upper_triangle_grad
   forward : fused_softmax_mask_upper_triangle(Tensor X) -> Tensor(Out)
   args: (Tensor Out, Tensor Out_grad)
@@ -854,6 +865,16 @@
   kernel:
     func: check_model_nan_inf
     data_type: out_grad
+
+- backward_op: fused_gemm_epilogue_grad
+  forward : fused_gemm_epilogue(Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation) -> Tensor(out), Tensor(reserve_space)
+  args : (Tensor x, Tensor y, Tensor reserve_space, Tensor out_grad, bool trans_x, bool trans_y, str activation)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(bias_grad)
+  infer_meta :
+    func : FusedGemmEpilogueGradInferMeta
+  kernel:
+    func : fused_gemm_epilogue_grad
+  optional : reserve_space
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

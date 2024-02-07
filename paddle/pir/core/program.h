@@ -40,7 +40,7 @@ class IrContext;
 class IR_API Program {
  public:
   using ParameterMap =
-      std::unordered_map<std::string, std::unique_ptr<Parameter>>;
+      std::unordered_map<std::string, std::shared_ptr<Parameter>>;
   explicit Program(IrContext* context);
   Program(Program&&) = delete;
   Program(const Program& program) = delete;
@@ -60,13 +60,14 @@ class IR_API Program {
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }
 
+  uint32_t num_ops() { return block()->num_ops(); }
   Parameter* GetParameter(const std::string& name) const;
   void SetParameter(const std::string& name,
-                    std::unique_ptr<Parameter>&& parameter);
+                    std::shared_ptr<Parameter> parameter);
 
   ParameterMap& parameters() { return parameters_; }
-  void set_parameters(ParameterMap&& parameters) {
-    parameters_ = std::move(parameters);
+  void set_parameters(const ParameterMap& parameters) {
+    parameters_ = parameters;
   }
 
  private:

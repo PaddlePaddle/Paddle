@@ -15,16 +15,9 @@
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
-
-
-def apply_to_static(fn, use_cinn=True):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        fn, build_strategy=build_strategy, full_graph=True
-    )
 
 
 class TestOpsBase(unittest.TestCase):
@@ -35,6 +28,12 @@ class TestOpsBase(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
+        self.prepare_info()
+
+    def prepare_info(self):
+        self.fn = None
+        self.expected_jit_kernel_number = 1
+        self.expected_jit_kernel_structure = {utils.JIT_KERNEL_NAME: 1}
 
     def prepare_data(self):
         self.shape = [64, 128]
@@ -44,21 +43,38 @@ class TestOpsBase(unittest.TestCase):
         self.y = paddle.randn(self.shape, dtype="float32")
         self.y.stop_gradient = False
 
-
-class TestAddOp(TestOpsBase):
-    def test_eval(self):
-        self.fn = paddle.add
-        cinn_out = apply_to_static(self.fn)(self.x, self.y)
+    def check_eval(self):
+        static_fn = utils.apply_to_static(self.fn, use_cinn=True)
+        cinn_out = static_fn(self.x, self.y)
         dy_out = self.fn(self.x, self.y)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+        utils.check_jit_kernel_number(
+            static_fn, self.expected_jit_kernel_number
+        )
+        utils.check_jit_kernel_structure(
+            static_fn, self.expected_jit_kernel_structure
+        )
+
+
+class TestAddOp(TestOpsBase):
+    def prepare_info(self):
+        self.fn = paddle.add
+        self.expected_jit_kernel_number = 1
+        self.expected_jit_kernel_structure = {utils.JIT_KERNEL_NAME: 1}
+
+    def test_eval(self):
+        self.check_eval()
 
 
 class TestIsCloseOp(TestOpsBase):
-    def test_eval(self):
+    def prepare_info(self):
         self.fn = paddle.isclose
-        cinn_out = apply_to_static(self.fn)(self.x, self.y)
-        dy_out = self.fn(self.x, self.y)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        self.expected_jit_kernel_number = 1
+        self.expected_jit_kernel_structure = {utils.JIT_KERNEL_NAME: 1}
+
+    def test_eval(self):
+        self.check_eval()
 
 
 if __name__ == '__main__':

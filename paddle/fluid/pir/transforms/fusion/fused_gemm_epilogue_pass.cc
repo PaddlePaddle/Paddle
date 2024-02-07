@@ -25,6 +25,8 @@ namespace {
 
 class FusedLinearPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -53,12 +55,12 @@ class FusedLinearPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
   }
-
-  std::string name() const override { return "FusedLinearPattern"; }
 };
 
 class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearGradPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -102,18 +104,18 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("out")});
     fused_gemm_epilogue_grad({&res.Tensor("x"),
                               &res.Tensor("w"),
-                              &res.NoneTensor(),
+                              &res.InputNoneTensor(),
                               &res.Tensor("out_grad")},
                              {&res.Tensor("x_grad"),
                               &res.Tensor("w_grad"),
                               &res.Tensor("bias_grad")});
   }
-
-  std::string name() const override { return "FusedLinearGradPattern"; }
 };
 
 class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearGeluPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     // Source pattern
@@ -144,12 +146,12 @@ class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
-
-  std::string name() const override { return "FusedLinearGeluPattern"; }
 };
 
 class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearReluPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     // Source pattern
@@ -180,12 +182,12 @@ class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out"), &res.Tensor("reserve_space")});
   }
-
-  std::string name() const override { return "FusedLinearReluPattern"; }
 };
 
 class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearGeluGradPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fused_gemm_epilogue =
@@ -241,12 +243,12 @@ class FusedLinearGeluGradPattern : public paddle::drr::DrrPatternBase {
                                   &res.Tensor("w1_grad"),
                                   &res.Tensor("bias1_grad")});
   }
-
-  std::string name() const override { return "FusedLinearGeluGradPattern"; }
 };
 
 class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedLinearReluGradPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fused_gemm_epilogue =
@@ -306,8 +308,6 @@ class FusedLinearReluGradPattern : public paddle::drr::DrrPatternBase {
                                    &res.Tensor("w1_grad"),
                                    &res.Tensor("bias1_grad")});
   }
-
-  std::string name() const override { return "FusedLinearReluGradPattern"; }
 };
 
 class FusedGemmEpiloguePass : public pir::PatternRewritePass {
@@ -317,12 +317,12 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedLinearGradPattern().Build(context));
-    ps.Add(FusedLinearPattern().Build(context));
-    ps.Add(FusedLinearGeluPattern().Build(context));
-    ps.Add(FusedLinearReluPattern().Build(context));
-    ps.Add(FusedLinearGeluGradPattern().Build(context));
-    ps.Add(FusedLinearReluGradPattern().Build(context));
+    ps.Add(paddle::drr::Create<FusedLinearGradPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearGeluPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearReluPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearGeluGradPattern>(context));
+    ps.Add(paddle::drr::Create<FusedLinearReluGradPattern>(context));
 
     return ps;
   }

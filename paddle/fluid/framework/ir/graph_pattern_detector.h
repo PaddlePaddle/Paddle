@@ -2059,12 +2059,12 @@ struct FusionLSTM : public PatternBase {
   // declare op
   PATTERN_DECL_NODE(op);
 
-  // declate inputs
+  // declare inputs
   PATTERN_DECL_NODE(x);
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
 
-  // decalre outputs
+  // declare outputs
   PATTERN_DECL_NODE(hidden);
   PATTERN_DECL_NODE(cell);
 };
@@ -2245,7 +2245,7 @@ struct ReverseRollPattern : public PatternBase {
   PATTERN_DECL_NODE(roll_40_op);
   PATTERN_DECL_NODE(roll_40_out);
   PATTERN_DECL_NODE(reshape2_50_op);
-  PATTERN_DECL_NODE(reshaep2_50_out);
+  PATTERN_DECL_NODE(reshape2_50_out);
 };
 
 // pattern for merge_layernorm

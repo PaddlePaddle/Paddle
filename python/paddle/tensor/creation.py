@@ -53,6 +53,10 @@ def _complex_to_real_dtype(dtype):
         return core.VarDesc.VarType.FP32
     elif dtype == core.VarDesc.VarType.COMPLEX128:
         return core.VarDesc.VarType.FP64
+    elif dtype == paddle.pir.core.DataType.COMPLEX64:
+        return paddle.pir.core.DataType.FP32
+    elif dtype == paddle.pir.core.DataType.COMPLEX128:
+        return paddle.pir.core.DataType.FP64
     else:
         return dtype
 
@@ -62,6 +66,10 @@ def _real_to_complex_dtype(dtype):
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
+    elif dtype == paddle.pir.core.DataType.FP32:
+        return paddle.pir.core.DataType.COMPLEX64
+    elif dtype == paddle.pir.core.DataType.FP64:
+        return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
 
@@ -1240,9 +1248,9 @@ def full(shape, fill_value, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
-            If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
+            If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
             type of created Tensor is `float32`.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -2841,7 +2849,7 @@ def cauchy_(x, loc=0, scale=1, name=None):
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2875,7 +2883,7 @@ def geometric_(x, probs, name=None):
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
