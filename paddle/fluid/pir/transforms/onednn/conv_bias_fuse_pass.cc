@@ -22,11 +22,21 @@
 #include "paddle/pir/pass/pass_registry.h"
 
 namespace {
+
 class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string conv_name_;
+  std::string fused_conv_name_;
+
  public:
   ConvBiasFusePattern(const std::string &conv_name,
                       const std::string &fused_conv_name)
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
+
+  std::string name() const override { return "ConvBiasFusePattern"; }
+
+  uint32_t benefit() const override { return 2; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
@@ -102,24 +112,25 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv({&res.Tensor("input"),
                 &res.Tensor("filter"),
                 &res.Tensor("bias"),
-                &res.NoneTensor()},
+                &res.InputNoneTensor()},
                {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "ConvBiasFusePattern"; }
-
-  uint32_t benefit() const override { return 2; }
-
- private:
-  std::string conv_name_;
-  std::string fused_conv_name_;
 };
 
 class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string conv_name_;
+  std::string fused_conv_name_;
+
  public:
   FusedConvAddFusePattern(const std::string &conv_name,
                           const std::string &fused_conv_name)
       : conv_name_(conv_name), fused_conv_name_(fused_conv_name) {}
+
+  std::string name() const override { return "FusedConvAddFusePattern"; }
+
+  uint32_t benefit() const override { return 3; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv =
@@ -206,17 +217,9 @@ class FusedConvAddFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv({&res.Tensor("input"),
                 &res.Tensor("filter"),
                 &res.Tensor("bias2"),
-                &res.NoneTensor()},
+                &res.InputNoneTensor()},
                {&res.Tensor("result")});
   }
-
-  std::string name() const override { return "FusedConvAddFusePattern"; }
-
-  uint32_t benefit() const override { return 3; }
-
- private:
-  std::string conv_name_;
-  std::string fused_conv_name_;
 };
 
 class Conv2dBiasFusePass : public pir::PatternRewritePass {
@@ -225,26 +228,27 @@ class Conv2dBiasFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(ConvBiasFusePattern(paddle::dialect::Conv2dOp::name(),
-                               paddle::onednn::dialect::FusedConv2dOp::name())
-               .Build(context));
-    ps.Add(
-        FusedConvAddFusePattern(paddle::dialect::Conv2dOp::name(),
-                                paddle::onednn::dialect::FusedConv2dOp::name())
-            .Build(context));
+    ps.Add(paddle::drr::Create<ConvBiasFusePattern>(
+        context,
+        paddle::dialect::Conv2dOp::name(),
+        paddle::onednn::dialect::FusedConv2dOp::name()));
+    ps.Add(paddle::drr::Create<FusedConvAddFusePattern>(
+        context,
+        paddle::dialect::Conv2dOp::name(),
+        paddle::onednn::dialect::FusedConv2dOp::name()));
     return ps;
   }
 };
 
 // class Conv2dTransposeBiasFusePass : public pir::PatternRewritePass {
 //  public:
-//   Conv2dTransposeBiasFusePass() :
-//   pir::PatternRewritePass("conv2d_transpose_bias_fuse_pass", 2) {}
+//   Conv2dTransposeBiasFusePass()
+//       : pir::PatternRewritePass("conv2d_transpose_bias_fuse_pass", 2) {}
 
 //   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override
 //   {
 //     pir::RewritePatternSet ps(context);
-//     ps.Add(Conv2dBiasFusePattern().Build(context));
+//     ps.Add(paddle::drr::Create<Conv2dBiasFusePattern>(context));
 //     return ps;
 //   }
 // };
@@ -255,13 +259,14 @@ class Conv3dBiasFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(ConvBiasFusePattern(paddle::dialect::Conv3dOp::name(),
-                               paddle::onednn::dialect::FusedConv3dOp::name())
-               .Build(context));
-    ps.Add(
-        FusedConvAddFusePattern(paddle::dialect::Conv3dOp::name(),
-                                paddle::onednn::dialect::FusedConv3dOp::name())
-            .Build(context));
+    ps.Add(paddle::drr::Create<ConvBiasFusePattern>(
+        context,
+        paddle::dialect::Conv3dOp::name(),
+        paddle::onednn::dialect::FusedConv3dOp::name()));
+    ps.Add(paddle::drr::Create<FusedConvAddFusePattern>(
+        context,
+        paddle::dialect::Conv3dOp::name(),
+        paddle::onednn::dialect::FusedConv3dOp::name()));
     return ps;
   }
 };

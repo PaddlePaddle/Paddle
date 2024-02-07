@@ -821,7 +821,7 @@ void BindValue(py::module *m) {
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
-                 BoolAttribute::get(pir::IrContext::Instance(), false));
+                 BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
       .def("__repr__", &Value2String);

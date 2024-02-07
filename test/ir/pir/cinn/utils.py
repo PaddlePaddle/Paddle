@@ -58,11 +58,9 @@ def get_jit_kernel_number(block):
         elif op_name == __IF_OP_NAME:
             jit_kernel_number = (
                 jit_kernel_number
-                + get_jit_kernel_number(op.true_block())
-                + get_jit_kernel_number(op.false_block())
+                + get_jit_kernel_number(op.as_if_op().true_block())
+                + get_jit_kernel_number(op.as_if_op().false_block())
             )
-        elif op_name == __WHILE_OP_NAME:
-            jit_kernel_number += get_jit_kernel_number(op.body())
 
     return jit_kernel_number
 

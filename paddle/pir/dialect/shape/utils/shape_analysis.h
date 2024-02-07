@@ -30,10 +30,6 @@ class IR_API ShapeConstraintIRAnalysis {
  public:
   explicit ShapeConstraintIRAnalysis(ModuleOp m);
 
-  explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program);
-
-  explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx);
-
   void Init();
 
   const std::string GetNextSymName();
@@ -77,9 +73,10 @@ class IR_API ShapeConstraintIRAnalysis {
   // Returns true if the two value have the same number elements.
   bool IsSameNumel(Value lhs, Value rhs) const;
 
+  pir::PrintHooks PrintHook() const;
+
  private:
   ModuleOp m_;
-  std::shared_ptr<pir::Program> program_;
 
   int64_t next_sym_idx_ = 0;
 
