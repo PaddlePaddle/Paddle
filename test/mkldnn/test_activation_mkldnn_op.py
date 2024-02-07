@@ -73,6 +73,7 @@ class TestMKLDNNRelu6Dim2(TestRelu6):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -82,6 +83,7 @@ class TestMKLDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
