@@ -146,7 +146,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     // std::cerr << "reduce type " << schedule_block->reduce_type << std::endl;
     ir::Expr return_warp(false);
 
-    if (schedule_block->reduce_type == 0) {
+    if (schedule_block->reduce_type == ir::CUDAReduceType::WarpReduce) {
       return_warp = ir::Expr(true);
     }
 
