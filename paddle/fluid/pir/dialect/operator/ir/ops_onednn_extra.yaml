@@ -25,7 +25,7 @@
   extra_args : bool fuse_with_relu=false
   data_format_tensors : x, out_grad
 
-- op : bilinear_interp
+# - op : bilinear_interp
 
 # - op : cast
 
@@ -165,7 +165,7 @@
 
 - op : mish_grad
 
-- op : multi_gru
+# - op : multi_gru
 
 - op : multiply
 
@@ -255,10 +255,8 @@
 - op : subtract_grad
 
 - op : sum
-  extra_args : str mkldnn_data_type="float32"
 
 - op : sum_grad
-  extra_args : str mkldnn_data_type="float32"
 
 # - op : swish
 
