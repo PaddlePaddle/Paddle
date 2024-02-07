@@ -22,10 +22,8 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-#ifdef PADDLE_WITH_XPU_XHPC
 #include "xblas/cublasLt.h"
 namespace xblas = baidu::xpu::xblas;
-#endif
 
 namespace phi {
 
