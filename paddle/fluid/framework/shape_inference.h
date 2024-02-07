@@ -78,7 +78,8 @@ class InferShapeContext {
 
   virtual DDim GetInputDim(const std::string &name) const = 0;
   virtual std::vector<DDim> GetInputsDim(const std::string &name) const = 0;
-  virtual std::vector<DDim> GetReaderDims(const std::string &name) const;
+  TEST_API virtual std::vector<DDim> GetReaderDims(
+      const std::string &name) const;
 
   virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
   virtual void SetOutputsDim(const std::string &name,

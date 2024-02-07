@@ -20,10 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 
-USE_OP_ITSELF(relu);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(softmax);
-
 namespace paddle {
 namespace operators {
 namespace details {
