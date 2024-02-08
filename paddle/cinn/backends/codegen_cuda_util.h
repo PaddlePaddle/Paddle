@@ -52,7 +52,7 @@ struct CollectDeviceKernelSharedMemoryVisitor : public ir::IRVisitor {
     return sum_dyn_shared_bytes_;
   }
 
-  void Visit(const ir::_Buffer_* buffer);
+  void Visit(const ir::_Buffer_* buffer) override;
 
  private:
   ir::Expr sum_dyn_shared_bytes_{0};
