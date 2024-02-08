@@ -1,8 +1,8 @@
 if(WITH_CINN)
   set(eager_deps ${eager_deps} python)
 endif()
-paddle_test(test_egr_ds_eager_tensor SRCS eager_tensor_test.cc)
-paddle_test(test_egr_ds_auotgrad_meta SRCS autograd_meta_test.cc)
+paddle_test(test_egr_ds_eager_tensor SRCS eager_tensor_test.cc DEPS layer)
+paddle_test(test_egr_ds_auotgrad_meta SRCS autograd_meta_test.cc DEPS layer)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_test(
