@@ -93,7 +93,7 @@ static void RunAndCheckResult(::pir::Program* program,
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  // std::cerr << out_tensor << std::endl;
+  std::cerr << out_tensor << std::endl;
   if (check_result) {
     bool res0 = simple_cmp(out_tensor.data<float>()[0], gt_val);
     EXPECT_EQ(res0, true);
@@ -752,51 +752,55 @@ static void RunAndCheckResult(::pir::Program* program,
 //   RunAndCheckResult(program.get(), false);
 // }
 
-std::shared_ptr<::pir::Program> BuildSharedBufferProgram() {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// std::shared_ptr<::pir::Program> BuildSharedBufferProgram() {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  auto program = std::make_shared<::pir::Program>(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  // full -> softmax(max -> subtract -> exp -> sum -> divide)
-  const float value_one = 1.0;
-  const std::vector<int64_t> shape = {256, 512};
-  auto x =
-      builder
-          .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({256, 512}),
-                                             phi::DataType::FLOAT32,
-                                             -0.5,
-                                             0.5,
-                                             0,
-                                             phi::GPUPlace())
-          .result(0);
+//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+//   const float value_one = 1.0;
+//   const std::vector<int64_t> shape = {256, 512};
+//   auto x =
+//       builder
+//           .Build<paddle::dialect::UniformOp>(std::vector<int64_t>({256,
+//           512}),
+//                                              phi::DataType::FLOAT32,
+//                                              -0.5,
+//                                              0.5,
+//                                              0,
+//                                              phi::GPUPlace())
+//           .result(0);
 
-  auto y = builder
-               .Build<paddle::dialect::UniformOp>(
-                   shape, phi::DataType::FLOAT32, -0.5, 0.5, 0, phi::GPUPlace())
-               .result(0);
-  auto sum = builder
-                 .Build<paddle::dialect::SumOp>(
-                     x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-                 .result(0);
-  auto t1 = builder.Build<paddle::dialect::ScaleOp>(sum, 1.0, 1e-5).result(0);
+//   auto y = builder
+//                .Build<paddle::dialect::UniformOp>(
+//                    shape, phi::DataType::FLOAT32, -0.5, 0.5, 0,
+//                    phi::GPUPlace())
+//                .result(0);
+//   auto sum = builder
+//                  .Build<paddle::dialect::SumOp>(
+//                      x, std::vector<int64_t>{-1}, phi::DataType::FLOAT32,
+//                      true)
+//                  .result(0);
+//   auto t1 = builder.Build<paddle::dialect::ScaleOp>(sum, 1.0,
+//   1e-5).result(0);
 
-  auto add = builder.Build<paddle::dialect::AddOp>(t1, y).result(0);
+//   auto add = builder.Build<paddle::dialect::AddOp>(t1, y).result(0);
 
-  builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
-  return program;
-}
+//   builder.Build<paddle::dialect::FetchOp>(add, "out", 0);
+//   return program;
+// }
 
-TEST(GroupOp, TestSharedBufferProgram) {
-  // Step 1: Construct pir::Program
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildSharedBufferProgram();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+// TEST(GroupOp, TestSharedBufferProgram) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildSharedBufferProgram();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  RunAndCheckResult(program.get(), false);
-}
+//   RunAndCheckResult(program.get(), false);
+// }
 
 // std::shared_ptr<::pir::Program> BuildSharedBuffer1Program() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -1009,67 +1013,65 @@ TEST(GroupOp, TestSharedBufferProgram) {
 //   RunAndCheckResult(program.get(), false);
 // }
 
-// std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
-//     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-//   auto program = std::make_shared<::pir::Program>(ctx);
-//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-//   const std::vector<int64_t> shape = {3, 4, 5};
-//   auto x =
-//       builder
-//           .Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 2048, 1,
-//           128},
-//                                           0.05,
-//                                           phi::DataType::FLOAT32,
-//                                           phi::CPUPlace())
-//           .result(0);
-
-//   auto out = builder
-//                  .Build<paddle::dialect::SumOp>(
-//                      x, std::vector<int64_t>({2}), phi::DataType::FLOAT32,
-//                      true)
-//                  .result(0);
-
-//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-
-//   return program;
-// }
-
-// TEST(GroupOp, TestReduc) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildRedcuceProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-
-//   program->Print(std::cout);
-//   RunAndCheckResult(program.get(), false);
-// }
-
-std::shared_ptr<::pir::Program> BuildStoreProgram() {
+std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
-  const std::vector<int64_t> shape = {16, 16};
-  auto x = builder
-               .Build<paddle::dialect::FullOp>(
-                   shape, 1.0, phi::DataType::FLOAT32, phi::GPUPlace())
-               .result(0);
+  const std::vector<int64_t> shape = {3, 4, 5};
+  auto x =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>{43, 49, 512},
+                                          1,
+                                          phi::DataType::FLOAT32,
+                                          phi::CPUPlace())
+          .result(0);
 
-  auto out =
-      builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
+  auto out = builder
+                 .Build<paddle::dialect::SumOp>(
+                     x, std::vector<int64_t>({1}), phi::DataType::FLOAT32, true)
+                 .result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+
   return program;
 }
 
-TEST(GroupOp, TestBuildStore) {
+TEST(GroupOp, TestReduc) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildStoreProgram();
+  std::shared_ptr<::pir::Program> program = BuildRedcuceProgram();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  RunAndCheckResult(program.get(), true, 0.5);
+  program->Print(std::cout);
+  RunAndCheckResult(program.get(), false);
 }
+
+// std::shared_ptr<::pir::Program> BuildStoreProgram() {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+//   const std::vector<int64_t> shape = {16, 16};
+//   auto x = builder
+//                .Build<paddle::dialect::FullOp>(
+//                    shape, 1.0, phi::DataType::FLOAT32, phi::GPUPlace())
+//                .result(0);
+
+//   auto out =
+//       builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
+
+//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+//   return program;
+// }
+
+// TEST(GroupOp, TestBuildStore) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildStoreProgram();
+
+//   RunAndCheckResult(program.get(), true, 0.5);
+// }

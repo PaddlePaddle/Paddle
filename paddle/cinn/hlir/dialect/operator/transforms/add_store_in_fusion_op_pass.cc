@@ -35,17 +35,28 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
       if (op->operand_source(i)
               .defining_op()
               ->isa<cinn::dialect::ReshapeOp>()) {
-        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-            op->operand_source(i).defining_op()->operand_source(0),
-            op->operand_source(i).type());
+        auto pre_name = op->operand_source(i).defining_op()->name();
 
-        op->operand(i).set_source(new_full.result(0));
-      } else {
-        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-            op->operand_source(i), op->operand_source(i).type());
+        if ((pre_name != "cinn_op.reduce_sum") &&
+            (pre_name != "cinn_op.reduce_max")) {
+          auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+              op->operand_source(i).defining_op()->operand_source(0),
+              op->operand_source(i).type());
 
-        op->operand(i).set_source(new_full.result(0));
+          op->operand(i).set_source(new_full.result(0));
+
+          continue;
+        }
       }
+
+      if (op->operand_source(i).use_count() == 1) {
+        continue;
+      }
+
+      auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+          op->operand_source(i), op->operand_source(i).type());
+
+      op->operand(i).set_source(new_full.result(0));
     }
 
     return true;

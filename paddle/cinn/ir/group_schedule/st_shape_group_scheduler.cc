@@ -451,7 +451,7 @@ void StaticShapeGroupScheduler::Tiling() {
       }
 
       std::vector<int> split_factors{
-          std::ceil(group_tile_info_->reduce_numel * 1.0 /
+          std::ceil(group_tile_info_->reduce_block * 1.0 /
                     group_tile_info_->reduce_inner_num),
           group_tile_info_->reduce_inner_num};
 

@@ -74,30 +74,56 @@ int64_t Next2Power(int64_t n) {
 }
 
 Expr BuildOuputExpr(::pir::Operation* op,
+                    const std::string& in_name,
                     const std::string& out_name,
                     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   auto in_value = op->operand_source(0);
   auto out_value = op->result(0);
-  cinn::ir::Tensor tensor = tensor_map->at(in_value);
-  auto axis = tensor->axis();
-  int rank = axis.size();
+  auto in_type = in_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto in_dim = in_type.dims();
+
+  std::cerr << "11" << std::endl;
+  // auto axis = tensor->axis();
+  std::vector<Expr> axis;
+  int rank = in_dim.size();
+  std::cerr << "rank " << rank << std::endl;
   std::vector<cinn::ir::Expr> indices;
-  for (auto& d : axis) {
-    // std::cerr << "dd " << d << std::endl;
-    indices.push_back(Expr(d));
+
+  std::vector<Expr> shape;
+  for (size_t i = 0; i < in_dim.size(); ++i) {
+    shape.push_back(Expr(in_dim[i]));
+  }
+  std::cerr << "22" << std::endl;
+
+  auto in_tensor = lang::CreatePlaceHolder(
+      shape, CompatibleInfo::ConvertIRType(in_type.dtype()), in_name);
+  if (tensor_map->count(in_value)) {
+    in_tensor = tensor_map->at(in_value);
+    for (int i = 0; i < rank; ++i) {
+      // std::cerr << "dd " << d << std::endl;
+      indices.push_back(in_tensor->axis()[i]);
+      axis.push_back(in_tensor->axis()[i]);
+    }
+
+  } else {
+    for (int i = 0; i < rank; ++i) {
+      // std::cerr << "dd " << d << std::endl;
+      indices.push_back(
+          Var(Expr(0), Expr(in_dim[i]), cinn::common::axis_name(i), false));
+
+      axis.push_back(
+          Var(Expr(0), Expr(in_dim[i]), cinn::common::axis_name(i), false));
+    }
+
+    tensor_map->emplace(in_value, in_tensor);
   }
 
-  auto shape = tensor->shape;
+  std::cerr << "3" << std::endl;
+  auto body = ir::Load::Make(in_tensor, indices);
 
-  auto body = ir::Load::Make(tensor, indices);
-
-  // auto out_tensor = ir::Tensor(out_name,
-  //                              tensor->type(),
-  //                              tensor->shape,
-  //                              tensor->domain,
-  //                              tensor->operation);
-  auto out_tensor =
-      lang::CreatePlaceHolder(tensor->shape, tensor->type(), out_name);
+  std::cerr << "find build body\n";
+  auto out_tensor = lang::CreatePlaceHolder(
+      shape, CompatibleInfo::ConvertIRType(in_type.dtype()), out_name);
 
   tensor_map->emplace(out_value, out_tensor);
   body = ir::Store::Make(out_tensor, body, indices);
@@ -105,6 +131,7 @@ Expr BuildOuputExpr(::pir::Operation* op,
   std::vector<ir::Var> block_vars;
   std::vector<ir::Expr> iter_values;
   std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(rank);
+
   for (int i = 0; i < shape.size(); ++i) {
     block_vars.push_back(
         Var(Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
@@ -116,6 +143,8 @@ Expr BuildOuputExpr(::pir::Operation* op,
       iter_values.push_back(axis_vars[i]);
     }
   }
+
+  std::cerr << "55" << std::endl;
   body = ir::ScheduleBlockRealize::Make(
       iter_values, ir::ScheduleBlock::Make(block_vars, {}, {}, out_name, body));
   for (int i = rank - 1; i >= 0; --i) {
@@ -129,8 +158,9 @@ Expr BuildOuputExpr(::pir::Operation* op,
                          ir::Block::Make({body}));
   }
 
+  std::cerr << "6" << std::endl;
   body = ir::ScheduleBlockRealize::Make(
-      {}, ir::ScheduleBlock::Make({}, {}, {}, "root_", body));
+      {}, ir::ScheduleBlock::Make({}, {}, {}, "root", body));
 
   return body;
 }
@@ -780,15 +810,28 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   }
 
   for (auto& op : group->output_ops) {
+    direct_output_var_names.insert(ValueName(op->result(0)));
+
     if (erase_reshape.count(op)) {
       copyed_var_names.insert(ValueName(op->operand_source(0)));
       continue;
     }
     // collect all output tensor.
+    if (op->name() == "cinn_op.store") {
+      auto input_var_name = ValueName(op->operand_source(0));
+      if (broadcast_info.count(input_var_name)) {
+        auto base_info = broadcast_info[input_var_name];
+        base_info.with_constrain = true;
+        broadcast_info[ValueName(op->result(0))] = base_info;
+      }
+    }
+
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
         continue;
       }
+
+      direct_output_var_names.insert(ValueName(opresult));
       auto tensor = tensor_map.at(opresult);
 
       if (opresult.use_count() > 1) {
@@ -1096,12 +1139,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     if (cinn_op_name == "store") {
       std::cerr << "store\n ";
 
-      auto in_tensor = tensor_map->at(op->operand_source(0));
-      auto expr = BuildOuputExpr(op, ValueName(op->result(0)), tensor_map);
+      // auto expr = BuildOuputExpr(op, ValueName(op->operand_source(0)),
+      // ValueName(op->result(0)), tensor_map);
 
-      direct_output_var_names.insert(ValueName(op->result(0)));
-      func_bodies.push_back(expr);
-      continue;
+      // func_bodies.push_back(expr);
+      // continue;
     }
     // 1.Select Op impl
     std::vector<ir::Tensor> op_func_arg_tensors =

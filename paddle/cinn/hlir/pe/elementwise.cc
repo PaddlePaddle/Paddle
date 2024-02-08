@@ -342,6 +342,14 @@ ir::Tensor Cast(const ir::Tensor& A,
   return res;
 }
 
+ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
+  auto res = Compute(
+      A->shape,
+      [=](const std::vector<Expr>& indices) { return A(indices); },
+      name);
+  return res;
+}
+
 ir::Tensor Arange(const float start,
                   const float stop,
                   const float step,
