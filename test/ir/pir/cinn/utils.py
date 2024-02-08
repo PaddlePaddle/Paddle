@@ -113,7 +113,7 @@ def get_jit_kernel_structure(static_fn):
 
 def check_jit_kernel_structure(static_fn, expected_structure):
     """
-    Check whether fuse subgraph structre in Program is same with expected_structure.
+    Check whether fuse subgraph structure in Program is same with expected_structure.
     For examaple:
     expected_structure = {
         JIT_KERNEL_NAME: 3,

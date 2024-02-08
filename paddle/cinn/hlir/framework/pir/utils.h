@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/common/ddim.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace hlir {
