@@ -17,8 +17,96 @@ import unittest
 import paddle
 from paddle.jit.utils import OrderedSet
 
-DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet([])
-STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet([])
+DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
+    [
+        '__array__',
+        '__array_ufunc__',
+        '__deepcopy__',
+        '__index__',
+        '__len__',
+        '__long__',
+        '__nonzero__',
+        'apply_',
+        'backward',
+        'clear_grad',
+        'coalesce',
+        'cols',
+        'copy_',
+        'crows',
+        'data',
+        'data_ptr',
+        'detach_',
+        'element_size',
+        'fill_',
+        'fill_diagonal_',
+        'fill_diagonal_tensor',
+        'fill_diagonal_tensor_',
+        'get_map_tensor',
+        'get_selected_rows',
+        'get_strides',
+        'get_tensor',
+        'grad',
+        'grad_',
+        'grad_fn',
+        'gradient',
+        'indices',
+        'inplace_version',
+        'is_dense',
+        'is_dist',
+        'is_leaf',
+        'is_same_shape',
+        'is_selected_rows',
+        'is_sparse',
+        'is_sparse_coo',
+        'is_sparse_csr',
+        'layout',
+        'nnz',
+        'num_shard',
+        'numpy',
+        'offset',
+        'pin_memory',
+        'placements',
+        'process_mesh',
+        'reconstruct_from_',
+        'register_hook',
+        'retain_grads',
+        'rows',
+        'set_string_list',
+        'set_value',
+        'set_vocab',
+        'strides',
+        'to',
+        'to_dense',
+        'to_sparse_coo',
+        'to_sparse_csr',
+        'tolist',
+        'value',
+        'values',
+        'zero_',
+    ]
+)
+STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
+    [
+        '__dict__',
+        'all_used_ops',
+        'append',
+        'first_use',
+        'get_defining_op',
+        'has_one_use',
+        'hash',
+        'id',
+        'initialized',
+        'is_dense_tensor_array_type',
+        'is_dense_tensor_type',
+        'is_same',
+        'is_selected_row_type',
+        'pop',
+        'replace_all_uses_with',
+        'set_shape',
+        'set_type',
+        'use_empty',
+    ]
+)
 
 
 def is_magic_method(attr):
@@ -54,8 +142,8 @@ class TestTensorAttrConsistency(unittest.TestCase):
         self.assertEqual(
             len(not_allow_dygraph_only_attrs),
             0,
-            f"Value should have same attributes as Tensor, but found dygraph only tensor attributes: {not_allow_dygraph_only_attrs}\n."
-            + "If you these attributes are not supported in static graph, please add them to DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST in test_dygraph_to_static/test_tensor_attr_consistency.py.",
+            f"Value should have same attributes as Tensor, but found dygraph only tensor attributes: {not_allow_dygraph_only_attrs}.\n"
+            + "If you believe these attributes are not supported in static graph, please add them to DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST in test_dygraph_to_static/test_tensor_attr_consistency.py.",
         )
 
     def test_static_tensor_attr_consistency_check(self):
@@ -71,8 +159,8 @@ class TestTensorAttrConsistency(unittest.TestCase):
         self.assertEqual(
             len(not_allow_static_only_attrs),
             0,
-            f"Tensor should have same attributes as Value, but found static only tensor attributes: {not_allow_static_only_attrs}\n."
-            + "If you these attributes are not supported in dygraph, please add them to STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST in test_dygraph_to_static/test_tensor_attr_consistency.py.",
+            f"Tensor should have same attributes as Value, but found static only tensor attributes: {not_allow_static_only_attrs}.\n"
+            + "If you believe these attributes are not supported in dygraph, please add them to STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST in test_dygraph_to_static/test_tensor_attr_consistency.py.",
         )
 
 
