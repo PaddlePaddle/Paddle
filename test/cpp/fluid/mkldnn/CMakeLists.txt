@@ -19,10 +19,7 @@ set(TEST_MKLDNN_CACHING_DEPS
 if(WITH_GPU OR WITH_ROCM)
   set(TEST_MKLDNN_CACHING_DEPS ${TEST_MKLDNN_CACHING_DEPS} depthwise_conv)
 endif()
-cc_test(
-  test_mkldnn_caching
-  SRCS test_mkldnn_caching.cc
-  DEPS ${TEST_MKLDNN_CACHING_DEPS})
+paddle_test(test_mkldnn_caching SRCS test_mkldnn_caching.cc)
 
 if(WITH_TESTING)
   paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
