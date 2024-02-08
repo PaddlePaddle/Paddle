@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
 namespace paddle {
 namespace dialect {
@@ -141,7 +142,8 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 ///      print(summarize number of elements in data)
 ///   }
 ///
-class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
+class AssertOp
+    : public pir::Op<AssertOp, OpYamlInfoInterface, pir::SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.assert"; }

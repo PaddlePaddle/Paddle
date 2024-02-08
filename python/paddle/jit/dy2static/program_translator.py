@@ -30,9 +30,10 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
+from paddle.base.executor import _add_pir_fetch_ops
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
-from paddle.pir import Value
+from paddle.pir import PassManager, Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
@@ -1258,10 +1259,10 @@ class ConcreteProgram:
                     if need_wrap_into_list:
                         outputs = [outputs]
 
-        # TODO(@xiongkun): support op call stack in new ir?
-        # main_program = update_op_callstack_with_origin_info(main_program)
-
-        return ConcreteProgram(
+        main_program = ConcreteProgram.apply_pir_dce_pass(
+            main_program, static_inputs, outputs, all_parameters_and_buffers
+        )
+        concrete_program = ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
@@ -1270,6 +1271,31 @@ class ConcreteProgram:
             startup_program=startup_program,
             **kwargs,
         )
+        return concrete_program
+
+    @staticmethod
+    def apply_pir_dce_pass(main_program, inputs, outputs, parameters):
+        pm = PassManager()
+        # insert fetch op for outputs and inputs. (avoid inputs been pruned)
+        inputs = [inp for inp in flatten(inputs) if isinstance(inp, Value)]
+        outputs = [inp for inp in flatten(outputs) if isinstance(inp, Value)]
+        parameters = [
+            inp for inp in flatten(parameters) if isinstance(inp, Value)
+        ]
+        _add_pir_fetch_ops(main_program, inputs, "_fetch_inputs")
+        _add_pir_fetch_ops(main_program, outputs, "_fetch_outputs")
+        _add_pir_fetch_ops(main_program, parameters, "_fetch_parameters")
+        # apply dce pass
+        pm.add_pass(
+            'dead_code_elimination_pass'
+        )  # apply pass to elimitate dead code
+        pm.run(main_program)
+        # remove fetch op
+        block = main_program.global_block()
+        to_remove = [op for op in block.ops if op.name() == "pd_op.fetch"]
+        for op in to_remove:
+            block.remove_op(op)
+        return main_program
 
     # TODO(@xiongkun): remove after new ir is switch
     @staticmethod

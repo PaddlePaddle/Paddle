@@ -612,7 +612,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.expected_slice_op_num = 0
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 2
+        self.pir_expected_op_num = 1
         self.pir_expected_shape_op_num = 0
         self.pir_expected_slice_op_num = 0
 
@@ -693,9 +693,9 @@ class TestOpNumBasicWithTensorShape4(TestOpNumBasicWithTensorShape):
         self.expected_slice_op_num = 2
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 15
-        self.pir_expected_shape_op_num = 2
-        self.pir_expected_slice_op_num = 2
+        self.pir_expected_op_num = 11
+        self.pir_expected_shape_op_num = 1
+        self.pir_expected_slice_op_num = 1
 
 
 class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
@@ -753,9 +753,9 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.expected_slice_op_num = 3
 
     def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 27
-        self.pir_expected_shape_op_num = 3
-        self.pir_expected_slice_op_num = 3
+        self.pir_expected_op_num = 21
+        self.pir_expected_shape_op_num = 0
+        self.pir_expected_slice_op_num = 1
 
 
 class TestChangeShapeAfterAssign(TestTensorShapeBasic):

@@ -423,7 +423,7 @@ TEST(pattern_rewrite, Patterns) {
   //     true));
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 17u);
+  EXPECT_EQ(program.block()->size(), 33u);
 }
 
 void BuildConstantFoldingProgram(pir::Program *program,
@@ -490,7 +490,7 @@ TEST(constant_folding, ConstantFolding) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 6u);
 }
 
 TEST(constant_folding, ConstantFolding_Train) {
@@ -515,7 +515,7 @@ TEST(constant_folding, ConstantFolding_Train) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 4u);
+  EXPECT_EQ(program.block()->size(), 6u);
 }
 
 void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
@@ -583,7 +583,7 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 12u);
 }
 
 void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {
@@ -624,5 +624,5 @@ TEST(constant_folding, ConstantFolding_MultiOutput) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 4u);
+  EXPECT_EQ(program.block()->size(), 5u);
 }

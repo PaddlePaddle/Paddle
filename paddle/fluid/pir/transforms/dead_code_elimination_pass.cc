@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/op_trait.h"
@@ -40,6 +41,7 @@ class DeadCodeEliminationPass : public pir::Pass {
     std::vector<pir::Operation*> deleted_ops;
     for (auto& op : block) {
       if (op.HasTrait<pir::SideEffectTrait>() ||
+          op.HasTrait<paddle::dialect::InplaceTrait>() ||
           op.isa<paddle::dialect::DataOp>() ||
           paddle::dialect::IsCustomOp(&op)) {
         continue;

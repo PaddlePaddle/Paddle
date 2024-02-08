@@ -24,6 +24,9 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
 from paddle.framework import use_pir_api
+from paddle.jit.pir_dy2static.parameter_recorder import (
+    _global_inplace_map,
+)
 from paddle.jit.utils import OrderedSet
 from paddle.pir import Value
 from paddle.static.amp.fp16_utils import AmpOptions
@@ -87,11 +90,6 @@ def convert_load(x):
         # get the new output of the var
         if isinstance(x, Value):
             cur_block = default_main_program().current_block()
-
-            from paddle.jit.pir_dy2static.parameter_recorder import (
-                _global_inplace_map,
-            )
-
             new_var = _global_inplace_map.get(cur_block.program, x)
             if new_var is not None:
                 return new_var
