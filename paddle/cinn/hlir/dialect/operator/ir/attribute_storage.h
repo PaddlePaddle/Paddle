@@ -47,6 +47,11 @@ struct GroupInfo {
   std::vector<::pir::Operation*> ops;
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::unordered_map<::pir::Operation*,
+                     std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
+      alignment_schedule_info;
+  std::vector<int64_t> reduce_axis;
+  std::vector<int64_t> loop_ranges;
 
  private:
   void Initialize() {
@@ -64,7 +69,16 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey& key) {
-    return std::hash<std::string>{}(key.group_id);
+    size_t hash_value = std::hash<std::string>{}(key.group_id);
+
+    for (auto d : key.loop_ranges) {
+      hash_value = pir::hash_combine(hash_value, std::hash<int64_t>()(d));
+    }
+
+    for (auto d : key.reduce_axis) {
+      hash_value = pir::hash_combine(hash_value, std::hash<int64_t>()(d));
+    }
+    return hash_value;
   }
 
   bool operator==(const ParamKey& key) const {

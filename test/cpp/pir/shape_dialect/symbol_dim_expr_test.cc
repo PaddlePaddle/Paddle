@@ -47,6 +47,16 @@ TEST(DimExpr, Constraint) {
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
+  std::vector<DimExpr> lhs = builder.ConstShape({1, 2, 3});
+  std::vector<DimExpr> rhs = builder.ConstShape({1, 2, 3});
+  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> expr_pair =
+      builder.SplitAt(rhs, 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.first.size()), 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.second.size()), 2);
+  std::vector<DimExpr> merged =
+      builder.Concat(expr_pair.first, expr_pair.second);
+  builder.CstrEq(lhs, merged);
+  ASSERT_EQ(static_cast<int>(constraints.size()), 4);
 }
 
 /*

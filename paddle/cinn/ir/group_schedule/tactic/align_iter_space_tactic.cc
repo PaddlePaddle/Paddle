@@ -30,9 +30,6 @@ void AlignIterSpaceTactic::Init(ScheduleContext* context) {
 void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
                                  const std::string& block_id) {
   ir::Expr block = sch->GetBlock(block_id);
-  if (analyzer::IsReductionSBlock(block)) {
-    return;
-  }
 
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
   ir::Expr src_total_extent{1};
@@ -66,16 +63,20 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
     }
     if (context_->iter_space_info.sp_space.size() < loops.size() - 1) {
       loops = sch->GetLoops(block_id);
+
+      // Align the loop in the current block that needs to be aligned with the
+      // reduce loop in iter_space_info
       std::vector<ir::Expr> rb_loops(
-          loops.begin() + context_->iter_space_info.sp_space.size(),
-          loops.end());
+          loops.end() - context_->iter_space_info.rb_space.size(), loops.end());
       sch->Fuse(rb_loops);
     }
     if (context_->iter_space_info.sp_space.size() > 1) {
+      // Align the loop in the current block that needs to be aligned with the
+      // spatial loop in iter_space_info
       loops = sch->GetLoops(block_id);
       std::vector<ir::Expr> sp_loops(
           loops.begin(),
-          loops.begin() + context_->iter_space_info.sp_space.size());
+          loops.end() - context_->iter_space_info.rb_space.size());
       sch->Fuse(sp_loops);
     }
   } else {

@@ -26,6 +26,8 @@ namespace {
 
 class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "Conv2dAddFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv2d =
@@ -79,11 +81,9 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
     fused_conv2d_add_act({&res.Tensor("input"),
                           &res.Tensor("filter"),
                           &res.Tensor("bias"),
-                          &res.NoneTensor()},
+                          &res.InputNoneTensor()},
                          {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "Conv2dAddFusePattern"; }
 };
 
 class Conv2dAddFusePass : public pir::PatternRewritePass {
@@ -92,7 +92,7 @@ class Conv2dAddFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(Conv2dAddFusePattern().Build(context));
+    ps.Add(paddle::drr::Create<Conv2dAddFusePattern>(context));
     return ps;
   }
 };

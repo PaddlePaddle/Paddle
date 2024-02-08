@@ -86,6 +86,14 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
+    std::vector<int64_t> int_array =
+        attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+    return int_array;
+  } else if (attr_type_name == "paddle::dialect::DataTypeAttribute") {
+    phi::DataType dtype =
+        attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+    return dtype;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
