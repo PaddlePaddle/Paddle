@@ -90,8 +90,21 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
 
-  CollectDeviceKernelSharedMemoryVisitor collect_dyn_shared_mem;
-  Expr shared_mem_bytes = collect_dyn_shared_mem(func);
+  // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
+  // however, this make CodeGenCUDA_Dev before spliting the host and device
+  // module Maybe we could reorder the process.
+  CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
+  Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+
+  VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
+          << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "
+          << func_node->cuda_axis_info.grid_dim(1) << ", "
+          << func_node->cuda_axis_info.grid_dim(2) << "), "
+          << "block_dim: (" << func_node->cuda_axis_info.block_dim(0) << ", "
+          << func_node->cuda_axis_info.block_dim(1) << ", "
+          << func_node->cuda_axis_info.block_dim(2) << "), "
+          << "shared_mem: " << shared_mem_bytes;
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
                      runtime::intrinsic::call_cuda_kernel,
@@ -140,23 +153,6 @@ Expr detail::CollectBucketStrategyHostFunctionVisitor::CreateDeviceFunction(
   auto *lowered_func = copied.as_lowered_func();
   lowered_func->name = GenDeviceKernelName(lowered_func->name, predicate);
   return copied;
-}
-
-void detail::CollectDeviceKernelSharedMemoryVisitor::Visit(
-    const ir::_Buffer_ *buffer) {
-  if (buffer->memory_type != ir::MemoryType::GPUShared) {
-    return;
-  }
-  int type_bytes = buffer->dtype.bytes();
-  Expr buffer_size(1);
-  for (int i = 0; i < buffer->shape.size(); ++i) {
-    buffer_size = buffer_size * buffer->shape[i];
-  }
-  buffer_size = buffer_size * Expr(type_bytes);
-  buffer_size = common::AutoSimplify(buffer_size);
-
-  sum_dyn_shared_bytes_ = sum_dyn_shared_bytes_ + buffer_size;
-  sum_dyn_shared_bytes_ = common::AutoSimplify(sum_dyn_shared_bytes_);
 }
 
 }  // namespace backends

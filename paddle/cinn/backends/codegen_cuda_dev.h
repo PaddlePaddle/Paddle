@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -69,6 +70,13 @@ class CodeGenCUDA_Dev : public CodeGenC {
   std::string Compile(const ir::Module& module, OutputKind output_kind);
 
   static const std::string& GetSourceHeader();
+
+  ir::Expr GetDynSharedMemOffset() const {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      return Expr(0);
+    }
+    return dyn_shared_mem_offset_;
+  }
 
  protected:
   void Visit(const ir::_Var_* op) override;
