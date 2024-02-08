@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include <unordered_set>
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn::dialect {
 using namespace symbol;  // NOLINT

@@ -42,7 +42,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
 namespace experimental {
