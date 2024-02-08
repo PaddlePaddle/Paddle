@@ -308,13 +308,20 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
 
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
-  std::vector<int64_t> axis_tmp = {axis};
-  auto out_shape = get_expand_dims(x[0], axis_tmp);
-
   std::vector<Tensor> concat_x;
-  for (size_t i = 0; i < x.size(); ++i) {
-    concat_x.push_back(reshape<T>(x[i], out_shape));
+  if (find_value(x[0].shape(), -1)) {
+    Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
+    for (size_t i = 0; i < x.size(); ++i) {
+      concat_x.push_back(backend::reshape<T>(x[i], out_shape));
+    }
+  } else {
+    std::vector<int64_t> axis_tmp = {axis};
+    std::vector<int64_t> out_shape = get_expand_dims(x[0], axis_tmp);
+    for (size_t i = 0; i < x.size(); ++i) {
+      concat_x.push_back(reshape<T>(x[i], out_shape));
+    }
   }
+
   return concat<T>(concat_x, axis);
 }
 
@@ -874,7 +881,7 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     }
     Tensor ref_t = full<T>(ref_shape, 1.0, t2.dtype());
     Tensor t3 = t2 * ref_t;
-    Tensor origin_shape_t = shape<T>(x);
+    Tensor origin_shape_t = shape<T>(t1);
     std::vector<int64_t> t1_shape = common::vectorize<int64_t>(t1.dims());
     std::vector<Tensor> res_s;
     VLOG(0) << "=====================1.3 ";
