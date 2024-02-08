@@ -1,14 +1,12 @@
 paddle_test(test_egr_task_nan_inf_utils SRCS nan_inf_utils_test.cc DEPS common)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  cc_test(
+  paddle_test(
     test_egr_task_hook
-    SRCS hook_test.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps} eager_scale scale_node)
-  cc_test(
+    SRCS hook_test.cc)
+  paddle_test(
     test_egr_task_backward
-    SRCS backward_test.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps} eager_scale scale_node)
+    SRCS backward_test.cc)
   cc_test(
     test_egr_task_grad
     SRCS grad_test.cc
