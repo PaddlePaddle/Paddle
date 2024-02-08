@@ -25,7 +25,8 @@
   extra_args : bool fuse_with_relu=false
   data_format_tensors : x, out_grad
 
-# - op : bilinear_interp
+- op : bilinear_interp
+  data_format_tensors : x
 
 - op : cast
   dynamic_fallback : True
@@ -236,9 +237,13 @@
 
 # - op : slice_grad
 
-# - op : softmax
+- op : softmax
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
 
-# - op : softmax_grad
+- op : softmax_grad
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : out, out_grad
 
 - op : softplus
 
@@ -266,9 +271,11 @@
 
 - op : sum_grad
 
-# - op : swish
+- op : swish
+  extra_args : float beta=1.0
 
-# - op : swish_grad
+- op : swish_grad
+  extra_args : float beta=1.0
 
 - op : tanh
 
