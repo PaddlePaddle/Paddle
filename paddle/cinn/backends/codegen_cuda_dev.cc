@@ -335,8 +335,8 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     str_ += " ]";
 
     int type_bytes = buffer->dtype.bytes();
-    buffer_size = buffer_size * Expr(type_bytes);
-    dyn_shared_mem_offset_ = dyn_shared_mem_offset_ + buffer_size;
+    dyn_shared_mem_offset_ =
+        dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
     optim::Simplify(&dyn_shared_mem_offset_);
     VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
   } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
