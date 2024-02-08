@@ -52,13 +52,12 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
 static void check_ops(const std::string& op_name) {
   auto it = primitive_set.find(op_name);
   if (it == primitive_set.end()) {
-    std::cout << "Element " << elementToFind << " found!" << std::endl;
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
+                                     "should not contain none primitive op %s.",
+                                     op_name));
   }
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
-                                   "should not contain none primitive op %s.",
-                                   op_name));
-  return
+  return;
 }
 
 static const phi::DDim& GetValueDims(pir::Value value) {
