@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,32 +15,14 @@
 #pragma once
 
 #include <memory>
-#include <string>
+#include "paddle/pir/pass/pass.h"
 
-#include "paddle/utils/test_macros.h"
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-namespace pir {
-class Value;
-}
-
-namespace paddle {
-namespace drr {
-
-class TensorInterface;
-class MatchContextImpl;
-
-class MatchContext final {
- public:
-  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
-
-  const pir::Value& Tensor(const std::string& tensor_name) const;
-
-  template <typename T>
-  TEST_API T Attr(const std::string& attr_name) const;
-
- private:
-  std::shared_ptr<const MatchContextImpl> impl_;
-};
-
-}  // namespace drr
-}  // namespace paddle
+// This is a helper pass for converting zero-dim tensor to one-dim tensor
+std::unique_ptr<::pir::Pass> CreateConvert0DTo1DPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
