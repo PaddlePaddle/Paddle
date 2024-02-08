@@ -33,14 +33,13 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/pass/pass_registry.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 

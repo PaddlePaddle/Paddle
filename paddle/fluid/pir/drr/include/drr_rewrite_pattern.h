@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace pir {
 class IrContext;

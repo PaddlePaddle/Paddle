@@ -20,8 +20,8 @@
 #include <vector>
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace dialect {
@@ -72,11 +72,13 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
     size_t hash_value = std::hash<std::string>{}(key.group_id);
 
     for (auto d : key.loop_ranges) {
-      hash_value = pir::hash_combine(hash_value, std::hash<int64_t>()(d));
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));
     }
 
     for (auto d : key.reduce_axis) {
-      hash_value = pir::hash_combine(hash_value, std::hash<int64_t>()(d));
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));
     }
     return hash_value;
   }
