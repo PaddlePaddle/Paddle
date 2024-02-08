@@ -86,5 +86,5 @@ static std::set<std::string> primitive_set = {
     "pd_op.unsqueeze",
     "pd_op.top_p_sampling",
     "pd_op.tril",
-}
+};
 }  // namespace paddle
