@@ -14,8 +14,9 @@
 
 #include "test/cpp/pir/tools/test_op.h"
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "test/cpp/inference/api/tester_helper.h"
 namespace test {
 
 void RegionOp::Build(pir::Builder &builder, pir::OperationArgument &argument) {
@@ -50,12 +51,12 @@ void Operation1::VerifySig() const {
   auto &attributes = this->attributes();
   if (attributes.count("op1_attr1") == 0 ||
       !attributes.at("op1_attr1").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::Fatal(
         "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op1_attr2") == 0 ||
       !attributes.at("op1_attr2").isa<pir::StrAttribute>()) {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::Fatal(
         "Type of attribute: parameter_name is not right."));
   }
 }
