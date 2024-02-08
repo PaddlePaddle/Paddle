@@ -22,11 +22,21 @@
 #include "paddle/pir/pass/pass_registry.h"
 
 namespace {
+
 class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string bn_name_;
+  std::string fused_bn_name_;
+
  public:
   BatchNormActFusePattern(const std::string &bn_name,
                           const std::string &fused_bn_name)
       : bn_name_(bn_name), fused_bn_name_(fused_bn_name) {}
+
+  std::string name() const override { return "BatchNormActFusePattern"; }
+
+  uint32_t benefit() const override { return 2; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
@@ -88,14 +98,6 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
               &res.Tensor("saved_variance"),
               &res.Tensor("reserve_space")});
   }
-
-  std::string name() const override { return "BatchNormActFusePattern"; }
-
-  uint32_t benefit() const override { return 2; }
-
- private:
-  std::string bn_name_;
-  std::string fused_bn_name_;
 };
 
 class BatchNormActFusePass : public pir::PatternRewritePass {
@@ -105,13 +107,14 @@ class BatchNormActFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(BatchNormActFusePattern(paddle::dialect::BatchNormOp::name(),
-                                   paddle::onednn::dialect::BatchNormOp::name())
-               .Build(context));
-    ps.Add(
-        BatchNormActFusePattern(paddle::dialect::BatchNorm_Op::name(),
-                                paddle::onednn::dialect::BatchNorm_Op::name())
-            .Build(context));
+    ps.Add(paddle::drr::Create<BatchNormActFusePattern>(
+        context,
+        paddle::dialect::BatchNormOp::name(),
+        paddle::onednn::dialect::BatchNormOp::name()));
+    ps.Add(paddle::drr::Create<BatchNormActFusePattern>(
+        context,
+        paddle::dialect::BatchNorm_Op::name(),
+        paddle::onednn::dialect::BatchNorm_Op::name()));
     return ps;
   }
 };

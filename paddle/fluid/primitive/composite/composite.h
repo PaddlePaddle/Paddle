@@ -461,7 +461,12 @@ Tensor full_like_decomp(const Tensor& x,
                         const paddle::Scalar& value,
                         const DataType& dtype,
                         const Place& place) {
-  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  if (find_value(x_dim, -1)) {
+    return backend::full_with_tensor<T>(shape<T>(x), value, x.dtype());
+  } else {
+    return full<T>(x_dim, value, dtype, place);
+  }
 }
 
 template <typename T>
@@ -831,6 +836,42 @@ Tensor square_decomp(const Tensor& x) {
     return cast<T>(ans, org_dtype);
   } else {
     return ans;
+  }
+}
+
+template <typename T>
+Tensor embedding_decomp(const Tensor& x,
+                        const Tensor& weight,
+                        const int64_t padding_idx,
+                        const bool sparse) {
+  if (weight.dims().size() != 2) {
+    PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
+  }
+
+  const int64_t NoPadding = -1;
+  Tensor weight_tmp = weight;
+  if (padding_idx != NoPadding) {
+    std::vector<int64_t> put_shape{1, weight.dims()[1]};
+    Tensor padding_idx_tensor =
+        full<T>(put_shape, padding_idx, DataType::INT64);
+    Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
+    weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
+  }
+
+  if (x.dims().size() <= 1) {
+    auto out = gather<T>(weight_tmp, x);
+    if (x.dims().size() == 0) {
+      out = std::get<0>(squeeze_decomp<T>(out, {0}));
+    }
+    return out;
+  } else {
+    std::vector<int64_t> tar_shape{-1, 1};
+    auto x_reshape = reshape<T>(x, tar_shape);
+    auto out = gather<T>(weight_tmp, x_reshape);
+
+    auto res_dims = common::vectorize<int64_t>(x.dims());
+    res_dims.push_back(-1);
+    return reshape<T>(out, res_dims);
   }
 }
 

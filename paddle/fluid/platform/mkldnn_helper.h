@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation.h"
 namespace paddle {
 #ifdef PADDLE_WITH_DNNL
 using phi::OneDNNContext;
@@ -102,6 +104,43 @@ inline void RegisterModelLayout(
     };
 
     for (auto& op : ops) {
+      if (check_attrib(op, std::string("data_format"))) {
+        return;
+      }
+      if (check_attrib(op, std::string("data_layout"))) {
+        return;
+      }
+    }
+  }
+}
+
+inline void RegisterModelLayout(const ::pir::Block* ir_block,
+                                const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    // If there is already registered NHWC then quit this call
+    // not to overwrite setting with analysis of internal "while" op block
+    if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+        phi::DataLayout::kNHWC)
+      return;
+
+    VLOG(4) << "RegisterModelLayout for mkldnn";
+    auto check_attrib = [](const pir::Operation& op,
+                           const std::string& attrib_name) -> bool {
+      if (op.attributes().count(attrib_name)) {
+        auto data_format = op.attributes()
+                               .at(attrib_name)
+                               .dyn_cast<pir::StrAttribute>()
+                               .AsString();
+        OneDNNContext::tls().set_cur_paddle_data_layout(
+            data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
+                                             : phi::DataLayout::kNCHW);
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    for (auto& op : *ir_block) {
       if (check_attrib(op, std::string("data_format"))) {
         return;
       }

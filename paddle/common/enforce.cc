@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/common/enforce.h"
-
 #include <array>
 #include <map>
 #include <string>
 #include <vector>
+#include "paddle/common/flags.h"
 
 REGISTER_LOG_SIMPLY_STR(std::string);
-
+COMMON_DECLARE_int32(call_stack_level);
 namespace {
 class StrSizeCmp {
  public:
@@ -52,7 +52,20 @@ std::string SimplifyDemangleStr(std::string str) {
 
 namespace common {
 namespace enforce {
+TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
 
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
+  std::ostringstream sout;
+  size_t type_end_pos = str.find(':', 0);
+  if (type_end_pos == std::string::npos) {
+    sout << str;
+  } else {
+    // Remove "Error:", add "()""
+    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
+         << str.substr(type_end_pos + 1);
+  }
+  return sout.str();
+}
 bool RegisterLogSimplyStr(const std::string& type_name,
                           const std::string& simply_name) {
   return GetLogStrSimplyMap()

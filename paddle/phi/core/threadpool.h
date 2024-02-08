@@ -30,9 +30,9 @@
 namespace phi {
 
 struct ExceptionHandler {
-  mutable std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> future_;
+  mutable std::future<std::unique_ptr<common::enforce::EnforceNotMet>> future_;
   explicit ExceptionHandler(
-      std::future<std::unique_ptr<phi::enforce::EnforceNotMet>>&& f)
+      std::future<std::unique_ptr<common::enforce::EnforceNotMet>>&& f)
       : future_(std::move(f)) {}
   void operator()() const {
     auto ex = this->future_.get();
@@ -53,7 +53,7 @@ class ThreadPool {
   explicit ThreadPool(int num_threads);
 
   using Task =
-      std::packaged_task<std::unique_ptr<phi::enforce::EnforceNotMet>()>;
+      std::packaged_task<std::unique_ptr<common::enforce::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
   static ThreadPool* GetInstance();
@@ -70,14 +70,14 @@ class ThreadPool {
   }
 
   template <typename Callback>
-  std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> RunAndGetException(
-      Callback fn) {
-    Task task([fn]() -> std::unique_ptr<phi::enforce::EnforceNotMet> {
+  std::future<std::unique_ptr<common::enforce::EnforceNotMet>>
+  RunAndGetException(Callback fn) {
+    Task task([fn]() -> std::unique_ptr<common::enforce::EnforceNotMet> {
       try {
         fn();
-      } catch (phi::enforce::EnforceNotMet& ex) {
-        return std::unique_ptr<phi::enforce::EnforceNotMet>(
-            new phi::enforce::EnforceNotMet(ex));
+      } catch (common::enforce::EnforceNotMet& ex) {
+        return std::unique_ptr<common::enforce::EnforceNotMet>(
+            new common::enforce::EnforceNotMet(ex));
       } catch (const std::exception& e) {
         PADDLE_THROW(phi::errors::Fatal(
             "Unexpected exception is catched in thread pool. All "
@@ -87,7 +87,7 @@ class ThreadPool {
       }
       return nullptr;
     });
-    std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> f =
+    std::future<std::unique_ptr<common::enforce::EnforceNotMet>> f =
         task.get_future();
     {
       std::unique_lock<std::mutex> lock(mutex_);
