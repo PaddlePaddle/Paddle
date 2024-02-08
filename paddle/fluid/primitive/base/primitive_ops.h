@@ -75,6 +75,7 @@ static std::set<std::string> primitive_set = {
     "pd_op.slice",
     "pd_op.uniform",
     "pd_op.shape",
+    "pd_op.full",
     "pd_op.full_int_array",
     "pd_op.if",
     "pd_op.while",
