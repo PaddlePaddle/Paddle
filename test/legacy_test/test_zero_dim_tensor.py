@@ -118,14 +118,6 @@ inplace_unary_api_list = [
 ]
 
 
-def assertEqualListTuple(self, out, target_tuple=()):
-    if paddle.framework.in_pir_mode():
-        out_shape = tuple(out.shape)
-    else:
-        out_shape = out.shape
-    self.assertEqual(out_shape, target_tuple)
-
-
 # Use to test zero-dim in unary API.
 class TestUnaryAPI(unittest.TestCase):
     def test_dygraph_unary(self):
@@ -217,6 +209,13 @@ reduce_api_list = [
 
 # Use to test zero-dim of reduce API
 class TestReduceAPI(unittest.TestCase):
+    def assertShapeEqual(self, out, target_tuple):
+        if not paddle.framework.in_pir_mode():
+            out_shape = list(out.shape)
+        else:
+            out_shape = out.shape
+        self.assertEqual(out_shape, target_tuple)
+
     def test_dygraph_reduce(self):
         paddle.disable_static()
         for api in reduce_api_list:
@@ -331,13 +330,13 @@ class TestReduceAPI(unittest.TestCase):
 
                 if api not in [paddle.median, paddle.nanmedian]:
                     out_empty_list = api(x, axis=[])
-                    assertEqualListTuple(self, out_empty_list)
+                    self.assertShapeEqual(out_empty_list, [])
 
                 out1 = api(x, axis=0)
-                assertEqualListTuple(self, out1)
+                self.assertShapeEqual(out1, [])
 
                 out2 = api(x, axis=-1)
-                assertEqualListTuple(self, out2)
+                self.assertShapeEqual(out2, [])
 
                 fetch_list = [x, out]
 
@@ -5241,7 +5240,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.t(x)
         grad_list = paddle.static.append_backward(out, parameter_list=[out, x])
-        # (_, out_grad), (_, x_grad) = grad_list
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
