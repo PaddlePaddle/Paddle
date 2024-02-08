@@ -1776,8 +1776,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         norm_factor = w_sum - (w * aweights).sum() / w_sum
     else:
         norm_factor = w_sum - ddof
-    if norm_factor <= 0:
-        norm_factor = paddle.to_tensor(0, dtype=nx.dtype)
+    norm_factor = paddle.clip(norm_factor, min=0)
     nx = nx - avg.unsqueeze(1)
     xxt = paddle.mm(nx, nx_w.t().conj())
     cov = paddle.divide(xxt, norm_factor).squeeze()
