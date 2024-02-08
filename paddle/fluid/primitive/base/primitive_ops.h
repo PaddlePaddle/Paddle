@@ -80,8 +80,14 @@ static std::set<std::string> primitive_set = {
     "pd_op.if",
     "pd_op.while",
     /* basic ops by PIR*/
+    "builtin.combine",
+    "builtin.slice",
+    "pd_op.feed",
+    "builtin.set_parameter",
+    "builtin.parameter",
+    "builtin.constant",
     "pd_op.data",
-    "pd_op.combine",
+    "builtin.shadow_output",
     /* skip some special ops */
     "pd_op.squeeze",
     "pd_op.unsqueeze",
