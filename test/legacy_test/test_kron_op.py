@@ -127,8 +127,8 @@ class TestKronLayer(unittest.TestCase):
         b = np.random.randn(10, 10).astype(np.float64)
         place = base.CPUPlace()
         with dg.guard(place):
-            a_var = dg.to_variable(a)
-            b_var = dg.to_variable(b)
+            a_var = paddle.to_tensor(a)
+            b_var = paddle.to_tensor(b)
             c_var = paddle.kron(a_var, b_var)
             np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 

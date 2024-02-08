@@ -47,6 +47,7 @@ import gen as vjp_gen
 # Note(Galaxy1458) The need_export_symbol_op_list is used
 # for some unittests these need to export symbol op compiled with dynamic lib.
 need_export_symbol_op_list = [
+    'Add_Op',
     'AbsOp',
     'FullOp',
     'UniformOp',
@@ -55,12 +56,22 @@ need_export_symbol_op_list = [
     'Conv2dOp',
     'BatchNormOp',
     'FetchOp',
+    'FullIntArrayOp',
     'MatmulOp',
     'SoftmaxOp',
     'ReshapeOp',
     'TransposeOp',
     'LessThanOp',
+    'LayerNormOp',
     'AddGradOp',
+    'ConcatOp',
+    'CummaxOp',
+    'CastOp',
+    'ReluOp',
+    'ReluGradOp',
+    'BatchNorm_Op',
+    'GeluOp',
+    'GeluGradOp',
     'MatmulGradOp',
 ]
 
@@ -260,7 +271,9 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, "{kernel_func}", {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}}, {{{extra_args}}}, {{{data_format_tensors}}}, {is_onednn_only}, {dynamic_fallback});
+  pir::AttributeMap extra_attr_default_value;
+  {extra_attr_default_value_code}
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, "{kernel_func}", {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}}, {{{extra_args}}}, extra_attr_default_value, {{{data_format_tensors}}}, {is_onednn_only}, {dynamic_fallback});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
@@ -1126,6 +1139,94 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
+def GenOneDnnExtraAttrsDefaultValue(onednn_extra_args):
+    INTARRAY_STR_TEMPLATE = """  pir::Attribute attr_{attr_name} = {op_attribute_type}::get(pir::IrContext::Instance(), phi::IntArray({attr}));
+"""
+    SCALAR_STR_TEMPLATE = """  pir::Attribute attr_{attr_name} = paddle::dialect::TransToIrAttribute({attr}, pir::IrContext::Instance());
+"""
+    STR_TEMPLATE = """  pir::Attribute attr_{attr_name} = {op_attribute_type}::get(pir::IrContext::Instance(), {attr});
+"""
+    ARRAY_ATTRIBUTE_TEMPLATE = """  std::vector<pir::Attribute> vec_{attr_name};
+std::vector<{cpp_type}> vec_values = {attr_valuse};
+for (size_t i = 0; i < static_cast<size_t>(vec_values.size()); i++) {{
+    {create_attribute}
+    vec_{attr_name}.push_back(attr_{attr_name});
+}}
+pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_{attr_name});
+"""
+    attr_str = ""
+    array_attr_type = "pir::ArrayAttribute<"
+    for idx in range(len(onednn_extra_args)):
+        assert (
+            onednn_extra_args[idx]['typename'] in attr_types_map
+        ), f"{onednn_extra_args[idx]['typename']} : Attr type error."
+        extra_arg_type = attr_types_map[onednn_extra_args[idx]['typename']][0]
+
+        if array_attr_type in extra_arg_type:
+            inner_attribute_type = extra_arg_type[len(array_attr_type) : -1]
+            if inner_attribute_type == "paddle::dialect::IntArrayAttribute":
+                attr_str += ARRAY_ATTRIBUTE_TEMPLATE.format(
+                    attr_name=onednn_extra_args[idx]['name'],
+                    cpp_type=onednn_extra_args[idx]['typename'].replace(
+                        '[]', ''
+                    ),
+                    attr_valuse=onednn_extra_args[idx]['default_value'],
+                    create_attribute=INTARRAY_STR_TEMPLATE.format(
+                        attr_name=onednn_extra_args[idx]['name'],
+                        op_attribute_type=inner_attribute_type,
+                        attr="vec_values[i]",
+                    ),
+                )
+            elif inner_attribute_type == "paddle::dialect::ScalarAttribute":
+                attr_str += ARRAY_ATTRIBUTE_TEMPLATE.format(
+                    attr_name=onednn_extra_args[idx]['name'],
+                    cpp_type=onednn_extra_args[idx]['typename'].replace(
+                        '[]', ''
+                    ),
+                    attr_valuse=onednn_extra_args[idx]['default_value'],
+                    create_attribute=SCALAR_STR_TEMPLATE.format(
+                        attr_name=onednn_extra_args[idx]['name'],
+                        attr="vec_values[i]",
+                    ),
+                )
+            else:
+                attr_str += ARRAY_ATTRIBUTE_TEMPLATE.format(
+                    attr_name=onednn_extra_args[idx]['name'],
+                    cpp_type=onednn_extra_args[idx]['typename'].replace(
+                        '[]', ''
+                    ),
+                    attr_valuse=onednn_extra_args[idx]['default_value'],
+                    create_attribute=STR_TEMPLATE.format(
+                        attr_name=onednn_extra_args[idx]['name'],
+                        op_attribute_type=inner_attribute_type,
+                        attr="vec_values[i]",
+                    ),
+                )
+        elif extra_arg_type == "paddle::dialect::IntArrayAttribute":
+            attr_str += INTARRAY_STR_TEMPLATE.format(
+                attr_name=onednn_extra_args[idx]['name'],
+                op_attribute_type=extra_arg_type,
+                attr=onednn_extra_args[idx]['name'],
+            )
+        elif extra_arg_type == "paddle::dialect::ScalarAttribute":
+            attr_str += SCALAR_STR_TEMPLATE.format(
+                attr_name=onednn_extra_args[idx]['name'],
+                attr=onednn_extra_args[idx]['name'],
+            )
+        else:
+            attr_str += STR_TEMPLATE.format(
+                attr_name=onednn_extra_args[idx]['name'],
+                op_attribute_type=extra_arg_type,
+                attr=onednn_extra_args[idx]['default_value'],
+            )
+
+        attr_str += """extra_attr_default_value["{attr_name}"] = attr_{attr_name};\n""".format(
+            attr_name=onednn_extra_args[idx]['name']
+        )
+
+    return attr_str
+
+
 def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
@@ -1676,12 +1777,24 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         data_format_tensors = (
                             '"' + '", "'.join(data_format_tensors) + '"'
                         )
+                    if (
+                        op_info.onednn_extra_args is not None
+                        and len(op_info.onednn_extra_args) > 0
+                    ):
+                        extra_attr_default_value_code_str = (
+                            GenOneDnnExtraAttrsDefaultValue(
+                                op_info.onednn_extra_args
+                            )
+                        )
+                    else:
+                        extra_attr_default_value_code_str = ""
 
                     op_info_func_str = OP_INFO_ONEDNN_TEMPLATE.format(
                         op_name=op_class_name,
                         inputs=inputs_info_str,
                         attributes=attribute_info_str,
                         outputs=outputs_info_str,
+                        extra_attr_default_value_code=extra_attr_default_value_code_str,
                         infer_meta_func=infer_meta_func_str,
                         infer_meta_param=infer_meta_param_str,
                         kernel_func=kernel_func_str,

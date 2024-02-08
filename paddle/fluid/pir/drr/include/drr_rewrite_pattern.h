@@ -15,7 +15,6 @@
 #pragma once
 
 #include <memory>
-#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -32,6 +31,7 @@ namespace drr {
 
 class OpCall;
 class Constraint;
+class DrrPatternBase;
 class DrrPatternContext;
 class MatchContextImpl;
 class SourcePatternGraph;
@@ -39,10 +39,12 @@ class ResultPatternGraph;
 
 class DrrRewritePattern : public pir::RewritePattern {
  public:
-  explicit DrrRewritePattern(const std::string& pattern_name,
-                             const DrrPatternContext& drr_context,
-                             pir::IrContext* context,
-                             pir::PatternBenefit benefit);
+  DrrRewritePattern(
+      const std::string& pattern_name,
+      const DrrPatternContext& drr_context,
+      pir::IrContext* context,
+      pir::PatternBenefit benefit,
+      const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner);
 
   bool MatchAndRewrite(
       pir::Operation* op,
@@ -98,6 +100,9 @@ class DrrRewritePattern : public pir::RewritePattern {
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   const std::vector<Constraint> constraints_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
+
+  // Not used, just for hold it's life cycle.
+  const std::shared_ptr<const DrrPatternBase> drr_pattern_owner_;
 };
 
 }  // namespace drr

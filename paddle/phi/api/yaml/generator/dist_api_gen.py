@@ -128,6 +128,10 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
             phi::DenseTensorMeta());
     }}
 """
+SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD = """
+    auto dist_out = SetKernelDistOutput(&api_output);
+    auto dense_out = dist_out->unsafe_mutable_value();
+"""
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
     auto dense_out = dist_out->unsafe_mutable_value();
@@ -137,6 +141,11 @@ SINGLE_OUT_CREATION_TEMPLATE = """
             phi::DenseTensorMeta());
     }}
 """
+SINGLE_INPLACE_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
+    auto dense_out = dist_out->unsafe_mutable_value();
+"""
+
 VECTOR_INPLACE_OUT_DIST_ATTR = """
     std::vector<phi::distributed::TensorDistAttr> dist_out_attr;
     for (size_t i = 0; i < api_output.size(); ++i) {{
@@ -155,6 +164,13 @@ VECTOR_OUT_CREATION_TEMPLATE = """
       }}
     }}
 """
+VECTOR_INPLACE_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput({}, &api_output);
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
+      dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    }}
+"""
 MULTI_SINGLE_INPLACE_OUT_DIST_ATTR = """
     auto dist_out_attr_{idx} = static_cast<phi::distributed::DistTensor*>(({out}).impl().get())->dist_attr();
 """
@@ -167,6 +183,10 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
             phi::DenseTensorMeta());
     }}
 """
+MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD = """
+    auto dist_out_{idx} = SetKernelDistOutput(&{out});
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+"""
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
@@ -175,6 +195,10 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
     }}
+"""
+MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
 MULTI_SINGLE_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
     phi::distributed::TensorDistAttr dist_out_attr_{idx};
@@ -200,6 +224,13 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
                   std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
                   phi::DenseTensorMeta());
         }}
+    }}
+"""
+MULTI_INPLACE_VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{idx} = SetKernelDistOutput({dist_output_arg}, &{in_name});
+    std::vector<phi::DenseTensor*> dense_out_{idx}(dist_out_{idx}.size());
+    for (size_t i = 0; i < dist_out_{idx}.size(); ++i) {{
+        dense_out_{idx}[i] = const_cast<phi::DenseTensor*>(&dist_out_{idx}[i]->value());
     }}
 """
 MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
@@ -580,6 +611,11 @@ class DistForwardAPI(ForwardAPI):
         return self.need_to_generate_code_for_inplace_impl(
             i
         ) or self.need_to_generate_code_for_view_impl(i)
+
+    # # view output is also inlace, such case still needs
+    # # to create an empty DenseTensor for inplace output in pp
+    # def need_to_set_inplace_output_for_pp_impl(self, i):
+    #     return (not self.need_to_generate_code_for_view_impl(i)) and self.is_inplace_output(i)
 
     def is_reshape_kernel(self):
         return (
@@ -1011,9 +1047,21 @@ class DistForwardAPI(ForwardAPI):
                 ):
                     output_creation_code += SINGLE_INPLACE_OUT_DIST_ATTR
                 if self.infer_meta['spmd_rule'] is not None:
-                    output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
+                    if self.need_to_generate_code_for_inplace_impl(0):
+                        output_creation_code += (
+                            SINGLE_INPLACE_OUT_CREATION_TEMPLATE
+                        )
+                    else:
+                        output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
                 else:
-                    output_creation_code += SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
+                    if self.need_to_generate_code_for_inplace_impl(0):
+                        output_creation_code += (
+                            SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD
+                        )
+                    else:
+                        output_creation_code += (
+                            SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
+                        )
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
                 # SetKernelDistOutput arg
                 if (
@@ -1026,9 +1074,16 @@ class DistForwardAPI(ForwardAPI):
                     if self.infer_meta['spmd_rule'] is not None
                     else self.outputs['out_size_expr'][0]
                 )
-                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
-                    dist_output_arg
-                )
+                if self.need_to_generate_code_for_inplace_impl(0):
+                    output_creation_code += (
+                        VECTOR_INPLACE_OUT_CREATION_TEMPLATE.format(
+                            dist_output_arg
+                        )
+                    )
+                else:
+                    output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                        dist_output_arg
+                    )
         elif output_num > 1:
             # api output generate
             if self.inplace_flag:
@@ -1071,15 +1126,25 @@ class DistForwardAPI(ForwardAPI):
                                 )
                             )
                         if self.infer_meta['spmd_rule'] is not None:
-                            output_creation_code += (
-                                MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
+                            if self.need_to_generate_code_for_inplace_impl(i):
+                                output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE.format(
                                     idx=i, out=get_out_code
                                 )
-                            )
+                            else:
+                                output_creation_code += (
+                                    MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
+                                        idx=i, out=get_out_code
+                                    )
+                                )
                         else:
-                            output_creation_code += MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
-                                idx=i, out=get_out_code
-                            )
+                            if self.need_to_generate_code_for_inplace_impl(i):
+                                output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                                    idx=i, out=get_out_code
+                                )
+                            else:
+                                output_creation_code += MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                                    idx=i, out=get_out_code
+                                )
                 elif out_type == 'std::vector<Tensor>':
                     self.vector_output_size_assertion_check()
                     # Special case for inplace vector and inplace optional<vector>
@@ -1106,13 +1171,20 @@ class DistForwardAPI(ForwardAPI):
                                     idx=i, in_name=get_out_code
                                 )
                             )
-                        output_creation_code += (
-                            MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                        if self.need_to_generate_code_for_inplace_impl(i):
+                            output_creation_code += MULTI_INPLACE_VECTOR_OUT_CREATION_TEMPLATE.format(
                                 idx=i,
                                 dist_output_arg=dist_output_arg,
                                 in_name=get_out_code,
                             )
-                        )
+                        else:
+                            output_creation_code += (
+                                MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                                    idx=i,
+                                    dist_output_arg=dist_output_arg,
+                                    in_name=get_out_code,
+                                )
+                            )
         else:
             raise ValueError(
                 f"{self.api} : Output error: the output should not be empty."

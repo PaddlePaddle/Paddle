@@ -44,7 +44,6 @@ TEST(infer_symbolic_shape, op_with_same_operands_and_result_shape) {
 
   // Run shape optimization pass
   pir::PassManager pm(ctx);
-  pm.EnableIRPrinting();
   pm.AddPass(pir::CreateShapeOptimizationPass());
   pm.Run(&program);
 

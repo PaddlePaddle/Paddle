@@ -31,6 +31,7 @@
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_0d_to_1d_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -92,9 +93,10 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
@@ -821,7 +823,7 @@ void BindValue(py::module *m) {
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
-                 BoolAttribute::get(pir::IrContext::Instance(), false));
+                 BoolAttribute::get(pir::IrContext::Instance(), true));
              return out;
            })
       .def("__repr__", &Value2String);
@@ -1563,6 +1565,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->EnableIRPrinting();
   }
 
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
   if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
@@ -1575,6 +1578,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
