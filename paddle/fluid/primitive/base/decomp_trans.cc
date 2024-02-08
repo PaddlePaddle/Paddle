@@ -19,8 +19,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
 

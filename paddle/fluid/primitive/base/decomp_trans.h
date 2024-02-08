@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 

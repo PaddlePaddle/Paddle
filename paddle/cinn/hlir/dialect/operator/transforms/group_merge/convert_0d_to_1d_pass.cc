@@ -21,7 +21,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_type.h"
 
 namespace cinn {
 namespace dialect {

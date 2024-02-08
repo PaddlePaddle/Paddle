@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {

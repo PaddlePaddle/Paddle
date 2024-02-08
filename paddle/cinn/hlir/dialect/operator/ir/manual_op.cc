@@ -24,10 +24,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {

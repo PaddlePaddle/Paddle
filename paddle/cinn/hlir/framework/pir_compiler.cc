@@ -19,8 +19,8 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
