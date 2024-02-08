@@ -38,7 +38,7 @@ if(WITH_XPU)
 endif()
 
 paddle_test(test_common_infer_shape_functions SRCS
-            test_common_infer_shape_functions.cc DEPS common)
+            test_common_infer_shape_functions.cc DEPS common layer)
 cc_test(
   gather_test
   SRCS gather_test.cc
