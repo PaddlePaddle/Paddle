@@ -48,7 +48,9 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -143,6 +145,18 @@ class TestTileOpRank4(TestTileOpRank1):
 
     def if_enable_cinn(self):
         self.check_cinn = True
+
+    def test_check_output(self):
+        # todo: enable check_prim_pir
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+        )
 
 
 # Situation 2: repeat_times is a list (with tensor)
@@ -269,7 +283,9 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -307,7 +323,10 @@ class TestTileBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_cinn=self.check_cinn, check_pir=True
+            place,
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_data(self):
