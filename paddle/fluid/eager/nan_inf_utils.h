@@ -91,7 +91,7 @@ struct NanInfChecker<TupleT, N, N> {
 };
 
 template <typename TupleT>
-TEST_API void CheckTensorHasNanOrInf(const std::string& api_name,
+void CheckTensorHasNanOrInf(const std::string& api_name,
                                      const TupleT& tensors) {
   constexpr size_t size = std::tuple_size<TupleT>::value;
   NanInfChecker<TupleT, 0, size - 1>()(api_name, tensors);
