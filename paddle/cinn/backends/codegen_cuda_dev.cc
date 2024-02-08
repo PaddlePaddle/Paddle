@@ -82,6 +82,7 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
 }
 
 void CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
+  dyn_shared_mem_offset_ = Expr(-1);
   IrPrinter::Visit(Expr(func));
 }
 
