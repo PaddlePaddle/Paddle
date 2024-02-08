@@ -38,6 +38,11 @@ Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
+static Tensor get_slice(const Tensor& x, int64_t idx) {
+  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
+}
+
+template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -860,17 +865,18 @@ Tensor embedding_decomp(const Tensor& x,
   std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
   if (find_value(x_dim, -1)) {
     if (padding_idx != NoPadding) {
-      std::vector<int64_t> put_shape{1, weight.dims()[1]};
+      Tensor put_shape = get_slice(shape<T>(weight), 1);
       Tensor padding_idx_tensor =
-          full<T>(put_shape, padding_idx, DataType::INT64);
-      Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
+          backend::full_with_tensor<T>(put_shape, padding_idx, DataType::INT64);
+      Tensor zeros =
+          fulbackend::full_with_tensor<T>(put_shape, 0.0, weight.dtype());
       weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
     }
 
     if (x.dims().size() <= 1) {
       auto out = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        out = std::get<0>(squeeze_decomp<T>(out, {0}));
+        out = squeeze<T>(out, {0});
       }
       return out;
     } else {
@@ -879,8 +885,11 @@ Tensor embedding_decomp(const Tensor& x,
       auto out = gather<T>(weight_tmp, x_reshape);
 
       auto res_dims = common::vectorize<int64_t>(x.dims());
-      res_dims.push_back(-1);
-      return reshape<T>(out, res_dims);
+      auto out_t_shape = prod<T>(shape<T>(out), {0}, false, false);
+      auto x_t_shape = prod<T>(shape<T>(x), {0}, false, false);
+      auto infer_value = x_t_shape / out_t_shape;
+      auto res_t_shape = concat<T>({x_t_shape, infer_value}, 0);
+      return backend::reshape<T>(out, res_t_shape);
     }
   } else {
     if (padding_idx != NoPadding) {
