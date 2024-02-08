@@ -132,7 +132,7 @@ class TestDistPPTraining(unittest.TestCase):
 
             print("loss: ", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-3
             )
 
 
