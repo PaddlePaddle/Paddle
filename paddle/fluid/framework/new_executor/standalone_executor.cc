@@ -109,7 +109,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
 #ifdef PADDLE_WITH_DNNL
       if (FLAGS_use_mkldnn) {
-        EnableOneDNNPass(base_program.get());
+        paddle::dialect::EnableOneDNNPass(base_program.get());
       }
 #endif
 

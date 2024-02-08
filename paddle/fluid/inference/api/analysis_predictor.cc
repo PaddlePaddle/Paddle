@@ -893,7 +893,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
 #ifdef PADDLE_WITH_DNNL
       if (FLAGS_use_mkldnn) {
-        EnableOneDNNPass(pir_program_.get());
+        paddle::dialect::EnableOneDNNPass(pir_program_.get());
       }
 #endif
 

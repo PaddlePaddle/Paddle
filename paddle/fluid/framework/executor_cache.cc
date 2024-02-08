@@ -376,7 +376,7 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
                                             phi::Place place) {
 #ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) {
-    EnableOneDNNPass(program);
+    paddle::dialect::EnableOneDNNPass(program);
   }
 #endif
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
@@ -559,7 +559,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
 #ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) {
-    EnableOneDNNPass(program.get());
+    paddle::dialect::EnableOneDNNPass(program.get());
   }
 #endif
 
