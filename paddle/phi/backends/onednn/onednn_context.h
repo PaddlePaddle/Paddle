@@ -114,7 +114,7 @@ class OneDNNContext : public CPUContext {
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
-  void ResetBlobMap(void* ptr);
+  TEST_API void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
