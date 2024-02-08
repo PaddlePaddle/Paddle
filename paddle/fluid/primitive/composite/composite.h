@@ -27,15 +27,6 @@ namespace details {
 static std::vector<int64_t> empty_shape;
 
 template <typename T>
-static void print_vec(std::vector<T> vec, const std::string& message) {
-  std::cout << "===== " << message << "=====" << std::endl;
-  for (const auto& item : vec) {
-    std::cout << " " << item;
-  }
-  std::cout << std::endl;
-}
-
-template <typename T>
 static Tensor get_slice(const Tensor& x, int64_t idx) {
   return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
 }
@@ -851,7 +842,6 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
   // t2 = t1.reshape(shape2)
   // t3 = t2.expand(shape3)
   // res = t3.reshape(t3)
-  VLOG(0) << "=====================1 ";
   std::vector<int64_t> repeat_times_ = repeat_times.GetData();
   std::vector<int64_t> shape1 = common::vectorize<int64_t>(x.dims());
   auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
@@ -860,15 +850,12 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     size_t repeat_time_length = repeat_times_.size();
     std::vector<int64_t> unsqueeze_idx2;
     if (diff > 0) {
-      VLOG(0) << "=====================diff " << diff;
-      VLOG(0) << "=====================x.dims() " << x.dims();
       std::vector<int64_t> unsqueeze_idx1(diff);
       std::iota(unsqueeze_idx1.begin(), unsqueeze_idx1.end(), 0);
       t1 = unsqueeze<T>(x, unsqueeze_idx1);
     } else {
       t1 = x;
     }
-    VLOG(0) << "=====================1.1 ";
     auto length2 = t1.dims().size();
     for (size_t i = 0; i < repeat_times_.size(); i++) {
       unsqueeze_idx2.push_back(length2 - repeat_times_.size() + i * 2);
@@ -884,13 +871,9 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     Tensor origin_shape_t = shape<T>(t1);
     std::vector<int64_t> t1_shape = common::vectorize<int64_t>(t1.dims());
     std::vector<Tensor> res_s;
-    VLOG(0) << "=====================1.3 ";
     for (int64_t i = int64_t(length2) - 1; i >= 0; i--) {
       auto relative_idx =
           int64_t(repeat_time_length) - 1 - int64_t(length2 - i - 1);
-      VLOG(0) << "=====================relative_idx " << relative_idx
-              << " repeat_time_length " << repeat_time_length << " length2 "
-              << length2 << " i " << i;
 
       if (relative_idx >= 0) {
         res_s.insert(
@@ -900,12 +883,10 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
         res_s.insert(res_s.begin(), get_slice<T>(origin_shape_t, i));
       }
     }
-    VLOG(0) << "=====================1.4 ";
     Tensor s4 = concat<T>(res_s, 0);
     return backend::reshape_with_tensor<T>(t3, s4);
 
   } else {
-    VLOG(0) << "=====================diff " << diff;
     if (diff > 0) {
       for (int64_t i = 0; i < diff; i++) {
         shape1.insert(shape1.begin(), 1);
@@ -913,41 +894,26 @@ Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
     }
 
     auto length = int64_t(shape1.size());
-    VLOG(0) << "=====================3 length === " << length;
     std::vector<int64_t> shape2 = shape1;
     std::vector<int64_t> shape3 = shape1;
     std::vector<int64_t> final_shape = shape1;
     auto r_length = repeat_times_.size();
     for (size_t j = 0; j < repeat_times_.size(); j++) {
       int64_t i = int64_t(j);
-      // print_vec<int64_t>(repeat_times_,"repeat_times_ in for0");
-      // VLOG(0) << "=====================i "<<i<<" length-1-i "<<length-1-i<< "
-      // -i-1 "<<-i-1<<" repeat_times_[-i-1]
-      // "<<repeat_times_[r_length-i-1]<<std::endl;
-      // print_vec<int64_t>(shape3,"shape3 in for0");
+
       shape2.insert(shape2.begin() + (length - 1 - i), 1);
       shape3.insert(shape3.begin() + (length - 1 - i),
                     repeat_times_[r_length - i - 1]);
-      // print_vec<int64_t>(shape3,"shape3 in for1");
-      // VLOG(0) << "=====================3.5 ";
-      // print_vec<int64_t>(final_shape,"final_shape0");
+
       final_shape[length - i - 1] =
           final_shape[length - i - 1] * repeat_times_[r_length - i - 1];
-      // print_vec<int64_t>(final_shape,"final_shape1");
     }
-    // VLOG(0) << "=====================4 ";
 
     t1 = reshape<T>(x, shape1);
-    VLOG(0) << "=====================4.5 ";
-    print_vec<int64_t>(shape1, "shape1");
-    print_vec<int64_t>(repeat_times_, "repeat_times_");
-    print_vec<int64_t>(shape3, "shape3");
-    print_vec<int64_t>(final_shape, "final_shape");
 
     auto t2 = reshape<T>(t1, shape2);
     auto t3 = t2.expand(shape3);
     auto res = reshape<T>(t3, final_shape);
-    VLOG(0) << "=====================5 ";
     return res;
   }
 }
