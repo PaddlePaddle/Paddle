@@ -364,6 +364,7 @@
     func : bitwise_and
     backend : x
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_left_shift
   args : (Tensor x, Tensor y, bool is_arithmetic = true)
@@ -921,6 +922,7 @@
     data_type : x
   optional : y
   backward : expand_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : expm1
   args : (Tensor x)
@@ -1618,6 +1620,7 @@
     func : log
   inplace: (x -> out)
   backward: log_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log10
   args : (Tensor x)
@@ -1687,6 +1690,7 @@
     data_type : x
     backend : x
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logical_not
   args : (Tensor x)
@@ -1698,6 +1702,7 @@
     data_type : x
     backend : x
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logical_or
   args : (Tensor x, Tensor y)
@@ -2784,6 +2789,7 @@
     func : top_p_sampling
     data_type : x
   optional : threshold
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)

@@ -50,6 +50,7 @@
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "build/paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
@@ -854,6 +855,45 @@ bool SupportsMKLDNN(const std::string& kernel_name,
                        paddle::framework::LibraryType::kMKLDNN &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::TransToProtoVarType(data_type);
+          });
+    }
+  }
+}
+
+bool SupportsCPUBF16(const std::string& kernel_name) {
+  auto phi_kernels =
+      phi::KernelFactory::Instance().SelectKernelMap(kernel_name);
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::CPU &&
+                           kern_pair.first.dtype() == phi::DataType::BFLOAT16;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter =
+        paddle::framework::OperatorWithKernel::AllOpKernels().find(
+            phi::TransToFluidOpName(kernel_name));
+    if (op_kernel_iter ==
+        paddle::framework::OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [](std::unordered_map<
+              paddle::framework::OpKernelType,
+              std::function<void(const paddle::framework::ExecutionContext&)>,
+              paddle::framework::OpKernelType::Hash>::const_reference
+                 kern_pair) {
+            return platform::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.place_ == platform::CPUPlace() &&
+                   kern_pair.first.data_type_ ==
+                       paddle::framework::proto::VarType::Type::
+                           VarType_Type_BF16;
           });
     }
   }
@@ -1798,8 +1838,8 @@ std::vector<pir::Type> BuildOutputs(
   std::vector<pir::Type> op_output_types;
   pir::AttributeMap attribute_map = op_item->attributes();
 
-  auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
-      kernel_fn_str, kernel_key);
+  auto phi_kernel =
+      phi::KernelFactory::Instance().SelectKernel(kernel_fn_str, kernel_key);
   VLOG(6) << "[" << kernel_fn_str
           << "] selected kernel(is_valid: " << phi_kernel.IsValid()
           << " ): " << kernel_key;
@@ -2440,6 +2480,47 @@ void ProcessBlock(
       }
       op_item = op_item_inner;
       op_info_parser = GetOpYamlInfoParser(op_item_inner);
+    }
+
+    // Use OneDNN if CPU not support bf16
+    if (kernel_key.dtype() == phi::DataType::BFLOAT16 &&
+        kernel_key.backend() == phi::Backend::CPU &&
+        !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
+        SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
+      std::string target_op_name = op_item->name();
+      target_op_name.replace(0, 5, "onednn_op");
+      auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+      if (op_info) {
+        std::vector<pir::Type> op_item_inner_output_types;
+        if (op_item->num_results() > 0) {
+          for (size_t i = 0; i < op_item->num_results(); ++i) {
+            op_item_inner_output_types.push_back(op_item->result_type(i));
+          }
+        }
+        auto attributes = op_item->attributes();
+        auto yaml_interface =
+            op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+        OpRunTimeInfo runtime_info =
+            std::get<3>(yaml_interface->get_op_info_(target_op_name));
+        for (auto& attr : runtime_info.extra_args_default_value) {
+          attributes[attr.first] = attr.second;
+        }
+        pir::Operation* op_item_inner =
+            pir::Operation::Create(op_item->operands_source(),
+                                   attributes,
+                                   op_item_inner_output_types,
+                                   op_info);
+        op_item->ReplaceAllUsesWith(op_item_inner->results());
+        for (auto iter = block->begin(); iter != block->end(); ++iter) {
+          if (*iter == *op_item) {
+            block->Assign(iter, op_item_inner);
+            break;
+          }
+        }
+        op_item = op_item_inner;
+        op_info_parser = GetOpYamlInfoParser(op_item_inner);
+        kernel_key.set_backend(phi::Backend::ONEDNN);
+      }
     }
 #endif
     // build input
