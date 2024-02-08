@@ -170,8 +170,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   int size = nlocalsplus_new + code->co_stacksize + FRAME_SPECIALS_SIZE;
 #endif
   CALL_STAT_INC(frames_pushed);
+#if PY_VERSION_HEX >= 0x030c0000
+  _PyInterpreterFrame *shadow = Internal_PyThreadState_PushFrame(tstate, size);
+#else
   _PyInterpreterFrame *shadow =
       (_PyInterpreterFrame *)malloc(sizeof(PyObject *) * size);
+#endif
   if (shadow == NULL) {
     // VLOG(7) << "Failed to allocate memory for shadow frame.";
     return NULL;
@@ -183,11 +187,7 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
 #if PY_VERSION_HEX >= 0x030c0000
   Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
   func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
-  if (!_PyThreadState_HasStackSpace(tstate, size)) {
-    // VLOG(7) << "push checking for space error"
-    return NULL;
-  }
-  shadow = _PyFrame_PushUnchecked(tstate, func, 0);
+  _PyFrame_Initialize(shadow, func, NULL, code, 0);
   PyObject **fastlocals_new = shadow->localsplus;
 #else
   Py_XINCREF(frame->f_func->func_closure);

@@ -76,6 +76,10 @@ void Internal_PyObject_VirtualFree(void *obj, size_t size) {
   Internal_PyObject_Arena.free(Internal_PyObject_Arena.ctx, obj, size);
 }
 
+void *Internal_PyObject_VirtualAlloc(size_t size) {
+  return Internal_PyObject_Arena.alloc(Internal_PyObject_Arena.ctx, size);
+}
+
 void Internal_PyThreadState_PopFrame(PyThreadState *tstate,
                                      _PyInterpreterFrame *frame) {
   assert(tstate->datastack_chunk);
@@ -296,6 +300,58 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   }
   Py_DECREF(locals);
   return 0;
+}
+
+static _PyStackChunk *Internal_allocate_chunk(int size_in_bytes,
+                                              _PyStackChunk *previous) {
+  assert(size_in_bytes % sizeof(PyObject **) == 0);
+  _PyStackChunk *res = Internal_PyObject_VirtualAlloc(size_in_bytes);
+  if (res == NULL) {
+    return NULL;
+  }
+  res->previous = previous;
+  res->size = size_in_bytes;
+  res->top = 0;
+  return res;
+}
+
+/* Minimum size of data stack chunk */
+#define DATA_STACK_CHUNK_SIZE (16 * 1024)
+#define MINIMUM_OVERHEAD 1000
+
+static PyObject **Internal_push_chunk(PyThreadState *tstate, int size) {
+  int allocate_size = DATA_STACK_CHUNK_SIZE;
+  while (allocate_size < (int)sizeof(PyObject *) * (size + MINIMUM_OVERHEAD)) {
+    allocate_size *= 2;
+  }
+  _PyStackChunk *new =
+      Internal_allocate_chunk(allocate_size, tstate->datastack_chunk);
+  if (new == NULL) {
+    return NULL;
+  }
+  if (tstate->datastack_chunk) {
+    tstate->datastack_chunk->top =
+        tstate->datastack_top - &tstate->datastack_chunk->data[0];
+  }
+  tstate->datastack_chunk = new;
+  tstate->datastack_limit = (PyObject **)(((char *)new) + allocate_size);
+  // When new is the "root" chunk (i.e. new->previous == NULL), we can keep
+  // _PyThreadState_PopFrame from freeing it later by "skipping" over the
+  // first element:
+  PyObject **res = &new->data[new->previous == NULL];
+  tstate->datastack_top = res + size;
+  return res;
+}
+
+_PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
+                                                      size_t size) {
+  assert(size < INT_MAX / sizeof(PyObject *));
+  if (_PyThreadState_HasStackSpace(tstate, (int)size)) {
+    _PyInterpreterFrame *res = (_PyInterpreterFrame *)tstate->datastack_top;
+    tstate->datastack_top += size;
+    return res;
+  }
+  return (_PyInterpreterFrame *)Internal_push_chunk(tstate, (int)size);
 }
 
 #else
