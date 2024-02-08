@@ -42,3 +42,9 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS forward_autograd_test.cc
     DEPS ${eager_deps} ${fluid_deps} ${generated_deps} eager_scale scale_node)
 endif()
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_egr_task_nan_inf_utils)
+endif()
