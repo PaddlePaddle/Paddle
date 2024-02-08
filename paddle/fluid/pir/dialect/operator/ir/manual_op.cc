@@ -675,7 +675,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
               inputs[i]
                   .dyn_cast<paddle::dialect::DenseTensorArrayType>()
                   .dtype()),
-          {},
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorArrayType>().dims(),
           inputs[i]
               .dyn_cast<paddle::dialect::DenseTensorArrayType>()
               .data_layout(),
@@ -687,7 +687,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
               inputs[i]
                   .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
                   .dtype()),
-          {},
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorArrayType>().dims(),
           inputs[i]
               .dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>()
               .data_layout(),
@@ -719,6 +719,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
       dense_out.layout());
 
   argument_outputs.push_back(out_dense_tensor_type);
@@ -920,7 +921,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_x =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -930,7 +930,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
                                               allocated_x.data_layout(),
                                               allocated_x.lod(),
                                               allocated_x.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -940,7 +939,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   paddle::dialect::DenseTensorType y;
   if (y_.type().isa<paddle::dialect::DenseTensorType>()) {
     y = y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)y;
   } else if (y_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_y =
         y_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -950,7 +948,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
                                               allocated_y.data_layout(),
                                               allocated_y.lod(),
                                               allocated_y.offset());
-    (void)y;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -960,7 +957,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   paddle::dialect::DenseTensorType bias;
   if (bias_.type().isa<paddle::dialect::DenseTensorType>()) {
     bias = bias_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)bias;
   } else if (bias_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_bias =
         bias_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -970,7 +966,6 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
                                                  allocated_bias.data_layout(),
                                                  allocated_bias.lod(),
                                                  allocated_bias.offset());
-    (void)bias;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -1198,7 +1193,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_x =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -1208,7 +1202,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
                                               allocated_x.data_layout(),
                                               allocated_x.lod(),
                                               allocated_x.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -1218,7 +1211,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
   paddle::dialect::DenseTensorType y;
   if (y_.type().isa<paddle::dialect::DenseTensorType>()) {
     y = y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)y;
   } else if (y_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_y =
         y_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -1228,7 +1220,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
                                               allocated_y.data_layout(),
                                               allocated_y.lod(),
                                               allocated_y.offset());
-    (void)y;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -1240,7 +1231,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
     if (reserve_space_.type().isa<paddle::dialect::DenseTensorType>()) {
       reserve_space =
           reserve_space_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-      (void)reserve_space;
     } else if (reserve_space_.type()
                    .isa<paddle::dialect::AllocatedDenseTensorType>()) {
       paddle::dialect::AllocatedDenseTensorType allocated_reserve_space =
@@ -1253,7 +1243,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
           allocated_reserve_space.data_layout(),
           allocated_reserve_space.lod(),
           allocated_reserve_space.offset());
-      (void)reserve_space;
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Only support paddle::dialect::DenseTensorType or "
@@ -1261,13 +1250,11 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
     }
   } else {
     reserve_space = paddle::dialect::DenseTensorType();
-    (void)reserve_space;
   }
 
   paddle::dialect::DenseTensorType out_grad;
   if (out_grad_.type().isa<paddle::dialect::DenseTensorType>()) {
     out_grad = out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)out_grad;
   } else if (out_grad_.type()
                  .isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_out_grad =
@@ -1279,7 +1266,6 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
                                               allocated_out_grad.data_layout(),
                                               allocated_out_grad.lod(),
                                               allocated_out_grad.offset());
-    (void)out_grad;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -1669,6 +1655,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      common::make_ddim({0}),  // TODO(chenxi67): set shape
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
@@ -1779,7 +1766,6 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
   if (input_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     input_type =
         input_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)input_type;
   } else if (input_.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -1788,8 +1774,8 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)input_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -1798,7 +1784,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
 
@@ -1813,6 +1799,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
       dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
 
@@ -1908,15 +1895,14 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
   paddle::dialect::DenseTensorArrayType x_type;
   if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)x_type;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)x_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -1925,7 +1911,7 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
 
   paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_x(&dense_x);
@@ -2076,7 +2062,6 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   if (array_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     array_type =
         array_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)array_type;
   } else if (array_.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -2085,8 +2070,8 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
     array_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)array_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -2094,7 +2079,7 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_array(
       paddle::dialect::TransToPhiDataType(array_type.dtype()),
-      {},
+      array_type.dims(),
       array_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
@@ -2256,7 +2241,6 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   if (array_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     array_type =
         array_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)array_type;
   } else if (array_.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -2265,8 +2249,8 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     array_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)array_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -2275,18 +2259,19 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
 
   paddle::dialect::IrTensor dense_array(
       paddle::dialect::TransToPhiDataType(array_type.dtype()),
-      {},
+      array_type.dims(),
       array_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   paddle::dialect::DenseTensorType x_type;
+  phi::Place place = phi::CPUPlace();
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x_type;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    place = allocated_input.place(),
     x_type =
         paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
                                               allocated_input.dtype(),
@@ -2294,7 +2279,6 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
                                               allocated_input.data_layout(),
                                               allocated_input.lod(),
                                               allocated_input.offset());
-    (void)x_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -2317,8 +2301,27 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   std::vector<pir::Type> argument_outputs;
   pir::Type out_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
-      paddle::dialect::TransToIrDataType(dense_out.dtype()),
-      dense_out.layout());
+      paddle::dialect::TransToIrDataType(dense_array.dtype()),
+      x_type.dims(),
+      dense_array.layout());
+  // update array's dims as x's dims.
+  // TOOD(chenxi67) Do not change if dim is set by custom
+  if (array_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+    array_.set_type(
+        paddle::dialect::DenseTensorArrayType::get(pir::IrContext::Instance(),
+                                                   array_type.dtype(),
+                                                   x_type.dims(),
+                                                   array_type.data_layout()));
+  } else if (array_.type()
+                 .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
+    array_.set_type(paddle::dialect::AllocatedDenseTensorArrayType::get(
+        pir::IrContext::Instance(),
+        place,
+        array_type.dtype(),
+        x_type.dims(),
+        array_type.data_layout()));
+  }
+
   argument_outputs.push_back(out_type);
   return argument_outputs;
 }
@@ -2459,15 +2462,14 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   paddle::dialect::DenseTensorArrayType x_type;
   if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)x_type;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)x_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -2475,7 +2477,7 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_x(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_x(&dense_x);
@@ -2662,15 +2664,14 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
 
   if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
     x = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -2678,12 +2679,14 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   }
 
   paddle::dialect::IrTensor dense_x(
-      paddle::dialect::TransToPhiDataType(x.dtype()), {}, x.data_layout(), {});
+      paddle::dialect::TransToPhiDataType(x.dtype()),
+      x.dims(),
+      x.data_layout(),
+      {});
 
   paddle::dialect::DenseTensorType out_grad;
   if (out_grad_.type().isa<paddle::dialect::DenseTensorType>()) {
     out_grad = out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)out_grad;
   } else if (out_grad_.type()
                  .isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_input =
@@ -2695,7 +2698,6 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
                                               allocated_input.data_layout(),
                                               allocated_input.lod(),
                                               allocated_input.offset());
-    (void)out_grad;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -2724,6 +2726,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
+          dense_x_grad.dims(),
           dense_x_grad.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -2894,7 +2897,6 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
   paddle::dialect::DenseTensorArrayType input_type;
   if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     input_type = input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)input_type;
   } else if (input.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -2902,8 +2904,8 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)input_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::AllocatedDenseTensorArrayType or "
@@ -2912,7 +2914,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -2934,6 +2936,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(dense_out.dtype()),
+          dense_out.dims(),
           dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -3053,7 +3056,6 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
   paddle::dialect::DenseTensorArrayType input_type;
   if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     input_type = input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)input_type;
   } else if (input.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -3061,8 +3063,8 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)input_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -3070,7 +3072,7 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -3207,6 +3209,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -3215,7 +3218,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -3230,6 +3233,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
       paddle::dialect::DenseTensorArrayType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(dense_out.dtype()),
+          dense_out.dims(),
           dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_array_type);
   return argument_outputs;
@@ -3308,15 +3312,14 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
   paddle::dialect::DenseTensorArrayType x_type;
   if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)x_type;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)x_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -3324,7 +3327,7 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -3573,7 +3576,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -3583,7 +3585,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
                                               allocated_input.data_layout(),
                                               allocated_input.lod(),
                                               allocated_input.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -3779,7 +3780,6 @@ std::vector<pir::Type> IncrementOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -3789,7 +3789,6 @@ std::vector<pir::Type> IncrementOp::InferMeta(
                                               allocated_input.data_layout(),
                                               allocated_input.lod(),
                                               allocated_input.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -3963,7 +3962,6 @@ std::vector<pir::Type> Increment_Op::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -3973,7 +3971,6 @@ std::vector<pir::Type> Increment_Op::InferMeta(
                                               allocated_input.data_layout(),
                                               allocated_input.lod(),
                                               allocated_input.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -4117,13 +4114,11 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
              input_values.size());
 
   pir::Value x_ = input_values[0];
-  (void)x_;
   VLOG(4) << "Builder construction outputs";
 
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_x =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -4133,7 +4128,6 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
                                               allocated_x.data_layout(),
                                               allocated_x.lod(),
                                               allocated_x.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -4214,7 +4208,6 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)x;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_x =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -4224,7 +4217,6 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
                                               allocated_x.data_layout(),
                                               allocated_x.lod(),
                                               allocated_x.offset());
-    (void)x;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -4234,7 +4226,6 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
   paddle::dialect::DenseTensorType y;
   if (y_.type().isa<paddle::dialect::DenseTensorType>()) {
     y = y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    (void)y;
   } else if (y_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     paddle::dialect::AllocatedDenseTensorType allocated_x =
         y_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -4244,7 +4235,6 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
                                               allocated_x.data_layout(),
                                               allocated_x.lod(),
                                               allocated_x.offset());
-    (void)y;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorType or "
@@ -4441,20 +4431,18 @@ std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
              input_values.size());
 
   pir::Value x_ = input_values[0];
-  (void)x_;
   VLOG(4) << "Builder construction outputs";
   paddle::dialect::DenseTensorArrayType x_type;
   if (x_.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)x_type;
   } else if (x_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
         x_.type().dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>();
     x_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)x_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -4462,7 +4450,7 @@ std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
   }
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(x_type.dtype()),
-      {},
+      x_type.dims(),
       x_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -4603,7 +4591,6 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   paddle::dialect::DenseTensorArrayType input_type;
   if (input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
     input_type = input.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
-    (void)input_type;
   } else if (input.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     paddle::dialect::AllocatedDenseTensorArrayType allocated_input =
@@ -4611,8 +4598,8 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
     input_type = paddle::dialect::DenseTensorArrayType::get(
         pir::IrContext::Instance(),
         allocated_input.dtype(),
+        allocated_input.dims(),
         allocated_input.data_layout());
-    (void)input_type;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support paddle::dialect::DenseTensorArrayType or "
@@ -4625,7 +4612,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
 
   paddle::dialect::IrTensor dense_input(
       paddle::dialect::TransToPhiDataType(input_type.dtype()),
-      {},
+      input_type.dims(),
       input_type.data_layout(),
       {});
   paddle::dialect::IrMetaTensor meta_input(&dense_input);
@@ -4644,6 +4631,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   pir::Type out_array_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(array_out.dtype()),
+      array_out.dims(),
       array_out.layout());
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
       pir::IrContext::Instance(),
