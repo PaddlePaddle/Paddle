@@ -32,11 +32,11 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/type_name.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/type_name.h"
+#include "paddle/pir/include/core/utils.h"
 
 #include "glog/logging.h"
 

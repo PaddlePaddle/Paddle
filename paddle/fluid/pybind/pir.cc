@@ -31,6 +31,7 @@
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_0d_to_1d_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -65,20 +66,20 @@
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parser/ir_parser.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/common/flags.h"
 #include "pybind11/stl.h"
@@ -1565,6 +1566,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->EnableIRPrinting();
   }
 
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
   if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());

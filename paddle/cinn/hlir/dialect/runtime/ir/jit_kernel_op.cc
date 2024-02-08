@@ -17,7 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn {
 namespace dialect {

@@ -46,8 +46,8 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "build/paddle/fluid/framework/framework.pb.h"

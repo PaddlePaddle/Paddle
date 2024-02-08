@@ -30,10 +30,10 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_string(ir_inplace_kernel_blacklist);
 
