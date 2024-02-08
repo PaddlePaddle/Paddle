@@ -2467,8 +2467,19 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
-        collect_failed_tests
 set -x
+        for file in `ls $tmp_dir`; do
+            exit_code=0
+            grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+            if [ $exit_code -ne 0 ]; then
+                failuretest=''
+            else
+                failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+                failed_test_lists="${failed_test_lists}
+                ${failuretest}"
+                break
+            fi
+        done
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -2518,8 +2529,9 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$eight_cards_tests" -1 1
-        collect_failed_tests
+        
 set -x
+        
         ut_endTime_s=`date +%s`
         echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -3360,21 +3372,10 @@ function distribute_test() {
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
-    # Disable Test: test_gradio
     cd ${work_dir}/PaddleNLP
-    pids=()
-    env CUDA_VISIBLE_DEVICES=0,1 python -m pytest -s -v tests/llm/test_finetune.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=2,3 python -m pytest -s -v tests/llm/test_lora.py tests/llm/test_predictor.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=4,5 python -m pytest -s -v tests/llm/test_prefix_tuning.py tests/llm/test_pretrain.py &
-    pids+=($!)
-    env CUDA_VISIBLE_DEVICES=6,7 python -m pytest -s -v tests/llm/test_ptq.py tests/llm/testing_utils.py &
-    pids+=($!)
-
-    for pid in "${pids[@]}"; do
-      wait $pid
-    done
+    # Disable Test: test_gradio
+    rm tests/llm/test_gradio.py
+    python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
@@ -4152,6 +4153,9 @@ function main() {
     init
     case $CMD in
       build_only)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
+        fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)

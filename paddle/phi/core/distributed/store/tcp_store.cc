@@ -20,8 +20,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
-#include "paddle/phi/core/flags.h"
 
 namespace phi {
 namespace distributed {
