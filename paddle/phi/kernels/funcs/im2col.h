@@ -98,13 +98,13 @@ class Im2ColFunctor {
 template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const DeviceContext& context,
-                  const phi::DenseTensor& col,
-                  const std::vector<int>& dilation,
-                  const std::vector<int>& stride,
-                  const std::vector<int>& padding,
-                  phi::DenseTensor* im,
-                  const DataLayout data_layout = DataLayout::kNCHW);
+  TEST_API void operator()(const DeviceContext& context,
+                           const phi::DenseTensor& col,
+                           const std::vector<int>& dilation,
+                           const std::vector<int>& stride,
+                           const std::vector<int>& padding,
+                           phi::DenseTensor* im,
+                           const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 }  // namespace funcs
