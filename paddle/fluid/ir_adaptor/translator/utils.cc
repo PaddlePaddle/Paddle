@@ -20,9 +20,9 @@
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/utils.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
@@ -76,7 +76,7 @@ pir::Operation* InsertSliceOperationForTarget(
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str) {
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       vec_str.begin(),
       vec_str.end(),
       [&os](std::string s) { os << s; },

@@ -188,17 +188,17 @@ class Adam(Optimizer):
         if not isinstance(beta1, (Variable, Value)):
             if not 0 <= beta1 < 1:
                 raise ValueError(
-                    "Invaild value of beta1, expect beta1 in [0,1)."
+                    "Invalid value of beta1, expect beta1 in [0,1)."
                 )
         if not isinstance(beta2, (Variable, Value)):
             if not 0 <= beta2 < 1:
                 raise ValueError(
-                    "Invaild value of beta2, expect beta2 in [0,1)."
+                    "Invalid value of beta2, expect beta2 in [0,1)."
                 )
         if not isinstance(epsilon, (Variable, Value)):
             if not 0 <= epsilon:
                 raise ValueError(
-                    "Invaild value of epsilon, expect epsilon >= 0."
+                    "Invalid value of epsilon, expect epsilon >= 0."
                 )
         super().__init__(
             learning_rate=learning_rate,
