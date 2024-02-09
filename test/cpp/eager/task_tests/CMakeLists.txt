@@ -30,3 +30,4 @@ if(WITH_ONNXRUNTIME AND WIN32)
   # be build only in CI, so suppose the generator in Windows is Ninja.
   copy_onnx(test_egr_task_nan_inf_utils)
 endif()
+
