@@ -25,18 +25,18 @@ namespace math {
 template <typename T>
 class BeamSearchFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context UNUSED,
-                  const phi::DenseTensor *pre_ids,
-                  const phi::DenseTensor *pre_scores,
-                  const phi::DenseTensor *ids,
-                  const phi::DenseTensor *scores,
-                  phi::DenseTensor *selected_ids,
-                  phi::DenseTensor *selected_scores,
-                  phi::DenseTensor *parent_idx,
-                  size_t level,
-                  size_t beam_size,
-                  int end_id,
-                  bool is_accumulated) {
+  TEST_API void operator()(const phi::CPUContext &context UNUSED,
+                           const phi::DenseTensor *pre_ids,
+                           const phi::DenseTensor *pre_scores,
+                           const phi::DenseTensor *ids,
+                           const phi::DenseTensor *scores,
+                           phi::DenseTensor *selected_ids,
+                           phi::DenseTensor *selected_scores,
+                           phi::DenseTensor *parent_idx,
+                           size_t level,
+                           size_t beam_size,
+                           int end_id,
+                           bool is_accumulated) {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
