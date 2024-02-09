@@ -784,7 +784,7 @@ static phi::Backend GetKernelBackendByYaml(
     }
   }
 
-  if (backend_info.size() > 0 && kernel_backend == phi::Backend::UNDEFINED) {
+  if (!backend_info.empty() && kernel_backend == phi::Backend::UNDEFINED) {
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
