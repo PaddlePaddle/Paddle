@@ -20,8 +20,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-namespace f = paddle::framework;
-namespace p = paddle::platform;
 
 TEST(ExceptionHolderTester, TestEnforceNotMetCatch) {
   ExceptionHolder exception_holder;

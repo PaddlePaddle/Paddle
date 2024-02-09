@@ -27,9 +27,6 @@ class Variable;
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
-namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope,
                        platform::Place* place,

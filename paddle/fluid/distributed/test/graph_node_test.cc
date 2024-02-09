@@ -43,9 +43,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
-namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 // void testSampleNodes(
