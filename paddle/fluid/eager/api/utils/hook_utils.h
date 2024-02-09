@@ -22,7 +22,7 @@
 namespace egr {
 namespace egr_utils_api {
 
-int64_t RegisterGradientHookForTensor(
+TEST_API int64_t RegisterGradientHookForTensor(
     const paddle::Tensor& tensor,
     const std::function<paddle::Tensor(const paddle::Tensor&)>& hook);
 
