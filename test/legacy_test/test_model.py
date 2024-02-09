@@ -76,7 +76,7 @@ class ModelOuter(paddle.nn.Layer):
         self.module2 = paddle.nn.Linear(4, 5)
 
     def forward(self, x):
-        y, dumpy = self.module1(x)
+        y, _ = self.module1(x)
         y = self.module2(y)
         return y, 3
 
