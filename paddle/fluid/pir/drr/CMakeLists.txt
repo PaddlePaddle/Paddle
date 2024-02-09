@@ -1,17 +1,13 @@
-file(GLOB DRR_SRCS "*.cc" "include/*.cc")
+file(GLOB_RECURSE DRR_SRCS "*.cc")
 
 set(op_creator_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_creator_drr_gen.py
 )
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
-set(op_forward_yaml_file1
+set(op_forward_yaml_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
-
-set(op_forward_yaml_file3
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/update_ops.parsed.yaml
-)
-set(op_backward_yaml_file1
+set(op_backward_yaml_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(fused_op_forward_yaml_file
@@ -21,54 +17,56 @@ set(fused_op_backward_yaml_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
-set(cinn_op_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
-
-set(cinn_op_yaml_source_file
-    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
-
 set(parsed_op_dir
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 
-set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
-set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
-set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
+set(op_yaml_file_1 ${parsed_op_dir}/ops.parsed.yaml)
+set(op_yaml_file_2 ${parsed_op_dir}/ops_backward.parsed.yaml)
+set(op_yaml_file_3 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_backward_yaml_file1},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
+    ${op_forward_yaml_file},${op_backward_yaml_file},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file_1},${op_yaml_file_2},${op_yaml_file_3}
 )
 
-set(op_creator_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/ir_op_factory_generated.cc)
-set(op_creator_file_tmp ${op_creator_file}.tmp)
+set(pd_op_creator_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
+set(pd_op_creator_file_tmp ${pd_op_creator_file}.tmp)
 
-set(dialect_name pd_op)
-
-set(cinn_op_creator_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/cinn_op_factory_generated.cc)
-set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
-
-set(cinn_dialect_name cinn_op)
+set(pd_dialect_name pd_op)
 
 add_custom_command(
-  OUTPUT ${op_creator_file}
+  OUTPUT ${pd_op_creator_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --dialect_name ${dialect_name}
-    --op_creator_file ${op_creator_file_tmp}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_creator_file_tmp}
-          ${op_creator_file}
-  COMMENT "copy_if_different ${op_creator_file}"
+    --op_compat_yaml_file ${op_compat_yaml_file} --dialect_name
+    ${pd_dialect_name} --op_creator_file ${pd_op_creator_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${pd_op_creator_file_tmp}
+          ${pd_op_creator_file}
+  COMMENT "copy_if_different ${pd_op_creator_file}"
   DEPENDS ${op_creator_gen_file}
-          ${op_forward_yaml_file1}
-          ${op_backward_yaml_file1}
+          ${op_forward_yaml_file}
+          ${op_backward_yaml_file}
           ${op_compat_yaml_file}
-          ${op_yaml_file3}
-          ${op_yaml_file4}
+          ${op_yaml_file_1}
+          ${op_yaml_file_2}
           op_dialect
   VERBATIM)
 
+set(DRR_SRCS ${DRR_SRCS} ${pd_op_creator_file})
+
 if(WITH_CINN AND NOT CINN_ONLY)
+  set(cinn_op_yaml_file
+      ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
+
+  set(cinn_op_yaml_source_file
+      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
+
+  set(cinn_op_creator_file
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/cinn_op_factory_generated.cc
+  )
+  set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
+  set(cinn_dialect_name cinn_op)
+
   add_custom_command(
     OUTPUT ${cinn_op_creator_file}
     COMMAND
@@ -86,6 +84,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
 
   set(CINN_DEPS cinn_op_dialect)
 
+  set(DRR_SRCS ${DRR_SRCS} ${CINN_SOURCE_FILE})
 endif()
 
 if(WITH_MKLDNN)
@@ -97,7 +96,8 @@ if(WITH_MKLDNN)
       ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
   )
   set(onednn_op_creator_file
-      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/onednn_op_factory_generated.cc)
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
+  )
   set(onednn_op_creator_file_tmp ${onednn_op_creator_file}.tmp)
 
   add_custom_command(
@@ -112,21 +112,19 @@ if(WITH_MKLDNN)
             ${onednn_op_creator_file}
     COMMENT "copy_if_different ${onednn_op_creator_file}"
     DEPENDS ${op_creator_gen_file}
-            ${op_forward_yaml_file1}
-            ${op_backward_yaml_file1}
+            ${op_forward_yaml_file}
+            ${op_backward_yaml_file}
             ${op_compat_yaml_file}
-            ${op_yaml_file3}
-            ${op_yaml_file4}
+            ${op_yaml_file_1}
+            ${op_yaml_file_2}
             op_dialect
     VERBATIM)
 
+  set(ONEDNN_SOURCE_FILE ${onednn_op_creator_file})
+
+  set(DRR_SRCS ${DRR_SRCS} ${ONEDNN_SOURCE_FILE})
 endif()
 
-set(DRR_SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE})
-
-if(WITH_MKLDNN)
-  set(DRR_SRCS ${DRR_SRCS} ${onednn_op_creator_file})
-endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS}

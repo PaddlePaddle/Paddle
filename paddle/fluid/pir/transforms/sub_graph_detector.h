@@ -24,7 +24,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/builder.h"
+#include "paddle/pir/include/core/builder.h"
 
 namespace pir {
 
