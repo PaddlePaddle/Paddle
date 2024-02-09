@@ -29,19 +29,9 @@ paddle_test(
   test_mkldnn_pool_adaptive_op
   SRCS test_mkldnn_pool_adaptive_op.cc)
 
-cc_test(
+paddle_test(
   test_mkldnn_squeeze
-  SRCS test_mkldnn_squeeze.cc
-  DEPS fleet_executor
-       conditional_block_op
-       executor
-       op_registry
-       generated_static_op
-       generated_op
-       phi
-       scope
-       device_context
-       enforce)
+  SRCS test_mkldnn_squeeze.cc)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
