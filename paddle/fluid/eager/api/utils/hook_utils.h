@@ -26,11 +26,11 @@ TEST_API int64_t RegisterGradientHookForTensor(
     const paddle::Tensor& tensor,
     const std::function<paddle::Tensor(const paddle::Tensor&)>& hook);
 
-void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
-                                 const std::function<void()>& hook);
+TEST_API void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
+                                          const std::function<void()>& hook);
 TEST_API void RetainGradForTensor(const paddle::Tensor& tensor);
 
-void RegisterBackwardFinalHook(const std::function<void()>& hook);
+TEST_API void RegisterBackwardFinalHook(const std::function<void()>& hook);
 
 }  // namespace egr_utils_api
 }  // namespace egr
