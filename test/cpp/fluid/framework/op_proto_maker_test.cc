@@ -21,7 +21,7 @@ limitations under the License. */
 
 class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddAttr<float>("scale", "scale of test op");
     AddAttr<float>("scale", "scale of test op");
   }
@@ -37,7 +37,7 @@ TEST(ProtoMaker, DuplicatedAttr) {
 
 class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("input", "input of test op");
     AddInput("input", "input of test op");
   }
@@ -54,7 +54,7 @@ TEST(ProtoMaker, DuplicatedInOut) {
 class OpProtoMakerWithScalar
     : public paddle::framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddAttr<paddle::experimental::Scalar>("generic_scalar",
                                           "generic_scalar of test op");
     AddAttr<std::vector<paddle::experimental::Scalar>>(

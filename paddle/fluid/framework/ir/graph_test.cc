@@ -38,7 +38,7 @@ class NOP : public OperatorBase {
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "").AsDuplicable();
     AddComment("");
@@ -60,7 +60,7 @@ class SumOpVarTypeInference : public VarTypeInference {
 
 class DummyOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "").AsDuplicable();
     AddComment("");
