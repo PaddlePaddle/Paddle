@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>
