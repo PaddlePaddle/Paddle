@@ -147,6 +147,28 @@ def _get_reduce_axis_with_tensor(axis, x):
             axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
+def _convert_binary_tensor_number_inputs(x, y):
+    if isinstance(x, (Variable, paddle.pir.Value)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+    elif isinstance(y, (Variable, paddle.pir.Value)):
+        x = paddle.to_tensor(x, dtype=y.dtype)
+    return x, y
+
+def _convert_binary_inputs(x, y):
+    if isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value)):
+        return x, y
+    # number_number_case
+    elif not isinstance(x, (Variable, paddle.pir.Value)) and not isinstance(y, (Variable, paddle.pir.Value)):
+        _x = paddle.to_tensor(x)
+        _y = paddle.to_tensor(y)
+        if isinstance(x, float) and isinstance(y, int):
+            _y = paddle.cast(_y, dtype=_x.dtype)
+        elif isinstance(x, int) and isinstance(y, float):
+            _x = paddle.cast(_x, dtype=_y.dtype)
+    # tensor_number_case
+    else:
+        _x, _y = _convert_binary_tensor_number_inputs(x, y)
+    return _x, _y
 
 def log(x, name=None):
     r"""
@@ -694,6 +716,7 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
+    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
@@ -834,6 +857,8 @@ def subtract(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 4.  ,  inf., -inf.])
     """
+
+    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
         return _C_ops.subtract(x, y)
     else:
@@ -892,6 +917,8 @@ def divide(x, y, name=None):
             [2.        , 0.60000000, 2.        ])
 
     """
+
+    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
     else:
@@ -953,6 +980,8 @@ def floor_divide(x, y, name=None):
             [2, 0, 2, 2])
 
     """
+
+    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
         return _C_ops.floor_divide(x, y)
     else:
@@ -1103,6 +1132,8 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
+
+    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
