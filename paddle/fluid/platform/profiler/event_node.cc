@@ -434,10 +434,8 @@ void NodeTrees::HandleTrees(
       }
       for (auto event_node : (*hostnode)->GetRuntimeTraceEventNodes()) {
         runtime_event_node_handle(event_node);
-        for (auto devicenode = event_node->GetDeviceTraceEventNodes().begin();
-             devicenode != event_node->GetDeviceTraceEventNodes().end();
-             ++devicenode) {
-          device_event_node_handle(*devicenode);
+        for (auto devicenode : event_node->GetDeviceTraceEventNodes()) {
+          device_event_node_handle(devicenode);
         }
       }
       for (auto event_node : (*hostnode)->GetMemTraceEventNodes()) {

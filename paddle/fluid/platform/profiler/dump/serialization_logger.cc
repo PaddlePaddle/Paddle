@@ -103,37 +103,33 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
     current_thread_node_tree_proto_ =
         node_trees_proto_->add_thread_trees();  // add ThreadNodeTreeProto
     current_thread_node_tree_proto_->set_thread_id(event_node.first);
-    for (auto hostnode = event_node.second.begin();
-         hostnode != event_node.second.end();
-         ++hostnode) {
+    for (auto hostnode : event_node.second) {
       HostTraceEventNodeProto* host_node_proto =
           current_thread_node_tree_proto_
               ->add_host_nodes();  // add HostTraceEventNodeProto
-      host_node_proto->set_id(node_index_map[(*hostnode)]);
-      host_node_proto->set_parentid(node_parent_map[(*hostnode)]);
+      host_node_proto->set_id(node_index_map[hostnode]);
+      host_node_proto->set_parentid(node_parent_map[hostnode]);
       current_host_trace_event_node_proto_ =
-          host_node_proto;       // set current HostTraceEventNodeProto
-      (*hostnode)->LogMe(this);  // fill detail information
+          host_node_proto;    // set current HostTraceEventNodeProto
+      hostnode->LogMe(this);  // fill detail information
 
-      for (auto runtimenode : (*hostnode)->GetRuntimeTraceEventNodes()) {
+      for (auto runtimenode : hostnode->GetRuntimeTraceEventNodes()) {
         CudaRuntimeTraceEventNodeProto* runtime_node_proto =
             current_host_trace_event_node_proto_
                 ->add_runtime_nodes();  // add CudaRuntimeTraceEventNodeProto
         current_runtime_trace_event_node_proto_ =
             runtime_node_proto;    // set current CudaRuntimeTraceEventNodeProto
         runtimenode->LogMe(this);  // fill detail information
-        for (auto devicenode = runtimenode->GetDeviceTraceEventNodes().begin();
-             devicenode != runtimenode->GetDeviceTraceEventNodes().end();
-             ++devicenode) {
+        for (auto devicenode : runtimenode->GetDeviceTraceEventNodes()) {
           DeviceTraceEventNodeProto* device_node_proto =
               current_runtime_trace_event_node_proto_
                   ->add_device_nodes();  // add DeviceTraceEventNodeProto
           current_device_trace_event_node_proto_ =
-              device_node_proto;       // set current DeviceTraceEventNodeProto
-          (*devicenode)->LogMe(this);  // fill detail information
+              device_node_proto;    // set current DeviceTraceEventNodeProto
+          devicenode->LogMe(this);  // fill detail information
         }
       }
-      for (auto memnode : (*hostnode)->GetMemTraceEventNodes()) {
+      for (auto memnode : hostnode->GetMemTraceEventNodes()) {
         MemTraceEventNodeProto* mem_node_proto =
             current_host_trace_event_node_proto_->add_mem_nodes();
         current_mem_trace_event_node_proto_ = mem_node_proto;
