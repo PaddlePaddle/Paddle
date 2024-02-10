@@ -76,19 +76,19 @@ void RunMultiVarMsg(platform::Place place) {
   LOG(INFO) << "begin SerializeToMultiVarMsg";
 
   butil::IOBuf io_buf;
-  distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
-                                              send_var_name,
-                                              recv_var_name,
-                                              ctx,
-                                              &scope,
-                                              &multi_msg,
-                                              &io_buf);
+  ::paddle::distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
+                                                        send_var_name,
+                                                        recv_var_name,
+                                                        ctx,
+                                                        &scope,
+                                                        &multi_msg,
+                                                        &io_buf);
   EXPECT_GT(multi_msg.ByteSizeLong(), static_cast<size_t>(0));
 
   // deserialize
   framework::Scope scope_recv;
   LOG(INFO) << "begin DeserializeFromMultiVarMsg";
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(
+  ::paddle::distributed::DeserializeFromMultiVarMsgAndIOBuf(
       multi_msg, &io_buf, ctx, &scope_recv);
 
   // check var1
