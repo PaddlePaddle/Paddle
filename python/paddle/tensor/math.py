@@ -155,10 +155,8 @@ def _convert_binary_tensor_number_inputs(x, y):
     return x, y
 
 def _convert_binary_inputs(x, y):
-    if isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value)):
-        return x, y
     # number_number_case
-    elif not isinstance(x, (Variable, paddle.pir.Value)) and not isinstance(y, (Variable, paddle.pir.Value)):
+    if not isinstance(x, (Variable, paddle.pir.Value)) and not isinstance(y, (Variable, paddle.pir.Value)):
         _x = paddle.to_tensor(x)
         _y = paddle.to_tensor(y)
         if isinstance(x, float) and isinstance(y, int):
@@ -716,8 +714,9 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
-    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
+        if not (isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value))):
+            x, y = _convert_binary_inputs(x, y)
         return _C_ops.add(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -858,8 +857,9 @@ def subtract(x, y, name=None):
             [ 4.  ,  inf., -inf.])
     """
 
-    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
+        if not (isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value))):
+            x, y = _convert_binary_inputs(x, y)
         return _C_ops.subtract(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
@@ -918,8 +918,9 @@ def divide(x, y, name=None):
 
     """
 
-    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
+        if not (isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value))):
+            x, y = _convert_binary_inputs(x, y)
         return _C_ops.divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
@@ -981,8 +982,9 @@ def floor_divide(x, y, name=None):
 
     """
 
-    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
+        if not (isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value))):
+            x, y = _convert_binary_inputs(x, y)
         return _C_ops.floor_divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
@@ -1133,8 +1135,9 @@ def multiply(x, y, name=None):
 
     """
 
-    x, y = _convert_binary_inputs(x, y)
     if in_dynamic_or_pir_mode():
+        if not (isinstance(x, (Variable, paddle.pir.Value)) and isinstance(y, (Variable, paddle.pir.Value))):
+            x, y = _convert_binary_inputs(x, y)
         return _C_ops.multiply(x, y)
     else:
         if x.dtype != y.dtype:
