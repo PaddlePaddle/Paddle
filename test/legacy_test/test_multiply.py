@@ -142,6 +142,7 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_dynamic_graph_python_number_case(x, y_data)
         np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
+
 class TestMultiplyError(unittest.TestCase):
     def test_errors(self):
         # test static computation graph: dtype can not be int8
