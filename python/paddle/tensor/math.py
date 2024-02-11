@@ -149,17 +149,17 @@ def _get_reduce_axis_with_tensor(axis, x):
 
 
 def _convert_binary_tensor_number_inputs(x, y):
-    if isinstance(x, (Variable, paddle.pir.Value)):
+    if isinstance(x, (paddle.Tensor, paddle.pir.Value)):
         y = paddle.to_tensor(y, dtype=x.dtype)
-    elif isinstance(y, (Variable, paddle.pir.Value)):
+    elif isinstance(y, (paddle.Tensor, paddle.pir.Value)):
         x = paddle.to_tensor(x, dtype=y.dtype)
     return x, y
 
 
 def _convert_binary_inputs(x, y):
     # number_number_case
-    if not isinstance(x, (Variable, paddle.pir.Value)) and not isinstance(
-        y, (Variable, paddle.pir.Value)
+    if not isinstance(x, (paddle.Tensor, paddle.pir.Value)) and not isinstance(
+        y, (paddle.Tensor, paddle.pir.Value)
     ):
         _x = paddle.to_tensor(x)
         _y = paddle.to_tensor(y)
@@ -721,8 +721,8 @@ def add(x, y, name=None):
 
     if in_dynamic_or_pir_mode():
         if not (
-            isinstance(x, (Variable, paddle.pir.Value))
-            and isinstance(y, (Variable, paddle.pir.Value))
+            isinstance(x, (paddle.Tensor, paddle.pir.Value))
+            and isinstance(y, (paddle.Tensor, paddle.pir.Value))
         ):
             x, y = _convert_binary_inputs(x, y)
         return _C_ops.add(x, y)
@@ -867,8 +867,8 @@ def subtract(x, y, name=None):
 
     if in_dynamic_or_pir_mode():
         if not (
-            isinstance(x, (Variable, paddle.pir.Value))
-            and isinstance(y, (Variable, paddle.pir.Value))
+            isinstance(x, (paddle.Tensor, paddle.pir.Value))
+            and isinstance(y, (paddle.Tensor, paddle.pir.Value))
         ):
             x, y = _convert_binary_inputs(x, y)
         return _C_ops.subtract(x, y)
@@ -931,8 +931,8 @@ def divide(x, y, name=None):
 
     if in_dynamic_or_pir_mode():
         if not (
-            isinstance(x, (Variable, paddle.pir.Value))
-            and isinstance(y, (Variable, paddle.pir.Value))
+            isinstance(x, (paddle.Tensor, paddle.pir.Value))
+            and isinstance(y, (paddle.Tensor, paddle.pir.Value))
         ):
             x, y = _convert_binary_inputs(x, y)
         return _C_ops.divide(x, y)
@@ -998,8 +998,8 @@ def floor_divide(x, y, name=None):
 
     if in_dynamic_or_pir_mode():
         if not (
-            isinstance(x, (Variable, paddle.pir.Value))
-            and isinstance(y, (Variable, paddle.pir.Value))
+            isinstance(x, (paddle.Tensor, paddle.pir.Value))
+            and isinstance(y, (paddle.Tensor, paddle.pir.Value))
         ):
             x, y = _convert_binary_inputs(x, y)
         return _C_ops.floor_divide(x, y)
@@ -1154,8 +1154,8 @@ def multiply(x, y, name=None):
 
     if in_dynamic_or_pir_mode():
         if not (
-            isinstance(x, (Variable, paddle.pir.Value))
-            and isinstance(y, (Variable, paddle.pir.Value))
+            isinstance(x, (paddle.Tensor, paddle.pir.Value))
+            and isinstance(y, (paddle.Tensor, paddle.pir.Value))
         ):
             x, y = _convert_binary_inputs(x, y)
         return _C_ops.multiply(x, y)
