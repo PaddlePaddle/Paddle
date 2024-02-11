@@ -61,7 +61,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
 
-        # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+        # TODO (zhangyichen) replace dist tensor specs by dist tensor in future.
         input_specs = []
         for i in range(num_inputs):
             input_specs.append(
