@@ -1170,7 +1170,7 @@ bool AnalysisPredictor::LoadConverterConfig(
       int64_t key = std::stoll(one_line[0]);
       for (size_t i = 1; i < one_line.size(); ++i) {
         int64_t val = std::stoll(one_line[i]);
-        if (ring_to_rank) {
+        if (ring_to_rank) {  // NOLINT
           if (ring_id_to_ranks->find(key) == ring_id_to_ranks->end()) {
             ring_id_to_ranks->insert({key, std::vector<int64_t>()});
           }
@@ -1310,7 +1310,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  if (config_.new_executor_enabled()) {
+  if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
   } else {
     // Run the inference program
@@ -1383,7 +1383,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     HookCollectShapeRangeInfo();
   }
 
-  if (config_.new_executor_enabled()) {
+  if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
   } else {
     // Run the inference program
@@ -1804,7 +1804,7 @@ void AnalysisPredictor::PrepareArgument() {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
-      } else if (config_.use_xpu()) {
+      } else if (config_.use_xpu()) {  // NOLINT
         // All passes support fp16. Not reset pass_builder.
       } else if (config_.use_custom_device()) {
         // All passes support fp16. Not reset pass_builder.
@@ -1927,7 +1927,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #else
   if (config_.mkldnn_enabled() ||
       (config_.tensorrt_engine_enabled() &&
-       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8)) {
+       config_.tensorrt_precision_mode_ ==
+           AnalysisConfig::Precision::kInt8)) {  // NOLINT
     argument_->PartiallyRelease();
   } else {
     argument_.reset(nullptr);
@@ -2221,7 +2222,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope = nullptr;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-  if (config_.dist_config().use_dist_model()) {
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
     scope = scope_.get();
   } else {
     scope = executor_->GetScope();
@@ -2272,7 +2273,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
   framework::Scope *scope;  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-  if (config_.dist_config().use_dist_model()) {
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
     scope = scope_.get();
   } else {
     scope = executor_->GetScope();
@@ -2322,7 +2323,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "before run");
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-  if (config_.dist_config().use_dist_model()) {
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
     fleet_exe_->Run(config_.dist_config().carrier_id());
     return true;
@@ -2381,7 +2382,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #endif
 
-  if (config_.new_executor_enabled()) {
+  if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore({}, false, switch_stream);
   } else {
     executor_->Run();
@@ -2647,7 +2648,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
 bool AnalysisPredictor::LoadProgramDesc() {
   // Initialize the inference program
   std::string filename;
-  if (!config_.model_dir().empty()) {
+  if (!config_.model_dir().empty()) {  // NOLINT
     filename = config_.model_dir() + "/__model__";
   } else if (!config_.prog_file().empty()) {
     // All parameters are saved in a single file.

@@ -99,7 +99,7 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
         case ValueProto::STRING:
           *var->GetMutable<paddle::framework::String>() = GetString(n);
           break;
-        case ValueProto::FLOATS:
+        case ValueProto::FLOATS:  // NOLINT
           *var->GetMutable<std::vector<float>>() = GetFloats(n);
           break;
         case ValueProto::INTS:

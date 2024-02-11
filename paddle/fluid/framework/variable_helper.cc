@@ -34,7 +34,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<FeedList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
+  } else if (var_type == proto::VarType::FETCH_LIST) {  // NOLINT
     var->GetMutable<FetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope *>>();

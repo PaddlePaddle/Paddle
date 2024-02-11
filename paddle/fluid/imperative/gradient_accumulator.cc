@@ -518,7 +518,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
 static platform::Place GetPlaceOfVar(
     const std::shared_ptr<VariableWrapper>& var) {
   platform::Place place;
-  if (var->Var().IsType<phi::DenseTensor>()) {
+  if (var->Var().IsType<phi::DenseTensor>()) {  // NOLINT
     place = var->Var().Get<phi::DenseTensor>().place();
   } else if (var->Var().IsType<phi::SelectedRows>()) {
     place = var->Var().Get<phi::SelectedRows>().place();
@@ -735,7 +735,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
       }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (paddle::platform::is_gpu_place(place)) {
+      if (paddle::platform::is_gpu_place(place)) {  // NOLINT
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
           if (!var_info.var->Var().IsType<phi::SelectedRows>()) {

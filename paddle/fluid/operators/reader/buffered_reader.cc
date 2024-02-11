@@ -380,7 +380,7 @@ void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
     return;
   }
 
-  if (platform::is_gpu_place(place_)) {
+  if (platform::is_gpu_place(place_)) {  // NOLINT
     *out = std::move(cuda_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);

@@ -41,12 +41,7 @@ void SetOp(ProgramDesc* prog,
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
-  if (type == "pool2d") {
-    op->SetInput("X", {inputs[0]});
-    op->SetOutput("Out", {outputs[0]});
-    if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
-    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
-  } else if (type == "relu") {
+  if (type == "pool2d" || type == "relu") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);

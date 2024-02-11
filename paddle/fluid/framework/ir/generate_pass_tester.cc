@@ -25,7 +25,7 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       VLOG(3) << "exec lambda func.";
       auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
       auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
-      if (with_relu) {
+      if (with_relu) {  // NOLINT
         return OP_(relu)({"X", ewadd}).Out("Out");
       } else {
         return ewadd;

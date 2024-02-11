@@ -55,7 +55,7 @@ void RemainderRawKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {
+  if (x_dims.size() >= y_dims.size()) {  // NOLINT
     funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
         dev_ctx, x, y, funcs::RemainderFunctor<T>(), out, axis);
   } else {
@@ -74,7 +74,7 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {
+  if (x_dims.size() >= y_dims.size()) {  // NOLINT
     funcs::ElementwiseCompute<funcs::FloorDivideFunctor<T>, T>(
         dev_ctx, x, y, funcs::FloorDivideFunctor<T>(), out, axis);
   } else {

@@ -157,7 +157,7 @@ void DistMultiTrainer::Run() {
   std::vector<std::future<void>> wait_futures;
   CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
-    if (!debug_) {
+    if (!debug_) {  // NOLINT
       wait_futures.emplace_back(
           pool[i]->Run([this, i]() { workers_[i]->TrainFiles(); }));
     } else {

@@ -558,7 +558,7 @@ std::vector<std::vector<phi::DDim>> RunInferShapeFn(
     out_dims =
         RunInferShapeFunc(ctx, infer_shape_func, inputs, outputs, inplace_map);
   } else {
-    if (is_forward) {
+    if (is_forward) {  // NOLINT
       out_dims = RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
     } else {
       out_dims =
@@ -592,7 +592,7 @@ std::vector<std::vector<phi::DataType>> RunInferDtypeFn(
     out_dtypes =
         RunInferDtypeFunc(ctx, infer_dtype_func, inputs, outputs, inplace_map);
   } else {
-    if (is_forward) {
+    if (is_forward) {  // NOLINT
       out_dtypes = RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
     } else {
       out_dtypes =

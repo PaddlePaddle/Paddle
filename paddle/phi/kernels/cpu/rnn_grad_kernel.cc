@@ -1311,7 +1311,7 @@ void RnnGradKernel(const Context& dev_ctx,
         pre_state_grad,
         weight_grad_list);
     // run gru
-  } else if (is_rnn_relu(mode)) {
+  } else if (is_rnn_relu(mode)) {  // NOLINT
     gate_num = 1;
     RnnGradFunc<SimpleRNNGradCell<T, funcs::ReluGradFunctor>,
                 SingleGradLayer,
