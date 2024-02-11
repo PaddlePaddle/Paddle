@@ -286,7 +286,7 @@ class ClipHelper:
 
 
 @register_pass("auto_parallel_grad_clip")
-class ClipGradByGloblNormPass(PassBase):
+class ClipGradByGlobalNormPass(PassBase):
     """
     1. Remove norm-compute op and grad-scale op when the grad is not in current rank
        or is independent of the calculation of norm.
