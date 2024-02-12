@@ -24,7 +24,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
-
+#include "test/cpp/inference/api/tester_helper.h"
 namespace paddle {
 namespace platform {
 
@@ -53,10 +53,10 @@ void CpuUtilization::RecordBeginTimeInfo() {
 #elif defined(__linux__)
   start_ = times(&process_tms_start_);
 #define proc_path_size 1024
-  static char proc_stat_path[proc_path_size] = "/proc/stat";
+  static char proc_stat_path[proc_path_size] = "/proc/stat";  // NOLINTf
   FILE *stat_file = fopen(proc_stat_path, "r");
   if (stat_file != nullptr) {
-    char temp_str[200];
+    std::array<char, 200> temp_str;
     uint64_t temp_lu;
     int retval =
         fscanf(stat_file,
@@ -98,10 +98,10 @@ void CpuUtilization::RecordEndTimeInfo() {
 #elif defined(__linux__)
   end_ = times(&process_tms_end_);
 #define proc_path_size 1024
-  static char proc_stat_path[proc_path_size] = "/proc/stat";
+  static char proc_stat_path[proc_path_size] = "/proc/stat";  // NOLINT
   FILE *stat_file = fopen(proc_stat_path, "r");
   if (stat_file != nullptr) {
-    char temp_str[200];
+    std::array<char, 200> temp_str;
     uint64_t temp_lu;
     int retval =
         fscanf(stat_file,

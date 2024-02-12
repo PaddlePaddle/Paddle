@@ -40,7 +40,7 @@ namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
-PyDoc_STRVAR(tensor_name__doc__,
+PyDoc_STRVAR(tensor_name__doc__,  // NOLINT
              R"DOC(name
 
 Tensor's name.
@@ -75,7 +75,7 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_type__doc__,
+PyDoc_STRVAR(tensor_type__doc__,  // NOLINT
              R"DOC(type
 
 Tensor's type.
@@ -165,7 +165,7 @@ int tensor_properties_set_name(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_stop_gradient__doc__,
+PyDoc_STRVAR(tensor_stop_gradient__doc__,  // NOLINT
              R"DOC(stop_gradient
 
 Tensor's stop_gradient.
@@ -195,7 +195,7 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_data__doc__,
+PyDoc_STRVAR(tensor_data__doc__,  // NOLINT
              R"DOC(data
 
 Tensor's self.
@@ -258,7 +258,7 @@ int tensor_properties_set_data(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_grad__doc__,
+PyDoc_STRVAR(tensor_grad__doc__,  // NOLINT
              R"DOC(grad
 
 Tensor's grad Tensor.
@@ -356,7 +356,7 @@ int tensor_properties_set_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_persistable__doc__,
+PyDoc_STRVAR(tensor_persistable__doc__,  // NOLINT
              R"DOC(persistable
 
 Tensor's persistable.
@@ -395,7 +395,7 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyDoc_STRVAR(tensor_process_mesh__doc__,
+PyDoc_STRVAR(tensor_process_mesh__doc__,  // NOLINT
              R"DOC(process_mesh
 
 Get process_mesh property from shard tensor.
@@ -441,7 +441,7 @@ PyObject* tensor_properties_get_process_mesh(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_placements__doc__,
+PyDoc_STRVAR(tensor_placements__doc__,  // NOLINT
              R"DOC(placements
 
 Get placements property from shard tensor.
@@ -487,7 +487,7 @@ PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_num_shard__doc__,
+PyDoc_STRVAR(tensor_num_shard__doc__,  // NOLINT
              R"DOC(num_shard
 
 Tensor's num_shard.
@@ -553,7 +553,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_shape__doc__,
+PyDoc_STRVAR(tensor_shape__doc__,  // NOLINT
              R"DOC(shape
 
 Tensor's shape.
@@ -640,7 +640,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_strides__doc__,
+PyDoc_STRVAR(tensor_strides__doc__,  // NOLINT
              R"DOC(strides
 
 Tensor's strides.
@@ -679,7 +679,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_offset__doc__,
+PyDoc_STRVAR(tensor_offset__doc__,  // NOLINT
              R"DOC(offset
 
 The address of the first element relative to the offset of the video memory.
@@ -726,7 +726,7 @@ PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_layout__doc__,
+PyDoc_STRVAR(tensor_layout__doc__,  // NOLINT
              R"DOC(layout
 
 Tensor's memory layout.
@@ -761,7 +761,7 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_place__doc__,
+PyDoc_STRVAR(tensor_place__doc__,  // NOLINT
              R"DOC(place
 
 The device Tensor's memory locate.
@@ -828,7 +828,7 @@ PyObject* tensor_properties_get_placements_str(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_dtype__doc__,
+PyDoc_STRVAR(tensor_dtype__doc__,  // NOLINT
              R"DOC(dtype
 
 Tensor's data type.

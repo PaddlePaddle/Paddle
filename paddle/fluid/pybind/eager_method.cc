@@ -70,10 +70,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
-
 
 namespace paddle {
 namespace pybind {
@@ -605,7 +603,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_reconstruct_from___doc__,
+PyDoc_STRVAR(tensor_reconstruct_from___doc__,  // NOLINT
              R"DOC(reconstruct_from_($self, other/)
 --
 
@@ -788,7 +786,7 @@ Examples:
         >>> print(y.grad)
         Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
         [1., 1., 1.])
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
@@ -1200,7 +1198,7 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   Py_INCREF(reinterpret_cast<PyObject*>(self));
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
-}
+}  // NOLINT
 
 PyDoc_STRVAR(tensor_method_get_tensor__doc__, R"DOC(get_tensor($self, /)
 --
@@ -1224,7 +1222,7 @@ Examples:
           - layout: NCHW
           - dtype: float32
           - data: [1]
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
@@ -2176,7 +2174,7 @@ Examples:
         >>> coo.nnz()
         3
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
                                                  PyObject* args,
@@ -2226,7 +2224,7 @@ Examples:
         [[0, 1, 2],
          [1, 2, 0]])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
@@ -2269,7 +2267,7 @@ Examples:
         Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
         [1., 2., 3.])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
                                                      PyObject* args,
@@ -2323,7 +2321,7 @@ Examples:
         Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
         [0, 2, 3, 5])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
                                                   PyObject* args,
@@ -2367,7 +2365,7 @@ Examples:
         Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
         [1, 3, 2, 0, 1])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
                                                  PyObject* args,
@@ -2401,7 +2399,7 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> print(x.is_dense())
         True
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_dense(TensorObject* self,
                                         PyObject* args,
@@ -2431,7 +2429,7 @@ Examples:
         >>> x = paddle.to_tensor([1.0], stop_gradient=False)
         >>> print(x.is_dist())
         False
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_dist(TensorObject* self,
                                        PyObject* args,
@@ -2468,7 +2466,8 @@ Examples:
         >>> coo.is_sparse()
         True
 
-)DOC");
+)DOC");  // NOLINT
+
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -2505,7 +2504,7 @@ Examples:
         >>> coo.is_sparse_coo()
         True
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
                                              PyObject* args,
@@ -2543,7 +2542,7 @@ Examples:
         >>> csr.is_sparse_csr()
         True
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2586,7 +2585,7 @@ Examples:
         cols=[1, 2, 0],
         values=[1., 2., 3.])
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2633,7 +2632,7 @@ Examples:
         >>> x.is_same_shape(z)
         False
 
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
@@ -2936,7 +2935,7 @@ Examples:
         >>> # doctest: +SKIP('return the address')
         93220864
         >>> # doctest: -SKIP
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
@@ -2998,7 +2997,7 @@ Examples:
         >>> y = x[1]
         >>> print(y.get_strides())
         []
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
@@ -3040,7 +3039,7 @@ Examples:
         >>> y = y.contiguous()
         >>> print(y)
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
-)DOC");
+)DOC");  // NOLINT
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -3089,7 +3088,8 @@ Examples:
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
         >>> print(y.is_contiguous())
-)DOC");
+)DOC");  // NOLINT
+
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {

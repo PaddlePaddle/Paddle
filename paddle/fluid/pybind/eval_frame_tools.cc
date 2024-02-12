@@ -34,7 +34,7 @@ class TreeNode {
 
  private:
   int is_prefix;
-  TreeNode* children[256];
+  TreeNode* children[256];  // NOLINT
 };
 
 void TreeNode::clear() {

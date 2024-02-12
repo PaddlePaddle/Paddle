@@ -726,8 +726,10 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
   return argument_outputs;
 }
 
-const char *FusedGemmEpilogueOp::attributes_name[3] = {
-    "trans_x", "trans_y", "activation"};
+const char *FusedGemmEpilogueOp::attributes_name[3] = {  // NOLINT
+    "trans_x",
+    "trans_y",
+    "activation"};
 
 OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -1040,8 +1042,10 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   return argument_outputs;
 }
 
-const char *FusedGemmEpilogueGradOp::attributes_name[3] = {
-    "trans_x", "trans_y", "activation_grad"};
+const char *FusedGemmEpilogueGradOp::attributes_name[3] = {  // NOLINT
+    "trans_x",
+    "trans_y",
+    "activation_grad"};
 
 OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -1362,7 +1366,7 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
   return argument_outputs;
 }
 
-const char *SplitGradOp::attributes_name[1] = {"axis"};
+const char *SplitGradOp::attributes_name[1] = {"axis"};  // NOLINT
 
 OpInfoTuple SplitGradOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -1551,7 +1555,7 @@ std::vector<pir::Type> SplitGradOp::InferMeta(
   return argument_outputs;
 }
 
-const char *CreateArrayOp::attributes_name[1] = {"dtype"};
+const char *CreateArrayOp::attributes_name[1] = {"dtype"};  // NOLINT
 
 OpInfoTuple CreateArrayOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {};
