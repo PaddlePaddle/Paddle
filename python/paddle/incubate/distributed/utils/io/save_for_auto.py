@@ -220,9 +220,9 @@ def _get_dims_mapping(dist_parameter, mp_group):
 
     dist_shape = np.array(dist_parameter.shape)
     if hasattr(dist_parameter, "split_axis"):
-        aixs = dist_parameter.split_axis
+        axis = dist_parameter.split_axis
         mapping = [-1 for _ in dist_shape]
-        mapping[aixs] = 1
+        mapping[axis] = 1
         logger.debug(
             f"{dist_parameter.name} has attr split_axis: mapping: {mapping}"
         )
