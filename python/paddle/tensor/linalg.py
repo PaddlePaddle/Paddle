@@ -1510,7 +1510,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': axis},
                 )
                 return out
             if porder == -2:
@@ -1518,7 +1518,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': axis},
                 )
                 return out
 
