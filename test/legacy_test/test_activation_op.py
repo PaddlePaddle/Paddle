@@ -31,7 +31,7 @@ from paddle.pir_utils import test_with_pir_api
 
 
 @contextmanager
-def dynamic_guad():
+def dynamic_guard():
     paddle.disable_static()
     try:
         yield
@@ -327,7 +327,7 @@ class TestExpm1API(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
 
             def run(place):
                 X = paddle.to_tensor(self.x)
@@ -880,7 +880,7 @@ class TestTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.tanh(x)
             out2 = paddle.tanh(x)
@@ -1297,7 +1297,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.tanhshrink(x)
             tanhshrink = paddle.nn.Tanhshrink()
@@ -1408,7 +1408,7 @@ class TestHardShrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.hardshrink(x)
             hd = paddle.nn.Hardshrink()
@@ -1476,7 +1476,7 @@ class TestHardtanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.hardtanh(x)
             m = paddle.nn.Hardtanh()
@@ -1581,7 +1581,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.softshrink(x, self.threshold)
             softshrink = paddle.nn.Softshrink(self.threshold)
@@ -2194,7 +2194,7 @@ class TestTanAPI(unittest.TestCase):
         )
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out_test = paddle.tan(x)
             out_ref = np.tan(self.x_np)
@@ -2693,7 +2693,7 @@ class TestReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             m = paddle.nn.ReLU()
             out1 = m(x)
@@ -2830,7 +2830,7 @@ class TestLeakyReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.leaky_relu(x)
             m = paddle.nn.LeakyReLU()
@@ -3013,7 +3013,7 @@ class TestGELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.gelu(x)
             m = paddle.nn.GELU()
@@ -3149,7 +3149,7 @@ class TestRelu6API(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.relu6(x)
             relu6 = paddle.nn.ReLU6()
@@ -3329,7 +3329,7 @@ class TestHardswishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor([11648.0, 11448.0])
             out1 = F.hardswish(x)
             m = paddle.nn.Hardswish()
@@ -3349,7 +3349,7 @@ class TestHardswishAPI(unittest.TestCase):
             out_ref = ref_hardswish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out = paddle.nn.functional.hardswish(x)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
@@ -3488,7 +3488,7 @@ class TestELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = self.elu(x)
             x = paddle.to_tensor(self.x_np)
@@ -3530,7 +3530,7 @@ class TestELUInplaceAPI(TestELUAPI):
         self.elu = F.elu_
 
     def test_alpha_error(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             self.assertRaises(Exception, F.elu_, x, -0.2)
 
@@ -3603,7 +3603,7 @@ class TestCELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = self.celu(x, 1.5)
             x = paddle.to_tensor(self.x_np)
@@ -4366,7 +4366,7 @@ class TestSTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out = paddle.stanh(x, self.scale_a, self.scale_b)
             out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
@@ -4548,7 +4548,7 @@ class TestSoftplusAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.softplus(x, self.beta, self.threshold)
             softplus = paddle.nn.Softplus(self.beta, self.threshold)
@@ -4659,7 +4659,7 @@ class TestSoftsignAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.softsign(x)
             softsign = paddle.nn.Softsign()
@@ -4760,7 +4760,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.thresholded_relu(x, self.threshold)
             thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
@@ -4879,7 +4879,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.hardsigmoid(x)
             m = paddle.nn.Hardsigmoid()
@@ -4985,7 +4985,7 @@ class TestSwishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.swish(x)
             swish = paddle.nn.Swish()
@@ -5093,7 +5093,7 @@ class TestMishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        with dynamic_guad():
+        with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
             out1 = F.mish(x)
             mish = paddle.nn.Mish()
