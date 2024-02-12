@@ -212,7 +212,7 @@ def strong_wolfe(
             phi_j, derf_j, derphi_j = phi_and_derphi(aj)
 
             def true_fn():
-                # use assing to modify the variable in-place
+                # use assign to modify the variable in-place
                 paddle.assign(aj, a_hi)
                 paddle.assign(phi_j, phi_hi)
                 paddle.assign(derphi_j, derphi_hi)
