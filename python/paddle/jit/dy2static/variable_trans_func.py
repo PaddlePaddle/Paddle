@@ -14,30 +14,13 @@
 
 import paddle
 from paddle.base.framework import Variable
+from paddle.framework import use_pir_api
+from paddle.pir import Value
 from paddle.utils import gast, is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable
 
 __all__ = []
-
-
-def create_undefined_var(name):
-    func_code = f"{name} = _jst.UndefinedVar('{name}')"
-    return gast.parse(func_code).body[0]
-
-
-def create_fill_constant_node(name, value=0):
-    func_code = f"{name} = paddle.full(shape=[1], "
-    if isinstance(value, bool):
-        func_code += f"dtype='bool', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
-    if isinstance(value, float):
-        func_code += f"dtype='float64', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
-
-    if isinstance(value, int):
-        func_code += f"dtype='int64', fill_value={value}, name='{name}')"
-        return gast.parse(func_code).body[0]
 
 
 def to_static_variable(x):
@@ -50,7 +33,7 @@ def to_static_variable(x):
         return paddle.full(shape=[], dtype='float64', fill_value=x)
     if isinstance(x, int):
         return paddle.full(shape=[], dtype='int64', fill_value=x)
-    if isinstance(x, UndefinedVar) or x is None:
+    if not use_pir_api() and (isinstance(x, UndefinedVar) or x is None):
         """
         for early return case, we need a variable to represent None, current we use data_layer_not_check.
         """
@@ -64,8 +47,8 @@ def create_bool_as_type(x, value=True):
     '''
     Create a bool variable, which type is the same as x.
     '''
-    if isinstance(x, Variable):
-        return paddle.full(shape=[1], fill_value=value, dtype="bool")
+    if isinstance(x, (Variable, Value)):
+        return paddle.full(shape=[], fill_value=value, dtype="bool")
     else:
         return value
 

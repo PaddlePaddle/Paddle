@@ -22,9 +22,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
-#include "paddle/utils/flags.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.jit.dy2static import error
 
 
@@ -30,7 +29,7 @@ def inner_func():
 
 @paddle.jit.to_static(full_graph=True)
 def func_error_in_compile_time(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     inner_func()
     if paddle.mean(x) < 0:
         x_v = x - 1
@@ -41,14 +40,14 @@ def func_error_in_compile_time(x):
 
 @paddle.jit.to_static(full_graph=True)
 def func_error_in_compile_time_2(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     x = paddle.reshape(x, shape=[1, 2])
     return x
 
 
 @paddle.jit.to_static(full_graph=True)
 def func_error_in_runtime(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
     x = paddle.reshape(x, shape=[1, two])
     return x
@@ -95,12 +94,12 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
         NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
 	A tab here.
         """  # fmt: skip
-        return  # noqa: PLR1711
+        return
 
 
 @paddle.jit.to_static(full_graph=True)
 def func_error_in_runtime_with_empty_line(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
 
     x = paddle.reshape(x, shape=[1, two])
@@ -283,7 +282,7 @@ class TestErrorStaticLayerCallInCompiletime_2(
     def set_message(self):
         self.expected_message = [
             'def func_error_in_compile_time_2(x):',
-            'x = base.dygraph.to_variable(x)',
+            'x = paddle.to_tensor(x)',
             'x = paddle.reshape(x, shape=[1, 2])',
             '<--- HERE',
             'return x',
@@ -328,7 +327,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
     def set_message(self):
         self.expected_message = [
-            'x = base.dygraph.to_variable(x)',
+            'x = paddle.to_tensor(x)',
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',

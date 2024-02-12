@@ -62,7 +62,7 @@ def get_low_precision_vartype(dtype):
         return var_type
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but recieved {}.".format(
+            "The type of dtype is expected to be string or core.VarDesc.VarType, but received {}.".format(
                 type(dtype)
             )
         )
@@ -82,7 +82,7 @@ def get_low_precision_dtypestr(dtype):
             )
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but recieved {}.".format(
+            "The type of dtype is expected to be string or core.VarDesc.VarType, but received {}.".format(
                 type(dtype)
             )
         )
@@ -125,7 +125,7 @@ def _get_unsupported_list(dtype):
     return _sys_unsupported_list, _sys_all_list
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all
+# The three sets listed below are changed dynamically. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-

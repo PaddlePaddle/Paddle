@@ -225,7 +225,7 @@ def standard_gamma(x, name=None):
         out_i \sim Gamma (alpha = x_i, beta = 1.0)
 
     Args:
-        x(Tensor):  A tensor with rate parameter of standrad gamma Distribution. The data type
+        x(Tensor):  A tensor with rate parameter of standard gamma Distribution. The data type
             should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -779,7 +779,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 
     out = out * std + mean
     if not in_dynamic_or_pir_mode():
-        out.stop_grediant = True
+        out.stop_gradient = True
     return out
 
 
@@ -788,7 +788,7 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     """
     This is the inplace version of api ``normal``, which returns a Tensor filled
     with random values sampled from a normal distribution. The output Tensor will
-    be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_normal`.
 
     Args:
         x(Tensor): The input tensor to be filled with random values.
@@ -799,7 +799,7 @@ def normal_(x, mean=0.0, std=1.0, name=None):
         std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+            Default is 1.0
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -924,15 +924,11 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         )
     elif in_pir_mode():
         check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'uniform/rand'
+            shape, 'shape', (list, tuple, paddle.pir.Value), 'uniform/rand'
         )
         check_dtype(dtype, 'dtype', supported_dtypes, 'uniform/rand')
-        check_type(
-            min, 'min', (float, int, paddle.pir.OpResult), 'uniform/rand'
-        )
-        check_type(
-            max, 'max', (float, int, paddle.pir.OpResult), 'uniform/rand'
-        )
+        check_type(min, 'min', (float, int, paddle.pir.Value), 'uniform/rand')
+        check_type(max, 'max', (float, int, paddle.pir.Value), 'uniform/rand')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
                 shape, _current_expected_place()
@@ -1115,9 +1111,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             low, high, shape, dtype, _current_expected_place()
         )
     elif in_pir_mode():
-        check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'randint'
-        )
+        check_type(shape, 'shape', (list, tuple, paddle.pir.Value), 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(
@@ -1331,7 +1325,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             check_type(
                 shape,
                 'shape',
-                (list, tuple, paddle.pir.OpResult),
+                (list, tuple, paddle.pir.Value),
                 'randint_like',
             )
             check_dtype(
@@ -1416,7 +1410,7 @@ def randperm(n, dtype="int64", name=None):
             >>> #doctest: -SKIP
 
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():

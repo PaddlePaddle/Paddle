@@ -291,7 +291,7 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
       dilations,
       0,
       phi::errors::InvalidArgument(
-          "The dilation of Op(Conv) should be larget than 0, but received "
+          "The dilation of Op(Conv) should be larger than 0, but received "
           "dilation is %d.",
           dilations));
 
@@ -390,10 +390,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
       strides.size() + 2U,
       phi::errors::InvalidArgument(
           "The difference of input's dimension and Attr(strides)'s "
-          "length must be euqal to 2 for Op(Conv_xpu). "
+          "length must be equal to 2 for Op(Conv_xpu). "
           "But received: input's dimension is %d, input's shape is [%s]; "
           "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
-          "difference of input's dimention and Attr(strides)'s length = %u.",
+          "difference of input's dimension and Attr(strides)'s length = %u.",
           in_dims.size(),
           in_dims,
           strides.size(),
@@ -405,7 +405,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -437,7 +437,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
           filter_dims,
           groups));
 
-  // update paddings and dilations accoring to padding_algorithm
+  // update paddings and dilations according to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   DDim in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
@@ -1440,6 +1440,7 @@ void GenerateSequenceXPUInferMeta(const MetaTensor& x,
 
 void MultiEncoderXPUInferMeta(
     const MetaTensor& x,
+    const std::vector<const MetaTensor*>& fc_input_max,
     const std::vector<const MetaTensor*>& fc_weight,
     const std::vector<const MetaTensor*>& fc_weight_max,
     const std::vector<const MetaTensor*>& fc_bias,
@@ -1457,6 +1458,7 @@ void MultiEncoderXPUInferMeta(
     int act_type,
     int relative_type,
     int slice_idx,
+    bool is_per_channel,
     MetaTensor* out,
     MetaTensor* x_fp16,
     MetaTensor* out_fp16) {
@@ -1870,7 +1872,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
       x_dims[x_dims_size - 1],
       4,
       phi::errors::InvalidArgument(
-          "The last dim of x should be larget than 4, but received "
+          "The last dim of x should be larger than 4, but received "
           " is %d.",
           x_dims[x_dims_size - 1]));
   // compute left out_dims
@@ -1993,7 +1995,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
         strides[i],
         0,
         errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
+            "The stride of Op(Conv) should be larger than 0, but received "
             "stride is %d.",
             strides[i]));
   }
@@ -2005,7 +2007,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
       2U,
       errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "be equal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
           in_sub_stride_size,
@@ -2316,7 +2318,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "Operator(FusedScaleBiasReluConvBn) only supports data format "
           "of "
-          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          "channel last (NHWC) now. But received: data_format = '%s'.",
           data_format));
 
   PADDLE_ENFORCE_EQ(
@@ -2331,7 +2333,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
         dilations[i],
         0,
         phi::errors::InvalidArgument(
-            "The dilation of Op(Conv) should be larget than 0, but received "
+            "The dilation of Op(Conv) should be larger than 0, but received "
             "dilation is %d.",
             dilations[i]));
   }
@@ -2352,7 +2354,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
           filter_dims,
           groups));
 
-  // update paddings and dilations accoring to padding_algorithm
+  // update paddings and dilations according to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   // get "HW" from "NHWC"
@@ -2458,7 +2460,7 @@ void FusedDconvDreluDbnInferMeta(const MetaTensor& grad_output,
       phi::errors::InvalidArgument(
           "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
           "of "
-          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          "channel last (NHWC) now. But received: data_format = '%s'.",
           data_format));
 
   PADDLE_ENFORCE_EQ(
@@ -2630,7 +2632,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
         embs_dim.size(),
         2,
         phi::errors::InvalidArgument(
-            "The Emb dim's size shoule be 2, but found %d.", embs_dim.size()));
+            "The Emb dim's size should be 2, but found %d.", embs_dim.size()));
     PADDLE_ENFORCE_EQ(
         embs_dim[1],
         dims_bias[0],
@@ -2954,7 +2956,7 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
             "The number of Output(Outputs) of operator 'fused_conv2d_add_act' "
             "is "
             "expected to be equal to the length of Attr(split_channels). But "
-            "reiceved: the number of Output(Outputs) = %u; the length of "
+            "received: the number of Output(Outputs) = %u; the length of "
             "Attr(split_channels) = %u, the content = [%s].",
             outputs.size(),
             split_channels.size(),
@@ -3141,27 +3143,12 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         const bool is_reverse,
                         const bool use_seq,
                         const bool origin_mode,
-                        const bool use_mkldnn,
-                        const std::string& mkldnn_data_type,
-                        const float scale_data,
-                        const float shift_data,
-                        const std::vector<float>& scale_weights,
                         const bool force_fp32_output,
                         MetaTensor* reordered_h0,
                         MetaTensor* xx,
                         MetaTensor* batched_input,
                         MetaTensor* batched_out,
                         MetaTensor* hidden) {
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
-
   DDim x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                         ? common::flatten_to_2d(x_dims, 1)
@@ -3227,7 +3214,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
                       frame_size,
                       phi::errors::InvalidArgument(
                           "The width of H0 must be equal to frame_size, but "
-                          "receiced the width of H0 is:%d, frame size is:%d",
+                          "received the width of H0 is:%d, frame size is:%d",
                           h0_dims[1],
                           frame_size));
     reordered_h0->set_dtype(x.dtype());
@@ -3303,14 +3290,14 @@ void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
       x_dims.size(),
       2,
       phi::errors::InvalidArgument(
-          "Input(X) should be 2-D tensor, but reveiced value is: %d.",
+          "Input(X) should be 2-D tensor, but received value is: %d.",
           x_dims.size()));
 
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
       phi::errors::InvalidArgument(
-          "Filter should be 2-D tensor, but reveiced value is: %d.",
+          "Filter should be 2-D tensor, but received value is: %d.",
           w_dims.size()));
 
   PADDLE_ENFORCE_EQ(w_dims[0],
@@ -3609,7 +3596,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       0,
       errors::InvalidArgument(
           "The num_head of query must be divisible by the num_head of key, but "
-          "recived num_head of query is %d, and the num_head of key is %d",
+          "received num_head of query is %d, and the num_head of key is %d",
           query_num_head,
           key_num_head));
 

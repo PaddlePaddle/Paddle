@@ -595,9 +595,9 @@ class ChainTransform(Transform):
         # Suppose the dimensions of input tensor is N, and chain [t0,...ti,...tm],
         # ti(in) denotes ti.domain.event_rank, ti(out) denotes ti.codomain.event_rank,
         # delta(ti) denotes (ti(out) - ti(in)).
-        # For transform ti, N shoud satisfy the constraint:
+        # For transform ti, N should satisfy the constraint:
         #   N + delta(t0) + delta(t1)...delta(t(i-1)) >= ti(in)
-        # So, for all transform in chain, N shoud satisfy follow constraints:
+        # So, for all transform in chain, N should satisfy follow constraints:
         #   t0: N >= t0(in)
         #   t1: N >= t1(in) - delta(t0)
         #   ...

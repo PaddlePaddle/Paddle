@@ -23,7 +23,6 @@ from paddle import _legacy_C_ops, nn
 from paddle.base import framework
 from paddle.base.dygraph import (
     base as imperative_base,
-    to_variable,
 )
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
@@ -58,7 +57,7 @@ class MixPrecisionLayer(nn.Layer):
             ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
                 param.name
             )
-            if tmp_grad._is_initialized():
+            if tmp_grad is not None and tmp_grad._is_initialized():
                 # Some previous pylayer may return None, should check grad validation.
                 if param.main_grad is None:
                     param.main_grad = core.eager.Tensor(
@@ -215,7 +214,7 @@ def unscale_method(self, optimizer):
                 assert param.main_grad.dtype == core.VarDesc.VarType.FP32
                 param_grads.append(param.main_grad)
 
-    temp_found_inf = to_variable(np.array([0]).astype(np.bool_))
+    temp_found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
     if len(param_grads):
         _legacy_C_ops.check_finite_and_unscale(
             param_grads,

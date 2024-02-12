@@ -55,14 +55,14 @@ class HistoryRecorder:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
             return (self.history[0], True)
-        if mode == "SFT" or mode == "LoRA":
+        if mode == "SFT" or mode == "LoRA" or mode == "Pretrain":
             best_cfg = self.history[0]
             if (
                 isinstance(best_cfg["max_mem_usage"], str)
                 or best_cfg["time"] == -1
             ):
                 return (best_cfg, True)
-            first_few = 1
+            first_few = 0
             for cfg in self.history:
                 if (
                     not isinstance(cfg["max_mem_usage"], str)
@@ -71,7 +71,7 @@ class HistoryRecorder:
                 ):
                     best_cfg = cfg
                 first_few += 1
-                if first_few >= 5:
+                if first_few >= 3:
                     break
             return (best_cfg, False)
         if isinstance(self.history[0]["max_mem_usage"], str) or (
@@ -100,22 +100,23 @@ class HistoryRecorder:
         # get enhanced report in dp-estimation mode
         if self.search_algo == "dp_estimation":
             metric_name = self.tuner_cfg['metric_cfg']['name']
-            _history = []
-            for cfg in self.history:
-                if (
-                    "sharding_overlap" not in cfg.keys()
-                    or cfg["sharding_overlap"] is None
-                ) and cfg["error_info"] is None:
-                    _history.append(copy.deepcopy(cfg))
-            _history.sort(
-                key=lambda x: x[self.additional_metric_key]
-                if x[self.additional_metric_key] is not None
-                else float('-inf'),
-                reverse=True,
-            )
-            self._store_history_impl(
-                data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
-            )
+            if self.additional_metric_key:
+                _history = []
+                for cfg in self.history:
+                    if (
+                        "sharding_overlap" not in cfg.keys()
+                        or cfg["sharding_overlap"] is None
+                    ) and cfg["error_info"] is None:
+                        _history.append(copy.deepcopy(cfg))
+                _history.sort(
+                    key=lambda x: x[self.additional_metric_key]
+                    if x[self.additional_metric_key] is not None
+                    else float('-inf'),
+                    reverse=True,
+                )
+                self._store_history_impl(
+                    data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
+                )
 
         """Store history to csv file."""
         self.store_path = path

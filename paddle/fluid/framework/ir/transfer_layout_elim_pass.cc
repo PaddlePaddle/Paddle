@@ -44,7 +44,7 @@ namespace ir {
 // Put transfer_layout after op_node
 // transfer_info is for case when we need know this transfer_layout info,
 // nchw_nhwc or nhwc_nchw
-void TransferLayoutElimPass::PutTranferlayoutAfterOp(
+void TransferLayoutElimPass::PutTransferlayoutAfterOp(
     Node *op_node, ir::Graph *graph, std::string *transfer_info) const {
   std::unordered_set<const Node *> remove_nodes;
   // Ensure op_node has only one output!
@@ -200,9 +200,9 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
 //         |   |     |
 //       op0   op1    op2
 
-void TransferLayoutElimPass::ElimTwoTranferlayout(Node *op_node,
-                                                  ir::Graph *graph,
-                                                  bool *modify) const {
+void TransferLayoutElimPass::ElimTwoTransferlayout(Node *op_node,
+                                                   ir::Graph *graph,
+                                                   bool *modify) const {
   std::unordered_set<const Node *> remove_nodes;
   auto var1 = op_node->inputs[0];
   auto transfer_layout0 = var1->inputs[0];
@@ -293,7 +293,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
       if (AllInputIsTransferlayout(op_node)) {
         if (is_concat_like_op) {
           std::string transfer_info;
-          PutTranferlayoutAfterOp(op_node, graph, &transfer_info);
+          PutTransferlayoutAfterOp(op_node, graph, &transfer_info);
           int axis = op_node->Op()->GetAttrIfExists<int>("axis");
           int modify_axis = axis;
           if (transfer_info == "nhwc_nchw") {
@@ -319,7 +319,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
           break;
         }
         if (is_pool_like_op) {
-          PutTranferlayoutAfterOp(op_node, graph, nullptr);
+          PutTransferlayoutAfterOp(op_node, graph, nullptr);
           op_node->Op()->SetAttr(
               "data_format",
               transfer_format(
@@ -329,13 +329,13 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
           break;
         }
         if (is_act_like_op) {
-          PutTranferlayoutAfterOp(op_node, graph, nullptr);
+          PutTransferlayoutAfterOp(op_node, graph, nullptr);
           modify = true;
           move_down_count++;
           break;
         }
         if (is_elim_op) {
-          ElimTwoTranferlayout(op_node, graph, &modify);
+          ElimTwoTransferlayout(op_node, graph, &modify);
           elim_count++;
           break;
         }
@@ -343,8 +343,12 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
     }
     if (!modify) break;
   }
-  LOG(INFO) << "move down " << move_down_count << " transfer_layout";
-  LOG(INFO) << "eliminate " << elim_count << " pair of transfer_layout";
+  if (move_down_count > 0) {
+    LOG(INFO) << "move down " << move_down_count << " transfer_layout";
+  }
+  if (elim_count > 0) {
+    LOG(INFO) << "eliminate " << elim_count << " pair of transfer_layout";
+  }
 }
 
 }  // namespace ir

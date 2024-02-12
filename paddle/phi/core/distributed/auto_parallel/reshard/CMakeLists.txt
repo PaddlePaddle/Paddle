@@ -11,6 +11,7 @@ collect_srcs(
   p_to_s_reshard_function.cc
   s_to_p_reshard_function.cc
   x_to_r_reshard_function.cc
+  r_to_x_reshard_function.cc
   nd_mesh_reshard_function.cc
   same_status_reshard_function.cc
   reshard_function_registry.cc)

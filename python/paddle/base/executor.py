@@ -41,6 +41,7 @@ from .framework import (
     get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    process_type_promotion,
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
@@ -1054,7 +1055,7 @@ class _ExecutorCache:
                 # if enables distributed training with prim mechanism (prim is behind of distributed)
                 # step 1: translate program to pir program.
                 # step 2: decompose PHI ops in pir program into prim ops.
-                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding corresponding forward op.
                 if (
                     os.getenv("FLAGS_enable_prim_after_distribute")
                     in ['True', 'true', '1']
@@ -1144,7 +1145,12 @@ class _ExecutorCache:
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
-                tup = (feed_target_name, var_type, var_shape)
+                tup = (
+                    feed_target_name,
+                    var_type,
+                    var_shape,
+                    op.result(0).persistable,
+                )
                 data_op_infos.append(tup)
         return program, new_exe, data_op_infos
 
@@ -1371,7 +1377,11 @@ class Executor:
             feed_target_names.add(feed_target_name)
             var_type = data_op_info[1]
             var_shape = data_op_info[2]
-
+            is_persistable = data_op_info[3]
+            if feed_target_name not in feed.keys() and is_persistable:
+                # If the feed_target_name is not in feed list, but is persistable, maybe it is a optimizer param
+                # and don't need feed data.
+                continue
             cur_feed = feed[feed_target_name]
             if not isinstance(cur_feed, core.LoDTensor):
                 cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
@@ -1400,7 +1410,7 @@ class Executor:
     @classmethod
     def _split_optimize_ops_in_fetch_list(cls, fetch_list):
         """
-        Split optimize_ops from fetch_list, which provided to specify program prunning.
+        Split optimize_ops from fetch_list, which provided to specify program pruning.
         Args:
             fetch_list(list): The original fetch_list.
             Possible types of fetch_list are:
@@ -1656,7 +1666,7 @@ class Executor:
                 and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
-                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
+                If the parameter is True, the program will be pruned according to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
@@ -1770,6 +1780,8 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
+            # do type promotion if necessary
+            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
@@ -2079,7 +2091,6 @@ class Executor:
             self.place,
             scope,
         )
-
         self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
@@ -2509,7 +2520,7 @@ class Executor:
 
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
-            and program._fleet_opt.get("use_ps_gpu", True)
+            and program._fleet_opt.get("use_ps_gpu", False)
         )
 
         if reused_trainer is False:

@@ -422,7 +422,7 @@ SUPPORT_FLOAT_TYPES = {
 def set_var_dst_dtype(
     op, var_names, block, global_block, dtype, need_set_dtype
 ):
-    low_precison_var_names = set()
+    low_precision_var_names = set()
     for var_name in var_names:
         var = None
         try:
@@ -439,7 +439,7 @@ def set_var_dst_dtype(
             continue
 
         if var.dtype in FLOAT_TYPES:
-            low_precison_var_names.add(var_name)
+            low_precision_var_names.add(var_name)
             if need_set_dtype:
                 var.desc.set_dtype(dtype)
 
@@ -449,7 +449,7 @@ def set_var_dst_dtype(
             )
         )
 
-    return low_precison_var_names
+    return low_precision_var_names
 
 
 def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
@@ -581,8 +581,8 @@ def get_amp_dst_dtype(
 
 
 def process_op_input_and_outputs(op, block, global_block, dtype):
-    low_precison_var_names = set()
-    # Get the FP16 input because the low_precison_var_names is required for the parameter casting.
+    low_precision_var_names = set()
+    # Get the FP16 input because the low_precision_var_names is required for the parameter casting.
     # The dtype of the input is not set to fp16, because it is done in the step 3 of cast_model_to_fp16.
     for in_name in op.input_names:
         # for ipu, all inputs must be converted to fp16
@@ -596,7 +596,7 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
             dtype,
             need_set_dtype=False,
         )
-        low_precison_var_names = low_precison_var_names.union(in_vars)
+        low_precision_var_names = low_precision_var_names.union(in_vars)
     # Set the output to FP16 because its consumer OP needs to determine if the dtype needs
     # to be promoted.
     for out_name in op.output_names:
@@ -611,7 +611,7 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
             dtype,
             need_set_dtype=True,
         )
-    return low_precison_var_names
+    return low_precision_var_names
 
 
 def map_block(block, fn, parent_op=None):

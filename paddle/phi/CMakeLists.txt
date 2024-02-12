@@ -35,7 +35,6 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    ${flags_dep}
     glog
     warpctc
     warprnnt
@@ -133,6 +132,7 @@ if(WITH_GPU)
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
+
 elseif(WITH_ROCM)
   hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
   target_link_libraries(phi ${PHI_DEPS})
@@ -147,6 +147,8 @@ else()
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 endif()
+
+target_compile_definitions(phi PUBLIC PHI_INNER)
 
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)

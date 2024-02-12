@@ -95,9 +95,9 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "managed memory, only available for auto_growth "
                             "strategy");
 
-PHI_DECLARE_string(allocator_strategy);
-PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
-PHI_DECLARE_bool(use_auto_growth_pinned_allocator);
+COMMON_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_uint64(auto_growth_chunk_size_in_mb);
+COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
 
 namespace paddle {
 namespace memory {
@@ -1345,11 +1345,12 @@ class AllocatorFacadePrivate {
 
   void WrapStatAllocator() {
     for (auto& pair : allocators_) {
-      // Now memory stats is only supported for CPU and GPU
+      // Now memory stats is only supported for CPU, GPU, XPU and CustomDevice
       const platform::Place& place = pair.first;
       if (platform::is_cpu_place(place) ||
           platform::is_cuda_pinned_place(place) ||
-          platform::is_gpu_place(place)) {
+          platform::is_gpu_place(place) || platform::is_custom_place(place) ||
+          platform::is_xpu_place(place)) {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }

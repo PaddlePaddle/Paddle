@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
@@ -84,6 +85,56 @@ std::vector<ir::Argument> GetArgs(
     for (auto& i : res) VLOG(3) << "In res, arg has : " << i.name();
   }
   return res;
+}
+
+bool CanProveBufferNumelLT(const ir::Buffer& lhs, const ir::Buffer& rhs) {
+  common::cas_intervals_t var_intervals;
+  common::SymbolicExprAnalyzer analyzer(var_intervals);
+  std::optional<bool> prove_lt =
+      analyzer.ProveLT(lhs->SymbolicNumel(), rhs->SymbolicNumel());
+  return prove_lt.value_or(false);
+}
+
+// Collect the temporary tensors from a computational graph.
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<cinn::ir::Tensor>& tensor_args, Expr body) {
+  std::unordered_set<std::string> tensor_arg_names;
+  std::unordered_set<std::string> buffer_arg_names;
+  for (auto& tensor : tensor_args) {
+    tensor_arg_names.insert(tensor->name);
+    if (tensor->buffer.defined()) {
+      buffer_arg_names.insert(tensor->buffer->name);
+    }
+  }
+  std::map<std::string, ir::Buffer>
+      name_to_buffer;  // used to avoid duplication.
+
+  auto all_temp_tensors =
+      ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+               ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+                 !tensor_arg_names.count(x->as_tensor()->name)) ||
+                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+      });
+  for (auto& e : all_temp_tensors) {
+    auto buffer_name = e.as_tensor()->buffer->name;
+    if (!name_to_buffer.count(buffer_name)) {
+      name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+    } else {
+      // TODO(phlrain): why update
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
+        name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+      }
+    }
+  }
+
+  std::vector<ir::Buffer> temp_buffers;
+  for (auto& i : name_to_buffer) {
+    temp_buffers.push_back(i.second);
+  }
+
+  return temp_buffers;
 }
 
 //! Collect the temporary tensors from a computational graph.
@@ -158,8 +209,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
     if (!name_to_buffer.count(buffer_name)) {
       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
     } else {
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
+      if (CanProveBufferNumelLT(e.as_tensor()->buffer,
+                                name_to_buffer[buffer_name])) {
         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
       }
     }
@@ -170,8 +221,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
         if (x->as_tensor() && x->as_tensor()->buffer.defined()) {
           auto buffer_name = x->as_tensor()->buffer->name;
           if (name_to_buffer.count(buffer_name) &&
-              x->as_tensor()->buffer->numel() <
-                  name_to_buffer[buffer_name]->numel()) {
+              CanProveBufferNumelLT(x->as_tensor()->buffer,
+                                    name_to_buffer[buffer_name])) {
             name_to_buffer[buffer_name] = x->as_tensor()->buffer;
           }
         }
@@ -268,7 +319,7 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
     const std::vector<Tensor>& tensor_args) {
   std::set<ir::Tensor> res;
   for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
-    for (const ir::Tensor& t : tensor_group->GetCrtlDepTensors(a->name)) {
+    for (const ir::Tensor& t : tensor_group->GetCtrlDepTensors(a->name)) {
       res.emplace(t);
     }
   }
