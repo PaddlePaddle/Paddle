@@ -183,8 +183,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Free *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") ||
-      utils::Startswith(op->name, "blockIdx")) {
+  if (utils::StartsWith(op->name, "threadIdx") ||
+      utils::StartsWith(op->name, "blockIdx")) {
     str_ += "(int)";
     str_ += op->name;
   } else {
@@ -409,7 +409,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(
+      utils::StartsWith(
           op->type().customized_type(),
           cinn::common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());

@@ -522,7 +522,7 @@ std::vector<std::string> GetRelatedInputAxies(
   auto transformed_domain = temp_set.apply(x);
   for (auto &i : dim_out_names) {
     out_set.insert(i);
-    if (utils::Endswith(i, "_inner") || utils::Endswith(i, "_outer")) {
+    if (utils::EndsWith(i, "_inner") || utils::EndsWith(i, "_outer")) {
       out_set_without_suffix.insert(utils::RemoveSuffix(i));
     }
   }
