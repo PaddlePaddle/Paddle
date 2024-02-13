@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/type.h"
 
 namespace paddle {
 namespace dialect {

@@ -27,11 +27,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
