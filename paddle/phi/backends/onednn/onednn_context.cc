@@ -170,7 +170,8 @@ struct OneDNNContext::Impl {
   size_t GetShapeBlobSize() const {
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
     BlobMap* pMap = p_blobmap_.get();
-    auto map_it = pMap->find(OneDNNContext::tls().cur_mkldnn_session_id);
+    auto map_it =
+        pMap->find(OneDNNContext::tls().cur_mkldnn_session_id);  // NOLINT
     if (map_it == pMap->end()) {
       PADDLE_THROW(phi::errors::NotFound(
           "OneDNNContext don't find cur_mkldnn_session_id: %d.",
@@ -184,7 +185,7 @@ struct OneDNNContext::Impl {
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();
+    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();  // NOLINT
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
@@ -254,7 +255,7 @@ struct OneDNNContext::Impl {
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();
+    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();  // NOLINT
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 

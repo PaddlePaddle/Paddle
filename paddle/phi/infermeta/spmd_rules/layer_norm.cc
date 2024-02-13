@@ -35,9 +35,9 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
   auto bias_shape = common::vectorize(bias.dims());
-  int x_ndim = x_shape.size();
-  int scale_ndim = scale_shape.size();
-  int bias_ndim = bias_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int scale_ndim = static_cast<int>(scale_shape.size());
+  int bias_ndim = static_cast<int>(bias_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
@@ -162,10 +162,10 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   auto out_shape = common::vectorize(out.dims());
   auto mean_shape = common::vectorize(mean.dims());
   auto variance_shape = common::vectorize(variance.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
-  int mean_ndim = mean_shape.size();
-  int variance_ndim = variance_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
+  int mean_ndim = static_cast<int>(mean_shape.size());
+  int variance_ndim = static_cast<int>(variance_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   auto mean_dist_attr_src = mean.dist_attr();
   auto variance_dist_attr_src = variance.dist_attr();
@@ -274,7 +274,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
           << "dst_dims_mapping: ["
           << str_join(output_dist_attrs[2].dims_mapping()) << "]";
 
-  for (int i = 0, n = input_dist_attrs.size(); i < n; i++) {
+  for (int i = 0, n = static_cast<int>(input_dist_attrs.size()); i < n; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " dims_mapping: ["
             << str_join(input_dist_attrs[i].dims_mapping()) << "]";
   }
