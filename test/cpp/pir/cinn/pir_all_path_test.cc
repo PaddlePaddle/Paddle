@@ -1028,11 +1028,16 @@ std::shared_ptr<::pir::Program> BuildRedcuceProgram() {
                                           phi::CPUPlace())
           .result(0);
 
-  auto out = builder
+  auto sum = builder
                  .Build<paddle::dialect::SumOp>(
-                     x, std::vector<int64_t>({1}), phi::DataType::FLOAT32, true)
+                     x, std::vector<int64_t>({1, 2}), phi::DataType::FLOAT32)
                  .result(0);
-
+  auto sin = builder.Build<paddle::dialect::SinOp>(sum).result(0);
+  auto reshape = builder
+                     .Build<paddle::dialect::ReshapeOp>(
+                         sin, std::vector<int64_t>({-1, 1, 1}))
+                     .result(0);
+  auto out = builder.Build<paddle::dialect::AddOp>(x, reshape).result(0);
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
 
   return program;

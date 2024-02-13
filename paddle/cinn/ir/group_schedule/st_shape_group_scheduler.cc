@@ -249,6 +249,19 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
 
         loops = ir_sch_->GetLoops(name);
         std::cerr << "after split\n " << loops[0] << std::endl;
+      } else if (group_tile_info_->broadcast_info[name].split_first) {
+        std::cerr << "split first !!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+        for (auto& info : group_tile_info_->broadcast_info[name].split_info) {
+          auto axis = info.first;
+          auto split_res = info.second;
+
+          auto loops = ir_sch_->GetLoops(name);
+          std::cerr << "before split\n " << loops[0] << std::endl;
+          ir_sch_->Split(loops[axis], split_res);
+
+          loops = ir_sch_->GetLoops(name);
+          std::cerr << "after split\n " << loops[0] << std::endl;
+        }
       }
 
       ir_sch_->Broadcast(name, group_tile_info_->broadcast_info[name]);
@@ -450,10 +463,18 @@ void StaticShapeGroupScheduler::Tiling() {
         continue;
       }
 
-      std::vector<int> split_factors{
-          std::ceil(group_tile_info_->reduce_block * 1.0 /
-                    group_tile_info_->reduce_inner_num),
-          group_tile_info_->reduce_inner_num};
+      std::vector<int> split_factors;
+      if (group_tile_info_->reduce_block >= 2048) {
+        split_factors.emplace_back(
+            std::ceil(group_tile_info_->reduce_numel * 1.0 /
+                      group_tile_info_->reduce_inner_num));
+        split_factors.emplace_back(group_tile_info_->reduce_inner_num);
+      } else {
+        split_factors.emplace_back(
+            std::ceil(group_tile_info_->reduce_block * 1.0 /
+                      group_tile_info_->reduce_inner_num));
+        split_factors.emplace_back(group_tile_info_->reduce_inner_num);
+      }
 
       auto split_loops =
           ir_sch_->Split(loops[reduce_current_axis], split_factors);

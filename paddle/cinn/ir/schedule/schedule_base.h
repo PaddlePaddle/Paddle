@@ -34,6 +34,9 @@ struct BroadcastInfo {
   bool first_broadcast{false};
   bool full_broadcast{false};
   std::string op_name;
+
+  bool split_first{false};
+  std::vector<std::pair<int, std::vector<int>>> split_info;
 };
 
 /**

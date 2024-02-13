@@ -680,9 +680,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     // std::cerr << "align name  " << ValueName(it->first->result(0)) <<
     // std::endl;
 
-    std::vector<int64_t> changed_axes;
-    std::vector<int64_t> changed_factor;
-
     if (it->second.size() > 1) {
       for (auto& node : it->second) {
         std::cerr << "info " << node.DebugStr() << std::endl;
@@ -725,22 +722,45 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       std::cerr << it->first->name() << "\t in dim " << in_dim << "\t"
                 << it->second[0].DebugStr() << std::endl;
 
+      //   std::vector<int64_t> changed_axes;
+      // std::vector<int64_t> changed_factor;
+      cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
         std::cerr << "!!!!!!!!!!!!!!!!!!!! " << output_shape.size()
                   << std::endl;
+        info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
           std::cerr << i << "    shape   " << output_shape[i] << std::endl;
-          changed_axes.push_back(i);
-          changed_factor.push_back(output_shape[i]);
+          info.broadcast_axes.push_back(i);
+          info.output_shape.push_back(output_shape[i]);
         }
       } else if (in_dim.size() == broadcast_axes.size()) {
-        for (size_t i = 0; i < broadcast_axes.size(); ++i) {
-          if (in_dim[i] != output_shape[broadcast_axes[i]]) {
-            if (in_dim[i] != 1) {
-              throw std::runtime_error("Only support 1 - D broadcast ");
+        if (in_dim.size() != output_shape.size()) {
+          info.split_first = true;
+
+          if (broadcast_axes.size() == 1) {
+            std::vector<int> temp_shape(output_shape.size(), 1);
+            temp_shape[broadcast_axes[0]] = output_shape[broadcast_axes[0]];
+            info.split_info.emplace_back(0, temp_shape);
+
+            for (size_t i = 0; i < output_shape.size(); ++i) {
+              if (i != broadcast_axes[0]) {
+                info.broadcast_axes.push_back(i);
+                info.output_shape.push_back(output_shape[i]);
+              }
             }
-            changed_axes.push_back(i);
-            changed_factor.push_back(output_shape[broadcast_axes[i]]);
+          } else {
+            throw std::runtime_error("not support multi dim broadcast yet");
+          }
+        } else {
+          for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            if (in_dim[i] != output_shape[broadcast_axes[i]]) {
+              if (in_dim[i] != 1) {
+                throw std::runtime_error("Only support 1 - D broadcast ");
+              }
+              info.broadcast_axes.push_back(i);
+              info.output_shape.push_back(output_shape[broadcast_axes[i]]);
+            }
           }
         }
       } else {
@@ -752,18 +772,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
 
-          changed_axes.push_back(broadcast_axes[i]);
-          changed_factor.push_back(output_shape[broadcast_axes[i]]);
+          info.broadcast_axes.push_back(broadcast_axes[i]);
+          info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
 
-      if (changed_axes.size() == 0) {
+      if (info.broadcast_axes.size() == 0) {
         std::cerr << "opname " << it->first->name() << std::endl;
         throw std::runtime_error(" changed axes is zero");
-      }
-      cinn::ir::BroadcastInfo info{changed_axes, changed_factor};
-      if (in_dim.size() == 1u && in_dim[0] == 1u) {
-        info.full_broadcast = true;
       }
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {

@@ -177,6 +177,7 @@ class TestTask(unittest.TestCase):
             print(fetch_name)
             # print( np.allclose( cinn_res, base_res ) )
             np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
+            print("FINISH")
 
     def check_infer(self, enable_cinn):
         parser = Parser()

@@ -84,6 +84,13 @@ class AddStoreInFusionOpPass : public pir::Pass {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
           if (op.isa<cinn::dialect::FusionOp>()) {
+            auto fusion_op = op.dyn_cast<cinn::dialect::FusionOp>();
+            if (fusion_op.GetOperators().size() == 2 &&
+                fusion_op.GetOperators()
+                    .front()
+                    ->isa<cinn::dialect::ReshapeOp>()) {
+              continue;
+            }
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);

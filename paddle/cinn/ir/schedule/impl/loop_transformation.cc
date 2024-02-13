@@ -741,6 +741,66 @@ void StScheduleImpl::Broadcast(const std::string& block_name,
   auto factors = info.output_shape;
   auto full_broadcast = info.full_broadcast;
   auto first_broadcast = info.first_broadcast;
+  if (info.split_first) {
+    // iter value is one
+    for (size_t i = 0; i < axes.size(); ++i) {
+      // new_extent
+      auto axis = axes[i];
+      auto loop_temp = all_loops[axis].As<ir::For>();
+      int extent = factors[i];
+      loop_temp->extent = Expr(extent);
+
+      if (info.with_constrain) {
+        auto check = ir::EQ::Make(loop_temp->loop_var, Expr(0));
+        schedule_block->body =
+            ir::IfThenElse::Make(check, schedule_block->body);
+      }
+    }
+
+    // change load and store
+
+    // get new offset
+    all_loops = this->GetLoops(block_name);
+    auto offset = Expr(0);
+    auto stride = Expr(1);
+    auto in_offset = Expr(0);
+
+    std::set<int> brodacast_set(info.broadcast_axes.begin(),
+                                info.broadcast_axes.end());
+    for (int i = all_loops.size() - 1; i >= 0; --i) {
+      auto loop_temp = all_loops[i].As<ir::For>();
+      offset = offset + loop_temp->loop_var * stride;
+
+      stride = stride * loop_temp->extent;
+      if (!brodacast_set.count(i)) {
+        in_offset = in_offset + loop_temp->loop_var * stride;
+      }
+    }
+
+    std::cerr << "offset " << offset << std::endl;
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
+        schedule_block->body,
+        [&](const Expr* x) { return x->As<ir::Store>(); });
+    for (auto expr : exprs) {
+      auto store = expr.As<ir::Store>();
+      store->indices[0] = offset;
+    }
+
+    exprs = ir::ir_utils::CollectIRNodesInOrder(
+        schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>(); });
+
+    for (auto expr : exprs) {
+      auto load = expr.As<ir::Load>();
+      if (!info.first_broadcast) {
+        load->indices[0] = offset;
+      } else {
+        load->indices[0] = in_offset;
+      }
+    }
+
+    return;
+  }
+
   for (size_t i = 0; i < axes.size(); ++i) {
     // new_extent
     auto axis = axes[i];

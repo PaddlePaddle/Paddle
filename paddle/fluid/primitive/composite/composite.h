@@ -238,8 +238,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   }
   Tensor reserve_space;
 
-  auto batch_mean_ = assign<T>(batch_mean);
-  auto inv_std_ = assign<T>(inv_std);
+  // auto batch_mean_ = assign<T>(batch_mean);
+  // auto inv_std_ = assign<T>(inv_std);
+  auto batch_mean_ = batch_mean;
+  auto inv_std_ = inv_std;
   if (need_cast) {
     y = cast<T>(y, org_dtype);
   }

@@ -1618,9 +1618,9 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager->EnableIRPrinting();
-  pass_manager->AddPass(
-      std::make_unique<
-          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+  // pass_manager->AddPass(
+  //     std::make_unique<
+  //         cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
 
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
