@@ -234,9 +234,9 @@ CommContext* CommContextManager::Get(const std::string& unique_comm_key) const {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 int CommContextManager::GetRingId(const ncclComm_t& comm) const {
   for (const auto& iter : id_to_comm_context_) {
-    if (static_cast<phi::distributed::NCCLCommContext*>(iter->second.get())
+    if (static_cast<phi::distributed::NCCLCommContext*>(iter.second.get())
             ->GetNcclComm() == comm) {
-      return std::stoi(iter->first);
+      return std::stoi(iter.first);
     }
   }
   return -1;
