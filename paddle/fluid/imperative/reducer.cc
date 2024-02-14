@@ -572,7 +572,7 @@ void Reducer::TraverseBackwardGraph(
 }
 
 // After each batch is calculated, the counter of each group(group.pending_)
-// and allreudce sequence counter(next_group_) will be cleaned up again.
+// and allreduce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";

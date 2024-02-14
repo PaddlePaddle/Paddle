@@ -488,7 +488,7 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
 def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     """
-    insert the allreudce and scale ops for gradients of model
+    insert the allreduce and scale ops for gradients of model
     parameters for operator in data parallelism.
 
     Args:
@@ -608,7 +608,7 @@ def gradient_synchronization(
     dist_ctx, op, act_grad_names, out_grad_names, rank
 ):
     """
-    conduct the allreudce and scaling for gradients of model
+    conduct the allreduce and scaling for gradients of model
     parameters for operator in parallelism train.
 
     Args:
