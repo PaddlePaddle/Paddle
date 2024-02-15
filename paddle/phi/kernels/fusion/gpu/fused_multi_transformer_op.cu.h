@@ -24,14 +24,6 @@ limitations under the License. */
 
 #include <cub/cub.cuh>
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -42,9 +34,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
+// #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
@@ -111,12 +102,14 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
       stream = comm_ctx->GetStream();
 
       VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
-    } else {
-      comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
-
-      stream = ctx.stream();
-      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
     }
+    // else {
+    //   comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id,
+    //   place);
+
+    //   stream = ctx.stream();
+    //   VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+    // }
     if (comm_ctx) {
       comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
     } else {
@@ -1701,7 +1694,8 @@ __global__ void GetPaddingOffset(int *d_token_num,
   d_token_num[0] = total_seq_len;
 }
 
-void InvokeGetPaddingOffset(const phi::GPUContext &dev_ctx,
+template <typename Context>
+void InvokeGetPaddingOffset(const Context &dev_ctx,
                             int *h_token_num,
                             int *d_token_num,
                             int *padding_offset,
@@ -1710,12 +1704,12 @@ void InvokeGetPaddingOffset(const phi::GPUContext &dev_ctx,
                             const int max_seq_len) {
   GetPaddingOffset<<<1, 1, 0, dev_ctx.stream()>>>(
       d_token_num, padding_offset, sequence_lengths, batch_size, max_seq_len);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       h_token_num,
-                       dev_ctx.GetPlace(),
-                       d_token_num,
-                       sizeof(int),
-                       dev_ctx.stream());
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          h_token_num,
+                          dev_ctx.GetPlace(),
+                          d_token_num,
+                          sizeof(int),
+                          dev_ctx.stream());
 }
 
 template <typename T>

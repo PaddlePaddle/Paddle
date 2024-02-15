@@ -16,11 +16,12 @@ limitations under the License. */
 
 #include <iostream>
 #include <vector>
-#include "paddle/fluid/operators/fused/cublaslt.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 
@@ -35,11 +36,12 @@ class AttnMatmulINT8 {
   AttnMatmulINT8(
       const phi::GPUContext& dev_ctx, int m, int n, int k, bool compute_bias)
       : dev_ctx_(dev_ctx), m_(m), n_(n), k_(k), compute_bias_(compute_bias) {
-    auto helper = std::make_shared<paddle::operators::CublasLtHelper>(m, k, n);
+    auto helper = std::make_shared<phi::CublasLtHelper>(
+        m, k, n, dev_ctx.cublaslt_handle());
     helpers_.emplace_back(helper);
     gpu_config_ = std::make_unique<GpuLaunchConfig>(
         phi::backends::gpu::GetGpuLaunchConfig1D(
-            dev_ctx, m * n, paddle::operators::DequantKernelVecSize));
+            dev_ctx, m * n, phi::DequantKernelVecSize));
   }
   ~AttnMatmulINT8() {}
 
@@ -186,7 +188,7 @@ class AttnMatmulINT8 {
   int k_;  // k
 
   int compute_bias_;
-  std::vector<std::shared_ptr<paddle::operators::CublasLtHelper>> helpers_;
+  std::vector<std::shared_ptr<phi::CublasLtHelper>> helpers_;
   std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 

@@ -74,6 +74,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fused_embedding_eltwise_layernorm',
     'fused_fc_elementwise_layernorm',
     'fused_multi_transformer_xpu',
+    'fused_multi_transformer',
+    'fused_multi_transformer_int8',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',

@@ -90,13 +90,13 @@ void FusedMultiTransformerKernel(
     padding_offset_tensor.Resize({bsz_seq});
     dev_ctx.template Alloc<int>(&padding_offset_tensor,
                                 padding_offset_tensor.numel() * sizeof(int));
-    InvokeGetPaddingOffset(dev_ctx,
-                           &token_num,
-                           d_token_num,
-                           padding_offset_tensor.data<int>(),
-                           seq_lengths_t->data<int>(),
-                           bsz,
-                           seq_len);
+    InvokeGetPaddingOffset<Context>(dev_ctx,
+                                    &token_num,
+                                    d_token_num,
+                                    padding_offset_tensor.data<int>(),
+                                    seq_lengths_t->data<int>(),
+                                    bsz,
+                                    seq_len);
     padding_offset_tensor.Resize({token_num});
     x_remove_padding.Resize({token_num, dim_embed});
     dev_ctx.template Alloc<T>(&x_remove_padding,
@@ -752,13 +752,13 @@ void FusedMultiTransformerKernel(
     padding_offset_tensor.Resize({bsz_seq});
     dev_ctx.template Alloc<int>(&padding_offset_tensor,
                                 padding_offset_tensor.numel() * sizeof(int));
-    InvokeGetPaddingOffset(dev_ctx,
-                           &token_num,
-                           d_token_num,
-                           padding_offset_tensor.data<int>(),
-                           seq_lengths_t->data<int>(),
-                           bsz,
-                           seq_len);
+    InvokeGetPaddingOffset<Context>(dev_ctx,
+                                    &token_num,
+                                    d_token_num,
+                                    padding_offset_tensor.data<int>(),
+                                    seq_lengths_t->data<int>(),
+                                    bsz,
+                                    seq_len);
     padding_offset_tensor.Resize({token_num});
     x_remove_padding.Resize({token_num, dim_embed});
     dev_ctx.template Alloc<T>(&x_remove_padding,
