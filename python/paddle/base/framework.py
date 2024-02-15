@@ -4429,7 +4429,7 @@ class Block:
         else:
             param = Parameter(global_block, *args, **kwargs)
         # NOTE(Aurelius84): we deliver stop_gradient in append_op, so we
-        # need recorde it state and reset it back after calling this API
+        # need record it state and reset it back after calling this API
         stop_gradient = param.stop_gradient
 
         if 'initializer' in kwargs:
@@ -6587,7 +6587,7 @@ class Program:
                         "Variable or Operator, but received %s." % type(t)
                     )
 
-                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # NOTE(zhiqiu): For variable to be fed in fetch_list, there two cases:
                 # (1) the variable is leaf, it has no op that generates it;
                 # (2) the variable is not leaf, and we need to prune the op that generates it.
                 # In both cases, wo can just skip target_op of that it.
@@ -6809,7 +6809,7 @@ class Program:
 
         Args:
 
-            binary_str_type (str): the binary prootbuf string.
+            binary_str_type (str): the binary protobuf string.
 
         Returns:
             Program: A deserialized Program.
@@ -7197,7 +7197,7 @@ class Program:
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
 
         Returns:
-            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+            list[ :ref:`api_guide_parameter_en` ]: The list contains all parameters in this program.
 
         Examples:
             .. code-block:: python
@@ -7249,7 +7249,7 @@ class Program:
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
 
-        Retruns:
+        Returns:
             dict: a dict contains the parameters and persistable buffers.
 
         Examples:
