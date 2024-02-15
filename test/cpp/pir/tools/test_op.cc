@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "test/cpp/pir/tools/test_op.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace test {
 

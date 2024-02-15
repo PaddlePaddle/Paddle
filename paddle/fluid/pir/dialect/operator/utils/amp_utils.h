@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/optional.h"
 
 namespace paddle {

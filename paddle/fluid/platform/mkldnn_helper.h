@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
 namespace paddle {
 #ifdef PADDLE_WITH_DNNL
 using phi::OneDNNContext;

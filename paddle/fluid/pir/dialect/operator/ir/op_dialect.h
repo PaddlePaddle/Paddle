@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
