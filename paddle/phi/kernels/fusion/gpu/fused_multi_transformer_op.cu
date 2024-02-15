@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
@@ -53,8 +52,8 @@ void FusedMultiTransformerKernel(
     float epsilon,
     float dropout_rate,
     bool is_test,
-    std::string dropout_implementation,
-    std::string act_method,
+    const std::string &dropout_implementation,
+    const std::string &act_method,
     bool trans_qkvw,
     int ring_id,
     DenseTensor *out,
@@ -715,8 +714,8 @@ void FusedMultiTransformerKernel(
     float epsilon,
     float dropout_rate,
     bool is_test,
-    std::string dropout_implementation,
-    std::string act_method,
+    const std::string &dropout_implementation,
+    const std::string &act_method,
     bool trans_qkvw,
     int ring_id,
     DenseTensor *out,

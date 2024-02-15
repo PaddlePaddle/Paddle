@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
@@ -49,8 +48,8 @@ void FusedMultiTransformerINT8Kernel(
     float epsilon,
     float dropout_rate,
     bool is_test,
-    std::string dropout_implementation,
-    std::string act_method,
+    const std::string &dropout_implementation,
+    const std::string &act_method,
     bool trans_qkvw,
     int ring_id,
     int num_head,
@@ -662,5 +661,4 @@ PD_REGISTER_KERNEL(fused_multi_transformer_int8,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerINT8Kernel,
-                   float,
                    phi::dtype::float16) {}
