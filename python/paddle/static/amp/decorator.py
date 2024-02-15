@@ -353,7 +353,7 @@ class OptimizerWithMixedPrecision:
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
                 ...         use_pure_fp16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())
@@ -778,7 +778,7 @@ def decorate(
             ...         init_loss_scaling=128.0,
             ...         use_dynamic_loss_scaling=True,
             ...         use_pure_fp16=True)
-            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
             ...     optimizer.minimize(loss)
             ...     exe.run(paddle.static.default_startup_program())

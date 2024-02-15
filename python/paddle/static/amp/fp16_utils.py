@@ -240,7 +240,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     )
 
                     # Only forward program will be inserted cast op, but some ops
-                    # has no op_role attr, so here set it direcly. eg. resnet_unit.
+                    # has no op_role attr, so here set it directly. eg. resnet_unit.
                     op_role = (
                         int(core.op_proto_and_checker_maker.OpRole.Forward)
                         if not op.has_attr('op_role')
@@ -462,7 +462,7 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
         ops = block.ops
         for op in ops:
             # Currently, lookup_table is in black_list and unsupport_list, it's weight will be
-            # set to fp32 in setp 1 of cast_model_tp_fp16. But the weight may be used as matmul's
+            # set to fp32 in step 1 of cast_model_tp_fp16. But the weight may be used as matmul's
             # input in transformer, so the weight is also in to_fp16_var_names.
             # TODO(zhangting2020): consider fix auto_parallel_fp16 and remove lookup_table
             # from black_list and unsupport_list.
@@ -775,7 +775,7 @@ def cast_model_to_fp16(
                     "---- Add into keep_fp16_ops because the op in white_list ----"
                 )
             else:
-                # if cast in orgin program, we only modifiy attr and output's dtype to avoid dtype mismatch errors.
+                # if cast in origin program, we only modify attr and output's dtype to avoid dtype mismatch errors.
                 if op.type == 'cast':
                     in_var = block._find_var_recursive(op.input('X')[0])
                     out_var = block._find_var_recursive(op.output('Out')[0])
