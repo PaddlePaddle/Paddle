@@ -787,7 +787,7 @@ int64_t MemorySparseTable::CacheShuffle(
     writer.Reset(tmp_channels[i].get());
 
     for (auto table_ptr : table_ptrs) {
-      auto value_accessor = table_ptr->ValueAccessor();
+      auto value_accessor = table_ptr->GetValueAccessor();
       shard_type *shard_ptr = static_cast<shard_type *>(table_ptr->GetShard(i));
 
       for (auto it = shard_ptr->begin(); it != shard_ptr->end(); ++it) {

@@ -151,7 +151,7 @@ class Table {
     return InitializeShard();
   }
 
-  inline std::shared_ptr<ValueAccessor> ValueAccessor() {
+  inline std::shared_ptr<ValueAccessor> GetValueAccessor() {
     return _value_accessor;
   }
 
