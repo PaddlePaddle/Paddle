@@ -162,7 +162,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
           << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name_);
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -250,7 +250,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -430,7 +430,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     dst.SetPersistable(src->Persistable());
     dst.SetDataType(src->DataType());
     dst.SetType(src->Type());
-    dst.SetOverridedStopGradient(src->OverridedStopGradient());
+    dst.SetOverriddenStopGradient(src->OverriddenStopGradient());
     if (!src->SharedVar()->IsEmpty()) {
       if (src->Var().IsType<phi::DenseTensor>()) {
         auto &src_tensor = src->Var().Get<phi::DenseTensor>();

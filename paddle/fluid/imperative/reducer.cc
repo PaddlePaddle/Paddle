@@ -515,7 +515,7 @@ void Reducer::TraverseBackwardGraph(
 
   for (const auto &output : outputs) {
     const auto &grad_node = output->GradVarBase()->GradNode();
-    if (grad_node == nullptr || output->OverridedStopGradient()) {
+    if (grad_node == nullptr || output->OverriddenStopGradient()) {
       VLOG(3) << "Skip auto grad since there is no grad op or output is "
                  "stop_gradient=True: "
               << output->Name();
@@ -540,7 +540,7 @@ void Reducer::TraverseBackwardGraph(
           continue;
         }
         for (auto &var : pair.second) {
-          if (!var || var->OverridedStopGradient()) {
+          if (!var || var->OverriddenStopGradient()) {
             continue;
           } else {
             var_visited.insert(var.get());
