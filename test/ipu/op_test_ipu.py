@@ -163,8 +163,7 @@ class IPUOpTest(IPUTest):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
             self.startup_prog = paddle.static.Program()
-            self.main_prog.random_seed = self.SEED
-            self.startup_prog.random_seed = self.SEED
+            paddle.seed(self.SEED)
             with paddle.static.scope_guard(self.scope):
                 with paddle.utils.unique_name.guard(
                     paddle.utils.unique_name.generate('')
