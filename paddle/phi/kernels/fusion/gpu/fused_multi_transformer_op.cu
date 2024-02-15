@@ -57,8 +57,8 @@ void FusedMultiTransformerKernel(
     std::string act_method,
     bool trans_qkvw,
     int ring_id,
-    std::vector<DenseTensor *> cache_kv_outs,
-    DenseTensor *out) {
+    DenseTensor *out,
+    std::vector<DenseTensor *> cache_kv_outs) {
   using U = phi::funcs::LayerNormParamType<T>;
 
   auto *rotary_tensor_t = rotary_tensor.get_ptr();
@@ -719,8 +719,8 @@ void FusedMultiTransformerKernel(
     std::string act_method,
     bool trans_qkvw,
     int ring_id,
-    std::vector<DenseTensor *> cache_kv_outs,
-    DenseTensor *out) {
+    DenseTensor *out,
+    std::vector<DenseTensor *> cache_kv_outs) {
   using U = LayerNormParamType<T>;
   auto *rotary_tensor_t = rotary_tensor.get_ptr();
   auto *seq_lengths_t = seq_lengths.get_ptr();

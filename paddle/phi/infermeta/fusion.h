@@ -801,8 +801,8 @@ void FusedMultiTransformerInferMeta(
     std::string act_method,
     bool trans_qkvw,
     int ring_id,
-    std::vector<MetaTensor*> cache_kv_outs,
-    MetaTensor* out);
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_outs);
 
 void FusedMultiTransformerInt8InferMeta(
     const MetaTensor& x,
@@ -843,8 +843,8 @@ void FusedMultiTransformerInt8InferMeta(
     int quant_round_type,
     float quant_max_bound,
     float quant_min_bound,
-    std::vector<MetaTensor*> cache_kv_outs,
-    MetaTensor* out);
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_outs);
 
 void FusedDotProductAttentionInferMeta(const MetaTensor& q,
                                        const MetaTensor& k,

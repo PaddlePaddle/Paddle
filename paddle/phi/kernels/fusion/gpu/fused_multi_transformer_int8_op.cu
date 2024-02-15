@@ -63,8 +63,8 @@ void FusedMultiTransformerINT8Kernel(
     int quant_round_type,
     float quant_max_bound,
     float quant_min_bound,
-    std::vector<DenseTensor *> cache_kv_outs,
-    DenseTensor *out) {
+    DenseTensor *out,
+    std::vector<DenseTensor *> cache_kv_outs) {
   using U = phi::funcs::LayerNormParamType<T>;
 
   auto *time_step_t = time_step.get_ptr();

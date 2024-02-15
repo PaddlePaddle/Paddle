@@ -1109,8 +1109,8 @@ void FusedMultiTransformerInferMeta(
     std::string act_method,
     bool trans_qkvw,
     int ring_id,
-    std::vector<MetaTensor*> cache_kv_outs,
-    MetaTensor* out) {
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_outs) {
   // x: qkv's input [batch_size, seq_len, dim_embed]
   // y: qkv's weight: [3, num_head, dim_head, dim_embed]
   auto x_dim = x.dims();
@@ -1221,8 +1221,106 @@ void FusedMultiTransformerInt8InferMeta(
     int quant_round_type,
     float quant_max_bound,
     float quant_min_bound,
-    std::vector<MetaTensor*> cache_kv_outs,
-    MetaTensor* out) {}
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_outs) {
+  // x: qkv's input [batch_size, seq_len, dim_embed]
+  // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+  auto x_dim = x.dims();
+  auto y_dim = qkv_weights[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The dimensions of x must be 3"
+                                   "(batch_size, seq_len, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                   "(3, num_head, dim_head, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   y_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dim[2],
+      trans_qkvw ? y_dim[3] : y_dim[0],
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
+          "true) or y_dim[0](trans_qkvw is false)"
+          "must be equal. But received: the shape "
+          "of input x = [%s], and the shape of "
+          "input qkv_weight = [%s]",
+          x_dim,
+          y_dim));
+
+  if (ring_id == -1) {
+    if (trans_qkvw) {
+      PADDLE_ENFORCE_EQ(
+          y_dim[1] * y_dim[2],
+          y_dim[3],
+          phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                       "(3, num_head, dim_head, dim_embed),"
+                                       "and must satisfy the limitations: "
+                                       "(num_head * dim_head == dim_embed)"));
+
+    } else {
+      PADDLE_ENFORCE_EQ(
+          y_dim[2] * y_dim[3],
+          y_dim[0],
+          phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                       "(dim_embed, 3, num_head, dim_head),"
+                                       "and must satisfy the limitations: "
+                                       "(num_head * dim_head == dim_embed)"));
+    }
+  }
+
+  if (!cache_kvs.empty()) {
+    // [2, batch_size, num_head, max_seq_len, head_size]
+    const auto& c_dim = cache_kvs[0]->dims();
+
+    PADDLE_ENFORCE_EQ(
+        c_dim.size(),
+        5,
+        phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
+                                     c_dim.size()));
+    PADDLE_ENFORCE_EQ(c_dim[0],
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The first dim of CacheKV must be 2, but got %d",
+                          c_dim[0]));  // 2
+    PADDLE_ENFORCE_EQ(c_dim[1],
+                      x_dim[0],
+                      phi::errors::InvalidArgument(
+                          "The second dim of CacheKV must be equal with "
+                          "batch size %d, but got %d",
+                          x_dim[0],
+                          c_dim[1]));  // batch_size
+    PADDLE_ENFORCE_EQ(c_dim[2],
+                      trans_qkvw ? y_dim[1] : y_dim[2],
+                      phi::errors::InvalidArgument(
+                          "The third dim of CacheKV must be equal with num "
+                          "head %d, but got %d",
+                          trans_qkvw ? y_dim[1] : y_dim[2],
+                          c_dim[2]));  // num_head
+    PADDLE_ENFORCE_GT(
+        c_dim[3],
+        0,
+        phi::errors::InvalidArgument(
+            "The forth dim of CacheKV must be greater than 0, but got %d",
+            c_dim[3]));  // cache_seq_len
+    PADDLE_ENFORCE_EQ(c_dim[4],
+                      trans_qkvw ? y_dim[2] : y_dim[3],
+                      phi::errors::InvalidArgument(
+                          "The fifth dim of CacheKV must be equal with head "
+                          "size %d, but got %d",
+                          trans_qkvw ? y_dim[2] : y_dim[3],
+                          c_dim[4]));  // head_size
+  }
+
+  out->set_dims(x.dims());
+}
 
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
