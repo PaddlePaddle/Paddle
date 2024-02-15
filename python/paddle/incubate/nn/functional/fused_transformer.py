@@ -1152,7 +1152,7 @@ def fused_multi_transformer(
     )  # semantic transfer
 
     if in_dynamic_mode():
-        cache_kv_out, final_out = _C_ops.fused_multi_transformer(
+        final_out, cache_kv_out = _C_ops.fused_multi_transformer(
             x,
             ln_scales,
             ln_biases,
