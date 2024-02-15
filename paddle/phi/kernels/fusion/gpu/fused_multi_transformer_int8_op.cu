@@ -299,7 +299,7 @@ void FusedMultiTransformerINT8Kernel(
     const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       qkv_compute.ComputeForward(qkv_weights[i],
-                                 x,
+                                 &x,
                                  &input_workspace,
                                  bias,
                                  &qkv_out,
