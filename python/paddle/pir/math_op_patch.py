@@ -518,7 +518,6 @@ def monkey_patch_value():
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
