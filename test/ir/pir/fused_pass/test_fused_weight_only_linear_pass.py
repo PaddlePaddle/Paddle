@@ -88,6 +88,12 @@ class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
     def sample_program(self):
         yield self.build_ir_progam(), False
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 7
+        or paddle.device.cuda.get_device_capability()[0] > 8,
+        "weight only linear only supports SM70/75/80",
+    )
     def test_check_output(self):
         self.check_pass_correct()
 

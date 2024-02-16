@@ -198,6 +198,12 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         paddle.disable_static()
         return out
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 7
+        or paddle.device.cuda.get_device_capability()[0] > 8,
+        "weight only linear only supports SM70/75/80",
+    )
     def test_weight_only_linear(self):
         out_expect = self.get_linear_out()
         if self.static:
@@ -364,6 +370,12 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] < 7
+        or paddle.device.cuda.get_device_capability()[0] > 8,
+        "weight only linear only supports SM70/75/80",
+    )
     def test_weightonly_linear_backward(self):
         x = (
             paddle.rand(shape=(128, 4096), dtype='float16')
