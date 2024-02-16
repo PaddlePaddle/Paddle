@@ -655,6 +655,7 @@ class TestMatMulV2API(unittest.TestCase):
                         {'FLAGS_gemm_use_half_precision_compute_type': True}
                     )
 
+    @unittest.skip("cuBLAS aligns Numpy after CUDA 12.3")
     def test_compute_type_fp16_nan(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
