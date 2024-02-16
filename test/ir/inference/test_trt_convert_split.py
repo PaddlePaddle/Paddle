@@ -131,7 +131,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                         {},
                                     ]
 
-                                    dics_intput = [
+                                    dics_input = [
                                         {
                                             "X": ["split_input"],
                                             "AxisTensor": ["AxisTensor"],
@@ -142,7 +142,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                         },
                                         {"X": ["split_input"]},
                                     ]
-                                    dics_intputs = [
+                                    dics_inputs = [
                                         {
                                             "AxisTensor": TensorConfig(
                                                 data_gen=partial(
@@ -168,7 +168,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                     ops_config = [
                                         {
                                             "op_type": "split",
-                                            "op_inputs": dics_intput[num_input],
+                                            "op_inputs": dics_input[num_input],
                                             "op_outputs": {"Out": Out},
                                             "op_attrs": dics[0],
                                         }
@@ -176,7 +176,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                     ops = self.generate_op_config(ops_config)
                                     program_config = ProgramConfig(
                                         ops=ops,
-                                        weights=dics_intputs[num_input],
+                                        weights=dics_inputs[num_input],
                                         inputs={
                                             "split_input": TensorConfig(
                                                 data_gen=partial(
@@ -311,7 +311,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                             "axis": axis,
                         }
                     ]
-                    dics_intput = [
+                    dics_input = [
                         {
                             "X": ["split_input"],
                             "SectionsTensorList": [
@@ -354,7 +354,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                         },
                         {
                             "op_type": "split",
-                            "op_inputs": dics_intput[0],
+                            "op_inputs": dics_input[0],
                             "op_outputs": {
                                 "Out": [
                                     "output_var0",
