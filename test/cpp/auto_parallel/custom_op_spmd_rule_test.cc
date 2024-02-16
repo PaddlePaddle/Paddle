@@ -56,7 +56,7 @@ TEST(CustomOp, Ctor) {
   std::vector<CustomSpmdInferAttrArg> attrs = {axis};
 
   auto infered_dist_attrs = forward_spmd_func(infer_inputs, attrs);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
