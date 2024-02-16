@@ -184,6 +184,11 @@ class TestMatmulInt8Op9(TestMatmulInt8):
         self.trans_y = True
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] > 8,
+    "MatmulInt8 only support TN format after GPU capability 9.0",
+)
 class TestMatmulInt8Op10(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -206,6 +211,11 @@ class TestMatmulInt8Op11(TestMatmulInt8):
         self.trans_y = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] > 8,
+    "MatmulInt8 only support TN format after GPU capability 9.0",
+)
 class TestMatmulInt8Op12(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -217,6 +227,11 @@ class TestMatmulInt8Op12(TestMatmulInt8):
         self.trans_y = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] > 8,
+    "MatmulInt8 only support TN format after GPU capability 9.0",
+)
 class TestMatmulInt8Op13(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -272,6 +287,11 @@ class TestMatmulInt8Op17(TestMatmulInt8):
         self.trans_y = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] > 8,
+    "MatmulInt8 only support TN format after GPU capability 9.0",
+)
 class TestMatmulInt8OpBroadcast1(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
