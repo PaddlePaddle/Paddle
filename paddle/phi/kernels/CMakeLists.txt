@@ -143,11 +143,12 @@ if(WITH_CUTLASS)
     REMOVE_RECURSE
     ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable_tmp
   )
+  file(
+    REMOVE_RECURSE
+    ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen
+  )
 
   execute_process(
-    COMMAND
-      ${CMAKE_COMMAND} -E remove_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
     COMMAND
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
