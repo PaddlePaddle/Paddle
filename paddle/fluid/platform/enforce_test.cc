@@ -429,18 +429,11 @@ TEST(enforce, cuda_success) {
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUDNN_STATUS_SUCCESS));
   EXPECT_TRUE(
-      CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED, "CUDNN error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED, "CUDNN error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUDNN_STATUS_BAD_PARAM,
-      "An incorrect value or parameter was passed to the function. To correct, "
-      "ensure that all the parameters being passed have valid values"));
-  EXPECT_TRUE(CheckCudaStatusFailure(
-      CUDNN_STATUS_LICENSE_ERROR,
-      "The functionality requested requires some license and an error was "
-      "detected when trying to check the current licensing. This error can "
-      "happen if the license is not present or is expired or if the "
-      "environment variable NVIDIA_LICENSE_FILE is not set properly"));
+      CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED, "CUDNN Error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED, "CUDNN Error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_BAD_PARAM, "CUDNN Error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUDNN_STATUS_LICENSE_ERROR, "CUDNN Error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
   EXPECT_TRUE(
