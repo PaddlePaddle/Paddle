@@ -131,6 +131,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
+    PyLayerOp::name(),
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
@@ -1211,6 +1212,52 @@ void HandleForIfOp(
   }
 }
 
+void HandleForPyLayerOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  auto old_vec_ins = op_item->operand_source(0);
+
+  PADDLE_ENFORCE_EQ(
+      map_value_pair->count(old_vec_ins),
+      true,
+      phi::errors::PreconditionNotMet(
+          "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
+  auto new_vec_ins = map_value_pair->at(old_vec_ins);
+
+  auto old_pylayerop = op_item->dyn_cast<PyLayerOp>();
+  std::vector<pir::Type> new_pylayerop_outputs;
+  for (size_t i = 0; i < old_pylayerop.num_results(); ++i) {
+    new_pylayerop_outputs.push_back(
+        ConvertOpTypeToKernelType(ctx, old_pylayerop.result(i).type(), place));
+  }
+
+  // Create PyLayerOp and insert to kernel dialect program
+  pir::Builder builder(ctx, block);
+  auto new_pylayerop =
+      builder.Build<PyLayerOp>(new_vec_ins, std::move(new_pylayerop_outputs));
+
+  // process sub block
+  auto& fwd_block = new_pylayerop.forward_block();
+  // (TODO: MarioLulab)Do we really need to set `for_if_block` = True ?
+  ProcessBlock(place,
+               &old_pylayerop.forward_block(),
+               &fwd_block,
+               ctx,
+               map_op_pair,
+               map_value_pair,
+               true);
+
+  // update map
+  (*map_op_pair)[op_item] = new_pylayerop;
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    (*map_value_pair)[op_item->result(i)] = new_pylayerop->result(i);
+  }
+}
+
 void HandleForWhileOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1322,6 +1369,11 @@ void HandleForSpecialOp(
     bool for_if_block) {
   if (op_item->isa<IfOp>()) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+
+  if (op_item->isa<PyLayerOp>()) {
+    HandleForPyLayerOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
 
