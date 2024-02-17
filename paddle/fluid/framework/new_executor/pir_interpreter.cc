@@ -712,6 +712,8 @@ void PirInterpreter::BuildInstruction() {
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
+      } else if (op.isa<paddle.dialect::PyLayerOp>) {
+        // TODO
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
