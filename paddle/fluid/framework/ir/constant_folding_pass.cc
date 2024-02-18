@@ -71,7 +71,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
                                      "dequantize_linear"};
   int folded_op_num = 0;
 
-  auto op_node_sorted = framework::ir::TopologyVarientSort(
+  auto op_node_sorted = framework::ir::TopologyVariantSort(
       *graph, static_cast<framework::ir::SortKind>(0));
   for (auto *op_node : op_node_sorted) {
     if (!op_node->IsOp()) continue;
