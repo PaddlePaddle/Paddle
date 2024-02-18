@@ -19,7 +19,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/common/macros.h"
-#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

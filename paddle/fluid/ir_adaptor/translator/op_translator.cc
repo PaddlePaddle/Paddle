@@ -38,15 +38,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -1846,7 +1846,16 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
 
-    int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
+    int place_type{-1};
+    if (op_desc.HasAttr("place_type")) {
+      place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
+    }
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        place_type = 0;
+      }
+    }
     switch (place_type) {
       case -1:
         attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
@@ -1870,13 +1879,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
         break;
     }
 
-    if (op_desc.HasAttr("force_cpu")) {
-      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
-      if (force_cpu) {
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-      }
-    }
     return attribute_map;
   }
 };

@@ -121,7 +121,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
         with base.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            input = base.dygraph.to_variable(x)
+            input = paddle.to_tensor(x)
 
             Exponential_scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
