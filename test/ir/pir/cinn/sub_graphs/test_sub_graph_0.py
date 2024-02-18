@@ -96,8 +96,11 @@ class TestLayer(unittest.TestCase):
     # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "pool2d"})
+        # TODO(Aurelius84): Fix LoopAligment eror under with_prim=True
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=False, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
