@@ -619,7 +619,7 @@ class TestTAPI(unittest.TestCase):
     def test_dygraph_out(self):
         with base.dygraph.guard():
             np_x = np.random.random([10]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -627,7 +627,7 @@ class TestTAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             np_x = np.random.random([10, 5]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -635,7 +635,7 @@ class TestTAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             np_x = np.random.random([1, 5]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -749,7 +749,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -781,7 +781,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

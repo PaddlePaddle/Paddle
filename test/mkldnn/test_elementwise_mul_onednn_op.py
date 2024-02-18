@@ -24,6 +24,7 @@ from paddle import enable_static
 class TestOneDNNElementwiseMulOp(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -126,12 +127,13 @@ class TestOneDNNElementwiseMulOpZeroDim3(TestOneDNNElementwiseMulOp):
 
 
 @skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
+    reason="oneDNN's int8 elementwise_ops don't implement grad kernel."
 )
 class TestInt8(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.int8

@@ -105,7 +105,7 @@
     func : batch_norm_grad
     data_type : out_grad
   optional : scale, bias, mean_out, variance_out, reserve_space
-  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_format, is_test, use_global_stats, trainable_statistics)
+  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_format, is_test, use_global_stats, trainable_statistics, x_grad, scale_grad, bias_grad)
   backward : batch_norm_double_grad
 
 - backward_op : c_embedding_grad

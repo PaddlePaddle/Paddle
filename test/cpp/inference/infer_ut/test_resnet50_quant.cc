@@ -89,7 +89,7 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread4_trt_int8_bz1) {
     std::sort(index.begin(), index.end(), [out_data](size_t i1, size_t i2) {
       return out_data[i1] > out_data[i2];
     });
-    // compare inference & groundtruth label
+    // compare inference & ground truth label
     ASSERT_EQ(index[0], input_data_map["image"].label);
   }
 
@@ -151,7 +151,7 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread_multi_instance) {
       std::sort(index.begin(), index.end(), [out_data](size_t i1, size_t i2) {
         return out_data[i1] > out_data[i2];
       });
-      // compare inference & groundtruth label
+      // compare inference & ground truth label
       ASSERT_EQ(index[0], input_data_fp32["inputs"].label);
     } else {
       // check outputs
@@ -161,7 +161,7 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread_multi_instance) {
       std::sort(index.begin(), index.end(), [out_data](size_t i1, size_t i2) {
         return out_data[i1] > out_data[i2];
       });
-      // compare inference & groundtruth label
+      // compare inference & ground truth label
       ASSERT_EQ(index[0], input_data_quant["image"].label);
     }
   }

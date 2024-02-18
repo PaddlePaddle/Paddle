@@ -28,7 +28,7 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
     ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const {
   VLOG(3) << "mark skip quantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (skip_ops.count(op_node->Name())) {
@@ -63,7 +63,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
     const {
   VLOG(3) << "gather weight_thresholds from fake dequantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (fake_dequantize_types.count(op_node->Name())) {
@@ -104,7 +104,7 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
     bool* onnx_format_quantize_model) const {
   VLOG(3) << "gather weight_thresholds from onnx format dequantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (op_node->Name() == "dequantize_linear") {
@@ -153,7 +153,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
     const {
   VLOG(3) << "gather input scales from fake quantized ops";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (op_node->Name() == "fake_quantize_dequantize_moving_average_abs_max" ||
@@ -211,7 +211,7 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
     const {
   VLOG(3) << "gather output scales from op's attr";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     auto* op_desc = op_node->Op();
@@ -395,7 +395,7 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
 
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (fake_quantize_types.count(op_node->Name())) {
@@ -644,7 +644,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
   }
   std::vector<std::string> dequantized_weights_names;
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d" ||
         op_node->Name() == "fused_conv2d") {
@@ -673,7 +673,7 @@ void QuantDequantMkldnnPass::DequantizeWeights(
 void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
   VLOG(3) << "update conv2d or depthwise_conv2d fused activation";
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
@@ -693,7 +693,7 @@ void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   VLOG(3) << "remove control flow variable";
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (op_node->IsCtrlVar()) {
       nodes2rm.insert(op_node);
     }

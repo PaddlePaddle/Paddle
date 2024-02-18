@@ -18,16 +18,16 @@
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/region.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
@@ -64,7 +64,7 @@ TEST(op_test, region_test) {
   // (3) Test custom operation printer
   std::stringstream ss;
   op1->Print(ss);
-  EXPECT_EQ(ss.str(), "(%0) = \"test.operation1\" ()\n");
+  EXPECT_EQ(ss.str(), "(%0) = \"test.operation1\" ()");
 
   region.push_back(new pir::Block());
   region.push_front(new pir::Block());

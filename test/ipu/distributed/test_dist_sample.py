@@ -70,8 +70,7 @@ def Test(use_dist, file_name):
     scope = paddle.base.core.Scope()
     main_prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    main_prog.random_seed = 42
-    startup_prog.random_seed = 42
+    paddle.seed(42)
 
     with paddle.base.scope_guard(scope):
         with paddle.static.program_guard(main_prog, startup_prog):
