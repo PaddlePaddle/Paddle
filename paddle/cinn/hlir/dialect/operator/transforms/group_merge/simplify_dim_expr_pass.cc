@@ -64,12 +64,11 @@ symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
       SimplifyDimExpr(shape_or_data.shape());
   if (!shape_or_data.data().has_value()) {
     return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
-  } else {
-    std::vector<symbol::DimExpr> simplified_data =
-        SimplifyDimExpr(shape_or_data.data().value());
-    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
-                                                simplified_data);
   }
+  std::vector<symbol::DimExpr> simplified_data =
+      SimplifyDimExpr(shape_or_data.data().value());
+  return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
+                                              simplified_data);
 }
 
 symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
