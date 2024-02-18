@@ -646,11 +646,15 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
-            # If __bool__ method is absent, inline bool calls return True.
-            elif magic_method.name == "__bool__":
-                bool_flag = True
+            # If __bool__ and __len__ method is absent, inline bool calls return True.
+            # See https://github.com/python/cpython/blob/3.11/Objects/typeobject.c#L7463
+            elif magic_method.name == "__bool__" and not hasattr(
+                arg_type, "__len__"
+            ):
                 return VariableFactory.from_value(
-                    bool_flag, self.graph, ConstTracker(bool_flag)
+                    True,
+                    self.graph,
+                    DummyTracker([self] + list(args) + list(kwargs.values())),
                 )
 
         # Break graph if neither of the above conditions is met

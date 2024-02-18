@@ -60,3 +60,4 @@
 ./test_tensor_slice.py
 ./test_trace_list_arg.py
 ./test_unsupport_function.py
+./test_builtin_bool.py
