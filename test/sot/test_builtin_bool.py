@@ -11,10 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# import os
-# os.environ['MIN_GRAPH_SIZE']='0'
-# os.environ['FLAGS_enable_pir_api']='True'
-# os.environ['SOT_LOG_LEVEL']='3' # open this to access the sot logs
 import operator
 import unittest
 
