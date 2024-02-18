@@ -733,6 +733,8 @@
     {input : Input, filter : Filter}
   outputs :
     out : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
@@ -1070,6 +1072,8 @@
     bias : Bias
   outputs :
     out : Out
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
     attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
