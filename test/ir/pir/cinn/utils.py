@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -21,6 +22,14 @@ import paddle
 JIT_KERNEL_NAME = "jit_kernel"
 __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
+
+
+def unittest_use_cinn():
+    use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
+    true_value_set = {True, 1, "1", "True", "true"}
+    false_value_set = {False, 0, "0", "False", "false"}
+    assert use_cinn in (true_value_set | false_value_set)
+    return use_cinn in true_value_set
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -49,11 +58,9 @@ def get_jit_kernel_number(block):
         elif op_name == __IF_OP_NAME:
             jit_kernel_number = (
                 jit_kernel_number
-                + get_jit_kernel_number(op.true_block())
-                + get_jit_kernel_number(op.false_block())
+                + get_jit_kernel_number(op.as_if_op().true_block())
+                + get_jit_kernel_number(op.as_if_op().false_block())
             )
-        elif op_name == __WHILE_OP_NAME:
-            jit_kernel_number += get_jit_kernel_number(op.body())
 
     return jit_kernel_number
 
@@ -106,7 +113,7 @@ def get_jit_kernel_structure(static_fn):
 
 def check_jit_kernel_structure(static_fn, expected_structure):
     """
-    Check whether fuse subgraph structre in Program is same with expected_structure.
+    Check whether fuse subgraph structure in Program is same with expected_structure.
     For examaple:
     expected_structure = {
         JIT_KERNEL_NAME: 3,

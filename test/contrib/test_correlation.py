@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 
 paddle.enable_static()
 
@@ -176,8 +175,8 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
                 stride2=1,
             )
 
-            x1 = to_variable(x1_np)
-            x2 = to_variable(x2_np)
+            x1 = paddle.to_tensor(x1_np)
+            x2 = paddle.to_tensor(x2_np)
             corr_pd = Net('corr_pd')
             y = corr_pd(x1, x2)
             out = y.numpy()

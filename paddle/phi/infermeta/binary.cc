@@ -144,6 +144,16 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
+  if (array.dtype() != phi::DataType::UNDEFINED &&
+      x.dtype() != phi::DataType::UNDEFINED) {
+    PADDLE_ENFORCE_EQ(array.dtype(),
+                      x.dtype(),
+                      phi::errors::InvalidArgument(
+                          "The dtype (%s) of input x shall be same as "
+                          "dtype (%d) of array.",
+                          x.dtype(),
+                          array.dtype()));
+  }
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
 }
@@ -3382,6 +3392,31 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void SwiGLUInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     MetaTensor* out) {
+  if (y) {
+    PADDLE_ENFORCE_EQ(
+        x.dims(),
+        y.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of Input(X) should be equal of the shape of Input(Y)."));
+    out->share_meta(x);
+  } else {
+    auto dims = x.dims();
+    PADDLE_ENFORCE_EQ(
+        dims[dims.size() - 1] % 2,
+        0,
+        phi::errors::InvalidArgument(
+            "The last dim of Input(X) should be exactly divided by 2."));
+    dims[dims.size() - 1] /= 2;
+    out->set_dims(dims);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+    out->share_lod(x);
+  }
 }
 
 void UnpoolInferMeta(const MetaTensor& x,

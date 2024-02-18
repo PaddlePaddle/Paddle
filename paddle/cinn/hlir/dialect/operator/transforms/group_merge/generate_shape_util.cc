@@ -16,8 +16,8 @@
 #include <unordered_set>
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace cinn::dialect {
 

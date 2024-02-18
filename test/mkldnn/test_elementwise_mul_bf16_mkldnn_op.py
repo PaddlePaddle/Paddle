@@ -48,7 +48,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
         self.out = np.multiply(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
@@ -61,6 +61,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
                 np.multiply(self.x, self.x),
             ],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -71,6 +72,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             check_dygraph=False,
             user_defined_grads=[np.multiply(self.y, self.x)],
             user_defined_grad_outputs=[self.y_bf16],
+            check_pir_onednn=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -81,6 +83,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             check_dygraph=False,
             user_defined_grads=[np.multiply(self.x, self.y)],
             user_defined_grad_outputs=[self.x_bf16],
+            check_pir_onednn=True,
         )
 
 

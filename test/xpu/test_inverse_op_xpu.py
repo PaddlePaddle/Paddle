@@ -103,7 +103,7 @@ class TestInverseSingularAPI(unittest.TestCase):
         for place in self.places:
             with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float32")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 with self.assertRaises(OSError):
                     result = paddle.inverse(input)
 

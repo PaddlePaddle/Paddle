@@ -334,7 +334,7 @@ class CudnnFrontendConvHelper {
       } catch (cudnn_frontend::cudnnException& e) {
         VLOG(4) << "Plan " << plan.describe()
                 << "failed to execute. Trying next plan.";
-      } catch (phi::enforce::EnforceNotMet& e) {
+      } catch (common::enforce::EnforceNotMet& e) {
         VLOG(4) << "Plan " << plan.describe()
                 << "failed to execute. Trying next plan.";
       }
