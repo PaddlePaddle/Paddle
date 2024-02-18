@@ -71,7 +71,7 @@ Get all implementations and run once:
     }
 ```
 
-All kernels are inlcuded in `paddle/phi/kernels/funcs/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
+All kernels are included in `paddle/phi/kernels/funcs/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
 
 ## Solid Test
 

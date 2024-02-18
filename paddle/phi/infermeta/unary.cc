@@ -154,7 +154,39 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* out_index,
                             MetaConfig config) {
-  if (config.is_runtime) return;
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        (x.is_tensor_array()),
+        true,
+        phi::errors::InvalidArgument(
+            "The dtype of 1st input in ArrayToTensor must be TensorArray, but "
+            "received [%s]",
+            x.dtype()));
+    size_t x_size = x.size();
+    std::vector<phi::DDim> vec_dims;
+    for (size_t i = 0; i < x_size; ++i) {
+      phi::DDim dims = x.dims(i);
+      if (!vec_dims.empty()) {
+        PADDLE_ENFORCE_EQ(
+            (vec_dims.back() == dims),
+            true,
+            phi::errors::InvalidArgument(
+                "The dims of input in ArrayToTensor must be equal, but "
+                "received"));
+      }
+      vec_dims.push_back(dims);
+    }
+    if (vec_dims.empty()) return;
+    auto dim_vec = common::vectorize<int>(vec_dims[0]);
+    if (use_stack) {
+      dim_vec.insert(dim_vec.begin() + axis, dim_vec.size() * dim_vec[axis]);
+    } else {
+      dim_vec[axis] = dim_vec.size() * dim_vec[axis];
+    }
+    phi::DDim dims = common::make_ddim(dim_vec);
+    out->set_dims(dims);
+    return;
+  }
   auto dims = x.dims();
   // if the shape is empty
   if (dims == common::make_ddim({0UL})) return;

@@ -2467,8 +2467,19 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
-        collect_failed_tests
 set -x
+        for file in `ls $tmp_dir`; do
+            exit_code=0
+            grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+            if [ $exit_code -ne 0 ]; then
+                failuretest=''
+            else
+                failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+                failed_test_lists="${failed_test_lists}
+                ${failuretest}"
+                break
+            fi
+        done
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -2518,8 +2529,9 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$eight_cards_tests" -1 1
-        collect_failed_tests
+        
 set -x
+        
         ut_endTime_s=`date +%s`
         echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -4141,6 +4153,9 @@ function main() {
     init
     case $CMD in
       build_only)
+        if [ "$WITH_CINN" == "ON" ];then
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
+        fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)

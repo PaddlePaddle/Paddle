@@ -24,7 +24,7 @@ import paddle.distributed as dist
 from paddle import nn
 
 
-class TestSimpleNetWithEmtpyGradForSemiAutoParallel(
+class TestSimpleNetWithEmptyGradForSemiAutoParallel(
     TestSimpleNetForSemiAutoParallel
 ):
     def __init__(self):
@@ -72,4 +72,4 @@ class TestSimpleNetWithEmtpyGradForSemiAutoParallel(
 
 
 if __name__ == '__main__':
-    TestSimpleNetWithEmtpyGradForSemiAutoParallel().run_test_case()
+    TestSimpleNetWithEmptyGradForSemiAutoParallel().run_test_case()
