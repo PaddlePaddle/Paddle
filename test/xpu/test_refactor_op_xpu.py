@@ -115,7 +115,7 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = True
 
             self.init_dtype()
-            self.init_inputshape()
+            self.init_input_shape()
             self.init_axis()
             self.init_direction()
 
@@ -145,7 +145,7 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
                 )
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
-        def init_inputshape(self):
+        def init_input_shape(self):
             self.input_shape = (2, 2, 2, 3, 3)
 
         def init_dtype(self):
