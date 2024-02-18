@@ -12,8 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 set -e
-git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
 
-mkdir build && cd build 
+cutlass_repo_directory="cutlass"
+if [ ! -d "$cutlass_repo_directory" ]; then
+    git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+fi
+
+build_directory="build"
+if [ ! -d "$build_directory" ]; then
+    mkdir $build_directory
+fi
+
+cd $build_directory
 cmake .. -DPYTHON_EXECUTABLE=python -DCOMPUTE_CAPABILITY=75 && make -j 
 cd -
