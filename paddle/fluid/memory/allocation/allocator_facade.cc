@@ -231,7 +231,7 @@ class AllocatorFacadePrivate {
         // StreamSafeCUDAAllocator relate to defaultstream (i.e., the stream
         // directly got from DeviceContext), while the 'cuda_allocators_' map
         // (place -> map(stream -> Allocator)) hold the StreamSafeCUDAAllocator
-        // release to non-default stream (i.e., the stream users pass in). The
+        // relate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
         // manner in GetAllocator function with 'create_if_not_found = true'.
