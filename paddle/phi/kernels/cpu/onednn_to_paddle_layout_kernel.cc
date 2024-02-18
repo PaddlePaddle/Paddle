@@ -67,6 +67,7 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
     if (!x.IsInitialized()) {
       out->Resize(x.dims());
       out->set_layout(tmp_layout);
+      return;
     }
     out->ShareDataWith(x);
     out->ShareInplaceVersionCounterWith(x);
