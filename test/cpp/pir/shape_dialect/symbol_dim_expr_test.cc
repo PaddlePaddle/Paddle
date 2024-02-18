@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace symbol::test {
 
@@ -47,6 +47,16 @@ TEST(DimExpr, Constraint) {
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
+  std::vector<DimExpr> lhs = builder.ConstShape({1, 2, 3});
+  std::vector<DimExpr> rhs = builder.ConstShape({1, 2, 3});
+  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> expr_pair =
+      builder.SplitAt(rhs, 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.first.size()), 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.second.size()), 2);
+  std::vector<DimExpr> merged =
+      builder.Concat(expr_pair.first, expr_pair.second);
+  builder.CstrEq(lhs, merged);
+  ASSERT_EQ(static_cast<int>(constraints.size()), 4);
 }
 
 /*
