@@ -283,10 +283,9 @@ void BindProgram(py::module *m) {
             }
   )DOC");
   program
-      .def("__init__",
-           [](Program &self) {
-             new (&self) Program(pir::IrContext::Instance());
-           })
+      .def(py::init([]() {
+        return std::make_unique<Program>(pir::IrContext::Instance());
+      }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
@@ -1657,12 +1656,11 @@ void BindPassManager(pybind11::module *m) {
 
   )DOC");
   pass_manager
-      .def(
-          "__init__",
-          [](PassManager &self, uint8_t opt_level) {
-            new (&self) PassManager(pir::IrContext::Instance(), opt_level);
-          },
-          py::arg("opt_level") = 2)
+      .def(py::init([](uint8_t opt_level) {
+             return std::make_unique<PassManager>(pir::IrContext::Instance(),
+                                                  opt_level);
+           }),
+           py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
              self.AddPass(
