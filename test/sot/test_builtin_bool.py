@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# import os
+# os.environ['MIN_GRAPH_SIZE']='0'
+# os.environ['FLAGS_enable_pir_api']='True'
+# os.environ['SOT_LOG_LEVEL']='3' # open this to access the sot logs
 import operator
 import unittest
 
@@ -50,98 +53,68 @@ class TestObjectWithBoolAndLen:
         return len(self.list)
 
 
-@check_no_breakgraph
-def object_bool(obj):
+def call_bool_in_cond(obj):
     if obj:
         return True
     else:
         return False
 
 
-@strict_mode_guard(False)
-def object_bool_allow_breakgraph(obj):
-    if obj:
-        return True
-    else:
-        return False
-
-
-@check_no_breakgraph
-def test_bool(obj):
+def call_bool_by_bool(obj):
     return bool(obj)
 
 
-@check_no_breakgraph
-def test_operator_truth(obj):
-    return operator.truth(obj)
-
-
-def test_bool_allow_breakgraph(obj):
-    return bool(obj)
-
-
-def test_operator_truth_allow_breakgraph(obj):
+def call_bool_by_operator_truth(obj):
     return operator.truth(obj)
 
 
 class TestBuiltinBool(TestCaseBase):
-    def test_object(self):
-        object = TestObject()
-        self.assert_results(object_bool, object)
-        self.assert_results(object_bool, bool(object))
-        self.assert_results(object_bool, operator.truth(object))
-        self.assert_results(test_bool, object)
-        self.assert_results(test_operator_truth, object)
-
-    def test_object_with_bool(self):
-        object = TestObjectWithBool()
-        self.assert_results(object_bool, object)
-        self.assert_results(object_bool, bool(object))
-        self.assert_results(object_bool, operator.truth(object))
-        self.assert_results(test_bool, object)
-        self.assert_results(test_operator_truth, object)
-
-    def test_object_with_len(self):
-        object = TestObjectWithLen([1, 2, 3])
-        self.assert_results(object_bool_allow_breakgraph, object)
-        self.assert_results(object_bool_allow_breakgraph, bool(object))
-        self.assert_results(
-            object_bool_allow_breakgraph, operator.truth(object)
+    def test_object_disallow_breakgraph(self):  # disallow breakgraph
+        call_bool_in_cond_no_breakgraph = check_no_breakgraph(call_bool_in_cond)
+        call_bool_by_bool_no_breakgraph = check_no_breakgraph(call_bool_by_bool)
+        call_bool_by_operator_truth_no_breakgraph = check_no_breakgraph(
+            call_bool_by_operator_truth
         )
-        self.assert_results(test_bool_allow_breakgraph, object)
-        self.assert_results(test_operator_truth_allow_breakgraph, object)
 
-        object = TestObjectWithLen([])
-        self.assert_results(object_bool_allow_breakgraph, object)
-        self.assert_results(object_bool_allow_breakgraph, bool(object))
-        self.assert_results(
-            object_bool_allow_breakgraph, operator.truth(object)
-        )
-        self.assert_results(test_bool_allow_breakgraph, object)
-        self.assert_results(test_operator_truth_allow_breakgraph, object)
+        obj = TestObject()
+        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-    def test_object_with_bool_and_len(self):
-        object = TestObjectWithBoolAndLen([1, 2, 3])
-        self.assert_results(object_bool, object)
-        self.assert_results(object_bool, bool(object))
-        self.assert_results(object_bool, operator.truth(object))
-        self.assert_results(test_bool, object)
-        self.assert_results(test_operator_truth, object)
+        obj = TestObjectWithBool()
+        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-        object = TestObjectWithBoolAndLen([])
-        self.assert_results(object_bool, object)
-        self.assert_results(object_bool, bool(object))
-        self.assert_results(object_bool, operator.truth(object))
-        self.assert_results(test_bool, object)
-        self.assert_results(test_operator_truth, object)
+        obj = TestObjectWithBoolAndLen([1, 2, 3])
+        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-    def test_layer(self):
+        obj = TestObjectWithBoolAndLen([])
+        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
+
         layer = paddle.nn.Linear(10, 1)
-        self.assert_results(object_bool, layer)
-        self.assert_results(object_bool, bool(layer))
-        self.assert_results(object_bool, operator.truth(layer))
-        self.assert_results(test_bool, layer)
-        self.assert_results(test_operator_truth, layer)
+        self.assert_results(call_bool_in_cond_no_breakgraph, layer)
+        self.assert_results(call_bool_by_bool_no_breakgraph, layer)
+        self.assert_results(call_bool_by_operator_truth_no_breakgraph, layer)
+
+    def test_object_allow_breakgraph(self):  # allow breakgraph
+        obj = TestObjectWithLen([1, 2, 3])
+        with strict_mode_guard(False):
+            self.assert_results(call_bool_in_cond, obj)
+
+        self.assert_results(call_bool_by_bool, obj)
+        self.assert_results(call_bool_by_operator_truth, obj)
+
+        obj = TestObjectWithLen([])
+        with strict_mode_guard(False):
+            self.assert_results(call_bool_in_cond, obj)
+
+        self.assert_results(call_bool_by_bool, obj)
+        self.assert_results(call_bool_by_operator_truth, obj)
 
 
 if __name__ == "__main__":
