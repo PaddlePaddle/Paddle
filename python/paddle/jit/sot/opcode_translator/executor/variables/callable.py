@@ -646,7 +646,7 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
-            # If __bool__ and __len__ method is absent, inline bool calls return True.
+            # If __bool__ and __len__ method are absent, inline bool calls return True.
             # See https://github.com/python/cpython/blob/3.11/Objects/typeobject.c#L7463
             elif magic_method.name == "__bool__" and not hasattr(
                 arg_type, "__len__"
