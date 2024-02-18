@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 set -e
-#git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
 
 mkdir build && cd build 
 cmake .. -DPYTHON_EXECUTABLE=python -DCOMPUTE_CAPABILITY=75 && make -j 
