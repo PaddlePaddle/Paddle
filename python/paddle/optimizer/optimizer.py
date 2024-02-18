@@ -502,11 +502,18 @@ class Optimizer:
                     else:
                         place = _current_expected_place()
                         if not isinstance(_lr_dtype, paddle.base.core.DataType):
-                            lr_dtype = (
-                                paddle.pir.core.convert_np_dtype_to_dtype_(
+                            if isinstance(
+                                _lr_dtype, paddle.base.libpaddle.VarDesc.VarType
+                            ):
+                                _lr_dtype = paddle.pir.core.vartype_to_datatype[
                                     _lr_dtype
+                                ]
+                            else:
+                                _lr_dtype = (
+                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                        _lr_dtype
+                                    )
                                 )
-                            )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
                         ] = paddle.pir.core.create_persistable_value(

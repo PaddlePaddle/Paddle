@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -56,19 +56,20 @@ struct AllocatedDenseTensorTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 0;
     // hash place
-    hash_value = pir::hash_combine(hash_value, std::get<0>(key).HashValue());
+    hash_value =
+        pir::detail::hash_combine(hash_value, std::get<0>(key).HashValue());
 
     // hash dtype
     auto dense_tensor_type = std::get<1>(key);
     hash_value =
-        pir::hash_combine(hash_value,
-                          dialect::DenseTensorTypeStorage::HashValue(
-                              dialect::DenseTensorTypeStorage::ParamKey(
-                                  dense_tensor_type.dtype(),
-                                  dense_tensor_type.dims(),
-                                  dense_tensor_type.data_layout(),
-                                  dense_tensor_type.lod(),
-                                  dense_tensor_type.offset())));
+        pir::detail::hash_combine(hash_value,
+                                  dialect::DenseTensorTypeStorage::HashValue(
+                                      dialect::DenseTensorTypeStorage::ParamKey(
+                                          dense_tensor_type.dtype(),
+                                          dense_tensor_type.dims(),
+                                          dense_tensor_type.data_layout(),
+                                          dense_tensor_type.lod(),
+                                          dense_tensor_type.offset())));
     return hash_value;
   }
 
@@ -119,19 +120,20 @@ struct AllocatedSelectedRowsTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 791;
     // hash place
-    hash_value = pir::hash_combine(hash_value, std::get<0>(key).HashValue());
+    hash_value =
+        pir::detail::hash_combine(hash_value, std::get<0>(key).HashValue());
 
     // hash dtype
     auto selected_rows_type = std::get<1>(key);
     hash_value =
-        pir::hash_combine(hash_value,
-                          dialect::DenseTensorTypeStorage::HashValue(
-                              dialect::DenseTensorTypeStorage::ParamKey(
-                                  selected_rows_type.dtype(),
-                                  selected_rows_type.dims(),
-                                  selected_rows_type.data_layout(),
-                                  selected_rows_type.lod(),
-                                  selected_rows_type.offset())));
+        pir::detail::hash_combine(hash_value,
+                                  dialect::DenseTensorTypeStorage::HashValue(
+                                      dialect::DenseTensorTypeStorage::ParamKey(
+                                          selected_rows_type.dtype(),
+                                          selected_rows_type.dims(),
+                                          selected_rows_type.data_layout(),
+                                          selected_rows_type.lod(),
+                                          selected_rows_type.offset())));
     return hash_value;
   }
 
@@ -182,17 +184,18 @@ struct AllocatedDenseTensorArrayTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 791;
     // hash place
-    hash_value = pir::hash_combine(hash_value, std::get<0>(key).HashValue());
+    hash_value =
+        pir::detail::hash_combine(hash_value, std::get<0>(key).HashValue());
 
     // hash dtype
     auto dense_tensor_array_type = std::get<1>(key);
-    hash_value =
-        pir::hash_combine(hash_value,
-                          dialect::DenseTensorArrayTypeStorage::HashValue(
-                              dialect::DenseTensorArrayTypeStorage::ParamKey(
-                                  dense_tensor_array_type.dtype(),
-                                  dense_tensor_array_type.dims(),
-                                  dense_tensor_array_type.data_layout())));
+    hash_value = pir::detail::hash_combine(
+        hash_value,
+        dialect::DenseTensorArrayTypeStorage::HashValue(
+            dialect::DenseTensorArrayTypeStorage::ParamKey(
+                dense_tensor_array_type.dtype(),
+                dense_tensor_array_type.dims(),
+                dense_tensor_array_type.data_layout())));
     return hash_value;
   }
 

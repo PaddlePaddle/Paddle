@@ -29,9 +29,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
@@ -209,20 +209,11 @@ void WhileInstruction::ShareDatasToOutputs() {
     auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
     VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
-
     if (out_var->IsType<phi::DenseTensor>()) {
       outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
           out_var->Get<phi::DenseTensor>());
       VLOG(6) << "share data from " << out_var_name << "[" << out_var << "]"
               << " -> " << i << " output[" << outputs_[i] << "]";
-
-      // NOTE(zhangbo): Delete the input of the yield operator, except for the
-      // external vars of the block.
-      if (external_input_names_.count(out_var_name) == 0) {
-        VLOG(6) << "clear internel input " << out_var_name;
-        out_var->GetMutable<phi::DenseTensor>()->clear();
-      }
-
     } else if (out_var->IsType<phi::TensorArray>()) {
       const auto& inner_array = out_var->Get<phi::TensorArray>();
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
@@ -233,6 +224,19 @@ void WhileInstruction::ShareDatasToOutputs() {
     }
 
     VLOG(6) << "done";
+  }
+
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    auto& out_var_name = body_outputs_[i + 1];
+    auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
+    if (out_var->IsType<phi::DenseTensor>()) {
+      // NOTE(zhangbo): Delete the input of the yield operator, except for the
+      // external vars of the block.
+      if (external_input_names_.count(out_var_name) == 0) {
+        VLOG(6) << "clear internel input " << out_var_name;
+        out_var->GetMutable<phi::DenseTensor>()->clear();
+      }
+    }
   }
 }
 
