@@ -646,6 +646,12 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
+            # If __bool__ method is absent, inline bool calls return True.
+            elif magic_method.name == "__bool__":
+                bool_flag = True
+                return VariableFactory.from_value(
+                    bool_flag, self.graph, ConstTracker(bool_flag)
+                )
 
         # Break graph if neither of the above conditions is met
         arg_types = ", ".join([type(arg).__name__ for arg in args])
