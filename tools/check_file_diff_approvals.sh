@@ -439,6 +439,12 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     fi
 fi
 
+HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_tensor_attr_consistency.py" || true)
+if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
+    check_approval 1 SigureMo Aurelius84 2742195759 gouzil
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do

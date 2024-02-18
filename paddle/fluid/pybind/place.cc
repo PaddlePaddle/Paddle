@@ -544,15 +544,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   g_cudapinnedplace_pytype =
       reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
   cudapinnedplace
-      .def("__init__",
-           [](platform::CUDAPinnedPlace &self) {
+      .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(platform::errors::PermissionDenied(
-                 "Cannot use CUDAPinnedPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Cannot use CUDAPinnedPlace in CPU only version, "
+            "Please recompile or reinstall Paddle with CUDA support."));
 #endif
-             new (&self) platform::CUDAPinnedPlace();
-           })
+        return std::make_unique<platform::CUDAPinnedPlace>();
+      }))
       .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",

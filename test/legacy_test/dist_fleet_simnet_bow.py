@@ -37,8 +37,7 @@ margin = 0.1
 sample_rate = 1
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(2023)
 
 
 def fake_simnet_reader():

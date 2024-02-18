@@ -27,7 +27,7 @@
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
 
 namespace paddle {
 

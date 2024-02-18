@@ -17,10 +17,10 @@
 #include <type_traits>
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/builtin_type_storage.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/type_base.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_type_storage.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/type_base.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -65,23 +65,23 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 317;
     // hash dtype
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
-    hash_value = pir::hash_combine(
+    hash_value = pir::detail::hash_combine(
         hash_value,
         std::hash<std::underlying_type<phi::DataLayout>::type>()(
             static_cast<std::underlying_type<phi::DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
     // hash offset
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<size_t>()(std::get<4>(key)));
     return hash_value;
   }
 
@@ -135,13 +135,13 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 317;
     // hash dtype
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<pir::Type>()(std::get<0>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value =
-        pir::hash_combine(hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(
+        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
-    hash_value = pir::hash_combine(
+    hash_value = pir::detail::hash_combine(
         hash_value,
         std::hash<std::underlying_type<phi::DataLayout>::type>()(
             static_cast<std::underlying_type<phi::DataLayout>::type>(
