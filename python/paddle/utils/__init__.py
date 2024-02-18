@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..base.framework import require_version  # noqa: F401
+from ..base.framework import require_version
 from . import (  # noqa: F401
     cpp_extension,
     dlpack,

@@ -222,7 +222,7 @@ class TestGradSync(unittest.TestCase):
                         )
                 else:
                     raise AssertionError(
-                        f"encount redundent gradient synchronization: [{str(op)}]"
+                        f"encounter redundant gradient synchronization: [{str(op)}]"
                     )
                 allreduce_count += 1
 
@@ -241,7 +241,7 @@ class TestGradSync(unittest.TestCase):
                     )
                 else:
                     raise AssertionError(
-                        f"encount redundent gradient synchronization: [{str(op)}]"
+                        f"encounter redundant gradient synchronization: [{str(op)}]"
                     )
 
                 scale_count += 1

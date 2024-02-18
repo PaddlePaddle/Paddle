@@ -48,12 +48,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_int32(record_pool_max_size);
-PHI_DECLARE_int32(slotpool_thread_num);
-PHI_DECLARE_bool(enable_slotpool_wait_release);
-PHI_DECLARE_bool(enable_slotrecord_reset_shrink);
+COMMON_DECLARE_int32(record_pool_max_size);
+COMMON_DECLARE_int32(slotpool_thread_num);
+COMMON_DECLARE_bool(enable_slotpool_wait_release);
+COMMON_DECLARE_bool(enable_slotrecord_reset_shrink);
 
 namespace paddle {
 namespace framework {
@@ -74,7 +74,7 @@ class DenseTensor;
 namespace paddle {
 namespace framework {
 
-// DataFeed is the base virtual class for all ohther DataFeeds.
+// DataFeed is the base virtual class for all other DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
 // Example:
 //   DataFeed* reader =

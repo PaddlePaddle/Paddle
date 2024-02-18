@@ -36,6 +36,19 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
 }
 }  // namespace
 
+std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
+                                        std::vector<int64_t> out_process_ids) {
+  std::vector<int64_t> result;
+  std::sort(in_process_ids.begin(), in_process_ids.end());
+  std::sort(out_process_ids.begin(), out_process_ids.end());
+  std::set_union(in_process_ids.begin(),
+                 in_process_ids.end(),
+                 out_process_ids.begin(),
+                 out_process_ids.end(),
+                 std::back_inserter(result));
+  return result;
+}
+
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank) {
   if (global_rank == -1) {
@@ -176,7 +189,8 @@ phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
-  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
+  auto place =
+      input && input->initialized() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
 }
 

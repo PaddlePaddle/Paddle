@@ -29,13 +29,18 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -215,15 +220,55 @@ void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
 }
 
 void IfInstruction::Run() {
-  DeviceContext().Wait();
-  if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+  bool cond = true;
+  if (cond_var_->IsType<phi::DenseTensor>()) {
+    auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
+    if (paddle::platform::is_cpu_place(cond_tensor.place())) {
+      cond = cond_tensor.data<bool>()[0];
+    } else {
+      // when platform::is_gpu_place(cond.place()) or
+      // platform::is_xpu_place(cond.place()) is true
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+      DeviceContext().Wait();
+      phi::DenseTensor cpu_cond;
+      paddle::framework::TensorCopySync(
+          cond_tensor, platform::CPUPlace(), &cpu_cond);
+      cond = cpu_cond.data<bool>()[0];
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "This version of PaddlePaddle does NOT support GPU/XPU but got "
+          "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+          "WITH_XPU option."));
+#endif
+    }
+  } else if (cond_var_->IsType<VariableRefArray>()) {
+    auto& cond_array = cond_var_->Get<VariableRefArray>();
+    cond = std::all_of(
+        cond_array.begin(), cond_array.end(), [](const Variable* t) {
+          return t->Get<phi::DenseTensor>().numel() != 0;
+        });
+  }
+  if (cond) {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+#endif
     true_branch_inter_->Run({}, false);
     CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+#endif
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
-  // copy ouptut
+  // copy output
 }
 
 }  // namespace framework

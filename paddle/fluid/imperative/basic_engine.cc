@@ -24,17 +24,17 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
@@ -236,7 +236,7 @@ void BasicEngine::PrepareGradAccumulators(
 
             accumulator->IncreaseRefCnt();
 
-            VLOG(3) << "Prepare to acccumulate variable grad " << var->Name()
+            VLOG(3) << "Prepare to accumulate variable grad " << var->Name()
                     << "(" << var.get()
                     << ") that has grad node with reference count "
                     << accumulator->RefCnt();
@@ -267,7 +267,7 @@ void BasicEngine::PrepareGradAccumulators(
 
         accumulator->IncreaseRefCnt();
 
-        VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
+        VLOG(3) << "Prepare to accumulate variable grad " << var->Name() << "("
                 << var.get()
                 << ") that don't have grad node  with reference count "
                 << accumulator->RefCnt();
@@ -445,7 +445,7 @@ void BasicEngine::Execute() {
        *
        * - construct the temp output map, avoid to disrupt graph
        * - replace the element in the map by temp var, because a
-       *   var may be coresponding to several grad var in one op
+       *   var may be corresponding to several grad var in one op
        */
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
 
@@ -495,7 +495,7 @@ void BasicEngine::Execute() {
           }
 
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor,
-          // it should be orderly and not reapeated.
+          // it should be orderly and not repeated.
           if (var->IsLeafGrad()) {
             if (std::find(leaf_accumulators_.begin(),
                           leaf_accumulators_.end(),

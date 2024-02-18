@@ -336,6 +336,15 @@ class Parallelizer:
 
         return main_program, startup_program, params_grads
 
+    def _check_dist_attr(self, program, num_model_chunks, dist_context):
+        for _, block in enumerate(program.blocks):
+            for _, op in enumerate(block.ops):
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                if op_dist_attr is None:
+                    raise ValueError(
+                        f"There is not dist_attr for op[{op.type}]."
+                    )
+
     def _apply_post_optimization(
         self, main_program, startup_program, rank, params_grads
     ):
@@ -412,6 +421,9 @@ class Parallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
+            if self._strategy.amp.enable:
+                amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config["amp_dtype"] = amp_config['dtype']
             auto_parallel_sharding_pass = new_pass(
                 "auto_parallel_sharding", config
             )
@@ -489,6 +501,13 @@ class Parallelizer:
             )
             auto_parallel_pipeline_pass.apply(
                 [main_program], [startup_program], self._pass_context
+            )
+
+        if use_new_executor():
+            self._check_dist_attr(
+                main_program,
+                self._strategy.pipeline.vpp_degree,
+                self._dist_context,
             )
 
         enable_ir = get_flags("FLAGS_enable_pir_in_executor")[

@@ -586,7 +586,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
   const std::string& op_type = op_proto->type();
 
-  // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+  // Skip operator which is not inherit form OperatorWithKernel, like while,
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   if (!all_kernels.count(op_type) &&
@@ -1763,7 +1763,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const char* CALL_BACK_TEMPLATE =
         "    {\n"
         "      paddle::imperative::AutoCastGuard "
-        "guard(egr::Controller::Instance().GetCurrentTracer(), "
+        "guard(egr::Controller::Instance().GetCurrentAMPState(), "
         "paddle::imperative::AmpLevel::O0);\n"
         "      return %s_dygraph_function(%s);\n"
         "    }";
@@ -2373,7 +2373,7 @@ static std::string GenerateSingleOpBase(
                   GradOut
 
           Its grad output "GradOut" corresponds to forward output "Out",
-          where there is a hiden inplace involved. So we find "GradOut"'s
+          where there is a hidden inplace involved. So we find "GradOut"'s
          index
          in
           grads, and perform the inplace operation by constructing outs =
@@ -2534,7 +2534,7 @@ static std::string GenerateSingleOpBase(
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
   if (fwd_op_type == "cast") {
-    // swtich in out dtype
+    // switch in out dtype
     const char* CAST_GRAD =
         "  auto temp_type = %s[\"in_dtype\"];\n"
         "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
@@ -2702,7 +2702,7 @@ static std::string GenerateGradNodeCCContents(
   // This is a Copy
   auto op_base_infos = bwd_info.GetOpBaseInfos();
 
-  /* Special Case: ops such as sum_grad_op is implemented abnormaly,
+  /* Special Case: ops such as sum_grad_op is implemented abnormally,
                    where it unpacked duplicable GradX and created one OpBase
                    corresponds to each member of GradX[i]
      */

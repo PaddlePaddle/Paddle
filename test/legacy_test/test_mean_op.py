@@ -102,7 +102,7 @@ class TestMeanOpError(unittest.TestCase):
 
         with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
             input1 = 12
-            self.assertRaises(ValueError, paddle.mean, input1)
+            self.assertRaises(TypeError, paddle.mean, input1)
 
             input2 = paddle.static.data(
                 name='input2', shape=[2, 3, 4, 5], dtype="int32"
@@ -524,7 +524,7 @@ class TestMeanAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
-            x = base.dygraph.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05

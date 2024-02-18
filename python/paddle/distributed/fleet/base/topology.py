@@ -190,7 +190,7 @@ class HybridCommunicateGroup:
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
-            self._check_vaild_topo()
+            self._check_valid_topo()
         ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
             self.nranks,
             self._mp_degree,
@@ -291,7 +291,7 @@ class HybridCommunicateGroup:
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParalel
+        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
@@ -328,7 +328,7 @@ class HybridCommunicateGroup:
             # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
-    def _check_vaild_topo(self):
+    def _check_valid_topo(self):
         return (
             self._dp_degree
             * self._mp_degree

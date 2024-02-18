@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {
@@ -24,17 +24,11 @@ namespace ir {
 
 class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
  public:
-  using ShapeOrDataDimExprs4ValueT =
-      std::function<const symbol::ShapeOrDataDimExprs &(pir::Value)>;
-  explicit FuseShapeOpsIntoGenerateShapeOpPass(
-      const ShapeOrDataDimExprs4ValueT &ShapeOrDataDimExprs4Value);
+  FuseShapeOpsIntoGenerateShapeOpPass();
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  ShapeOrDataDimExprs4ValueT ShapeOrDataDimExprs4Value_;
 };
 
 }  // namespace ir

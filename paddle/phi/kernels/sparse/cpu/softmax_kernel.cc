@@ -160,7 +160,7 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
   }
 }
 
-// cpu kerenel
+// cpu kernel
 template <typename T, typename Context>
 void SoftmaxCooKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,

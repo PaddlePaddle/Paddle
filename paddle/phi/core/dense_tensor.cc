@@ -304,7 +304,25 @@ template const XPUStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
 bool DenseTensor::storage_properties_initialized() const {
-  return storage_properties_ != nullptr;
+  if (storage_properties_ == nullptr) {
+    return false;
+  } else if (NPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CUSTOM;
+#ifdef PADDLE_WITH_XPU
+  } else if (XPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::XPU;
+#endif
+#ifdef PADDLE_WITH_DNNL
+  } else if (OneDNNStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CPU;
+#endif
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of storage_properties [%s] is "
+                                     "inconsistent with tensor place [%s]",
+                                     storage_properties_->type_info().name(),
+                                     AllocationTypeStr(place().GetType())));
+  }
 }
 
 void DenseTensor::set_storage_properties(

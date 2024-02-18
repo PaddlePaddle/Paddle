@@ -17,6 +17,7 @@
 #include <tuple>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -33,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -102,6 +102,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
+  use_new_executor_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
@@ -815,7 +816,7 @@ void AnalysisConfig::EnableDlnne(
     int max_batch_size,
     bool use_static_batch,
     std::string weight_share_mode,
-    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::unordered_set<std::string> disable_nodes_by_outputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
     Precision precision_mode) {
@@ -824,7 +825,7 @@ void AnalysisConfig::EnableDlnne(
   dlnne_max_batchsize_ = max_batch_size;
   dlnne_use_static_batch_ = use_static_batch;
   dlnne_weight_share_mode_ = weight_share_mode;
-  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_ouputs;
+  dlnne_disable_nodes_by_outputs_ = disable_nodes_by_outputs;
   dlnne_input_shape_dict_ = dlnne_input_shape_dict;
   dlnne_use_calib_mode_ = use_calib_mode;
   dlnne_precision_mode_ = precision_mode;
@@ -1091,6 +1092,9 @@ void AnalysisConfig::Update() {
         "You tried to enable the custom device "
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
+  }
+  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
   }
 }
 

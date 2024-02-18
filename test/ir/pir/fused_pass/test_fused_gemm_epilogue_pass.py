@@ -42,7 +42,7 @@ def get_cuda_version():
     not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
     "core is not complied with CUDA or nvcc version is less than11.6",
 )
-class TestFusedgemm_epilogueAdd(unittest.TestCase):
+class TestFusedGemm_epilogueAdd(unittest.TestCase):
     def test_fused_gemm_epilogue_add(self):
         with paddle.pir_utils.IrGuard():
             x_np = np.random.normal(3, 2.5, size=(1024, 1024)).astype(
@@ -94,7 +94,7 @@ class TestFusedgemm_epilogueAdd(unittest.TestCase):
                 pm = paddle.pir.PassManager()
                 pm.add_pass(
                     'fused_gemm_epilogue_pass'
-                )  # apply pass to elimitate dead code
+                )  # apply pass to eliminate dead code
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
                 self.assertTrue(

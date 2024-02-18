@@ -132,6 +132,7 @@ class BatchSampler(Sampler):
             isinstance(batch_size, int) and batch_size > 0
         ), f"batch_size should be a positive integer, but got {batch_size}"
         self.batch_size = batch_size
+        self.shuffle = shuffle
         assert isinstance(
             drop_last, bool
         ), f"drop_last should be a boolean value, but got {type(drop_last)}"
@@ -181,14 +182,14 @@ class DistributedBatchSampler(BatchSampler):
                      or other python object which implemented
                      `__len__` for BatchSampler to get indices of samples.
         batch_size(int): sample size of each mini-batch.
-        num_replicas(int, optional): porcess number in distributed training.
+        num_replicas(int, optional): process number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
             retrieved from :ref:`api_paddle_distributed_ParallelEnv` .
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
             :ref:`api_paddle_distributed_ParallelEnv`. Default None.
-        shuffle(bool, optional): whther to shuffle indices order before genrating
+        shuffle(bool, optional): whether to shuffle indices order before generating
             batch indices. Default False.
         drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
             Default False.

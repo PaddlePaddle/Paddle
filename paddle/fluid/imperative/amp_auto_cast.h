@@ -31,7 +31,7 @@ enum class AmpLevel {
   O1,      // amp, mixed fp32-fp16
   O2,      // almost fp16
   O3,      // fp16
-  OD,      // only conv and matmul use low precison.
+  OD,      // only conv and matmul use low precision.
 };
 
 std::tuple<std::unordered_set<std::string>,
@@ -84,10 +84,28 @@ class AmpOperators {
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 
+class AMPState {
+ public:
+  AMPState();
+  ~AMPState();
+  bool GetUsePromote() const;
+  void SetUsePromote(bool use_promote);
+  AmpLevel GetAmpLevel() const;
+  void SetAmpLevel(AmpLevel level);
+  std::string GetAmpDtype() const;
+  void SetAmpDtype(std::string amp_dtype);
+  phi::DataType GetAmpPhiDtype() const;
+
+ private:
+  static thread_local bool use_promote_;
+  static thread_local AmpLevel amp_level_;
+  static thread_local phi::DataType amp_dtype_;
+};
+
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel guard_level);
+  AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel guard_level);
 
   ~AutoCastGuard();
 
@@ -96,7 +114,7 @@ class AutoCastGuard {
   AutoCastGuard& operator=(const AutoCastGuard& guard) = delete;
 
  private:
-  std::shared_ptr<Tracer> tracer_;
+  std::shared_ptr<AMPState> state_;
   AmpLevel pre_amp_level_;
 };
 

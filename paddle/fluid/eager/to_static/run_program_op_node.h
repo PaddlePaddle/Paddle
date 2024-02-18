@@ -26,15 +26,15 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
-PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(print_ir);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -116,7 +116,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
                       true,
                       paddle::platform::errors::InvalidArgument(
-                          "The output tensodfr %s get from "
+                          "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
                           name));
@@ -553,7 +553,7 @@ inline void PirRunProgramAPI(
     // program_id, global_inner_scope, false, skip_eager_delete_vars);
   } else {
     paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cahce",
+        "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
@@ -710,7 +710,7 @@ inline void RunProgramAPI(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "No interpretercore cahce, so create a new interpretercore "
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
     // Step 1. share input_vars & parameters into scope
@@ -721,13 +721,13 @@ inline void RunProgramAPI(
     if (in_pir_pt_mode) {
       // build new ir program
       auto ir_program =
-          paddle::framework::ConstructFowardIrProgram(forward_global_block,
-                                                      backward_global_block,
-                                                      output_names,
-                                                      x,
-                                                      input_names,
-                                                      params,
-                                                      place);
+          paddle::framework::ConstructForwardIrProgram(forward_global_block,
+                                                       backward_global_block,
+                                                       output_names,
+                                                       x,
+                                                       input_names,
+                                                       params,
+                                                       place);
       interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
           std::move(ir_program),
           place,
@@ -781,10 +781,10 @@ inline void RunProgramAPI(
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cahce",
+        "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "Get interpretercore cahce by program:" << program_id;
+    VLOG(2) << "Get interpretercore cache by program:" << program_id;
     // Step 1. get cache interpretercore
     auto &cached_value =
         interpretercore_info_cache.GetMutable(program_id,
@@ -889,7 +889,7 @@ inline void RunProgramGradAPI(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "No interpretercore cahce, so create a new interpretercore"
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore"
                "for program: "
             << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
@@ -968,10 +968,10 @@ inline void RunProgramGradAPI(
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cahce",
+        "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "Get interpretercore cahce by program:" << program_id;
+    VLOG(2) << "Get interpretercore cache by program:" << program_id;
     auto &cached_value =
         interpretercore_info_cache.GetMutable(program_id,
                                               global_inner_scope,
@@ -1066,6 +1066,8 @@ inline void PirRunProgramGradAPI(
   auto p_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
+  details::Trans2ContiguousTensorsInplace(out_grad);
+
   // share x, param, middles, output_grads, out into scope.
   details::ShareTensorsIntoScopeByValue(
       backward_global_block, out_grad, output_grad_values, global_inner_scope);
@@ -1093,7 +1095,7 @@ inline void PirRunProgramGradAPI(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
     auto passed_kernel_program =
         paddle::framework::ApplyIrPass(backward_program, place);
@@ -1150,10 +1152,10 @@ inline void PirRunProgramGradAPI(
     details::print_collection(skip_eager_delete_vars);
   } else {
     paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cahce",
+        "get_interpretercore_cache",
         paddle::platform::TracerEventType::UserDefined,
         1);
-    VLOG(2) << "Get interpretercore cahce by program:" << program_id;
+    VLOG(2) << "Get interpretercore cache by program:" << program_id;
     auto &cached_value =
         interpretercore_info_cache.GetMutable(program_id,
                                               global_inner_scope,
@@ -1206,7 +1208,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     if (!(*executed_)) {
       auto *out_scope_vec = &step_scope_;
       VLOG(4) << "~GradNodeRunProgram: " << this;
-      // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
+      // Normally out_scope_vec.size() == 1. for safety, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
         global_inner_scope->SetCanReused(true);
@@ -1392,7 +1394,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     if (!(*executed_)) {
       auto *out_scope_vec = &step_scope_;
       VLOG(4) << "~PirGradNodeRunProgram";
-      // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
+      // Normally out_scope_vec.size() == 1. for safety, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
         global_inner_scope->SetCanReused(true);

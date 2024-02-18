@@ -25,6 +25,7 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    ENV_SOT_EXPORT,
     get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
@@ -532,7 +533,7 @@ class PaddleLayerVariable(LayerVariable):
     def call_function(self, /, *args, **kwargs):
         self.graph.add_global_guarded_variable(self)
         # when layer is created in forward function, we use strong ref because it can't have
-        # weigths and buffers, see PaddleLayerClassVariable for details.
+        # weights and buffers, see PaddleLayerClassVariable for details.
         weak_ref = not isinstance(self.tracker, CreateLayerTracker)
         return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
@@ -553,6 +554,9 @@ class PaddleLayerVariable(LayerVariable):
 
     @VariableFactory.register_from_value(successor="UserDefinedLayerVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO: @wuzhanfei, if we support create sub layer when export, remove this branch
+        if ENV_SOT_EXPORT.get() != "":
+            return None
         # TODO(SigureMo): Add a more common way to check if a value is a paddle builtin layer.
         if isinstance(value, paddle.nn.Layer):
             # If there is a user-defined behavior, such as a container class layer
@@ -765,7 +769,7 @@ class PaddleLayerClassVariable(ClassVariable):
         assert self.check_no_weight_and_buffers(
             new_layer
         ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
-        return PaddleLayerVariable(
+        return VariableFactory.from_value(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
 

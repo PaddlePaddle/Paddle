@@ -16,11 +16,11 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_trait.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
@@ -32,7 +32,7 @@ class DeadCodeEliminationPass : public pir::Pass {
     VLOG(6) << "apply dead_code_elimination_pass";
     int64_t num_erasers{0};
     EraseOp(*op->GetParentProgram()->block(), &num_erasers);
-    PrintStatistics(num_erasers);
+    AddStatistics(num_erasers);
   }
 
  private:

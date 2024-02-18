@@ -291,15 +291,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = common::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
         // We need collect value range for shape tensor for Paddle-TRT's use.
-        // To be noticed, this method to identify all shape tensors is based on
-        // assumption that all shape tensors in the model have numbers <= 7.
-        // This is a simple method to identify all shape tensors with some
-        // mistakes, but it doesn't matter.
-        auto is_shape_tensor = t.numel() <= 7 && t.numel() >= 1;
+        // To be noticed, this method to identify all inputs/outputs is shape
+        // tensors; After, TRT Engine gets whether it is a real shape tensor.
+        auto is_shape_tensor = true;
         if (trt_engine->engine()) {
           auto *engine = trt_engine->engine();
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+          if (!is_shape_tensor) {
+            runtime_shape_tensor.erase(name);
+            VLOG(4) << "trt engine runtime delete shape name(" << name
+                    << "), dims(" << t.dims() << ")";
+          }
         }
         if ((t.dtype() == phi::DataType::INT32 ||
              t.dtype() == phi::DataType::INT64) &&
@@ -509,7 +512,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int binding_offset = 0;
     nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
-      // Initilize context and get offset by profile index
+      // Initialize context and get offset by profile index
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
@@ -603,7 +606,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                     "by "
                     "setting min_subgraph_size using EnableTensorrtEngine "
                     "interface.\n"
-                    "\tThe min_subgraph_size shouble to be greater than the "
+                    "\tThe min_subgraph_size should to be greater than the "
                     "number "
                     "of "
                     "nodes in the inconsistent subgraph.\n"));
@@ -611,6 +614,41 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        if (engine->engine()->isShapeBinding(bind_index) &&
+            engine->engine()->bindingIsInput(bind_index)) {
+          std::vector<int> shape_v(t.numel());
+          if (t.dtype() == phi::DataType::INT32) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 t.place(),
+                                 t.data<int32_t>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+          } else if (t.dtype() == phi::DataType::INT64) {
+            std::string x_t = x + "_cast_to_INT32";
+            if (scope.FindVar(x_t) == nullptr) {
+              const_cast<framework::Scope *>(&scope)->Var(x_t);
+            }
+            auto int32_tensor =
+                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+            *int32_tensor = phi::Cast<int64_t>(
+                reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                t,
+                phi::DataType::INT32);
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 int32_tensor->place(),
+                                 int32_tensor->data<int32_t>(),
+                                 int32_tensor->numel() * sizeof(int),
+                                 nullptr);
+          }
+          trt_context->setTensorAddress(x.c_str(), shape_v.data());
+        } else {
+          trt_context->setInputShape(
+              x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+        }
+#else
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         // If this x is a shape tensor, we need call setInputShapeBinding
@@ -644,6 +682,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
+#endif
 #endif
       }
       runtime_batch = t_shape[0];
@@ -718,7 +757,20 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto dims = trt_context->getTensorShape(x_name);
+        int nb_dims = dims.nbDims;
+        for (; nb_dims > 0; nb_dims--) {
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_rank[output_index])
+            break;
+        }
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
+#else
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
@@ -727,7 +779,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
               nb_dims == origin_output_rank[output_index])
             break;
         }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
@@ -774,7 +828,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "by "
               "setting min_subgraph_size using EnableTensorrtEngine "
               "interface.\n"
-              "\tThe min_subgraph_size shouble to be greater than the number "
+              "\tThe min_subgraph_size should to be greater than the number "
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch,
