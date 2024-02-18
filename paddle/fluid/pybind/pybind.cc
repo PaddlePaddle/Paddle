@@ -210,7 +210,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);

@@ -73,6 +73,7 @@ class TestMKLDNNRelu6Dim2(TestRelu6):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -82,6 +83,7 @@ class TestMKLDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -231,6 +233,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         super().setUp()
 
         self.attrs["use_mkldnn"] = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -242,6 +245,7 @@ class TestMKLDNNSwish_ZeroDim(TestSwish_ZeroDim):
 
         self.attrs["use_mkldnn"] = True
         self.check_eager = False
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32

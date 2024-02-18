@@ -18,14 +18,18 @@
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class Fused2EmbeddingEltwiseLayernormPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "Fused2EmbeddingEltwiseLayernormPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &embedding_1 = pat.Op(paddle::dialect::EmbeddingOp::name(),
@@ -90,14 +94,15 @@ class Fused2EmbeddingEltwiseLayernormPattern
                                           &res.Tensor("scale")},
                                          {&res.Tensor("layernorm_out")});
   }
-  std::string name() const override {
-    return "Fused2EmbeddingEltwiseLayernormPattern";
-  }
 };
 
 class Fused3EmbeddingEltwiseLayernormPattern
     : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override {
+    return "Fused3EmbeddingEltwiseLayernormPattern";
+  }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &embedding_1 = pat.Op(paddle::dialect::EmbeddingOp::name(),
@@ -168,9 +173,6 @@ class Fused3EmbeddingEltwiseLayernormPattern
                                           &res.Tensor("scale")},
                                          {&res.Tensor("layernorm_out")});
   }
-  std::string name() const override {
-    return "Fused3EmbeddingEltwiseLayernormPattern";
-  }
 };
 
 class EmbeddingEltwiseLayernormFusePass : public pir::PatternRewritePass {
@@ -180,8 +182,10 @@ class EmbeddingEltwiseLayernormFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(Fused2EmbeddingEltwiseLayernormPattern().Build(context));
-    ps.Add(Fused3EmbeddingEltwiseLayernormPattern().Build(context));
+    ps.Add(
+        paddle::drr::Create<Fused2EmbeddingEltwiseLayernormPattern>(context));
+    ps.Add(
+        paddle::drr::Create<Fused3EmbeddingEltwiseLayernormPattern>(context));
     return ps;
   }
 };
