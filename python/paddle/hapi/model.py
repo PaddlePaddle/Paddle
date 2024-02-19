@@ -27,7 +27,6 @@ import paddle.distributed as dist
 from paddle import base
 from paddle.autograd import no_grad
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
 from paddle.base.framework import (
     Variable,
@@ -824,7 +823,7 @@ class DynamicGraphAdapter:
         inputs = to_list(inputs)
         self._input_info = _update_input_info(inputs)
         labels = labels or []
-        labels = [to_variable(l) for l in to_list(labels)]
+        labels = [paddle.to_tensor(l) for l in to_list(labels)]
 
         # scaler should be initialized only once
         if self._amp_level != "O0" and self.model._scaler is None:
@@ -836,9 +835,11 @@ class DynamicGraphAdapter:
             level=self._amp_level,
         ):
             if self._nranks > 1:
-                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[paddle.to_tensor(x) for x in inputs])
             else:
-                outputs = self.model.network(*[to_variable(x) for x in inputs])
+                outputs = self.model.network(
+                    *[paddle.to_tensor(x) for x in inputs]
+                )
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -874,9 +875,9 @@ class DynamicGraphAdapter:
         inputs = to_list(inputs)
         self._input_info = _update_input_info(inputs)
         labels = labels or []
-        labels = [to_variable(l) for l in to_list(labels)]
+        labels = [paddle.to_tensor(l) for l in to_list(labels)]
 
-        outputs = self.model.network(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[paddle.to_tensor(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -933,7 +934,7 @@ class DynamicGraphAdapter:
     def predict_batch(self, inputs):
         self.model.network.eval()
         self.mode = 'test'
-        inputs = [to_variable(x) for x in to_list(inputs)]
+        inputs = [paddle.to_tensor(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, base.CUDAPlace):

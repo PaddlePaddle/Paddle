@@ -79,7 +79,9 @@ class TestTransposeFoldingOutputPassWithIdentity(
         return builder.transpose(out_s, [0, 2, 1])
 
 
-class TestTransposeFoldingOutputPassInvlidTrans(TestTransposeFoldingOutputPass):
+class TestTransposeFoldingOutputPassInvalidTrans(
+    TestTransposeFoldingOutputPass
+):
     def expect_folding_number(self):
         return 1
 
@@ -88,7 +90,9 @@ class TestTransposeFoldingOutputPassInvlidTrans(TestTransposeFoldingOutputPass):
         return builder.scale(out_t, scale=2.0)
 
 
-class TestTransposeFoldingOutputPassInvlidScale(TestTransposeFoldingOutputPass):
+class TestTransposeFoldingOutputPassInvalidScale(
+    TestTransposeFoldingOutputPass
+):
     def expect_folding_number(self):
         return 1
 
