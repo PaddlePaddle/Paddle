@@ -138,21 +138,23 @@ class PyFileGen:
         self.create_tail()
         return self.roots_to_string()
 
+    def is_exportable_type(self, value):
+        if isinstance(value, (ConstTypes, Symbol, paddle.dtype)):
+            return True
+        if isinstance(value, slice):
+            return (
+                self.is_exportable_type(value.start)
+                and self.is_exportable_type(value.stop)
+                and self.is_exportable_type(value.step)
+            )
+        return False
+
     def check_exportable(self):
         for stmt in self.SIR.statements:
             for inp in flatten(stmt.inputs):
-                if not isinstance(inp, ConstTypes) and not isinstance(
-                    inp, Symbol
-                ):
+                if not self.is_exportable_type(inp):
                     raise ExportError(
                         f"Not support create python file with input: {inp}"
-                    )
-            for out in flatten(stmt.outputs):
-                if not isinstance(out, ConstTypes) and not isinstance(
-                    out, Symbol
-                ):
-                    raise ExportError(
-                        f"Not support create python file with output: {out}"
                     )
 
     def create_header(self):
