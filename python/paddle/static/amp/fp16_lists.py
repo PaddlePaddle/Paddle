@@ -157,7 +157,7 @@ class AutoMixedPrecisionLists:
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
-        custom_black_varnames (set): Users' custom black varibles' names.
+        custom_black_varnames (set): Users' custom black variables' names.
         dtype (str): the low precision dtype, which can be set to 'float16' or 'bfloat16'.
     """
 
