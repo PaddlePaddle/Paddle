@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 import paddle.version as paddle_version
 
 from .. import pir
@@ -8154,13 +8155,13 @@ def _get_paddle_place_list(places):
 
 
 def dtype_to_str(in_dtype):
-    if in_dtype == core.VarDesc.VarType.FP16:
+    if in_dtype == paddle.float16:
         return "fp16"
-    elif in_dtype == core.VarDesc.VarType.BF16:
+    elif in_dtype == paddle.bfloat16:
         return "bf16"
-    elif in_dtype == core.VarDesc.VarType.FP32:
+    elif in_dtype == paddle.float32:
         return "fp32"
-    elif in_dtype == core.VarDesc.VarType.FP64:
+    elif in_dtype == paddle.float64:
         return "fp64"
     else:
         return None
