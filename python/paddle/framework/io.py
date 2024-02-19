@@ -566,7 +566,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
+                "The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
                     type(obj)
                 )
             )

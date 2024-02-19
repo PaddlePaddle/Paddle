@@ -161,7 +161,7 @@ class TestFleetDygraph(unittest.TestCase):
     def test_dygraph_method(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = base.dygraph.to_variable(value)
+        a = paddle.to_tensor(value)
         layer = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=layer.parameters()

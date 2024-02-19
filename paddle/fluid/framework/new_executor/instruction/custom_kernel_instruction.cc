@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace framework {
@@ -89,7 +89,7 @@ void CustomKernelInstruction::BuildCustomContext(
         input_ptrs_.emplace_back(nullptr);
         custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
     auto in_var_name = value_exec_info_.GetVarName(ptr);
@@ -285,7 +285,7 @@ void CustomKernelInstruction::BuildCustomContext(
       cache_out_ptrs_.emplace_back(nullptr);
       custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
 
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 

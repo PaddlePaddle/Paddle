@@ -36,7 +36,7 @@ class TestVarBase(unittest.TestCase):
                 # set_default_dtype should not take effect on int
                 x = paddle.to_tensor(1, place=place, stop_gradient=False)
                 np.testing.assert_array_equal(x.numpy(), [1])
-                self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertNotEqual(x.dtype, paddle.float32)
 
                 y = paddle.to_tensor(2, place=x.place)
                 self.assertEqual(str(x.place), str(y.place))
@@ -50,23 +50,23 @@ class TestVarBase(unittest.TestCase):
                 np.testing.assert_array_equal(
                     x.numpy(), np.array([1.2], 'float16')
                 )
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
+                self.assertEqual(x.dtype, paddle.float16)
 
                 # set_default_dtype take effect on int
                 x = paddle.to_tensor(1, place=place)
-                self.assertTrue(x.dtype, core.VarDesc.VarType.INT64)
+                self.assertTrue(x.dtype, paddle.int64)
 
                 # set_default_dtype take effect on float
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 np.testing.assert_array_equal(
                     x.numpy(), np.array([1.2]).astype('float32')
                 )
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.dtype, paddle.float32)
                 clone_x = x.clone()
                 np.testing.assert_array_equal(
                     clone_x.numpy(), np.array([1.2]).astype('float32')
                 )
-                self.assertEqual(clone_x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(clone_x.dtype, paddle.float32)
                 y = clone_x**2
                 y.backward()
                 np.testing.assert_array_equal(
@@ -97,27 +97,27 @@ class TestVarBase(unittest.TestCase):
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
                 y = paddle.to_tensor([2, 2], dtype=x.dtype)
-                self.assertEqual(y.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(y.dtype, paddle.float32)
 
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 np.testing.assert_array_equal(x.numpy(), [1 + 2j])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.COMPLEX64)
+                self.assertEqual(x.dtype, paddle.complex64)
 
                 paddle.set_default_dtype('float64')
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 np.testing.assert_array_equal(x.numpy(), [1.2])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP64)
+                self.assertEqual(x.dtype, paddle.float64)
 
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 np.testing.assert_array_equal(x.numpy(), [1 + 2j])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.COMPLEX128)
+                self.assertEqual(x.dtype, paddle.complex128)
 
                 x = paddle.to_tensor(
                     1, dtype='float32', place=place, stop_gradient=False
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.dtype, paddle.float32)
                 self.assertEqual(x.shape, [])
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
@@ -129,7 +129,7 @@ class TestVarBase(unittest.TestCase):
                     [1, 2], dtype='float32', place=place, stop_gradient=False
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0, 2.0])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.dtype, paddle.float32)
                 self.assertIsNone(x.grad)
                 self.assertEqual(x.shape, [2])
                 self.assertEqual(x.stop_gradient, False)
@@ -142,7 +142,7 @@ class TestVarBase(unittest.TestCase):
                     stop_gradient=False,
                 )
                 np.testing.assert_array_equal(x.numpy(), self.array)
-                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                self.assertEqual(x.dtype, paddle.float32)
                 self.assertEqual(x.shape, self.shape)
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
@@ -150,7 +150,7 @@ class TestVarBase(unittest.TestCase):
                 y = paddle.to_tensor(x)
                 y = paddle.to_tensor(y, dtype='float64', place=place)
                 np.testing.assert_array_equal(y.numpy(), self.array)
-                self.assertEqual(y.dtype, core.VarDesc.VarType.FP64)
+                self.assertEqual(y.dtype, paddle.float64)
                 self.assertEqual(y.shape, self.shape)
                 self.assertEqual(y.stop_gradient, True)
                 self.assertEqual(y.type, core.VarDesc.VarType.LOD_TENSOR)
@@ -162,7 +162,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 y = paddle.to_tensor(x)
                 np.testing.assert_array_equal(x.numpy(), [1 + 2j, 1 - 2j])
-                self.assertEqual(y.dtype, core.VarDesc.VarType.COMPLEX64)
+                self.assertEqual(y.dtype, paddle.complex64)
                 self.assertEqual(y.shape, [2])
 
                 paddle.set_default_dtype('float32')
@@ -252,13 +252,13 @@ class TestVarBase(unittest.TestCase):
 
                 # test dtype=bfloat16
                 x = paddle.to_tensor(-1e6, dtype=paddle.bfloat16)
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x == -999424.0)
                 self.assertTrue(x.item() == -999424.0)
                 self.assertTrue(isinstance(x.item(), float))
 
                 x = paddle.to_tensor([-1e6, -1e6, -1e6], dtype='bfloat16')
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x[0] == -999424.0)
                 self.assertTrue(x[1] == -999424.0)
                 self.assertTrue(x[2] == -999424.0)
@@ -266,7 +266,7 @@ class TestVarBase(unittest.TestCase):
                 x = paddle.to_tensor(
                     -1e6, dtype=paddle.bfloat16, stop_gradient=False
                 )
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x == -999424.0)
                 y = x * x
                 y.backward()
@@ -275,19 +275,19 @@ class TestVarBase(unittest.TestCase):
                 # test default_type=bfloat16
                 paddle.set_default_dtype('bfloat16')
                 x = paddle.to_tensor(-1e6)
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x == -999424.0)
                 self.assertTrue(x.item() == -999424.0)
                 self.assertTrue(isinstance(x.item(), float))
 
                 x = paddle.to_tensor([-1e6, -1e6, -1e6])
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x[0] == -999424.0)
                 self.assertTrue(x[1] == -999424.0)
                 self.assertTrue(x[2] == -999424.0)
 
                 x = paddle.to_tensor(-1e6, stop_gradient=False)
-                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertEqual(x.dtype, paddle.bfloat16)
                 self.assertTrue(x == -999424.0)
                 y = x * x
                 y.backward()
@@ -363,49 +363,37 @@ class TestVarBase(unittest.TestCase):
                 np.testing.assert_array_equal(a_np, a.numpy())
                 self.assertTrue(a.place.__repr__(), "Place(cpu)")
 
-    def test_to_variable(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array, name="abc")
-            np.testing.assert_array_equal(var.numpy(), self.array)
-            self.assertEqual(var.name, 'abc')
-            # default value
-            self.assertEqual(var.persistable, False)
-            self.assertEqual(var.stop_gradient, True)
-            self.assertEqual(var.shape, self.shape)
-            self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
-            # The type of input must be 'ndarray' or 'Variable', it will raise TypeError
-            with self.assertRaises(TypeError):
-                var = base.dygraph.to_variable("test", name="abc")
-            # test to_variable of LayerObjectHelper(LayerHelperBase)
-            with self.assertRaises(TypeError):
-                linear = paddle.nn.Linear(32, 64)
-                var = linear._helper.to_variable("test", name="abc")
+    def test_to_tensor_attribtes(self):
+        var = paddle.to_tensor(self.array)
+        np.testing.assert_array_equal(var.numpy(), self.array)
+        # default value
+        self.assertEqual(var.persistable, False)
+        self.assertEqual(var.stop_gradient, True)
+        self.assertEqual(var.shape, self.shape)
+        self.assertEqual(var.dtype, paddle.float32)
+        self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
 
-    def test_list_to_variable(self):
-        with base.dygraph.guard():
-            array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
-            var = base.dygraph.to_variable(array, dtype='int32')
-            np.testing.assert_array_equal(var.numpy(), array)
-            self.assertEqual(var.shape, [2, 3, 2])
-            self.assertEqual(var.dtype, core.VarDesc.VarType.INT32)
-            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+    def test_list_to_tensor(self):
+        array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
+        var = paddle.to_tensor(array, dtype='int32')
+        np.testing.assert_array_equal(var.numpy(), array)
+        self.assertEqual(var.shape, [2, 3, 2])
+        self.assertEqual(var.dtype, paddle.int32)
+        self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
 
-    def test_tuple_to_variable(self):
-        with base.dygraph.guard():
-            array = (((1, 2), (1, 2), (1, 2)), ((1, 2), (1, 2), (1, 2)))
-            var = base.dygraph.to_variable(array, dtype='float32')
-            np.testing.assert_array_equal(var.numpy(), array)
-            self.assertEqual(var.shape, [2, 3, 2])
-            self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
-            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+    def test_tuple_to_tensor(self):
+        array = (((1, 2), (1, 2), (1, 2)), ((1, 2), (1, 2), (1, 2)))
+        var = paddle.to_tensor(array, dtype='float32')
+        np.testing.assert_array_equal(var.numpy(), array)
+        self.assertEqual(var.shape, [2, 3, 2])
+        self.assertEqual(var.dtype, paddle.float32)
+        self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
 
-    def test_tensor_to_variable(self):
-        with base.dygraph.guard():
-            t = base.Tensor()
-            t.set(np.random.random((1024, 1024)), base.CPUPlace())
-            var = base.dygraph.to_variable(t)
-            np.testing.assert_array_equal(t, var.numpy())
+    def test_tensor_to_tensor(self):
+        t = base.Tensor()
+        t.set(np.random.random((1024, 1024)), paddle.CPUPlace())
+        var = paddle.to_tensor(t)
+        np.testing.assert_array_equal(t, var.numpy())
 
     def test_leaf_tensor(self):
         with base.dygraph.guard():
@@ -471,7 +459,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_write_property(self):
         with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
+            var = paddle.to_tensor(self.array)
 
             self.assertEqual(var.name, 'generated_tensor_0')
             var.name = 'test'
@@ -555,19 +543,17 @@ class TestVarBase(unittest.TestCase):
 
     # test some patched methods
     def test_set_value(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
-            tmp1 = np.random.uniform(0.1, 1, [2, 2, 3]).astype(self.dtype)
-            self.assertRaises(AssertionError, var.set_value, tmp1)
+        var = paddle.to_tensor(self.array)
+        tmp1 = np.random.uniform(0.1, 1, [2, 2, 3]).astype(self.dtype)
+        self.assertRaises(AssertionError, var.set_value, tmp1)
 
-            tmp2 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-            var.set_value(tmp2)
-            np.testing.assert_array_equal(var.numpy(), tmp2)
+        tmp2 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        var.set_value(tmp2)
+        np.testing.assert_array_equal(var.numpy(), tmp2)
 
     def test_to_string(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
-            self.assertTrue(isinstance(str(var), str))
+        var = paddle.to_tensor(self.array)
+        self.assertTrue(isinstance(str(var), str))
 
     def test_element_size(self):
         with base.dygraph.guard():
@@ -605,32 +591,27 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(x.element_size(), 16)
 
     def test_backward(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
-            var.stop_gradient = False
-            loss = F.relu(var)
-            loss.backward()
-            grad_var = var._grad_ivar()
-            self.assertEqual(grad_var.shape, self.shape)
+        var = paddle.to_tensor(self.array)
+        var.stop_gradient = False
+        loss = F.relu(var)
+        loss.backward()
+        grad_var = var._grad_ivar()
+        self.assertEqual(grad_var.shape, self.shape)
 
     def test_gradient(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
-            var.stop_gradient = False
-            loss = F.relu(var)
-            loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, self.array.shape)
+        var = paddle.to_tensor(self.array)
+        var.stop_gradient = False
+        loss = F.relu(var)
+        loss.backward()
+        grad_var = var.gradient()
+        self.assertEqual(grad_var.shape, self.array.shape)
 
     def test_block(self):
-        with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
-            self.assertEqual(
-                var.block, base.default_main_program().global_block()
-            )
+        var = paddle.to_tensor(self.array)
+        self.assertEqual(var.block, base.default_main_program().global_block())
 
     def _test_slice(self):
-        w = base.dygraph.to_variable(
+        w = paddle.to_tensor(
             np.random.random((784, 100, 100)).astype('float64')
         )
 
@@ -661,7 +642,7 @@ class TestVarBase(unittest.TestCase):
                 [[19, 20, 21], [22, 23, 24], [25, 26, 27]],
             ]
         ).astype('float32')
-        var = base.dygraph.to_variable(tensor_array)
+        var = paddle.to_tensor(tensor_array)
         var1 = var[0, 1, 1]
         var2 = var[1:]
         var3 = var[0:1]
@@ -754,7 +735,7 @@ class TestVarBase(unittest.TestCase):
         negative_one = paddle.full(shape=[], fill_value=-1, dtype="int32")
         four = paddle.full(shape=[], fill_value=4, dtype="int32")
 
-        var = base.dygraph.to_variable(tensor_array)
+        var = paddle.to_tensor(tensor_array)
         var1 = var[0, one, one]
         var2 = var[one:]
         var3 = var[0:one]
@@ -965,7 +946,7 @@ class TestVarBase(unittest.TestCase):
 
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
-        w = base.dygraph.to_variable(np_value)
+        w = paddle.to_tensor(np_value)
 
         for i, e in enumerate(w):
             np.testing.assert_array_equal(e.numpy(), np_value[i])
@@ -1030,7 +1011,7 @@ class TestVarBase(unittest.TestCase):
             self._test_numpy_index()
             self._test_list_index()
 
-            var = base.dygraph.to_variable(self.array)
+            var = paddle.to_tensor(self.array)
             np.testing.assert_array_equal(var[1, :].numpy(), self.array[1, :])
             np.testing.assert_array_equal(var[::-1].numpy(), self.array[::-1])
 
@@ -1046,12 +1027,12 @@ class TestVarBase(unittest.TestCase):
 
     def test_var_base_to_np(self):
         with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
+            var = paddle.to_tensor(self.array)
             np.testing.assert_array_equal(var.numpy(), var.numpy(False))
 
     def test_var_base_as_np(self):
         with base.dygraph.guard():
-            var = base.dygraph.to_variable(self.array)
+            var = paddle.to_tensor(self.array)
             np.testing.assert_array_equal(var.numpy(), np.array(var))
             np.testing.assert_array_equal(
                 var.numpy(), np.array(var, dtype=np.float32)
@@ -1059,8 +1040,8 @@ class TestVarBase(unittest.TestCase):
 
     def test_if(self):
         with base.dygraph.guard():
-            var1 = base.dygraph.to_variable(np.array([[[0]]]))
-            var2 = base.dygraph.to_variable(np.array([[[1]]]))
+            var1 = paddle.to_tensor(np.array([[[0]]]))
+            var2 = paddle.to_tensor(np.array([[[1]]]))
 
             var1_bool = False
             var2_bool = False
@@ -1079,11 +1060,11 @@ class TestVarBase(unittest.TestCase):
     def test_to_static_var(self):
         with base.dygraph.guard():
             # Convert Tensor into Variable or Parameter
-            var_base = base.dygraph.to_variable(self.array, name="var_base_1")
+            var_base = paddle.to_tensor(self.array)
             static_var = var_base._to_static_var()
             self._assert_to_static(var_base, static_var)
 
-            var_base = base.dygraph.to_variable(self.array, name="var_base_2")
+            var_base = paddle.to_tensor(self.array)
             static_param = var_base._to_static_var(to_parameter=True)
             self._assert_to_static(var_base, static_param, True)
 
@@ -1243,7 +1224,7 @@ class TestVarBase(unittest.TestCase):
     def test_tensor_str_bf16(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
-        a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
+        a = paddle.cast(a, dtype=paddle.bfloat16)
         paddle.set_printoptions(precision=4)
         a_str = str(a)
 
@@ -1502,11 +1483,11 @@ class TestVarBaseTo(unittest.TestCase):
 
     def func_test_to_api(self):
         x_double = self.x._to(dtype='double')
-        self.assertEqual(x_double.dtype, paddle.base.core.VarDesc.VarType.FP64)
+        self.assertEqual(x_double.dtype, paddle.float64)
         np.testing.assert_allclose(self.np_x, x_double, rtol=1e-05)
 
         x_ = self.x._to()
-        self.assertEqual(self.x.dtype, paddle.base.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.x.dtype, paddle.float64)
         np.testing.assert_allclose(self.np_x, x_, rtol=1e-05)
 
         if paddle.base.is_compiled_with_cuda():
@@ -1521,16 +1502,12 @@ class TestVarBaseTo(unittest.TestCase):
             x_gpu1 = self.x._to(device='gpu:0', dtype="float64")
             self.assertTrue(x_gpu1.place.is_gpu_place())
             self.assertEqual(x_gpu1.place.gpu_device_id(), 0)
-            self.assertEqual(
-                x_gpu1.dtype, paddle.base.core.VarDesc.VarType.FP64
-            )
+            self.assertEqual(x_gpu1.dtype, paddle.float64)
 
             x_gpu2 = self.x._to(device='gpu:0', dtype="float16")
             self.assertTrue(x_gpu2.place.is_gpu_place())
             self.assertEqual(x_gpu2.place.gpu_device_id(), 0)
-            self.assertEqual(
-                x_gpu2.dtype, paddle.base.core.VarDesc.VarType.FP16
-            )
+            self.assertEqual(x_gpu2.dtype, paddle.float16)
 
         x_cpu = self.x._to(device=paddle.CPUPlace())
         self.assertTrue(x_cpu.place.is_cpu_place())
@@ -1540,11 +1517,11 @@ class TestVarBaseTo(unittest.TestCase):
 
         x_cpu1 = self.x._to(device=paddle.CPUPlace(), dtype="float64")
         self.assertTrue(x_cpu1.place.is_cpu_place())
-        self.assertEqual(x_cpu1.dtype, paddle.base.core.VarDesc.VarType.FP64)
+        self.assertEqual(x_cpu1.dtype, paddle.float64)
 
         x_cpu2 = self.x._to(device='cpu', dtype="float16")
         self.assertTrue(x_cpu2.place.is_cpu_place())
-        self.assertEqual(x_cpu2.dtype, paddle.base.core.VarDesc.VarType.FP16)
+        self.assertEqual(x_cpu2.dtype, paddle.float16)
 
         self.assertRaises(ValueError, self.x._to, device=1)
         self.assertRaises(AssertionError, self.x._to, blocking=1)

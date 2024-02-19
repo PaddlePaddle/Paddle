@@ -97,10 +97,12 @@ endif()
 
 if(WITH_GPU AND NOT APPLE)
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
-  set(CUDA_USE_STATIC_CUDA_RUNTIME
-      OFF
-      CACHE BOOL "" FORCE)
-  set(CMAKE_CUDA_FLAGS "--cudart shared")
+  if(LINUX)
+    set(CUDA_USE_STATIC_CUDA_RUNTIME
+        OFF
+        CACHE BOOL "" FORCE)
+    set(CMAKE_CUDA_FLAGS "--cudart shared")
+  endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -118,6 +120,7 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
 endif()
 
 # MUSL build turn off warnings
+
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy"

@@ -361,8 +361,8 @@ class GeneralGrad {
                         << " (addr: " << node
                         << ") to GradNodeAccumulation (addr: " << grad_node
                         << ")";
-                grad_node->SetGradientHookFuntions(
-                    node->GetGradientHookFuntions());
+                grad_node->SetGradientHookFunctions(
+                    node->GetGradientHookFunctions());
               }
             }  // or this node has no need to change
           }

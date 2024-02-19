@@ -55,7 +55,6 @@ class DeviceMode:
     GPU = 1
     KUNLUN = 2
     XPU = 2
-    UNKNOWN = 3
 
 
 class Cluster:

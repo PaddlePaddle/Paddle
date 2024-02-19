@@ -117,11 +117,11 @@ class TestFallback(Dy2StTestBase):
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
-    @test_legacy_and_pt_and_pir
     def test_case_save_error(self):
         """
         test the save will raise error.
         """
+        # TODO(pir-save-load): Open this case after pir support save and load.
         u_net = UnsupportNet()
         u_net = paddle.jit.to_static(
             u_net, input_spec=[paddle.static.InputSpec(name='x', shape=[1])]

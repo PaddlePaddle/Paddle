@@ -27,11 +27,11 @@ from typing import TYPE_CHECKING
 import opcode
 
 import paddle
+from paddle.jit.utils import OrderedSet
 
 from ...utils import (
     FallbackError,
     InnerError,
-    OrderedSet,
     ResumeFnNameFactory,
     is_clean_code,
     list_contain_by_id,
@@ -158,7 +158,7 @@ def gen_new_opcode(
     for key, val in code_options.items():
         if isinstance(val, list):
             code_options[key] = tuple(val)
-    # code_options is a dict, use keys to makesure the input order
+    # code_options is a dict, use keys to make sure the input order
     return types.CodeType(*[code_options[k] for k in keys])
 
 
@@ -878,7 +878,8 @@ class PyCodeGen:
 
     def gen_call_function(self, argc=0):
         if sys.version_info >= (3, 11):
-            self._add_instr("PRECALL", arg=argc, argval=argc)
+            if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+                self._add_instr("PRECALL", arg=argc, argval=argc)
             self._add_instr("CALL", arg=argc, argval=argc)
         else:
             self._add_instr("CALL_FUNCTION", arg=argc, argval=argc)
@@ -891,7 +892,8 @@ class PyCodeGen:
 
     def gen_call_method(self, argc=0):
         if sys.version_info >= (3, 11):
-            self._add_instr("PRECALL", arg=argc, argval=argc)
+            if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+                self._add_instr("PRECALL", arg=argc, argval=argc)
             self._add_instr("CALL", arg=argc, argval=argc)
         else:
             self._add_instr("CALL_METHOD", arg=argc, argval=argc)

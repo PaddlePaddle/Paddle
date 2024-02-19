@@ -25,17 +25,22 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
+#endif
 namespace pir {
 
 std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
@@ -476,7 +481,9 @@ void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+#ifdef PADDLE_WITH_DNNL
+  ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
+#endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
   auto* last_op = group_ops.back();

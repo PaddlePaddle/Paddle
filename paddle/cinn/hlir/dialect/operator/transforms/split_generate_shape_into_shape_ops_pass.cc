@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -24,12 +23,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -52,6 +52,8 @@ using TensorDim = std::variant<TensorDimInShape, TensorDimInData>;
 using TensorDim4SymbolNameT =
     std::function<std::optional<TensorDim>(const std::string& symbol_name)>;
 
+using SymbolName2CachedValue = std::unordered_map<symbol::DimExpr, pir::Value>;
+
 struct CachedDimExprToValueConverter {
   CachedDimExprToValueConverter(
       const TensorDim4SymbolNameT& TensorDim4SymbolNameVal,
@@ -61,24 +63,22 @@ struct CachedDimExprToValueConverter {
   TensorDim4SymbolNameT TensorDim4SymbolName;
   pir::PatternRewriter* rewriter;
 
-  // TODO(): Refactor to cached version if std::hash<symbol::DimExpr>() is
-  // ready. std::unordered_map<symbol::DimExpr, pir::Value>
-  // symbol_names2cached_value_;
-
   pir::Value ConvertToValue(const symbol::DimExpr& dim_expr) {
-    // TODO():  cache the returned value if std::hash<symbol::DimExpr>() is
-    // ready
-    return std::visit(
-        [&](const auto& impl) { return ConvertToValueImpl(impl); },
-        dim_expr.variant());
+    pir::Value value =
+        std::visit([&](const auto& impl) { return ConvertToValueImpl(impl); },
+                   dim_expr.variant());
+    return value;
   }
 
   pir::Value GetInputShapeByInputTensor(pir::Value input_tensor) {
     auto iter = tensor2shape_.find(input_tensor);
     if (iter == tensor2shape_.end()) {
-      pir::Value input_shape =
+      pir::Value shape =
           rewriter->Build<paddle::dialect::ShapeOp>(input_tensor).out();
-      iter = tensor2shape_.emplace(input_tensor, input_shape).first;
+      pir::Value cast_shape =
+          rewriter->Build<paddle::dialect::CastOp>(shape, phi::DataType::INT64)
+              .out();
+      iter = tensor2shape_.emplace(input_tensor, cast_shape).first;
     }
     return iter->second;
   }
@@ -219,7 +219,7 @@ struct CachedDimExprToValueConverter {
 class SplitGenerateShapeIntoShapeOps
     : public pir::OpRewritePattern<cinn::dialect::GenerateShapeOp> {
  public:
-  using pir::OpRewritePattern<cinn::dialect::GenerateShapeOp>::OpRewritePattern;
+  using OpRewritePattern<cinn::dialect::GenerateShapeOp>::OpRewritePattern;
 
   bool MatchAndRewrite(cinn::dialect::GenerateShapeOp op,
                        pir::PatternRewriter& rewriter) const override {
@@ -227,6 +227,9 @@ class SplitGenerateShapeIntoShapeOps
         GetOutReplacement(op, &rewriter);
     if (!out_replacement.has_value()) return false;
     rewriter.ReplaceAllUsesWith(op->result(0), out_replacement.value());
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
     return true;
   }
 
@@ -330,8 +333,10 @@ class SplitGenerateShapeIntoShapeOps
       CachedDimExprToValueConverter* converter) const {
     const std::vector<pir::Value>& values_from_dim_exprs =
         GetValuesOfRewritedOps(dim_exprs, converter);
-    return converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
-        .out();
+    if (values_from_dim_exprs.size() == 1) return values_from_dim_exprs.at(0);
+    pir::Value vec =
+        converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs).out();
+    return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
   }
 
   std::vector<pir::Value> GetValuesOfRewritedOps(
@@ -339,7 +344,7 @@ class SplitGenerateShapeIntoShapeOps
       CachedDimExprToValueConverter* converter) const {
     std::vector<pir::Value> ret;
     for (const auto& dim_expr : dim_exprs) {
-      const auto& simplified = cinn::common::SimplifyDimExpr(dim_expr);
+      const auto& simplified = symbol::SimplifyDimExpr(dim_expr);
       pir::Value value = converter->ConvertToValue(simplified);
       ret.push_back(value);
     }
@@ -353,13 +358,12 @@ SplitGenerateShapeIntoShapeOpsPass::SplitGenerateShapeIntoShapeOpsPass()
 pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
-  // elementwise ops
   ps.Add<SplitGenerateShapeIntoShapeOps>(context);
   return ps;
 }
 
 bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return op->num_regions() > 0;
 }
 
 }  // namespace ir

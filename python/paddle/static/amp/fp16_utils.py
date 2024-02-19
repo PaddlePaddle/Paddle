@@ -185,9 +185,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-            op, in_name
-        ):
+        if src_dtype == paddle.float32 and _keep_fp32_input(op, in_name):
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -210,10 +208,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     # set cast_op device to `all`, can reduce send cast_var.
                     # TODO: need remove this after we unified the dynamic
                     # and static pipeline interface.
-                    if (
-                        src_dtype == core.VarDesc.VarType.FP32
-                        and in_var.stop_gradient
-                    ):
+                    if src_dtype == paddle.float32 and in_var.stop_gradient:
                         prev_op = None
                         if in_var.op is op:
                             prev_op = find_true_prev_op(
@@ -527,7 +522,7 @@ def get_promote_dtype(op, amp_dtype, block):
         if in_name:
             for in_var_name in op.input(in_name):
                 in_var = block._find_var_recursive(in_var_name)
-                if in_var and in_var.dtype == core.VarDesc.VarType.FP32:
+                if in_var and in_var.dtype == paddle.float32:
                     dst_dtype = core.VarDesc.VarType.FP32
                     break
         else:
@@ -915,7 +910,7 @@ def cast_parameters_to_fp16(
             if var_scope.find_var(param.name):
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)
-                if dest_type == core.VarDesc.VarType.BF16:
+                if dest_type == paddle.bfloat16:
                     p_array = _convert_float_to_bfloat16(place, data)
                     param_t.set(p_array, place)
                 else:
@@ -952,7 +947,7 @@ def update_role_var_grad(main_prog, params_grads):
     OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for p, g in params_grads:
         op = g.op
-        if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+        if g.dtype == paddle.float32 and op.type == 'cast':
             role = op.attr('op_role')
             if role & int(BACKWARD) and op.has_attr('op_role_var'):
                 op._remove_attr("op_role_var")

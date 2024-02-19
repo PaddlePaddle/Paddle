@@ -43,7 +43,7 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
   auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto grads = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
-  std::string accesor = ctx.Attr<std::string>("AccessorClass");
+  std::string accessor = ctx.Attr<std::string>("AccessorClass");
   bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");
   uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   const std::string& label_name = ctx.Attr<std::string>("CtrLabelName");
@@ -58,7 +58,7 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
                                                 fea_dim,
                                                 padding_id,
                                                 scale_sparse,
-                                                accesor,
+                                                accessor,
                                                 label_name,
                                                 ctx.GetPlace(),
                                                 input_names,
