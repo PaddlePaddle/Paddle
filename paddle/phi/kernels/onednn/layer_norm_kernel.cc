@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,17 +54,18 @@ class LayerNormOneDNNHandler
     return std::make_tuple(scale_memory, shift_memory);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
-    float* mean_data = mean->mutable_data<float>(
-        this->place_, this->fwd_pd_->mean_desc().get_size());
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(const OneDNNContext& dev_ctx,
+                                                  phi::DenseTensor* mean) {
+    float* mean_data = dev_ctx.template Alloc<float>(
+        mean, this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             mean_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      phi::DenseTensor* variance) {
-    float* variance_data = variance->mutable_data<float>(
-        this->place_, this->fwd_pd_->variance_desc().get_size());
+      const OneDNNContext& dev_ctx, phi::DenseTensor* variance) {
+    float* variance_data = dev_ctx.template Alloc<float>(
+        variance, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
                                             variance_data);
   }
@@ -115,8 +116,8 @@ void LayerNormKernel(const Context& dev_ctx,
                                                 {DNNL_ARG_DST, *dst_memory}};
 
   if (!is_test) {
-    auto mean_memory = handler.AcquireMeanMemory(mean);
-    auto variance_memory = handler.AcquireVarianceMemory(var);
+    auto mean_memory = handler.AcquireMeanMemory(dev_ctx, mean);
+    auto variance_memory = handler.AcquireVarianceMemory(dev_ctx, var);
 
     args.insert({DNNL_ARG_MEAN, *mean_memory});
     args.insert({DNNL_ARG_VARIANCE, *variance_memory});
