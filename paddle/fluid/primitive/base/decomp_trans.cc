@@ -51,6 +51,9 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
 }
 
 static const phi::DDim& GetValueDims(pir::Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {
@@ -339,7 +342,7 @@ void DecompProgram::decomp_block(
         check_decomp_dynamic_shape(op)) {
       enable_prim = false;
     }
-    if (check_decomp_dynamic_shape(op) &&
+    if (enable_prim && check_decomp_dynamic_shape(op) &&
         dynamic_shape_blacklist.find(op->name()) !=
             dynamic_shape_blacklist.end()) {
       enable_prim = false;
