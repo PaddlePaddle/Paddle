@@ -329,7 +329,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     if in_pir_mode():
         assert (
             backward_fn is None
-        ), "backward_fn should be None in pir mode **Now**"
+        ), "backward_fn should be None in pir mode Now. We will support it soon."
 
         pylayer_op = build_pylayer_op(inputs)
         if forward_fn is not None:

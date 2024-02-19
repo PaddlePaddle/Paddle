@@ -46,9 +46,6 @@ class PyLayerInstruction : public InstructionBase {
 
   PirInterpreter* ForwardInterpreter() const { return fwd_inter_; }
 
-  // TODO(MarioLulab)
-  //  PirInterpreter* BackwardInterpreter() const { return bwd_inter_; }
-
  private:
   ::pir::Operation* op_;
 
@@ -58,13 +55,7 @@ class PyLayerInstruction : public InstructionBase {
 
   PirInterpreter* fwd_inter_ = nullptr;
 
-  // TODO(MarioLulab):
-  //  PirInterpreter* bwd_inter_ = nullptr;
-
   std::vector<std::string> fwd_outputs_;
-
-  // TODO(MarioLulab):
-  //  std::vector<std::string> bwd_outputs_;
 
   std::vector<std::string> fwd_skip_gc_names_;
 };

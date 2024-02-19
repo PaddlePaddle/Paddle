@@ -310,18 +310,16 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
                       pir::Value combined_inputs,
                       std::vector<pir::Type> &&output_types) {
-  VLOG(4) << "Start to build PyLayerOp";
   argument.AddInput(combined_inputs);
   argument.output_types.swap(output_types);
   argument.AddRegion().emplace_back();
-  VLOG(4) << "Finish to build PyLayerOp";
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
                       pir::Value combined_inputs,
                       std::unique_ptr<pir::Block> &&fwd_block) {
-  VLOG(4) << "Start build IfOp";
+  VLOG(4) << "Start build PyLayerOp";
   if (fwd_block && !fwd_block->empty() &&
       fwd_block->back().isa<pir::YieldOp>()) {
     auto &op = fwd_block->back();

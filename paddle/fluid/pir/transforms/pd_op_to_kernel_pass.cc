@@ -1242,7 +1242,6 @@ void HandleForPyLayerOp(
 
   // process sub block
   auto& fwd_block = new_pylayerop.forward_block();
-  // (TODO: MarioLulab)Do we really need to set `for_if_block` = True ?
   ProcessBlock(place,
                &old_pylayerop.forward_block(),
                &fwd_block,

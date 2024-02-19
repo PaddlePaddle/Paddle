@@ -50,7 +50,6 @@ PyLayerInstruction::PyLayerInstruction(
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
-  // TODO(MarioLulab)
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
                  phi::errors::PreconditionNotMet(
                      "Cond instruction only support pylayer op"));
