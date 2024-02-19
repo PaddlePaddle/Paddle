@@ -186,8 +186,8 @@ class TestStatic(Dy2StTestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
             else:
@@ -208,7 +208,7 @@ class TestStatic(Dy2StTestBase):
             sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[x, out])
 
 

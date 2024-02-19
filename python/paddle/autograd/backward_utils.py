@@ -168,7 +168,7 @@ class ValueSet:
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a block, if block has parent block,
+    one state must be binding with a block, if block has parent block,
     state will include parent block info.
 
     """
@@ -319,7 +319,7 @@ def inverse_sort_op(ops):
 
     '''
 
-    # init pending_count[op] which descibes number of
+    # init pending_count[op] which describes number of
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
@@ -381,7 +381,7 @@ def inverse_sort_op(ops):
 
 def is_inplace_net(op_list):
     '''
-    when program has inpalce op , it's difficult to find the actual pending_count.
+    when program has inplace op , it's difficult to find the actual pending_count.
     '''
     for op in op_list:
         if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
@@ -442,7 +442,7 @@ def all_stop_gradient_true(block):
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
+    (sub block nest should Add on demand to avoid block copy)
     '''
     total_ops = []
     if block.parent_block is not None:

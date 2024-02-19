@@ -416,7 +416,7 @@ void CleanIndividualNodes(Graph *graph) {
   }
 }
 
-std::vector<Node *> TopologyVarientSort(const Graph &graph,
+std::vector<Node *> TopologyVariantSort(const Graph &graph,
                                         SortKind sort_kind) {
   switch (sort_kind) {
     case SortKind::TS:
@@ -788,7 +788,7 @@ static void GraphToBlock(const Graph &graph,
   std::vector<Node *> nodes;
   if (sort_kind != nullptr) {
     // Inference Memory Optimize relays on this branch.
-    nodes = TopologyVarientSort(graph, *sort_kind);
+    nodes = TopologyVariantSort(graph, *sort_kind);
   } else {
     if (FLAGS_convert_all_blocks) {
       nodes = TopologySortGraphByDescOrder(graph);
