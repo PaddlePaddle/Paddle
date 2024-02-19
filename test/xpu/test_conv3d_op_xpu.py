@@ -163,14 +163,14 @@ def conv3d_forward_naive(
 
 
 def create_test_padding_SAME_class(parent):
-    class TestPaddingSMAECase(parent):
+    class TestPaddingSAMECase(parent):
         def init_paddings(self):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
-    TestPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingSMAECase
+    TestPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestPaddingSAMECase
 
 
 def create_test_padding_VALID_class(parent):
