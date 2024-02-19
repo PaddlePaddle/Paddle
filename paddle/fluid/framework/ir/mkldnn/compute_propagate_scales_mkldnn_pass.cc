@@ -99,7 +99,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
     const int axis,
     StringPairMap* var_quant_scales) const {
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     auto* op_desc = op_node->Op();
@@ -208,7 +208,7 @@ void ComputePropagateScalesMkldnnPass::ComputeGruWeightScales(
     const std::string& wh_name,
     StringPairMap* var_quant_scales) const {
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     auto* op_desc = op_node->Op();
@@ -286,7 +286,7 @@ void ComputePropagateScalesMkldnnPass::ComputeLstmWeightScales(
     const std::string& wh_name,
     StringPairMap* var_quant_scales) const {
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     auto* op_desc = op_node->Op();
@@ -384,7 +384,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
     const std::unordered_set<std::string>& scale_immutable_ops) const {
   std::unordered_set<std::string> waiting_for_scale{};
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
 
     const auto op_name = op_node->Name();
@@ -437,7 +437,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
 void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
     ir::Graph* graph, StringPairMap* var_quant_scales) const {
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
     auto op = op_node->Op();
     bool is_unsigned = false;

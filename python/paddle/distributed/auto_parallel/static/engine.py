@@ -45,7 +45,7 @@ from .cluster import Cluster, get_default_cluster
 from .converter import Converter
 from .cost.estimate_cost import get_cost_from_engine
 from .dist_context import DistributedContext, get_default_distributed_context
-from .dist_input_spec import DistrubutedInputSpec
+from .dist_input_spec import DistributedInputSpec
 from .dist_loader import (
     DistributedDataLoader,
     DistributedDataLoaderFromGenerator,
@@ -294,14 +294,14 @@ class Engine:
                 assert item is not None, "Receive None input."
                 name = "input" + str(i)
                 inputs_spec.append(
-                    DistrubutedInputSpec.from_dtensor(item, name)
+                    DistributedInputSpec.from_dtensor(item, name)
                 )
         if labels is not None:
             for i, item in enumerate(labels):
                 assert item is not None, "Receive None input."
                 name = "label" + str(i)
                 labels_spec.append(
-                    DistrubutedInputSpec.from_dtensor(item, name)
+                    DistributedInputSpec.from_dtensor(item, name)
                 )
 
         inputs_spec = self._validate_spec(inputs_spec)
@@ -626,7 +626,7 @@ class Engine:
         self._has_prepared[mode] = True
 
     def _process_dist_input_specs(self):
-        if isinstance(self._inputs_spec[0], DistrubutedInputSpec):
+        if isinstance(self._inputs_spec[0], DistributedInputSpec):
 
             def _create_dist_input_var(input_var, input_spec):
                 dist_tensor = DistributedTensor(input_var)
@@ -1838,10 +1838,10 @@ class Engine:
         if specs is not None:
             for i, spec in enumerate(specs):
                 if not isinstance(spec, InputSpec) and not isinstance(
-                    spec, DistrubutedInputSpec
+                    spec, DistributedInputSpec
                 ):
                     raise TypeError(
-                        "'spec' must be object of class `paddle.static.InputSpec` or `DistrubutedInputSpec`."
+                        "'spec' must be object of class `paddle.static.InputSpec` or `DistributedInputSpec`."
                     )
                 if spec.name is None:
                     raise ValueError(
