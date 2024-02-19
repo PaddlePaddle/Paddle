@@ -150,13 +150,14 @@ def _select_sdp(head_dim):
 
 def set_flash_attn_lib():
     global g_enable_flash_attn_advanced
-    package_path = importlib.util.find_spec(
-        'paddle_flash_attn'
-    ).submodule_search_locations[0]
-    lib_dir = os.path.sep.join([package_path, 'lib'])
-    if os.path.exists(lib_dir):
-        paddle.base.core._set_falsh_attn_lib_path(lib_dir)
-        g_enable_flash_attn_advanced = True
+    package_path = importlib.util.find_spec('paddle_flash_attn')
+    if package_path is not None:
+        lib_dir = os.path.sep.join(
+            [package_path.submodule_search_locations[0], 'lib']
+        )
+        if os.path.exists(lib_dir):
+            paddle.base.core._set_falsh_attn_lib_path(lib_dir)
+            g_enable_flash_attn_advanced = True
 
 
 set_flash_attn_lib()
