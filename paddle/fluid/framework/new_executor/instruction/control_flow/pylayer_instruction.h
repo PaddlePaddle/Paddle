@@ -50,9 +50,6 @@ class PyLayerInstruction : public InstructionBase {
   //  PirInterpreter* BackwardInterpreter() const { return bwd_inter_; }
 
  private:
-  void CopyBranchOutput(const std::vector<std::string>& var_names,
-                        const PirInterpreter* inter);
-
   ::pir::Operation* op_;
 
   std::string name_{"pylayer_instruction"};
@@ -69,7 +66,7 @@ class PyLayerInstruction : public InstructionBase {
   // TODO(MarioLulab):
   //  std::vector<std::string> bwd_outputs_;
 
-  std::vector<std::string> fwd_gc_names_;
+  std::vector<std::string> fwd_skip_gc_names_;
 };
 
 }  // namespace framework

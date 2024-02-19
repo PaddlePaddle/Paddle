@@ -45,10 +45,12 @@ namespace framework {
 
 class IfInstruction;
 class WhileInstruction;
+class PyLayerInstruction;
 class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class PyLayerInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 

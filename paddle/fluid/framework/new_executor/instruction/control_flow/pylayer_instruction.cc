@@ -36,10 +36,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
-// TODO(MarioLulab): To Support MKL-DNN
-// #ifdef PADDLE_WITH_DNNL
-// #include "paddle/fluid/platform/mkldnn_helper.h"
-// #endif
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -52,6 +51,124 @@ PyLayerInstruction::PyLayerInstruction(
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place) {
   // TODO(MarioLulab)
+  PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
+                 phi::errors::PreconditionNotMet(
+                     "Cond instruction only support pylayer op"));
+  auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
+  op_ = op;
+
+  SetKernelType(AnalyseOpFuncType(op, place));
+  VLOG(6) << "finish process analyse kernel type";
+
+  for (size_t i = 0; i < pylayer_op.num_results(); ++i) {
+    output_vars_.push_back(value_exec_info->GetScope()->GetVar(
+        value_exec_info->GetValue2VarName().at(pylayer_op.result(i))));
+  }
+  VLOG(6) << "finish process output_vars";
+
+  auto& fwd_block = pylayer_op.forward_block();
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  GetInputIds(op, *value_exec_info, &inputs);
+  auto fwd_outside_inputs =
+      GetExternalInputs(&fwd_block, *value_exec_info, &inputs);
+
+  // NOTE(chenxi67): the variable corresponding to container value if a
+  // <VariableRefArray> Type. It will recursively get the ID of internal
+  // variables when use GetValueId() method. However, the copy_var pushed into
+  // the tuple does not have a corresponding ID, and will insert a -1. Here we
+  // remove the value of -1.
+  for (auto& item : inputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+  SetInputs(inputs);
+
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    pir::Value value = op->result(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_EQ(
+          value_exec_info->HasValue(value),
+          true,
+          phi::errors::PreconditionNotMet(
+              "output should in name map, [%d] 'th output of [%s] op",
+              i,
+              "pylayer op"));
+      outputs.emplace(value, GetValueIds(value, *value_exec_info));
+    }
+  }
+
+  for (auto& item : outputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  SetOutputs(outputs);
+  VLOG(6) << "finish process inputs outputs index";
+
+  Scope* fwd_scope = &(value_exec_info->GetScope()->NewScope());
+  auto skip_gc_vars = execution_config.skip_gc_vars;
+  execution_config.skip_gc_vars.clear();
+  execution_config.create_local_scope = true;
+  fwd_inter_ = new PirInterpreter(place,
+                                  {},
+                                  &fwd_block,
+                                  fwd_scope,
+                                  value_exec_info->NewChild(fwd_scope),
+                                  execution_config);
+
+  std::set<std::string> fwd_skip_gc_names_set;
+  for (auto value : GetYiedOpInputs(&fwd_block)) {
+    fwd_outputs_.push_back(fwd_inter_->GetNameByValue(value));
+    fwd_skip_gc_names_.push_back(fwd_inter_->GetNameByValue(value));
+    fwd_skip_gc_names_set.insert(fwd_inter_->GetNameByValue(value));
+  }
+
+  // NOTE(zhangbo): According to the concept of control flow, child scopes
+  // should not control the lifecycle of parent scope variables.
+  for (auto value : fwd_outside_inputs) {
+    fwd_skip_gc_names_.push_back(fwd_inter_->GetNameByValue(value));
+    fwd_skip_gc_names_set.insert(fwd_inter_->GetNameByValue(value));
+  }
+  for (const auto& var_name : skip_gc_vars) {
+    fwd_skip_gc_names_.push_back(var_name);
+    fwd_skip_gc_names_set.insert(var_name);
+  }
+
+  fwd_inter_->SetSkipGcVars(fwd_skip_gc_names_set);
+  VLOG(6) << "finish process forward block interpreter";
 }
+
+PyLayerInstruction::~PyLayerInstruction() {
+  if (fwd_inter_ != nullptr) {
+    delete fwd_inter_;
+  }
+}
+
+void PyLayerInstruction::Run() {
+  VLOG(6) << "start pylayer forward block interpreter";
+
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  paddle::platform::DontClearMKLDNNCache(fwd_inter_->GetPlace());
+#endif
+  fwd_inter_->Run({}, false);
+  CopyBranchOutput(fwd_outputs_, output_vars_, fwd_inter_->InnerScope());
+}
+
 }  // namespace framework
 }  // namespace paddle
