@@ -596,6 +596,7 @@ class DistForwardAPI(ForwardAPI):
     def need_to_generate_code_for_inplace_impl(self, i):
         return (
             self.inplace_flag
+            and self.kernel['func'][0] != 'full'
             and self.inplace_map is not None
             and self.outputs['names'][i] in self.inplace_map
         )
