@@ -57,10 +57,12 @@ class GroupScheduler {
  public:
   GroupScheduler(ir::IRSchedule* ir_sch,
                  const std::unordered_set<std::string>& output_tensor_names,
-                 const cinn::common::Target& target)
+                 const cinn::common::Target& target,
+                 std::shared_ptr<GroupTileInfo> group_tile_info)
       : ir_sch_(ir_sch),
         output_tensor_names_(output_tensor_names),
-        target_(target) {
+        target_(target),
+        group_tile_info_(group_tile_info) {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
   }
 
@@ -79,6 +81,12 @@ class GroupScheduler {
 
   std::unordered_set<std::string> OutputTensorNames() const;
 
+  void LoopReorderAligment();
+
+  void Tiling();
+
+  bool NeedOrderLoops();
+
  protected:
   ir::IRSchedule* ir_sch_;
   const std::unordered_set<std::string>& output_tensor_names_;
@@ -86,6 +94,8 @@ class GroupScheduler {
   // Graph in units of ScheduleBlockNode, each node corresponds to a
   // ScheduleBlock in IR.
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
+
+  std::shared_ptr<GroupTileInfo> group_tile_info_;
 };
 
 }  // namespace ir

@@ -30,8 +30,7 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
       const std::unordered_set<std::string>& output_tensor_names,
       const cinn::common::Target& target,
       std::shared_ptr<GroupTileInfo> group_tile_info)
-      : GroupScheduler(ir_sch, output_tensor_names, target),
-        group_tile_info_(group_tile_info) {
+      : GroupScheduler(ir_sch, output_tensor_names, target, group_tile_info) {
     Init();
   }
 
@@ -50,12 +49,6 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   void Init();
 
   void InitBuckets();
-
-  void LoopReorderAligment();
-
-  void Tiling();
-
-  bool NeedOrderLoops();
 
   void ApplyTactics(BucketContext* bucket_context);
 
