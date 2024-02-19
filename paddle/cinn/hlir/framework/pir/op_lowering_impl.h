@@ -27,7 +27,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
 // Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.

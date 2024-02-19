@@ -139,9 +139,9 @@ class TestProgram(unittest.TestCase):
 
 def build_program():
     main_program = paddle.static.Program()
-    startuo_program = paddle.static.Program()
+    startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startuo_program):
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[3, 2, 1])
             out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
     return main_program
@@ -176,9 +176,9 @@ class TestProgramProto(unittest.TestCase):
 class TestProgramHash(unittest.TestCase):
     def build_program(self):
         main_program = paddle.static.Program()
-        startuo_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
         with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startuo_program):
+            with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data(name='x', shape=[3, 2, 1])
                 out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
         return main_program

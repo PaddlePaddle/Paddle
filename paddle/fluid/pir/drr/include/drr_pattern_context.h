@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace drr {
@@ -105,7 +106,7 @@ class DrrPatternContext {
   DrrPatternContext();
   ~DrrPatternContext() = default;
 
-  drr::SourcePattern SourcePattern();
+  TEST_API drr::SourcePattern SourcePattern();
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph() const {
     return source_pattern_graph_;
@@ -121,19 +122,20 @@ class DrrPatternContext {
   friend class drr::SourcePattern;
   friend class drr::ResultPattern;
 
-  const Op& SourceOpPattern(
+  TEST_API const Op& SourceOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& SourceTensorPattern(const std::string& name);
+  TEST_API const drr::Tensor& SourceTensorPattern(const std::string& name);
 
-  const Op& ResultOpPattern(
+  TEST_API const Op& ResultOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  drr::Tensor& ResultTensorPattern(const std::string& name);
+  TEST_API drr::Tensor& ResultTensorPattern(const std::string& name);
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
+  TEST_API void RequireEqual(const TensorDataType& first,
+                             const TensorDataType& second);
   void RequireNativeCall(const ConstraintFunction& custom_fn);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
@@ -147,17 +149,17 @@ class Op {
  public:
   const std::string& name() const { return op_type_name_; }
 
-  void operator()(const Tensor& arg, const Tensor* out) const;
+  TEST_API void operator()(const Tensor& arg, const Tensor* out) const;
 
-  Tensor& operator()() const;
+  TEST_API Tensor& operator()() const;
 
-  Tensor& operator()(const Tensor& arg) const;
-  Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
+  TEST_API Tensor& operator()(const Tensor& arg) const;
+  TEST_API Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
   Tensor& operator()(const Tensor& arg0,
                      const Tensor& arg1,
                      const Tensor& arg2) const;
-  void operator()(const std::vector<const Tensor*>& args,
-                  const std::vector<const Tensor*>& outputs) const;
+  TEST_API void operator()(const std::vector<const Tensor*>& args,
+                           const std::vector<const Tensor*>& outputs) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
   // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
   // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
@@ -190,17 +192,20 @@ class Op {
 
 class Tensor {
  public:
-  static const char NONE_TENSOR_NAME[];
+  static const char INPUT_NONE_TENSOR_NAME[];
+  static const char OUTPUT_NONE_TENSOR_NAME[];
 
   TensorShape shape() const { return TensorShape(name()); }
 
   TensorDataType dtype() const { return TensorDataType(name()); }
 
-  bool is_none() const { return name_ == NONE_TENSOR_NAME; }
+  bool is_none() const {
+    return name_ == INPUT_NONE_TENSOR_NAME || name_ == OUTPUT_NONE_TENSOR_NAME;
+  }
 
-  void Assign(const Tensor& other);
+  TEST_API void Assign(const Tensor& other);
 
-  void operator=(const Tensor& other) const;  // NOLINT
+  TEST_API void operator=(const Tensor& other) const;  // NOLINT
 
   const std::string& name() const { return name_; }
 
@@ -211,10 +216,6 @@ class Tensor {
   void set_producer(OpCall* producer) { producer_ = producer; }
 
   const std::vector<const OpCall*>& consumers() const { return consumers_; }
-
-  void set_consumables(const std::vector<const OpCall*>& consumers) {
-    consumers_ = consumers;
-  }
 
   void AddConsumer(const OpCall* consumer) { consumers_.push_back(consumer); }
 
@@ -274,11 +275,21 @@ class ResultPattern {
   // Example:
   // instance_norm has follow input tensor : (x, scale, bias), scale and
   // bias are optional(means it may be none).
-  // When scale is onoe, we can write a instance_norm op in drr as follow:
-  // res.Op("instance_norm")(res.Tensor("x"), res.NoneTensor,
+  // When scale is none, we can write a instance_norm op in drr as follow:
+  // res.Op("instance_norm")(res.Tensor("x"), res.InputNoneTensor(),
   // res.Tensor("bias"));
-  drr::Tensor& NoneTensor() {
-    return ctx_->ResultTensorPattern(Tensor::NONE_TENSOR_NAME);
+  drr::Tensor& InputNoneTensor() {
+    return ctx_->ResultTensorPattern(Tensor::INPUT_NONE_TENSOR_NAME);
+  }
+
+  // Represent the output tensor which is none.
+  // Example:
+  // reshape has follow output tensor : (out, xshape), xshape is optional(means
+  // it may be none). We can write a reshape op in drr as follow:
+  // res.Op("reshape")({res.Tensor("x")}, {res.Tensor("out"),
+  // res.OutputNoneTensor()});
+  drr::Tensor& OutputNoneTensor() {
+    return ctx_->ResultTensorPattern(Tensor::OUTPUT_NONE_TENSOR_NAME);
   }
 
   Attribute StrAttr(const std::string& value) const {

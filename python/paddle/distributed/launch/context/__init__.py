@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 from paddle.distributed.launch import plugins
 
+from .args_envs import env_args_mapping, fetch_envs, parse_args
 from .node import Node
 from .status import Status
-from .args_envs import parse_args, fetch_envs, env_args_mapping
-
-import logging
 
 
 class Context:

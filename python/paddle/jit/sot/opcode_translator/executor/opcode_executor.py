@@ -561,8 +561,10 @@ class OpcodeExecutorBase:
             print(log_message)
             breakpoint()  # noqa: T100
 
-        opname = instr.opname if instr.opname != "PRECALL" else "PRECALL__CALL"
-        assert opname != "CALL", "CALL should fused with PRECALL"
+        opname = instr.opname
+        if sys.version_info < (3, 12):
+            opname = opname if opname != "PRECALL" else "PRECALL__CALL"
+            assert opname != "CALL", "CALL should fused with PRECALL"
         with EventGuard(f"{opname}", event_level=2):
             return getattr(self, opname)(instr)  # run single step.
 
@@ -717,7 +719,14 @@ class OpcodeExecutorBase:
 
     @call_break_graph_decorator(push_n=1)
     def LOAD_ATTR(self, instr: Instruction):
-        attr_name = self._code.co_names[instr.arg]
+        if sys.version_info >= (3, 12):
+            assert isinstance(instr.arg, int)
+            attr_name = self._code.co_names[instr.arg >> 1]
+            if instr.arg & 1:
+                self.load_method(attr_name)
+                return
+        else:
+            attr_name = self._code.co_names[instr.arg]
         attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
         obj = self.stack.pop()
         self.stack.push(
@@ -779,8 +788,7 @@ class OpcodeExecutorBase:
             raise InnerError(f"{name} not in globals and builtins")
         self.stack.push(value)
 
-    def LOAD_METHOD(self, instr: Instruction):
-        method_name = self._code.co_names[instr.arg]
+    def load_method(self, method_name):
         method_name_var = ConstantVariable.wrap_literal(
             method_name, self._graph
         )
@@ -801,6 +809,10 @@ class OpcodeExecutorBase:
             # unbound method, push the dummy and the function
             self.stack.push(NullVariable())
             self.stack.push(method)
+
+    def LOAD_METHOD(self, instr: Instruction):
+        method_name = self._code.co_names[instr.arg]
+        self.load_method(method_name)
 
     @call_break_graph_decorator(push_n=0)
     def STORE_ATTR(self, instr: Instruction):

@@ -17,7 +17,7 @@
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace primitive {

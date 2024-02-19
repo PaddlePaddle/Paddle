@@ -469,28 +469,28 @@ def parse_args():
         '--src_mp',
         type=int,
         default=2,
-        help='mp degree of the origin training task that dumpped this model',
+        help='mp degree of the origin training task that dumped this model',
     )
 
     parser.add_argument(
         '--src_pp',
         type=int,
         default=2,
-        help='pp degree of the origin training task that dumpped this model',
+        help='pp degree of the origin training task that dumped this model',
     )
 
     parser.add_argument(
         '--src_vp',
         type=int,
         default=2,
-        help='vp degree of the origin training task that dumpped this model',
+        help='vp degree of the origin training task that dumped this model',
     )
 
     parser.add_argument(
         '--dst_mp',
         type=int,
         default=None,
-        help='mp degree of the origin training task that dumpped this model',
+        help='mp degree of the origin training task that dumped this model',
     )
 
     parser.add_argument(
@@ -511,7 +511,7 @@ def parse_args():
         '--sharding',
         type=int,
         default=1,
-        help=" sharding degree of both the origin training task that dumpped this model and the expected training task that would recover this model",
+        help=" sharding degree of both the origin training task that dumped this model and the expected training task that would recover this model",
     )
 
     parser.add_argument(
