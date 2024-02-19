@@ -31,6 +31,7 @@ const size_t& SelectedRowsType::offset() const { return storage()->offset_; }
 const pir::Type& DenseTensorArrayType::dtype() const {
   return storage()->dtype_;
 }
+const phi::DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
 
 const phi::DataLayout& DenseTensorArrayType::data_layout() const {
   return storage()->layout_;

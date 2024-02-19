@@ -18,14 +18,14 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_attribute_storage.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/parser/ir_parser.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute_storage.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/utils.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
@@ -102,7 +102,7 @@ TEST(IrParserTest, AddAttribute) {
   std::string op_str =
       "(%0) = \"builtin.parameter\" () "
       "{parameter_name:\"conv2d_0.w_0\",test:(tp.char)a} : () -> "
-      "pd_op.tensor<64x3x7x7xf32>\n";
+      "pd_op.tensor<64x3x7x7xf32>";
   std::stringstream ss;
   ss << op_str;
   pir::IrParser* parser = new pir::IrParser(ctx, ss);

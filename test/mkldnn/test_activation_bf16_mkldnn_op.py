@@ -189,6 +189,7 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "relu6"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.clip(x, 0, 6)
@@ -216,6 +217,7 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "swish"
+        self.check_pir_onednn = True
 
     def expit(self, val):
         return 1 / (1 + np.exp(-self.beta * val))

@@ -18,8 +18,8 @@
 #include <optional>
 #include <vector>
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace cinn::dialect {
 
