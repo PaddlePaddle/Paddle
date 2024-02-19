@@ -583,8 +583,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(
                 shape=self.x.shape, name='x', dtype='float32'
@@ -606,7 +606,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.0)
             sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(
                 feed={'x': self.x.numpy().astype('float32')}, fetch_list=[out]
             )
