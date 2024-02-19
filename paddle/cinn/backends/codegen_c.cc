@@ -148,8 +148,6 @@ std::string CodeGenC::GetTypeRepr(Type type) {
   }
   return str;
 }
-
-void CodeGenC::Visit(const ir::EmptyNode *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::IntImm *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::UIntImm *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::FloatImm *op) { IrPrinter::Visit(op); }

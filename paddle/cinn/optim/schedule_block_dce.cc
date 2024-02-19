@@ -46,7 +46,7 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
     std::unordered_set<int> need_remove_ids;
     for (int i = 0; i < node->stmts.size(); ++i) {
-      if (IsDeadScheduleBlock(node->stmts[i]) || IsEmptyStmt(node->stmts[i])) {
+      if (IsDeadScheduleBlock(node->stmts[i]) || IsEmptyBlock(node->stmts[i])) {
         need_remove_ids.insert(i);
       }
     }
@@ -71,7 +71,7 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
       IRMutator::Visit(&node->false_case, &node->false_case);
     }
     if (IsEmptyIf(op)) {
-      *expr = ir::EmptyNode::Make();
+      *expr = ir::Block::Make({});
     }
   }
 
@@ -79,28 +79,25 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::For>();
     CHECK(node);
     IRMutator::Visit(&(node->body), &(node->body));
-    if (IsEmptyStmt(op->body)) {
-      *expr = ir::EmptyNode::Make();
+    if (IsEmptyBlock(op->body)) {
+      *expr = ir::Block::Make({});
     }
   }
 
-  bool IsEmptyStmt(const ir::Expr& expr) {
-    if (expr.As<ir::EmptyNode>()) {
-      return true;
-    } else if (const auto* block_node = expr.As<ir::Block>()) {
-      for (const auto& stmt : block_node->stmts) {
-        if (!IsEmptyStmt(stmt)) return false;
-      }
-      return true;
+  bool IsEmptyBlock(const ir::Expr& expr) {
+    const auto* block_node = expr.As<ir::Block>();
+    if (block_node == nullptr) return false;
+    for (const auto& stmt : block_node->stmts) {
+      if (!IsEmptyBlock(stmt)) return false;
     }
-    return false;
+    return true;
   }
 
   bool IsEmptyIf(const ir::IfThenElse* node) {
     if (node->false_case.defined()) {
-      return IsEmptyStmt(node->true_case) && IsEmptyStmt(node->false_case);
+      return IsEmptyBlock(node->true_case) && IsEmptyBlock(node->false_case);
     }
-    return IsEmptyStmt(node->true_case);
+    return IsEmptyBlock(node->true_case);
   }
 
   bool IsDeadScheduleBlock(const ir::Expr& expr) {

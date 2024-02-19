@@ -62,8 +62,6 @@ NODETY_BINARY_OP_FOR_EACH(BINARY_OP_IMPL)
 #undef BINARY_OP_IMPL
 
 template <typename T>
-void IRMutator<T>::Visit(const EmptyNode *expr, T op) {}
-template <typename T>
 void IRMutator<T>::Visit(const IntImm *expr, T op) {}
 template <typename T>
 void IRMutator<T>::Visit(const UIntImm *expr, T op) {}

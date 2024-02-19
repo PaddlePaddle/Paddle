@@ -240,8 +240,6 @@ llvm::Value *CodeGenLLVM::EmitBinaryOp(llvm::Value *lhs,
   return BinOp(ops, lhs, rhs);
 }
 
-llvm::Value *CodeGenLLVM::Visit(const ir::EmptyNode *op) { return nullptr; }
-
 llvm::Value *CodeGenLLVM::Visit(const ir::IntImm *op) {
   auto *type = b_->getIntNTy(op->type().bits());
   return llvm::ConstantInt::get(type, op->value, true);
