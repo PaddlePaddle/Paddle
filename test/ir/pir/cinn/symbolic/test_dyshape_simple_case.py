@@ -43,7 +43,12 @@ class LlamaRMSNorm(nn.Layer):
         self.variance_epsilon = 1e-6
 
     def forward(self, hidden_states):
-        return hidden_states.rsqrt()
+        # return hidden_states.rsqrt()
+        variance = (hidden_states * hidden_states).sum(-1, keepdim=True) / 768
+        hidden_states = (
+            paddle.rsqrt(variance + self.variance_epsilon) * hidden_states
+        )
+        return hidden_states * self.weight
 
 
 class TestLlamaRMSNorm(unittest.TestCase):
@@ -52,7 +57,7 @@ class TestLlamaRMSNorm(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [1, 2048, 768]
+        self.shape = [2, 2048, 768]
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
@@ -60,7 +65,7 @@ class TestLlamaRMSNorm(unittest.TestCase):
         paddle.seed(2022)
         net = LlamaRMSNorm()
         input_spec = [
-            InputSpec(shape=[1, None, 768], dtype='float32'),
+            InputSpec(shape=[2, None, 768], dtype='float32'),
         ]
         net = apply_to_static(net, use_cinn, input_spec)
         net.eval()

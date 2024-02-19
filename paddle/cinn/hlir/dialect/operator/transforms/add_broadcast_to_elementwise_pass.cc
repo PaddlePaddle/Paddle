@@ -26,6 +26,8 @@
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
+#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -92,16 +94,16 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dims();
 
-  if (op->operand_source(0)
-          .type()
-          .dyn_cast<pir::ShapedTypeInterface>()
-          .IsDynamicShape() ||
-      op->operand_source(1)
-          .type()
-          .dyn_cast<pir::ShapedTypeInterface>()
-          .IsDynamicShape()) {
-    return false;
-  }
+  // if (op->operand_source(0)
+  //         .type()
+  //         .dyn_cast<pir::ShapedTypeInterface>()
+  //         .IsDynamicShape() ||
+  //     op->operand_source(1)
+  //         .type()
+  //         .dyn_cast<pir::ShapedTypeInterface>()
+  //         .IsDynamicShape()) {
+  //   return false;
+  // }
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
@@ -126,30 +128,95 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             cinn::hlir::framework::pir::GetBroadcastAxis(x_dims, output_shape),
             output_shape);
 
+        if (IsSameDim(y_dims, output_shape)) {
+          pir::ShapeConstraintIRAnalysis& shape_analysis =
+              pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+          std::cerr << " same dim with x !!!!!!!!!!!!!!\n";
+          const auto& out_shape =
+              shape_analysis.GetShapeOrDataForValue(op->result(0));
+          std::cerr << "y shape size  " << out_shape.shape().size()
+                    << std::endl;
+          for (auto& dim : out_shape.shape()) {
+            std::cerr << "dim  " << dim << std::endl;
+          }
+          std::cerr << "set " << new_transpose_op.result(0).impl() << std::endl;
+          std::cerr << "ana ptr " << &shape_analysis << std::endl;
+          shape_analysis.SetShapeOrDataForValue(new_transpose_op.result(0),
+                                                out_shape);
+          // pir::shape::SetShapeAttrForOp(
+          //       &new_transpose_op,
+          //       shape_analysis.GetShapeOrDataForValue(new_transpose_op.result(0)));
+
+          std::ostringstream attr_str;
+          attr_str << out_shape;
+          new_transpose_op->set_attribute(
+              "sym_shape_str",
+              pir::StrAttribute::get(pir::IrContext::Instance(),
+                                     attr_str.str()));
+          std::cerr << "have "
+                    << shape_analysis.HasShapeOrDataForValue(
+                           new_transpose_op.result(0))
+                    << std::endl;
+        }
+
         op->operand(0).set_source(new_transpose_op->result(0));
       }
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
-      if (auto full_op = op->operand_source(1)
-                             .defining_op()
-                             ->dyn_cast<paddle::dialect::FullOp>()) {
-        auto new_full = rewriter->Build<paddle::dialect::FullOp>(
-            output_shape,
-            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
-            full_op->attribute("dtype")
-                .dyn_cast<paddle::dialect::DataTypeAttribute>()
-                .data(),
-            full_op->attribute("place")
-                .dyn_cast<paddle::dialect::PlaceAttribute>()
-                .data());
+      // if (auto full_op = op->operand_source(1)
+      //                        .defining_op()
+      //                        ->dyn_cast<paddle::dialect::FullOp>()) {
+      //   auto new_full = rewriter->Build<paddle::dialect::FullOp>(
+      //       output_shape,
+      //       full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+      //       full_op->attribute("dtype")
+      //           .dyn_cast<paddle::dialect::DataTypeAttribute>()
+      //           .data(),
+      //       full_op->attribute("place")
+      //           .dyn_cast<paddle::dialect::PlaceAttribute>()
+      //           .data());
 
-        op->operand(1).set_source(new_full->result(0));
-      } else {
+      //   op->operand(1).set_source(new_full->result(0));
+      // } else
+      {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(1),
             cinn::hlir::framework::pir::GetBroadcastAxis(y_dims, output_shape),
             output_shape);
+
+        pir::ShapeConstraintIRAnalysis& shape_analysis =
+            pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+        std::cerr << "broadcast y !!!!!!!!!!!!!\n";
+        if (IsSameDim(x_dims, output_shape)) {
+          std::cerr << " same dim with x !!!!!!!!!!!!!!\n";
+          const auto& out_shape =
+              shape_analysis.GetShapeOrDataForValue(op->result(0));
+          std::cerr << "x shape size  " << out_shape.shape().size()
+                    << std::endl;
+          for (auto& dim : out_shape.shape()) {
+            std::cerr << "dim  " << dim << std::endl;
+          }
+          std::cerr << "set " << new_transpose_op.result(0).impl() << std::endl;
+          std::cerr << "ana ptr " << &shape_analysis << std::endl;
+          shape_analysis.SetShapeOrDataForValue(new_transpose_op.result(0),
+                                                out_shape);
+          // pir::shape::SetShapeAttrForOp(
+          //       &new_transpose_op,
+          //       shape_analysis.GetShapeOrDataForValue(new_transpose_op.result(0)));
+
+          std::ostringstream attr_str;
+          attr_str << out_shape;
+          new_transpose_op->set_attribute(
+              "sym_shape_str",
+              pir::StrAttribute::get(pir::IrContext::Instance(),
+                                     attr_str.str()));
+          std::cerr << "have "
+                    << shape_analysis.HasShapeOrDataForValue(
+                           new_transpose_op.result(0))
+                    << std::endl;
+        }
 
         op->operand(1).set_source(new_transpose_op->result(0));
       }

@@ -1168,39 +1168,36 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     std::shared_ptr<OpImpl> op_impl = nullptr;
-    if (FLAGS_cinn_bucket_compile) {
-      std::vector<Type> out_types;
-      std::vector<std::vector<ir::Dim>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      for (auto d : out_shapes[0]) {
-        std::cerr << "ddddddddd " << d << std::endl;
-      }
-      CHECK_EQ(out_types.size(), out_shapes.size());
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      auto& strategy_map =
-          Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
-      StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-      CHECK(static_cast<bool>(strategy))
-          << " cinn_op_name: " << cinn_op_name
-          << "has no CINNStrategySymbolic registered.";
-      op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
-                                                op_func_arg_tensors,
-                                                out_types,
-                                                out_shapes,
-                                                this->target_));
-    } else {
-      std::vector<Type> out_types;
-      std::vector<std::vector<int>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      VLOG(4) << "out_types.size(): " << out_types.size();
-      NodeAttr node_attrs = details::CollectAttrs(*op);
-      op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
-                                                         op_func_arg_tensors,
-                                                         out_types,
-                                                         out_shapes,
-                                                         this->target_));
+    // if (FLAGS_cinn_bucket_compile) {
+    std::vector<Type> out_types;
+    std::vector<std::vector<ir::Dim>> out_shapes;
+    CollectOutputInfo(op, &out_types, &out_shapes, group);
+    for (auto d : out_shapes[0]) {
+      std::cerr << "ddddddddd " << d << std::endl;
     }
+    CHECK_EQ(out_types.size(), out_shapes.size());
+    VLOG(4) << "out_types.size(): " << out_types.size();
+    NodeAttr node_attrs = details::CollectAttrs(*op);
+    auto& strategy_map =
+        Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
+    StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
+    CHECK(static_cast<bool>(strategy))
+        << " cinn_op_name: " << cinn_op_name
+        << "has no CINNStrategySymbolic registered.";
+    op_impl = OpStrategy::SelectImpl(strategy(
+        node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
+    // } else {
+    //   std::vector<Type> out_types;
+    //   std::vector<std::vector<int>> out_shapes;
+    //   CollectOutputInfo(op, &out_types, &out_shapes, group);
+    //   VLOG(4) << "out_types.size(): " << out_types.size();
+    //   NodeAttr node_attrs = details::CollectAttrs(*op);
+    //   op_impl = OpStrategy::SelectImpl(strategy[cinn_op](node_attrs,
+    //                                                      op_func_arg_tensors,
+    //                                                      out_types,
+    //                                                      out_shapes,
+    //                                                      this->target_));
+    // }
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);

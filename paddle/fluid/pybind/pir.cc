@@ -1573,8 +1573,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
-  pass_manager->AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  // pass_manager->AddPass(
+  //     std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
@@ -1582,13 +1582,15 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
-        std::make_unique<
-            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+        std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    // pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    // pass_manager->AddPass(
+    //     std::make_unique<
+    //         cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+    // pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());

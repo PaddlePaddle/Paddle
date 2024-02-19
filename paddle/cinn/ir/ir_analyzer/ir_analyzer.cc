@@ -126,7 +126,7 @@ Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name) {
 
 Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
   for (auto& it_expr : exprs) {
-    std::cerr << "it expr \n" << it_expr << std::endl;
+    // std::cerr << "it expr \n" << it_expr << std::endl;
     auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
         it_expr,
         [&](const Expr* x) {

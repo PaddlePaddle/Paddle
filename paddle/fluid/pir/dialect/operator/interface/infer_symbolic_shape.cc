@@ -1315,6 +1315,77 @@ bool ReduceMinOpInferSymbolicShape(
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
+bool BroadcastOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto input_value = op->operand_source(0);
+  auto broadcast_axis = GetVectorAttr(op, "broadcast_axes");
+  auto output_shape = GetVectorAttr(op, "out_shape");
+
+  auto in_dim =
+      input_value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+  if ((in_dim.size() == broadcast_axis.size())) {
+    if (broadcast_axis.size() == output_shape.size()) {
+      for (int i = 0; i < in_dim.size(); ++i) {
+        if (in_dim[i] != output_shape[i]) {
+          if (in_dim[i] != 1) {
+            PADDLE_THROW(
+                phi::errors::Unimplemented("not support source dim != 1"));
+          }
+        }
+      }
+    } else {
+      for (int i = 0; i < in_dim.size(); ++i) {
+        if (in_dim[i] != output_shape[broadcast_axis[i]]) {
+          // assume -1 == -1 for now
+          if (in_dim[i] != 1) {
+            PADDLE_THROW(
+                phi::errors::Unimplemented("not support source dim != 1"));
+          }
+        }
+      }
+    }
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "not support in_dim rank not equal broadcast axis yet"));
+  }
+
+  // TODO(zhangbopd): Need support GetShapeOrDataForValue().data() case.
+  const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
+    if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
+      std::cerr << "in shape analysis\n";
+      return shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+    }
+    std::vector<symbol::DimExpr> in_dims =
+        shape_analysis->GetShapeOrDataForValue(input_value).shape();
+
+    std::vector<symbol::DimExpr> out_dims;
+    for (size_t i = 0; i < output_shape.size(); ++i) {
+      out_dims.push_back(output_shape[i]);
+    }
+    for (size_t i = 0; i < in_dim.size(); ++i) {
+      if (output_shape[broadcast_axis[i]] == -1) {
+        out_dims[i] = in_dims[i];
+      }
+    }
+    return out_dims;
+  };
+
+  std::cerr << "result imp  " << op->result(0).impl() << std::endl;
+  std::cerr << "11 shape ana " << shape_analysis << std::endl;
+  std::cerr << "have " << shape_analysis->HasShapeOrDataForValue(op->result(0))
+            << std::endl;
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
+
+  for (auto &dim : shape_data.shape()) {
+    std::cerr << "dim11  " << dim << std::endl;
+  }
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  return true;
+}
+
 bool ReduceProdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
