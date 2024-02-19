@@ -926,14 +926,14 @@ class Engine:
                         if scope_var and buffer_tensor._is_initialized():
                             continue
                         # for amp
-                        if dest_type == core.VarDesc.VarType.BF16:
+                        if dest_type == paddle.bfloat16:
                             buffer_tensor.set(
                                 _convert_float_to_bfloat16(
                                     self._place, buffer.numpy()
                                 ),
                                 self._place,
                             )
-                        elif dest_type == core.VarDesc.VarType.FP16:
+                        elif dest_type == paddle.float16:
                             buffer_tensor.set(
                                 np.float16(buffer.numpy()), self._place
                             )
