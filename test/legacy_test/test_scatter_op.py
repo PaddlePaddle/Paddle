@@ -676,9 +676,9 @@ class TestScatterAPI(unittest.TestCase):
                     [[1, 1], [2, 2], [3, 3], [4, 4]]
                 ).astype(np.float64)
 
-                x = base.dygraph.to_variable(x_data)
-                index = base.dygraph.to_variable(index_data)
-                updates = base.dygraph.to_variable(updates_data)
+                x = paddle.to_tensor(x_data)
+                index = paddle.to_tensor(index_data)
+                updates = paddle.to_tensor(updates_data)
 
                 output1 = self.scatter(x, index, updates, overwrite=False)
                 self.assertEqual(
@@ -750,7 +750,7 @@ class TestScatterOpFp16(OpTest):
     def setUp(self):
         self.__class__.op_type = "scatter"
         self.python_api = paddle.scatter
-        # compute grad in the following code handly.
+        # compute grad in the following code manually.
         self.__class__.no_need_check_grad = True
         self.x_type = 'float16'
         self.x_np = np.ones((3, 3)).astype(self.x_type)

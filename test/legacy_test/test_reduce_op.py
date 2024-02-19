@@ -977,55 +977,65 @@ def reduce_any_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
 class TestAnyOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = reduce_any_wrapper
+        self.public_python_api = reduce_any_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyFloatOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = reduce_any_wrapper
+        self.public_python_api = reduce_any_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("float")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyIntOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = reduce_any_wrapper
+        self.public_python_api = reduce_any_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("int")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyOp_ZeroDim(OpTest):
     def setUp(self):
-        self.python_api = paddle.any
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAny8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
                 "bool"
@@ -1035,25 +1045,29 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': [1]}
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAny8DOpWithDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
                 "bool"
@@ -1063,13 +1077,15 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.attrs = {'dim': (1,), 'keep_dim': True}
         self.outputs = {
@@ -1079,13 +1095,15 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
+        self.prim_op_type = "comp"
         self.python_api = paddle.any
+        self.public_python_api = paddle.any
         self.inputs = {
             'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
                 "bool"
@@ -1099,7 +1117,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -1710,7 +1728,7 @@ class API_TestSumOp(unittest.TestCase):
     def test_dygraph(self):
         np_x = np.random.random([2, 3, 4]).astype('int32')
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             out0 = paddle.sum(x).numpy()
             out1 = paddle.sum(x, axis=0).numpy()
             out2 = paddle.sum(x, axis=(0, 1)).numpy()

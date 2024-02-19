@@ -115,13 +115,14 @@ class TestRotaryPosEmb(TestCinnSubGraphBase):
 
     def test_eval(self):
         cinn_outs = self.eval(use_cinn=True)
-        # dy_outs = self.eval(use_cinn=False)
+        dy_outs = self.eval(use_cinn=False)
 
-        # TODO(phlrain): Need to check result
-        # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
-        #     np.testing.assert_allclose(
-        #         cinn_out.numpy(), dy_out.numpy(), atol=1e-8
-        #     )
+        # TODO(Aurelius84): Apply assert_allclose logic,
+        # but need figure out why atol only satisfy 1e-6
+        for cinn_out, dy_out in zip(cinn_outs, dy_outs):
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6
+            )
 
 
 class RepeatKV(nn.Layer):

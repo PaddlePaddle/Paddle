@@ -67,7 +67,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     Get the mapping of rank to its accessible files.
     """
     metadata_files, local_data_files = get_checkpoint_files(path)
-    # The neccesary files to be read
+    # The necessary files to be read
     tensor_key_list = []
     necessary_files = []
     for metadata_file in metadata_files:
@@ -102,7 +102,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     logger.debug(
         f"necessary_data_files_set:{necessary_data_files_set}, global_data_files_set:{global_data_files_set}"
     )
-    # check neccesary files in global_data_files
+    # check necessary files in global_data_files
     assert (
         global_data_files_set & necessary_data_files_set
         == necessary_data_files_set
@@ -251,14 +251,14 @@ def compute_overlap(
     cur_offsets = []
     storage_offsets = []
     lengths = []
-    for cur_len, cur_offset, strorage_len, storage_offset in zip(
+    for cur_len, cur_offset, storage_len, storage_offset in zip(
         cur_chunk_metadata.local_shape,
         cur_chunk_metadata.global_offset,
         storage_local_tensor_metadata.local_shape,
         storage_local_tensor_metadata.global_offset,
     ):
         begin_offset = max(cur_offset, storage_offset)
-        end_offset = min(cur_offset + cur_len, storage_offset + strorage_len)
+        end_offset = min(cur_offset + cur_len, storage_offset + storage_len)
         if begin_offset == cur_offset:
             cur_offsets.append(0)
             storage_offsets.append(begin_offset - storage_offset)
@@ -280,14 +280,14 @@ def not_overlap(
     cur_chunk_metadata: LocalTensorMetadata,
     storage_local_tensor_metadata: LocalTensorMetadata,
 ):
-    for cur_len, cur_offset, strorage_len, storage_offset in zip(
+    for cur_len, cur_offset, storage_len, storage_offset in zip(
         cur_chunk_metadata.local_shape,
         cur_chunk_metadata.global_offset,
         storage_local_tensor_metadata.local_shape,
         storage_local_tensor_metadata.global_offset,
     ):
         if (
-            cur_offset >= (storage_offset + strorage_len)
+            cur_offset >= (storage_offset + storage_len)
             or (cur_offset + cur_len) <= storage_offset
         ):
             return True

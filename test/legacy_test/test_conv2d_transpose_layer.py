@@ -176,7 +176,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         return y_np
 
     def paddle_nn_layer(self):
-        x_var = dg.to_variable(self.input)
+        x_var = paddle.to_tensor(self.input)
 
         if self.output_padding != 0:
             output_size = None

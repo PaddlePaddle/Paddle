@@ -69,14 +69,14 @@ class ModelInner(paddle.nn.Layer):
         return y, 0
 
 
-class ModelOutter(paddle.nn.Layer):
+class ModelOuter(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.module1 = ModelInner()
         self.module2 = paddle.nn.Linear(4, 5)
 
     def forward(self, x):
-        y, dummpy = self.module1(x)
+        y, _ = self.module1(x)
         y = self.module2(y)
         return y, 3
 
@@ -704,7 +704,7 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_non_tensor(self):
-        paddle.summary(ModelOutter(), input_size=(-1, 3))
+        paddle.summary(ModelOuter(), input_size=(-1, 3))
 
     def test_summary_nlp(self):
         def _get_param_from_state_dict(state_dict):
@@ -1020,7 +1020,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
         base_lr = 1e-3
         boundaries = [5, 8]
         epochs = 10
-        wamup_epochs = 4
+        warmup_epochs = 4
 
         def make_optimizer(parameters=None):
             momentum = 0.9
@@ -1031,7 +1031,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
             )
             learning_rate = paddle.optimizer.lr.LinearWarmup(
                 learning_rate=learning_rate,
-                warmup_steps=wamup_epochs,
+                warmup_steps=warmup_epochs,
                 start_lr=base_lr / 5.0,
                 end_lr=base_lr,
                 verbose=True,
@@ -1071,7 +1071,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
 
         cnt = 0
         for b in boundaries:
-            if b + wamup_epochs <= epochs:
+            if b + warmup_epochs <= epochs:
                 cnt += 1
 
         np.testing.assert_allclose(
@@ -1104,7 +1104,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
 
         cnt = 0
         for b in boundaries:
-            if b + wamup_epochs <= epochs:
+            if b + warmup_epochs <= epochs:
                 cnt += 1
 
         np.testing.assert_allclose(

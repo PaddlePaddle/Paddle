@@ -361,7 +361,7 @@ class TestRMSPropV2Group(TestRMSPropV2):
         adam.clear_gradients()
 
 
-class TestRMSOpMultiPrecison(unittest.TestCase):
+class TestRMSOpMultiPrecision(unittest.TestCase):
     def _test_rms_op_dygraph_place_amp(self, place, use_amp=False):
         import paddle
 

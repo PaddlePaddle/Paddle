@@ -24,6 +24,7 @@
 #include "Python.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -31,11 +32,9 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(reader_queue_speed_test_mode);
+COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);

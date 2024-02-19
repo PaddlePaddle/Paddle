@@ -645,7 +645,7 @@ def predict_dygraph(args, data):
         model.set_dict(model_dict)
         model.eval()
 
-        pred_res = model(base.dygraph.to_variable(data))
+        pred_res = model(paddle.to_tensor(data))
 
         return pred_res.numpy()
 
