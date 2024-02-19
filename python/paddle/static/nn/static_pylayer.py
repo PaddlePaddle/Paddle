@@ -346,7 +346,11 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     cf_yield(flatten(fwd_outputs))
             pylayer_op.update_output()
 
-        return pylayer_op.results()
+        return (
+            pylayer_op.results()[0]
+            if len(pylayer_op.results()) == 1
+            else pylayer_op.results()
+        )
 
     # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
     fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
