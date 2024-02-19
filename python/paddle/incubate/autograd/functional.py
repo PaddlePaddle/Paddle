@@ -194,7 +194,7 @@ class Jacobian:
 
     Notes:
 
-        Eclipsis index is not supported currently.
+        Ellipsis index is not supported currently.
 
     Warning:
         This API is in beta, the signatures could be changed in future version.
@@ -327,7 +327,7 @@ class Hessian:
 class _Jacobian:
     """The base class for computing Jacobian matrix.
 
-    ``_Jacobian`` implementes the core logic of multidimensional index and lazy
+    ``_Jacobian`` implements the core logic of multidimensional index and lazy
     evaluation for Jacobian matrix, subclass only need to overwrite following
     methods:
 
@@ -517,7 +517,7 @@ def _multi_index(indexes, shape):
                     index.start + shape[i] if index.start < 0 else index.start,
                     index.stop + shape[i] if index.stop < 0 else index.stop,
                     # Negative step means index backward, no need to convert to
-                    # positive interger.
+                    # positive integer.
                     index.step,
                 )
             )

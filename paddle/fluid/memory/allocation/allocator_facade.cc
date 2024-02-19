@@ -82,7 +82,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
                             false,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
-// NOTE(Ruibiao): This FLAGS is just to be compatibled with
+// NOTE(Ruibiao): This FLAGS is just to be compatible with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
 PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
@@ -228,10 +228,10 @@ class AllocatorFacadePrivate {
 
         // Note(Ruibiao): For GPU multi-stream case without CUDA graph
         // capturing, the 'allocators_' map(place -> Allocator) hold the
-        // StreamSafeCUDAAllocator releate to defaultstream (i.e., the stream
-        // directly got from DeviceContex), while the 'cuda_allocators_' map
+        // StreamSafeCUDAAllocator relate to defaultstream (i.e., the stream
+        // directly got from DeviceContext), while the 'cuda_allocators_' map
         // (place -> map(stream -> Allocator)) hold the StreamSafeCUDAAllocator
-        // releate to non-default stream (i.e., the stream users pass in). The
+        // relate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
         // manner in GetAllocator function with 'create_if_not_found = true'.
@@ -787,7 +787,7 @@ class AllocatorFacadePrivate {
         strategy_,
         AllocatorStrategy::kAutoGrowth,
         platform::errors::Unimplemented(
-            "Only support auto-growth strategey for StreamSafeCUDAAllocator, "
+            "Only support auto-growth strategy for StreamSafeCUDAAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
     if (LIKELY(!HasCUDAAllocator(p, stream))) {
@@ -1057,7 +1057,7 @@ class AllocatorFacadePrivate {
         strategy_,
         AllocatorStrategy::kAutoGrowth,
         platform::errors::Unimplemented(
-            "Only support auto-growth strategey for StreamSafeXPUAllocator, "
+            "Only support auto-growth strategy for StreamSafeXPUAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
     if (LIKELY(!HasXPUAllocator(p, stream))) {
@@ -1168,7 +1168,7 @@ class AllocatorFacadePrivate {
         strategy_,
         AllocatorStrategy::kAutoGrowth,
         platform::errors::Unimplemented(
-            "Only support auto-growth strategey for "
+            "Only support auto-growth strategy for "
             "StreamSafeCustomDeviceAllocator, "
             "the allocator strategy %d is unsupported for multi-stream",
             static_cast<int>(strategy_)));
@@ -1438,7 +1438,7 @@ void* AllocatorFacade::GetBasePtr(
                     true,
                     paddle::platform::errors::Unimplemented(
                         "GetBasePtr() is only implemented for CUDAPlace(), not "
-                        "suppot place: %s",
+                        "support place: %s",
                         allocation->place()));
   return GetPrivate()->GetBasePtr(allocation);
 }

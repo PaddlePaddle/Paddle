@@ -259,8 +259,8 @@ class TestTensorMinlength(unittest.TestCase):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[0], np_x.shape[0])
@@ -272,7 +272,7 @@ class TestTensorMinlength(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer

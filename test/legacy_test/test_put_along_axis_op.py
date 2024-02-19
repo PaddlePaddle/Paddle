@@ -676,7 +676,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             np.put_along_axis(
                 self.x_np, self.index_np, self.value_np, self.axis
             )
-            # numpy put_along_axis is an inplace opearion.
+            # numpy put_along_axis is an inplace operation.
             out_ref = self.x_np
 
             for out in res:
