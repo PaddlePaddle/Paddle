@@ -17,9 +17,9 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -35,17 +35,32 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
       if (op->operand_source(i)
               .defining_op()
               ->isa<cinn::dialect::ReshapeOp>()) {
-        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-            op->operand_source(i).defining_op()->operand_source(0),
-            op->operand_source(i).type());
+        auto pre_name = op->operand_source(i).defining_op()->name();
 
-        op->operand(i).set_source(new_full.result(0));
-      } else {
-        auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
-            op->operand_source(i), op->operand_source(i).type());
+        if (op->operand_source(i).use_count() > 1) {
+          continue;
+        }
 
-        op->operand(i).set_source(new_full.result(0));
+        if ((pre_name != "cinn_op.reduce_sum") &&
+            (pre_name != "cinn_op.reduce_max")) {
+          auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+              op->operand_source(i).defining_op()->operand_source(0),
+              op->operand_source(i).type());
+
+          op->operand(i).set_source(new_full.result(0));
+
+          continue;
+        }
       }
+
+      if (op->operand_source(i).use_count() == 1) {
+        continue;
+      }
+
+      auto new_full = rewriter.Build<cinn::dialect::StoreOp>(
+          op->operand_source(i), op->operand_source(i).type());
+
+      op->operand(i).set_source(new_full.result(0));
     }
 
     return true;
@@ -73,6 +88,13 @@ class AddStoreInFusionOpPass : public pir::Pass {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
           if (op.isa<cinn::dialect::FusionOp>()) {
+            auto fusion_op = op.dyn_cast<cinn::dialect::FusionOp>();
+            if (fusion_op.GetOperators().size() == 2 &&
+                fusion_op.GetOperators()
+                    .front()
+                    ->isa<cinn::dialect::ReshapeOp>()) {
+              continue;
+            }
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);
