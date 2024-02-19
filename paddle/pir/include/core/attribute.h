@@ -18,7 +18,7 @@
 #include "paddle/pir/include/core/type_id.h"
 
 constexpr char kAttrStopGradients[] = "stop_gradient";
-constexpr char kAttrIsPersisable[] = "is_persisable";
+constexpr char kAttrIsPersistable[] = "is_persistable";
 
 namespace pir {
 class AttributeStorage;

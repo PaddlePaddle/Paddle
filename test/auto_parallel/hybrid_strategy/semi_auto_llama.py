@@ -206,8 +206,21 @@ class TestLlamaAuto:
             for epoch_idx in range(1):
                 for step, inputs in enumerate(dist_loader()):
                     input_ids, labels = inputs
+                    custom_black_list = [
+                        "reduce_sum",
+                        "c_softmax_with_cross_entropy",
+                    ]
+                    custom_white_list = []
+                    if self.amp_level == "O2":
+                        custom_white_list.extend(
+                            ["lookup_table", "lookup_table_v2"]
+                        )
                     with paddle.amp.auto_cast(
-                        self.amp, level=self.amp_level, dtype=self.amp_dtype
+                        self.amp,
+                        custom_black_list=set(custom_black_list),
+                        custom_white_list=set(custom_white_list),
+                        level=self.amp_level,
+                        dtype=self.amp_dtype,
                     ):
                         logits = model(input_ids)
                         tr_loss_step = criterion(logits, labels)

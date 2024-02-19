@@ -54,7 +54,7 @@ class TestOneDNNElementwiseAddOp4(TestOneDNNElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -95,10 +95,10 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestOneDNNElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -159,10 +159,10 @@ class TestInt8(TestElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
