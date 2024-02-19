@@ -829,7 +829,7 @@ static bool CollectGradInformationFromOpInfo(
     for (size_t i = 0; i < NUM_CREATED_DUP_INPUTS; i++) {
       ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
           "auto_" + in_name + "_" + std::to_string(i)));
-      ins[in_name][i]->SetOverridedStopGradient(false);
+      ins[in_name][i]->SetOverriddenStopGradient(false);
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   } else {
@@ -853,7 +853,7 @@ static bool CollectGradInformationFromOpInfo(
 
       ins[in_name] = {
           std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
-      ins[in_name][0]->SetOverridedStopGradient(false);
+      ins[in_name][0]->SetOverriddenStopGradient(false);
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   }
@@ -871,7 +871,7 @@ static bool CollectGradInformationFromOpInfo(
     // however, simply identifying the slot name order would be enough
     outs[out_name] = {
         std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
-    outs[out_name][0]->SetOverridedStopGradient(false);
+    outs[out_name][0]->SetOverriddenStopGradient(false);
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
