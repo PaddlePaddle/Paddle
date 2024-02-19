@@ -148,6 +148,21 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
     return tensor_type && tensor_type.dims().size() == 0U;
   };
+
+  auto HasNegDim = [](const ::pir::Type& type) {
+    auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
+
+    if (tensor_type) {
+      for (size_t i = 0; i < tensor_type.dims().size(); ++i) {
+        if (tensor_type.dims()[i] < 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   // Judge for vector<Type>
   auto HasZeroDimInVT = [&](const std::vector<::pir::Type>& types) {
     for (auto& type : types) {
@@ -161,7 +176,7 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     if (!value || !value.type()) continue;
     if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
       if (HasZeroDimInVT(vector_type.data())) return true;
-    } else if (HasZeroDim(value.type())) {
+    } else if (HasZeroDim(value.type()) || HasNegDim(value.type())) {
       return true;
     }
   }
@@ -203,7 +218,7 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
+  if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;

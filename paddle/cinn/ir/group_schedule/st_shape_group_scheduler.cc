@@ -223,6 +223,8 @@ void StaticShapeGroupScheduler::LoopReorderAligment() {
 
   schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
 
+  std::cerr << "group_tile_info_ " << (group_tile_info_ != nullptr)
+            << std::endl;
   // broadcast
   for (auto& name : node_list) {
     // skip reduce init block
