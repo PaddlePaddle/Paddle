@@ -882,6 +882,21 @@ Tensor embedding_decomp(const Tensor& x,
   }
 }
 
+template <typename T>
+Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
+  std::vector<int64_t> tmp_shape{-1, 1};
+  auto arange_tmp =
+      reshape<T>(arange<T>(0, index.dims()[0], 1, index.dtype()), tmp_shape);
+  auto index_res = reshape<T>(
+      expand<T>(arange_tmp, phi::vectorize(index.dims())), tmp_shape);
+  auto index_ = reshape<T>(index, tmp_shape);
+
+  std::vector<Tensor> concat_x{index_res, index_};
+  auto concat_res = concat<T>(concat_x, 1);
+
+  return reshape<T>(gather_nd<T>(x, concat_res), phi::vectorize(index.dims()));
+}
+
 }  // namespace details
 
 }  // namespace primitive

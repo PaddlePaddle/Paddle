@@ -35,6 +35,21 @@ Tensor full<Tensor>(const IntArray& shape,
   }
 }
 
+template <>
+Tensor arange<Tensor>(const Scalar& start,
+                      const Scalar& end,
+                      const Scalar& step,
+                      DataType dtype,
+                      Place place) {
+  VLOG(4) << "Eager Prim API arange_ad_func call";
+  Tensor start_tensor =
+      ::full_ad_func(std::vector<int64_t>{}, start, dtype, place);
+  Tensor end_tensor = ::full_ad_func(std::vector<int64_t>{}, end, dtype, place);
+  Tensor step_tensor =
+      ::full_ad_func(std::vector<int64_t>{}, step, dtype, place);
+  return ::arange_ad_func(start_tensor, end_tensor, step_tensor, dtype, place);
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle
