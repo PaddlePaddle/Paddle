@@ -281,5 +281,8 @@ PrepareDataForDistTensor(
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
 
+std::string ReshardDebugInfo(const phi::distributed::DistTensor& src_tensor,
+                             const phi::distributed::TensorDistAttr& dist_attr);
+
 }  // namespace experimental
 }  // namespace paddle
