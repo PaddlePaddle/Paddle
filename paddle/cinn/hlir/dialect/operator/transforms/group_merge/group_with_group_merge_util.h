@@ -510,7 +510,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
 
       // auto broadcast_axes = absl::get<std::vector<int>>(
       //     broadcaster->attrs.attr_store.at("broadcast_axes"));
-      // TODO(phlrain) : suport here
+      // TODO(phlrain) : support here
       std::vector<int64_t> broadcaster_output_shape =
           GetVectorAttr(broadcaster, "out_shape");
       std::vector<int64_t> broadcast_axes =
