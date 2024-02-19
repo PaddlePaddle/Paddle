@@ -290,6 +290,10 @@ static void ShareTensorsFromScopeByValue(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
+    if (name == paddle::framework::kFakeVarName) {
+      continue;
+    }
+
     VLOG(2) << "share " << name << " from scope";
     if (value.impl() == nullptr) {
       // skip stop_gradient.
