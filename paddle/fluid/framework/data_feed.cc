@@ -440,7 +440,7 @@ int InMemoryDataFeed<T>::Next() {
     }
     VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size()
-            << " baych_size: " << this->batch_size_;
+            << " batch_size: " << this->batch_size_;
   }
   return this->batch_size_;
 #else
@@ -2514,10 +2514,10 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (scpoe_feed_vec_.count(&scope) > 0) {
+  if (scope_feed_vec_.count(&scope) > 0) {
     return;
   }
-  auto& feed_vec = scpoe_feed_vec_[&scope];
+  auto& feed_vec = scope_feed_vec_[&scope];
   feed_vec.resize(used_slots_info_.size());
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec[i] =
@@ -2869,8 +2869,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
   auto* dev_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
-    if (scpoe_feed_vec_.size() > 0) {
-      if (scpoe_feed_vec_.begin()->second[j] == nullptr) {
+    if (scope_feed_vec_.size() > 0) {
+      if (scope_feed_vec_.begin()->second[j] == nullptr) {
         h_tensor_ptrs[j] = nullptr;
         continue;
       }
@@ -2952,8 +2952,8 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
 
   auto* feed_vec = &feed_vec_;
   if (scope) {
-    CHECK(scpoe_feed_vec_.count(scope) > 0) << "scope not found.";
-    feed_vec = &scpoe_feed_vec_[scope];
+    CHECK(scope_feed_vec_.count(scope) > 0) << "scope not found.";
+    feed_vec = &scope_feed_vec_[scope];
   }
 
   CHECK(feed_vec != nullptr) << "feed_vec nullptr.";

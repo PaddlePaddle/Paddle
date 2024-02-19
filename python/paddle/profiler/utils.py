@@ -174,9 +174,9 @@ def in_profiler_mode():
 
 
 def wrap_optimizers():
-    def optimizer_warpper(func):
+    def optimizer_wrapper(func):
         @functools.wraps(func)
-        def warpper(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             if in_profiler_mode():
                 with RecordEvent(
                     'Optimization Step', event_type=TracerEventType.Optimization
@@ -185,7 +185,7 @@ def wrap_optimizers():
             else:
                 return func(*args, **kwargs)
 
-        return warpper
+        return wrapper
 
     global _has_optimizer_wrapped
     if _has_optimizer_wrapped:
@@ -196,7 +196,7 @@ def wrap_optimizers():
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) is not None:
-                classobject.step = optimizer_warpper(classobject.step)
+                classobject.step = optimizer_wrapper(classobject.step)
     _has_optimizer_wrapped = True
 
 

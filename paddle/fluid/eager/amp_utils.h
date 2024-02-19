@@ -83,10 +83,16 @@ inline phi::DataType GetDtypeWithPlace(
   for (const auto& tensors : amp_tensors_vector) {
     for (const auto& tensor : tensors) {
       auto place = tensor.place();
-      is_right_place = (paddle::platform::is_gpu_place(place) ||
-                        paddle::platform::is_cuda_pinned_place(place) ||
-                        paddle::platform::is_xpu_place(place) ||
-                        paddle::platform::is_custom_place(place));
+      // TODO(lizhiyu): If the tensor is a dist-tensor, it's place may be
+      // `unknown` in the no-calculation rank right now.
+      //       We use `is_dist_tensor()` to avoid the bug temporarily. The
+      //       dist-tensor in the no-calculation rank should have the right
+      //       place.
+      is_right_place =
+          (tensor.is_dist_tensor() || paddle::platform::is_gpu_place(place) ||
+           paddle::platform::is_cuda_pinned_place(place) ||
+           paddle::platform::is_xpu_place(place) ||
+           paddle::platform::is_custom_place(place));
       if (is_right_place) {
         break;
       }

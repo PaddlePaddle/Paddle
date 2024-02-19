@@ -251,7 +251,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
   int elim_count = 0;
 
   while (true) {
-    auto op_node_sorted = framework::ir::TopologyVarientSort(
+    auto op_node_sorted = framework::ir::TopologyVariantSort(
         *graph, static_cast<framework::ir::SortKind>(0));
     bool modify = false;
     for (auto *op_node : op_node_sorted) {

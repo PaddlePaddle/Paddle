@@ -2273,8 +2273,7 @@ All parameter, weight, gradient are variables in Paddle.
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
   pylodtensorarray
-      .def("__init__",
-           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
+      .def(py::init([]() { return std::make_unique<LoDTensorArray>(); }))
       .def(
           "__getitem__",
           [](LoDTensorArray &self, size_t i) { return &self.at(i); },

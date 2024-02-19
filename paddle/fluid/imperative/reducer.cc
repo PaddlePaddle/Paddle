@@ -515,7 +515,7 @@ void Reducer::TraverseBackwardGraph(
 
   for (const auto &output : outputs) {
     const auto &grad_node = output->GradVarBase()->GradNode();
-    if (grad_node == nullptr || output->OverridedStopGradient()) {
+    if (grad_node == nullptr || output->OverriddenStopGradient()) {
       VLOG(3) << "Skip auto grad since there is no grad op or output is "
                  "stop_gradient=True: "
               << output->Name();
@@ -540,7 +540,7 @@ void Reducer::TraverseBackwardGraph(
           continue;
         }
         for (auto &var : pair.second) {
-          if (!var || var->OverridedStopGradient()) {
+          if (!var || var->OverriddenStopGradient()) {
             continue;
           } else {
             var_visited.insert(var.get());
@@ -572,7 +572,7 @@ void Reducer::TraverseBackwardGraph(
 }
 
 // After each batch is calculated, the counter of each group(group.pending_)
-// and allreudce sequence counter(next_group_) will be cleaned up again.
+// and allreduce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
@@ -884,7 +884,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order,
   }
 }
 
-std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+std::vector<std::vector<size_t>> Reducer::RebuildGroups() {
   VLOG(3) << "The order of parameter arrival: "
           << string::join_strings(rebuild_var_indices_, ',');
 
@@ -960,7 +960,7 @@ void Reducer::ProcessUnusedDenseVars() {
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
       // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that
       // gradient accumulation can continue normally after clear_gradients()
-      // especiall in cases including complex control flow.
+      // especially in cases including complex control flow.
       grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
@@ -1013,13 +1013,13 @@ void Reducer::FinalizeBackward() {
 
   if (NeedRebuildGroup()) {
     VLOG(3) << "Start rebuilding the groups";
-    auto rebuild_group_indices = RebuildGruops();
+    auto rebuild_group_indices = RebuildGroups();
     group_indices_ = std::move(rebuild_group_indices);
     InitializeGroups(group_indices_);
   }
 
   if (find_unused_vars_each_step_) {
-// TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
+// TODO(liuyuhui) support xpu about TensorCopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_GLOO)
     ProcessUnusedDenseVars();

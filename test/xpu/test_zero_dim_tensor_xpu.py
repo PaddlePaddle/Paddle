@@ -2382,7 +2382,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(x_1.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = None,
-        # using p_nrom, as_vector = True
+        # using p_norm, as_vector = True
         x_2 = paddle.arange(24, dtype="float32") - 12
         x_2.stop_gradient = False
         out_2 = paddle.linalg.norm(x_2, p=1)
@@ -2393,7 +2393,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x_2.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_p = paddle.arange(24, dtype="float32") - 12
         x_2_p.stop_gradient = False
         out_2_p = paddle.linalg.norm(x_2_p, p=1, axis=0)
@@ -2404,7 +2404,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x_2_p.grad.shape, [24])
 
         # 1D input, p = fro ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
         out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)

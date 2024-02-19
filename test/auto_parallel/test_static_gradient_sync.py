@@ -90,13 +90,13 @@ class HybridParallelNet(nn.Layer):
         self.mlp2 = MLPLayer(hidden_size, hidden_size * 4)
 
     def forward(self, input):
-        # prue dp
+        # prune dp
         auto.shard_tensor(input, MESH_0, ["x", None, None])
         activation0 = self.mlp0(input)
         auto.shard_tensor(activation0, MESH_0, ["x", None, None])
         activation1 = F.gelu(activation0, approximate=True)
 
-        # prue sp
+        # prune sp
         auto.shard_tensor(activation1, MESH_0, [None, "y", None])
         activation2 = self.mlp1(activation1)
         auto.shard_tensor(activation2, MESH_0, [None, "y", None])
