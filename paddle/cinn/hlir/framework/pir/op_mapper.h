@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace hlir {

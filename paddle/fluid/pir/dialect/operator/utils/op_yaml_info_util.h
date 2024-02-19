@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace paddle {
 namespace dialect {

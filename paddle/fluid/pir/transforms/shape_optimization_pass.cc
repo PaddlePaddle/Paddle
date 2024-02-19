@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace pir {
 namespace {
