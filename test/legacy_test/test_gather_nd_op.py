@@ -74,7 +74,7 @@ class TestGatherNdOpWithEmptyIndexFP16(TestGatherNdOpWithEmptyIndex):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithEmptyIndexBF16(TestGatherNdOpWithEmptyIndex):
     def config_dtype(self):
@@ -173,7 +173,7 @@ class TestGatherNdOpWithIndex1FP16(TestGatherNdOpWithIndex1):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithIndex1BF16(TestGatherNdOpWithIndex1):
     def config_dtype(self):
@@ -245,7 +245,7 @@ class TestGatherNdOpWithLowIndexFP16(TestGatherNdOpWithLowIndex):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithLowIndexBF16(TestGatherNdOpWithLowIndex):
     def config_dtype(self):
@@ -324,7 +324,7 @@ class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpIndex1BF16(TestGatherNdOpIndex1):
     def config_dtype(self):
@@ -394,7 +394,7 @@ class TestGatherNdOpWithSameIndexAsXFP16(TestGatherNdOpWithSameIndexAsX):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithSameIndexAsXBF16(TestGatherNdOpWithSameIndexAsX):
     def config_dtype(self):
@@ -466,7 +466,7 @@ class TestGatherNdOpWithHighRankSameFP16(TestGatherNdOpWithHighRankSame):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithHighRankSameBF16(TestGatherNdOpWithHighRankSame):
     def config_dtype(self):
@@ -538,7 +538,7 @@ class TestGatherNdOpWithHighRankDiffFP16(TestGatherNdOpWithHighRankDiff):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGatherNdOpWithHighRankDiffBF16(TestGatherNdOpWithHighRankDiff):
     def config_dtype(self):

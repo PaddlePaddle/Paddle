@@ -33,7 +33,7 @@ class SimpleNet(paddle.nn.Layer):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
+    "core is not compiled with CUDA and not support the float16",
 )
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
