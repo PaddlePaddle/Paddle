@@ -97,6 +97,21 @@ class Context:
         else:
             return False
 
+    def has_set(self, k):
+        default_values = {
+            "master": None,
+            "rank": -1,
+            "sort_ip": False,
+            "legacy": False,
+            "log_level": "INFO",
+            "enable_gpu_log": True,
+            "nnodes": "1",
+            "nproc_per_node": None,
+        }
+        if k in default_values and self.args[k] != default_values[k]:
+            return True
+        return False
+
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             attr, attr_type = v
