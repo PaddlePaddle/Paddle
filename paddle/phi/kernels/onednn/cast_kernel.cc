@@ -34,6 +34,13 @@ void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
+  if (x.dtype() == out_dtype) {
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   DataType in_dtype = x.dtype();
 
   dnnl::memory::data_type in_dnnl_dtype = funcs::ToOneDNNDataType(in_dtype);
