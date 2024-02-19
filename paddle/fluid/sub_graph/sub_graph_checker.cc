@@ -168,8 +168,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
@@ -266,8 +265,7 @@ double SubGraphChecker::RunCinnSpeed() {
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pm.AddPass(pir::CreateBuildCinnPass());
   pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
