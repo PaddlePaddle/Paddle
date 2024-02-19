@@ -464,9 +464,9 @@ void CompileGroupToJitKernelOp(
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    auto& yeild_op = block->back();
-    CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
-    rewriter.set_insertion_point(&yeild_op);
+    auto& yield_op = block->back();
+    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
+    rewriter.set_insertion_point(&yield_op);
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
