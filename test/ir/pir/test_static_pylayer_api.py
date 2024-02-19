@@ -68,7 +68,8 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
         """
 
         def forward_fn(x, y):
-            return x * y, x - y
+            z = 3 * x
+            return z * y, z - y
 
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
