@@ -351,8 +351,8 @@ fi
 
 HAS_MODIFIED_PIR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/pir/include" || true`
 if [ "${HAS_MODIFIED_PIR_INCLUDE_DIR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (yuanlehome, zhangbo9674) approval for file changes in paddle/pir/include.\n"
-    check_approval 1 yuanlehome zhangbo9674
+    echo_line="You must have one RD (yuanlehome, winter-wang, zhangbo9674) approval for file changes in paddle/pir/include.\n"
+    check_approval 1 yuanlehome winter-wang zhangbo9674 
 fi
 
 HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/generator" || true`
