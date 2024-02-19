@@ -105,7 +105,7 @@ class AutoTuneBase {
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
-    // Time cost test estabulished in default stream.
+    // Time cost test established in default stream.
     for (size_t i = 0; i < kernels_.size(); ++i) {
       auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
       if (time < min_time) {
@@ -244,7 +244,7 @@ class GatherGemmScatterAutoTuner
     size_t best_idx = NO_KERNEL_WORKS;
     float min_time = std::numeric_limits<float>::max();
 
-    // Time cost test estabulished in default stream.
+    // Time cost test established in default stream.
     for (int i = 0; i < this->kernels_.size(); ++i) {
       float time = 0;
       // Some kernels may require more shared memory than available, skip these

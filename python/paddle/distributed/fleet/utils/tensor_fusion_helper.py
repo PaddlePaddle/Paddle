@@ -359,7 +359,7 @@ class FusedCommBuffer:
             assert dst != -1
         else:
             raise ValueError(
-                "The act should be allreudce for dp or reduce for sharding."
+                "The act should be allreduce for dp or reduce for sharding."
             )
         self._dst = dst
 

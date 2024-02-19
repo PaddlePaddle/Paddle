@@ -290,7 +290,9 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
   VLOG(3) << "Call CrossNdMeshReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
 
-  DistTensor tmp_result;
+  // Construct a `DistTensor` by `dtype` of `in` tensor to avoid using default
+  // dtype `float32`. The default dtype `float32` may cause error in amp.
+  DistTensor tmp_result(in.dtype());
   TensorDistAttr in_dist_attr_shard = in_dist_attr;
   in_dist_attr_shard.set_partial_status(out_dist_attr.partial_status());
   in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
