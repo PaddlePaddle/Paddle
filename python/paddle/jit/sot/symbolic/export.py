@@ -139,7 +139,10 @@ class PyFileGen:
         return self.roots_to_string()
 
     def is_exportable_type(self, value):
-        if isinstance(value, (ConstTypes, Symbol, paddle.dtype)):
+        if (
+            isinstance(value, (ConstTypes, Symbol, paddle.dtype))
+            or value is Ellipsis  # NOINT
+        ):
             return True
         if isinstance(value, slice):
             return (
