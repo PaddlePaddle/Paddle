@@ -182,7 +182,6 @@ void GetBroadcastOutShape(const std::vector<int>& input_shape1,
   std::vector<bool> broadcast_flags2;
   int axis_offset = 0;
   std::vector<Expr> out_shape;
-  std::cerr << "broadcast !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
   GetBroadcastShape(shape1,
                     shape2,
                     &out_shape,

@@ -50,7 +50,7 @@ class BranchOp : public pir::Op<BranchOp> {
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &target_operands,
-                    pir::Block *target) {}
+                    pir::Block *target);
   void VerifySig() const;
 };
 

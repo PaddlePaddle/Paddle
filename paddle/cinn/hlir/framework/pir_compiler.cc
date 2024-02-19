@@ -49,9 +49,7 @@ std::unique_ptr<Program> PirCompiler::Build() {
 std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
-  std::cerr << "build cuda jit 111\n";
   if (FLAGS_cinn_bucket_compile) {
-    std::cerr << "build cuda bucket\n";
     for (int i = 0; i < groups.size(); ++i) {
       group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
     }
@@ -65,10 +63,8 @@ std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
   } else {
     auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-    std::cerr << "none bucket \n";
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
     for (int i = 0; i < groups.size(); ++i) {
-      std::cerr << "lowering !!!!\n";
       lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
     }
 
@@ -150,17 +146,17 @@ void PirCompiler::ProcessFunction(
 
       auto* var = scope_->FindVar(arg_name);
       // For argument buffer not in scope, create it.
-      // if (!var && arg.is_buffer()) {
-      //   auto* new_var = scope_->Var<Tensor>(arg_name);
-      //   auto& tensor = absl::get<Tensor>(*new_var);
-      //   std::vector<Shape::dim_t> shape;
-      //   for (auto& shape_dim : arg.buffer_arg()->shape) {
-      //     CHECK(shape_dim.is_constant());
-      //     shape.push_back(static_cast<int>(shape_dim.get_constant()));
-      //   }
-      //   tensor->Resize(Shape{shape});
-      //   tensor->set_type(arg.buffer_arg()->dtype);
-      // }
+      if (!var && arg.is_buffer()) {
+        auto* new_var = scope_->Var<Tensor>(arg_name);
+        auto& tensor = absl::get<Tensor>(*new_var);
+        std::vector<Shape::dim_t> shape;
+        for (auto& shape_dim : arg.buffer_arg()->shape) {
+          CHECK(shape_dim.is_constant());
+          shape.push_back(static_cast<int>(shape_dim.get_constant()));
+        }
+        tensor->Resize(Shape{shape});
+        tensor->set_type(arg.buffer_arg()->dtype);
+      }
     }
     m_builder_.AddFunction(func);
   }

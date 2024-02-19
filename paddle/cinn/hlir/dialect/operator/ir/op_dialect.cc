@@ -98,12 +98,6 @@ pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
       fusion_op.Print(printer);
     };
   }
-  //  else if( op->isa<StoreOp>() )
-  // {
-  //   return [](pir::Operation *op, pir::IrPrinter &printer) {
-  //     printer.PrintOperation(op);
-  //   };
-  // }
   return nullptr;
 }
 
