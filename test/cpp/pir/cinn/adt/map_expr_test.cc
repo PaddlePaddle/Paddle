@@ -27,11 +27,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -73,7 +73,6 @@ TEST(MapExpr, ElementWise_Fusion_0) {
       value1, builder.Build<paddle::dialect::ExpOp>(value2).result(0));
 
   ::pir::PassManager pass_manager(ctx);
-  auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx);
 
   // TODO(@jiahy0825): use CreateShapeOptimizationPass() instead of
   // CreateInferSymbolicShapePass() which is a fake pass

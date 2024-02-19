@@ -30,6 +30,7 @@
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -408,6 +409,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                                      bool apply_op_schedule,
                                                      bool apply_group_schedule,
                                                      bool apply_pass) {
+  VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   auto& ops = group->ops;
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -437,9 +439,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
 
     std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info;
@@ -590,18 +591,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
-    for (auto it = group->output_ops.begin(); it != group->output_ops.end();
-         ++it) {
-      output_tensor_names.insert(ValueName((*it)->result(0)));
+    for (auto value : group->GetGroupOutputValues()) {
+      output_tensor_names.insert(ValueName(value));
     }
-    // std::transform(
-    //     group->output_ops.begin(),
-    //     group->output_ops.end(),
-    //     std::inserter(output_tensor_names, output_tensor_names.begin()),
-    //     [](::pir::Operation* node) {
-    //       ::pir::Value node_data = node->result(0);
-    //       return this->ValueName(node_data);
-    //     });
+
     std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info;
     ir::StaticShapeGroupScheduler group_scheduler(
         &ir_sch, output_tensor_names, target_, group_tile_info);
@@ -1002,38 +995,24 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::cerr << "post process\n";
 
   group->output_names.clear();
-  // TODO(phlrain): output values not stable here
-  // auto store_ops = GetStoreOps(  );
-  // std::cerr << "store op size " << store_ops.size() << std::endl;
-  for (auto& op : group->output_ops) {
-    // collect all output tensor.
-    std::cerr << "name " << op->name() << std::endl;
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
 
-      auto tensor = tensor_map.at(opresult);
-
-      std::cerr << "tensor name !!!!!!!!!!!!!!!!!!!!!  "
-                << tensor->buffer.defined() << std::endl;
-      if (arg_name_set.count(tensor->buffer->name) != 0) {
-        continue;
-      }
-
-      group->output_values.push_back(opresult);
-      // output arg tensors
-
-      // output args
-      // group->output_names.push_back(tensor->name);
-      std::cerr << "tensor name   " << tensor->name << std::endl;
-      std::cerr << "base tensor " << tensor->buffer.defined() << std::endl;
-
-      group_func_arg_tensors->push_back(tensor);
-      group_func_args->emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
-
-      arg_name_set.insert(tensor->buffer->name);
+  // collect all output tensor.
+  for (auto op_result : group->GetGroupOutputValues()) {
+    if (tensor_map.count(op_result) == 0) {
+      continue;
     }
+    auto tensor = tensor_map.at(op_result);
+    if (arg_name_set.count(tensor->buffer->name) != 0) {
+      continue;
+    }
+
+    group->output_values.push_back(op_result);
+    // output arg tensors
+    group_func_arg_tensors->push_back(tensor);
+    // output args
+    group->output_names.push_back(tensor->name);
+    (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
+    arg_name_set.insert(tensor->buffer->name);
   }
 
   if (!done_op_schedule) {
@@ -1092,6 +1071,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::cerr << "33\n";
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
+    optim::EliminateDeadScheduleBlock(&(func_body), group->output_names);
 #ifdef CINN_WITH_CUDA
     optim::OptimizeExprGPU(&(func_body));
 #endif
@@ -1375,19 +1355,9 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
   auto group_tile_info = GetGroupTileInfo(group);
 
   std::unordered_set<std::string> output_tensor_names;
-  std::transform(
-      group->output_ops.begin(),
-      group->output_ops.end(),
-      std::inserter(output_tensor_names, output_tensor_names.begin()),
-      [&](::pir::Operation* op) {
-        if (erase_reshape.count(op)) {
-          return ValueName(op->operand_source(0)) + "_out";
-        }
-        return ValueName(op->result(0)) + "_out";
-      });
-
-  std::cerr << "build goup schedule " << (group_tile_info != nullptr)
-            << std::endl;
+  for (auto value : group->GetGroupOutputValues()) {
+    output_tensor_names.insert(ValueName(value));
+  }
   std::unique_ptr<ir::GroupScheduler> group_scheduler =
       ir::GroupScheduler::Make(&ir_sch,
                                output_tensor_names,

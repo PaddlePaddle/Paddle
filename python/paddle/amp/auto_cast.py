@@ -48,6 +48,8 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
+        self.already_classify_params_meshs = False  # For dist
+        self.mesh2params = {}  # For dist
         self.amp_dtype = 'float32'
 
     def __setattr__(self, name, val):
@@ -423,7 +425,31 @@ def amp_guard(
     ):
 
         def master_grad_hook():
-            core.eager.set_master_grads(amp_global_state().model_parameters)
+            # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
+            # classify the params of model into different calsses according to their process_mesh.
+            # Otherwise, fault will occur.
+            if not amp_global_state().already_classify_params_meshs:
+                for param in amp_global_state().model_parameters:
+                    if param is not None and param.process_mesh is not None:
+                        if (
+                            param.process_mesh
+                            not in amp_global_state().mesh2params
+                        ):
+                            amp_global_state().mesh2params[
+                                param.process_mesh
+                            ] = [param]
+                        else:
+                            amp_global_state().mesh2params[
+                                param.process_mesh
+                            ].append(param)
+                amp_global_state().already_classify_params_meshs = True
+
+            if len(amp_global_state().mesh2params):
+                for _, params in amp_global_state().mesh2params.items():
+                    core.eager.set_master_grads(params)
+            else:
+                core.eager.set_master_grads(amp_global_state().model_parameters)
+
             amp_global_state().already_register_final_backward_hook = False
 
         core.eager._add_backward_final_hook(master_grad_hook)

@@ -148,6 +148,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_logging_utils.py",
         "test_move_cuda_pinned_tensor.py",
         "test_pylayer.py",
+        "test_tensor_attr_consistency.py",
     ],
     TestCaseWithoutDecoratorDiagnostic: [
         "test_logical.py",

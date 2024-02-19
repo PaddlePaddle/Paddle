@@ -21,10 +21,10 @@
 
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 
@@ -210,10 +210,8 @@ struct Group {
   }
 
   std::vector<::pir::Value> GetGroupOutputValues() const {
-    std::unordered_set<::pir::Operation*> group_ops_set;
-    for (auto* op : this->ops) {
-      group_ops_set.insert(op);
-    }
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
 
     std::vector<::pir::Value> output_values;
     for (auto* op : this->ops) {
