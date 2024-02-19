@@ -229,7 +229,7 @@ DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
 
 void DistTensor::unsafe_set_dims(const DDim& dims) {
   if (this->initialized()) {
-    VLOG(3) << "You try to set an initialized DistTensor's global dims. "
+    VLOG(6) << "You try to set an initialized DistTensor's global dims. "
                "Make sure you are aware of where you change its dims.";
   }
   global_dims_ = dims;
@@ -237,7 +237,7 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
 
 void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
   if (this->initialized()) {
-    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+    VLOG(6) << "You try to set an initialized DistTensor's dist attr. "
                "Make sure you are aware of where you change its dist attr.";
   }
   dist_attr_ = dist_attr;
