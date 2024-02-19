@@ -44,8 +44,8 @@ void arraycpy(T* dst, const Tt* src, int n) {
   }
 }
 
-// batchs x tokens x 3 x head x heads ->  3 x batchs x head x tokens x heads (2
-// 0 3 1 4)
+// batches x tokens x 3 x head x heads ->  3 x batches x head x tokens x heads
+// (2 0 3 1 4)
 template <typename T, typename Tt>
 void transpose_before_bmm1(const T* qkvBuffer,
                            Tt* qkvTransBuffer,
@@ -108,7 +108,7 @@ void transpose_before_bmm1(const T* qkvBuffer,
   }
 }
 
-// batchs x head x tokens x heads -> batchs x tokens x head x heads (0 2 1 3)
+// batches x head x tokens x heads -> batches x tokens x head x heads (0 2 1 3)
 template <typename T, typename Tt>
 void transpose_after_bmm2(T* Buffer,
                           Tt* TransBuffer,
