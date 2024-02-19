@@ -28,8 +28,12 @@ class TestReductionSPMDRule(unittest.TestCase):
     Unit tests for reduction spmd rule.
     """
 
+    def config(self):
+        self.kernel = "max"
+
     def setUp(self):
-        self.rule = core.get_phi_spmd_rule("max")
+        self.config()
+        self.rule = core.get_phi_spmd_rule(self.kernel)
 
         x_shape = [64, 32]
         process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
@@ -459,6 +463,15 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_input_dist_attrs[0]._is_partial(), False)
+
+
+class TestSquaredL2NormSPMDRule(TestReductionSPMDRule):
+    """
+    Unit tests for squared_l2_norm spmd rule.
+    """
+
+    def config(self):
+        self.kernel = "squared_l2_norm"
 
 
 if __name__ == "__main__":

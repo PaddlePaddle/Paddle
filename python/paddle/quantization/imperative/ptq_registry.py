@@ -91,7 +91,7 @@ class PTQRegistry:
         Args:
             layer(Layer): The input layer can be a python class or an instance.
         Returns:
-            flag(bool): Whther the layer is supported.
+            flag(bool): Whether the layer is supported.
         """
         cls._init()
         return layer in cls.supported_layers_map or isinstance(
@@ -119,7 +119,7 @@ class PTQRegistry:
         Args:
             layer(Layer): The input layer can be a python class or an instance.
         Returns:
-            flag(bool): Whther the layer is supported.
+            flag(bool): Whether the layer is supported.
         """
         return layer in SIMULATED_LAYERS or isinstance(
             layer, tuple(SIMULATED_LAYERS)
@@ -128,7 +128,7 @@ class PTQRegistry:
     @classmethod
     def layer_info(cls, layer):
         """
-        Get the infomation for the layer.
+        Get the information for the layer.
         Args:
             layer(Layer): The input layer can be a python class or an instance.
         Returns:

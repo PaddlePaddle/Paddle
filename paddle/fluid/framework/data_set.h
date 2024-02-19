@@ -154,7 +154,7 @@ class Dataset {
   virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
-  // destroy preload readers after prelaod done
+  // destroy preload readers after preload done
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
