@@ -457,7 +457,7 @@ def hard_swish_composite(x):
     """define composite rule of op hard_swish.
     offset=3, threshold=6, scale=6
     out = minimum(
-        maxmum(x + offset, 0), threshold
+        maximum(x + offset, 0), threshold
     ) * x / scale
     """
     threshold = 6.0
