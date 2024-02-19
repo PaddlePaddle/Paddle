@@ -828,10 +828,10 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
   pir::Operation* operation = pir::Operation::Create(
       op_inputs, attribute_map, op_output_types, op_info);
-  VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
+  VLOG(4) << "[general op][" << op_desc.Type() << "] operation creation end.";
   block->push_back(operation);
 
-  VLOG(4) << "[general op][" << op_desc.Type() << "] opearation insertion end.";
+  VLOG(4) << "[general op][" << op_desc.Type() << "] operation insertion end.";
   this->RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
 
   return operation;
@@ -1078,7 +1078,7 @@ pir::Value TranslateDropOutStateIn(pir::IrContext* ctx,
   return full_op->result(0);
 }
 
-// `rnn` has an aditional input in dynamic graph
+// `rnn` has an additional input in dynamic graph
 struct RnnOpTranscriber : public OpTranscriber {
   InputHandlerFn GetSpecialInputHandlers(
       const std::string& input_name) override {
@@ -1213,9 +1213,9 @@ struct SplitOpTranscriber : public OpTranscriber {
         auto& attribute_translator = AttributeTranslator::instance();
         pir::Attribute new_attr = attribute_translator(
             "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("sections"));
-        auto sec_defin_op =
+        auto sec_define_op =
             InsertFullArrayOperationForAttributeInput(ctx, block, new_attr);
-        op_inputs.push_back(sec_defin_op->result(0));
+        op_inputs.push_back(sec_define_op->result(0));
       }
     }
 
@@ -1233,9 +1233,9 @@ struct SplitOpTranscriber : public OpTranscriber {
       pir::Attribute new_attr =
           attribute_translator("pir::Int32Attribute", op_desc.GetAttr("axis"));
 
-      auto sec_defin_op =
+      auto sec_define_op =
           InsertFullOperationForAttributeInput(ctx, block, new_attr);
-      op_inputs.push_back(sec_defin_op->result(0));
+      op_inputs.push_back(sec_define_op->result(0));
     }
 
     return op_inputs;
@@ -2076,7 +2076,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
       }
       auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
       auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-      auto compute_compatiable_dim =
+      auto compute_compatible_dim =
           [](const common::DDim& dim1,
              const common::DDim& dim2) -> common::DDim {
         std::vector<int64_t> result;
@@ -2089,7 +2089,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
         }
         return common::make_ddim(result);
       };
-      auto dim = compute_compatiable_dim(dim1, dim2);
+      auto dim = compute_compatible_dim(dim1, dim2);
       op_output_types.push_back(
           paddle::dialect::DenseTensorType::get(ctx,
                                                 tensor1.dtype(),

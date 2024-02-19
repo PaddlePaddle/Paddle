@@ -60,7 +60,7 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inference (engine.predict).
     Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
@@ -621,7 +621,7 @@ class Engine:
         self._init_comm()
         # startup program
         self._initialize(mode, init_parameters)
-        # mark main program for futher decompose
+        # mark main program for further decompose
         self._mark_prim(mode)
         self._has_prepared[mode] = True
 
@@ -926,14 +926,14 @@ class Engine:
                         if scope_var and buffer_tensor._is_initialized():
                             continue
                         # for amp
-                        if dest_type == core.VarDesc.VarType.BF16:
+                        if dest_type == paddle.bfloat16:
                             buffer_tensor.set(
                                 _convert_float_to_bfloat16(
                                     self._place, buffer.numpy()
                                 ),
                                 self._place,
                             )
-                        elif dest_type == core.VarDesc.VarType.FP16:
+                        elif dest_type == paddle.float16:
                             buffer_tensor.set(
                                 np.float16(buffer.numpy()), self._place
                             )
@@ -1816,7 +1816,7 @@ class Engine:
             return [None]
 
         if self._strategy.pipeline.enable or self._acc_steps == 1:
-            # pp with schedule or navie-pp
+            # pp with schedule or naive-pp
             return batch
         else:
             # split feed data with gradient_merge k_steps
@@ -2073,7 +2073,7 @@ class Engine:
         # Check parallel mode
         if self._strategy.auto_mode == "full":
             self._logger.info(
-                "The cost will be calcudated in the search process when the auto mode is full."
+                "The cost will be calculated in the search process when the auto mode is full."
             )
             return
 

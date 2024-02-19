@@ -297,15 +297,9 @@ class AmpScaler:
                 for param in group['params']:
                     if param._grad_ivar() is not None:
                         param_grads.append(param._grad_ivar())
-                        if (
-                            param._grad_ivar().dtype
-                            == core.VarDesc.VarType.FP16
-                        ):
+                        if param._grad_ivar().dtype == paddle.float16:
                             param_grads_fp16.append(param._grad_ivar())
-                        elif (
-                            param._grad_ivar().dtype
-                            == core.VarDesc.VarType.BF16
-                        ):
+                        elif param._grad_ivar().dtype == paddle.bfloat16:
                             param_grads_bf16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
@@ -329,17 +323,17 @@ class AmpScaler:
                 param_grads_fp16 = [
                     param
                     for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.FP16
+                    if param.dtype == paddle.float16
                 ]
                 param_grads_bf16 = [
                     param
                     for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.BF16
+                    if param.dtype == paddle.bfloat16
                 ]
                 param_grads_fp32 = [
                     param
                     for param in param_grads
-                    if param.dtype == core.VarDesc.VarType.FP32
+                    if param.dtype == paddle.float32
                 ]
         self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):

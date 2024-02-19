@@ -124,7 +124,7 @@ class ProgramTranslator {
   void GetParameterForSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
-  void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
+  void SetIsPersistableAttributeForAllValue(const BlockDesc& block);
 
   const VariableDefiningInfo& GetValueOrCreateInTop(
       const std::string& var_name, TranslationContext* translation_ctx);
