@@ -17,7 +17,6 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.base.core import VarDesc
 from paddle.utils.flops import flops
 
 from ..cluster import DeviceType, LinkType, get_default_cluster
@@ -968,11 +967,11 @@ def calc_time_by_cost_model(op, cluster=None):
         ), "Only GPU device is supported currently."
 
         gflops = 0.0
-        if dtype == VarDesc.VarType.FP64:
+        if dtype == paddle.float64:
             gflops = device.dp_gflops
-        elif dtype == VarDesc.VarType.FP32:
+        elif dtype == paddle.float32:
             gflops = device.sp_gflops
-        elif dtype == VarDesc.VarType.FP16 or dtype == VarDesc.VarType.BF16:
+        elif dtype == paddle.float16 or dtype == paddle.bfloat16:
             gflops = device.hp_gflops
         else:
             raise ValueError(

@@ -249,7 +249,7 @@ static phi::Backend DeriveBackend(const std::string& op,
                                   const OpYamlInfoParser* op_info_parser,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
-  // NOTE: Paramters are initilizered on executor place defined
+  // NOTE: Parameters are initilizered on executor place defined
   if ((op.compare(pir::SetParameterOp::name()) == 0 ||
        op.compare(pir::ShadowOutputOp::name()) == 0) &&
       place.GetType() == phi::AllocationType::GPU) {
@@ -395,8 +395,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
   block->push_back(op);
   auto new_in = op->result(0);
@@ -435,8 +435,8 @@ static pir::Value AddOneDNN2PaddleLayoutTransferOp(
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
 
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
 
   block->push_back(op);
@@ -625,8 +625,8 @@ pir::Value AddDtypeTransferOp(pir::Value in,
       {in}, op_attribute, {output_types}, kernel_op_info);
 
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
   block->push_back(op);
   pir::Value new_in = op->result(0);

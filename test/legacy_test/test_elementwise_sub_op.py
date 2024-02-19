@@ -56,7 +56,7 @@ class TestElementwiseOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -67,7 +67,7 @@ class TestElementwiseOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
@@ -125,7 +125,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             place, ['X', 'Y'], 'Out', max_relative_error=0.1
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -138,7 +138,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -338,7 +338,7 @@ class TestBF16ElementwiseOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_prim=self.check_prim)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'], 'Out', no_grad_set=set("X"), check_prim=self.check_prim
         )
@@ -398,7 +398,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_dygraph=False, check_pir=False)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -408,7 +408,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             check_pir=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
@@ -460,7 +460,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             place, ['X', 'Y'], 'Out', check_dygraph=False, check_pir=False
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -471,7 +471,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             check_pir=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
@@ -852,7 +852,7 @@ class TestComplexElementwiseSubOp(OpTest):
             ['X', 'Y'], 'Out', check_prim=self.check_prim, check_pir=False
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -861,7 +861,7 @@ class TestComplexElementwiseSubOp(OpTest):
             check_pir=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

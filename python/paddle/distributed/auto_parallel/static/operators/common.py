@@ -137,7 +137,7 @@ class DistributedOperatorImplContainer(abc.ABC):
         return compatible_impls
 
     # (NOTE) Currently, both DistributedOperatorImplContainer and DistributedOperatorImpl have update_dims_mapping method.
-    # But this method is supposed to be maitained by DistributedOperatorImplContainer, and we are ongoing adding method
+    # But this method is supposed to be maintained by DistributedOperatorImplContainer, and we are ongoing adding method
     # to DistributedOperatorImplContainer and removing those in DistributedOperatorImpl.
     # @abc.abstractmethod
     def update_dims_mapping(self, dist_op):
@@ -369,7 +369,7 @@ def is_parameter_related(varname, block, dist_context=None):
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
     var_shape = block._var_recursive(src_var.name).shape
-    var_topoloy = src_var_dist_attr.process_mesh.shape
+    var_topology = src_var_dist_attr.process_mesh.shape
     var_dims_mapping = src_var_dist_attr.dims_mapping
 
     complete_shape = []
@@ -377,7 +377,7 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
         if var_dims_mapping[idx] == -1:
             complete_shape.append(shape)
         else:
-            new_shape = shape * var_topoloy[var_dims_mapping[idx]]
+            new_shape = shape * var_topology[var_dims_mapping[idx]]
             complete_shape.append(new_shape)
 
     exact_shape = []
@@ -488,7 +488,7 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
 def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     """
-    insert the allreudce and scale ops for gradients of model
+    insert the allreduce and scale ops for gradients of model
     parameters for operator in data parallelism.
 
     Args:
@@ -557,7 +557,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
 
 def get_partial_groups(dist_ctx, op, out_grad_names, rank):
     """
-    deduce the partial comminication group for current operator output vars.
+    deduce the partial communication group for current operator output vars.
 
     Args:
         dist_ctx (DistributedContext): dist context.
@@ -608,7 +608,7 @@ def gradient_synchronization(
     dist_ctx, op, act_grad_names, out_grad_names, rank
 ):
     """
-    conduct the allreudce and scaling for gradients of model
+    conduct the allreduce and scaling for gradients of model
     parameters for operator in parallelism train.
 
     Args:
@@ -727,12 +727,12 @@ def update_op_dims_mapping(
     changed = False
     assert len(input_arg_names) == len(
         infered_input_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
         len(infered_input_dims_mappings), len(input_arg_names), str(dist_op)
     )
     assert len(output_arg_names) == len(
         infered_output_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
         len(infered_output_dims_mappings), len(output_arg_names), str(dist_op)
     )
 

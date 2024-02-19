@@ -26,20 +26,20 @@ class UnionFind:
       elements(list): The initialize element list.
     """
 
-    def __init__(self, elementes=None):
+    def __init__(self, elements=None):
         self._parents = []  # index -> parent index
         self._index = {}  # element -> index
         self._curr_idx = 0
-        if not elementes:
-            elementes = []
-        for ele in elementes:
+        if not elements:
+            elements = []
+        for ele in elements:
             self._parents.append(self._curr_idx)
             self._index.update({ele: self._curr_idx})
             self._curr_idx += 1
 
     def find(self, x):
         # Find the root index of given element x,
-        # execute the path compress while findind the root index
+        # execute the path compress while finding the root index
         if x not in self._index:
             return -1
         idx = self._index[x]
