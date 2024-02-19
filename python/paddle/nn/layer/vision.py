@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define specitial functions used in computer vision task
+# TODO: define special functions used in computer vision task
 
 from .. import functional
 from .layers import Layer
@@ -66,7 +66,7 @@ class PixelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                f"But recevie data format: {data_format}"
+                f"But receive data format: {data_format}"
             )
 
         self._upscale_factor = upscale_factor
@@ -132,7 +132,7 @@ class PixelUnshuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                f"But recevie data format: {data_format}"
+                f"But receive data format: {data_format}"
             )
 
         self._downscale_factor = downscale_factor
@@ -211,7 +211,7 @@ class ChannelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                f"But recevie data format: {data_format}"
+                f"But receive data format: {data_format}"
             )
 
         self._groups = groups
