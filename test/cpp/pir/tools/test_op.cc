@@ -15,9 +15,8 @@
 #include "test/cpp/pir/tools/test_op.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "test/cpp/inference/api/tester_helper.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
 namespace test {
 
