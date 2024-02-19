@@ -459,7 +459,8 @@ def launch():
             best_gbs = None
             while gbs_cur_cfg:
                 ctx = copy.deepcopy(raw_ctx)
-                log_dir = "GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS{}_Recompute_{}_granularity_{}".format(
+                log_dir = "Job{}_GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS{}_Recompute_{}_granularity_{}".format(
+                    job_id,
                     gbs_cur_cfg["global_batch_size"],
                     gbs_cur_cfg["dp_degree"],
                     gbs_cur_cfg["mp_degree"],
@@ -617,7 +618,8 @@ def launch():
             cur_cfg["acc_steps"] = acc_steps
             cur_cfg["global_batch_size"] = global_batch_size
             if "sharding_overlap" in cur_cfg:
-                log_dir = "GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
+                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
+                    job_id,
                     global_batch_size,
                     cur_cfg["dp_degree"],
                     cur_cfg["mp_degree"],
@@ -632,7 +634,8 @@ def launch():
                     cur_cfg["sharding_overlap"],
                 )
             else:
-                log_dir = "GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
+                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
+                    job_id,
                     global_batch_size,
                     cur_cfg["dp_degree"],
                     cur_cfg["mp_degree"],
