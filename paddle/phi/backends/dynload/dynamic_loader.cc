@@ -27,59 +27,24 @@ limitations under the License. */
 // TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DEFINE_string(cudnn_dir,  // NOLINT
-                  "",
-                  "Specify path for loading libcudnn.so. For instance, "
-                  "/usr/local/cudnn/lib. If empty [default], dlopen "
-                  "will search cudnn from LD_LIBRARY_PATH");
+#include "paddle/common/flags.h"
 
-PHI_DEFINE_string(  // NOLINT
-    cuda_dir,
-    "",
-    "Specify path for loading cuda library, such as libcublas, libcublasLt "
-    "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
-    "If default, dlopen will search cuda from LD_LIBRARY_PATH");
+COMMON_DECLARE_string(cudnn_dir);
+COMMON_DECLARE_string(cuda_dir);
+COMMON_DECLARE_string(cublas_dir);
+COMMON_DECLARE_string(nccl_dir);
+COMMON_DECLARE_string(cupti_dir);
+COMMON_DECLARE_string(tensorrt_dir);
+COMMON_DECLARE_string(mklml_dir);
+COMMON_DECLARE_string(lapack_dir);
+COMMON_DECLARE_string(mkl_dir);
+COMMON_DECLARE_string(op_dir);
+COMMON_DECLARE_string(cusparselt_dir);
+COMMON_DECLARE_string(curand_dir);
+COMMON_DECLARE_string(cusolver_dir);
+COMMON_DECLARE_string(cusparse_dir);
 
-PHI_DEFINE_string(nccl_dir,  // NOLINT
-                  "",
-                  "Specify path for loading nccl library, such as libnccl.so. "
-                  "For instance, /usr/local/cuda/lib64. If default, "
-                  "dlopen will search cuda from LD_LIBRARY_PATH");
-
-PHI_DEFINE_string(cupti_dir,
-                  "",
-                  "Specify path for loading cupti.so.");  // NOLINT
-
-PHI_DEFINE_string(  // NOLINT
-    tensorrt_dir,
-    "",
-    "Specify path for loading tensorrt library, such as libnvinfer.so.");
-
-PHI_DEFINE_string(mklml_dir,
-                  "",
-                  "Specify path for loading libmklml_intel.so.");  // NOLINT
-
-PHI_DEFINE_string(lapack_dir,
-                  "",
-                  "Specify path for loading liblapack.so.");  // NOLINT
-
-PHI_DEFINE_string(mkl_dir,  // NOLINT
-                  "",
-                  "Specify path for loading libmkl_rt.so. "
-                  "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
-                  "If default, "
-                  "dlopen will search mkl from LD_LIBRARY_PATH");
-
-PHI_DEFINE_string(op_dir,  // NOLINT
-                  "",
-                  "Specify path for loading user-defined op library.");
-
-PHI_DEFINE_string(cusparselt_dir,  // NOLINT
-                  "",
-                  "Specify path for loading libcusparseLt.so.");
->>>>>>> flash attn with basic functionality
 #ifdef PADDLE_WITH_HIP
 
 PHI_DEFINE_string(miopen_dir,
@@ -603,9 +568,16 @@ void* GetFlashAttnDsoHandle() {
     flashattn_dir = s_py_site_pkg_path.path;
   }
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.dylib");
+  return GetDsoHandleFromSearchPath(
+      s_pkg_flash_attn_path.path,
+      "libflashattn_advanced.dylib;libflashattn.dylib",
+      true,
+      {flashattn_dir});
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
+  return GetDsoHandleFromSearchPath(s_pkg_flash_attn_path.path,
+                                    "flashattn_advanced.dll;flashattn.dll",
+                                    true,
+                                    {flashattn_dir});
 #else
   return GetDsoHandleFromSearchPath(s_pkg_flash_attn_path.path,
                                     "libflashattn_advanced.so;libflashattn.so",
@@ -749,3 +721,4 @@ void* GetXPTIDsoHandle() {
 }
 }  // namespace dynload
 }  // namespace phi
+
