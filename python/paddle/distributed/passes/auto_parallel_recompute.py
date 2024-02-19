@@ -119,7 +119,7 @@ class RecomputeState(ProgramStats):
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
-        If program's foward part has 'dropout' op, this function will insert
+        If program's forward part has 'dropout' op, this function will insert
         a seed op before it to guarantee that two dropout op have the same outputs.
         """
         op_types = [op.type for op in self.ops]
@@ -150,7 +150,7 @@ class RecomputeState(ProgramStats):
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
             # insert seed op to guarantee that two dropout op have the same outputs
             # NOTE Hack for adopt recompute for random control, for more info see dist_dropout.py
-            # new seed added by recompute should have a prefix to distinguish with seed added by user or other moudule.
+            # new seed added by recompute should have a prefix to distinguish with seed added by user or other module.
             op_unique_name = unique_name.generate("rc_seed")
             var_unique_name = unique_name.generate_with_ignorable_key(
                 ".".join([op_unique_name, 'tmp'])
@@ -298,7 +298,7 @@ class RecomputePass(PassBase):
         Get ops and op_names of each process mesh excluding ops within the first "sr" chunks
         """
 
-        def reset_recomupte_op(op):
+        def reset_recompute_op(op):
             if is_recompute_op(op) or is_recompute_exclude_op(op):
                 op._set_attr("op_namescope", "")
 
@@ -311,7 +311,7 @@ class RecomputePass(PassBase):
         for op_id, op in enumerate(ops):
             if chunk_id // all_process_meshes_count < sr:
                 reset_ops_count += 1
-                reset_recomupte_op(op)
+                reset_recompute_op(op)
             if (
                 op_id < len(ops) - 1
                 and op.dist_attr.process_mesh
@@ -328,7 +328,7 @@ class RecomputePass(PassBase):
                     op_names_of_stages[id].append(op.type)
         assert (
             len(ops) == reset_ops_count + pushed_ops_count
-        ), "The sum of pushed_ops_count and reset_ops_count must be the same as lenght of ops, but the sum is {} while lenght of ops is {}".format(
+        ), "The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {} while length of ops is {}".format(
             reset_ops_count + pushed_ops_count, len(ops)
         )
         return ops_of_stages, op_names_of_stages
@@ -345,7 +345,7 @@ class RecomputePass(PassBase):
         main_block = main_program.global_block()
         op_path = _find_op_path(main_program, loss, no_grad_set)
 
-        # 1. mark exclude ops for refined-reompute according to ops-patterns(mainly linear and flash_attn)
+        # 1. mark exclude ops for refined-recompute according to ops-patterns(mainly linear and flash_attn)
         # 1.1 get all process_meshs in op_path
         all_ops_process_meshs = []
         for op in op_path:
@@ -358,7 +358,7 @@ class RecomputePass(PassBase):
         )
         all_ops_len = len(op_path)
         all_exclude_ops_ids = [[] for _ in op_names_devices]
-        # 1.3 find exclude ops for refined-reompute according to ops-patterns
+        # 1.3 find exclude ops for refined-recompute according to ops-patterns
         for refined_ops_pattern in self._refined_ops_patterns:
             num = refined_ops_pattern['num']
             num = (
@@ -583,8 +583,8 @@ class RecomputePass(PassBase):
                                 posterior_op
                             ).process_mesh
                         )
-                        # NOTE if two recompute segements across two pipeline stages
-                        # not need dependecies for it
+                        # NOTE if two recompute segments across two pipeline stages
+                        # not need dependencies for it
                         if prior_mesh == posterior_mesh:
                             insert_dependencies_for_two_ops(
                                 main_block,
