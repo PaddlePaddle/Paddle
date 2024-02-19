@@ -99,22 +99,21 @@ static inline phi::DataType GetDtypeWithPlace(
   for (const auto& tensors : amp_tensors_vector) {
     for (const auto& tensor : tensors) {
       auto place = tensor.place();
-      is_right_place = (paddle::platform::is_gpu_place(place) ||
-                        paddle::platform::is_cuda_pinned_place(place) ||
-                        paddle::platform::is_xpu_place(place) ||
-                        paddle::platform::is_custom_place(place));
+      // TODO(lizhiyu): If the tensor is a dist-tensor, it's place may be
+      // `unknown` in the no-calculation rank right now.
+      //       We use `is_dist_tensor()` to avoid the bug temporarily. The
+      //       dist-tensor in the no-calculation rank should have the right
+      //       place.
+      is_right_place =
+          (tensor.is_dist_tensor() || paddle::platform::is_gpu_place(place) ||
+           paddle::platform::is_cuda_pinned_place(place) ||
+           paddle::platform::is_xpu_place(place) ||
+           paddle::platform::is_custom_place(place));
       if (is_right_place) {
         break;
       }
     }
   }
-
-  if (!is_right_place) {
-    VLOG(6) << "Change " << op_name << "'s AMP type from " << amp_dtype
-            << " to FP32";
-    return phi::DataType::FLOAT32;
-  }
-  return amp_dtype;
 }
 
 static inline phi::DataType GetDtypeWithPlace(
@@ -194,8 +193,8 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
       paddle::platform::is_custom_place(place) ||
       paddle::platform::is_cpu_place(place)) {
     // CudaPinnedPlace is added for varbase created by dataloader
-    // Cpu place is for different place tensor, when input1 is cpu and input2 is
-    // gpu
+    // Cpu place is for different place tensor, when input1 is cpu and input2
+    // is gpu
     if ((data_type == phi::DataType::FLOAT32 ||
          data_type == phi::DataType::FLOAT16 ||
          data_type == phi::DataType::BFLOAT16) &&
