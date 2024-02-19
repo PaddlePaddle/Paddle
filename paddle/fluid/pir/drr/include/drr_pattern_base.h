@@ -30,7 +30,7 @@ namespace drr {
 
 class DrrPatternBase : public std::enable_shared_from_this<DrrPatternBase> {
  public:
-  static std::unique_ptr<DrrRewritePattern> Build(
+  TEST_API static std::unique_ptr<DrrRewritePattern> Build(
       pir::IrContext* ir_context,
       const std::shared_ptr<DrrPatternBase>& drr_pattern);
 

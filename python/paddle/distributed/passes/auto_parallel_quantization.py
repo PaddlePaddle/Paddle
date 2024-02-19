@@ -169,7 +169,7 @@ class QuantizationPass(PassBase):
 
         # 7. Convert Graph back to Program
         quant_program = main_graph.to_program()
-        quant_program = self.move_presist_var_to_global_block(quant_program)
+        quant_program = self.move_persist_var_to_global_block(quant_program)
 
         # 8.1 get new prams_grads from quant_program
         new_params_grads = []
@@ -203,7 +203,7 @@ class QuantizationPass(PassBase):
         context.set_attr("params_grads", new_params_grads)
         context.set_attr("loss", new_loss)
 
-    def move_presist_var_to_global_block(self, program):
+    def move_persist_var_to_global_block(self, program):
         global_block = program.global_block()
         for _op in global_block.ops:
             if _op.type == "while":

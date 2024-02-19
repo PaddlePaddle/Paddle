@@ -72,7 +72,7 @@ def global_scatter(
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed import init_parallel_env
-            >>> from paddle.distributed.utils imoprt moe_utils
+            >>> from paddle.distributed.utils import moe_utils
             >>> init_parallel_env()
             >>> n_expert = 2
             >>> world_size = 2
@@ -197,7 +197,7 @@ def global_gather(
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed import init_parallel_env
-            >>> from paddle.distributed.utils imoprt moe_utils
+            >>> from paddle.distributed.utils import moe_utils
             >>> init_parallel_env()
             >>> n_expert = 2
             >>> world_size = 2

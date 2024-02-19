@@ -26,11 +26,11 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
