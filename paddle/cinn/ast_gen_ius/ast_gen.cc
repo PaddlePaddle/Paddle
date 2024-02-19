@@ -97,36 +97,44 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     VLOG(4) << "FLAGS_group_schedule_tiling_first = "
             << FLAGS_group_schedule_tiling_first;
     std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
-    const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
-    const auto reduce_axis_position = [&reduce_axis,
-                                       &tensor]() -> std::vector<int> {
+    const std::vector<ir::Var>& reduce_axes_vars = tensor->reduce_axis;
+    const auto reduce_axis_position = [&reduce_axes_vars, &tensor]() {
       VLOG(4) << "start calculus reduce_axis_position: ";
       std::vector<int> res;
-      auto fn_body = tensor->operation.ptr()->as<ir::ComputeOp>()->body[0];
-      if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
-        auto& reduce_body =
-            fn_body.As<ir::Reduce>()->body;  // reduce body is a tensor store.
-        auto& load_indices = reduce_body.As<ir::Load>()->indices;
-        int position = -1;
-        for (auto& obj : load_indices) {
-          position += 1;
-          for (auto& reduce_var : reduce_axis) {
-            if (obj.as_var_ref() == reduce_var) {
-              res.push_back(position);
-            }
+      const auto& fn_body =
+          tensor->operation.ptr()->as<ir::ComputeOp>()->body[0];
+      bool is_a_valid_reduce_op = fn_body.defined() && fn_body.As<ir::Reduce>();
+      if (!is_a_valid_reduce_op) {
+        PD_THROW(
+            "The reduce body is not a valid reduce op, please check the "
+            "input.");
+      }
+      const auto& reduce_body =
+          fn_body.As<ir::Reduce>()->body;  // reduce body is a tensor store.
+      const auto& load_indices = reduce_body.As<ir::Load>()->indices;
+      int position = -1;
+      for (const auto& obj : load_indices) {
+        position += 1;
+        for (auto& reduce_var : reduce_axes_vars) {
+          if (obj.as_var_ref() == reduce_var) {
+            res.push_back(position);
           }
         }
-        for (auto i : res) {
-          VLOG(4) << "reduce axis position is " << i;
-        }
-        return res;
       }
+      VLOG(4) << "reduce axis position is " << [&] {
+        std::stringstream ss;
+        for (int i : res) {
+          ss << i << " ";
+        }
+        return ss.str();
+      }();
+      return res;
     }();
     for (int i = 0; i < shape.size(); ++i) {
-      if (FLAGS_group_schedule_tiling_first &&
-          std::find(reduce_axis_position.begin(),
-                    reduce_axis_position.end(),
-                    i) != reduce_axis_position.end()) {
+      bool reduce_axis_found = std::find(reduce_axis_position.begin(),
+                                         reduce_axis_position.end(),
+                                         i) != reduce_axis_position.end();
+      if (FLAGS_group_schedule_tiling_first && reduce_axis_found) {
         // if tiling first, we need to replace the reduce axis with 0, but don't
         // deal with the non-reduce axis
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -164,10 +172,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // for same axis so we re-create objects
     std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
-      if (FLAGS_group_schedule_tiling_first &&
-          std::find(reduce_axis_position.begin(),
-                    reduce_axis_position.end(),
-                    i) != reduce_axis_position.end()) {
+      bool reduce_axis_found = std::find(reduce_axis_position.begin(),
+                                         reduce_axis_position.end(),
+                                         i) != reduce_axis_position.end();
+      if (FLAGS_group_schedule_tiling_first && reduce_axis_found) {
         // if tiling first, we need to replace the reduce axis with 0, but don't
         // deal with the non-reduce axis
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -189,14 +197,14 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         reduce_iter_values.push_back(axis_vars[i]);
       }
     }
-    for (int i = 0; i < reduce_axis.size(); ++i) {
+    for (int i = 0; i < reduce_axes_vars.size(); ++i) {
       int count = shape.size() + i;
       reduce_block_vars.push_back(
-          Var(reduce_axis[i]->lower_bound,
-              reduce_axis[i]->upper_bound,
+          Var(reduce_axes_vars[i]->lower_bound,
+              reduce_axes_vars[i]->upper_bound,
               cinn::UniqName("i" + std::to_string(count)),
               /*is_reduce = */ true));
-      ir::Var reduce_axis_var = reduce_axis[i];
+      ir::Var reduce_axis_var = reduce_axes_vars[i];
       reduce_axis_var->is_reduce_axis = true;
       reduce_iter_values.push_back(reduce_axis_var);
     }
@@ -213,11 +221,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     }
 
     if (FLAGS_group_schedule_tiling_first) {
-      non_zero_axis_size = axis.size() - reduce_axis.size();
+      non_zero_axis_size = axis.size() - reduce_axes_vars.size();
     }
     for (int i = non_zero_axis_size; i < reduce_block_vars.size(); ++i) {
       optim::ReplaceVarWithExpr(&reduce_body,
-                                reduce_axis[i - non_zero_axis_size],
+                                reduce_axes_vars[i - non_zero_axis_size],
                                 reduce_block_vars[i]);
     }
 
@@ -225,10 +233,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         reduce_iter_values,
         ir::ScheduleBlock::Make(
             reduce_block_vars, {}, {}, tensor->name, reduce_body));
-    for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
-      reduce_body = ir::For::Make(reduce_axis[i],
-                                  reduce_axis[i]->lower_bound,
-                                  reduce_axis[i]->upper_bound,
+    for (int i = static_cast<int>(reduce_axes_vars.size()) - 1; i >= 0; --i) {
+      reduce_body = ir::For::Make(reduce_axes_vars[i],
+                                  reduce_axes_vars[i]->lower_bound,
+                                  reduce_axes_vars[i]->upper_bound,
                                   ir::ForType::Serial,
                                   ir::DeviceAPI::Host,
                                   ir::Block::Make({reduce_body}));
@@ -237,10 +245,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
-      if (FLAGS_group_schedule_tiling_first &&
-          std::find(reduce_axis_position.begin(),
-                    reduce_axis_position.end(),
-                    i) != reduce_axis_position.end()) {
+      bool reduce_axis_found = std::find(reduce_axis_position.begin(),
+                                         reduce_axis_position.end(),
+                                         i) != reduce_axis_position.end();
+      if (FLAGS_group_schedule_tiling_first && reduce_axis_found) {
         continue;
       }
       if (!FLAGS_group_schedule_tiling_first && !FLAGS_cinn_bucket_compile &&
