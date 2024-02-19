@@ -17,9 +17,9 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -37,9 +37,9 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
               ->isa<cinn::dialect::ReshapeOp>()) {
         auto pre_name = op->operand_source(i).defining_op()->name();
 
-        if (op->operand_source(i).use_count() > 1) {
-          continue;
-        }
+        // if (op->operand_source(i).use_count() > 1) {
+        //   continue;
+        // }
 
         if ((pre_name != "cinn_op.reduce_sum") &&
             (pre_name != "cinn_op.reduce_max")) {

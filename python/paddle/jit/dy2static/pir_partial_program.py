@@ -582,7 +582,7 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.add_cinn_pass(
                         bwd_pm, backward_program
                     )
-                    fwd_pm.run(forward_program)
+                    # fwd_pm.run(forward_program)
                     bwd_pm.run(backward_program)
                 return forward_program, backward_program
 

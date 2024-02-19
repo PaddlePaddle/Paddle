@@ -360,11 +360,6 @@ bool StaticShapeGroupScheduler::NeedOrderLoops() {
   return false;
 }
 
-// void StaticShapeGroupScheduler::BindCudaBlockThread()
-// {
-
-// }
-
 void StaticShapeGroupScheduler::Tiling() {
   // apply tiling
   std::vector<std::string> node_list;
