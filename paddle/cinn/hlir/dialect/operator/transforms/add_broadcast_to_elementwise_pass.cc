@@ -163,7 +163,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 }
 
 template <typename OPTYPE>
-class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
+class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
@@ -181,42 +181,43 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     // elementwise ops
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MaximumOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MinimumOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(
         context);
 
     // compare ops
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
         context);
 
     // bitwise ops
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
         context);
-    ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
         context);
 
     return ps;
