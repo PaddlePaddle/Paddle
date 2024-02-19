@@ -36,8 +36,9 @@ if(NOT WITH_SETUP_INSTALL)
       "Check submodules of paddle, and run 'git submodule sync --recursive && git submodule update --init --recursive'"
   )
   execute_process(
-    COMMAND git submodule sync --recursive
-    COMMAND git submodule update --init --recursive
+    COMMAND
+      $ENV{SHELL} -c
+      "git submodule sync --recursive && git submodule update --init --recursive"
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     RESULT_VARIABLE result_var)
   if(NOT result_var EQUAL 0)
