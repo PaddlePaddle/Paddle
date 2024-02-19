@@ -72,9 +72,26 @@ class HistoryRecorder:
                 raise ValueError("max_mem_usage should be greater than 0.")
 
             for cfg in self.history:
-                best_cfg = cfg
+                if (
+                    not best_cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"]
+                    and not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+                    continue
+
                 if (
                     not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"] < best_cfg["max_mem_usage"]
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+
+                if (
+                    not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
                     and cfg["max_mem_usage"] < max_mem_usage - buffer
                     and cfg["time"] != -1
                 ):
