@@ -32,16 +32,16 @@ namespace {
 
 std::string SprintShape(const std::vector<std::vector<std::int64_t>>& shapes) {
   std::string str;
-  for (std::vector<std::int64_t> shape : shapes) {
+  for (int i = 0; i < shapes.size(); i++) {
     str += "[";
-    for (std::int64_t value : shape) {
-      str += std::to_string(value);
-      if (value != shape.back()) {
+    for (int j = 0; j < shapes[i].size(); j++) {
+      str += std::to_string(shapes[i][j]);
+      if (j != shapes[i].size() - 1) {
         str += ", ";
       }
     }
     str += "]";
-    if (shape != shapes.back()) {
+    if (i != shapes.size() - 1) {
       str += ", ";
     }
   }
@@ -100,8 +100,7 @@ std::vector<std::vector<std::int64_t>> GetDynamicValueShape(
         dynamic_shapes.push_back(GetShapeFromTensor(tensor_shape_or_data));
       },
       [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
-        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
-             tensor_list) {
+        for (const auto& tensor_shape_or_data : tensor_list) {
           dynamic_shapes.push_back(GetShapeFromTensor(tensor_shape_or_data));
         }
       }};
