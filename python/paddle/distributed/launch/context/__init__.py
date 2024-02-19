@@ -105,18 +105,46 @@ class Context:
             "legacy": False,
             "log_level": "INFO",
             "enable_gpu_log": True,
-            "nnodes": "1",
+            "nnodes": "-1",
             "nproc_per_node": None,
+            "log_dir": "log",
+            "run_mode": None,
+            "job_id": "default",
+            "devices": None,
+            "gpus": None,
+            "npus": None,
+            "xpus": None,
+            "ips": None,
+            "auto_parallel_config": None,
+            "auto_tuner_json": None,
+            "servers": "",
+            "trainers": "",
+            "trainer_num": None,
+            "server_num": None,
+            "gloo_port": 6767,
+            "with_gloo": "1",
+            "max_restart": 3,
+            "elastic_level": -1,
+            "elastic_timeout": 30,
+            "host": None,
         }
-        if k in default_values and self.args[k] != default_values[k]:
+
+        if k in default_values and getattr(self.args, k) != default_values[k]:
             return True
+
         return False
 
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             attr, attr_type = v
             if k in self.envs:
-                print(
-                    f"LAUNCH WARNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
-                )
-                setattr(self.args, attr, attr_type(self.envs[k]))
+                if attr in self.args and self.has_set(attr):
+                    continue
+                else:
+                    print(
+                        f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
+                    )
+                    setattr(self.args, attr, attr_type(self.envs[k]))
+        # set nnodes default value
+        if self.args.nnodes == "-1":
+            self.args.nnodes = "1"
