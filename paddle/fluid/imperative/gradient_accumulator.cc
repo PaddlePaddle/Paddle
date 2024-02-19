@@ -204,7 +204,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
     auto cpu_ctx = static_cast<CONTEXT*>(                                      \
         platform::DeviceContextPool::Instance().Get(place));                   \
-    phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
+    phi::AddKernel<T, CONTEXT>(*cpu_ctx, *dst_tensor, src_tensor, dst_tensor); \
     return;                                                                    \
   }
 

@@ -552,8 +552,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         types, sub_program_list = _program_for_vpp(
-            program, num_model_chunks, dist_context
+            program, num_model_chunks, dist_context, enable_send_recv_overlap
         )
         return types, sub_program_list
 

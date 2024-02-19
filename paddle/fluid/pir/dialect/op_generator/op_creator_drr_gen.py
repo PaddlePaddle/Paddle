@@ -22,7 +22,7 @@ from op_gen import (
 )
 
 CPP_FILE_TEMPLATE = """
-#include "paddle/fluid/pir/drr/ir_operation_factory.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 
 {op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"

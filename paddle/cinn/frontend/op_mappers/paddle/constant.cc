@@ -198,12 +198,12 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0
-                          ? std::numeric_limits<float>::epsilon()
-                          : -std::numeric_limits<float>::epsilon();
+      auto epsilon = adj_diff.second > 0
+                         ? std::numeric_limits<float>::epsilon()
+                         : -std::numeric_limits<float>::epsilon();
 
       out = ctx.Builder()->Arange(fp32_values.front(),
-                                  fp32_values.back() + epsilone,
+                                  fp32_values.back() + epsilon,
                                   adj_diff.second,
                                   "float32");
     } else {
@@ -218,11 +218,11 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0 ? 1 : -1;
+      auto epsilon = adj_diff.second > 0 ? 1 : -1;
 
       out = ctx.Builder()->Arange(
           static_cast<float>(int32_values.front()),
-          static_cast<float>(int32_values.back() + epsilone),
+          static_cast<float>(int32_values.back() + epsilon),
           static_cast<float>(adj_diff.second),
           "int32");
     } else {
@@ -237,11 +237,11 @@ void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
     if (adj_diff.first) {
       VLOG(4) << "The input of assign_value is a arithmetic sequence. Using "
                  "Arange instead of Constant.";
-      auto epsilone = adj_diff.second > 0 ? 1 : -1;
+      auto epsilon = adj_diff.second > 0 ? 1 : -1;
 
       out = ctx.Builder()->Arange(
           static_cast<float>(int64_values.front()),
-          static_cast<float>(int64_values.back() + epsilone),
+          static_cast<float>(int64_values.back() + epsilon),
           static_cast<float>(adj_diff.second),
           "int64");
     } else {

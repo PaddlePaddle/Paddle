@@ -25,7 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_DNNL

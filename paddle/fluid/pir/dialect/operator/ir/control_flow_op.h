@@ -17,8 +17,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
