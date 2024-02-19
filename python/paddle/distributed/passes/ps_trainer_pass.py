@@ -1040,9 +1040,9 @@ class SplitHeterWorkerOpsPass(PassBase):
         3. create heter worker program, add listen&serv op
         """
         attrs = pass_ctx._attrs
-        default_deveice = "cpu"
+        default_device = "cpu"
         program, heter_ops, _, program_block_ops = find_heter_ops(
-            main_program, default_deveice
+            main_program, default_device
         )
         if len(heter_ops) == 0:
             warnings.warn(

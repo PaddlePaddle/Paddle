@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 import paddle.version as paddle_version
 
 from .. import pir
@@ -632,10 +633,10 @@ def _set_pipeline_stage(stage):
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
 # used to make Variable and Tensor has same interfaces, like numpy. Since Tensor is not exposed in our
-# official docments, logically, we want to keep Tensor and logically consistent. While, actually,
+# official documents, logically, we want to keep Tensor and logically consistent. While, actually,
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
-# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheritting
+# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
@@ -810,7 +811,7 @@ def disable_signal_handler():
 
     Paddle installs signal handlers at C++ level to log debug information upon failing.
     However, conflicts can happen if another python module is making use of such signal.
-    Such being the case, one may disblae paddle signal handler via this interface.
+    Such being the case, one may disable paddle signal handler via this interface.
 
     Known frameworks that require disabling signal handler includes:
     1. TVM
@@ -1373,7 +1374,7 @@ def wrap_as_scalar(number):
 
 def wrap_as_scalars(array):
     """This function is used to convert flat list, or numpy array(not
-    necesarily flat) to list of core.Scalar, which correspond to
+    necessarily flat) to list of core.Scalar, which correspond to
     std::vector<paddle::experimental::Scalar> in operator runtime.
 
     Args:
@@ -1718,7 +1719,7 @@ class Variable(metaclass=VariableMetaClass):
         Args:
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
 
         Returns:
@@ -2129,7 +2130,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of current Variable
 
-        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
+        **Notes: If it has two or more Variable share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
 
         Examples:
             .. code-block:: python
@@ -2241,7 +2242,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT supprt lod")
+            raise Exception("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -2627,7 +2628,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...         var.set_value(t_load)
         """
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -2694,7 +2695,7 @@ class Variable(metaclass=VariableMetaClass):
         '''
 
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -3869,7 +3870,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
+                        'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'.format(
                             op_type, k
                         )
                     )
@@ -5810,7 +5811,7 @@ class Program:
         # the distributed lookup table names
         self._distributed_lookup_table = None
 
-        # use Deep gradient comrepssion or not
+        # use Deep gradient compression or not
         self._enable_dgc = False
         self._use_lamb = False
 
@@ -6272,7 +6273,7 @@ class Program:
         """
         .. note:::
             1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` .
-            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` .
+            2. Recommend you to use :code:`clone` before using :code:`Optimizer.minimize` .
             3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
@@ -6286,8 +6287,8 @@ class Program:
         * Set for_test to False when you want to clone the program for training.
         * Set for_test to True when you want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
-          use :code:`clone` after :code:`Opimizer.minimize`, but we still
-          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
+          use :code:`clone` after :code:`Optimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Optimizer.minimize`.
 
         Examples:
             .. code-block:: python
@@ -8154,13 +8155,13 @@ def _get_paddle_place_list(places):
 
 
 def dtype_to_str(in_dtype):
-    if in_dtype == core.VarDesc.VarType.FP16:
+    if in_dtype == paddle.float16:
         return "fp16"
-    elif in_dtype == core.VarDesc.VarType.BF16:
+    elif in_dtype == paddle.bfloat16:
         return "bf16"
-    elif in_dtype == core.VarDesc.VarType.FP32:
+    elif in_dtype == paddle.float32:
         return "fp32"
-    elif in_dtype == core.VarDesc.VarType.FP64:
+    elif in_dtype == paddle.float64:
         return "fp64"
     else:
         return None
