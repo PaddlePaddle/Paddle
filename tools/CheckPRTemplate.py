@@ -34,7 +34,7 @@ def re_rule(body, CHECK_TEMPLATE):
 def parameter_accuracy(body):
     PR_dic = {}
     PR_Category = [
-        'Python Frontend',
+        'User Experience',
         'Dygraph',
         'PIR Infrastructure',
         'Auto Parallel',
