@@ -329,12 +329,12 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug(f"terminate process id:{p.proc.pid}")
 
-    # wait all process terminiated
+    # wait all process terminated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:
-            if p.proc.poll() is None:  # not termniate
+            if p.proc.poll() is None:  # not terminate
                 os.kill(p.proc.pid, signal.SIGKILL)
                 alive = True
 
@@ -398,7 +398,7 @@ def find_free_ports(num):
         step += 1
         if step > 100:
             print(
-                "can't find avilable port and use the specified static port now!"
+                "can't find available port and use the specified static port now!"
             )
             return None
 

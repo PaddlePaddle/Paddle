@@ -37,7 +37,7 @@ std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(
     const std::vector<ir::LoweredFunc>& lowered_funcs);
 
 /**
- * Determine whether a schedule block needs multileveltiling
+ * Determine whether a schedule block needs multi-level tiling
  */
 bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize);
 

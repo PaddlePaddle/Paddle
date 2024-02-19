@@ -58,7 +58,7 @@ TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -71,7 +71,7 @@ TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
   std::string params_str = paddle::test::read_file(params_file);
   config.SetModelBuffer(
       prog_str.c_str(), prog_str.size(), params_str.c_str(), params_str.size());
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
@@ -91,7 +91,7 @@ TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -104,7 +104,7 @@ TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   config.EnableMKLDNN();
   config.SetMkldnnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);

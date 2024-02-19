@@ -37,7 +37,7 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
     Description：
         Save model parameters for auto parallel inference.
         Supporting dp + mp + pp + sharding(stage1), dp + sharding stage2-3.
-        MoE not sdupported till MoE is supported in auto parallel mode.
+        MoE not supported till MoE is supported in auto parallel mode.
 
     Args:
         path_prefix: path prefix to save. If `path_preifx` ends with path sepreator,

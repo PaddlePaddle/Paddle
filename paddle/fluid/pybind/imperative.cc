@@ -678,8 +678,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
-      .def("__init__",
-           [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
+      .def(py::init([]() { return std::make_unique<imperative::Tracer>(); }))
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
