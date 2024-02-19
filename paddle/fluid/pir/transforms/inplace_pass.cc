@@ -54,7 +54,7 @@ std::unordered_set<std::string> RelaxShapeCheckOps = {
 
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
-// AllocatedSelectedRowsType; (2) Value's is not persisable.
+// AllocatedSelectedRowsType; (2) Value's is not persistable.
 bool CanBeDeleted(pir::Value value) {
   if (!value.type()) {
     return false;
@@ -63,7 +63,7 @@ bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersisable);
+  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
   return !(persist_attr && persist_attr.data());
 }
 

@@ -571,7 +571,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -603,7 +603,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

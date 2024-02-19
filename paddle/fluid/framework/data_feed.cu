@@ -3106,9 +3106,9 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
   int total_samples = 0;
 
   // Definition of variables related to multi machine sampling
-  int switch_flag = EVENT_NOT_SWTICH;  // Mark whether the local machine needs
+  int switch_flag = EVENT_NOT_SWITCH;  // Mark whether the local machine needs
                                        // to switch metapath
-  int switch_command = EVENT_NOT_SWTICH;    // Mark whether to switch metapath,
+  int switch_command = EVENT_NOT_SWITCH;    // Mark whether to switch metapath,
                                             // after multi node sync
   int sample_flag = EVENT_CONTINUE_SAMPLE;  // Mark whether the local machine
                                             // needs to continue sampling
@@ -3182,7 +3182,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
               << " switch_flag:" << switch_flag << "," << switch_command;
       if (switch_command) {
         cursor += 1;
-        switch_flag = EVENT_NOT_SWTICH;
+        switch_flag = EVENT_NOT_SWITCH;
         continue;
       }
 
