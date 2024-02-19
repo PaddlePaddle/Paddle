@@ -297,7 +297,7 @@ class FP16State:
         ):
             return
 
-        if var.dtype == core.VarDesc.VarType.FP32:
+        if var.dtype == paddle.float32:
             var.desc.set_dtype(__target_dtype__)
 
     def resolute_cast_op(self, block):
@@ -445,9 +445,7 @@ class FP16State:
         num_cast_ops = 0
 
         for in_name in op.input_names:
-            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-                op, in_name
-            ):
+            if src_dtype == paddle.float32 and _keep_fp32_input(op, in_name):
                 continue
 
             consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -692,7 +690,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 
 def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
-    fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+    fp32_grads = [g for g in grads if g.dtype == paddle.float32]
     fp16_grads = [g for g in grads if g.dtype == __target_dtype__]
     assert len(fp32_grads) + len(fp16_grads) == len(
         grads
@@ -809,7 +807,7 @@ def cast_startup_program():
                     'dtype'
                 ), f"initialization op is supported to has dtype attribute but got {str(op)}."
                 out_var = startup_program.global_block().var(output_name)
-                if out_var.dtype == core.VarDesc.VarType.FP32:
+                if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(__target_dtype__)
                 if op.attr('dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', __target_dtype__)

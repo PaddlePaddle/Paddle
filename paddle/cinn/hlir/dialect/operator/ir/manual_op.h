@@ -18,13 +18,13 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/dll_decl.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/operation_utils.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {

@@ -34,9 +34,9 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_result.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace pybind {
