@@ -23,6 +23,11 @@ if [ ! -d "$build_directory" ]; then
     mkdir $build_directory
 fi
 
+python_exe_path="python"
+cuda_root_path="/usr/local/cuda"
+gpu_cc="75"
+
 cd $build_directory
-cmake .. -DPYTHON_EXECUTABLE=python -DCOMPUTE_CAPABILITY=75 && make -j 
+cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc
+make -j 
 cd -

@@ -11,6 +11,12 @@ step1.
 
 `bash compile.sh`
 
+注意，该脚本中有三个参数需要用户自己指定下，分别是python解释器的路径，cuda的根目录路径和用户GPU机器的计算能力。
+```shell
+python_exe_path="python"
+cuda_root_path="/usr/local/cuda"
+gpu_cc="75"
+```
 compile.sh 脚本中会下载cutlass，执行CMakeLists.txt脚本，编译生成动态库。
 
 
