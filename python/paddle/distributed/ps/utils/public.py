@@ -489,7 +489,7 @@ def get_geo_trainer_send_context(attrs):
     origin_programs = attrs['origin_main_programs']
     idx = 0  # table idx
 
-    distibuted_varnames = get_sparse_tablenames(origin_programs, True)
+    distributed_varnames = get_sparse_tablenames(origin_programs, True)
     for i, program in enumerate(origin_programs):
         merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
@@ -500,7 +500,7 @@ def get_geo_trainer_send_context(attrs):
                 continue
 
             is_distributed = (
-                True if param_name in distibuted_varnames else False
+                True if param_name in distributed_varnames else False
             )
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
@@ -574,8 +574,8 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
     print(f"is_heter_ps_mode? {split_dense_table}")
 
     idx = 0
-    distibuted_varnames = get_sparse_tablenames(origin_programs, True)
-    # print("public distibuted_varnames:", distibuted_varnames)
+    distributed_varnames = get_sparse_tablenames(origin_programs, True)
+    # print("public distributed_varnames:", distributed_varnames)
     for i, program in enumerate(origin_programs):
         merged_sparse_pairs = attrs['merged_sparse_pairs'][i]
         for merged in merged_sparse_pairs:
@@ -592,7 +592,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
                 splited_varname.append(f"{param_name}.block{i}")
 
             is_distributed = (
-                True if param_name in distibuted_varnames else False
+                True if param_name in distributed_varnames else False
             )
 
             var = program.global_block().vars[grad.merged_var.name]
