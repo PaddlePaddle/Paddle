@@ -1061,7 +1061,7 @@ class ShardingPass(PassBase):
             )
         )
 
-        # create coalesce tesnor and record op idx
+        # create coalesce tensor and record op idx
         grad_name_to_group_map = {}
         coalesce_to_group_map = {}
         modify_reduce_op_map = {}

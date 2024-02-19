@@ -39,7 +39,7 @@ TEST(gpu_tester_resnet50, analysis_gpu_bz1) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -47,7 +47,7 @@ TEST(gpu_tester_resnet50, analysis_gpu_bz1) {
   // prepare inference config
   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                   FLAGS_modeldir + "/inference.pdiparams");
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
@@ -67,7 +67,7 @@ TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -78,7 +78,7 @@ TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
       1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
@@ -93,7 +93,7 @@ TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
 
 TEST(tensorrt_tester_resnet50, serial_diff_batch_trt_fp32) {
   int max_batch_size = 5;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -118,7 +118,7 @@ TEST(tensorrt_tester_resnet50, serial_diff_batch_trt_fp32) {
     // init output data
     std::map<std::string, paddle::test::Record> infer_output_data,
         truth_output_data;
-    // get groudtruth by disbale ir
+    // get ground truth by disable ir
     SingleThreadPrediction(
         pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);
     // get infer results
@@ -138,7 +138,7 @@ TEST(tensorrt_tester_resnet50, multi_thread4_trt_fp32_bz2) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                         FLAGS_modeldir + "/inference.pdiparams");
@@ -149,7 +149,7 @@ TEST(tensorrt_tester_resnet50, multi_thread4_trt_fp32_bz2) {
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
       1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &my_input_data_map, &truth_output_data, 1);

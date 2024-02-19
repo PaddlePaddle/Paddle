@@ -17,8 +17,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/parameter.h"
 namespace paddle {
 namespace dialect {
 

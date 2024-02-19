@@ -567,8 +567,8 @@ class TestCosDoubleGradCheck2(unittest.TestCase):
         x_data = np.random.randn(64, 64).astype("float32")
         with static_guard():
             main_prog = paddle.static.Program()
-            starup_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, starup_prog):
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.assign(x_data)
                 x.stop_gradient = False
                 y = paddle.cos(x)
@@ -576,7 +576,7 @@ class TestCosDoubleGradCheck2(unittest.TestCase):
                 dxx = paddle.static.gradients(dx, x)[0]
 
             exe = paddle.static.Executor(place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             (dxx_result,) = exe.run(main_prog, fetch_list=[dxx])
             dxx_expected = -np.cos(x_data)
             np.testing.assert_allclose(dxx_result, dxx_expected, 1e-6, 1e-6)

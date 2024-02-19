@@ -219,6 +219,12 @@ def fc(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
             if in_pir_mode():
+                if len(input_var.shape) > 2:
+                    new_shape = (
+                        input_var.shape[0],
+                        np.prod(input_var.shape[1:]),
+                    )
+                    input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
             else:
                 tmp = helper.create_variable_for_type_inference(dtype)

@@ -16,7 +16,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"

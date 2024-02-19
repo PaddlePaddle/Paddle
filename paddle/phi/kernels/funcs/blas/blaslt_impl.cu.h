@@ -23,13 +23,13 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
-PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
+COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 #endif
 
 namespace phi {
