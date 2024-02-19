@@ -28,6 +28,13 @@ namespace phi {
 
 int get_num_split() {
   // 0 for an internal heuristic, which is optimal
+  if (FLAGS_cudnn_deterministic) {
+    PADDLE_ENFORCE_EQ(phi::dynload::IsFlashAttnAdvancedSupported(),
+                      true,
+                      phi::errors::Unavailable(
+                          "deterministic algorithm requires advanced flash "
+                          "attention. Try : pip install paddle_flash_attn."));
+  }
   return FLAGS_cudnn_deterministic ? 1 : 0;
 }
 

@@ -27,6 +27,10 @@ void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   phi::dynload::SetPaddleLibPath(py_site_pkg_path);
 }
 
+void SetFalshAttnLibPath(const std::string& py_site_pkg_path) {
+  phi::dynload::SetFalshAttnLibPath(py_site_pkg_path);
+}
+
 void* GetCublasDsoHandle() { return phi::dynload::GetCublasDsoHandle(); }
 
 void* GetCublasLtDsoHandle() { return phi::dynload::GetCublasLtDsoHandle(); }

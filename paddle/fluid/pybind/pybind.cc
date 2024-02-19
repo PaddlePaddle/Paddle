@@ -207,6 +207,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -1213,6 +1214,9 @@ PYBIND11_MODULE(libpaddle, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+
+  m.def("_set_falsh_attn_lib_path",
+        &paddle::platform::dynload::SetFalshAttnLibPath);
 
   m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 

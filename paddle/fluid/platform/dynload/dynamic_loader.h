@@ -49,6 +49,7 @@ void* GetCusparseLtDsoHandle();
 void* GetXPTIDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
+void SetFalshAttnLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
