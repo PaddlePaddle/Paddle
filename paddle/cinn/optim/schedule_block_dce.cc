@@ -26,10 +26,10 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
       : output_names_(output_names.begin(), output_names.end()) {}
 
   void operator()(ir::Expr* expr) {
-    FindDeadScheduleBlocks(*expr);
+    UpdateDeadScheduleBlocks(*expr);
     while (!dead_schedule_block_names_.empty()) {
       Visit(expr);
-      FindDeadScheduleBlocks(*expr);
+      UpdateDeadScheduleBlocks(*expr);
     }
   }
 
@@ -107,7 +107,7 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
                sbr->schedule_block.As<ir::ScheduleBlock>()->name) > 0;
   }
 
-  void FindDeadScheduleBlocks(const ir::Expr& expr) {
+  void UpdateDeadScheduleBlocks(const ir::Expr& expr) {
     dead_schedule_block_names_.clear();
     std::unordered_set<std::string> load_buffer_names;
     std::unordered_set<std::string> load_tensor_names;
