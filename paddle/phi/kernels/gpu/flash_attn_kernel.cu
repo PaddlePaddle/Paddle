@@ -45,10 +45,14 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   ctx.template Alloc<T>(out);
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
   // q, k, v [total_q/k/v, num_heads, head_dim]
   auto dims = q.dims();
@@ -140,7 +144,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
@@ -194,7 +198,11 @@ void FlashAttnKernel(const Context& ctx,
 
   ctx.template Alloc<T>(out);
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream = ctx.stream();
+#else
   cudaStream_t stream = ctx.stream();
+#endif
 
   bool succ = phi::dynload::flash_attn_fwd(
       q.data(),

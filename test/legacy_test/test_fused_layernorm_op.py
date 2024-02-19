@@ -103,7 +103,8 @@ def naive_residual_biasadd_layer_norm_int8(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM ",
 )
 class TestlayernormOp(unittest.TestCase):
     def setUp(self):
@@ -276,7 +277,10 @@ class TestlayernormOp(unittest.TestCase):
         )
 
     def test_residual_bias_add(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_residual_bias_out,
@@ -293,7 +297,10 @@ class TestlayernormOp(unittest.TestCase):
         )
 
     def test_layernorm_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -307,7 +314,10 @@ class TestlayernormOp(unittest.TestCase):
         )
 
     def test_layernorm_int8(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -320,7 +330,10 @@ class TestlayernormOp(unittest.TestCase):
         )
 
     def test_residual_bias_add_layernorm_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_layernorm,
@@ -350,7 +363,10 @@ class TestlayernormOp(unittest.TestCase):
         )
 
     def test_residual_bias_add_layernorm_int8(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_layernorm,
@@ -381,7 +397,8 @@ class TestlayernormOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM ",
 )
 class TestlayernormStaticOp(unittest.TestCase):
     def setUp(self):
@@ -681,7 +698,10 @@ class TestlayernormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_layernorm_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -696,7 +716,10 @@ class TestlayernormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_layernorm_int8(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         paddle_layernorm, paddle_naive_layernorm = self.check_layernorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -710,7 +733,10 @@ class TestlayernormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_residual_bias_add(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_layernorm,
@@ -731,7 +757,10 @@ class TestlayernormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_residual_bias_add_layernorm_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_layernorm,
@@ -762,7 +791,10 @@ class TestlayernormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_residual_bias_add_layernorm_int8(self):
-        if not paddle.is_compiled_with_cuda():
+        if (
+            not paddle.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             return
         (
             paddle_layernorm,

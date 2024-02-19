@@ -41,7 +41,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     const int row_id,
     const int col_id,
     const int cols,
-    curandStatePhilox4_32_10_t *state,
+    GPURAND(StatePhilox4_32_10_t) * state,
     const float dropout_prob,
     const T factor,
     const InType *__restrict__ src,
@@ -281,9 +281,9 @@ __global__ void FusedResidualDropoutBias(
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
-  curandStatePhilox4_32_10_t state;
+  GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {
-    curand_init(seed, idx, increment, &state);
+    GPURAND(_init)(seed, idx, increment, &state);
   }
   T factor;
   if (HasDropout) {

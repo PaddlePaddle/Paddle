@@ -561,6 +561,12 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_ROCM)
+  include(external/flashattn)
+  list(APPEND third_party_deps extern_flashattn)
+  set(WITH_FLASHATTN ON)
+endif()
+
 if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32

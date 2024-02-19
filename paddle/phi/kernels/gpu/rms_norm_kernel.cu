@@ -39,17 +39,34 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#else
 #include <cub/cub.cuh>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
+#define GPUMaxSharedMemoryPerBlockOptin hipDeviceAttributeSharedMemPerBlockOptin
+#else
+#define GPU(str) cuda##str
+#define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
+#define GPUMaxSharedMemoryPerBlockOptin cudaDevAttrMaxSharedMemoryPerBlockOptin
 #endif
 
 namespace phi {
 
 namespace {
 
-#ifndef PADDLE_WITH_HIP
-
+#ifdef PADDLE_WITH_HIP
+constexpr int kWarpSize = 64;
+#else
 constexpr int kWarpSize = 32;
+#endif
 
 template <typename T>
 struct SumOp {
@@ -71,7 +88,11 @@ template <template <typename> class ReductionOp,
 __inline__ __device__ T WarpAllReduce(T val) {
   for (int mask = thread_group_width / 2; mask > 0; mask /= 2) {
     val = ReductionOp<T>()(
+#ifdef PADDLE_WITH_HIP
+        val, __shfl_xor(val, mask, thread_group_width));
+#else
         val, __shfl_xor_sync(0xffffffff, val, mask, thread_group_width));
+#endif
   }
   return val;
 }
@@ -116,35 +137,36 @@ __inline__ __device__ double Rsqrt<double>(double x) {
 }
 
 template <class Func>
-inline cudaError_t GetNumBlocks(Func func,
-                                int32_t block_size,
-                                size_t dynamic_smem_size,
-                                int32_t max_blocks,
-                                int32_t waves,
-                                int* num_blocks) {
+inline GPU(Error_t) GetNumBlocks(Func func,
+                                 int32_t block_size,
+                                 size_t dynamic_smem_size,
+                                 int32_t max_blocks,
+                                 int32_t waves,
+                                 int* num_blocks) {
   int dev;
   {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t) err = GPU(GetDevice)(&dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int sm_count;
   {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t)
+    err = GPU(DeviceGetAttribute)(&sm_count, GPUMultiProcessorCount, dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
   int max_active_blocks;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks, func, block_size, dynamic_smem_size);
   }
   *num_blocks = std::max<int>(
       1, std::min<int32_t>(max_blocks, sm_count * max_active_blocks * waves));
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <typename T>
@@ -363,7 +385,11 @@ __inline__ __device__ void WelfordBlockAllReduce(T thread_mean,
       warp_m2 = static_cast<T>(0);
       warp_count = static_cast<T>(0);
     }
+#ifdef PADDLE_WITH_HIP
+    __syncthreads();
+#else
     __syncwarp();
+#endif
     T block_mean = 0;
     T block_m2 = 0;
     T block_count = 0;
@@ -436,59 +462,71 @@ template <typename LOAD,
           typename ComputeType,
           int kPackSize,
           int block_size>
-inline cudaError_t LaunchRmsNormBlockSMemImpl(cudaStream_t stream,
-                                              LOAD load,
-                                              STORE store,
-                                              int smem,
-                                              const int32_t rows,
-                                              const int32_t cols,
-                                              const float epsilon,
-                                              ComputeType col_divisor) {
+inline GPU(Error_t) LaunchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
+                                               LOAD load,
+                                               STORE store,
+                                               int smem,
+                                               const int32_t rows,
+                                               const int32_t cols,
+                                               const float epsilon,
+                                               ComputeType col_divisor) {
   constexpr int waves = 32;
   int grid_dim_x;
   {
-    cudaError_t err = GetNumBlocks(
+    GPU(Error_t)
+    err = GetNumBlocks(
         RmsNormBlockSMemImpl<LOAD, STORE, ComputeType, kPackSize, block_size>,
         block_size,
         smem,
         rows,
         waves,
         &grid_dim_x);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
   RmsNormBlockSMemImpl<LOAD, STORE, ComputeType, kPackSize, block_size>
       <<<grid_dim_x, block_size, smem, stream>>>(
           load, store, rows, cols, epsilon, col_divisor);
-  return cudaPeekAtLastError();
+  return GPU(PeekAtLastError)();
 }
 
 template <typename Func>
-cudaError_t MaximizeDynamicSharedMemorySize(Func func,
-                                            const int max_smem_size) {
-  cudaFuncAttributes attr{};
+GPU(Error_t)
+MaximizeDynamicSharedMemorySize(Func func, const int max_smem_size) {
+  GPU(FuncAttributes) attr{};
+#ifdef PADDLE_WITH_HIP
+  hipError_t err = hipFuncGetAttributes(&attr, (const void*)func);
+#else
   cudaError_t err = cudaFuncGetAttributes(&attr, func);
-  if (err != cudaSuccess) {
+#endif
+  if (err != GPU(Success)) {
     return err;
   }
   constexpr int reserved_smem = 1024;  // 1K
+#ifdef PADDLE_WITH_HIP
+  return hipFuncSetAttribute(
+      (const void*)func,
+      hipFuncAttributeMaxDynamicSharedMemorySize,
+      max_smem_size - attr.sharedSizeBytes - reserved_smem);
+#else
   return cudaFuncSetAttribute(
       func,
       cudaFuncAttributeMaxDynamicSharedMemorySize,
       max_smem_size - attr.sharedSizeBytes - reserved_smem);
+#endif
 }
 
 template <typename LOAD, typename STORE, typename ComputeType, int kPackSize>
-inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
-    cudaStream_t stream,
-    LOAD load,
-    STORE store,
-    const int32_t rows,
-    const int32_t cols,
-    const float epsilon,
-    ComputeType col_divisor,
-    bool* success) {
+inline GPU(Error_t)
+    TryDispatchRmsNormBlockSMemImplBlockSize(GPU(Stream_t) stream,
+                                             LOAD load,
+                                             STORE store,
+                                             const int32_t rows,
+                                             const int32_t cols,
+                                             const float epsilon,
+                                             ComputeType col_divisor,
+                                             bool* success) {
   constexpr int block_size_conf_1 = 128;
   constexpr int block_size_conf_2 = 256;
   constexpr int block_size_conf_3 = 512;
@@ -496,26 +534,27 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
 
   int dev = 0;
   {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t) err = GPU(GetDevice)(&dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
 
   int sm_count = 0;
   {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t)
+    err = GPU(DeviceGetAttribute)(&sm_count, GPUMultiProcessorCount, dev);
+    if (err != GPU(Success)) {
       return err;
     }
   }
 
   static const bool max_smem_configed = [=]() {
     int max_smem_size = 0;
-    cudaError_t err = cudaDeviceGetAttribute(
-        &max_smem_size, cudaDevAttrMaxSharedMemoryPerBlockOptin, dev);
-    if (err != cudaSuccess) {
+    GPU(Error_t)
+    err = GPU(DeviceGetAttribute)(
+        &max_smem_size, GPUMaxSharedMemoryPerBlockOptin, dev);
+    if (err != GPU(Success)) {
       return false;
     }
 
@@ -526,7 +565,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                                              kPackSize,
                                                              block_size_conf_1>,
                                         max_smem_size);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return false;
     }
     err =
@@ -536,7 +575,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                                              kPackSize,
                                                              block_size_conf_2>,
                                         max_smem_size);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return false;
     }
     err =
@@ -546,7 +585,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                                              kPackSize,
                                                              block_size_conf_3>,
                                         max_smem_size);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return false;
     }
     err =
@@ -556,7 +595,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                                              kPackSize,
                                                              block_size_conf_4>,
                                         max_smem_size);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return false;
     }
 
@@ -567,7 +606,8 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
 
   int max_active_blocks_conf_1;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks_conf_1,
         RmsNormBlockSMemImpl<LOAD,
                              STORE,
@@ -576,18 +616,19 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                              block_size_conf_1>,
         block_size_conf_1,
         smem);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
   if (max_active_blocks_conf_1 <= 0) {
     *success = false;
-    return cudaSuccess;
+    return GPU(Success);
   }
 
   int max_active_blocks_conf_4;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks_conf_4,
         RmsNormBlockSMemImpl<LOAD,
                              STORE,
@@ -596,7 +637,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                              block_size_conf_4>,
         block_size_conf_4,
         smem);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
@@ -614,7 +655,8 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
 
   int max_active_blocks_conf_3;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks_conf_3,
         RmsNormBlockSMemImpl<LOAD,
                              STORE,
@@ -623,7 +665,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                              block_size_conf_3>,
         block_size_conf_3,
         smem);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
@@ -640,7 +682,8 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
 
   int max_active_blocks_conf_2;
   {
-    cudaError_t err = cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+    GPU(Error_t)
+    err = GPU(OccupancyMaxActiveBlocksPerMultiprocessor)(
         &max_active_blocks_conf_2,
         RmsNormBlockSMemImpl<LOAD,
                              STORE,
@@ -649,7 +692,7 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                              block_size_conf_2>,
         block_size_conf_2,
         smem);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
@@ -675,14 +718,15 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
 
 template <typename LOAD, typename STORE, typename ComputeType>
 struct TryDispatchRmsNormBlockSMemImplPackSize {
-  cudaError_t operator()(cudaStream_t stream,
-                         LOAD load,
-                         STORE store,
-                         const int32_t rows,
-                         const int32_t cols,
-                         const float epsilon,
-                         ComputeType col_divisor,
-                         bool* success) {
+  GPU(Error_t)
+  operator()(GPU(Stream_t) stream,
+             LOAD load,
+             STORE store,
+             const int32_t rows,
+             const int32_t cols,
+             const float epsilon,
+             ComputeType col_divisor,
+             bool* success) {
     if (cols % 4 == 0 && CanPackAs<LOAD>(load, 4) &&
         CanPackAs<STORE>(store, 4)) {
       return TryDispatchRmsNormBlockSMemImplBlockSize<LOAD,
@@ -708,22 +752,22 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
 };
 
 template <typename LOAD, typename STORE, typename ComputeType>
-inline cudaError_t TryDispatchRmsNormBlockSMemImpl(cudaStream_t stream,
-                                                   LOAD load,
-                                                   STORE store,
-                                                   const int32_t rows,
-                                                   const int32_t cols,
-                                                   const float epsilon,
-                                                   ComputeType col_divisor,
-                                                   bool* success) {
+inline GPU(Error_t) TryDispatchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
+                                                    LOAD load,
+                                                    STORE store,
+                                                    const int32_t rows,
+                                                    const int32_t cols,
+                                                    const float epsilon,
+                                                    ComputeType col_divisor,
+                                                    bool* success) {
   return TryDispatchRmsNormBlockSMemImplPackSize<LOAD, STORE, ComputeType>()(
       stream, load, store, rows, cols, epsilon, col_divisor, success);
 }
 
 template <typename LOAD, typename STORE, typename ComputeType>
 inline typename std::enable_if<!std::is_same<ComputeType, double>::value,
-                               cudaError_t>::type
-DispatchRmsNorm(cudaStream_t stream,
+                               GPU(Error_t)>::type
+DispatchRmsNorm(GPU(Stream_t) stream,
                 LOAD load,
                 STORE store,
                 const int32_t rows,
@@ -732,7 +776,8 @@ DispatchRmsNorm(cudaStream_t stream,
   const ComputeType col_divisor = 1.0f / cols;
   bool dispatch_smem_impl_success;
   {
-    cudaError_t err = TryDispatchRmsNormBlockSMemImpl<LOAD, STORE, ComputeType>(
+    GPU(Error_t)
+    err = TryDispatchRmsNormBlockSMemImpl<LOAD, STORE, ComputeType>(
         stream,
         load,
         store,
@@ -741,11 +786,11 @@ DispatchRmsNorm(cudaStream_t stream,
         epsilon,
         col_divisor,
         &dispatch_smem_impl_success);
-    if (err != cudaSuccess) {
+    if (err != GPU(Success)) {
       return err;
     }
   }
-  return cudaSuccess;
+  return GPU(Success);
 }
 
 template <typename SRC, typename DST>
@@ -930,8 +975,6 @@ struct AffineQuantStore {
   const float quant_min_bound;
 };
 
-#endif
-
 }  // namespace
 
 template <typename T, typename Context>
@@ -949,9 +992,6 @@ void RmsNormKernel(const Context& dev_ctx,
                    const float quant_min_bound,
                    DenseTensor* out,
                    DenseTensor* residual_out) {
-#if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
-#else
   using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   const T* x_data = x.data<T>();
@@ -1023,7 +1063,6 @@ void RmsNormKernel(const Context& dev_ctx,
           dev_ctx.stream(), load, store, rows, cols, epsilon);
     }
   }
-#endif
 }
 
 }  // namespace phi
