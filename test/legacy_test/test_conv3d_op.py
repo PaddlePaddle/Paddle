@@ -117,9 +117,9 @@ def conv3d_forward_naive(
 
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
-    d_bolck_d = dilation[0] * (f_d - 1) + 1
-    d_bolck_h = dilation[1] * (f_h - 1) + 1
-    d_bolck_w = dilation[2] * (f_w - 1) + 1
+    d_block_d = dilation[0] * (f_d - 1) + 1
+    d_block_h = dilation[1] * (f_h - 1) + 1
+    d_block_w = dilation[2] * (f_w - 1) + 1
 
     input_pad = np.pad(
         input,
@@ -134,13 +134,13 @@ def conv3d_forward_naive(
         constant_values=0,
     )
 
-    filter_dilation = np.zeros((f_n, f_c, d_bolck_d, d_bolck_h, d_bolck_w))
+    filter_dilation = np.zeros((f_n, f_c, d_block_d, d_block_h, d_block_w))
     filter_dilation[
         :,
         :,
-        0 : d_bolck_d : dilation[0],
-        0 : d_bolck_h : dilation[1],
-        0 : d_bolck_w : dilation[2],
+        0 : d_block_d : dilation[0],
+        0 : d_block_h : dilation[1],
+        0 : d_block_w : dilation[2],
     ] = filter
 
     for d in range(out_d):
@@ -150,9 +150,9 @@ def conv3d_forward_naive(
                     input_pad_masked = input_pad[
                         :,
                         g * f_c : (g + 1) * f_c,
-                        d * stride[0] : d * stride[0] + d_bolck_d,
-                        i * stride[1] : i * stride[1] + d_bolck_h,
-                        j * stride[2] : j * stride[2] + d_bolck_w,
+                        d * stride[0] : d * stride[0] + d_block_d,
+                        i * stride[1] : i * stride[1] + d_block_h,
+                        j * stride[2] : j * stride[2] + d_block_w,
                     ]
 
                     f_sub = filter_dilation[

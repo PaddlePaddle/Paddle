@@ -20,8 +20,8 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);
 

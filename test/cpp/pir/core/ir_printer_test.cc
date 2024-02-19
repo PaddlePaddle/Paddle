@@ -15,11 +15,11 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/program.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"

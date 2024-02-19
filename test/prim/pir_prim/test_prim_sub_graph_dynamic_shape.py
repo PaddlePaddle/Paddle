@@ -41,8 +41,33 @@ def any_net(x):
     return paddle.any(x)
 
 
+def embedding_net(x):
+    w = np.array(
+        [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [9, 10, 11],
+            [12, 13, 14],
+            [15, 16, 17],
+            [18, 19, 20],
+            [21, 22, 23],
+            [24, 25, 26],
+            [27, 28, 29],
+        ],
+        dtype=np.float32,
+    )
+    w = paddle.to_tensor(w)
+    return F.embedding(x, w, padding_idx=1)
+
+
 def full_like_net(x):
     return paddle.full_like(x, 1)
+
+
+def stack_net(x):
+    y = x + 1
+    return paddle.stack([x, y], axis=0)
 
 
 class TestPrimOne(unittest.TestCase):
@@ -101,6 +126,18 @@ class TestPrimOne2(TestPrimOne):
         self.enable_cinn = False
 
 
+# Todo: open this case.
+# class TestEmbeddingPrimOne3(TestPrimOne):
+#     def setUp(self):
+#         np.random.seed(2023)
+#         self.dtype = "int"
+#         self.shape_x = [1, 300, 4096]
+#         self.x = np.random.randint(0, 10, size=self.shape_x)
+#         self.net = embedding_net
+#         self.necessary_ops = "pd_op.embedding"
+#         self.enable_cinn = False
+
+
 class TestPrimOne3(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
@@ -109,6 +146,17 @@ class TestPrimOne3(TestPrimOne):
         self.x = np.random.random(self.shape_x).astype(self.dtype)
         self.net = full_like_net
         self.necessary_ops = "pd_op.full_like"
+        self.enable_cinn = False
+
+
+class TestPrimOne4(TestPrimOne):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.shape_x = [1, 300, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.net = stack_net
+        self.necessary_ops = "pd_op.stack"
         self.enable_cinn = False
 
 
