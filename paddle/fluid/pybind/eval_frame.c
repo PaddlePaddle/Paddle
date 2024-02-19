@@ -226,8 +226,14 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
 #if PY_VERSION_HEX >= 0x030c0000
+  // In Python 3.12+ believes that eval will be cleaned up, but we did not pass
+  // in the frame to _PyEval_EvalFrameDefault, so we need to clean it up.
+  // elaborate on see:
+  // https://github.com/PaddlePaddle/Paddle/pull/61703#issuecomment-1933812625
   Internal_PyEvalFrameClearAndPop(tstate, frame);
 #else
+  // In Python 3.11 we to create our own isolated frame(namely shadow) and
+  // release it after completion
   Internal_PyFrame_Clear(shadow);
   free(shadow);
 #endif

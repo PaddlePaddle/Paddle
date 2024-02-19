@@ -105,9 +105,9 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
         VLOG(4) << pair.first << " is NULL";
         continue;
       }
-      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
-              << generate_grad;
-      var->InnerSetOverridedStopGradient(generate_grad);
+      VLOG(6) << "Set output: " << var->Name()
+              << "'s OverriddenStopGradient as " << generate_grad;
+      var->InnerSetOverriddenStopGradient(generate_grad);
     }
   }
 }
@@ -583,10 +583,10 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
-      if (!var_base->OverridedStopGradient()) {
+      if (!var_base->OverriddenStopGradient()) {
         VLOG(6) << "Find out input: " << var_base->Name()
                 << "'s GeneratedGrad is True";
-        PassStopGradient(outs, var_base->OverridedStopGradient());
+        PassStopGradient(outs, var_base->OverriddenStopGradient());
         return true;
       }
     }

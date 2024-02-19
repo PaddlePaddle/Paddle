@@ -382,10 +382,10 @@ class ResNetBasicBlock(Layer):
         moving_var_name (str, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string. Default: None.
-        padding (int, optional): The padding size. It is only spupport padding_height = padding_width = padding.
+        padding (int, optional): The padding size. It is only support padding_height = padding_width = padding.
             Default: padding = 0.
         dilation (int, optional): The dilation size. It means the spacing between the kernel
-            points. It is only spupport dilation_height = dilation_width = dilation.
+            points. It is only support dilation_height = dilation_width = dilation.
             Default: dilation = 1.
         trainable_statistics (bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
             setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
