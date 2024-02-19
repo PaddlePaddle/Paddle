@@ -19,7 +19,7 @@ from .utils import _value_and_gradient
 
 def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
-        Use two points and their gradient to determine a cubic function and get the minimun point
+        Use two points and their gradient to determine a cubic function and get the minimum point
         between them in the cubic curve.
 
     Reference:
