@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import (
     Variable,
     in_dygraph_mode,
@@ -830,24 +830,6 @@ def max_unpool1d(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
         return squeeze(output, [2])
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
-        )
-        return squeeze(output, [2])
 
     op_type = "unpool"
     helper = LayerHelper(op_type, **locals())
@@ -980,24 +962,6 @@ def max_unpool2d(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
         return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
-        )
-        return output
 
     op_type = "unpool"
     helper = LayerHelper(op_type, **locals())
@@ -1125,24 +1089,6 @@ def max_unpool3d(
     if in_dynamic_or_pir_mode():
         output = _C_ops.unpool3d(
             x, indices, kernel_size, stride, padding, output_size, data_format
-        )
-        return output
-    elif in_dynamic_mode():
-        output = _legacy_C_ops.unpool3d(
-            x,
-            indices,
-            'unpooling_type',
-            'max',
-            'ksize',
-            kernel_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            "output_size",
-            output_size,
-            "data_format",
-            data_format,
         )
         return output
 

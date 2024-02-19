@@ -777,9 +777,11 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                 "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
             dist_t->dist_attr());
       } else {
+        // NOTE: If the tensor is a dist-tensor, it's place may be `unknown` in
+        // the no-calculation rank.
         tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
-                                                   "Unknown",
+                                                   t.dtype(),
                                                    "Unknown",
                                                    dist_t->defined(),
                                                    dist_t->initialized(),

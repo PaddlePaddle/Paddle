@@ -105,7 +105,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
 
   std::vector<ir::Tensor> ret;
 
-  // Using set instead of vector/stack in order to get fix alaphbeta order topo
+  // Using set instead of vector/stack in order to get fix alpha-beta order topo
   std::set<std::string> node_set;
   for (const auto& name_tensor : name_to_tensor_) {
     if (!in_degree.count(name_tensor.first)) {

@@ -129,9 +129,5 @@ known-first-party = ["paddle"]
 
 
 # temp ignore isort
-"python/paddle/amp/__init__.py" = ["I001"]
 "python/paddle/distributed/__init__.py" = ["I001"]
-"python/paddle/distributed/communication/stream/__init__.py" = ["I001"]
-"python/paddle/distributed/launch/context/__init__.py" = ["I001"]
-"python/paddle/distributed/launch/controllers/__init__.py" = ["I001"]
 "python/paddle/distributed/passes/__init__.py" = ["I001"]

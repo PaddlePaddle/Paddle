@@ -294,14 +294,14 @@ def _format_dense_tensor(tensor, indent):
         for dim in tensor.shape:
             size *= dim
 
-    sumary = False
+    summary = False
     if size > DEFAULT_PRINT_OPTIONS.threshold:
-        sumary = True
+        summary = True
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
     data = _format_tensor(
-        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed
+        np_tensor, summary, indent=indent, max_width=max_width, signed=signed
     )
     return data
 
