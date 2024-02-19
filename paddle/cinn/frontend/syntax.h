@@ -410,7 +410,7 @@ struct Program {
 
   /**
    * Apply Rectified Linear Unit on input Variable.
-   * Actually apply: outupt = max(input,0)
+   * Actually apply: output = max(input,0)
    *
    * @param a The first variable.
    * @return The result.

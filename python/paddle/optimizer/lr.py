@@ -1365,7 +1365,7 @@ class ReduceOnPlateau(LRScheduler):
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
         factor (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * factor`` .
             It should be less than 1.0. Default: 0.1.
-        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced.
+        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learning rate will be reduced.
             Default: 10.
         threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` .
             This make tiny changes of ``loss`` will be ignored. Default: 1e-4.
