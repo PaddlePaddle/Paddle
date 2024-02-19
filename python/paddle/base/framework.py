@@ -1505,9 +1505,10 @@ class Variable(metaclass=VariableMetaClass):
 
             >>> import paddle.base as base
             >>> import numpy as np
+            >>> import paddle
 
             >>> with base.dygraph.guard():
-            ...     new_variable = base.dygraph.to_variable(np.arange(10))
+            ...     new_variable = paddle.to_tensor(np.arange(10))
 
     """
 
@@ -1693,14 +1694,13 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle.base as base
-                >>> from paddle.base.dygraph.base import to_variable
                 >>> from paddle.nn import Linear
                 >>> import numpy as np
 
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 >>> with base.dygraph.guard():
                 ...     linear = Linear(32, 64)
-                ...     data = to_variable(data)
+                ...     data = paddle.to_tensor(data)
                 ...     x = linear(data)
                 ...     print(x.numpy())
 
@@ -1779,7 +1779,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
-                ...         tmp = base.dygraph.base.to_variable(x)
+                ...         tmp = paddle.to_tensor(x)
                 ...         tmp.stop_gradient=False
                 ...         inputs2.append(tmp)
                 ...     ret2 = paddle.add_n(inputs2)
@@ -1797,7 +1797,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...         sparse=True)
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
-                ...     x = base.dygraph.base.to_variable(x_data)
+                ...     x = paddle.to_tensor(x_data)
                 ...     out = embedding(x)
                 ...     out.backward()
                 ...     print(embedding.weight.gradient())
@@ -1827,7 +1827,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
-                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp = paddle.to_tensor(x)
                 >>>     tmp.stop_gradient=False
                 >>>     inputs2.append(tmp)
                 >>> ret2 = paddle.add_n(inputs2)
@@ -2052,9 +2052,9 @@ class Variable(metaclass=VariableMetaClass):
                 ...     value2 = np.arange(10).reshape(2, 5).astype("float32")
                 ...     linear = paddle.nn.Linear(13, 5)
                 ...     linear2 = paddle.nn.Linear(3, 3)
-                ...     a = base.dygraph.to_variable(value0)
-                ...     b = base.dygraph.to_variable(value1)
-                ...     c = base.dygraph.to_variable(value2)
+                ...     a = paddle.to_tensor(value0)
+                ...     b = paddle.to_tensor(value1)
+                ...     c = paddle.to_tensor(value2)
                 ...     out1 = linear(a)
                 ...     out2 = linear2(b)
                 ...     out1.stop_gradient = True

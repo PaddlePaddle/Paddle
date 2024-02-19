@@ -14,13 +14,15 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestParallelizer(TestMultipleGpus):
+class TestParallelizer(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_parallelizer_logic(self):
-        self.run_mnist_2gpu('auto_parallel_parallelizer.py')
+        self.run_mnist_2accelerators('auto_parallel_parallelizer.py')
 
 
 if __name__ == "__main__":

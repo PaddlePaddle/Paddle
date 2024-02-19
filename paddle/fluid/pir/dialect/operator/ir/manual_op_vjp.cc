@@ -18,8 +18,8 @@
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_base.h"
 
 // TODO(wanghao107)
 // this file will be generated in pd_op.cc

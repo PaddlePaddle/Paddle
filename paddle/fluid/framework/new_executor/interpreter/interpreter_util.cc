@@ -49,10 +49,10 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {

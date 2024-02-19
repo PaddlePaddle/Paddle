@@ -21,9 +21,9 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include "paddle/phi/core/generator.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
