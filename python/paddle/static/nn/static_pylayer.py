@@ -336,8 +336,14 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             if not callable(forward_fn):
                 raise ValueError("`forward_fn` should be callable")
             with pylayer_op.forward_block():
-                fwd_outpus = forward_fn(*inputs)
-                cf_yield(flatten(fwd_outpus))
+                fwd_outputs = forward_fn(*inputs)
+
+            if fwd_outputs is None:
+                return None
+
+            with pylayer_op.forward_block():
+                if fwd_outputs is not None:
+                    cf_yield(flatten(fwd_outputs))
             pylayer_op.update_output()
 
         return pylayer_op.results()

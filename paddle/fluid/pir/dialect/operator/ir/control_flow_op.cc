@@ -14,9 +14,8 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::PyLayerOp,
-    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp,
-    paddle::dialect::SelectOutputOp
+    paddle::dialect::PyLayerOp, paddle::dialect::AssertOp,
+    paddle::dialect::SelectInputOp, paddle::dialect::SelectOutputOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -383,7 +382,7 @@ void PyLayerOp::VerifyRegion() {
                     phi::errors::PreconditionNotMet(
                         "The size %d of forward_region must be 1.",
                         (*this)->region(0).size()));
-  if ((*this)->region(0).front().size() > 0) {
+  if ((*this)->num_results() != 0) {
     auto &fwd_last_op = (*this)->region(0).front().back();
     PADDLE_ENFORCE_EQ(true,
                       fwd_last_op.isa<pir::YieldOp>(),
