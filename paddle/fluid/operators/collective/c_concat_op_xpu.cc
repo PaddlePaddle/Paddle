@@ -22,10 +22,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 

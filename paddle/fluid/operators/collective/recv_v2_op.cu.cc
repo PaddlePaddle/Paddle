@@ -23,8 +23,8 @@ limitations under the License. */
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 
 namespace paddle {
 namespace operators {

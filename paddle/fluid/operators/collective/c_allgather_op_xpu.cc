@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
-#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 
 namespace paddle {
 namespace operators {

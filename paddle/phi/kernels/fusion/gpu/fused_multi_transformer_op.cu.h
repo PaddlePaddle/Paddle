@@ -25,7 +25,6 @@ limitations under the License. */
 #include <cub/cub.cuh>
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
@@ -33,9 +32,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group.h"
-// #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif

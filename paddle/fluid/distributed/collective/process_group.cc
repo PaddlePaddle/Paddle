@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 
 namespace paddle {
 namespace distributed {

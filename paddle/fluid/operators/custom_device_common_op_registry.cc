@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/run_program_op.h"
@@ -22,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
