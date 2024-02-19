@@ -119,7 +119,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             ctx=self.dist_context,
             chunk_id=x_dist_attr.chunk_id,
         )
-        block._sync_with_cpp()
 
         return out
 
@@ -242,5 +241,5 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 matmul_op, matmul_grad_dist_attr
             )
 
-            block._remove_op(matmul_grad_id)
-            block._sync_with_cpp()
+            block._remove_op(matmul_grad_id, sync=False)
+        block._sync_with_cpp()
