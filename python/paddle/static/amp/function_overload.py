@@ -88,7 +88,7 @@ class Namespace:
         """
         assert isinstance(
             key, FunctionType
-        ), f"The type of  key is expected to be FunctionType, but recieved {type(key)}."
+        ), f"The type of  key is expected to be FunctionType, but received {type(key)}."
         func = Function(fn)
         self.function_map[key] = fn
         return func

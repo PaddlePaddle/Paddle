@@ -302,7 +302,7 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
-            Bool: Wheter it's a file or directory, return true if the path exists,
+            Bool: Whether it's a file or directory, return true if the path exists,
             otherwise return false.
 
         Examples:
@@ -1534,7 +1534,7 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 

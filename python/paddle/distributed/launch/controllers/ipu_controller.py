@@ -34,7 +34,7 @@ class IPUController(CollectiveController):
     def parse_ipu_args(self, args_list):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--hosts", type=str, help="The hosts for IPU distributd training."
+            "--hosts", type=str, help="The hosts for IPU distributed training."
         )
         parser.add_argument(
             "--nproc_per_host",
