@@ -412,7 +412,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
         ),
     ],
 )
-class TestMatmulTribleGradComp(unittest.TestCase):
+class TestMatmulTripleGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)

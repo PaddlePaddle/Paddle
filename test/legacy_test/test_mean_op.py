@@ -509,7 +509,7 @@ class TestMeanAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
-            x = base.dygraph.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
             out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
@@ -552,7 +552,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -584,7 +584,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

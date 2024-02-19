@@ -219,6 +219,12 @@ def fc(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
             if in_pir_mode():
+                if len(input_var.shape) > 2:
+                    new_shape = (
+                        input_var.shape[0],
+                        np.prod(input_var.shape[1:]),
+                    )
+                    input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
             else:
                 tmp = helper.create_variable_for_type_inference(dtype)
@@ -343,8 +349,8 @@ def instance_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for in parameter
-    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
-        dtype = paddle.framework.core.VarDesc.VarType.FP32
+    if dtype == paddle.float16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -1106,7 +1112,7 @@ def conv3d(
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -2765,8 +2771,8 @@ def batch_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
-        dtype = core.VarDesc.VarType.FP32
+    if dtype == paddle.float16 or dtype == paddle.bfloat16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:

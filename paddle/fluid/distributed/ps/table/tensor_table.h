@@ -23,12 +23,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -38,7 +38,7 @@ struct ExecutorPrepareContext;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace distributed {

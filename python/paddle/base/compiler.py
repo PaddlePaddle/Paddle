@@ -631,7 +631,7 @@ class IpuStrategy:
 
     def register_patch(self):
         """
-        Register patchs function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
+        Register patch function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
         Use `release_patch` to release the patch.
 
         Examples:

@@ -243,7 +243,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   // some ops are only implemented in paddle-trt,
   // but not in paddle ,we should revert it.
-  for (auto *op_node : framework::ir::TopologyVarientSort(
+  for (auto *op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(0))) {
     if (op_node->Op()->Type() == "matrix_multiply") {
       auto origin_type =

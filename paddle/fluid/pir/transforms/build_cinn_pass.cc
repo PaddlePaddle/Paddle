@@ -16,9 +16,9 @@
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
