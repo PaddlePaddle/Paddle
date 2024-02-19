@@ -40,7 +40,7 @@ class MetaInfo:
         self.stop_gradient = stop_gradient
 
     @staticmethod
-    def from_tensor(tensor):
+    def from_tensor(tensor, with_amp=True):
         # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.Value):
             name = "Value@NoName"
@@ -52,7 +52,8 @@ class MetaInfo:
             dtype = tensor.dtype
         current_amp_state = amp_state()
         if (
-            dtype == paddle.float16
+            with_amp
+            and dtype == paddle.float16
             and current_amp_state is not None
             and current_amp_state["dtype"] == "float16"
         ):
@@ -226,7 +227,7 @@ def convert_meta_to_input_spec(args):
     )
 
 
-def convert_variable_to_meta_info(args):
+def convert_variable_to_meta_info(args, with_amp=True):
     static_variable_type = (
         paddle.static.Variable
         if not paddle.base.framework.use_pir_api()
@@ -235,7 +236,7 @@ def convert_variable_to_meta_info(args):
     return map_if_extend(
         args,
         pred=lambda x: isinstance(x, static_variable_type),
-        true_fn=lambda x: MetaInfo.from_tensor(x),
+        true_fn=lambda x: MetaInfo.from_tensor(x, with_amp),
         false_fn=lambda x: x,
     )
 
@@ -260,11 +261,18 @@ def infer_meta_for_layer(layer, *args, **kwargs):
         partial_program_layer,
     ) = layer.forward.get_concrete_program(*args_, **kwargs_)
 
+    fp16_params = len(layer.parameters()) > 0
+    for param in layer.parameters():
+        if param.dtype != paddle.float16:
+            fp16_params = False
+
     out = partial_program_layer._restore_out(
         [
             x
             for x in paddle.utils.flatten(
-                convert_variable_to_meta_info(concrete_program.outputs)
+                convert_variable_to_meta_info(
+                    concrete_program.outputs, not fp16_params
+                )
             )
             if isinstance(x, MetaInfo)
         ]
