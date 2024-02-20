@@ -161,8 +161,8 @@ void sgemm(const float* A,
   int ldc = n;
   float alpha = 1;
   float beta = 0;
-  std::array<char, 2> ta = "N";
-  std::array<char, 2> tb = "N";
+  std::array<char, 2> ta = {"N"};
+  std::array<char, 2> tb = {"N"};
   if (transa) ta[0] = 'T';
   if (transb) tb[0] = 'T';
 
