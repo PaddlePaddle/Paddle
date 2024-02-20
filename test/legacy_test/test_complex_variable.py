@@ -31,7 +31,7 @@ class TestComplexVariable(unittest.TestCase):
         b = np.array([[1.0 + 1.0j, 1.0 + 1.0j]]).astype(self._dtype)
 
         with dg.guard():
-            x = paddle.to_tensor(a, "x")
+            x = paddle.to_tensor(a)
             y = paddle.to_tensor(b)
             out = paddle.add(x, y)
             self.assertIsNotNone(f"{out}")
