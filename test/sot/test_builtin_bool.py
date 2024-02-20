@@ -14,7 +14,10 @@
 import operator
 import unittest
 
-from test_case_base import TestCaseBase
+from test_case_base import (
+    TestCaseBase,
+    test_instruction_translator_cache_context,
+)
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -72,45 +75,54 @@ class TestBuiltinBool(TestCaseBase):
             call_bool_by_operator_truth
         )
 
-        obj = TestObject()
-        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
-        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
-        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObject()
+            self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+            self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+            self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-        obj = TestObjectWithBool()
-        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
-        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
-        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObjectWithBool()
+            self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+            self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+            self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-        obj = TestObjectWithBoolAndLen([1, 2, 3])
-        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
-        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
-        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObjectWithBoolAndLen([1, 2, 3])
+            self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+            self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+            self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-        obj = TestObjectWithBoolAndLen([])
-        self.assert_results(call_bool_in_cond_no_breakgraph, obj)
-        self.assert_results(call_bool_by_bool_no_breakgraph, obj)
-        self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObjectWithBoolAndLen([])
+            self.assert_results(call_bool_in_cond_no_breakgraph, obj)
+            self.assert_results(call_bool_by_bool_no_breakgraph, obj)
+            self.assert_results(call_bool_by_operator_truth_no_breakgraph, obj)
 
-        layer = paddle.nn.Linear(10, 1)
-        self.assert_results(call_bool_in_cond_no_breakgraph, layer)
-        self.assert_results(call_bool_by_bool_no_breakgraph, layer)
-        self.assert_results(call_bool_by_operator_truth_no_breakgraph, layer)
+        with test_instruction_translator_cache_context():
+            layer = paddle.nn.Linear(10, 1)
+            self.assert_results(call_bool_in_cond_no_breakgraph, layer)
+            self.assert_results(call_bool_by_bool_no_breakgraph, layer)
+            self.assert_results(
+                call_bool_by_operator_truth_no_breakgraph, layer
+            )
 
     def test_object_allow_breakgraph(self):  # allow breakgraph
-        obj = TestObjectWithLen([1, 2, 3])
-        with strict_mode_guard(False):
-            self.assert_results(call_bool_in_cond, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObjectWithLen([1, 2, 3])
+            with strict_mode_guard(False):
+                self.assert_results(call_bool_in_cond, obj)
 
-        self.assert_results(call_bool_by_bool, obj)
-        self.assert_results(call_bool_by_operator_truth, obj)
+            self.assert_results(call_bool_by_bool, obj)
+            self.assert_results(call_bool_by_operator_truth, obj)
 
-        obj = TestObjectWithLen([])
-        with strict_mode_guard(False):
-            self.assert_results(call_bool_in_cond, obj)
+        with test_instruction_translator_cache_context():
+            obj = TestObjectWithLen([])
+            with strict_mode_guard(False):
+                self.assert_results(call_bool_in_cond, obj)
 
-        self.assert_results(call_bool_by_bool, obj)
-        self.assert_results(call_bool_by_operator_truth, obj)
+            self.assert_results(call_bool_by_bool, obj)
+            self.assert_results(call_bool_by_operator_truth, obj)
 
 
 if __name__ == "__main__":
