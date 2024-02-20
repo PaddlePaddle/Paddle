@@ -79,6 +79,7 @@ class TestPirAMPProgram(unittest.TestCase):
             core._set_amp_op_list(original_white_list, original_black_list)
             _white_list, _black_list = core._get_amp_op_list()
             np.testing.assert_equal(len(_white_list), 0)
+
             np.testing.assert_equal(len(_black_list), 0)
 
 
