@@ -115,7 +115,7 @@ T *Tensor::mutable_data(PlaceType place) {
       auto *dev_ctxs = reinterpret_cast<const std::map<
           phi::Place,
           std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-          device_contexs_);
+          device_contexts_);
       auto *dev_ctx =
           static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
       return dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
@@ -214,7 +214,7 @@ void Tensor::CopyFromCpu(const T *data) {
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
         std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        device_contexs_);
+        device_contexts_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     auto *t_data = dev_ctx->Alloc<T>(tensor, tensor->numel() * sizeof(T));
@@ -429,7 +429,7 @@ void Tensor::CopyToCpuImpl(T *data,
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
         std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        device_contexs_);
+        device_contexts_);
     auto *dev_ctx =
         static_cast<phi::GPUContext *>(dev_ctxs->at(gpu_place).get().get());
     paddle::memory::Copy(paddle::platform::CPUPlace(),
@@ -672,7 +672,7 @@ template PD_INFER_DECL bfloat16 *Tensor::mutable_data<bfloat16>(
 template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
 
 Tensor::Tensor(void *scope, const void *device_contexts)
-    : scope_{scope}, device_contexs_(device_contexts) {}
+    : scope_{scope}, device_contexts_(device_contexts) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {

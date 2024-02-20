@@ -470,7 +470,7 @@ struct Reduce : public ExprNode<Reduce> {
   static Expr Make(ReduceType reduce_type,
                    Expr init,
                    Expr body,
-                   const std::vector<Var>& reduce_aixs);
+                   const std::vector<Var>& reduce_axis);
 
   Type type() const override { return body.type().ElementOf(); }
 

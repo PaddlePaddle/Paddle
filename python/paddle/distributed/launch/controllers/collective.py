@@ -161,7 +161,9 @@ class CollectiveController(Controller):
         # compatible
         endpoints = [
             f"{self.ctx.node.ip}:{p}"
-            for p in self.ctx.node.get_free_ports(self.pod.replicas)
+            for p in self.ctx.node.get_free_ports(
+                self.pod.replicas, self.pod.rank
+            )
         ]
 
         data = json.dumps(

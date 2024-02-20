@@ -89,7 +89,6 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             x[idx1][idx2] = np.nan
             x[idx2][idx1] = np.nan
             scale = np.random.random(1).astype(np.float32)
-            myscale = np.array([0.05]).astype(self.dtype)
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
                 'FoundInfinite': np.array([1]),
@@ -116,7 +115,6 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
             x[idx1][idx2] = np.inf
             x[idx2][idx1] = np.nan
             scale = np.random.random(1).astype(np.float32)
-            myscale = np.array([0.05]).astype(self.dtype)
             self.inputs = {'X': [('x0', x)], 'Scale': scale}
             self.outputs = {
                 'FoundInfinite': np.array([1]),
