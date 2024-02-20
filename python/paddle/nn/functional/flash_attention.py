@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import importlib
-import os
 
 import paddle
 import paddle.nn.functional as F
@@ -152,12 +151,10 @@ def set_flash_attn_lib():
     global g_enable_flash_attn_advanced
     package_path = importlib.util.find_spec('paddle_flash_attn')
     if package_path is not None:
-        lib_dir = os.path.sep.join(
-            [package_path.submodule_search_locations[0], 'lib']
+        paddle.base.core._set_falsh_attn_lib_path(
+            package_path.submodule_search_locations[0]
         )
-        if os.path.exists(lib_dir):
-            paddle.base.core._set_falsh_attn_lib_path(lib_dir)
-            g_enable_flash_attn_advanced = True
+        g_enable_flash_attn_advanced = True
 
 
 set_flash_attn_lib()
