@@ -86,7 +86,7 @@ namespace ir {
 class Graph {
  public:
   // Construct a main_graph with some sub_graphs
-  explicit Graph(const ProgramDesc &program);
+  TEST_API explicit Graph(const ProgramDesc &program);
 
   // Construct a main_graph with some sub_graphs, and the 1st sub_graph is
   // constructed with ops[start_op_index, end_op_index)
