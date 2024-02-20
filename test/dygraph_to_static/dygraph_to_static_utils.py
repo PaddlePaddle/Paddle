@@ -23,11 +23,8 @@ from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
 
-import numpy as np
-
 import paddle
 from paddle import get_flags, set_flags, static
-from paddle.base import core
 from paddle.jit.api import sot_mode_guard
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
@@ -401,26 +398,6 @@ def test_sot_mgs0_only(fn):
     return fn
 
 
-# NOTE: This is a special decorator for comparing legacy and pt
-def compare_legacy_with_pt(fn):
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        outs = to_legacy_ir_test(fn)(*args, **kwargs)
-        if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
-            return outs
-        ir_outs = to_pt_test(fn)(*args, **kwargs)
-        np.testing.assert_equal(
-            outs,
-            ir_outs,
-            err_msg=f'Dy2St Unittest Check ({fn.__name__}) has diff \n'
-            + f'Expect {outs}\n'
-            + f'But Got {ir_outs}',
-        )
-        return outs
-
-    return impl
-
-
 # For debug
 def show_all_test_cases(test_class):
     logger.info(f"[showing {test_class.__name__}]")
@@ -451,6 +428,7 @@ def import_legacy_test_utils():
 legacy_test_utils = import_legacy_test_utils()
 dygraph_guard = legacy_test_utils.dygraph_guard
 static_guard = legacy_test_utils.static_guard
+compare_legacy_with_pt = legacy_test_utils.compare_legacy_with_pt
 
 
 @contextmanager
