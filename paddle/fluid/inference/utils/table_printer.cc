@@ -186,7 +186,7 @@ void TablePrinter::CalcLayout() {
 void TablePrinter::AddRowDivider(std::stringstream& ss) {
   ss << "+";
   for (float share : shares_) {
-    for (float j = 0; j < share + 2; ++j) ss << "-";
+    for (int j = 0; j < static_cast<int>(share) + 2; ++j) ss << "-";
     ss << "+";
   }
   ss << "\n";
