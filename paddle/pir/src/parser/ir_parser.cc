@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/parser/ir_parser.h"
-
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {

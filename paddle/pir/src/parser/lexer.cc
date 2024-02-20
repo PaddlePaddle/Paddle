@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/parser/lexer.h"
+#include "paddle/pir/src/parser/lexer.h"
 
 Token Lexer::ConsumeToken() {
   SkipWhitespace();
