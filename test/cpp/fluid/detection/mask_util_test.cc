@@ -55,7 +55,7 @@ TEST(MaskUtil, Poly2MaskTest) {
   };
   // clang-format on
 
-  // the groud-truth mask is computed by coco API:
+  // the ground-truth mask is computed by coco API:
   //
   // import pycocotools.mask as mask_util
   // import numpy as np
@@ -115,8 +115,8 @@ TEST(MaskUtil, Polys2MaskWrtBoxTest) {
   Poly2Boxes(polys, boxes);
   Compare<float>(expect_boxes, boxes, 4);
 
-  auto allocat_mask = memory::Alloc(cpu, sizeof(expect_mask));
-  uint8_t* mask = reinterpret_cast<uint8_t*>(allocat_mask->ptr());
+  auto allocation_mask = memory::Alloc(cpu, sizeof(expect_mask));
+  uint8_t* mask = reinterpret_cast<uint8_t*>(allocation_mask->ptr());
   int M = 8;
   Polys2MaskWrtBox(polys[0], expect_boxes, M, mask);
   Compare<uint8_t>(expect_mask, mask, M * M);

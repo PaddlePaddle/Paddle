@@ -67,7 +67,7 @@ TEST(ExceptionHolderTester, TestBadAllocCatch) {
   ASSERT_TRUE(catch_bad_alloc);
 }
 
-TEST(ExceptionHolderTester, TestBaseExpceptionCatch) {
+TEST(ExceptionHolderTester, TestBaseExceptionCatch) {
   ExceptionHolder exception_holder;
 
   try {
