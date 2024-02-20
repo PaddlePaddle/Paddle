@@ -137,6 +137,13 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   LoopReorderAligment();
   Tiling();
+
+  BindCudaInfo();
+
+  VariableTypeAssignment();
+  Unroll();
+  SetReduceType();
+
   std::cerr << "tiling schedule finished\n";
   // DoLoopAlignment();
   // DoComputeInline();

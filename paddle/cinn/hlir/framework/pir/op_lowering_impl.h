@@ -270,6 +270,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
 
   common::Type GetTensorDtype(const ::pir::Value& value);
 
+  void BuildBroadcastInfo(const GroupPtr& group);
+
   Target target_;
 
   PrettyNamer* name_gene_;

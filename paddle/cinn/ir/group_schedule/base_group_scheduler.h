@@ -62,6 +62,12 @@ class GroupScheduler {
         target_(target),
         group_tile_info_(group_tile_info) {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
+
+    auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
+      node_list.push_back(node->id());
+    };
+
+    schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
   }
 
   static std::unique_ptr<GroupScheduler> Make(
@@ -85,7 +91,10 @@ class GroupScheduler {
 
   bool NeedOrderLoops();
 
-  // bool Unroll();
+  void Unroll();
+  void VariableTypeAssignment();
+  void SetReduceType();
+  void BindCudaInfo();
 
  protected:
   ir::IRSchedule* ir_sch_;
@@ -96,6 +105,8 @@ class GroupScheduler {
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
 
   std::shared_ptr<GroupTileInfo> group_tile_info_;
+
+  std::vector<std::string> node_list;
 };
 
 }  // namespace ir

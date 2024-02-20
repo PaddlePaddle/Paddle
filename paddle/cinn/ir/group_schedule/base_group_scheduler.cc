@@ -44,16 +44,6 @@ std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
 }
 
 void GroupScheduler::LoopReorderAligment() {
-  // std::cerr << "loop reorder func body: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
-  std::vector<std::string> node_list;
-
-  auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
-    node_list.push_back(node->id());
-  };
-
-  schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
-
   std::cerr << "group_tile_info_ " << (group_tile_info_ != nullptr)
             << std::endl;
   // broadcast
@@ -193,16 +183,6 @@ bool GroupScheduler::NeedOrderLoops() {
 
 void GroupScheduler::Tiling() {
   // apply tiling
-  std::vector<std::string> node_list;
-
-  auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
-    node_list.push_back(node->id());
-  };
-
-  schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
-
-  // std::cerr << "node size " << node_list.size() << std::endl;
-
   auto vec_axis = group_tile_info_->reduce_axis_;
 
   // merge flatten axis and reduce axis
@@ -241,11 +221,6 @@ void GroupScheduler::Tiling() {
       if (ir::IsReduceInitTensorName(name)) {
         continue;
       }
-      // std::cerr << "reduce axis\n";
-
-      // for (auto axis : vec_reduce_axis) {
-      //   //std::cerr << axis << std::endl;
-      // }
       ir_sch_->Fuse(name, vec_reduce_axis);
     }
   }
@@ -385,74 +360,12 @@ void GroupScheduler::Tiling() {
         }
       }
     }
-  } else {
-    // get num warp from reduce num
-    // do nothing for now
   }
 
-  // std::cerr << "after merge warp num info: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  schedule_block_graph_->Update(*ir_sch_);
+}
 
-  // bind cuda block and thread info
-  for (auto& name : node_list) {
-    // skip reduce init block
-    if (ir::IsReduceInitTensorName(name)) {
-      continue;
-    }
-    auto loops = ir_sch_->GetLoops(name);
-    if (loops.size() == 1) {
-      ir_sch_->Split(loops[0], std::vector<int>({1, -1}));
-    }
-
-    loops = ir_sch_->GetLoops(name);
-
-    ir_sch_->Bind(loops[0], "blockIdx.x");
-
-    ir_sch_->Bind(loops[1], "threadIdx.x");
-
-    if (group_tile_info_->reduce_var_names.count(name)) {
-      auto loops = ir_sch_->GetLoops(name + "_rf");
-
-      ir_sch_->Bind(loops[0], "blockIdx.x");
-
-      ir_sch_->Bind(loops[1], "threadIdx.x");
-    }
-  }
-
-  std::cerr << "after bind block and thread info: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
-
-  for (auto& name : node_list) {
-    if (ir::IsReduceInitTensorName(name)) {
-      continue;
-    }
-    if (name.find("_out") != std::string::npos) {
-      continue;
-    }
-
-    // if (!output_tensor_names_.count(name)) {
-    //  std::cerr << "temp name " << name << std::endl;
-    auto block = ir_sch_->GetBlock(name);
-
-    {
-      if (!group_tile_info_->direct_output_var_names.count(name)) {
-        std::cerr << "set local " << name << std::endl;
-        ir_sch_->SetBuffer(block, "local", false);
-      }
-    }
-    //}
-
-    if (group_tile_info_->reduce_var_names.count(name)) {
-      auto block = ir_sch_->GetBlock(name + "_rf");
-      ir_sch_->SetBuffer(block, "local", false);
-    }
-  }
-
-  for (auto& name : group_tile_info_->thread_sync_before_names) {
-    auto loops = ir_sch_->GetLoops(name);
-    ir_sch_->SyncThreads(loops.front(), false);
-  }
-
+void GroupScheduler::Unroll() {
   // set unroll
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {
@@ -478,7 +391,38 @@ void GroupScheduler::Tiling() {
       }
     }
   }
+}
 
+void GroupScheduler::VariableTypeAssignment() {
+  for (auto& name : node_list) {
+    if (ir::IsReduceInitTensorName(name)) {
+      continue;
+    }
+
+    // if (!output_tensor_names_.count(name)) {
+    //  std::cerr << "temp name " << name << std::endl;
+    auto block = ir_sch_->GetBlock(name);
+
+    {
+      if (!group_tile_info_->direct_output_var_names.count(name)) {
+        std::cerr << "set local " << name << std::endl;
+        ir_sch_->SetBuffer(block, "local", false);
+      }
+    }
+    //}
+
+    if (group_tile_info_->reduce_var_names.count(name)) {
+      auto block = ir_sch_->GetBlock(name + "_rf");
+      ir_sch_->SetBuffer(block, "local", false);
+    }
+  }
+
+  for (auto& name : group_tile_info_->thread_sync_before_names) {
+    auto loops = ir_sch_->GetLoops(name);
+    ir_sch_->SyncThreads(loops.front(), false);
+  }
+}
+void GroupScheduler::SetReduceType() {
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {
       continue;
@@ -491,11 +435,36 @@ void GroupScheduler::Tiling() {
       if (group_tile_info_->reduce_type == 0) {
         block->reduce_type = 0;
       }
-      // std::cerr << "block type " << block->reduce_type << std::endl;
     }
   }
+}
 
-  schedule_block_graph_->Update(*ir_sch_);
+void GroupScheduler::BindCudaInfo() {
+  // bind cuda block and thread info
+  for (auto& name : node_list) {
+    // skip reduce init block
+    if (ir::IsReduceInitTensorName(name)) {
+      continue;
+    }
+    auto loops = ir_sch_->GetLoops(name);
+    if (loops.size() == 1) {
+      ir_sch_->Split(loops[0], std::vector<int>({1, -1}));
+    }
+
+    loops = ir_sch_->GetLoops(name);
+
+    ir_sch_->Bind(loops[0], "blockIdx.x");
+
+    ir_sch_->Bind(loops[1], "threadIdx.x");
+
+    if (group_tile_info_->reduce_var_names.count(name)) {
+      auto loops = ir_sch_->GetLoops(name + "_rf");
+
+      ir_sch_->Bind(loops[0], "blockIdx.x");
+
+      ir_sch_->Bind(loops[1], "threadIdx.x");
+    }
+  }
 }
 
 }  // namespace ir

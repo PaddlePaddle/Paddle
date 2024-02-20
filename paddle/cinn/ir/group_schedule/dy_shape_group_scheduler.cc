@@ -126,6 +126,12 @@ void DynamicShapeGroupScheduler::Schedule() {
   LoopReorderAligment();
   std::cerr << "after reorder\n";
   Tiling();
+
+  BindCudaInfo();
+
+  VariableTypeAssignment();
+  Unroll();
+  SetReduceType();
 }
 
 void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {
