@@ -150,7 +150,7 @@ GradNodePyLayer::operator()(
       PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
   if (!backward_fn) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get backward function faild."));
+        "Get backward function failed."));
   }
   bool need_grad_tmp = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(create_graph && need_grad_tmp);

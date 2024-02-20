@@ -266,8 +266,7 @@ class TestSaveLoadBase(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -397,8 +396,7 @@ class TestSaveLoadPartial(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -541,8 +539,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -670,8 +667,7 @@ class TestProgramStatePartial(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -1001,8 +997,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
         batch_num = 200
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -1144,8 +1139,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
         batch_num = 200
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -1287,8 +1281,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -1479,8 +1472,7 @@ class TestProgramStateOldSave(unittest.TestCase):
         batch_num = 200
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,
@@ -1655,8 +1647,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             ptb_model = PtbModel(
                 "ptb_model",
                 hidden_size=hidden_size,

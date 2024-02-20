@@ -26,6 +26,18 @@ namespace details {
 static std::vector<int64_t> empty_shape;
 
 template <typename T>
+Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
+  auto org_dtype = x.dtype();
+
+  auto res = cast<T>(sum<T>(x, axis, org_dtype, keepdim), DataType::BOOL);
+  if (org_dtype != DataType::BOOL) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -53,7 +65,13 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto sum_x = sum<T>(x_tmp, axis_, x_tmp.dtype(), keepdim);
 
   Tensor value;
-  if (find_value(x_dim, -1)) {
+  bool switch_dynamic = false;
+  for (const int64_t& idx : axis_) {
+    if (x_dim[idx] == -1) {
+      switch_dynamic = true;
+    }
+  }
+  if (switch_dynamic) {
     // dynamic shape branch
     std::vector<int64_t> gather_idx = {int64_t(axis_.size()), 1};
     Tensor idx =
@@ -256,14 +274,39 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 }
 
 template <typename T>
-Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
-  std::vector<int64_t> axis_tmp = {axis};
-  auto out_shape = get_expand_dims(x[0], axis_tmp);
+Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
 
-  std::vector<Tensor> concat_x;
-  for (size_t i = 0; i < x.size(); ++i) {
-    concat_x.push_back(reshape<T>(x[i], out_shape));
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
   }
+
+  auto res = log<T>(softmax_decomp<T>(x_tmp, axis));
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
+Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
+  std::vector<Tensor> concat_x;
+  if (find_value(x[0].shape(), -1)) {
+    Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
+    for (size_t i = 0; i < x.size(); ++i) {
+      concat_x.push_back(backend::reshape<T>(x[i], out_shape));
+    }
+  } else {
+    std::vector<int64_t> axis_tmp = {axis};
+    std::vector<int64_t> out_shape = get_expand_dims(x[0], axis_tmp);
+    for (size_t i = 0; i < x.size(); ++i) {
+      concat_x.push_back(reshape<T>(x[i], out_shape));
+    }
+  }
+
   return concat<T>(concat_x, axis);
 }
 
@@ -425,7 +468,12 @@ Tensor full_like_decomp(const Tensor& x,
                         const paddle::Scalar& value,
                         const DataType& dtype,
                         const Place& place) {
-  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  if (find_value(x_dim, -1)) {
+    return backend::full_with_tensor<T>(shape<T>(x), value, x.dtype());
+  } else {
+    return full<T>(x_dim, value, dtype, place);
+  }
 }
 
 template <typename T>
@@ -466,7 +514,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     } else {
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
-        // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
+        // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
         auto zero = full<T>(empty_shape, 0.0, org_dtype);
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {
@@ -537,13 +585,12 @@ Tensor hardswish_decomp(const Tensor& x) {
   const double THRESHOLD = 6.0;
   const double SCALE = 6.0;
 
-  // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
-  auto org_dim = common::vectorize(x.dims());
-  auto minimun_out =
-      minimum<T>(maximum<T>(x + full<T>(org_dim, OFFSET, x.dtype()),
-                            full<T>(org_dim, 0.0, x.dtype())),
-                 full<T>(org_dim, THRESHOLD, x.dtype()));
-  return (minimun_out * x) / full<T>(org_dim, SCALE, x.dtype());
+  // out = minimum(maximum(x + offset, 0), threshold) * x / scale
+  auto minimum_out =
+      minimum<T>(maximum<T>(x + full<T>(empty_shape, OFFSET, x.dtype()),
+                            full<T>(empty_shape, 0.0, x.dtype())),
+                 full<T>(empty_shape, THRESHOLD, x.dtype()));
+  return (minimum_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
 template <typename T>
@@ -776,6 +823,63 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
 
   return std::make_tuple(out, mean_out, var_out);
+}
+
+template <typename T>
+Tensor square_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor two;
+  two = full<T>(empty_shape, 2, x_cast.dtype());
+
+  auto ans = elementwise_pow<T>(x_cast, two);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
+Tensor embedding_decomp(const Tensor& x,
+                        const Tensor& weight,
+                        const int64_t padding_idx,
+                        const bool sparse) {
+  if (weight.dims().size() != 2) {
+    PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
+  }
+
+  const int64_t NoPadding = -1;
+  Tensor weight_tmp = weight;
+  if (padding_idx != NoPadding) {
+    std::vector<int64_t> put_shape{1, weight.dims()[1]};
+    Tensor padding_idx_tensor =
+        full<T>(put_shape, padding_idx, DataType::INT64);
+    Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
+    weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
+  }
+
+  if (x.dims().size() <= 1) {
+    auto out = gather<T>(weight_tmp, x);
+    if (x.dims().size() == 0) {
+      out = std::get<0>(squeeze_decomp<T>(out, {0}));
+    }
+    return out;
+  } else {
+    std::vector<int64_t> tar_shape{-1, 1};
+    auto x_reshape = reshape<T>(x, tar_shape);
+    auto out = gather<T>(weight_tmp, x_reshape);
+
+    auto res_dims = common::vectorize<int64_t>(x.dims());
+    res_dims.push_back(-1);
+    return reshape<T>(out, res_dims);
+  }
 }
 
 }  // namespace details

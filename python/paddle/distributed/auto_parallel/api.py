@@ -13,13 +13,15 @@
 # limitations under the License.
 import copy
 from collections import defaultdict
+from types import MethodType
 from typing import Callable, List, Tuple, Union
 
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import nn
+from paddle import _C_ops, nn
+from paddle.amp.grad_scaler import OptimizerState
 from paddle.base import unique_name
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import (
@@ -778,6 +780,171 @@ def shard_optimizer(optimizer, shard_fn=None):
     return _ShardOptimizer(optimizer, shard_fn)
 
 
+def shard_scaler(scaler):
+    """
+
+    Warp the global view grad_scaler to distributed view.
+
+    Args:
+        scaler (paddle.amp.GradScaler): The GradScaler to be sharded.
+
+    Returns:
+        A GradScaler with distributed view.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> layer, opt = paddle.amp.decorate(layer, opt, level='O2')
+            >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            >>> scaler = dist.shard_scaler(scaler)
+            >>> opt = dist.shard_optimizer(opt)
+            >>> for _ in range(5):
+            >>>     with paddle.amp.auto_cast(True):
+            >>>         loss = layer(batch)
+            >>>     scaled = scaler.scale(loss)
+            >>>     scaled.backward()
+            >>>     scaler.step(opt)
+            >>>     scaler.update()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+
+    """
+
+    def unscale_method(self, optimizer):
+        if not self._enable:
+            return
+
+        optimizer_state = self._optimizer_states[id(optimizer)]
+
+        if optimizer_state["state"] is OptimizerState.UNSCALED:
+            raise RuntimeError(
+                "unscale_() has already been called on this optimizer since the last update()."
+            )
+        elif optimizer_state["state"] is OptimizerState.STEPPED:
+            raise RuntimeError("unscale_() is being called after step().")
+
+        src_mesh = None
+        current_process_mesh = None
+
+        self._found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
+        mesh2param_grads = {}
+        if getattr(optimizer, '_param_groups', None) and isinstance(
+            optimizer._param_groups[0], dict
+        ):
+            for group in optimizer._param_groups:
+                for param in group['params']:
+                    tgt_grad = param._grad_ivar()
+                    if tgt_grad is not None:
+                        if src_mesh is None:
+                            src_mesh = tgt_grad.process_mesh
+                        if (
+                            current_process_mesh is None
+                            and tgt_grad._is_initialized()
+                        ):
+                            current_process_mesh = tgt_grad.process_mesh
+                        if tgt_grad.process_mesh not in mesh2param_grads:
+                            mesh2param_grads[tgt_grad.process_mesh] = [tgt_grad]
+                        else:
+                            mesh2param_grads[tgt_grad.process_mesh].append(
+                                tgt_grad
+                            )
+        else:
+            for param in optimizer._parameter_list:
+                tgt_grad = param._grad_ivar()
+                if tgt_grad is not None:
+                    if src_mesh is None:
+                        src_mesh = tgt_grad.process_mesh
+                    if (
+                        current_process_mesh is None
+                        and tgt_grad._is_initialized()
+                    ):
+                        current_process_mesh = tgt_grad.process_mesh
+                    if tgt_grad.process_mesh not in mesh2param_grads:
+                        mesh2param_grads[tgt_grad.process_mesh] = [tgt_grad]
+                    else:
+                        mesh2param_grads[tgt_grad.process_mesh].append(tgt_grad)
+
+        for _, param_grads in mesh2param_grads.items():
+            temp_param_grads_half = []
+            temp_param_grads_fp32 = []
+            temp_found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))
+            temp_found_inf_half = paddle.to_tensor(
+                np.array([0]).astype(np.bool_)
+            )
+            temp_found_inf_fp32 = paddle.to_tensor(
+                np.array([0]).astype(np.bool_)
+            )
+            if self._scale.is_dist():
+                temp_scale = self._scale._local_value()
+            else:
+                temp_scale = self._scale
+            for grad in param_grads:
+                if grad.dtype in [
+                    core.VarDesc.VarType.FP16,
+                    paddle.float16,
+                    core.VarDesc.VarType.BF16,
+                    paddle.bfloat16,
+                ]:
+                    temp_param_grads_half.append(grad)
+                else:
+                    temp_param_grads_fp32.append(grad)
+            if len(temp_param_grads_half):
+                _, temp_found_inf_half = _C_ops.check_finite_and_unscale_(
+                    temp_param_grads_half,
+                    temp_scale,
+                )
+                temp_found_inf = _C_ops.bitwise_or(
+                    temp_found_inf, temp_found_inf_half
+                )
+            if len(temp_param_grads_fp32):
+                _, temp_found_inf_fp32 = _C_ops.check_finite_and_unscale_(
+                    temp_param_grads_fp32,
+                    temp_scale,
+                )
+                temp_found_inf = _C_ops.bitwise_or(
+                    temp_found_inf, temp_found_inf_fp32
+                )
+            # All the 'temp_found_inf' will be `resharded` to `src_mesh` to calculate the value of `self._found_inf`.
+            temp_found_inf = dist.reshard(
+                temp_found_inf, src_mesh, temp_found_inf.placements
+            )
+            self._found_inf = _C_ops.bitwise_or(self._found_inf, temp_found_inf)
+
+        # The rank of src_mesh, should not overwrite the original variable `self._found_inf`
+        if self._found_inf.process_mesh == current_process_mesh:
+            for process_mesh in mesh2param_grads.keys():
+                _ = dist.reshard(
+                    self._found_inf, process_mesh, self._found_inf.placements
+                )
+        else:
+            # The rank of other mesh, should overwrite the original variable `self._found_inf`
+            self._found_inf = dist.reshard(
+                self._found_inf,
+                current_process_mesh,
+                self._found_inf.placements,
+            )
+        optimizer_state["state"] = OptimizerState.UNSCALED
+
+    scaler._unscale = MethodType(unscale_method, scaler)
+
+    return scaler
+
+
 # Part4: Convert To Static Graph related APIs
 class FusePasses:
     """
@@ -869,6 +1036,9 @@ class Strategy(auto_strategy.BaseConfig):
             auto_strategy.constants.PIPELINE, None
         )
         self._pipeline = auto_strategy.PipelineConfig(config_dict)
+
+        config_dict = self._config_dict.get(auto_strategy.constants.AMP, None)
+        self._amp = auto_strategy.AMPConfig(config_dict)
 
         config_dict = self._config_dict.get(
             auto_strategy.constants.FUSED_PASSES, None
@@ -982,6 +1152,42 @@ class Strategy(auto_strategy.BaseConfig):
                 >>> strategy.pipeline.micro_batch_size = 2
         """
         return self._pipeline
+
+    @property
+    def amp(self):
+        """
+        ``amp`` is used to configure the amp,
+        containing following configs:
+
+            ``enable`` (bool):  whether to enable AMP. Default: False.
+            ``dtype``, (str): the data type of AMP. Default: "float16".
+            ``level``, (str): the level of AMP. Default: "O1".
+            ``init_loss_scaling``, (float): the initial value of loss scaling. Default: 32768.0
+            ``incr_every_n_steps``, (int): the number of steps for increasing loss scaling. Default: 1000
+            ``decr_every_n_nan_or_inf``, (int): the number of steps for decreasing loss scaling. Default: 2
+            ``incr_ratio``, (float): the ratio for increasing loss scaling. Default: 2.0
+            ``decr_ratio``, (float): the ratio for decreasing loss scaling. Default: 2.0
+            ``use_dynamic_loss_scaling``, (bool): whether to use dynamic loss scaling. Default: False
+            ``custom_white_list``, (list): the list of names for which AMP will be applied. Default: []
+            ``custom_black_list``, (list): the list of names for which AMP will not be applied. Default: []
+            ``custom_black_varnames``, (list): the list of names for which AMP will not be applied. Default: []
+            ``use_fp16_guard``, (bool): whether to use fp16 guard. Default: False
+            ``use_bf16_guard``, (bool): whether to use bf16 guard. Default: False
+            ``use_master_grad``, (bool): whether to use master grad. Default: False
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> strategy = dist.Strategy()
+
+                >>> strategy.amp.enable = True
+                >>> strategy.amp.dtype = "float16"
+                >>> strategy.amp.level = "O2"
+        """
+        return self._amp
 
 
 class DistModel:

@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(enable_gpu_memory_usage_log);
+COMMON_DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
 int main(int argc, char** argv) {  // NOLINT

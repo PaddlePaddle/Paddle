@@ -14,7 +14,7 @@
 
 #pragma once
 #include <cstdint>
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 

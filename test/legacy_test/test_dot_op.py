@@ -50,7 +50,7 @@ class DotOp(OpTest):
         else:
             self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ['Y'],
@@ -62,7 +62,7 @@ class DotOp(OpTest):
         else:
             self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ['X'],
@@ -123,10 +123,10 @@ class DotOpBatch(DotOp):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
@@ -157,18 +157,14 @@ class TestDotOpError(unittest.TestCase):
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
-            x1 = base.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
-            y1 = base.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
+            x1 = paddle.to_tensor(np.array([1, 3]).astype(np.float32))
+            y1 = paddle.to_tensor(np.array([2, 5]).astype(np.float32))
             np.testing.assert_allclose(
                 paddle.dot(x1, y1).numpy(), np.array([17]), rtol=1e-05
             )
 
-            x1 = base.dygraph.to_variable(
-                np.array([[1, 3], [3, 5]]).astype(np.float32)
-            )
-            y1 = base.dygraph.to_variable(
-                np.array([[2, 5], [6, 8]]).astype(np.float32)
-            )
+            x1 = paddle.to_tensor(np.array([[1, 3], [3, 5]]).astype(np.float32))
+            y1 = paddle.to_tensor(np.array([[2, 5], [6, 8]]).astype(np.float32))
             np.testing.assert_array_equal(
                 paddle.dot(x1, y1).numpy(), np.array([17, 58])
             )
@@ -240,7 +236,7 @@ class TestDotFP16Op(OpTest):
                     place, ['X', 'Y'], 'Out', check_pir=True
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
@@ -248,7 +244,7 @@ class TestDotFP16Op(OpTest):
                     place, ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
@@ -318,7 +314,7 @@ class TestDotBF16Op(OpTest):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -331,7 +327,7 @@ class TestDotBF16Op(OpTest):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -382,7 +378,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -395,7 +391,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):

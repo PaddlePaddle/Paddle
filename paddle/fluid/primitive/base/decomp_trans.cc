@@ -14,14 +14,15 @@
 
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/program.h"
 
-PHI_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_skip_dynamic);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -77,7 +78,7 @@ static bool check_dynamic_shape(const pir::OpOperand& item,
   auto dims = GetValueDims(item.source());
   std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
   if (find_value(shape, -1)) {
-    VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << dims
+    VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << dims
             << "] in inputs of op " << op.name();
     return true;
   } else {
@@ -155,25 +156,42 @@ void DecompProgram::check_decomp_outputs(
 
       auto orig_dim = GetValueDims(orig_outs[i]);
       auto decomp_dim = GetValueDims(decomp_outs[i]);
+
+      PADDLE_ENFORCE(
+          orig_dim.size() == decomp_dim.size(),
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, its origin %d-index output rank of shape"
+              "[%s] is not equal to "
+              "decomp output rank of shape[%s] ",
+              op_name,
+              i,
+              orig_dim,
+              decomp_dim));
+
       std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
       if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
                 << "] in " << i << "-index output of origin op " << op_name;
       }
       if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
-        VLOG(4) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
+        VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }
 
-      PADDLE_ENFORCE(orig_dim == decomp_dim,
-                     paddle::platform::errors::PreconditionNotMet(
-                         "[Prim] For op %s, its origin %d-index output shape "
-                         "[%s] is not equal to "
-                         "decomp output shape [%s] ",
-                         op_name,
-                         i,
-                         orig_dim,
-                         decomp_dim));
+      for (int j = 0; j < orig_dim.size(); j++) {
+        if (orig_dim[j] != -1 && decomp_dim[j] != -1) {
+          PADDLE_ENFORCE(
+              orig_dim[j] == decomp_dim[j],
+              paddle::platform::errors::PreconditionNotMet(
+                  "[Prim] For op %s, its origin %d-index output shape "
+                  "[%s] is not equal to "
+                  "decomp output shape [%s] ",
+                  op_name,
+                  i,
+                  orig_dim,
+                  decomp_dim));
+        }
+      }
     }
   }
   return;
@@ -284,12 +302,34 @@ void DecompProgram::decomp_program() {
   }
   std::vector<pir::Value> tar_vars(src_vars_.size());
   pir::Block* block = program_->block();
+  decomp_block(block, orig_vars_dict, tar_vars);
+  std::ostringstream decomp_prog_stream;
+  program_->Print(decomp_prog_stream);
+  // Todo: Use cout instead of VLOG in case of incomplete log.
+  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
+  dst_vars_ = tar_vars;
+  return;
+}
+
+void DecompProgram::decomp_block(
+    pir::Block* block,
+    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+    std::vector<pir::Value>& tar_vars) {  // NOLINT
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
+    if (op->name() == "pd_op.if") {
+      auto& sub_true_block = op->dyn_cast<dialect::IfOp>().true_block();
+      auto& sub_false_block = op->dyn_cast<dialect::IfOp>().false_block();
+      decomp_block(&sub_true_block, orig_vars_dict, tar_vars);
+      decomp_block(&sub_false_block, orig_vars_dict, tar_vars);
+    } else if (op->name() == "pd_op.while") {
+      auto& sub_body = op->dyn_cast<dialect::WhileOp>().body();
+      decomp_block(&sub_body, orig_vars_dict, tar_vars);
+    }
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
@@ -330,12 +370,6 @@ void DecompProgram::decomp_program() {
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
   builder.SetInsertionPointToBlockEnd(block);
-  std::ostringstream decomp_prog_stream;
-  program_->Print(decomp_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
-  dst_vars_ = tar_vars;
-  return;
 }
 
 }  // namespace paddle
