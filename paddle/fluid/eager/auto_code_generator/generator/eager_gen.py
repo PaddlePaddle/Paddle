@@ -2651,7 +2651,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {indent}VLOG(4) << "Fused api {backward_api_name} is called";
   }}
 """
-
         else:
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
