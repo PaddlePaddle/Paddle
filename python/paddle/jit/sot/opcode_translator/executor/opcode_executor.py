@@ -1075,6 +1075,7 @@ class OpcodeExecutorBase:
         assert isinstance(instr.arg, int)
         self._call_shape = self._co_consts[instr.arg].get_py_value()
 
+    @call_break_graph_decorator(push_n=1)
     def CALL(self, instr: Instruction):
         assert isinstance(instr.arg, int)
         assert instr.arg + 2 <= len(self.stack)
