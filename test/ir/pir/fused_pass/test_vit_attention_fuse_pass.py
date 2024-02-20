@@ -21,6 +21,7 @@ import paddle
 from paddle.base import core
 from paddle.pir.core import create_parameter
 
+np.random.seed(42)
 paddle.enable_static()
 
 
@@ -59,9 +60,9 @@ class TestFused3EmbeddingEltwiseLayernormPattern(PassTest):
 
     def build_ir_program(self):
         for bs in [1]:
-            for seq_len in [1]:
-                for head_dim in [128]:
-                    for num_heads in [8]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [12]:
                         with paddle.pir_utils.IrGuard():
                             main_prog = paddle.static.Program()
                             start_prog = paddle.static.Program()
@@ -92,28 +93,30 @@ class TestFused3EmbeddingEltwiseLayernormPattern(PassTest):
                                 )
                                 matmul_out_1 = paddle.matmul(x, w)
                                 add_out = paddle.add(matmul_out_1, bias)
+                                # bs,seq_len,num_heads,3,head_dim
                                 reshape_out_1 = paddle.reshape(
                                     add_out,
-                                    shape=[bs, seq_len, num_heads, 3, head_dim],
+                                    shape=[bs, seq_len, 3, num_heads, head_dim],
                                 )
-                                # bs,seq_len,num_heads,3,head_dim
                                 transpose_out_1 = paddle.transpose(
-                                    reshape_out_1, perm=[0, 2, 1, 3, 4]
+                                    reshape_out_1, perm=[2, 0, 3, 1, 4]
                                 )
-                                v = transpose_out_1[:, :, :, 0, :]
-                                q = transpose_out_1[:, :, :, 1, :]
-                                k = transpose_out_1[:, :, :, 2, :]
+                                # bs,num_heads,seq_len,head_dim
+                                q = transpose_out_1[0, :, :, :, :]
+                                k = transpose_out_1[1, :, :, :, :]
+                                v = transpose_out_1[2, :, :, :, :]
                                 matmul_out_2 = paddle.matmul(
                                     q, paddle.transpose(k, perm=[0, 1, 3, 2])
                                 )
                                 scale_out = paddle.scale(
                                     matmul_out_2,
-                                    scale=1.0 / np.sqrt(head_dim),
+                                    scale=0.125,
                                     bias=0.0,
                                 )
                                 softmax_out = paddle.nn.functional.softmax(
                                     scale_out
                                 )
+                                # bs,num_head,seq_len,head_dim
                                 matmul_out_3 = paddle.matmul(softmax_out, v)
                                 transpose_out_2 = paddle.transpose(
                                     matmul_out_3, perm=[0, 2, 1, 3]
@@ -123,11 +126,12 @@ class TestFused3EmbeddingEltwiseLayernormPattern(PassTest):
                                     shape=[bs, seq_len, num_heads * head_dim],
                                 )
                                 out = paddle.assign(reshape_out_2)
-                                self.pass_list = ['vit_attention_fuse_pass']
+                                self.pass_list = ['multihead_matmul_fuse_pass']
                                 self.feeds = {
                                     "x": np.random.random(
                                         (bs, seq_len, hidden_dim)
-                                    ).astype("float32"),
+                                    ).astype("float32")
+                                    - 0.5,
                                     "bias": np.random.random(
                                         3 * hidden_dim
                                     ).astype("float32"),
