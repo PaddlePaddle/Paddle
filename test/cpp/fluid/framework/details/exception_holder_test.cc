@@ -20,8 +20,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-namespace f = paddle::framework;
-namespace p = paddle::platform;
 
 TEST(ExceptionHolderTester, TestEnforceNotMetCatch) {
   ExceptionHolder exception_holder;
@@ -69,7 +67,7 @@ TEST(ExceptionHolderTester, TestBadAllocCatch) {
   ASSERT_TRUE(catch_bad_alloc);
 }
 
-TEST(ExceptionHolderTester, TestBaseExpceptionCatch) {
+TEST(ExceptionHolderTester, TestBaseExceptionCatch) {
   ExceptionHolder exception_holder;
 
   try {

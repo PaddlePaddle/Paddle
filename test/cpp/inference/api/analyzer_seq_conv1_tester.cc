@@ -103,7 +103,8 @@ void SetConfig(AnalysisConfig *cfg) {
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
-  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  int epoch =
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
     PrepareInputs(&input_slots, &data, FLAGS_batch_size);

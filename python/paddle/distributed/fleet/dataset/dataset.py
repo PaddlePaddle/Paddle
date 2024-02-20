@@ -49,7 +49,7 @@ class DatasetBase:
         download_cmd="cat",
     ):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance.
+        should be called only once in user's python scripts to initialize settings of dataset instance.
         Normally, it is called by InMemoryDataset or QueueDataset.
 
         Args:
@@ -280,7 +280,7 @@ class DatasetBase:
         self, var_list, data_generator_class, test_file
     ):
         """
-         Var consistency insepection of use_var_list and data_generator data.
+         Var consistency inspection of use_var_list and data_generator data.
 
         Examples:
             .. code-block:: python
@@ -382,7 +382,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
+        should be called only once in user's python scripts to initialize distributed-related settings of dataset instance
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
 
@@ -444,7 +444,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called in user's python scripts to update setings of dataset instance.
+        should be called in user's python scripts to update settings of dataset instance.
 
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs,
@@ -525,7 +525,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
 
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
@@ -1316,7 +1316,7 @@ class QueueDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
 
         """
         super().init(**kwargs)
@@ -1356,7 +1356,7 @@ class FileInstantDataset(DatasetBase):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
         """
         super().init(**kwargs)
 
@@ -1382,7 +1382,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
         """
         super().init(**kwargs)
 

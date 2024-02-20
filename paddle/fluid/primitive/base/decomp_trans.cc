@@ -19,10 +19,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/primitive/base/primitive_ops.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(prim_skip_dynamic);
+COMMON_DECLARE_bool(prim_check_ops);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -38,6 +40,9 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
                                                           "pd_op.batch_norm_"};
+//
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze"};
 
 static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
@@ -47,7 +52,21 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   }
 }
 
+static void check_ops(const std::string& op_name) {
+  auto it = primitive_set.find(op_name);
+  if (it == primitive_set.end()) {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
+                                     "should not contain none primitive op %s.",
+                                     op_name));
+  }
+  return;
+}
+
 static const phi::DDim& GetValueDims(pir::Value value) {
+  if (!value.type()) {
+    PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
+  }
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else if (value.type().isa<SelectedRowsType>()) {
@@ -101,7 +120,7 @@ bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
     // check if initialized in case of optional input.
     if (!paddle::dialect::IsEmptyValue(value)) {
       pir::Operation* prev_op = value.defining_op();
-      if (prev_op->name() == "builtin.combine") {
+      if (prev_op && prev_op->name() == "builtin.combine") {
         for (pir::OpOperand& sub_item : prev_op->operands()) {
           if (check_dynamic_shape(sub_item, *op)) {
             return true;
@@ -307,6 +326,11 @@ void DecompProgram::decomp_program() {
   program_->Print(decomp_prog_stream);
   // Todo: Use cout instead of VLOG in case of incomplete log.
   VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
+  if (FLAGS_prim_check_ops) {
+    for (auto& op : *block) {
+      check_ops(op.name());
+    }
+  }
   dst_vars_ = tar_vars;
   return;
 }
@@ -334,6 +358,11 @@ void DecompProgram::decomp_block(
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && FLAGS_prim_skip_dynamic &&
         check_decomp_dynamic_shape(op)) {
+      enable_prim = false;
+    }
+    if (enable_prim && check_decomp_dynamic_shape(op) &&
+        dynamic_shape_blacklist.find(op->name()) !=
+            dynamic_shape_blacklist.end()) {
       enable_prim = false;
     }
     if (enable_prim) {

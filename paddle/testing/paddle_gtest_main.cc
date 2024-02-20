@@ -26,6 +26,7 @@ int main(int argc, char** argv) {  // NOLINT
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
+  new_argv.reserve(argc);
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
