@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -21,6 +22,14 @@ import paddle
 JIT_KERNEL_NAME = "jit_kernel"
 __IF_OP_NAME = "pd_op.if"
 __WHILE_OP_NAME = "pd_op.while"
+
+
+def unittest_use_cinn():
+    use_cinn = os.getenv("FLAGS_pd_unittest_use_cinn", False)
+    true_value_set = {True, 1, "1", "True", "true"}
+    false_value_set = {False, 0, "0", "False", "false"}
+    assert use_cinn in (true_value_set | false_value_set)
+    return use_cinn in true_value_set
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -49,11 +58,9 @@ def get_jit_kernel_number(block):
         elif op_name == __IF_OP_NAME:
             jit_kernel_number = (
                 jit_kernel_number
-                + get_jit_kernel_number(op.true_block())
-                + get_jit_kernel_number(op.false_block())
+                + get_jit_kernel_number(op.as_if_op().true_block())
+                + get_jit_kernel_number(op.as_if_op().false_block())
             )
-        elif op_name == __WHILE_OP_NAME:
-            jit_kernel_number += get_jit_kernel_number(op.body())
 
     return jit_kernel_number
 
@@ -68,27 +75,33 @@ def check_jit_kernel_number(static_fn, expected_number):
     np.testing.assert_equal(jit_kernel_number, expected_number)
 
 
-def get_jit_kernel_structure_helper(block, map_info):
-    if_op_idx, while_op_idx = 0, 0
+def get_jit_kernel_structure_helper(block, map_info, if_op_idx='_0'):
+    """
+    Recursivly generate JIT_KERNEL map_info for Static/Dynmaic Shape UT.
+    """
+    if_count = 0
     for op in block.ops:
         op_name = op.name()
         if JIT_KERNEL_NAME in op_name:
+            if JIT_KERNEL_NAME not in map_info:
+                map_info[JIT_KERNEL_NAME] = 0
             map_info[JIT_KERNEL_NAME] += 1
         elif op_name == __IF_OP_NAME:
-            true_key = f"if_{if_op_idx}"
+            true_key = f"if{if_op_idx}"
+            false_key = f"else{if_op_idx}"
             map_info[true_key] = {}
-            get_jit_kernel_structure_helper(op.true_block(), map_info[true_key])
-
-            false_key = f"else_{if_op_idx}"
+            map_info[false_key] = {}
             get_jit_kernel_structure_helper(
-                op.false_block(), map_info[false_key]
+                op.as_if_op().true_block(),
+                map_info[true_key],
+                if_op_idx + '_' + str(if_count),
             )
-            if_op_idx += 1
-        elif op.name() == __WHILE_OP_NAME:
-            key = f"while_{while_op_idx}"
-            map_info[key] = {}
-            get_jit_kernel_structure_helper(op.body(), map_info[key])
-            while_op_idx += 1
+            get_jit_kernel_structure_helper(
+                op.as_if_op().false_block(),
+                map_info[false_key],
+                if_op_idx + '_' + str(if_count),
+            )
+            if_count += 1
 
 
 def get_jit_kernel_structure(static_fn):
@@ -100,7 +113,7 @@ def get_jit_kernel_structure(static_fn):
 
 def check_jit_kernel_structure(static_fn, expected_structure):
     """
-    Check whether fuse subgraph structre in Program is same with expected_structure.
+    Check whether fuse subgraph structure in Program is same with expected_structure.
     For examaple:
     expected_structure = {
         JIT_KERNEL_NAME: 3,

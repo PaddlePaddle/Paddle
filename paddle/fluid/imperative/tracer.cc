@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -33,12 +34,11 @@
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_string(tracer_mkldnn_ops_on);
-PHI_DECLARE_string(tracer_mkldnn_ops_off);
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_string(tracer_mkldnn_ops_on);
+COMMON_DECLARE_string(tracer_mkldnn_ops_off);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -96,7 +96,7 @@ const std::shared_ptr<AMPState>& GetCurrentAMPState() {
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
-      // NOTE(zhiqiu): this happends when None output are passed from python
+      // NOTE(zhiqiu): this happens when None output are passed from python
       // side. For example, fake_quantize_dequantize_moving_average_abs_max may
       // pass None OutAccum in eval mode.
       // It can be refined by generate several different pybind interface for
@@ -105,9 +105,9 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
         VLOG(4) << pair.first << " is NULL";
         continue;
       }
-      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
-              << generate_grad;
-      var->InnerSetOverridedStopGradient(generate_grad);
+      VLOG(6) << "Set output: " << var->Name()
+              << "'s OverriddenStopGradient as " << generate_grad;
+      var->InnerSetOverriddenStopGradient(generate_grad);
     }
   }
 }
@@ -504,7 +504,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap attrs) {
-  VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
+  VLOG(6) << "Running On Eager TraceOp(4 args): ";
   TraceOpImpl<egr::EagerVariable>(
       type, ins, outs, attrs, expected_place_, false, {}, nullptr, true);
 }
@@ -583,10 +583,10 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
-      if (!var_base->OverridedStopGradient()) {
+      if (!var_base->OverriddenStopGradient()) {
         VLOG(6) << "Find out input: " << var_base->Name()
                 << "'s GeneratedGrad is True";
-        PassStopGradient(outs, var_base->OverridedStopGradient());
+        PassStopGradient(outs, var_base->OverriddenStopGradient());
         return true;
       }
     }

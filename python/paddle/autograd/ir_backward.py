@@ -45,7 +45,7 @@ from paddle.base.libpaddle.pir import (
 )
 
 """
-    grad: for templete test, will combine in paddle.grad .
+    grad: for template test, will combine in paddle.grad .
     calc_gradient: for internal use, optest, parallel etc .
     calc_gradient_helper: for dygraph to static .
 """
@@ -56,7 +56,7 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
     if paddle.pir.is_fake_value(value):
         state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
         return
-    if copy_value.is_tensorarray():
+    if copy_value.is_dense_tensor_array_type():
         value_grad = paddle._pir_ops.create_array_like(
             copy_value,
             float_value,
@@ -93,7 +93,7 @@ def append_add_n(
             return_map_value(item[0], bwd_value_to_block_argument_map)
         )
 
-    if value.is_tensorarray():
+    if value.is_dense_tensor_array_type():
         add_n_value = paddle._pir_ops.add_n_array(add_n_list)
     else:
         add_n_value = paddle.add_n(add_n_list)
@@ -653,22 +653,20 @@ def append_backward_ops(
                         grad_op = bwd_block.ops[-1]
                         bwd_ops = [grad_op]
 
-                        inplace_input = []
+                        inputs_used_by_other_op = []
                         for sub_fwd_block, sub_bwd_block in zip(
                             op.blocks(), grad_op.blocks()
                         ):
                             sub_state = state.copy(sub_fwd_block)
-                            for inside_op in sub_fwd_block.ops:
-                                if inside_op.name() == "pd_op.assign_out_":
+                            for input_ in origin_inputs:
+                                if input_ in state.value_to_valuegrad:
                                     origin_grad = state.value_to_valuegrad[
-                                        inside_op.operand_source(1)
+                                        input_
                                     ].copy()
-                                    inplace_input.append(
-                                        (
-                                            inside_op.operand_source(1),
-                                            origin_grad,
-                                        )
+                                    inputs_used_by_other_op.append(
+                                        (input_, origin_grad)
                                     )
+
                             sub_backward_ops = []
                             append_backward_ops(
                                 op,
@@ -681,12 +679,12 @@ def append_backward_ops(
                                 sub_backward_ops,
                                 sub_state,
                             )
-                            for input_tuple in inplace_input:
+                            for input_tuple in inputs_used_by_other_op:
                                 state.value_to_valuegrad[
                                     input_tuple[0]
                                 ] = input_tuple[1]
 
-                        for input_tuple in inplace_input:
+                        for input_tuple in inputs_used_by_other_op:
                             state.value_to_valuegrad[input_tuple[0]] = []
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
@@ -826,7 +824,7 @@ def prepare_backward_prune_set(inputs, outputs):
                 for item in get_real_op_inputs(used_op):
                     outputs_fwd_set.add(item)
         else:
-            logging.warning("input privided by inputs has no use")
+            logging.warning("input provided by inputs has no use")
 
     inputs_fwd_set = ValueSet()
     for output in outputs:
@@ -872,7 +870,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state = State(block)
     if all_stop_gradient_true(block):
         logging.warning(
-            "all op in block stop_grdient is True, no grad will be calculate"
+            "all op in block stop_gradient is True, no grad will be calculate"
         )
         return state.value_to_valuegrad
 
@@ -916,7 +914,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         ValueDict(),
     )
 
-    # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
+    # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
@@ -951,7 +949,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
 
 def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
     """
-    caclulate gradient of input
+    calculate gradient of input
 
     Args:
         outputs (Value|list(Value)|tuple(Value)): the output Value or
@@ -1140,7 +1138,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         ops = loss.get_defining_op().get_parent_block().ops
         parameter_list = []
         for op in ops:
-            if not op.has_attr("is_persisable"):
+            if not op.has_attr("is_persistable"):
                 continue
             persist_value = [
                 result for result in op.results() if result.persistable

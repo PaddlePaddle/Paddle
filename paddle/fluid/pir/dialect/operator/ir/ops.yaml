@@ -97,6 +97,7 @@
     func : assign
   backward : assign_grad
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign_out_
   args : (Tensor x, Tensor output)
@@ -457,6 +458,7 @@
     param : [x, weight, padding_idx]
     data_type : weight
   backward : embedding_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -531,6 +533,7 @@
 - op : feed
   args : (str name, int col)
   output : Tensor(out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fetch
   args : (Tensor x, str name, int col)
@@ -661,6 +664,16 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
 
+- op : fused_softmax_mask
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxMaskFuseInferMeta
+  kernel :
+    func : fused_softmax_mask
+    data_type : x
+  backward: fused_softmax_mask_grad
+
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
   output : Tensor(Out)
@@ -711,6 +724,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hardswish
   args : (Tensor x)
@@ -741,6 +755,7 @@
   kernel :
     func : increment
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -763,6 +778,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -830,6 +846,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : matmul_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
@@ -857,6 +874,7 @@
   kernel :
     func : max
   backward : max_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maximum
   args : (Tensor x, Tensor y)
@@ -973,6 +991,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -1297,6 +1316,7 @@
   kernel :
     func : split
   backward : split_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)
@@ -1416,6 +1436,7 @@
     func : tril
   inplace: (x -> out)
   backward : tril_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril_indices
   args : (int rows, int cols, int offset, DataType dtype, Place place={})

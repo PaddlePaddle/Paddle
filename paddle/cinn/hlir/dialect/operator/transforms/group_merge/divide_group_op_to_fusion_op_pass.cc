@@ -31,13 +31,13 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass_registry.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
@@ -176,19 +176,18 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
       value2id[yield_op->operand_source(i)] = i;
     }
-    auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>(
-        pir::ShapeAnalysisManager::Instance().Get(
-            group_op->GetParentProgram()));
 
     // op fusion
     auto group_list = cinn::dialect::ir::OpFusionPassInternal(
         GetOpListNotIncludeYield(group_op.GetOperators()),
-        GetOutputOpList(group_op.GetOperators()),
-        shape_analysis);
+        GetOutputOpList(group_op.GetOperators()));
 
     // fusion merge
-    auto merged_group_list = cinn::dialect::ir::GeneralFusionMergePassInternal(
-        group_list, shape_analysis);
+    auto merged_group_list =
+        cinn::dialect::ir::GeneralFusionMergePassInternal(group_list);
+
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
 
     for (auto group : merged_group_list) {
       auto vec_outs = group->GetGroupOutputValues();
@@ -207,6 +206,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       }
 
       for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+        const auto& shape_expr =
+            shape_analysis.GetShapeOrDataForValue(vec_outs[i]);
+        shape_analysis.SetShapeOrDataForValue(fusion_op.result(i), shape_expr);
         auto find_it = value2id.find(vec_outs[i]);
         if (find_it != value2id.end()) {
           // If it's an output of group_op, YieldOp is needed to find the real

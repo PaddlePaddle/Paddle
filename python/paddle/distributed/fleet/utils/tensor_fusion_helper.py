@@ -200,9 +200,12 @@ class ShardingGradView:
         stop_gradient = self._param.stop_gradient
         self._param.stop_gradient = True
         self._param.flatten_()
-        self._param_buffer[
-            self._index : self._index + self._param._numel()
-        ] = self._param
+        paddle.assign(
+            self._param,
+            self._param_buffer._slice(
+                self._index, self._index + self._param._numel()
+            ),
+        )
         self._param.get_tensor()._set_dims(param_shape)
         self._param.stop_gradient = stop_gradient
         self._param_buffer._slice(
@@ -356,7 +359,7 @@ class FusedCommBuffer:
             assert dst != -1
         else:
             raise ValueError(
-                "The act should be allreudce for dp or reduce for sharding."
+                "The act should be allreduce for dp or reduce for sharding."
             )
         self._dst = dst
 

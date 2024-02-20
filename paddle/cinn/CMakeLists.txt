@@ -1,5 +1,5 @@
 if(WITH_TESTING)
-  cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest ${flags_dep})
+  cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest common)
 endif()
 
 add_subdirectory(adt)

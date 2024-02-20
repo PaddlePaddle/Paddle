@@ -46,7 +46,7 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& decrease_axis) {
   // Step0: Verify input args based on slice logic
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   int output_ndim = input_ndim - static_cast<int>(decrease_axis.size());
   auto input_dist_attr_src = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
@@ -78,7 +78,7 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
   TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];  // NOLINT
     input_dims_mapping[axis] = -1;
   }
   input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
@@ -124,9 +124,10 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   auto output_shape = common::vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
-  int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
+  int out_dims_mapping_size =
+      static_cast<int>(out_dist_attr.dims_mapping().size());
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
 
@@ -164,7 +165,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   }
 
   for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];  // NOLINT
     // the sliced axis cannot be sharded, set its notation
     // with the special '1' to set its dim mapping to -1.
     input_axes[axis] = '1';
@@ -243,7 +244,7 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& decrease_axis) {
   // Step0: Verify input args based on slice logic
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
 
   input_dist_attr = UnShardTensorDims(input_dist_attr, axes);
@@ -267,7 +268,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   out_dist_attr = UnShardTensorDims(out_dist_attr, mapped_axes);
   auto output_shape = common::vectorize(out_grad.dims());
   int out_ndim = output_shape.size();
-  int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
+  int out_dims_mapping_size =
+      static_cast<int>(out_dist_attr.dims_mapping().size());
   int decrease_axis_num = decrease_axis.size();
 
   PADDLE_ENFORCE_EQ(

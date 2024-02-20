@@ -24,13 +24,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/interface_value.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/interface_value.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace paddle {
 namespace dialect {
@@ -49,17 +49,19 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    symbol::TensorListShapeOrDataDimExprs shape_data_list{};
+    const auto shape_data_list = [&] {
+      symbol::TensorListShapeOrDataDimExprs shape_data_list;
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
+                   "Currently InferSymbolicShape of CombineOp only support "
+                   "DenseTensorType.");
 
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
-                 "Currently InferSymbolicShape of CombineOp only support "
-                 "DenseTensorType.");
-
-      shape_data_list.emplace_back(
-          shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
-              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
-    }
+        shape_data_list.emplace_back(
+            shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
+                .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
+      }
+      return shape_data_list;
+    }();
 
     symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
     shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
@@ -181,7 +183,7 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
     os << "IntArray)"
        << "[";
     const auto& inner_data = data.GetData();
-    pir::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_data.begin(),
         inner_data.end(),
         [&os](int64_t i) { os << i; },

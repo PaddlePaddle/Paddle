@@ -1180,7 +1180,7 @@ inline bool IsVarAllNonnegative(
 }
 
 Expr CasSimplifyMutator::SimplifyMod(Expr u) {
-  VLOG(4) << "SimplifyMod:" << u;
+  VLOG(6) << "SimplifyMod:" << u;
   auto* node = u.As<Mod>();
   CHECK(node);
 
@@ -1229,11 +1229,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
 
   // (x % 16) % 4 = x % 4
   if (a_mod && b_i) {
-    VLOG(4) << "Simplify sequential mod";
+    VLOG(6) << "Simplify sequential mod";
     auto* a_b_i = a_mod->b().As<IntImm>();
     if (a_b_i->value != 0 && a_b_i->value % b_i->value == 0) {
       auto e = SimplifyMod(Mod::Make(a_mod->a(), b_i));
-      VLOG(4) << "Reduce Mod from " << u << " to " << e;
+      VLOG(6) << "Reduce Mod from " << u << " to " << e;
       return e;
     }
   }
@@ -1260,11 +1260,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   // (4*x + k*y)%2 = (k*y) %2
   // (2x+y+z) % 2 = (y+z) % 2
   if (a_sum && b_i) {
-    VLOG(4) << "A SUM ";
+    VLOG(6) << "A SUM ";
     std::vector<Expr> sum_args;
     for (auto& v : a_sum->operands()) {
       if (!IsDivisible(v, b_i->value)) {
-        VLOG(4) << v;
+        VLOG(6) << v;
         sum_args.push_back(v);
       }
     }
@@ -1284,7 +1284,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
         all_nonnegative_int =
             all_nonnegative_int && arg_int && arg_int->value >= 0;
       }
-      VLOG(4) << all_nonnegative_var << " " << all_nonnegative_int;
+      VLOG(6) << all_nonnegative_var << " " << all_nonnegative_int;
       if (all_nonnegative_var)
         return SimplifyMod(Mod::Make(Sum::Make(sum_args), b));
       if (all_nonnegative_int) {

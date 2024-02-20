@@ -32,7 +32,7 @@ def execute(main_program, startup_program):
     exe.run(main_program)
 
 
-def get_vaild_warning_num(warning, w):
+def get_valid_warning_num(warning, w):
     num = 0
     for i in range(len(w)):
         if warning in str(w[i].message):
@@ -162,7 +162,7 @@ class TestDeviceGuard(unittest.TestCase):
                         paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
         if not in_pir_mode():
             warning = "The Op(while) is not support to set device."
-            warning_num = get_vaild_warning_num(warning, w)
+            warning_num = get_valid_warning_num(warning, w)
             assert warning_num == 1
 
         all_ops = main_program.global_block().ops
