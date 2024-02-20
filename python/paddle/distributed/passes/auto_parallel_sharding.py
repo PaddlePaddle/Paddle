@@ -1227,7 +1227,7 @@ class ShardingPass(PassBase):
         grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
-                if op.type == "c_allreduce_sum":
+                if op.type in ["c_allreduce_avg", "c_allreduce_sum"]:
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
                 grad_comm_op_to_stream_idx[op] = stream_idx
@@ -1253,6 +1253,7 @@ class ShardingPass(PassBase):
                             grad_group.vars[-1],
                             grad_group.coalesce_var,
                             comm_stream,
+                            "sharding_grad_comm_dep",
                         )
                     ]
                     # post dep
@@ -1265,6 +1266,7 @@ class ShardingPass(PassBase):
                             grad_group.coalesce_var,
                             grad_group.vars,
                             comm_stream,
+                            "sharding_grad_comm_dep",
                         )
                     )
 
@@ -1273,11 +1275,13 @@ class ShardingPass(PassBase):
                 op.dist_attr.scheduling_priority = (
                     self.comm_op_scheduling_priority
                 )
-
                 op._set_attr("ring_id", comm_group.id)
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
-                    assert next_op.type == "c_allreduce_sum"
+                    assert next_op.type in [
+                        "c_allreduce_avg",
+                        "c_allreduce_sum",
+                    ]
                     assert next_op.output("Out")[0] == reduce_varname
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
                     # next_op._set_attr("ring_id", comm_group.id)
@@ -1287,6 +1291,20 @@ class ShardingPass(PassBase):
                     )
                     idx += 1
 
+                if (
+                    op.type == "c_reduce_avg"
+                    and not grad_group.is_in_local_shard
+                ):
+                    dep_map[idx].append(
+                        (
+                            idx,
+                            reduce_varname,
+                            reduce_varname,
+                            None,
+                            "sharding_reduce_avg_dep",
+                        )
+                    )
+
                 reduce_op_count += 1
 
             idx += 1
@@ -1294,7 +1312,17 @@ class ShardingPass(PassBase):
         # insert deps
         indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
-            for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
+            for (
+                idx,
+                prior_vars,
+                post_vars,
+                comm_stream,
+                op_namescope,
+            ) in dep_map[i][::-1]:
+                skip_insert_when_sequential_run = (
+                    False if op_namescope == "sharding_reduce_avg_dep" else True
+                )
+
                 depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
@@ -1307,12 +1335,14 @@ class ShardingPass(PassBase):
                     ],  # hack to avoid initialize the dist attr for coalesce var
                     is_recompute=False,
                     sync=False,
-                    op_namescope="sharding_grad_comm_dep",
+                    op_namescope=op_namescope,
+                    skip_insert_when_sequential_run=skip_insert_when_sequential_run,
                 )
-                depend_op.dist_attr.execution_stream = comm_stream
-                depend_op.dist_attr.scheduling_priority = (
-                    self.comm_op_scheduling_priority
-                )
+                if depend_op is not None and comm_stream is not None:
+                    depend_op.dist_attr.execution_stream = comm_stream
+                    depend_op.dist_attr.scheduling_priority = (
+                        self.comm_op_scheduling_priority
+                    )
 
         # hierarchical grad comm
         if self.enable_hierarchical_comm:

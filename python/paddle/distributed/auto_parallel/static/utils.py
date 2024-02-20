@@ -2124,12 +2124,13 @@ def insert_dependencies_for_two_ops(
     is_recompute=False,
     sync=False,
     op_namescope=None,
+    skip_insert_when_sequential_run=True,
 ):
     """
     dependency: prior_op should be run before posterior_op
     """
 
-    if is_sequential_run():
+    if skip_insert_when_sequential_run and is_sequential_run():
         return
 
     assert (
