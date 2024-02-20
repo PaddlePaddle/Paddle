@@ -15,6 +15,7 @@
 import copy
 import logging
 import os
+import re
 import sys
 import warnings
 from functools import lru_cache
@@ -1029,8 +1030,7 @@ class _ExecutorCache:
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             key = _get_program_cache_key(feed, fetch_list)
-            assert "/" not in key, "program_cache_key should not contain /"
-            skip_var_names = eval(key)
+            skip_var_names = re.findall(r'\'([^\']*)\'', key)
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
