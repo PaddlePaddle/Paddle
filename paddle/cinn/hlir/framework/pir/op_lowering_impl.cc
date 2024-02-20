@@ -191,33 +191,6 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   auto data_dim = group->loop_ranges;
   group_tile_info->data_rank = data_dim.size();
   auto reduce_axis = group->reduce_axis;
-  // if (group->kind() == OpPatternKind::kReduction) {
-  //   data_dim = first_master_op->operand_source(0)
-  //                  .type()
-  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
-  //                  .dims();
-  //   group_tile_info->data_rank = data_dim.size();
-  //   reduce_axis = cinn::dialect::ir::GetVectorAttr(first_master_op, "dim");
-  // } else if (group->kind() == OpPatternKind::kElementWise) {
-  //   data_dim = first_master_op->result(0)
-  //                  .type()
-  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
-  //                  .dims();
-  //   // std::cerr << "data dim " << data_dim << std::endl;
-  //   group_tile_info->data_rank = data_dim.size();
-  // } else if (group->kind() == OpPatternKind::kBroadcast) {
-  //   data_dim = first_master_op->result(0)
-  //                  .type()
-  //                  .dyn_cast<paddle::dialect::DenseTensorType>()
-  //                  .dims();
-  //   group_tile_info->data_rank = data_dim.size();
-  // } else {
-  //   PADDLE_THROW(
-  //       phi::errors::Unimplemented("only support group kind with reduce, "
-  //                                  "elementwise and broadcast for now"));
-  // }
-  // std::cerr << "data rank " << group_tile_info->data_rank << std::endl;
-  // std::cerr << "data dim " << data_dim << std::endl;
 
   std::set<int64_t> reduce_set;
   for (auto dim : reduce_axis) {
@@ -666,13 +639,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       continue;
     }
 
-    // std::cerr << "found name " << op1->name() << std::endl;
-
-    // std::cerr << "it " << it->first->dialect() << std::endl;
-    // std::cerr << "it->fisrt " << it->first->name() << std::endl;
-    // std::cerr << "align name  " << ValueName(it->first->result(0)) <<
-    // std::endl;
-
     if (it->second.size() > 1) {
       for (auto& node : it->second) {
         std::cerr << "info " << node.DebugStr() << std::endl;
@@ -788,16 +754,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       info.op_name = it->first->name();
       broadcast_info[ValueName(op_out)] = info;
 
-      // if( op_out.use_count() > 1 )
-      // {
-      //   throw std::runtime_error("only support ONE user for now");
-      // }
-
       std::cerr << "op " << it->first->name() << std::endl;
 
-      // std::cerr << "use op name " << op_out.first_use().owner()->name() <<
-      // std::endl; std::cerr << "pattern kind " <<  CompatibleInfo::OpKind(
-      // *(op_out.first_use().owner()) ) << std::endl;
       for (auto use_it = op_out.use_begin(); use_it != op_out.use_end();
            ++use_it) {
         if (use_it->owner()->name() == "cf.yield") {
@@ -852,12 +810,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
           broadcast_info[tensor->name + "_out"] = base_info;
         }
       }
-      // else {
-      //   direct_output_var_names.insert(tensor->name);
-      // }
-
-      // shared_var_names.insert(  tensor->name );
-      // }
     }
   }
 

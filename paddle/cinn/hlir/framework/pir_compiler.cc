@@ -49,6 +49,7 @@ std::unique_ptr<Program> PirCompiler::Build() {
 std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
+
   if (FLAGS_cinn_bucket_compile) {
     for (int i = 0; i < groups.size(); ++i) {
       group_compilation_contexts_.emplace_back(target_, groups[i], scope_);

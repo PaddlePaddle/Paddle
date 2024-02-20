@@ -244,7 +244,7 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     std::cerr << "axis " << axis << "\t" << schedule_realize->iter_values.size()
               << std::endl;
 
-    if (!full_broadcast) {
+    if (!full_broadcast && (!(info.with_constrain))) {
       schedule_realize->iter_values[axis] = loop_temp->loop_var;
     }
 

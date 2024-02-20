@@ -23,7 +23,7 @@ namespace primitive {
 namespace details {
 
 // empty_shape means x.shape=[]
-static std::vector<int64_t> empty_shape({1});
+static std::vector<int64_t> empty_shape;
 
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
@@ -238,10 +238,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   }
   Tensor reserve_space;
 
-  // auto batch_mean_ = assign<T>(batch_mean);
-  // auto inv_std_ = assign<T>(inv_std);
-  auto batch_mean_ = batch_mean;
-  auto inv_std_ = inv_std;
+  auto batch_mean_ = assign<T>(batch_mean);
+  auto inv_std_ = assign<T>(inv_std);
   if (need_cast) {
     y = cast<T>(y, org_dtype);
   }
