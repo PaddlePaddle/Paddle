@@ -37,8 +37,17 @@ if(WITH_XPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 
-paddle_test(test_common_infer_shape_functions SRCS
-            test_common_infer_shape_functions.cc DEPS common var_helper)
+nv_test(
+  test_common_infer_shape_functions
+  SRCS test_common_infer_shape_functions.cc
+  DEPS common_infer_shape_functions
+       ${COMMON_OP_DEPS}
+       activation_op
+       generated_op
+       elementwise_add_op
+       phi
+       common
+       generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc
