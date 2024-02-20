@@ -4342,7 +4342,6 @@ bool ShapeBroadcastOp::InferSymbolicShape(
                                     : ComputeBroadcastShape(y_data, x_data);
 
   pir::Value res = result(0);
-  // TODO(HongyuJia): use op->result(0) to infer the shape
   std::vector<symbol::DimExpr> shape{std::int64_t(output_data.size())};
 
   symbol::ShapeOrDataDimExprs output_data_shape{

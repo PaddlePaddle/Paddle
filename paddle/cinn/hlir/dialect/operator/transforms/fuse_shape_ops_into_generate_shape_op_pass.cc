@@ -29,6 +29,7 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -188,23 +189,29 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
   }
 };
 
-FuseShapeOpsIntoGenerateShapeOpPass::FuseShapeOpsIntoGenerateShapeOpPass()
-    : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass", 1) {
-}
+class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
+ public:
+  FuseShapeOpsIntoGenerateShapeOpPass()
+      : pir::PatternRewritePass("fuse_shape_ops_into_generate_shape_op_pass",
+                                1) {}
 
-pir::RewritePatternSet FuseShapeOpsIntoGenerateShapeOpPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
-      context);
-  ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
-      context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ExpandOp>>(
+        context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
+        context);
 
-  return ps;
-}
+    return ps;
+  }
 
-bool FuseShapeOpsIntoGenerateShapeOpPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateFuseShapeOpsIntoGenerateShapeOpPass() {
+  return std::make_unique<FuseShapeOpsIntoGenerateShapeOpPass>();
 }
 
 }  // namespace ir

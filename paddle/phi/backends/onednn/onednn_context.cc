@@ -40,7 +40,7 @@ OneDNNContextThreadLocals::Body::Body()
 // and other is to start inference
 // TODO(jczaja): Ideally it would be good to clear only part of cache
 // related to thread that is to be terminated
-OneDNNContextThreadLocals::Body::~Body() {
+OneDNNContextThreadLocals::Body::~Body() {  // NOLINT
   auto cpu_place = phi::CPUPlace();
   // TODO(YuanRisheng): we need remove the dependency on fluid device context
   // here

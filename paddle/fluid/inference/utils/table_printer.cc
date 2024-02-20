@@ -78,7 +78,7 @@ TablePrinter::TablePrinter(const std::vector<std::string>& header) {
   }
 
   terminal_witdh = terminal_witdh - (2 * num_cols) - (num_cols + 1);
-  int avg_width = static_cast<int>(terminal_witdh / num_cols);
+  int avg_width = static_cast<int>(terminal_witdh / num_cols);  // NOLINT
 
   for (size_t i = 0; i < num_cols; ++i) {
     shares_.emplace_back(avg_width);
