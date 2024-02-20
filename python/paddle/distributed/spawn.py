@@ -145,8 +145,8 @@ def _get_node_ip(ips):
 
 def _get_subprocess_env_list(nprocs, options):
     # NOTE (xiongkun03) Why put backend deduction  here ?
-    # Becase _get_subprocess_env_list is used by many testcases.
-    # So for campability, we put backend deduction here
+    # Because _get_subprocess_env_list is used by many testcases.
+    # So for compatibility, we put backend deduction here
 
     # logic for handle backend option
     if 'backend' not in options or options['backend'] == 'auto':
@@ -154,7 +154,7 @@ def _get_subprocess_env_list(nprocs, options):
     check_backend(options['backend'])
     block_windows_and_macos(options['backend'])
 
-    # contruct processes env list
+    # construct processes env list
     processes_env_list = []
 
     # get args from kwargs

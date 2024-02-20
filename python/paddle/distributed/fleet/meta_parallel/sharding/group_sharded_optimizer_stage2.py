@@ -342,7 +342,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # func 1
         self._integration_params()
 
-    # Segement helpers
+    # Segment helpers
 
     def _segment_params(self):
         """

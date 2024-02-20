@@ -1481,7 +1481,7 @@ class FractionalMaxPool2D(Layer):
 
             >>> x = paddle.rand([2, 3, 32, 32])
 
-            >>> # disjont: without `kernel_size`
+            >>> # disjoint: without `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
@@ -1597,7 +1597,7 @@ class FractionalMaxPool3D(Layer):
 
             >>> x = paddle.rand([2, 3, 8, 32, 32])
 
-            >>> # disjont: without `kernel_size`
+            >>> # disjoint: without `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)

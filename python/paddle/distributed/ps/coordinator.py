@@ -116,7 +116,7 @@ class FLClientBase(abc.ABC):
         self.startup_program = paddle.static.default_startup_program()
         self._client_ptr = fleet.get_fl_client()
         self._coordinators = self.role_maker._get_coordinator_endpoints()
-        logger.info(f"fl-ps > coordinator enpoints: {self._coordinators}")
+        logger.info(f"fl-ps > coordinator endpoints: {self._coordinators}")
         self.strategy_handlers = {}
         self.exe = None
         self.use_cuda = int(self.config.get("runner.use_gpu"))
@@ -198,7 +198,7 @@ class FLClient(FLClientBase):
     def __build_fl_client_info_desc(self, state_info):
         # ......... to implement ...... #
         state_info = {
-            ClientInfoAttr.DEVICE_TYPE: "Andorid",
+            ClientInfoAttr.DEVICE_TYPE: "Android",
             ClientInfoAttr.COMPUTE_CAPACITY: 10,
             ClientInfoAttr.BANDWIDTH: 100,
         }

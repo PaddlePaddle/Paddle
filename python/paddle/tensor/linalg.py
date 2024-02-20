@@ -52,7 +52,7 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -119,8 +119,12 @@ def transpose(x, perm, name=None):
             [
                 'bool',
                 'float16',
+                'bfloat16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
