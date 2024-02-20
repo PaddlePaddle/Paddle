@@ -307,7 +307,8 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
+    # TODO(SigureMo): Temporarily disable this test case in due to hanging in mac CI.
+    # @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
