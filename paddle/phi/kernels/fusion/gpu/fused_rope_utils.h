@@ -19,9 +19,9 @@
 namespace phi {
 namespace fusion {
 
-template <typename T, typename MPType, int NInputs, int VecSize>
+template <typename T, typename MPType, int VecSize>
 using VectorizedFusedRopeCudaKernelFunc =
-    void (*)(phi::Array<const T*, NInputs> ins_data,
+    void (*)(phi::Array<const T*, 3> ins_data,
              phi::Array<const T*, 2> sin_cos_data,
              const int64_t* position_ids_data,
              bool flag_sin_cos,
@@ -30,7 +30,7 @@ using VectorizedFusedRopeCudaKernelFunc =
              int64_t seq_len,
              int64_t num_heads,
              int64_t head_dim,
-             phi::Array<T*, NInputs> outs_data,
+             phi::Array<T*, 3> outs_data,
              int num_inputs,
              MPType div_c);
 
@@ -86,9 +86,9 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
   }
 }
 
-template <typename T, typename MPType, int NInputs, int VecSize = 2>
+template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
-    phi::Array<const T*, NInputs> ins_data,
+    phi::Array<const T*, 3> ins_data,
     phi::Array<const T*, 2> sin_cos_data,
     const int64_t* position_ids_data,
     bool flag_sin_cos,
@@ -97,7 +97,7 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
-    phi::Array<T*, NInputs> outs_data,
+    phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
   int64_t index =
@@ -127,7 +127,7 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
                         div_c);
 
 #pragma unroll
-    for (int iter = 0; iter < NInputs; iter++) {
+    for (int iter = 0; iter < 3; iter++) {
       if (iter >= num_inputs) break;
       const T* input = ins_data[iter] + index;
       VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
@@ -161,9 +161,9 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   }
 }
 
-template <typename T, typename MPType, int NInputs, int VecSize = 2>
+template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeWithRotateHalfKernel(
-    phi::Array<const T*, NInputs> ins_data,
+    phi::Array<const T*, 3> ins_data,
     phi::Array<const T*, 2> sin_cos_data,
     const int64_t* position_ids_data,
     bool flag_sin_cos,
@@ -172,7 +172,7 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
-    phi::Array<T*, NInputs> outs_data,
+    phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
   int64_t index =
@@ -204,7 +204,7 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     // use rotate_half mode
     int stride_r = head_dim / 2;
 #pragma unroll
-    for (int iter = 0; iter < NInputs; iter++) {
+    for (int iter = 0; iter < 3; iter++) {
       if (iter >= num_inputs) break;
       // get value_index and rotate_half_index
       int index_v = index;

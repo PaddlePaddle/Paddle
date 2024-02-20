@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/utils/any.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
 PD_DECLARE_bool(all_blocks_convert_trt);

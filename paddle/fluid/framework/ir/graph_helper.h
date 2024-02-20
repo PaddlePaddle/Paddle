@@ -76,7 +76,7 @@ enum class SortKind {
 };
 
 // Several kinds of topological sort.
-std::vector<Node *> TopologyVarientSort(const Graph &graph, SortKind sort_kind);
+std::vector<Node *> TopologyVariantSort(const Graph &graph, SortKind sort_kind);
 
 // Clean the nodes that doesn't connect to others.
 void CleanIndividualNodes(Graph *graph);

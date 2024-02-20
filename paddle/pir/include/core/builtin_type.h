@@ -15,9 +15,9 @@
 
 #pragma once
 
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/builtin_type_storage.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/builtin_type_storage.h"
+#include "paddle/pir/include/core/type.h"
 
 namespace pir {
 ///
