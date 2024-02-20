@@ -97,7 +97,6 @@ DISABLED_TO_STATIC_TEST_FILES = {
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
     IrMode.PT: [
-        "test_save_inference_model",
         "test_tensor_hook",
     ],
     IrMode.PIR: [],
@@ -428,7 +427,6 @@ def import_legacy_test_utils():
 legacy_test_utils = import_legacy_test_utils()
 dygraph_guard = legacy_test_utils.dygraph_guard
 static_guard = legacy_test_utils.static_guard
-compare_legacy_with_pt = legacy_test_utils.compare_legacy_with_pt
 
 
 @contextmanager
