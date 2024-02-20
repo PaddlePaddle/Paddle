@@ -167,7 +167,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
 
-  /// Not supoort
+  /// Not support
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
@@ -216,7 +216,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
   /// \brief get the Ort Value(input Tensor).
   ///
-  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  /// \param[in] desc ONNXDesc(name、shape、dtype)
   ///
   /// \param[in] device_name "cpu" or "gpu" of device
   ///
