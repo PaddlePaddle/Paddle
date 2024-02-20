@@ -49,19 +49,17 @@ class TestPTQGroupWise(unittest.TestCase):
         q_config = QuantConfig(activation=None, weight=observer)
         ptq = PTQ(q_config)
         quant_model = ptq.quantize(model)
+        inputs = paddle.rand([128, 128], dtype="float32")
+        out = model(inputs)
         return quant_model, ptq
 
-    def _count_layers(self, model, layer_type):
-        count = 0
-        for _layer in model.sublayers(True):
-            if isinstance(_layer, layer_type):
-                count += 1
-        return count
-
     def test_quantize(self):
-        ptq_model, _ = self._get_model_for_ptq()
+        ptq_model, ptq = self._get_model_for_ptq()
         inputs = paddle.rand([128, 128], dtype="float32")
         out = ptq_model(inputs)
+        self.assertIsNotNone(out)
+        converted_model = ptq.convert(ptq_model)
+        out = converted_model(inputs)
         self.assertIsNotNone(out)
 
 
