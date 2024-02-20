@@ -111,7 +111,6 @@ phi::DenseTensor ReshardXToReplicated(
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
     dist_attr.clean_partial_status();
-    VLOG(1) << 11111;
     // reshard to replicate dist tensor
     VLOG(4) << "Reshard tensor: "
             << paddle::experimental::ReshardDebugInfo(*dist_tensor, dist_attr);
