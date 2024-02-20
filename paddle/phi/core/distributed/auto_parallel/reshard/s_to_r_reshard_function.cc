@@ -107,7 +107,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call SToRReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
@@ -204,7 +204,7 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call SToRReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   SameStatusReshardFunction same_status_func;
