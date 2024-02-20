@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import os
-import sys
 from itertools import chain
 
 import paddle
 from paddle.utils import flatten
 
-from ..utils import ConstTypes, ExportError, NameGenerator
+from ..utils import ConstTypes, ExportError, NameGenerator, get_api_fullname
 from .statement_ir import Symbol
 
 
@@ -346,20 +345,12 @@ class PyFileGen:
         return getattr(self, "create_" + stmt.type + "_stmt")(stmt)
 
     def create_api_stmt(self, stmt):
-        def get_api_str(api):
-            api_name = api.__name__
-            module_str = api.__module__
-            while len(module_str) > 0:
-                module = sys.modules[module_str]
-                if hasattr(module, api_name):
-                    return module_str + "." + api_name
-                module_str = module_str.rpartition(".")[0]
-            raise ExportError(f"Can not find module of {api}")
-
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args, kwargs)
         api = stmt.api
-        api_str = get_api_str(api)
+        api_str = get_api_fullname(api)
+        if api_str is None:
+            raise ExportError(f"Can not find module of {api}")
         if isinstance(stmt.outputs, Symbol):
             return [f"{self.name_gener(stmt.outputs)} = {api_str}({input_str})"]
         else:
