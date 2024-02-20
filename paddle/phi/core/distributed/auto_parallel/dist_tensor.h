@@ -45,6 +45,10 @@ class DistTensor final
   /// will be set by reshard later.
   DistTensor();
 
+  /// \brief Construct a dist tensor based dtype.
+  /// \param dtype The dtype of the current tensor.
+  explicit DistTensor(phi::DataType dtype);
+
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.

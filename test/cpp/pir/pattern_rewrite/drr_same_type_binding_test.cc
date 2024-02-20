@@ -20,10 +20,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 /* Source pattern:
                                        input1
@@ -68,7 +68,7 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("softmax_2_out") = softmax_2(src.Tensor("transpose_1_out"));
     const auto &matmul_2 =
         src.Op("pd_op.matmul",
-               {{"transpose_x", src.Attr("matmul_2_tradnspose_x")},
+               {{"transpose_x", src.Attr("matmul_2_transpose_x")},
                 {"transpose_y", src.Attr("matmul_2_transpose_y")}});
     src.Tensor("matmul_2_out") =
         matmul_2(src.Tensor("softmax_2_out"), src.Tensor("input_1"));
