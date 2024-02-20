@@ -38,7 +38,7 @@ void BNActXPUKernel(const Context& dev_ctx,
                     true,
                     phi::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
-                        "But recevived 'data_layout' is [%s].",
+                        "But received 'data_layout' is [%s].",
                         data_layout_str));
 
   const auto& x_dims = x.dims();

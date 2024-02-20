@@ -511,8 +511,9 @@ T GetFromEnv(const std::string& name, const T& default_val) {
   }
 }
 
-#define INSTANTIATE_GET_FROM_ENV(type) \
-  template type GetFromEnv(const std::string& name, const type& default_val)
+#define INSTANTIATE_GET_FROM_ENV(type)                       \
+  template TEST_API type GetFromEnv(const std::string& name, \
+                                    const type& default_val)
 
 INSTANTIATE_GET_FROM_ENV(bool);
 INSTANTIATE_GET_FROM_ENV(int32_t);

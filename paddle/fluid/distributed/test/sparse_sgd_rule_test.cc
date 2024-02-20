@@ -56,7 +56,7 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
     item = 0;
   }
   for (auto i = 0u; i < kItemSize; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
   float label[] = {-0.100000,
                    -0.200000,
@@ -116,7 +116,7 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
   w[kEmbSize] = 0;
   float grad[kEmbSize];
   for (int i = 0; i < kEmbSize; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
 
   const float* ptr_grad = grad;
@@ -161,8 +161,8 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
   rule.LoadConfig(param, embed_dim);
 
   // check init_value for zero
-  const int rule_dim =
-      rule.Dim();  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
+  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
+  const int rule_dim = static_cast<int>(rule.Dim());
   const int value_dim = embed_dim + rule_dim;  // total dims of w + rule
   float* value = new float[value_dim];
   rule.InitValue(value, value + embed_dim, true);
@@ -187,7 +187,7 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
   rule.InitValue(value, value + embed_dim, true);
   float* grad = new float[embed_dim];
   for (auto i = 0u; i < embed_dim; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
 
   float label[] = {-0.0999999642,  -0.099999994, -0.099999994,  -0.099999994,

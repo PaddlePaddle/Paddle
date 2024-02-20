@@ -472,9 +472,9 @@ void SelfDPAttenKernel(const Context& dev_ctx,
   auto input_dims = x.dims();
   // in shouble be (batch * seq * 3 * head_num * head_size)
   // out shouble be (batch * seq * head_num * head_size)
-  int batch_size = input_dims[0];
-  int seq_len = input_dims[1];
-  int head_size = input_dims[4];
+  int batch_size = static_cast<int>(input_dims[0]);
+  int seq_len = static_cast<int>(input_dims[1]);
+  int head_size = static_cast<int>(input_dims[4]);
 
   DenseTensor temp1, temp2;
   temp1.Resize(input_dims);

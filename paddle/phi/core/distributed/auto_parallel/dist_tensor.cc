@@ -114,6 +114,9 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
 
 DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 
+DistTensor::DistTensor(phi::DataType dtype)
+    : value_(std::make_shared<DenseTensor>(dtype)) {}
+
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
     : global_dims_(global_value->dims()), dist_attr_(dist_attr) {

@@ -35,7 +35,7 @@ struct ShapeOrDataDimExprsAccessor {
       SetShapeOrDataDimExprs;
 };
 
-// Returns true if at least one GenerateShapeOp rewrited.
+// Returns true if at least one GenerateShapeOp rewrote.
 bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,

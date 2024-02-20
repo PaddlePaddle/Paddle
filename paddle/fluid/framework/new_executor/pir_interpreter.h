@@ -245,7 +245,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   void RecordStreamForGC(InstructionBase* instr);
 
-  void SolvePersisableVarNames();
+  void SolvePersistableVarNames();
 
   const interpreter::PirDependencyBuilder& GetPirDependencyBuilder() const;
 

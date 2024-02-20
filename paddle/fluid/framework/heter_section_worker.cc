@@ -48,7 +48,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
     char* temp_ptr = temp.data();
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
-    temp_ptr_float[0] = micro_id;
+    temp_ptr_float[0] = static_cast<float>(micro_id);
     auto stream = reinterpret_cast<const phi::GPUContext&>(*dev_ctx).stream();
     memory::Copy(
         place,
@@ -61,7 +61,7 @@ void SetMicroId(paddle::framework::Scope* scope,
 #endif
   } else {
     float* temp_ptr = reinterpret_cast<float*>(tensor_data);
-    temp_ptr[0] = micro_id;
+    temp_ptr[0] = static_cast<float>(micro_id);
   }
 }
 
@@ -454,10 +454,14 @@ void HeterSectionWorker::BatchPostProcess() {
                 op_total_time_[i] / batch_num_);
       }
       if (pipeline_stage_ == 0) {
-        fprintf(stderr, "mean read time: %fs\n", read_time_ / batch_num_);
+        fprintf(stderr,
+                "mean read time: %fs\n",
+                read_time_ / batch_num_);  // NOLINT
         fprintf(stderr, "IO percent: %f\n", read_time_ / total_time_ * 100);
       }
-      fprintf(stderr, "%6.2f instances/s\n", total_ins_num_ / total_time_);
+      fprintf(stderr,
+              "%6.2f instances/s\n",
+              total_ins_num_ / total_time_);  // NOLINT
     }
   }
 }

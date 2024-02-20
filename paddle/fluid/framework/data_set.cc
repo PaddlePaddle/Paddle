@@ -1288,7 +1288,7 @@ int MultiSlotDataset::ReceiveFromClient(int msg_type,
     index = global_index_++;
   }
   index = index % channel_num_;
-  VLOG(3) << "ramdom index=" << index;
+  VLOG(3) << "random index=" << index;
   multi_output_channel_[index]->Write(std::move(data));
 
   data.clear();

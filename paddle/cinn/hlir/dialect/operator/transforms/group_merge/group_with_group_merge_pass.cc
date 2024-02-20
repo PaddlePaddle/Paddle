@@ -599,7 +599,7 @@ class DefaultInputFusePass final : public InputFusePass {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }
@@ -690,7 +690,7 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }
@@ -1114,7 +1114,7 @@ class GeneralFusionMergePassHelper {
   }
 
   GroupList operator()() {
-    // run fusion merge untill no update.
+    // run fusion merge until no update.
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
@@ -1658,7 +1658,7 @@ class GeneralFusionMergePassHelper {
                         fusionable_consumers) {
     VLOG(3) << "VerticalFuse...!";
     GroupList fused_groups;
-    GroupPtr master_fuesd_group(nullptr);
+    GroupPtr master_fused_group(nullptr);
     for (auto& consumer : fusionable_consumers) {
       auto fused_group = std::make_shared<ir::Group>();
       // update depth using consumer depth.
@@ -1800,8 +1800,8 @@ class GeneralFusionMergePassHelper {
       fusion_groups_[postion] = fused_group;
       fusion_groups_index_[fused_group] = postion;
 
-      if (!master_fuesd_group.get()) {
-        master_fuesd_group = fused_group;
+      if (!master_fused_group.get()) {
+        master_fused_group = fused_group;
       }
       CHECK(fused_group->output_ops.size())
           << "No output node is found, " << fused_group->group_id;
@@ -1831,8 +1831,8 @@ class GeneralFusionMergePassHelper {
 
       if (be_output) {
         // VLOG(4) << "Insert Id " << node->id() << " Into Group "
-        //         << master_fuesd_group->group_id;
-        master_fuesd_group->output_ops.insert(node);
+        //         << master_fused_group->group_id;
+        master_fused_group->output_ops.insert(node);
       }
     }
     // insert unfusionable consumer groups
@@ -1840,10 +1840,10 @@ class GeneralFusionMergePassHelper {
       if (fusionable_consumers.count(consumer)) {
         continue;
       }
-      master_fuesd_group->mut_consumer_groups()->insert(consumer);
+      master_fused_group->mut_consumer_groups()->insert(consumer);
       // update consumer's producer
       consumer->mut_producer_groups()->erase(producer);
-      consumer->mut_producer_groups()->insert(master_fuesd_group);
+      consumer->mut_producer_groups()->insert(master_fused_group);
     }
   }
 
@@ -1936,7 +1936,7 @@ class GeneralFusionMergePassHelper {
           sub_group->ops.insert(sub_group->ops.begin(),
                                 producer->CollectOps()[0]);
           sub_group->ops_set.insert(producer->CollectOps()[0]);
-          // remove depency.
+          // remove dependency.
           consumer->input_ops.erase(producer->CollectOps()[0]);
           consumer->mut_producer_groups()->erase(producer);
           producer->mut_consumer_groups()->erase(consumer);
