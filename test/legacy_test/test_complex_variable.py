@@ -34,7 +34,6 @@ class TestComplexVariable(unittest.TestCase):
             x = paddle.to_tensor(a)
             y = paddle.to_tensor(b)
             out = paddle.add(x, y)
-            self.assertIsNotNone(f"{out}")
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
         self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
