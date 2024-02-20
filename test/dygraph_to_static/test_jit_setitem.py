@@ -202,6 +202,7 @@ class TestCase12(TestSetItemBase):
         y = func()
         return (y,)
 
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)

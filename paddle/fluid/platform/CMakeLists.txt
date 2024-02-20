@@ -8,7 +8,7 @@ cc_test(
   SRCS errors_test.cc
   DEPS phi common enforce)
 
-set(enforce_deps phi common)
+set(enforce_deps phi)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
@@ -16,7 +16,7 @@ endif()
 cc_library(
   enforce INTERFACE
   SRCS enforce.cc
-  DEPS ${enforce_deps} common)
+  DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test

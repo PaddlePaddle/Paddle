@@ -21,13 +21,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/interface_value.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/interface_value.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace paddle {
 namespace dialect {
@@ -46,44 +46,22 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    std::vector<symbol::DimExpr> out_dims;
+    const auto shape_data_list = [&] {
+      symbol::TensorListShapeOrDataDimExprs shape_data_list;
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
+                   "Currently InferSymbolicShape of CombineOp only support "
+                   "DenseTensorType.");
 
-    // Currently for all operand : type.dims == 1u
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto type =
-          op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(type, "Currently only support DenseTensorType.");
-      IR_ENFORCE(type.dims().size() == 0u,
-                 "Currently CombineOp only support 0-d DenseTensorType for "
-                 "InferSymbolicShape. But the dims of the %d-th "
-                 "DenseTensorType is %d.",
-                 i,
-                 type.dims().size());
-    }
-
-    auto operand_source_1st_data =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
-    if (operand_source_1st_data.has_value()) {
-      for (auto operand_source : op->operands_source()) {
-        auto source_data =
-            shape_analysis->GetShapeOrDataForValue(operand_source)
-                .data()
-                .value();
-        out_dims.push_back(source_data[0]);
+        shape_data_list.emplace_back(
+            shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
+                .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
       }
-    }
+      return shape_data_list;
+    }();
 
-    if (operand_source_1st_data.has_value()) {
-      std::vector<symbol::DimExpr> tmp_shape{int64_t(out_dims.size())};
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::TensorShapeOrDataDimExprs(tmp_shape, out_dims));
-    } else {
-      // TODO(zhangbopd): use op->result(0) to infer the shape
-      shape_analysis->SetShapeOrDataForValue(
-          op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
-    }
-
+    symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 
@@ -202,7 +180,7 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
     os << "IntArray)"
        << "[";
     const auto& inner_data = data.GetData();
-    pir::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_data.begin(),
         inner_data.end(),
         [&os](int64_t i) { os << i; },
@@ -225,8 +203,6 @@ void PrintOperationImpl(pir::Operation* op,
     if_op.Print(printer);
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
     while_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
   }
 }
 
@@ -336,9 +312,11 @@ pir::Attribute OperatorDialect::ParseAttribute(
   }
 }
 
-void OperatorDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
+  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+    return PrintOperationImpl;
+  }
+  return nullptr;
 }
 
 class IdManager {
@@ -498,9 +476,8 @@ void CustomOpDialect::PrintAttribute(pir::Attribute attr,
   PrintAttributeImpl(attr, os);
 }
 
-void CustomOpDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn CustomOpDialect::PrintOperation(pir::Operation* op) const {
+  return PrintOperationImpl;
 }
 
 void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {

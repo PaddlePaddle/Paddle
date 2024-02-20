@@ -62,10 +62,10 @@ class TestMulOneDNNOp(OpTest):
     def test_check_grad(self):
         self.check_grad_with_place(core.CPUPlace(), ['X', 'Y'], 'Out')
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad_with_place(core.CPUPlace(), ['Y'], 'Out', set('X'))
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out', set('Y'))
 
 
@@ -137,7 +137,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),
@@ -148,7 +148,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),

@@ -190,7 +190,7 @@ class HybridCommunicateGroup:
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
-            self._check_vaild_topo()
+            self._check_valid_topo()
         ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
             self.nranks,
             self._mp_degree,
@@ -328,7 +328,7 @@ class HybridCommunicateGroup:
             # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
-    def _check_vaild_topo(self):
+    def _check_valid_topo(self):
         return (
             self._dp_degree
             * self._mp_degree

@@ -176,11 +176,11 @@ class AdamW(Optimizer):
         assert beta2 is not None
         assert epsilon is not None
         if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
-            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
+            raise ValueError("Invalid value of beta1, expect beta1 in [0,1).")
         if not isinstance(beta1, Value) and not 0 <= beta2 < 1:
-            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
+            raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
         if not isinstance(beta1, Value) and not 0 <= epsilon:
-            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
             weight_decay, (framework.Variable, Value)
         ):
@@ -252,7 +252,7 @@ class AdamW(Optimizer):
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
@@ -311,7 +311,7 @@ class AdamW(Optimizer):
         Add a param group to parameter_list.
 
         Args:
-            param_group (dict): The group of Tensors to be optimzed with
+            param_group (dict): The group of Tensors to be optimized with
             different optimization options.
         """
         params = param_group['params']

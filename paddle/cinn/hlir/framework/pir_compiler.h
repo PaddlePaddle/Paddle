@@ -17,7 +17,7 @@
 #include <memory>
 #include <unordered_map>
 #include "paddle/cinn/common/macros.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"

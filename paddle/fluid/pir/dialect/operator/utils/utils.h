@@ -19,9 +19,9 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -160,7 +160,10 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
                           const std::string& value_name,
                           const std::string& op_name);
 
-std::string GetValueDataType(const pir::Value& value);
+phi::DataType GetValueDataType(const pir::Value& value);
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
 
 }  // namespace dialect
 }  // namespace paddle
