@@ -1573,7 +1573,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+      cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
@@ -1582,8 +1582,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
-        std::make_unique<
-            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+        cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
@@ -1612,8 +1611,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager->AddPass(
-      std::make_unique<
-          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
