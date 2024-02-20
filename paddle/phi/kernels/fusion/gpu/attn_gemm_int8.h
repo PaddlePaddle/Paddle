@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <iostream>
 #include <vector>
-#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -43,7 +41,7 @@ class AttnMatmulINT8 {
         phi::backends::gpu::GetGpuLaunchConfig1D(
             dev_ctx, m * n, phi::DequantKernelVecSize));
   }
-  ~AttnMatmulINT8() {}
+  ~AttnMatmulINT8() = default;
 
   // This function is used to execute GEMM, with input and output's types are
   // both T.
