@@ -434,3 +434,9 @@ class CreateLayerTracker(Tracker):
 
     def __repr__(self) -> str:
         return f"CreateLayerTracker(Layer={self.layer_class}, args={self.args}, kwargs={self.kwargs})"
+
+    def is_traceable(self):
+        return False
+
+    def need_guard(self) -> bool:
+        return False
