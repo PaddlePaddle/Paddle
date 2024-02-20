@@ -4154,7 +4154,7 @@ function main() {
     case $CMD in
       build_only)
         if [ "$WITH_CINN" == "ON" ];then
-            export PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
+            export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
         fi
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
