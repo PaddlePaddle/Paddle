@@ -723,10 +723,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     group->op_pattern_kind = attr.op_pattern_kind;
     group->loop_ranges = attr.loop_ranges;
 
-    // std::cerr << "rebuild loop range\n";
-    // for (auto d : group->loop_ranges) {
-    //   std::cerr << "d " << d << std::endl;
-    // }
     group->reduce_axis = attr.reduce_axis;
     group->alignment_schedule_info = attr.alignment_schedule_info;
 
@@ -740,15 +736,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
         ss << std::endl;
 
         group->ops_set.insert(op);
-        // group->op_pattern_kind =
-        //     static_cast<int>(CompatibleInfo::OpKind(*op)) >
-        //             static_cast<int>(group->op_pattern_kind)
-        //         ? CompatibleInfo::OpKind(*op)
-        //         : group->op_pattern_kind;
       }
     }
-
-    // std::cerr << "program \n" << ss.str() << std::endl;
 
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();

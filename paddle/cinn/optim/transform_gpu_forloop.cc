@@ -421,45 +421,34 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 void OptimizeExprGPU(Expr *expr) {
   VLOG(2) << "Before Optimize Expr:\n" << *expr;
 
-  // std::cerr << "begine  " << *expr << std::endl;
   // copy var nodes to prevent one modification leading to multiple changes
   RestructureVarNodes restructure_var_nodes;
   restructure_var_nodes(expr);
-
-  // std::cerr << "RRR 11  " << *expr << std::endl;
 
   // replace var to bind expr
   ReplaceIndexToBindExpr replace_index_to_bind_expr;
   replace_index_to_bind_expr(expr);
 
-  // std::cerr << "RRR 22  " << *expr << std::endl;
   // resize buffer axis
   UpdateBufferAxisPass(expr);
 
-  // std::cerr << "RRR 33  " << *expr << std::endl;
   // replace var name with block/thread
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;
   replace_loop_var_to_gpu(expr);
 
-  // std::cerr << "RRR 55  " << *expr << std::endl;
   // update shared buffer axis
   SharedAxisVisitor shared_axis_visitor;
   shared_axis_visitor(expr);
 
-  // std::cerr << "RRR 66  " << *expr << std::endl;
   // update local buffer axis
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
 
-  // std::cerr << "11  " << *expr << std::endl;
-
   ResizeBufferToMaxVarRange(expr);
 
-  // std::cerr << "22  " << *expr << std::endl;
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
-  // std::cerr << "33  " << *expr << std::endl;
   VLOG(2) << "After Optimize Expr: \n" << *expr;
 }
 

@@ -222,7 +222,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
   group_tile_info->broadcast_info = broadcast_info;
   group_tile_info->broadcast_to_elementwise = broadcast_to_elementwise;
 
-  group_tile_info->copyed_var_names = copyed_var_names;
+  // group_tile_info->copyed_var_names = copyed_var_names;
 
   return group_tile_info;
 }
@@ -662,10 +662,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   for (auto& op : group->output_ops) {
     direct_output_var_names.insert(ValueName(op->result(0)));
 
-    if (erase_reshape.count(op)) {
-      copyed_var_names.insert(ValueName(op->operand_source(0)));
-      continue;
-    }
+    // if (erase_reshape.count(op)) {
+    //   copyed_var_names.insert(ValueName(op->operand_source(0)));
+    //   continue;
+    // }
     // collect all output tensor.
     if (op->name() == "cinn_op.store") {
       auto input_var_name = ValueName(op->operand_source(0));
@@ -682,23 +682,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       }
 
       direct_output_var_names.insert(ValueName(opresult));
-      auto tensor = tensor_map.at(opresult);
+      // auto tensor = tensor_map.at(opresult);
 
-      if (opresult.use_count() > 1) {
-        copyed_var_names.insert(tensor->name);
+      // if (opresult.use_count() > 1) {
+      //   copyed_var_names.insert(tensor->name);
 
-        if (broadcast_info.count(tensor->name)) {
-          auto base_info = broadcast_info[tensor->name];
-          base_info.with_constrain = true;
-          broadcast_info[tensor->name + "_out"] = base_info;
-        }
-      }
+      //   if (broadcast_info.count(tensor->name)) {
+      //     auto base_info = broadcast_info[tensor->name];
+      //     base_info.with_constrain = true;
+      //     broadcast_info[tensor->name + "_out"] = base_info;
+      //   }
+      // }
     }
   }
 
   for (size_t i = 0; i < func_bodies.size(); ++i) {
-    // std::cerr << ops[i]->name() << std::endl;
-    // std::cerr << "var name  " << ValueName(ops[i]->result(0)) <<
     std::cerr << "i " << i << "\n" << func_bodies[i] << std::endl;
   }
 
@@ -783,31 +781,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   // }
   return {pack[0].operator ir::Expr().as_lowered_func_ref()};
 }
-
-// std::vector<::pir::Operation*> GetStoreOps(
-// std::unordered_set<::pir::Operation*> op_set )
-// {
-//   std::vector<::pir::Operation*>  vec_res;
-//   for (auto& op : op_set)
-//   {
-//     for( size_t i = 0; i < op->num_results(); ++i )
-//     {
-//       auto res_i = op->result(i);
-
-//       for( auto use_it = res_i.use_begin(); use_it != res_i.use_end(); ++
-//       use_it)
-//       {
-//         std::cerr << " use name " << use_it->owner()->name() << std::endl;
-//         if( use_it->owner()->name() == "cinn_op.store")
-//         {
-//            vec_res.push_back( use_it->owner() );
-//         }
-//       }
-//     }
-//   }
-
-//   return vec_res;
-// }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,

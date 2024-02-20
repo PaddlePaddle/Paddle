@@ -60,8 +60,6 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
  private:
   std::vector<BucketContext> bucket_contexts_;
   std::vector<std::unique_ptr<ScheduleTactic>> tactics_;
-
-  std::shared_ptr<GroupTileInfo> group_tile_info_;
 };
 
 }  // namespace ir

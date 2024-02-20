@@ -301,20 +301,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     }
   }
 
-  // auto exprs = ir::ir_utils::CollectIRNodesInOrder(
-  //     schedule_block->body, [&](const Expr* x) { return x->As<ir::Load>();
-  //     });
-
-  // for (auto expr : exprs) {
-  //   //ReplaceExpr(&expr, {schedule_block->iter_vars[axes[0]]}, {Expr(0)});
-  //   std::cerr << "load " << expr << std::endl;
-  //   auto load = expr.As<ir::Load>();
-
-  //   std::cerr << "load " << load->indices[2] << std::endl;
-  // }
-
-  // std::cerr << "broadcast loop\n" << broadcast_loop->body << std::endl;
-
   std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
 }
 

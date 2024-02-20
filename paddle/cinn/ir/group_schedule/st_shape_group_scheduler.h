@@ -74,15 +74,11 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   // Automatically bind cuda axis on loops.
   void BindCudaAxis();
 
-  // void BindCudaBlockThread();
-
   // Automatically allocate storage locations for variables to optimize IO.
   void AllocateStorage();
 
   // Automatically optimize the reductive calculation
   void OptimizeReduction();
-
-  void Broadcast();
 
   // Evaluate the priority of ScheduleBlockNode.
   // The node where the performance bottleneck is located

@@ -46,8 +46,6 @@ struct GroupTileInfo {
 
   std::unordered_map<std::string, BroadcastInfo> broadcast_info;
   std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
-
-  std::set<std::string> copyed_var_names;
 };
 
 /**
@@ -86,6 +84,8 @@ class GroupScheduler {
   void Tiling();
 
   bool NeedOrderLoops();
+
+  // bool Unroll();
 
  protected:
   ir::IRSchedule* ir_sch_;

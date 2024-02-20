@@ -284,8 +284,6 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   std::unordered_map<std::string, cinn::ir::BroadcastInfo>
       broadcast_to_elementwise;
 
-  std::set<std::string> copyed_var_names;
-
   std::unordered_set<::pir::Operation*> erase_reshape;
 
   std::vector<::pir::Operation*> remain_ops;

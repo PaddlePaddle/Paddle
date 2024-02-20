@@ -140,8 +140,10 @@ struct GroupClusterNode {
   }
 
   void GenerateOutputValue(
-      const std::unordered_set<::pir::Value>& outside_need_value) {
+      const std::unordered_map<::pir::Value, size_t>& outside_need_value) {
     output_value.clear();
+
+    std::vector<::pir::Value> temp_out;
     for (auto& op : ops) {
       if (op->name() == "cf.yield") {
         continue;
@@ -151,13 +153,19 @@ struct GroupClusterNode {
       for (size_t i = 0; i < op->num_results(); ++i) {
         if (outside_need_value.count(op->result(i))) {
           if (!inserted_val.count(op->result(i))) {
-            output_value.push_back(op->result(i));
+            temp_out.push_back(op->result(i));
 
             inserted_val.insert(op->result(i));
           }
         }
       }
     }
+    std::sort(temp_out.begin(),
+              temp_out.end(),
+              [&outside_need_value](::pir::Value a, ::pir::Value b) {
+                return outside_need_value.at(a) < outside_need_value.at(b);
+              });
+    output_value.swap(temp_out);
   }
 
   void MergeNode(const GroupClusterNode& node,
@@ -237,9 +245,7 @@ struct GroupClusterNode {
   auto output_value = node.output_value;
   auto alignment_schedule_info = node.alignment_schedule_info;
   std::vector<pir::Type> output_types;
-  // std::vector<pir::Value> outputs = ::pir::AnalysisOutputs(group_ops);
 
-  //  ::pir::IrMapping ir_mapping;
   for (auto& value : output_value) {
     output_types.emplace_back(value.type());
   }
@@ -370,11 +376,13 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
                               std::vector<std::vector<int>>* pre_ids_ptr) {
   auto& node_list = *node_list_ptr;
   auto& pre_ids = *pre_ids_ptr;
-  std::unordered_set<::pir::Value> all_ouput_values;
+  std::unordered_map<::pir::Value, size_t> all_ouput_values;
   for (auto& node : node_list) {
     auto node_outside_input = node.GetOutsideInput();
-    all_ouput_values.insert(node_outside_input.begin(),
-                            node_outside_input.end());
+    for (auto& val : node_outside_input) {
+      size_t id = all_ouput_values.size();
+      all_ouput_values.emplace(val, id);
+    }
   }
 
   for (auto& node : node_list) {
@@ -706,14 +714,22 @@ class CinnGroupClusterPattern
       ir_mapping.Add(val, val);
     }
 
+    std::unordered_map<::pir::Value, size_t> all_ouput_values;
+    auto yield_op = group_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      size_t id = all_ouput_values.size();
+      all_ouput_values.emplace(yield_op->operand_source(i), id);
+    }
+
     auto split_res = GroupSplit(group_op);
     // need sort split res
 
-    std::unordered_set<::pir::Value> all_ouput_values;
     for (auto& node : split_res) {
       auto node_outside_input = node.GetOutsideInput();
-      all_ouput_values.insert(node_outside_input.begin(),
-                              node_outside_input.end());
+      for (auto& val : node_outside_input) {
+        size_t id = all_ouput_values.size();
+        all_ouput_values.emplace(val, id);
+      }
     }
 
     size_t index = 0;
@@ -721,11 +737,6 @@ class CinnGroupClusterPattern
 
     for (auto op1 : group_op.GetOperators()) {
       op2id[op1] = index++;
-    }
-
-    auto yield_op = group_op.GetOperators().back();
-    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      all_ouput_values.insert(yield_op->operand_source(i));
     }
 
     for (auto& node : split_res) {

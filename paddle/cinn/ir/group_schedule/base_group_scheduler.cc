@@ -448,11 +448,6 @@ void GroupScheduler::Tiling() {
     }
   }
 
-  // for (auto& name : group_tile_info_->copyed_var_names) {
-  //   auto block = ir_sch_->GetBlock(name);
-  //   ir_sch_->SetBuffer(block, "local", false);
-  // }
-
   for (auto& name : group_tile_info_->thread_sync_before_names) {
     auto loops = ir_sch_->GetLoops(name);
     ir_sch_->SyncThreads(loops.front(), false);
