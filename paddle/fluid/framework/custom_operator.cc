@@ -545,7 +545,7 @@ static void RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutputs(out_name)) {
         auto in_name = inplace_reverse_map.at(out_name);
@@ -796,7 +796,7 @@ static void RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       auto in_name = inplace_reverse_map.at(out_name);
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {

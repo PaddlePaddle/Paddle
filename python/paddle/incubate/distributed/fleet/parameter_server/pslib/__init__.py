@@ -1312,7 +1312,7 @@ class DownpourOptimizer(DistributedOptimizer):
 
     def _remove_collective_ops(self, program, name):
         """
-        colective init op should call once, so remove other call.
+        collective init op should call once, so remove other call.
         """
         block = program.global_block()
         for ids, op in list(enumerate(block.ops)):
