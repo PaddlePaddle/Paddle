@@ -14,17 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
-
-// -------------------
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/builtin_type_interfaces.h"
-#include "paddle/pir/include/core/op_base.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-// -------------------
 
 namespace paddle::dialect {
 

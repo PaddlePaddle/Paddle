@@ -13,12 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/builtin_type_interfaces.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 // This file implements the infer_symbolic_shape interface for both paddle and
 // cinn operators.

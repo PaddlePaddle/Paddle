@@ -14,17 +14,6 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_and_result.h"
 
-// -------------------
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/builtin_type_interfaces.h"
-#include "paddle/pir/include/core/op_base.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-// -------------------
-
 bool SameOperandsAndResultShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);

@@ -14,47 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
-// -------------------
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/builtin_type_interfaces.h"
-#include "paddle/pir/include/core/op_base.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-// -------------------
-
 namespace paddle::dialect::details {
-
-template <typename T = int64_t>
-std::vector<T> GetVectorAttr(const ::pir::Operation *op,
-                             const std::string &name) {
-  using value_type = typename AttributeTrait<T>::value_type;
-
-  const auto &attr_map = op->attributes();
-  PADDLE_ENFORCE(
-      attr_map.count(name),
-      phi::errors::PreconditionNotMet(
-          "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
-  const auto &val = attr_map.at(name);
-
-  PADDLE_ENFORCE(val.isa<::pir::ArrayAttribute>(),
-                 phi::errors::PreconditionNotMet(
-                     "axis Type MUST ArrayAttribute for [%s] op", op->name()));
-  auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
-  std::vector<T> vec_res;
-  if (array_list.size() > 0) {
-    PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),
-                      true,
-                      phi::errors::Unimplemented(
-                          "the 0th elementwise MUST be ir::Int64Attribute"));
-    for (size_t i = 0; i < array_list.size(); ++i) {
-      vec_res.push_back(array_list[i].dyn_cast<value_type>().data());
-    }
-  }
-  return vec_res;
-}
 
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,
