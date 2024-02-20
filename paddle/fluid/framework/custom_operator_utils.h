@@ -82,7 +82,7 @@ inline static bool IsMemberOf(const std::vector<std::string>& vec,
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
 }
 
-inline static const OpMetaInfo& GetGradOpInfoByFwdPirName(
+inline static const OpMetaInfo* GetGradOpInfoByFwdPirName(
     const std::string& pir_op_name) {
   auto custom_name = pir_op_name.substr(strlen(kCustomDialectPrefix));
   int pos = custom_name.length();
@@ -94,9 +94,9 @@ inline static const OpMetaInfo& GetGradOpInfoByFwdPirName(
 
   pos = custom_name.length();
   if (custom_name.find("_grad_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad_grad") + 1;
+    pos = custom_name.find("_grad_grad");
   } else if (custom_name.find("_grad") != custom_name.npos) {
-    pos = custom_name.find("_grad") + 1;
+    pos = custom_name.find("_grad");
   }
   auto custom_name_prefix = custom_name.substr(0, pos);
   auto map_iter =
@@ -105,14 +105,18 @@ inline static const OpMetaInfo& GetGradOpInfoByFwdPirName(
     PADDLE_THROW("The info of custom op : " + custom_name + " is not exists!");
   }
   const auto& vec_op_meta = map_iter->second;
+  const OpMetaInfo* ret = nullptr;
   if (custom_name.find("_grad_grad") != custom_name.npos) {
     PADDLE_THROW("Custom op : " + custom_name_prefix +
                  " doesn't support triple grad.");
   } else if (custom_name.find("_grad") != custom_name.npos) {
-    return vec_op_meta[2];
+    bool has_double_grad = vec_op_meta.size() >= 3;
+    ret = has_double_grad ? &(vec_op_meta[2]) : nullptr;
   } else {
-    return vec_op_meta[1];
+    bool has_grad = vec_op_meta.size() >= 2;
+    ret = has_grad ? &(vec_op_meta[1]) : nullptr;
   }
+  return ret;
 }
 
 inline static const OpMetaInfo& GetOpInfoByPirName(
@@ -355,18 +359,9 @@ static std::vector<DataType> RunDefaultInferDtype(
           auto input_dtype = input_dtypes[input_index];
           output_dtypes.push_back(input_dtype);
         } else {
-          PADDLE_ENFORCE_EQ(
-              bwd_inputs_name.size() == 1UL && bwd_outputs_name.size() == 1UL,
-              true,
-              paddle::platform::errors::Unavailable(
-                  "Custom grad operator inferdtype error. "
-                  "If a custom grad operator contains only one input and "
-                  "only one output, the input dtype will be directly set "
-                  "to the output dtype. Otherwise, Please set the forward "
-                  "input as the grad operator's input or set the "
-                  "InferDtypeFn of custom grad operator by "
-                  ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-          output_dtypes.push_back(input_dtypes[0]);
+          // If there is no corresponding input for the output, set float as
+          // default type.
+          output_dtypes.push_back(DataType::FLOAT32);
         }
       }
     }

@@ -384,6 +384,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   static OpInfoTuple GetPirOpInfo(const std::string& pir_op_name) {
     const auto& op_meta =
         paddle::framework::detail::GetOpInfoByPirName(pir_op_name);
+    const auto* grad_op_meta_ptr =
+        paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
     std::vector<paddle::dialect::OpInputInfo> inputs_info;
     std::vector<paddle::dialect::OpAttributeInfo> attributes_info;
     std::vector<paddle::dialect::OpOutputInfo> outputs_info;
@@ -393,6 +395,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     for (const auto& input_name : op_input_names) {
       param_names.push_back(input_name);
       bool is_optional = false;
+      bool with_grad_semantic = false;
       std::string input_type = "paddle::dialect::DenseTensorType";
       if (paddle::framework::detail::IsOptionalVar(input_name)) {
         is_optional = true;
@@ -400,9 +403,30 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       if (paddle::framework::detail::IsDuplicableVar(input_name)) {
         input_type = "pir::VectorType<paddle::dialect::DenseTensorType>";
       }
+      if (grad_op_meta_ptr) {
+        const auto& grad_op_name =
+            OpMetaInfoHelper::GetOpName(*grad_op_meta_ptr);
+        auto& grad_op_output_names =
+            OpMetaInfoHelper::GetOutputs(*grad_op_meta_ptr);
+        bool is_double_grad_op =
+            (grad_op_name.find("_grad_grad") != grad_op_name.npos) ? true
+                                                                   : false;
+        for (auto& grad_op_output_name : grad_op_output_names) {
+          auto fwd_input_name = paddle::framework::detail::NoGrad(
+              grad_op_output_name, is_double_grad_op);
+          if (input_name == fwd_input_name) {
+            with_grad_semantic = true;
+            break;
+          }
+        }
+      }
       // Now, we only support dense tensor as input.
-      inputs_info.push_back(paddle::dialect::OpInputInfo{
-          input_name, input_type, is_optional, false, false, false});
+      inputs_info.push_back(paddle::dialect::OpInputInfo{input_name,
+                                                         input_type,
+                                                         is_optional,
+                                                         false,
+                                                         false,
+                                                         with_grad_semantic});
     }
 
     // translate attr info
@@ -482,15 +506,28 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     const auto& fwd_outputs_name =
         paddle::OpMetaInfoHelper::GetOutputs(fwd_op_meta_info);
 
-    const auto& bwd_op_meta_info =
+    const auto* bwd_op_meta_info_ptr =
         paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
+    if (bwd_op_meta_info_ptr == nullptr) {
+      PADDLE_THROW("Custom op : " + pir_op_name + " doesn't support its grad.");
+    }
+    const auto& bwd_op_meta_info = *bwd_op_meta_info_ptr;
     const auto& bwd_inputs_name =
         paddle::OpMetaInfoHelper::GetInputs(bwd_op_meta_info);
     const auto& bwd_outputs_name =
         paddle::OpMetaInfoHelper::GetOutputs(bwd_op_meta_info);
+    const auto& bwd_inplace_map =
+        paddle::OpMetaInfoHelper::GetInplaceMap(bwd_op_meta_info);
+    const auto& bwd_op_name =
+        paddle::OpMetaInfoHelper::GetOpName(bwd_op_meta_info);
+    std::string bwd_pir_op_name =
+        paddle::framework::kCustomDialectPrefix + bwd_op_name;
+    if (!bwd_inplace_map.empty()) {
+      // inplace case
+      bwd_pir_op_name += "_";
+    }
     auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(bwd_op_meta_info);
     auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(bwd_op_meta_info);
-
     PADDLE_ENFORCE_EQ(
         inputs_.size(),
         fwd_inputs_name.size(),
@@ -518,9 +555,9 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             out_grads.size()));
 
     bool is_double_grad_op =
-        (pir_op_name.find("_grad_grad") != pir_op_name.npos) ? true : false;
+        (bwd_pir_op_name.find("_grad_grad") != pir_op_name.npos) ? true : false;
     pir::IrContext* ctx = pir::IrContext::Instance();
-    pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(pir_op_name);
+    pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(bwd_pir_op_name);
     pir::OperationArgument argument(pir_info);
     std::vector<pir::Value> argument_inputs;
     std::vector<pir::Type> argument_outputs;
@@ -532,7 +569,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     std::vector<std::vector<DataType>> vec_input_dtypes;
     std::unordered_map<std::string, int> vec_input_name2id_map;
     std::vector<paddle::any> custom_attrs;
-
     auto GetInputLocation =
         [&](const std::string& grad_op_input_name) -> std::pair<int, int> {
       auto fwd_inputs_name_iter = std::find(
@@ -619,7 +655,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       }
     }
     argument.AddInputs(argument_inputs);
-
     // Construct custom grad op attr
     for (size_t i = 0; i < fwd_attrs_name.size(); ++i) {
       const auto& fwd_attr = fwd_attrs_name.at(i);
@@ -648,7 +683,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
                                          vec_input_dtypes,
                                          vec_input_name2id_map,
                                          custom_attrs);
-
     size_t all_values_num = 0;
     // output name -> value num (that output should hold)
     std::unordered_map<std::string, size_t> output_name2value_num;
@@ -666,7 +700,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         all_values_num++;
       }
     }
-
     PADDLE_ENFORCE_EQ(
         output_shapes.size(),
         all_values_num,
@@ -730,7 +763,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       }
     }
     argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-
     // Build Operation
     std::vector<pir::Value> op_results;
     pir::Operation* bwd_op =
@@ -741,9 +773,8 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     std::vector<std::vector<pir::Value>> res;
     res.resize(stop_gradients.size());
     for (size_t i = 0; i < stop_gradients.size(); ++i) {
-      res.resize(stop_gradients[i].size());
+      res[i].resize(stop_gradients[i].size());
     }
-
     // Build result and apply stop gradients
     for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
       const auto& bwd_output_name = bwd_outputs_name.at(i);
@@ -778,7 +809,6 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         }
       }
     }
-
     return res;
   }
 
@@ -798,7 +828,7 @@ void CustomOpDialect::PrintAttribute(pir::Attribute attr,
 }
 
 pir::OpPrintFn CustomOpDialect::PrintOperation(pir::Operation* op) const {
-  return PrintOperationImpl;
+  return nullptr;
 }
 
 void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {

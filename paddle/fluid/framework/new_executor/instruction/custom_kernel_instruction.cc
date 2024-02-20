@@ -27,8 +27,6 @@ namespace framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
-  CheckDefaultInferShapeDtype(
-      infershape_func_, inferdtype_func_, *custom_op_meta_);
   auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
   // check inplace
   for (auto const& pair : op_inplace_map) {
