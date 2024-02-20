@@ -119,6 +119,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       for (size_t i = 0; i < yield_op->num_operands(); ++i) {
         output_value2id[yield_op->operand_source(i)] = i;
       }
+      return output_value2id;
     }();
 
     auto& shape_analysis =
@@ -159,7 +160,7 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
       for (size_t i = 0; i < fusion_op.num_results(); ++i) {
         CHECK(fusion_yiled_values.insert({vec_outs[i], fusion_op.result(i)})
                   .second)
-            << "fusion_yiled_values already has key:" << vec_outs[i];
+            << "fusion_yiled_values already has key!";
         const auto& shape_expr =
             shape_analysis.GetShapeOrDataForValue(vec_outs[i]);
         shape_analysis.SetShapeOrDataForValue(fusion_op.result(i), shape_expr);
