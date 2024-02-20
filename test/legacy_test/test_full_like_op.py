@@ -98,6 +98,7 @@ class TestFullOp(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             # for ci coverage

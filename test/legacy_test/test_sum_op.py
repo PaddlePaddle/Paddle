@@ -529,6 +529,7 @@ class TestRaiseSumsError(unittest.TestCase):
 
 
 class TestSumOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         def test_empty_list_input():
             with base.dygraph.guard():
