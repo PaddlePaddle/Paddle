@@ -96,7 +96,7 @@ const std::shared_ptr<AMPState>& GetCurrentAMPState() {
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
-      // NOTE(zhiqiu): this happends when None output are passed from python
+      // NOTE(zhiqiu): this happens when None output are passed from python
       // side. For example, fake_quantize_dequantize_moving_average_abs_max may
       // pass None OutAccum in eval mode.
       // It can be refined by generate several different pybind interface for
@@ -504,7 +504,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap attrs) {
-  VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
+  VLOG(6) << "Running On Eager TraceOp(4 args): ";
   TraceOpImpl<egr::EagerVariable>(
       type, ins, outs, attrs, expected_place_, false, {}, nullptr, true);
 }
