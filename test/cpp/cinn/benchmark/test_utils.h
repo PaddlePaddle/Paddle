@@ -47,14 +47,14 @@ class OpBenchmarkTester {
               const hlir::framework::NodeAttr &attrs,
               const std::vector<Type> &input_types,
               const std::vector<Type> &out_types,
-              bool use_default_stragegy = true);
+              bool use_default_strategy = true);
 
   virtual Module CreateCinnModule(const std::vector<ir::Tensor> &input_tensors,
                                   const hlir::framework::NodeAttr &attrs,
                                   const std::vector<Type> &out_types,
-                                  bool use_default_stragegy = true);
+                                  bool use_default_strategy = true);
 
-  // should define specific stragey if not use default schedule
+  // should define specific strategy if not use default schedule
   virtual std::vector<ir::Tensor> CreateSpecificStrategy(
       const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
     CINN_NOT_IMPLEMENTED

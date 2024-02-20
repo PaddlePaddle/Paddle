@@ -49,7 +49,7 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call XToRShrinkReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_mesh = in_dist_attr.process_mesh();
