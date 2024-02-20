@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
   PADDLE_ENFORCE_GT(
