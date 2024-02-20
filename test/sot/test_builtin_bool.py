@@ -68,7 +68,7 @@ def call_bool_by_operator_truth(obj):
 
 
 class TestBuiltinBool(TestCaseBase):
-    def test_object_disallow_breakgraph(self):  # disallow breakgraph
+    def test_object_disallow_breakgraph(self):
         call_bool_in_cond_no_breakgraph = check_no_breakgraph(call_bool_in_cond)
         call_bool_by_bool_no_breakgraph = check_no_breakgraph(call_bool_by_bool)
         call_bool_by_operator_truth_no_breakgraph = check_no_breakgraph(
@@ -107,7 +107,7 @@ class TestBuiltinBool(TestCaseBase):
                 call_bool_by_operator_truth_no_breakgraph, layer
             )
 
-    def test_object_allow_breakgraph(self):  # allow breakgraph
+    def test_object_allow_breakgraph(self):
         with test_instruction_translator_cache_context():
             obj = TestObjectWithLen([1, 2, 3])
             with strict_mode_guard(False):
