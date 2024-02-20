@@ -2327,6 +2327,13 @@ pir::Operation* BuildKernelOp(
     op_attribute.emplace(
         "extra_args",
         pir::ArrayAttribute::get(pir::IrContext::Instance(), extra_args));
+    std::vector<pir::Attribute> skip_transform_inputs;
+    for (auto& arg : op_info_parser->OpRuntimeInfo().skip_transform_inputs) {
+      skip_transform_inputs.push_back(pir::StrAttribute::get(ctx, arg));
+    }
+    op_attribute.emplace("skip_transform_inputs",
+                         pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                                  skip_transform_inputs));
     std::vector<pir::Attribute> data_format_tensors;
     for (auto& input : op_info_parser->OpRuntimeInfo().data_format_tensors) {
       data_format_tensors.push_back(pir::StrAttribute::get(ctx, input));
