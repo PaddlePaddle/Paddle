@@ -60,6 +60,7 @@ set(KERNEL_LIST
 
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
+list(REMOVE_ITEM fluid_modules op_dialect_vjp)
 # windows static library（both CPU and GPU）over the limit, so no longer create_static_lib,
 # and cc_library is dummy
 if(WIN32)
