@@ -101,8 +101,8 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    SequenceExpandAsFunctor<DeviceContext, T> seq_espand_functor;
-    seq_espand_functor(dev_ctx, *x, y_lod[0], out);
+    SequenceExpandAsFunctor<DeviceContext, T> seq_expand_functor;
+    seq_expand_functor(dev_ctx, *x, y_lod[0], out);
   }
 };
 

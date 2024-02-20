@@ -259,13 +259,13 @@ class Cauchy(distribution.Distribution):
         return self.log_prob(value).exp(name=name)
 
     def log_prob(self, value):
-        """Log of probability densitiy function.
+        """Log of probability density function.
 
         Args:
             value (Tensor): Value to be evaluated.
 
         Returns:
-            Tensor: Log of probability densitiy evaluated at value.
+            Tensor: Log of probability density evaluated at value.
 
         Examples:
 

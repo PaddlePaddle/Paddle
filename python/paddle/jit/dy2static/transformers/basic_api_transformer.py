@@ -90,7 +90,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def visit_Call(self, node):
         """
-        Can't convert name of function call, bacause this will affect CallTransformer.
+        Can't convert name of function call, because this will affect CallTransformer.
         """
         node.args = [self.visit(arg) for arg in node.args]
         for keyword in node.keywords:
@@ -133,7 +133,7 @@ class AttributeJstTransformer(BaseTransformer):
     for example:
         a.size  -->  __jst.attr(a, "size")
 
-    because `size` have different behavier when in dygraph / static graph mode
+    because `size` have different behavior when in dygraph / static graph mode
     NOTE: we only deal with ctx=Load() case.
     """
 
