@@ -143,6 +143,7 @@ class TestEmbeddingPrimOne3(TestPrimOne):
         np.random.seed(2023)
         self.dtype = "int"
         self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
         self.x = np.random.randint(0, 10, size=self.x_shape)
         self.net = embedding_net
         self.necessary_ops = "pd_op.embedding"
