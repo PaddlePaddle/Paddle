@@ -216,6 +216,30 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 matmul_op, matmul_grad_dist_attr
             )
 
+            # move the cast op to the back of matmul_grad
+            if (
+                ops[matmul_grad_id + 1].type == 'cast'
+                and ops[matmul_grad_id + 1].input('X')[0]
+                == matmul_grad_op.output('Y@GRAD')[0]
+            ):
+                cast_op = ops[matmul_grad_id + 1]
+                cast_dist_attr = self.dist_context.get_op_dist_attr_for_program(
+                    cast_op
+                )
+
+                cast_op = block._insert_op_without_sync(
+                    index=allreduce_id + 4,
+                    type="cast",
+                    inputs={"X": cast_op.input('X')},
+                    outputs={"Out": cast_op.output('Out')},
+                    attrs=cast_op.all_attrs(),
+                )
+                self.dist_context.set_op_dist_attr_for_program(
+                    cast_op, cast_dist_attr
+                )
+                block._remove_op(matmul_grad_id + 1, sync=False)
+                allreduce_id -= 1
+
             self._insert_reshape_op(
                 block,
                 allreduce_id + 4,
