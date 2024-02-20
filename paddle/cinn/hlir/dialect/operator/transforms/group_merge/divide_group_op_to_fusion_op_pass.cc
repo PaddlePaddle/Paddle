@@ -42,6 +42,7 @@
 PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace {
+using GroupPtr = cinn::dialect::ir::GroupPtr;
 
 std::vector<pir::Value> GetBlockOutsideOutput(
     const std::vector<pir::Operation*>& op_list) {
@@ -102,42 +103,58 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     auto* program = group_op->GetParentProgram();
     VLOG(4) << "Before GroupOpPattern: " << *program;
 
+    // step 1: op fusion & fusion merge
+    auto group_list = cinn::dialect::ir::OpFusionPassInternal(
+        GetOpListNotIncludeYield(group_op.GetOperators()),
+        GetOutputOpList(group_op.GetOperators()),
+        nullptr);
+    auto merged_group_list =
+        cinn::dialect::ir::GeneralFusionMergePassInternal(group_list, nullptr);
+
+    // step 2: Prepare necessary map inforamtion for ReplaceAllUsesWith and
+    // infer dynamic symbolic shape.
     std::unordered_map<::pir::Value, size_t> value2id;
     auto yield_op = group_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
       value2id[yield_op->operand_source(i)] = i;
     }
-
-    // op fusion
-    auto group_list = cinn::dialect::ir::OpFusionPassInternal(
-        GetOpListNotIncludeYield(group_op.GetOperators()),
-        GetOutputOpList(group_op.GetOperators()),
-        nullptr);
-
-    // fusion merge
-    auto merged_group_list =
-        cinn::dialect::ir::GeneralFusionMergePassInternal(group_list, nullptr);
-
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+    // Record map info for yield value to each fusion_op's result
+    std::unordered_map<::pir::Value, ::pir::Value> fusion_yiled_values;
 
-    for (auto group : merged_group_list) {
-      auto vec_outs = group->GetGroupOutputValues();
-      // auto vec_outs = GetBlockOutsideOutput(group->ops);
+    const auto& ReplaceOperandSource = [&](::pir::Operation* op) {
+      for (auto& operand : op->operands()) {
+        const auto value = operand.source();
+        if (fusion_yiled_values.find(value) != fusion_yiled_values.end()) {
+          operand.set_source(fusion_yiled_values[value]);
+        }
+      }
+    };
 
+    const auto& CreateFusionOp =
+        [&](const std::vector<pir::Value>& vec_outs,
+            GroupPtr& group) -> cinn::dialect::FusionOp {
       std::vector<pir::Type> output_types;
       for (auto& value : vec_outs) {
         output_types.emplace_back(value.type());
       }
-
       auto fusion_op = rewriter.Build<cinn::dialect::FusionOp>(output_types);
       pir::Block* fusion_block = fusion_op.block();
-
       for (auto op : group->ops) {
+        ReplaceOperandSource(op);
         op->MoveTo(fusion_block, fusion_block->end());
       }
+      return fusion_op;
+    };
+
+    // step 3: Create Fusion Op for each divided sub group.
+    for (auto group : merged_group_list) {
+      auto vec_outs = group->GetGroupOutputValues();
+      auto fusion_op = CreateFusionOp(vec_outs, group);
 
       for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+        fusion_yiled_values[vec_outs[i]] = fusion_op.result(i);
         const auto& shape_expr =
             shape_analysis.GetShapeOrDataForValue(vec_outs[i]);
         shape_analysis.SetShapeOrDataForValue(fusion_op.result(i), shape_expr);
@@ -148,15 +165,13 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
           rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
                                       fusion_op.result(i));
         }
-        // Replace all downstream fusion_op's operand with current fusion_op
-        // result
-        rewriter.ReplaceAllUsesWith(vec_outs[i], fusion_op.result(i));
       }
-      rewriter.SetInsertionPointToBlockEnd(fusion_block);
+      rewriter.SetInsertionPointToBlockEnd(fusion_op.block());
       rewriter.Build<::pir::YieldOp>(vec_outs);
       rewriter.SetInsertionPointAfter(fusion_op);
     }
     rewriter.EraseOp(group_op);
+    VLOG(4) << "after GroupOpPattern: " << *program;
     return true;
   }
 };
