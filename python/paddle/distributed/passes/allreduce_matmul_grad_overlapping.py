@@ -216,7 +216,12 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 matmul_op, matmul_grad_dist_attr
             )
 
-            # move the cast op to the back of matmul_grad
+            # NOTE(Sonder): Why move the cast operation to the back of matmul_v2?
+            # When using amp_master_grad, the cast operation is inserted after matmul_grad.
+            # However, when employing allreduce_matmul_grad_overlapping, the matmul_grad is
+            # split into two matmul operations. In this case, the cast operation would access
+            # uninitialized tensors. Therefore, we move the cast operation to the back of the
+            # second matmul operation to avoid this problem.
             if (
                 ops[matmul_grad_id + 1].type == 'cast'
                 and ops[matmul_grad_id + 1].input('X')[0]
