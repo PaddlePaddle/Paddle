@@ -48,8 +48,8 @@ class GradientAccumulator {
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
       inner_var_->SetForwardDataType(var->ForwardDataType());
-      inner_var_->InnerSetOverridedStopGradient(
-          var->InnerOverridedStopGradient());
+      inner_var_->InnerSetOverriddenStopGradient(
+          var->InnerOverriddenStopGradient());
       VLOG(6) << " Create inner grad var for (" << var->Name()
               << ") to store result of this Graph";
     }

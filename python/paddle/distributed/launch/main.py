@@ -94,13 +94,13 @@ def launch():
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
     IPU Parameters:
-        IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        IPU distributed launch only requires and allows three arguments ``--devices``, ``training_script`` and ``training_script_args``.
         The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
         The ``training_script`` is only allowed to set as ``ipu``.
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
         ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
 
-        - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
+        - ``--hosts``: The hosts for IPU distributed training. Each host is able to include multiple processes.
 
         - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
 
@@ -498,8 +498,8 @@ def launch():
                 c.run()
 
                 # process generated result
-                # TODO diffentiate out of memory and no loss(maybe over time)
-                # TODO integragte memory and metric read
+                # TODO differentiate out of memory and no loss(maybe over time)
+                # TODO integrate memory and metric read
                 metric, mem, err = read_log(
                     path=ctx.args.log_dir,
                     metric_file="workerlog.0",
@@ -578,10 +578,10 @@ def launch():
 
             end_time = time.time()
             ctx.logger.info(
-                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
+                f"AutoTuner for GBS search ends in {end_time - start_time}s."
             )
             logger.info(
-                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
+                f"AutoTuner for GBS search ends in {end_time - start_time}s."
             )
 
         # build AutoTuner to get new config
@@ -1027,7 +1027,7 @@ def launch():
                         comm_time = model_size_b * (4 + 2) / bw
                     else:
                         comm_time = model_size_b * 4 / bw
-                    multi_dp_performace = (
+                    multi_dp_performance = (
                         round(
                             step_time
                             / (step_time + comm_time)
@@ -1039,16 +1039,16 @@ def launch():
                     )
                     cur_cfg[
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
-                    ] = multi_dp_performace
+                    ] = multi_dp_performance
                     cur_cfg[
                         f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = (
-                        round(multi_dp_performace / num_gpus, 2)
-                        if multi_dp_performace
+                        round(multi_dp_performance / num_gpus, 2)
+                        if multi_dp_performance
                         and tuner_cfg["search_algo"]["conversion"].get(
                             "need_unify", False
                         )
-                        else multi_dp_performace
+                        else multi_dp_performance
                     )
                     if recorder.additional_metric_key is None:
                         recorder.additional_metric_key = (

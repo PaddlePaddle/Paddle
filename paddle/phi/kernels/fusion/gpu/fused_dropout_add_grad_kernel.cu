@@ -228,12 +228,17 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
       VLOG(10) << "CUDA_GRAPH seed = " << seed_data
                << ", increment = " << increment;
     };
-    void* functionPtr = reinterpret_cast<void*>(
-        &(VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>));
-    cudaFunction_t cudaFunc;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
+
     phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
         cudaKernelCallback = [=](unsigned int id) {
+          void* functionPtr = reinterpret_cast<void*>(
+              &(VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>));
+          cudaFunction_t cudaFunc;
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaGetFuncBySymbol(&cudaFunc, functionPtr));
+          VLOG(10) << "[cudaKernelCallback] cudaFunc = " << cudaFunc
+                   << " functionPtr = " << functionPtr;
+
           VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
               <<<grid_size, block_size, 0, stream>>>(
                   id,
@@ -245,9 +250,10 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
                   increment,  //  idx: 6 need save
                   main_offset,
                   functor);
+          return cudaFunc;
         };
     phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
-        cudaFunc, parameterSetter, cudaKernelCallback);
+        parameterSetter, cudaKernelCallback);
 
     VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;

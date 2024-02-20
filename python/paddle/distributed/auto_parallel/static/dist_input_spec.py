@@ -20,7 +20,7 @@ from ..placement_type import get_shard_spec
 from .utils import convert_to_dims_mapping
 
 
-class DistrubutedInputSpec(InputSpec):
+class DistributedInputSpec(InputSpec):
     def __init__(
         self,
         shape,
@@ -38,13 +38,13 @@ class DistrubutedInputSpec(InputSpec):
     @classmethod
     def from_dtensor(cls, dtensor, name=None):
         """
-        Generates a DistrubutedInputSpec based on dist tensor.
+        Generates a DistributedInputSpec based on dist tensor.
 
         Args:
             dtensor: the dist tensor.
 
         Returns:
-            A DistrubutedInputSpec instance generated from dtensor.
+            A DistributedInputSpec instance generated from dtensor.
         """
         return cls(
             shape=dtensor.shape,

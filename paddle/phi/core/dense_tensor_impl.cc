@@ -420,6 +420,14 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   return *this;
 }
 
+DenseTensor& DenseTensor::ShareDataNoCheckWith(const DenseTensor& src) {
+  holder_ = src.holder_;
+  set_meta(src.meta());
+  storage_properties_ =
+      std::move(CopyStorageProperties(src.storage_properties_));
+  return *this;
+}
+
 DenseTensor& DenseTensor::ShareInplaceVersionCounterWith(
     const DenseTensor& src) {
   PADDLE_ENFORCE_NOT_NULL(

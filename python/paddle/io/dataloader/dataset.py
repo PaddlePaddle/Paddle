@@ -266,7 +266,7 @@ class TensorDataset(Dataset):
     Dataset defined by a list of tensors.
 
     Each tensor should be in shape of [N, ...], while N is the sample number,
-    and ecah tensor contains a field of sample, :code:`TensorDataset` retrieve
+    and each tensor contains a field of sample, :code:`TensorDataset` retrieve
     each sample by indexing tensors in the 1st dimension.
 
     Args:
@@ -364,7 +364,7 @@ class ComposeDataset(Dataset):
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, Dataset
@@ -429,7 +429,7 @@ class ChainDataset(IterableDataset):
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, IterableDataset
