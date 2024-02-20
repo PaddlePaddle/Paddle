@@ -750,7 +750,7 @@ class TestScatterOpFp16(OpTest):
     def setUp(self):
         self.__class__.op_type = "scatter"
         self.python_api = paddle.scatter
-        # compute grad in the following code handly.
+        # compute grad in the following code manually.
         self.__class__.no_need_check_grad = True
         self.x_type = 'float16'
         self.x_np = np.ones((3, 3)).astype(self.x_type)

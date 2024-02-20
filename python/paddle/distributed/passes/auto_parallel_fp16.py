@@ -90,7 +90,7 @@ def set_auto_cast_attr(cast_op, block):
         out_var.desc.set_dtype(out_var_fw.dtype)
 
 
-# adapot for backward op
+# adapt for backward op
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_input(op, in_name):
     if not op.amp_options.enable:
@@ -831,7 +831,7 @@ class FP16Pass(AMPPass):
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
         AMPList = amp_utils.AutoMixedPrecisionLists
-        # swith enviroment for fp16 / bf16.
+        # switch environment for fp16 / bf16.
         if self.target_dtype == "float16":
             __target_dtype = core.VarDesc.VarType.FP16
         elif self.target_dtype == "bfloat16":
@@ -851,7 +851,7 @@ class FP16Pass(AMPPass):
             dtype=self.target_dtype,
         )
 
-        # NOTE don't not change input data dtype, since it is controled by dataloader
+        # NOTE don't not change input data dtype, since it is controlled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
         with paddle.static.program_guard(main_program, startup_program):
