@@ -70,10 +70,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
-
 
 namespace paddle {
 namespace pybind {
@@ -3138,7 +3136,8 @@ static PyObject* tensor_method__uva(TensorObject* self,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
-  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  int device_id =
+      pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);  // NOLINT
   phi::DenseTensor* dense_tensor = nullptr;
   if (self->tensor.is_dist_tensor()) {
     dense_tensor =
