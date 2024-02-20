@@ -30,9 +30,6 @@ import paddle
 from paddle.base.framework import unique_name
 from paddle.nn import ClipGradByGlobalNorm
 
-place = (
-    paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
-)
 STEP_NUM = 10
 PRINT_STEP = 2
 
