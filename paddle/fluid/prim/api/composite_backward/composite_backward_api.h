@@ -387,7 +387,6 @@ void divide_grad(const Tensor& x,
         auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
         set_output<T>(dx_tmp, dx);
       }
-
     } else {
       set_output<T>(dx_res, dx);
     }
