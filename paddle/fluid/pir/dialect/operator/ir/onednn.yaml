@@ -35,6 +35,7 @@
      func: MultiGruInferMeta
   kernel:
      func: multi_gru
+     data_type : x
   optional: bias, scale_weights
 
 - op : quantize
