@@ -181,29 +181,7 @@ bool GroupScheduler::NeedOrderLoops() {
   return false;
 }
 
-void GroupScheduler::Tiling() {
-  // apply tiling
-  auto vec_axis = group_tile_info_->reduce_axis_;
-
-  // merge flatten axis and reduce axis
-  std::set<int64_t> reduce_set(vec_axis.begin(), vec_axis.end());
-
-  std::vector<int32_t> vec_flatten_axis;
-  std::vector<int32_t> vec_reduce_axis;
-
-  // reduce axis have be re-order to last
-  int32_t reduce_start_idx = group_tile_info_->data_rank - vec_axis.size();
-  for (int32_t i = 0; i < group_tile_info_->data_rank; ++i) {
-    if (i >= reduce_start_idx) {
-      vec_reduce_axis.push_back(i);
-    } else {
-      vec_flatten_axis.push_back(i);
-    }
-  }
-
-  std::cerr << "before flatten fuse: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
-
+void GroupScheduler::MergeFlattenAxis() {
   if (vec_flatten_axis.size() >= 2) {
     for (auto& name : node_list) {
       // skip reduce init block
@@ -213,8 +191,8 @@ void GroupScheduler::Tiling() {
       ir_sch_->Fuse(name, vec_flatten_axis);
     }
   }
-
-  int reduce_current_axis = 1;
+}
+void GroupScheduler::MergeReduceAxis() {
   if (vec_reduce_axis.size() >= 2) {
     for (auto& name : node_list) {
       // skip reduce init block
@@ -224,12 +202,11 @@ void GroupScheduler::Tiling() {
       ir_sch_->Fuse(name, vec_reduce_axis);
     }
   }
+}
 
-  std::cerr << "after flatten fuse: " << ir_sch_->GetModule().GetExprs().front()
-            << std::endl;
-
+void GroupScheduler::SplitFlattenInner() {
   if (group_tile_info_->flatten_inner_num > 1) {
-    // split flatten inner here
+    // split flatten inner
     for (auto& name : node_list) {
       // skip reduce init block
       if (ir::IsReduceInitTensorName(name)) {
@@ -244,12 +221,9 @@ void GroupScheduler::Tiling() {
 
     reduce_current_axis += 1;
   }
-  // std::cerr << "split flatten inner: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+}
 
-  // std::cerr << "current reduce " << reduce_current_axis << std::endl;
-  // split reduce inner here
-
+void GroupScheduler::SplitReduceInner() {
   if (group_tile_info_->reduce_inner_num > 1) {
     for (auto& name : node_list) {
       // skip reduce init block
@@ -259,8 +233,6 @@ void GroupScheduler::Tiling() {
       auto loops = ir_sch_->GetLoops(name);
 
       auto split_expr = loops[reduce_current_axis].As<ir::For>();
-      // std::cerr << "split expr" << split_expr << std::endl;
-      // std::cerr << "extent " << split_expr->extent.as_int32() << std::endl;
 
       if (split_expr->extent.as_int64() == 1) {
         continue;
@@ -287,11 +259,9 @@ void GroupScheduler::Tiling() {
       }
     }
   }
+}
 
-  // std::cerr << "after split reduce: " <<
-  // ir_sch_->GetModule().GetExprs().front()
-  //           << std::endl;
-
+void GroupScheduler::ReorderFlattenInnerWithReduceAxis() {
   // re-order flatten inner num with last dim
   if (group_tile_info_->flatten_inner_num > 1 &&
       (group_tile_info_->reduce_axis_.size() > 0)) {
@@ -309,17 +279,12 @@ void GroupScheduler::Tiling() {
         ir_sch_->Reorder({loops[2], loops[1]});
       }
     }
-
-    // std::cerr << "after reorder flatten inner num: "
-    //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
   }
+}
 
-  // std::cerr << "split warp \n";
-  // get warp num
+void GroupScheduler::SplitWarpNumber() {
   if (group_tile_info_->warp_num > 1) {
     if (group_tile_info_->reduce_axis_.size() == 0) {
-      // std::cerr << "split loop 0\n";
-      // only elementwise and broadcast
       // get num warp from flatten num
       for (auto& name : node_list) {
         // skip reduce init block
@@ -361,8 +326,25 @@ void GroupScheduler::Tiling() {
       }
     }
   }
+}
 
-  schedule_block_graph_->Update(*ir_sch_);
+void GroupScheduler::Tiling() {
+  // apply tiling
+
+  std::cerr << "before flatten fuse: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+
+  MergeFlattenAxis();
+  MergeReduceAxis();
+
+  reduce_current_axis = 1;
+
+  SplitFlattenInner();
+  SplitReduceInner();
+
+  ReorderFlattenInnerWithReduceAxis();
+
+  SplitWarpNumber();
 }
 
 void GroupScheduler::Unroll() {
@@ -399,8 +381,6 @@ void GroupScheduler::VariableTypeAssignment() {
       continue;
     }
 
-    // if (!output_tensor_names_.count(name)) {
-    //  std::cerr << "temp name " << name << std::endl;
     auto block = ir_sch_->GetBlock(name);
 
     {
@@ -409,7 +389,6 @@ void GroupScheduler::VariableTypeAssignment() {
         ir_sch_->SetBuffer(block, "local", false);
       }
     }
-    //}
 
     if (group_tile_info_->reduce_var_names.count(name)) {
       auto block = ir_sch_->GetBlock(name + "_rf");
@@ -422,6 +401,7 @@ void GroupScheduler::VariableTypeAssignment() {
     ir_sch_->SyncThreads(loops.front(), false);
   }
 }
+
 void GroupScheduler::SetReduceType() {
   for (auto& name : node_list) {
     if (ir::IsReduceInitTensorName(name)) {

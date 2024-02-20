@@ -108,26 +108,13 @@ void ScheduleBase::BroadcastToElementwise(const std::string& block_name,
   for (auto expr : exprs) {
     auto load = expr.As<ir::Load>();
     load->indices.resize(all_loops.size(), Expr(0));
-    // std::cerr << "loop var " <<broadcast_loop->loop_var << std::endl;
-    // if( load->indices.size() == )
-    // load->indices[axes[0]] = broadcast_loop->loop_var;
-
-    // auto update_indice = load->indices[ axes[0]];
-    //  ReplaceExpr(&update_indice, { load->indices[ ] },
-    //  {broadcast_loop->loop_var});
 
     for (size_t i = 0; i < axes.size(); ++i) {
       auto loop_temp = all_loops[axes[i]].As<ir::For>();
 
       load->indices[axes[i]] = schedule_block->iter_vars[axes[i]];
     }
-
-    std::cerr << "after load " << expr << std::endl;
-
-    // this->Replace( expr, new_load);
   }
-
-  // std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
 }
 
 void ScheduleBase::Broadcast(const std::string& block_name,
@@ -300,8 +287,6 @@ void ScheduleBase::Broadcast(const std::string& block_name,
       std::cerr << "after load " << expr << std::endl;
     }
   }
-
-  std::cerr << "out lop " << all_loops[0].As<ir::For>()->body << std::endl;
 }
 
 }  // namespace ir
