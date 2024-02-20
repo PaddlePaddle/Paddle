@@ -373,7 +373,7 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
     // output
-    if (pos == 2)
+    if (pos >= 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
   } else if (op_desc_.Type() == "scatter_nd_add") {
