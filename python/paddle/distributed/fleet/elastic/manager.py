@@ -59,7 +59,7 @@ class LauncherInterface:
         self.procs = []
 
     def _terminate_procs(self):
-        # try to terminate process by group, this happend in multiprocess senario in user process
+        # try to terminate process by group, this happened in multiprocess scenario in user process
         if os.name != 'nt':
             for p in self.procs:
                 if p.proc.poll() is None:
@@ -79,7 +79,7 @@ class LauncherInterface:
         for step in range(0, 50):
             alive = False
             for p in self.procs:
-                if p.proc.poll() is None:  # not termniate
+                if p.proc.poll() is None:  # not terminate
                     os.kill(p.proc.pid, signal.SIGKILL)
                     alive = True
 
@@ -186,7 +186,7 @@ class ElasticManager:
             self.elastic_level = ElasticLevel.ELASTIC
             logger.info('start job with ElasticLevel.ELASTIC')
 
-        # compatible with kuberntes service discovery
+        # compatible with kubernetes service discovery
         if (
             not server
             and os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_HOST')
@@ -457,7 +457,7 @@ class ElasticManager:
             f'{endpoints}|{hosts}'.encode('latin-1'),
         )
 
-    def _update_fault_tolrance(self):
+    def _update_fault_tolerance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
         logger.debug(
             f"self.curr_host={self.curr_host}, self.dist_endpoints={self.dist_endpoints}"
@@ -559,12 +559,12 @@ class ElasticManager:
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
         if self.elastic_level == ElasticLevel.FAULT_TOLERANCE:
-            self._update_fault_tolrance()
+            self._update_fault_tolerance()
         else:
             # elastic
             if len(self.hosts) == self.np:
                 logger.info(f"elastic startup, hosts={self.hosts}")
-                self._update_fault_tolrance()
+                self._update_fault_tolerance()
 
             elif len(self.hosts) > self.np:
                 # scale out
