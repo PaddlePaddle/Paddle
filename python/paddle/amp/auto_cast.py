@@ -48,6 +48,8 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
+        self.already_classify_params_meshs = False  # For dist
+        self.mesh2params = {}  # For dist
         self.amp_dtype = 'float32'
 
     def __setattr__(self, name, val):
@@ -136,9 +138,9 @@ def _is_gpu_bfloat16_supported():
 
 def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
-    # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
+    # Highest priority. Because all the layers except BN will use bfloat16 params in bfloat16 training,
     # here we provide a option to keep fp32 param.
-    if not layer._cast_to_low_precison:
+    if not layer._cast_to_low_precision:
         need_keep_fp32 = True
     # The BN layers will keep fp32
     elif isinstance(
@@ -197,12 +199,12 @@ def set_excluded_layers(models, excluded_layers):
         for layer in excluded_layers_instances[idx].sublayers(
             include_self=True
         ):
-            layer._cast_to_low_precison = False
+            layer._cast_to_low_precision = False
     excluded_layers_types = tuple(excluded_layers_types)
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if isinstance(layer, excluded_layers_types):
-                layer._cast_to_low_precison = False
+                layer._cast_to_low_precision = False
 
 
 @dygraph_only
@@ -238,7 +240,7 @@ def check_models(models):
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
-                "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
+                "For distributed AMP training, you should first use paddle.amp.decorate() to decorate origin model, and then call paddle.DataParallel get distributed model."
             )
 
 
@@ -423,7 +425,31 @@ def amp_guard(
     ):
 
         def master_grad_hook():
-            core.eager.set_master_grads(amp_global_state().model_parameters)
+            # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
+            # classify the params of model into different calsses according to their process_mesh.
+            # Otherwise, fault will occur.
+            if not amp_global_state().already_classify_params_meshs:
+                for param in amp_global_state().model_parameters:
+                    if param is not None and param.process_mesh is not None:
+                        if (
+                            param.process_mesh
+                            not in amp_global_state().mesh2params
+                        ):
+                            amp_global_state().mesh2params[
+                                param.process_mesh
+                            ] = [param]
+                        else:
+                            amp_global_state().mesh2params[
+                                param.process_mesh
+                            ].append(param)
+                amp_global_state().already_classify_params_meshs = True
+
+            if len(amp_global_state().mesh2params):
+                for _, params in amp_global_state().mesh2params.items():
+                    core.eager.set_master_grads(params)
+            else:
+                core.eager.set_master_grads(amp_global_state().model_parameters)
+
             amp_global_state().already_register_final_backward_hook = False
 
         core.eager._add_backward_final_hook(master_grad_hook)
@@ -440,7 +466,7 @@ def amp_guard(
 
         # TODO(zhiqiu) set amp related flags automatically in this guard
         # Currently, if FLAGS_cudnn_batchnorm_spatial_persistent is set True in amp_guard,
-        # batch_norm can run in fast mode, but batch_norm_grad can not if backward if not executed insise amp_guard.
+        # batch_norm can run in fast mode, but batch_norm_grad can not if backward if not executed inside amp_guard.
         # So, users need to set related flags manually.
 
         # original_flags = get_flags(AMP_RELATED_FLAGS)
@@ -522,7 +548,7 @@ def amp_decorate(
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure fp16/bf16, the decorator will cast all parameters of models to FP16/BF16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
+        master_weight(bool, optional): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 
@@ -806,7 +832,7 @@ def decorate(
         level(str, optional): Auto mixed precision level. Accepted values are 'O1' and 'O2': O1 represent mixed precision, the decorator will do nothing;
              O2 represent Pure float16/bfloat16, the decorator will cast all parameters of models to float16/bfloat16, except BatchNorm, InstanceNorm and LayerNorm. Default is O1(amp)
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
+        master_weight(bool, optional): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight

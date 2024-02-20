@@ -79,8 +79,6 @@ class TestBase(IPUOpTest):
     def reset_seeds(self):
         np.random.seed(self.SEED)
         paddle.seed(self.SEED)
-        self.main_prog.random_seed = self.SEED
-        self.startup_prog.random_seed = self.SEED
 
     def _test(self, use_ipu=False):
         self.reset_seeds()

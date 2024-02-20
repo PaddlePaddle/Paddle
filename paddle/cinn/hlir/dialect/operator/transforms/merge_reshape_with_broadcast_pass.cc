@@ -22,11 +22,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -102,8 +102,7 @@ class MergeReshapeWithBroadcastPattern
   bool MatchAndRewrite(cinn::dialect::BroadcastOp op,
                        pir::PatternRewriter& rewriter) const override {
     auto reshape_op = op->operand_source(0)
-                          .dyn_cast<pir::OpResult>()
-                          .owner()
+                          .defining_op()
                           ->dyn_cast<cinn::dialect::ReshapeOp>();
 
     if (reshape_op && CanMerge(reshape_op)) {

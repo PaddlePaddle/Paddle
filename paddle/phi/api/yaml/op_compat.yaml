@@ -101,6 +101,8 @@
     {x : X, y : Y}
   outputs :
     {out : Out}
+  attrs :
+    {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -731,6 +733,8 @@
     {input : Input, filter : Filter}
   outputs :
     out : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
@@ -757,6 +761,14 @@
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
+
+- op : dequantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
   extra :
@@ -1060,6 +1072,8 @@
     bias : Bias
   outputs :
     out : Out
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
     attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
@@ -1297,6 +1311,12 @@
     reserve_space: ReserveSpace
 
 - op : fused_conv2d
+  inputs :
+    {input : Input, filter : Filter, bias : Bias, residual_param : ResidualData}
+  outputs :
+    {output : Output}
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
@@ -1320,8 +1340,15 @@
     fused_conv2d_add_act : GetConvExpectedKernelType
 
 - op : fused_conv3d
+  inputs :
+    {input : Input, filter : Filter, bias : Bias, residual_param : ResidualData}
+  outputs :
+    {output : Output}
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
-    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
+    attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -1406,10 +1433,8 @@
     batched_input : BatchedInput
     batched_out : BatchedOut
     hidden : Hidden
-  attrs :
-    scale_data : Scale_data
-    shift_data : Shift_data
-    scale_weights : Scale_weights
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
 - op : fusion_lstm
   extra :
@@ -1513,6 +1538,18 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : graph_khop_sampler
+  inputs :
+    {row : Row, colptr : Col_Ptr, x : X, eids : Eids}
+  outputs :
+    {out_src : Out_Src, out_dst : Out_Dst, sample_index : Sample_Index, reindex_x : Reindex_X, out_eids : Out_Eids}
+
+- op : graph_sample_neighbors
+  inputs :
+    {row : Row, colptr : Col_Ptr, x : X, eids : Eids, perm_buffer : Perm_Buffer}
+  outputs :
+    {out : Out, out_count : Out_Count, out_eids : Out_Eids}
 
 - op : greater_equal
   inputs :
@@ -2491,7 +2528,6 @@
     {q : Q, r : R}
 
 - op : quantize
-  backward : quantize_grad
   inputs :
     input : Input
   outputs :
@@ -2598,6 +2634,14 @@
     out : Out
   attrs:
     axis : dim
+
+- op : requantize
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, shift_in : Shift_in, shift_out : Shift_out}
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
@@ -3403,6 +3447,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_min
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_prod
   inputs :
     x : X
@@ -3476,6 +3526,12 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
+
+- op: distributed_lookup_table
+  inputs:
+    {ids: Ids, w: W}
+  outputs:
+    outputs: Outputs
 
 - op: dpsgd
   inputs:
@@ -3554,6 +3610,13 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: match_matrix_tensor
+  backward: match_matrix_tensor_grad
+  inputs:
+    {x : X, y : Y, w : W}
+  outputs:
+    {out : Out, tmp : Tmp}
 
 - op: memcpy
   inputs:

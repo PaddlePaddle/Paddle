@@ -15,14 +15,13 @@
 #pragma once
 
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace ir {
 
 struct _Dim_;
-using pir::shape::SymbolicDimOp;
 
 //! Wrapper for _Dim_
 class Dim : public IrNodeRef {
@@ -48,11 +47,9 @@ struct _Dim_ : ExprNode<_Dim_> {
   symbol::DimExpr sym_dim;
   Expr dim_expr;
 
-  bool IsDynamic() const;
+  bool IsUniSymbolic() const;
 
-  std::string GetSymbolName() const;
-
-  int64_t GetRealDimSize() const;
+  std::string ToString() const;
 
   Expr GetDimExpr() const;
 

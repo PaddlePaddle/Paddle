@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/generate_shape_util.h"
+#include <unordered_set>
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace cinn::dialect {
 
@@ -69,19 +70,19 @@ pir::Value InsertGenerateShapeOpToRunFirst(
     pir::Value value,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
   const auto& out_dim_exprs = GetDimExprs(value, dim_exprs_accessor);
-  std::vector<pir::Value> minial_inputs{};
+  std::vector<pir::Value> minimal_inputs{};
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
   MakeGenerateShapeOpAttribute(builder->ir_context(),
                                dim_exprs_accessor.GetShapeOrDataDimExprs,
                                out_dim_exprs,
                                block_args,
-                               &minial_inputs,
+                               &minimal_inputs,
                                &output_dim_expr_attrs,
                                &symbol_bindings);
   return builder
       ->Build<cinn::dialect::GenerateShapeOp>(
-          minial_inputs, output_dim_expr_attrs, symbol_bindings)
+          minimal_inputs, output_dim_expr_attrs, symbol_bindings)
       .out();
 }
 
@@ -127,12 +128,12 @@ bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
-  bool rewrited = false;
+  bool rewritten = false;
   while (RewriteOneGenerateShapeOpToRunFirst(
       ir_context, block, dim_exprs_accessor)) {
-    rewrited = true;
+    rewritten = true;
   }
-  return rewrited;
+  return rewritten;
 }
 
 }  // namespace cinn::dialect

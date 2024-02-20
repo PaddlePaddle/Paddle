@@ -48,8 +48,8 @@ class GradientAccumulator {
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
       inner_var_->SetForwardDataType(var->ForwardDataType());
-      inner_var_->InnerSetOverridedStopGradient(
-          var->InnerOverridedStopGradient());
+      inner_var_->InnerSetOverriddenStopGradient(
+          var->InnerOverriddenStopGradient());
       VLOG(6) << " Create inner grad var for (" << var->Name()
               << ") to store result of this Graph";
     }
@@ -128,7 +128,7 @@ class GradientAccumulator {
 
  protected:
   VariableWrapper* var_;
-  // NOTE: only gradient accumulater of leaf tensor should hold
+  // NOTE: only gradient accumulator of leaf tensor should hold
   // inner_var_, So not hold it by other shared pointer.
   std::shared_ptr<VariableWrapper> inner_var_;
   size_t ref_cnt_{0};

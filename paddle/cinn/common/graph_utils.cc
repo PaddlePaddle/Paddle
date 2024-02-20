@@ -76,7 +76,7 @@ Graph::topological_order() const {
   std::vector<GraphEdge *> edge_order;
   std::deque<GraphNode *> queue;
 
-  // collect indegreee.
+  // collect indegree.
   std::map<std::string, int> indegree;
   for (auto *n : nodes()) {
     indegree[n->id()] = n->inlinks().size();

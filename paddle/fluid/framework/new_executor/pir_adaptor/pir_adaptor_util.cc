@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 
+#include "glog/logging.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
@@ -38,15 +39,14 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
-
-#include "glog/logging.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace paddle {
 namespace framework {
@@ -87,11 +87,8 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
           "The size of variable_list and var_name_2_id map should be equal"));
 }
 
-void ValueExecutionInfo::Rename(pir::Value value,
-                                const std::string& new_name,
+void ValueExecutionInfo::Rename(const std::string& new_name,
                                 const std::string& orig_name) {
-  value_2_var_name_[value] = new_name;
-
   for (auto kv : value_2_var_name_) {
     if (kv.second == orig_name) {
       value_2_var_name_[kv.first] = new_name;
@@ -146,6 +143,11 @@ ValueExecutionInfo::GetValue2VarName() const {
 void ValueExecutionInfo::AddValue2VarName(::pir::Value value,
                                           const std::string& var_name) {
   value_2_var_name_.emplace(value, var_name);
+}
+
+void ValueExecutionInfo::UpdateValue2VarName(::pir::Value value,
+                                             const std::string& var_name) {
+  value_2_var_name_[value] = var_name;
 }
 
 const std::unordered_map<const Variable*, std::string>&
@@ -238,22 +240,22 @@ const std::unordered_set<std::string> SpecialOps = {
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
-                    bool force_persisable,
+                    bool force_persistable,
                     ValueExecutionInfo* value_exe_info) {
-  pir::Operation* def_op = value.dyn_cast<pir::OpResult>().owner();
-  bool is_persisable = false;
+  pir::Operation* def_op = value.defining_op();
+  bool is_persistable = false;
   if (def_op->isa<::pir::ParameterOp>()) {
-    is_persisable = true;
+    is_persistable = true;
   } else if (auto attr =
-                 value.attribute<pir::BoolAttribute>(kAttrIsPersisable)) {
-    is_persisable = attr.data();
+                 value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
+    is_persistable = attr.data();
   }
 
   Variable* var = nullptr;
   std::string name = var_name_prefix + "_inner_var_" +
                      std::to_string(value_exe_info->GetVar2VarName().size());
 
-  if (force_persisable || is_persisable) {
+  if (force_persistable || is_persistable) {
     VLOG(6) << "Create var: " << name << " in scope "
             << value_exe_info->GetScope()->root();
     var = const_cast<Scope*>(value_exe_info->GetScope()->root())->Var(name);
@@ -542,7 +544,7 @@ void HandleForSpecialOp(pir::Operation* op,
               << param_name;
     }
 
-    value_exe_info->Rename(value, param_name, orig_name);
+    value_exe_info->Rename(param_name, orig_name);
   } else if (op->isa<pir::ShadowOutputOp>()) {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name = op->attributes()
@@ -551,6 +553,14 @@ void HandleForSpecialOp(pir::Operation* op,
                         .AsString();
 
     auto value = op->operand_source(0);
+    Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
+    if (value.defining_op()->HasAttribute(kAttrIsPersistable) &&
+        value.attribute<pir::BoolAttribute>(kAttrIsPersistable).data()) {
+      VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+              << var_name;
+      scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+    }
+
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
@@ -558,14 +568,17 @@ void HandleForSpecialOp(pir::Operation* op,
       return;
     }
 
-    if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
-      VLOG(1) << "var " << var_name << " has been removed from scope";
+    if (value_exe_info->HasVar(var_name)) {
+      value_exe_info->UpdateValue2VarName(value, var_name);
+    } else {
+      if (scope->FindVar(var_name) != nullptr) {
+        scope->EraseVars({var_name});
+        VLOG(1) << "var " << var_name << " has been removed from scope";
+      }
+      scope->Rename(orig_name, var_name);
+      VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
+      value_exe_info->Rename(var_name, orig_name);
     }
-    const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
-    VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
-
-    value_exe_info->Rename(value, var_name, orig_name);
   } else if (op->isa<pir::ParameterOp>()) {
     VLOG(6) << "Handle for builtin.parameter:";
     auto param_name = op->attributes()
@@ -879,19 +892,20 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   auto attr_name_list = op_yaml_info.AttrParams(true);
   for (auto& name : attr_name_list) {
     auto& val = op_attr_map.at(name);
+    auto legacy_arg_name = op_normalizer.GetLegacyAttrName(fluid_op_name, name);
 
     if (val.isa<pir::StrAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::StrAttribute>().AsString();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::StrAttribute>().AsString();
     } else if (val.isa<pir::Int32Attribute>()) {
-      attr_map[name] = val.dyn_cast<pir::Int32Attribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::Int32Attribute>().data();
     } else if (val.isa<pir::BoolAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::BoolAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::BoolAttribute>().data();
     } else if (val.isa<pir::FloatAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::FloatAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::FloatAttribute>().data();
     } else if (val.isa<pir::DoubleAttribute>()) {
-      attr_map[name] = val.dyn_cast<pir::DoubleAttribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::DoubleAttribute>().data();
     } else if (val.isa<pir::Int64Attribute>()) {
-      attr_map[name] = val.dyn_cast<pir::Int64Attribute>().data();
+      attr_map[legacy_arg_name] = val.dyn_cast<pir::Int64Attribute>().data();
     } else if (val.isa<pir::ArrayAttribute>()) {
       auto array_list = val.dyn_cast<pir::ArrayAttribute>().AsVector();
       PADDLE_ENFORCE(
@@ -902,41 +916,41 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         for (auto attribute : array_list) {
           vec_int.push_back(attribute.dyn_cast<pir::Int32Attribute>().data());
         }
-        attr_map[name] = vec_int;
+        attr_map[legacy_arg_name] = vec_int;
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
         std::vector<int> vec_int64;
         for (auto attribute : array_list) {
           vec_int64.push_back(
               attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_int64;
+        attr_map[legacy_arg_name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
         std::vector<int> vec_bool;
         for (auto attribute : array_list) {
           vec_bool.push_back(attribute.dyn_cast<pir::BoolAttribute>().data());
         }
-        attr_map[name] = vec_bool;
+        attr_map[legacy_arg_name] = vec_bool;
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
         std::vector<int> vec_float;
         for (auto attribute : array_list) {
           vec_float.push_back(
               attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_float;
+        attr_map[legacy_arg_name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
         std::vector<int> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
-        attr_map[name] = vec_double;
+        attr_map[legacy_arg_name] = vec_double;
       } else if (array_list[0].isa<pir::StrAttribute>()) {
         std::vector<std::string> vec_string;
         for (auto attribute : array_list) {
           vec_string.push_back(
               attribute.dyn_cast<pir::StrAttribute>().AsString());  // NOLINT
         }
-        attr_map[name] = vec_string;
+        attr_map[legacy_arg_name] = vec_string;
       } else {
         std::stringstream ss;
         val.Print(ss);
@@ -944,7 +958,7 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
       }
     } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
-      attr_map[name] = paddle::framework::TransToProtoVarType(
+      attr_map[legacy_arg_name] = paddle::framework::TransToProtoVarType(
           val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else {
       std::stringstream ss;

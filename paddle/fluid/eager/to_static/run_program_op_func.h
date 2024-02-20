@@ -21,8 +21,8 @@
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/value.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -289,8 +289,10 @@ inline void pir_run_program_ad_func(
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  PirRunProgramAPI(x,
-                   params,
+  auto x_tmp = Trans2ContiguousTensors(x);
+  auto params_tmp = Trans2ContiguousTensors(params);
+  PirRunProgramAPI(x_tmp,
+                   params_tmp,
                    out,
                    middles,
                    step_scope,
@@ -305,11 +307,11 @@ inline void pir_run_program_ad_func(
     grad_node->SetAttrMap(attrs);
 
     // Clear unused x vars
-    auto filter_x = pir_filter_unused_input_var_in_backward(x, "bx", attrs);
+    auto filter_x = pir_filter_unused_input_var_in_backward(x_tmp, "bx", attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 
-    grad_node->SetFwdParams(params);
+    grad_node->SetFwdParams(params_tmp);
 
     grad_node->SetStepScope(step_scope);  // just for set useable.
 

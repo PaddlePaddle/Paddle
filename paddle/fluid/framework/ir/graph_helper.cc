@@ -26,11 +26,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/platform/flags.h"
 PD_DECLARE_bool(convert_all_blocks);
@@ -416,7 +416,7 @@ void CleanIndividualNodes(Graph *graph) {
   }
 }
 
-std::vector<Node *> TopologyVarientSort(const Graph &graph,
+std::vector<Node *> TopologyVariantSort(const Graph &graph,
                                         SortKind sort_kind) {
   switch (sort_kind) {
     case SortKind::TS:
@@ -788,7 +788,7 @@ static void GraphToBlock(const Graph &graph,
   std::vector<Node *> nodes;
   if (sort_kind != nullptr) {
     // Inference Memory Optimize relays on this branch.
-    nodes = TopologyVarientSort(graph, *sort_kind);
+    nodes = TopologyVariantSort(graph, *sort_kind);
   } else {
     if (FLAGS_convert_all_blocks) {
       nodes = TopologySortGraphByDescOrder(graph);

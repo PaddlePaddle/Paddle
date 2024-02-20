@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/type.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "test/cpp/pir/tools/test_dialect.h"

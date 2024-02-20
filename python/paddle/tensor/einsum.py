@@ -110,7 +110,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
 
-    # Hidden assumption: availble labels don't include '.'
+    # Hidden assumption: available labels don't include '.'
     assert '.' not in input_labels
 
     # Verify that output labels all come from the set of input labels
@@ -195,7 +195,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     rhs:
         The equation right hand side
     n_bcast_dims:
-        The maxium number of broadcast dimensions
+        The maximum number of broadcast dimensions
 
     Returns
     -------
@@ -336,7 +336,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     plan matmul
     '''
     # Transpose and re-shape op1 and op2 in I, J1, K and I, J2, K
-    # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
+    # Then apply matmul(x, y, transpose_x=False, transpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
     op1_view, op2_view = (g_view[op] for op in (op1, op2))
@@ -366,7 +366,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
         step = transpose, [var2], var2, list(op2_dims)
         plan.add_step(step)
 
-    # Check if conditions hold for turnning the operation into a matmul
+    # Check if conditions hold for turning the operation into a matmul
     if (
         j1 + j2 > 0
         and k > 0
@@ -538,7 +538,7 @@ def plan_broadcast(plan, operands, nop_axes):
     varnames = [f'op{i}' for i in range(nop)]
 
     for i, op_axes in zip(range(nop), nop_axes):
-        # Re-arrange the dimesions according to the global layout
+        # Re-arrange the dimensions according to the global layout
         perm, fill = rearrange(op_axes)
         var = varnames[i]
         if perm:
@@ -646,10 +646,10 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
         #       I... are aligned and not to be combined immediately
         #       J... are not aligned and not to be combined immediately
         #       K... are aligned and should be immediately combined
-        # At this point the non-trivial broadcast dimensinos in K are already reduced
+        # At this point the non-trivial broadcast dimensions in K are already reduced
         # and removed. That means all K dimensions are aligned and their sizes are not 1.
         # We then inspect the layout of I,J,K plus the above observation to make
-        # specializatoin decisions.  The current strategy is set as follows:
+        # specialization decisions.  The current strategy is set as follows:
         #  (1) if I... J... K... are all empty, it's multiplying a scalar
         #  (2) if K... are empty, better use a broadcast
         #  (3) if I... J... empty and K... not empty, a vector-vector multiply (or a dot)
@@ -748,7 +748,7 @@ def parse_fake_shape(equation, operands, labels):
     def fake_shape(ori_label, label, op):
         """
         1. ori_label is the original labels, not aligned by '....'
-        2. if the '...' is evalulated to empty list, there is no '.' in label
+        2. if the '...' is evaluated to empty list, there is no '.' in label
         """
         assert len(op.shape) == len(label), (
             "length of shape and length of label must be the same, but received %d != %d"
@@ -802,7 +802,7 @@ def einsum_v2(equation, *operands):
     """
     einsum v2 implementation.
     1. Implement C++ EinsumOp.
-    2. V2 create the EinsumOp to calculate, so just a little verifty work in python.
+    2. V2 create the EinsumOp to calculate, so just a little verify work in python.
     3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
     """
     n_op = len(operands)

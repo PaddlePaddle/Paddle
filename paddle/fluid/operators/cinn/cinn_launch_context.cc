@@ -27,6 +27,7 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -44,13 +45,12 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
@@ -199,7 +199,7 @@ void CinnLaunchContext::BuildVarNameMap(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
       platform::errors::PreconditionNotMet(
-          "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
+          "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
 }
@@ -426,7 +426,7 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   to the new VarDesc.
   //   (2) For all variables, the shape, data type of their VarDescs
   //   are set by values of the corresponding compiled tensors,
-  //   including the in/out variables where the equiality between their tensors
+  //   including the in/out variables where the equality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);

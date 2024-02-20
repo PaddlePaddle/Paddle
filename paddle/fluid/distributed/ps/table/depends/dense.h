@@ -22,13 +22,13 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
 
-// dense optimzier
+// dense optimizer
 // TODO(tangwei12) integrate with sparse optimzer later.
 class DenseOptimizer {
  public:

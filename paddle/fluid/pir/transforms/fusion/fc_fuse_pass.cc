@@ -18,13 +18,15 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
 class MatmulAddPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "MatmulAddPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
@@ -58,33 +60,26 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &in_num_col_dims_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> std::any {
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          return x_dims.size() - 1;
-        });
-    const auto &false_attr =
-        res.Attr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return false;
+          return static_cast<int>(x_dims.size()) - 1;
         });
 
-    const auto &fc =
-        res.Op(paddle::dialect::FcOp::name(),
-               {{
-                   {"in_num_col_dims", in_num_col_dims_attr},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return ""; })},
-                   {"padding_weights", false_attr},
-               }});
+    const auto &fc = res.Op(paddle::dialect::FcOp::name(),
+                            {{
+                                {"in_num_col_dims", in_num_col_dims_attr},
+                                {"activation_type", res.StrAttr("")},
+                                {"padding_weights", res.BoolAttr(false)},
+                            }});
     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "MatmulAddPattern"; }
 };
 
 class FcWithReluPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FcWithReluPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fc =
@@ -110,16 +105,12 @@ class FcWithReluPattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::FcOp::name(),
                {{
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type",
-                    res.Attr([](const paddle::drr::MatchContext &match_ctx)
-                                 -> std::string { return "relu"; })},
+                   {"activation_type", res.StrAttr("relu")},
                    {"padding_weights", pat.Attr("padding_weights")},
                }});
     fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("relu_out")});
   }
-
-  std::string name() const override { return "FcWithReluPattern"; }
 };
 
 class FcFusePass : public pir::PatternRewritePass {
@@ -128,8 +119,8 @@ class FcFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(MatmulAddPattern().Build(context));
-    ps.Add(FcWithReluPattern().Build(context));
+    ps.Add(paddle::drr::Create<MatmulAddPattern>(context));
+    ps.Add(paddle::drr::Create<FcWithReluPattern>(context));
     return ps;
   }
 };

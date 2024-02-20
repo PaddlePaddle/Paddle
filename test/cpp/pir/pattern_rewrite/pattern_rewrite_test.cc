@@ -33,23 +33,23 @@
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_info.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/cast_utils.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_info.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
@@ -218,7 +218,7 @@ class RedundantTransposeFusePattern
     if (prev_trans_op) {
       std::vector<int> axis_first = GetAxis(prev_trans_op);
       IR_ENFORCE(axis_first.size() == axis_last.size(),
-                 "tranpose op's perm rank should be same.");
+                 "transpose op's perm rank should be same.");
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.set_insertion_point(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
@@ -445,10 +445,8 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("a"),
-                                                  dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ConstantTensorOp>(builder.tensor_name_attr("b"),
-                                                  dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>("a", dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>("b", dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -585,7 +583,7 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 2u);
 }
 
 void BuildMultiOutputProgram(pir::Program *program, pir::IrContext *ctx) {

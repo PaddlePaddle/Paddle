@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .context import Context
+from paddle.distributed.launch.context import Context
 
 ctx = None
 
@@ -94,13 +94,13 @@ def launch():
         - ``--elastic_timeout``: Seconds to wait before elastic job begin to train. Default ``--elastic_timeout=30``.
 
     IPU Parameters:
-        IPU distributed launch only requires and allowes three arguments ``--devices``, ``training_script`` and ``training_script_args``.
+        IPU distributed launch only requires and allows three arguments ``--devices``, ``training_script`` and ``training_script_args``.
         The ``--devices`` is the number of IPU devices. e.g., ``--devices=4`` will launch the training program with four IPU devices.
         The ``training_script`` is only allowed to set as ``ipu``.
         The ``training_script_args`` includes arguments required by IPU distributed launch and illustrated as below.
         ``Examples 10`` has provided a example of paddle.distributed.launch with IPUs.
 
-        - ``--hosts``: The hosts for IPU distributd training. Each host is able to include multiple processes.
+        - ``--hosts``: The hosts for IPU distributed training. Each host is able to include multiple processes.
 
         - ``--nproc_per_host``: The number of processes launched per host. Each process is able to include multiple replicas.
 
@@ -303,9 +303,9 @@ def launch():
         import sys
         import time
 
-        from ..auto_tuner.recorder import HistoryRecorder
-        from ..auto_tuner.tuner import AutoTuner
-        from ..auto_tuner.utils import (
+        from paddle.distributed.auto_tuner.recorder import HistoryRecorder
+        from paddle.distributed.auto_tuner.tuner import AutoTuner
+        from paddle.distributed.auto_tuner.utils import (
             add_overlap_performance,
             find_error_from_log,
             gen_new_args,
@@ -313,7 +313,7 @@ def launch():
             read_log,
             read_step_time_log,
         )
-        from . import controllers
+        from paddle.distributed.launch import controllers
 
         start_time = time.time()
         # read user defined tuner config json
@@ -354,6 +354,8 @@ def launch():
                 ]
             else:
                 entrypoint = [sys.executable, "-u", ctx.args.training_script]
+        elif ctx.args.training_script.endswith('.pyxes'):
+            entrypoint = [sys.executable, ctx.args.training_script]
         else:
             entrypoint = [ctx.args.training_script]
         entrypoint.extend(ctx.args.training_script_args)
@@ -383,7 +385,7 @@ def launch():
         sorted_ips = []
         ip = None
         if nnodes > 1:
-            from .utils.etcd_client import ETCDClient
+            from paddle.distributed.launch.utils.etcd_client import ETCDClient
 
             assert "etcd://" in ctx.args.master
             master_ip, port = ctx.args.master.strip("etcd://").split(':')
@@ -496,8 +498,8 @@ def launch():
                 c.run()
 
                 # process generated result
-                # TODO diffentiate out of memory and no loss(maybe over time)
-                # TODO integragte memory and metric read
+                # TODO differentiate out of memory and no loss(maybe over time)
+                # TODO integrate memory and metric read
                 metric, mem, err = read_log(
                     path=ctx.args.log_dir,
                     metric_file="workerlog.0",
@@ -576,10 +578,10 @@ def launch():
 
             end_time = time.time()
             ctx.logger.info(
-                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
+                f"AutoTuner for GBS search ends in {end_time - start_time}s."
             )
             logger.info(
-                f"AtuoTuner for GBS search ends in {end_time - start_time}s."
+                f"AutoTuner for GBS search ends in {end_time - start_time}s."
             )
 
         # build AutoTuner to get new config
@@ -962,7 +964,9 @@ def launch():
             # if need accurate peak memory
             if os.environ.get("FLAGS_log_memory_stats", False):
                 max_peak_memory = None
-                from ..auto_tuner.utils import read_allocated_memory_log
+                from paddle.distributed.auto_tuner.utils import (
+                    read_allocated_memory_log,
+                )
 
                 for root, dirs, files in os.walk(ctx.args.log_dir):
                     for file in files:
@@ -1023,7 +1027,7 @@ def launch():
                         comm_time = model_size_b * (4 + 2) / bw
                     else:
                         comm_time = model_size_b * 4 / bw
-                    multi_dp_performace = (
+                    multi_dp_performance = (
                         round(
                             step_time
                             / (step_time + comm_time)
@@ -1035,16 +1039,16 @@ def launch():
                     )
                     cur_cfg[
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
-                    ] = multi_dp_performace
+                    ] = multi_dp_performance
                     cur_cfg[
                         f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = (
-                        round(multi_dp_performace / num_gpus, 2)
-                        if multi_dp_performace
+                        round(multi_dp_performance / num_gpus, 2)
+                        if multi_dp_performance
                         and tuner_cfg["search_algo"]["conversion"].get(
                             "need_unify", False
                         )
-                        else multi_dp_performace
+                        else multi_dp_performance
                     )
                     if recorder.additional_metric_key is None:
                         recorder.additional_metric_key = (
@@ -1069,7 +1073,8 @@ def launch():
                         )
                         if len(single_error_info) > 0:
                             while not client.put(
-                                path, single_error_info.encode('latin-1')
+                                path,
+                                single_error_info.encode('latin-1', 'ignore'),
                             ):
                                 time.sleep(1)
                             ctx.logger.info(
@@ -1098,7 +1103,7 @@ def launch():
                         status = [
                             i[0].decode()
                             for i in result
-                            if "OK" not in i[0].decode()
+                            if "OK" not in i[0].decode('utf-8', 'ignore')
                         ]
                         error_info = list(set(status))
                         ctx.logger.info(
@@ -1153,6 +1158,7 @@ def launch():
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                mode=mode,
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1258,7 +1264,7 @@ def launch():
         c.finalize(exit=True)
 
     else:
-        from . import controllers
+        from paddle.distributed.launch import controllers
 
         # initialize the selected controller
         c = controllers.init(ctx)

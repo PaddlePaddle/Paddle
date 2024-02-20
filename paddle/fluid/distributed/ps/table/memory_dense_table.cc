@@ -159,7 +159,7 @@ int32_t MemoryDenseTable::PushDenseParam(const float *values, size_t num) {
       num,
       param_dim_,
       paddle::platform::errors::InvalidArgument(
-          "update desne param numel expected %d, but got %d", param_dim_, num));
+          "update dense param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
   return 0;
 }
@@ -190,7 +190,7 @@ int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
       num,
       param_dim_,
       paddle::platform::errors::InvalidArgument(
-          "update desne numel expected %d, but got %d", param_dim_, num));
+          "update dense numel expected %d, but got %d", param_dim_, num));
 
   std::vector<int> buckets = bucket(param_dim_, task_pool_size_);
   std::vector<std::future<int>> tasks(task_pool_size_);
@@ -224,9 +224,9 @@ int32_t MemoryDenseTable::Load(const std::string &path,
     VLOG(1) << "load dense table file list: " << ff;
   }
   size_t dim_num_per_file = _config.accessor().fea_dim() / file_list.size() + 1;
-  // param_dim_ in last node != _config.accesor().fea_dim() / _shard_num + 1
+  // param_dim_ in last node != _config.accessor().fea_dim() / _shard_num + 1
   size_t dim_num_per_shard =
-      _value_accesor->GetAccessorInfo().fea_dim / _shard_num + 1;
+      _value_accessor->GetAccessorInfo().fea_dim / _shard_num + 1;
   size_t start_dim_idx = dim_num_per_shard * _shard_idx;
   size_t start_file_idx = start_dim_idx / dim_num_per_file;
   size_t end_file_idx = (start_dim_idx + param_dim_) / dim_num_per_file;
@@ -238,9 +238,9 @@ int32_t MemoryDenseTable::Load(const std::string &path,
   int load_param = atoi(param.c_str());
   FsChannelConfig channel_config;
 
-  channel_config.converter = _value_accesor->Converter(load_param).converter;
+  channel_config.converter = _value_accessor->Converter(load_param).converter;
   channel_config.deconverter =
-      _value_accesor->Converter(load_param).deconverter;
+      _value_accessor->Converter(load_param).deconverter;
   bool is_read_failed = false;
   int err_no = 0;
   int retry_num = 0;
@@ -334,9 +334,9 @@ int32_t MemoryDenseTable::Save(const std::string &path,
         "%s/part-%03d", TableDir(path).c_str(), _shard_idx);
   }
   _afs_client.remove(channel_config.path);
-  channel_config.converter = _value_accesor->Converter(save_param).converter;
+  channel_config.converter = _value_accessor->Converter(save_param).converter;
   channel_config.deconverter =
-      _value_accesor->Converter(save_param).deconverter;
+      _value_accessor->Converter(save_param).deconverter;
 
   bool is_write_failed = false;
   std::vector<std::string> result_buffer_param;

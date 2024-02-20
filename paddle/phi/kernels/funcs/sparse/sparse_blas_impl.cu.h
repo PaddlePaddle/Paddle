@@ -83,7 +83,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
       x_ndims,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or eaqual to 2."));
+                                   "greater than or equal to 2."));
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -138,7 +138,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
       x_ndims,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or eaqual to 2."));
+                                   "greater than or equal to 2."));
 
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
@@ -233,7 +233,7 @@ class CuSparseDnMatDescriptor {
         x_ndims,
         2,
         phi::errors::InvalidArgument("the dim size of DenseTensor must be "
-                                     "greater than or eaqual to 2."));
+                                     "greater than or equal to 2."));
 
     int64_t M = xdim_vec[x_ndims - 2];
     int64_t N = xdim_vec[x_ndims - 1];
@@ -296,7 +296,7 @@ class CuSparseDnVecDescriptor {
     PADDLE_ENFORCE_GE(x_ndims,
                       1,
                       phi::errors::InvalidArgument(
-                          "the dim size of Vec must be eaqual to 1."));
+                          "the dim size of Vec must be equal to 1."));
 
     const T* x_data = x.data<T>();
     cudaDataType_t gpu_type = GetGpuDataType<T>();
