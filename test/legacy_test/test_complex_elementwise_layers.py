@@ -73,7 +73,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
         for place in self._places:
             with dg.guard(place):
                 var_x = paddle.to_tensor(x)
-                var_y = paddle.to_tensor(x)
+                var_y = paddle.to_tensor(y)
                 self.assert_check((var_x + var_y).numpy(), x + y, place)
                 self.assert_check((var_x - var_y).numpy(), x - y, place)
                 self.assert_check((var_x * var_y).numpy(), x * y, place)
