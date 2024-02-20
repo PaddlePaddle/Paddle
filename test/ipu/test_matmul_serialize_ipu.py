@@ -61,7 +61,7 @@ class TestBase(IPUOpTest):
             shape=self.feed_shape[1],
             dtype=self.feed_dtype[1],
         )
-        # decrator maybe the best choice, but need to modify api
+        # decorator maybe the best choice, but need to modify api
         out = paddle.matmul(x, y, **self.attrs)
         set_serialize_factor(4)
         self.fetch_list = [out.name]

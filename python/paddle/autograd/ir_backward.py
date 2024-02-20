@@ -45,7 +45,7 @@ from paddle.base.libpaddle.pir import (
 )
 
 """
-    grad: for templete test, will combine in paddle.grad .
+    grad: for template test, will combine in paddle.grad .
     calc_gradient: for internal use, optest, parallel etc .
     calc_gradient_helper: for dygraph to static .
 """
@@ -824,7 +824,7 @@ def prepare_backward_prune_set(inputs, outputs):
                 for item in get_real_op_inputs(used_op):
                     outputs_fwd_set.add(item)
         else:
-            logging.warning("input privided by inputs has no use")
+            logging.warning("input provided by inputs has no use")
 
     inputs_fwd_set = ValueSet()
     for output in outputs:
@@ -870,7 +870,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state = State(block)
     if all_stop_gradient_true(block):
         logging.warning(
-            "all op in block stop_grdient is True, no grad will be calculate"
+            "all op in block stop_gradient is True, no grad will be calculate"
         )
         return state.value_to_valuegrad
 
@@ -914,7 +914,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         ValueDict(),
     )
 
-    # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
+    # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
@@ -949,7 +949,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
 
 def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
     """
-    caclulate gradient of input
+    calculate gradient of input
 
     Args:
         outputs (Value|list(Value)|tuple(Value)): the output Value or
@@ -1138,7 +1138,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         ops = loss.get_defining_op().get_parent_block().ops
         parameter_list = []
         for op in ops:
-            if not op.has_attr("is_persisable"):
+            if not op.has_attr("is_persistable"):
                 continue
             persist_value = [
                 result for result in op.results() if result.persistable

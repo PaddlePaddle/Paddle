@@ -70,12 +70,23 @@ def stack_net(x):
     return paddle.stack([x, y], axis=0)
 
 
+def tile_net1(x):
+    y = paddle.tile(x, repeat_times=[2, 5])
+    return y
+
+
+def tile_net2(x):
+    y = paddle.tile(x, repeat_times=[3, 2, 5])
+    return y
+
+
 class TestPrimOne(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = log_softmax_net
         self.necessary_ops = "pd_op.log_softmax"
         self.enable_cinn = False
@@ -89,7 +100,7 @@ class TestPrimOne(unittest.TestCase):
                 self.net,
                 use_cinn=self.enable_cinn,
                 input_spec=[
-                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=self.init_x_shape, dtype='float32'),
                 ],
             )
             fn.eval()
@@ -119,8 +130,9 @@ class TestPrimOne2(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "bool"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = any_net
         self.necessary_ops = "pd_op.any"
         self.enable_cinn = False
@@ -131,8 +143,8 @@ class TestPrimOne2(TestPrimOne):
 #     def setUp(self):
 #         np.random.seed(2023)
 #         self.dtype = "int"
-#         self.shape_x = [1, 300, 4096]
-#         self.x = np.random.randint(0, 10, size=self.shape_x)
+#         self.x_shape = [1, 300, 4096]
+#         self.x = np.random.randint(0, 10, size=self.x_shape)
 #         self.net = embedding_net
 #         self.necessary_ops = "pd_op.embedding"
 #         self.enable_cinn = False
@@ -142,8 +154,9 @@ class TestPrimOne3(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = full_like_net
         self.necessary_ops = "pd_op.full_like"
         self.enable_cinn = False
@@ -153,10 +166,35 @@ class TestPrimOne4(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"
+        self.enable_cinn = False
+
+
+class TestPrimOne5(TestPrimOne):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [1, 300, 4096]
+        self.init_x_shape = [None, None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = tile_net1
+        self.necessary_ops = "pd_op.tile"
+        self.enable_cinn = False
+
+
+class TestPrimOne6(TestPrimOne):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [300, 4096]
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = tile_net2
+        self.necessary_ops = "pd_op.tile"
         self.enable_cinn = False
 
 
