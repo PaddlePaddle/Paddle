@@ -15,7 +15,6 @@
 import copy
 import logging
 import os
-import re
 import sys
 import warnings
 from functools import lru_cache
@@ -685,7 +684,7 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
     )
 
 
-def _get_program_cache_key(feed, fetch_list):
+def _get_feed_fetch_list(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
@@ -693,7 +692,11 @@ def _get_program_cache_key(feed, fetch_list):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-    return str(feed_var_names + fetch_var_names)
+    return feed_var_names + fetch_var_names
+
+
+def _get_program_cache_key(feed, fetch_list):
+    return str(_get_feed_fetch_list(feed, fetch_list))
 
 
 def _as_lodtensor(data, place, dtype=None):
@@ -1029,8 +1032,7 @@ class _ExecutorCache:
 
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
-            key = _get_program_cache_key(feed, fetch_list)
-            skip_var_names = re.findall(r'\'([^\']*)\'', key)
+            skip_var_names = _get_feed_fetch_list(feed, fetch_list)
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
