@@ -63,31 +63,19 @@ static void check_ops(const std::string& op_name) {
   return;
 }
 
-static const phi::DDim GetValueDims(pir::Value value) {
-  pir::Type origin_type = value.type();
-  if (!origin_type) {
+static const phi::DDim& GetValueDims(pir::Value value) {
+  if (!value.type()) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
-  auto getdims = [](pir::Type value_type) -> phi::DDim {
-    if (value_type.isa<DenseTensorType>()) {
-      return value_type.dyn_cast<DenseTensorType>().dims();
-    } else if (value_type.isa<SelectedRowsType>()) {
-      return value_type.dyn_cast<SelectedRowsType>().dims();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "[Prim] Currently, we can only get shape for dense "
-          "tensor."));
-    }
-  };
-  phi::DDim value_dim;
-  if (origin_type.isa<pir::VectorType>()) {
-    for (auto item : origin_type.dyn_cast<pir::VectorType>()) {
-      value_dim = getdims(item);
-    }
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
-    value_dim = getdims(origin_type);
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[Prim] Currently, we can only get shape for dense "
+        "tensor."));
   }
-  return value_dim;
 }
 
 static phi::DataType GetValueDtype(pir::Value value) {
