@@ -40,3 +40,4 @@
 ./test_specialization.py
 ./test_str_format.py
 ./test_tensor_dtype_in_guard.py
+./test_dtype.py
