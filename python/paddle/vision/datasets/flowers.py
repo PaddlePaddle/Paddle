@@ -159,10 +159,6 @@ class Flowers(Dataset):
 
         data_tar = tarfile.open(data_file)
         self.data_path = data_file.replace(".tgz", "/")
-        self.data_path.replace("../", "")
-        assert (
-            self.data_path[0] != "/"
-        ), f"uncompress file path {self.data_path} should not start with /"
         if not os.path.exists(self.data_path):
             os.mkdir(self.data_path)
         data_tar.extractall(self.data_path)
