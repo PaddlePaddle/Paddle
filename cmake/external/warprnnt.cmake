@@ -26,8 +26,7 @@ set(WARPRNNT_PATCH_COMMAND "")
 set(WARPRNNT_CCBIN_OPTION "")
 if(WIN32)
   set(WARPCTC_PATCH_CUDA_COMMAND
-      git checkout -- . && git checkout ${WARPRNNT_TAG} && ${CMAKE_COMMAND} -E
-      copy_if_different
+      ${CMAKE_COMMAND} -E copy_if_different
       ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch
       "<SOURCE_DIR>/")
 else()
