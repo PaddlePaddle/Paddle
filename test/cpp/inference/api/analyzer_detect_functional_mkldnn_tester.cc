@@ -79,7 +79,7 @@ int GetNumCachedObjects() {
   auto &pool = platform::DeviceContextPool::Instance();
   phi::CPUPlace place;
   auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
-  return onednn_dev_ctx->GetCachedObjectsNumber();
+  return onednn_dev_ctx->GetCachedObjectsNumber();  // NOLINT
 }
 
 void validate_cache_onednn(int cache_capacity = 1) {

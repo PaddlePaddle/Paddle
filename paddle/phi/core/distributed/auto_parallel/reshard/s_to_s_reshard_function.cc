@@ -49,7 +49,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call SToSReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
   auto dtype = in.dtype();
@@ -158,7 +158,7 @@ void SToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call SToSReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   SameStatusReshardFunction same_status_func;
