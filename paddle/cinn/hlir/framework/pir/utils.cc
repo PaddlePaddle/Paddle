@@ -276,7 +276,7 @@ std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
 std::vector<::pir::Value> CompatibleInfo::RealOperandSources(
     const ::pir::Operation& op) {
   if (OpMapper::Instance().has(op, MapperType::OPERAND)) {
-    return OpMapper::Instance().RealOprandSources(op);
+    return OpMapper::Instance().RealOperandSources(op);
   } else {
     return op.operands_source();
   }
