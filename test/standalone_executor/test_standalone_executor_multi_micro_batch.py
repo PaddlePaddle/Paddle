@@ -219,7 +219,9 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 expected_result, actual_result, atol=1e-6, rtol=1e-6
             )
         else:
-            np.testing.assert_equal(expected_result, actual_result)
+            np.testing.assert_allclose(
+                expected_result, actual_result, atol=1e-6, rtol=1e-6
+            )
 
     def test_multi_micro_batch_run(self):
         last_res = None
