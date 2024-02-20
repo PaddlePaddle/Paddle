@@ -15,7 +15,6 @@
 import os
 import shutil
 import unittest
-import subprocess
 
 import numpy as np
 
@@ -68,12 +67,7 @@ class Parser:
             if op.name() == self.feed_op_name:
                 in_val = op.result(0)
                 # shape, dtype
-                shape = []
-                for s in in_val.shape:
-                    if s == -1:
-                        s = 1
-                    shape.append(s)
-                info = [shape, in_val.dtype]
+                info = [in_val.shape, in_val.dtype]
                 feeds[op.attrs()['name']] = info
 
         return feeds
@@ -191,43 +185,5 @@ class TestSaveInferProg(TestSaveFwdBwdProg):
             self.assertListEqual(list(out.shape), fetchs[name])
 
 
-class TestInferProg(unittest.TestCase):
-    def setUp(self):
-        self.root_dir = "/workspace/paddle-fork/model_test/subgraph/clas/wrapper"
-        self.phi_cnt = 0
-        self.cinn_cnt = 0
-        self.total = 0
-        self.codegen_cn = 0
-
-    def test_cinn(self):
-        for prog_file in os.listdir(self.root_dir):
-            if "infer" in prog_file:
-                self.check_infer(prog_file)
-        print(f"Summary: total: {self.total}, phi_cnt: {self.phi_cnt}, cinn_cnt: {self.cinn_cnt}, codegen_cnt: {self.codegen_cn}")
-            
-    def check_infer(self, prog_file):
-        self.total += 1
-        path = os.path.join(self.root_dir, prog_file)
-        print('start parse ', path, flush=True)
-        template = "python my_task.py TestTask.test_{task} --file_path={file_path}"
-        phi_cmd = template.format(task='phi', file_path=path)
-        cinn_cmd = template.format(task='cinn', file_path=path)
-        try:
-        #    subprocess.check_call(phi_cmd.split())
-           self.phi_cnt += 1
-           print('---> run phi program ok')
-        except Exception as e:
-            print(e)
-
-        try:
-            subprocess.check_call(cinn_cmd.split())
-            print('---> run cinn program ok')
-            self.cinn_cnt += 1
-        except Exception as e:
-            if "CinnJitInstruction::Run" in str(e):
-                self.codegen_cn += 1
-            print(e)
-
 if __name__ == "__main__":
     unittest.main()
-    # subprocess.check_call(['python', 'my_task.py', 'TestTask.test_cinn', "--file_path=/workspace/paddle-fork/model_test/subgraph/clas/wrapper/infer_reshape2_transpose2.txt"])
