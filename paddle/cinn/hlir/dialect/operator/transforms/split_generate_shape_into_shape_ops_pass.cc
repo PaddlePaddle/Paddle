@@ -23,13 +23,14 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -352,18 +353,25 @@ class SplitGenerateShapeIntoShapeOps
   }
 };
 
-SplitGenerateShapeIntoShapeOpsPass::SplitGenerateShapeIntoShapeOpsPass()
-    : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {}
+class SplitGenerateShapeIntoShapeOpsPass : public pir::PatternRewritePass {
+ public:
+  SplitGenerateShapeIntoShapeOpsPass()
+      : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {
+  }
 
-pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  ps.Add<SplitGenerateShapeIntoShapeOps>(context);
-  return ps;
-}
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<SplitGenerateShapeIntoShapeOps>(context);
+    return ps;
+  }
 
-bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass() {
+  return std::make_unique<SplitGenerateShapeIntoShapeOpsPass>();
 }
 
 }  // namespace ir

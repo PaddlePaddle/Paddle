@@ -270,12 +270,13 @@ if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddl
     fi
 fi
 
-IF_USE_SUBPROCESS=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "subprocess" || true`
+PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
+IF_USE_SUBPROCESS=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "subprocess\." || true`
 if [[ ${IF_USE_SUBPROCESS} ]]; then
     echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using subprocess, which may cause security problem.\n"
     check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
 fi
-IF_USE_EVAL=`git diff -U5 upstream/$BRANCH -- '*.py' | grep  -B5 --no-group-separator "eval([^()]*[a-zA-Z0-9_])" || true`
+IF_USE_EVAL=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "[^\w\d_]eval([^()]*[a-zA-Z0-9_])" || true`
 if [[ ${IF_USE_EVAL} ]]; then
     echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using eval, which may cause security problem.\n"
     check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
@@ -436,6 +437,12 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
         echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for the changes.\n"
         check_approval 1 SigureMo Aurelius84 2742195759 gouzil
     fi
+fi
+
+HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_tensor_attr_consistency.py" || true)
+if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
+    check_approval 1 SigureMo Aurelius84 2742195759 gouzil
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`

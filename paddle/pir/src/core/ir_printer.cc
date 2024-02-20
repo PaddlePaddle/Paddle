@@ -17,15 +17,15 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 

@@ -20,11 +20,11 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -273,10 +273,8 @@ class Pool2dOpPattern
         pir::ArrayAttribute::get(pir::IrContext::Instance(), kernel_size);
     attrs["stride_size"] = attrs.at("strides");
     attrs["padding_size"] = attrs.at("paddings");
-    attrs["pool_type"] = attrs.at("pooling_type");
     attrs.erase("strides");
     attrs.erase("paddings");
-    attrs.erase("pooling_type");
 
     auto cinn_reshape =
         rewriter.Build<cinn::dialect::Pool2dOp>(op->operand_source(0), attrs);

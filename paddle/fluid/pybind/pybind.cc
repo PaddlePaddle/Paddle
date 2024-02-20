@@ -210,7 +210,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
@@ -2273,8 +2273,7 @@ All parameter, weight, gradient are variables in Paddle.
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
   pylodtensorarray
-      .def("__init__",
-           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
+      .def(py::init([]() { return std::make_unique<LoDTensorArray>(); }))
       .def(
           "__getitem__",
           [](LoDTensorArray &self, size_t i) { return &self.at(i); },

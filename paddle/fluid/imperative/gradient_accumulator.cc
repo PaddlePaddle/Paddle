@@ -657,7 +657,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
 
   auto* dst_var = Var();
   platform::Place place = GetPlaceOfVar(var);
-  if (!dst_var->OverridedStopGradient()) {
+  if (!dst_var->OverriddenStopGradient()) {
     if (CurCnt() == 0) {
       MoveOrCopyVar(dst_var->MutableVar(), var->MutableVar(), unchange_input);
     } else {
@@ -704,7 +704,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
                                         bool unchange_input) {
   auto* dst_var = Var();
   platform::Place place = GetPlaceOfVar(var);
-  if (!dst_var->OverridedStopGradient()) {
+  if (!dst_var->OverriddenStopGradient()) {
     if (ref_cnt_ == 1) {
       MoveOrCopyVar(dst_var->MutableVar(),
                     var->MutableVar(),

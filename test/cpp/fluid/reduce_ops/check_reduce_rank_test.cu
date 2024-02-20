@@ -21,7 +21,7 @@ namespace operators {
 namespace details {
 
 TEST(test_reduce_rank_check, all) {
-  using EnforceNotMet = phi::EnforceNotMet;
+  using EnforceNotMet = common::enforce::EnforceNotMet;
   constexpr int kMaxRank = framework::DDim::kMaxRank;
 
   for (int rank = 0; rank < kMaxRank; rank++) {
