@@ -24,7 +24,6 @@ from legacy_test.test_dist_base import (
 )
 
 import paddle
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 np.random.seed(2021)
@@ -70,7 +69,7 @@ class TestSimpleNet(TestParallelDyGraphRunnerBase):
     def run_one_loop(self, model, optimizer, batch):
         x_data = np.array(list(batch))
         x_data = x_data.reshape((-1, 10))
-        x = to_variable(x_data)
+        x = paddle.to_tensor(x_data)
         out = model(x)
         loss = out.sum() / len(batch)
         return loss

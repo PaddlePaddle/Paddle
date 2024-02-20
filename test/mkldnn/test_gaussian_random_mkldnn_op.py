@@ -24,12 +24,14 @@ import paddle
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.use_mkldnn = True
+        self.check_pir_onednn = True
         self.attrs = {
             "shape": [123, 92],
             "mean": 1.0,

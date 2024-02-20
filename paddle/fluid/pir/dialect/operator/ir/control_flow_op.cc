@@ -25,15 +25,15 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_trait.h"
+#include "paddle/pir/include/core/operation_utils.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -169,18 +169,23 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  os << "{";
+  os << "{\n";
+  printer.AddIndentation();
   for (auto &item : true_block()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
+    os << "\n";
   }
-  os << "\n } else {";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "} else {\n";
+  printer.AddIndentation();
   for (auto &item : false_block()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
+    os << "\n";
   }
-  os << "\n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
+
 void IfOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: IfOp.";
   auto input_size = num_operands();
@@ -313,7 +318,7 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
     auto &body = argument.AddRegion().emplace_back();
     for (auto val : inputs) {
       argument.AddOutput(val.type());
-      auto arg = body.AddArgument(val.type());
+      auto arg = body.AddArg(val.type());
       auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
       outs_stop_gradient.push_back(bool_attr ? bool_attr
                                              : builder.bool_attr(false));
@@ -352,22 +357,26 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   printer.PrintValue(cond());
   os << ", inputs=";
   auto operands = (*this)->operands_source();
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  os << ") { \n ^";
-  pir::PrintInterleave(
+  os << ") { \n";
+  os << printer.indentation() << "^";
+  pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
+  os << "\n";
+  printer.AddIndentation();
   for (auto &item : body()) {
-    os << "\n  ";
     printer.PrintOperation(&item);
+    os << "\n";
   }
-  os << "\n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void WhileOp::VerifySig() {

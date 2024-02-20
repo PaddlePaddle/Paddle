@@ -985,7 +985,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
     def test_getitem_with_long(self):
         with base.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
-            var = base.dygraph.to_variable(data)
+            var = paddle.to_tensor(data)
             sliced = var[:, 10:, : var.shape[1]]  # var.shape[1] is 80L here
             self.assertEqual(sliced.shape, [2, 70, 80])
 
@@ -996,7 +996,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         def test_float_in_slice_item():
             with base.dygraph.guard():
                 data = np.random.random((2, 80, 16128)).astype('float32')
-                var = base.dygraph.to_variable(data)
+                var = paddle.to_tensor(data)
                 sliced = var[:, 1.1:, : var.shape[1]]
 
         self.assertRaises(Exception, test_float_in_slice_item)
@@ -1004,7 +1004,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         def test_float_in_index():
             with base.dygraph.guard():
                 data = np.random.random((2, 80, 16128)).astype('float32')
-                var = base.dygraph.to_variable(data)
+                var = paddle.to_tensor(data)
                 sliced = var[1.1]
 
         self.assertRaises(Exception, test_float_in_index)
@@ -1119,7 +1119,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -1155,7 +1155,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -1186,8 +1186,8 @@ class TestSliceTensorArray(unittest.TestCase):
     def test_slice_range(self):
         with paddle.pir_utils.IrGuard():
             arr = paddle.tensor.create_array("int32")
-            x = paddle.static.data("x", shape=[2, 2], dtype="float32")
-            y = paddle.static.data("y", shape=[1, 2], dtype="float32")
+            x = paddle.static.data("x", shape=[2, 2], dtype="int32")
+            y = paddle.static.data("y", shape=[1, 2], dtype="int32")
 
             zero = paddle.tensor.creation.fill_constant([], 'int64', 0)
             paddle.tensor.array_write(x, zero, array=arr)
@@ -1200,8 +1200,8 @@ class TestSliceTensorArray(unittest.TestCase):
     def test_slice_item(self):
         with paddle.pir_utils.IrGuard():
             arr = paddle.tensor.create_array("int32")
-            x = paddle.static.data("x", shape=[2, 2], dtype="float32")
-            y = paddle.static.data("y", shape=[1, 2], dtype="float32")
+            x = paddle.static.data("x", shape=[2, 2], dtype="int32")
+            y = paddle.static.data("y", shape=[1, 2], dtype="int32")
 
             zero = paddle.tensor.creation.fill_constant([], 'int64', 0)
             paddle.tensor.array_write(x, zero, array=arr)

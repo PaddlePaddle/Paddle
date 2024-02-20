@@ -39,8 +39,8 @@ SpmdInfo DefaultDataParallelInferSpmd(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::string batch_axis = "b";
 
@@ -102,8 +102,8 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::string batch_axis = "b";
 

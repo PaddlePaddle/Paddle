@@ -300,12 +300,13 @@ void CodeGenC::Visit(const ir::Block *op) {
 
   IncIndent();
 
-  for (int i = 0; i < op->stmts.size() - 1; i++) {
-    DoIndent();
-    IrPrinter::Visit(op->stmts[i]);
-    str_ += ";\n";
-  }
+  // Note: size_t (0 - 1) = 18446744073709551615
   if (op->stmts.size() >= 1) {
+    for (int i = 0; i < op->stmts.size() - 1; i++) {
+      DoIndent();
+      IrPrinter::Visit(op->stmts[i]);
+      str_ += ";\n";
+    }
     DoIndent();
     IrPrinter::Visit(op->stmts.back());
     str_ += ";";
@@ -600,7 +601,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   CHECK_EQ(op->alloc_output_buffer_exprs.size(),
            op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocaton expressions is not match";
+      << "the count of allocation and deallocation expressions is not match";
 
   std::vector<Expr> new_body;
 
