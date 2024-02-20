@@ -206,12 +206,12 @@ def unscale_method(self, optimizer):
         for group in optimizer._param_groups:
             for param in group['params']:
                 if param.main_grad is not None:
-                    assert param.main_grad.dtype == core.VarDesc.VarType.FP32
+                    assert param.main_grad.dtype == paddle.float32
                     param_grads.append(param.main_grad)
     else:
         for param in optimizer._parameter_list:
             if param.main_grad is not None:
-                assert param.main_grad.dtype == core.VarDesc.VarType.FP32
+                assert param.main_grad.dtype == paddle.float32
                 param_grads.append(param.main_grad)
 
     temp_found_inf = paddle.to_tensor(np.array([0]).astype(np.bool_))

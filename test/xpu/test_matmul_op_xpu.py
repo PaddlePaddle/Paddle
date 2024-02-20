@@ -151,8 +151,8 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = base.dygraph.to_variable(input_array1)
-                data2 = base.dygraph.to_variable(input_array2)
+                data1 = paddle.to_tensor(input_array1)
+                data2 = paddle.to_tensor(input_array2)
                 out = paddle.mm(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
                 np.testing.assert_allclose(
@@ -165,12 +165,8 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = base.dygraph.to_variable(input_array1).astype(
-                    self.in_type
-                )
-                data2 = base.dygraph.to_variable(input_array2).astype(
-                    self.in_type
-                )
+                data1 = paddle.to_tensor(input_array1).astype(self.in_type)
+                data2 = paddle.to_tensor(input_array2).astype(self.in_type)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
                 np.testing.assert_allclose(

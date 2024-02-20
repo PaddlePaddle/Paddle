@@ -1042,7 +1042,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
 
 
 def append_naive_sync(block, sync_var, ring_id):
-    # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
+    # NOTE (JZ-LIANG) update this to use barrier sync for more elegant logic
     # sync within global
     block.append_op(
         type="fill_constant",

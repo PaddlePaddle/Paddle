@@ -278,7 +278,7 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         if job_type == "backward":
             assert (
                 len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -294,7 +294,7 @@ def shadow_var_between_sub_programs(sub_programs):
         set()
     )  # arg_names that are required in later sub_programs
     for sub_program in reversed(sub_programs):
-        # step 1: parse shadow arguements
+        # step 1: parse shadow arguments
         block = sub_program.global_block()
         input_arg_names = set()
         output_arg_names = set()
@@ -305,7 +305,7 @@ def shadow_var_between_sub_programs(sub_programs):
                     input_arg_names.add(input_arg_name)
                     # NOTE(Ruibiao): When translating these codes to pir, we can simplely set
                     # `shadow_arg_names=input_arg_names-output_arg_names` since the program
-                    # in pir satifies SSA form.
+                    # in pir satisfies SSA form.
                     if input_arg_name not in output_arg_names:
                         shadow_arg_names.add(input_arg_name)
             for output_arg_name in op.output_arg_names:
@@ -546,7 +546,7 @@ def _overlap_send_recv(program):
     The finally target of this function is as follows:
         1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
         2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
-        3. 'recv_v2' opeator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
     """
     for block in program.blocks:
         for op in block.ops:
@@ -772,7 +772,7 @@ def _program_for_vpp(
 
 def _add_event_dependency(recorder_op, waiter_op):
     '''
-    Add the extra event dependcy of the two operators.
+    Add the extra event dependency of the two operators.
     This function mainly aims for the cross-programs in pipeline parallelism,
     especial for the 'send_v2' 'recv_v2' etc.
     '''

@@ -16,13 +16,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
-class SiluFusePassPattern : public paddle::drr::DrrPatternBase {
+class SiluFusePattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "SiluFusePattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &sigmoid_op = pat.Op(paddle::dialect::SigmoidOp::name());
@@ -34,7 +36,6 @@ class SiluFusePassPattern : public paddle::drr::DrrPatternBase {
     const auto &swish_op = res.Op(paddle::dialect::SwishOp::name());
     res.Tensor("multiply_out") = swish_op(res.Tensor("sigmoid_in"));
   }
-  std::string name() const override { return "SiluFusePassPattern"; }
 };
 
 class SiluFusePass : public pir::PatternRewritePass {
@@ -43,7 +44,7 @@ class SiluFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(SiluFusePassPattern().Build(context));
+    ps.Add(paddle::drr::Create<SiluFusePattern>(context));
     return ps;
   }
 };
