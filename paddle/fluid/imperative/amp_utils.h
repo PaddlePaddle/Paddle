@@ -114,6 +114,13 @@ static inline phi::DataType GetDtypeWithPlace(
       }
     }
   }
+
+  if (!is_right_place) {
+    VLOG(6) << "Change " << op_name << "'s AMP type from " << amp_dtype
+            << " to FP32";
+    return phi::DataType::FLOAT32;
+  }
+  return amp_dtype;
 }
 
 static inline phi::DataType GetDtypeWithPlace(
