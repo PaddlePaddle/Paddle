@@ -77,8 +77,8 @@ TEST(CustomOp, Ctor) {
 }
 
 TEST(CustomOp, Register) {
-  OpMetaInfoBuilder builder("test_custom_op_smpd", 0);
-  auto iter = OpMetaInfoMap::Instance().GetMap().find("test_custom_op_smpd");
+  OpMetaInfoBuilder builder("test_custom_op_spmd", 0);
+  auto iter = OpMetaInfoMap::Instance().GetMap().find("test_custom_op_spmd");
   EXPECT_TRUE(iter != OpMetaInfoMap::Instance().GetMap().end());
   EXPECT_TRUE(OpMetaInfoHelper::GetInferSpmdFn(iter->second[0]) == nullptr);
   builder.SetInferSpmdFn(PD_INFER_SPMD_RULE(phi::distributed::ConcatInferSpmd));
