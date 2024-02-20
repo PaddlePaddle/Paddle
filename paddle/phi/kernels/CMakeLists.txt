@@ -54,11 +54,6 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
 endif()
 
 if(WITH_CUTLASS)
-
-  # execute_process(
-  #   COMMAND "bash" "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/compile.sh"
-  #   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
-
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
