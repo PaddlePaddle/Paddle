@@ -181,7 +181,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train closs {:2.4}'.format(
+                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train loss {:2.4}'.format(
                         pass_id,
                         batch_id + 1,
                         float(loss),
@@ -272,7 +272,7 @@ def infer(use_cuda, save_dirname=None):
         ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
-        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        # Use normalized image pixels as input data, which should be in the range [0, 1.0].
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
