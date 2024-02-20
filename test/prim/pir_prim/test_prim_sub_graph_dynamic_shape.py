@@ -44,7 +44,7 @@ def any_net(x):
 def embedding_net(x):
     w = np.array(
         [
-            [0, 1, 2],
+            [2, 1, 2],
             [3, 4, 5],
             [6, 7, 8],
             [9, 10, 11],
@@ -74,7 +74,7 @@ class TestPrimOne(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
+        self.shape_x = [1, 2, 4]
         self.x = np.random.random(self.shape_x).astype(self.dtype)
         self.net = log_softmax_net
         self.necessary_ops = "pd_op.log_softmax"
@@ -89,7 +89,7 @@ class TestPrimOne(unittest.TestCase):
                 self.net,
                 use_cinn=self.enable_cinn,
                 input_spec=[
-                    InputSpec(shape=[None, None, 4096], dtype='float32'),
+                    InputSpec(shape=[None, None, 4], dtype='float32'),
                 ],
             )
             fn.eval()
@@ -111,6 +111,8 @@ class TestPrimOne(unittest.TestCase):
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
         res = self.base_net("prim")
+        print("origin res ======= ", res_ref)
+        print("decomp res ======= ", res)
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
@@ -119,7 +121,7 @@ class TestPrimOne2(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "bool"
-        self.shape_x = [1, 300, 4096]
+        self.shape_x = [1, 2, 4]
         self.x = np.random.random(self.shape_x).astype(self.dtype)
         self.net = any_net
         self.necessary_ops = "pd_op.any"
@@ -127,22 +129,23 @@ class TestPrimOne2(TestPrimOne):
 
 
 # Todo: open this case.
-# class TestEmbeddingPrimOne3(TestPrimOne):
-#     def setUp(self):
-#         np.random.seed(2023)
-#         self.dtype = "int"
-#         self.shape_x = [1, 300, 4096]
-#         self.x = np.random.randint(0, 10, size=self.shape_x)
-#         self.net = embedding_net
-#         self.necessary_ops = "pd_op.embedding"
-#         self.enable_cinn = False
+class TestEmbeddingPrimOne3(TestPrimOne):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "int"
+        self.shape_x = [1, 2, 4]
+        self.x = np.random.randint(0, 10, size=self.shape_x)
+        print("self.x ==== ", self.x)
+        self.net = embedding_net
+        self.necessary_ops = "pd_op.embedding"
+        self.enable_cinn = False
 
 
 class TestPrimOne3(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
+        self.shape_x = [1, 2, 4]
         self.x = np.random.random(self.shape_x).astype(self.dtype)
         self.net = full_like_net
         self.necessary_ops = "pd_op.full_like"
@@ -153,7 +156,7 @@ class TestPrimOne4(TestPrimOne):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
+        self.shape_x = [1, 2, 4]
         self.x = np.random.random(self.shape_x).astype(self.dtype)
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"

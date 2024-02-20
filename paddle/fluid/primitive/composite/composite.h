@@ -865,11 +865,11 @@ Tensor embedding_decomp(const Tensor& x,
   std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
   if (find_value(x_dim, -1)) {
     if (padding_idx != NoPadding) {
-      Tensor put_shape = get_slice(shape<T>(weight), 1);
+      Tensor put_shape = shape<T>(sum<T>(weight, {0}, weight.dtype(), true));
       Tensor padding_idx_tensor =
           backend::full_with_tensor<T>(put_shape, padding_idx, DataType::INT64);
       Tensor zeros =
-          fulbackend::full_with_tensor<T>(put_shape, 0.0, weight.dtype());
+          backend::full_with_tensor<T>(put_shape, 0.0, weight.dtype());
       weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
     }
 
@@ -883,12 +883,9 @@ Tensor embedding_decomp(const Tensor& x,
       std::vector<int64_t> tar_shape{-1, 1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
-
-      auto res_dims = common::vectorize<int64_t>(x.dims());
-      auto out_t_shape = prod<T>(shape<T>(out), {0}, false, false);
-      auto x_t_shape = prod<T>(shape<T>(x), {0}, false, false);
-      auto infer_value = x_t_shape / out_t_shape;
-      auto res_t_shape = concat<T>({x_t_shape, infer_value}, 0);
+      auto x_t_shape = shape<T>(x);
+      auto token_dim = get_slice<T>(shape<T>(out), 1);
+      auto res_t_shape = concat<T>({x_t_shape, token_dim}, 0);
       return backend::reshape<T>(out, res_t_shape);
     }
   } else {
