@@ -343,8 +343,8 @@ void DecompProgram::decomp_program() {
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
   if (VLOG_IS_ON(4)) {
-    << "[Prim] New program after decomp :\n"
-    << decomp_prog_stream.str() << std::endl;
+    std::cout << "[Prim] New program after decomp :\n"
+              << decomp_prog_stream.str() << std::endl;
   }
   if (FLAGS_prim_check_ops) {
     for (auto& op : *block) {

@@ -946,6 +946,7 @@ Tensor embedding_decomp(const Tensor& x,
 
   const int64_t NoPadding = -1;
   Tensor weight_tmp = weight;
+  Tensor res;
   if (has_dynamic_shape(x.shape())) {
     if (padding_idx != NoPadding) {
       Tensor put_shape = shape<T>(sum<T>(weight, {0}, weight.dtype(), true));
@@ -957,11 +958,10 @@ Tensor embedding_decomp(const Tensor& x,
     }
 
     if (x.dims().size() <= 1) {
-      auto out = gather<T>(weight_tmp, x);
+      auto res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        out = squeeze<T>(out, {0});
+        res = squeeze<T>(res, {0});
       }
-      return out;
     } else {
       std::vector<int64_t> tar_shape{-1, 1};
       auto x_reshape = reshape<T>(x, tar_shape);
@@ -969,7 +969,7 @@ Tensor embedding_decomp(const Tensor& x,
       auto x_t_shape = shape<T>(x);
       auto token_dim = get_slice<T>(shape<T>(out), 1);
       auto res_t_shape = concat<T>({x_t_shape, token_dim}, 0);
-      return backend::reshape<T>(out, res_t_shape);
+      res = backend::reshape<T>(out, res_t_shape);
     }
   } else {
     if (padding_idx != NoPadding) {
@@ -981,11 +981,10 @@ Tensor embedding_decomp(const Tensor& x,
     }
 
     if (x.dims().size() <= 1) {
-      auto out = gather<T>(weight_tmp, x);
+      auto res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        out = std::get<0>(squeeze_decomp<T>(out, {0}));
+        res = std::get<0>(squeeze_decomp<T>(res, {0}));
       }
-      return out;
     } else {
       std::vector<int64_t> tar_shape{-1, 1};
       auto x_reshape = reshape<T>(x, tar_shape);
@@ -993,9 +992,13 @@ Tensor embedding_decomp(const Tensor& x,
 
       auto res_dims = x.shape();
       res_dims.push_back(-1);
-      return reshape<T>(out, res_dims);
+      res = reshape<T>(out, res_dims);
     }
   }
+  if (res.dtype() != weight.dtype()) {
+    res = cast<T>(res, weight.dtype());
+  }
+  return res;
 }
 
 }  // namespace details
