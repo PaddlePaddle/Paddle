@@ -432,7 +432,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUThread &&
@@ -454,7 +454,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUBlock &&
@@ -1133,7 +1133,7 @@ void Stage::Vectorize(int level, int factor) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   VLOG(3) << "vectorize level: " << level - removed_axes_counts
@@ -1171,7 +1171,7 @@ void Stage::Parallel(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   parallel_info_.insert(level - removed_axes_counts);
@@ -1186,7 +1186,7 @@ void Stage::Unroll(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   unroll_info_.insert(level - removed_axes_counts);
@@ -1609,7 +1609,7 @@ void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
   CHECK_LT(level, num_levels);
   auto transformed_domain = this->transformed_domain();
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
 
   if (isl_is_removed_axis(transformed_domain.get(), level)) {
     // For scalar case, forloop info will be lost after for-1 and reduce-axis
