@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
@@ -34,6 +36,7 @@ ReshardFunction* ChooseProperReshardFunction(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   for (const auto& func : GetReshardFunctionList()) {
     if (func->IsSuitable(in, out_dist_attr)) {
+      VLOG(4) << "Choose ReshardFunction: " << func->Name();
       return func.get();
     }
   }

@@ -21,6 +21,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
@@ -81,6 +82,7 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
 }
 
 void CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
+  dyn_shared_mem_offset_ = Expr(-1);
   IrPrinter::Visit(Expr(func));
 }
 
@@ -183,8 +185,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Free *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") ||
-      utils::Startswith(op->name, "blockIdx")) {
+  if (utils::StartsWith(op->name, "threadIdx") ||
+      utils::StartsWith(op->name, "blockIdx")) {
     str_ += "(int)";
     str_ += op->name;
   } else {
@@ -316,46 +318,60 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     }
     return false;
   });
-  // print func of static allocation
-  auto print_gpu_memory = [&](const std::string &mark) {
-    str_ += mark;
-    str_ += GetTypeRepr(buffer->dtype);
-    str_ += " ";
-    str_ += buffer->name;
-    str_ += " ";
 
-    str_ += "[ ";
-    IrPrinter::Visit(buffer_size);
-    str_ += " ]";
-  };
-  // print func of dynamic allocation
-  auto print_gpu_local_memory_dynamic_allocation = [&]() {
-    str_ += GetTypeRepr(buffer->dtype);
+  if (buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      // The first shared memory buffer, uint8_t as a byte
+      str_ += "extern __shared__ uint8_t dyn_shared_buffer[];\n  ";
+      dyn_shared_mem_offset_ = Expr(0);
+    }
+    std::string type_name = GetTypeRepr(buffer->dtype);
+    str_ += type_name;
     str_ += " *";
     str_ += buffer->name;
-    str_ += " = new ";
-    str_ += GetTypeRepr(buffer->dtype);
-    str_ += "[ ";
-    IrPrinter::Visit(buffer_size);
+    str_ += " = (";
+    str_ += type_name;
+    str_ += "*)&dyn_shared_buffer[ ";
+    IrPrinter::Visit(dyn_shared_mem_offset_);
     str_ += " ]";
-  };
-  // print
-  switch (buffer->memory_type) {
-    case ir::MemoryType::GPUShared:
-      print_gpu_memory("__shared__ ");
-      break;
 
-    case ir::MemoryType::GPULocal:
-      if (has_symbolic_constant) {
-        print_gpu_local_memory_dynamic_allocation();
-      } else {
-        print_gpu_memory("");
-      }
-      break;
+    int type_bytes = buffer->dtype.bytes();
+    dyn_shared_mem_offset_ =
+        dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
+    optim::Simplify(&dyn_shared_mem_offset_);
+    VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
+  } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
+    // print func of static allocation
+    auto print_gpu_memory = [&](const std::string &mark) {
+      str_ += mark;
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " ";
+      str_ += buffer->name;
+      str_ += " ";
 
-    default:
-      LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
-                 << ", type " << buffer->memory_type;
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    // print func of dynamic allocation
+    auto print_gpu_local_memory_dynamic_allocation = [&]() {
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " *";
+      str_ += buffer->name;
+      str_ += " = new ";
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    if (has_symbolic_constant) {
+      print_gpu_local_memory_dynamic_allocation();
+    } else {
+      print_gpu_memory("");
+    }
+  } else {
+    LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
+               << ", type " << buffer->memory_type;
   }
 }
 
@@ -409,7 +425,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(
+      utils::StartsWith(
           op->type().customized_type(),
           cinn::common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());

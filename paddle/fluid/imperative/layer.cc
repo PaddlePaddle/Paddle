@@ -363,7 +363,7 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     SetDataType(src.DataType());
     SetType(src.Type());
     SetPersistable(src.Persistable());
-    InnerSetOverridedStopGradient(src.OverridedStopGradient());
+    InnerSetOverriddenStopGradient(src.OverriddenStopGradient());
   }
 
   platform::Place place = src.Place();

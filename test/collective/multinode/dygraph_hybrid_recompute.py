@@ -130,7 +130,7 @@ class Model(nn.Layer):
         return self.layers(x)
 
 
-class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
+class TestDygraphHybridRecompute(TestCollectiveAPIRunnerBase):
     def __init__(self):
         pass
 
@@ -192,4 +192,4 @@ class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestDygrapgHybridRecompute, "dpppmp")
+    runtime_main(TestDygraphHybridRecompute, "dpppmp")

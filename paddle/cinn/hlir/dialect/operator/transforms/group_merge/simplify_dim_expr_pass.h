@@ -21,7 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for simplify the DimExpr after ShapeOptimizationPass
+// This is a helper pass for simplifying the DimExpr after ShapeOptimizationPass
 std::unique_ptr<::pir::Pass> CreateSimplifyDimExprPass();
 }  // namespace ir
 }  // namespace dialect
