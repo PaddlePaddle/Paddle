@@ -46,7 +46,7 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
 
 static bool has_dynamic_shape(const phi::DDim& dims) {
   std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
-  if (std::find(vec.begin(), vec.end(), 1) != vec.end()) {
+  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
     return true;
   } else {
     return false;
