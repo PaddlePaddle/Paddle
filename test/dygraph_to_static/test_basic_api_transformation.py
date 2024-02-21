@@ -21,7 +21,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle import base, to_tensor
+from paddle import to_tensor
 from paddle.jit.api import to_static
 
 SEED = 2020
