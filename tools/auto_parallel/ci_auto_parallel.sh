@@ -64,15 +64,14 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
-        # auto_unit_test中除llama单测外的其他单测，已在流水线PR-CI-Distribute-stable中PR级别监测，这里不再冗余执行，只监测llama单测
+        # The most auto unittests have been monitored in PR-CI-Distribute-stable, 
+        # while the other tests of llama model will be executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto
-                # case_list[${#case_list[*]}]=auto_unit_test
                 case_list[${#case_list[*]}]="test_semi_auto_parallel_llama_model test_semi_auto_parallel_llama_model_amp"
                 break
             elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
-                # case_list[${#case_list[*]}]=auto_unit_test
                 case_list[${#case_list[*]}]="test_semi_auto_parallel_llama_model test_semi_auto_parallel_llama_model_amp"
                 break
             else
@@ -87,14 +86,11 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
                 continue
             fi
         done
-        # dygraph_unit_test中的单测，已在流水线PR-CI-Distribute-stable中PR级别监测，这里不再冗余执行
+        # The dynamic unittests have been monitored in PR-CI-Distribute-stable
+        # and will be no longer redundantly executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_dygraph_ci[@]}; i++)); do
             if [[ $i != ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_dygraph
-                # case_list[${#case_list[*]}]=dygraph_unit_test
-                break
-            elif [[ $i == ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
-                # case_list[${#case_list[*]}]=dygraph_unit_test
                 break
             else
                 continue
@@ -133,12 +129,6 @@ if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_
     echo ${case_list[*]}
 fi
 ####################
-# auto_unit_test中除llama单测外的其他单测，已在流水线PR-CI-Distribute-stable中PR级别监测，这里不再冗余执行
-# if [[ "${case_list[*]}" == *"auto_unit_test"* ]]; then
-#     echo "命中auto_unit_test, 不再单独执行test_semi_auto_parallel_llama_model"
-#     case_list=("${case_list[@]/*test_semi_auto_parallel_llama_model*/}")
-#     echo ${case_list[*]}
-# fi
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
