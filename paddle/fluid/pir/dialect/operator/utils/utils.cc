@@ -402,15 +402,33 @@ void CheckValueDataType(const pir::Value& value,
   DoValueCheck(value, input_name, expected_dtype, op_name);
 }
 
+bool IsSameDataTypeForValues(const std::vector<pir::Value>& vector_value) {
+  if (vector_value.size() <= 1) {
+    return true;
+  }
+  auto dtype = GetValueDataType(vector_value[0]);
+  for (size_t i = 1; i < vector_value.size(); ++i) {
+    if (GetValueDataType(vector_value[i]) != dtype) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name) {
   VLOG(6) << "CheckVectorOfValueDataType for " << op_name
           << ", input: " << input_name;
-  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-  for (auto& value : vector_value) {
-    DoValueCheck(value, input_name, expected_dtype, op_name);
+  if (vector_value.size() == 0) {
+    return;
   }
+  if (!IsSameDataTypeForValues(vector_value)) {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "All the Values in the input must have the same data type."));
+  }
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  DoValueCheck(vector_value[0], input_name, expected_dtype, op_name);
 }
 
 void CheckDataType(const phi::DataType& dtype,
