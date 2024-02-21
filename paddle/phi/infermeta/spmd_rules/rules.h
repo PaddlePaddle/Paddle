@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/rms_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/scale.h"
+#include "paddle/phi/infermeta/spmd_rules/scatter.h"
 #include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
