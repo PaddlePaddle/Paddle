@@ -329,9 +329,10 @@ void DecompProgram::decomp_program() {
   }
   std::ostringstream orig_prog_stream;
   program_->Print(orig_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] Origin program before decomp :\n"
-          << orig_prog_stream.str();
+  if (VLOG_IS_ON(4)) {
+    std::cout << "[Prim] Origin program before decomp :\n"
+              << orig_prog_stream.str() << std::endl;
+  }
 
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return;
@@ -341,8 +342,10 @@ void DecompProgram::decomp_program() {
   decomp_block(block, orig_vars_dict, tar_vars);
   std::ostringstream decomp_prog_stream;
   program_->Print(decomp_prog_stream);
-  // Todo: Use cout instead of VLOG in case of incomplete log.
-  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
+  if (VLOG_IS_ON(4)) {
+    << "[Prim] New program after decomp :\n"
+    << decomp_prog_stream.str() << std::endl;
+  }
   if (FLAGS_prim_check_ops) {
     for (auto& op : *block) {
       check_ops(op.name());
