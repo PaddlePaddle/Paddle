@@ -19,7 +19,7 @@ from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
-from paddle import _legacy_C_ops, tensor
+from paddle import _C_ops, tensor
 from paddle.base import core
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
@@ -66,12 +66,15 @@ def fused_multi_transformer_int8(
     out_linear_in_scale=[],
     ffn1_in_scale=[],
     ffn2_in_scale=[],
+    quant_round_type=1,
+    quant_max_bound=127.0,
+    quant_min_bound=-127.0,
 ):
     mode = (
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer_int8(
+    final_out, cache_kv_out = _C_ops.fused_multi_transformer_int8(
         x,
         ln_scales,
         ln_biases,
@@ -92,37 +95,24 @@ def fused_multi_transformer_int8(
         out_linear_out_scales,
         ffn1_out_scales,
         ffn2_out_scales,
-        cache_kvs,
-        'num_head',
-        num_head,
-        'dim_head',
-        dim_head,
-        'dim_ffn',
-        dim_ffn,
-        'qkv_in_scale',
-        qkv_in_scale,
-        'out_linear_in_scale',
-        out_linear_in_scale,
-        'ffn1_in_scale',
-        ffn1_in_scale,
-        'ffn2_in_scale',
-        ffn2_in_scale,
-        'pre_layer_norm',
         pre_layer_norm,
-        'epsilon',
         epsilon,
-        'dropout_rate',
         dropout_rate,
-        'is_test',
         not training,
-        'dropout_implementation',
         mode,
-        'act_method',
         activation,
-        'trans_qkvw',
         trans_qkvw,
-        'ring_id',
         ring_id,
+        num_head,
+        dim_head,
+        dim_ffn,
+        qkv_in_scale,
+        out_linear_in_scale,
+        ffn1_in_scale,
+        ffn2_in_scale,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
     )
     if cache_kvs is not None:
         return final_out, cache_kv_out

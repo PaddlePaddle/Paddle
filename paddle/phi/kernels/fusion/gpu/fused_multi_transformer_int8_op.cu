@@ -661,4 +661,5 @@ PD_REGISTER_KERNEL(fused_multi_transformer_int8,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerINT8Kernel,
+                   float,
                    phi::dtype::float16) {}
