@@ -958,7 +958,7 @@ Tensor embedding_decomp(const Tensor& x,
     }
 
     if (x.dims().size() <= 1) {
-      auto res = gather<T>(weight_tmp, x);
+      res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
         res = squeeze<T>(res, {0});
       }
@@ -981,7 +981,7 @@ Tensor embedding_decomp(const Tensor& x,
     }
 
     if (x.dims().size() <= 1) {
-      auto res = gather<T>(weight_tmp, x);
+      res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
         res = std::get<0>(squeeze_decomp<T>(res, {0}));
       }
