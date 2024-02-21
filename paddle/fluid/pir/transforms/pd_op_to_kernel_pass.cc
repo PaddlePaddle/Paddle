@@ -2399,7 +2399,9 @@ pir::Operation* BuildKernelOp(
 }
 
 #ifdef PADDLE_WITH_DNNL
-pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item) {
+pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item,
+                              pir::Block* block,
+                              pir::IrContext* ctx) {
   std::vector<pir::Type> op_item_inner_output_types;
   if (op_item->num_results() > 0) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -2427,7 +2429,9 @@ pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item) {
   return op_item_inner;
 }
 
-pir::Operation* PdOp2OneDNNOp(pir::Operation* op_item) {
+pir::Operation* PdOp2OneDNNOp(pir::Operation* op_item,
+                              pir::Block* block,
+                              pir::IrContext* ctx) {
   std::string target_op_name = op_item->name();
   target_op_name.replace(0, 5, "onednn_op");
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -2522,7 +2526,7 @@ void ProcessBlock(
 #ifdef PADDLE_WITH_DNNL
     if (op_item->HasTrait<OneDNNTrait>() &&
         kernel_key.backend() != phi::Backend::ONEDNN) {
-      auto op_item_inner = OneDNNOp2PdOp(op_item);
+      auto op_item_inner = OneDNNOp2PdOp(op_item, block, ctx);
       op_item = op_item_inner;
       op_info_parser = GetOpYamlInfoParser(op_item_inner);
     }
@@ -2532,7 +2536,7 @@ void ProcessBlock(
         kernel_key.backend() == phi::Backend::CPU &&
         !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
         SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
-      auto op_item_inner = PdOp2OneDNNOp(op_item);
+      auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
@@ -2542,7 +2546,7 @@ void ProcessBlock(
                !op_item->HasTrait<OneDNNTrait>() &&
                SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
       // Support FLAGS_use_mkldnn
-      auto op_item_inner = PdOp2OneDNNOp(op_item);
+      auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
