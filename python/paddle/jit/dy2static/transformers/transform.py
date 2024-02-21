@@ -94,7 +94,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             RegisterHookTransformer,
             EarlyReturnTransformer,
-            AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's no need in PIR mode
+            AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
