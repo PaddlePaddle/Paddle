@@ -85,6 +85,8 @@ class TestLayer(unittest.TestCase):
 
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "pool2d"})
         cinn_out = self.train(
             self.net, to_static=True, with_prim=True, with_cinn=True
         )
