@@ -54,6 +54,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
+#include "paddle/fluid/pir/transforms/enable_onednn_pass.h"
+COMMON_DECLARE_bool(use_mkldnn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
@@ -2397,6 +2399,73 @@ pir::Operation* BuildKernelOp(
   return op;
 }
 
+#ifdef PADDLE_WITH_DNNL
+pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item) {
+  std::vector<pir::Type> op_item_inner_output_types;
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_item_inner_output_types.push_back(op_item->result_type(i));
+    }
+  }
+  std::string target_op_name = op_item->name();
+  target_op_name.replace(0, 9, "pd_op");
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (!op_info) {
+    IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
+  }
+  pir::Operation* op_item_inner =
+      pir::Operation::Create(op_item->operands_source(),
+                             op_item->attributes(),
+                             op_item_inner_output_types,
+                             op_info);
+  op_item->ReplaceAllUsesWith(op_item_inner->results());
+  for (auto iter = block->begin(); iter != block->end(); ++iter) {
+    if (*iter == *op_item) {
+      block->Assign(iter, op_item_inner);
+      break;
+    }
+  }
+  return op_item_inner;
+}
+
+pir::Operation* PdOp2OneDNNOp(pir::Operation* op_item) {
+  std::string target_op_name = op_item->name();
+  target_op_name.replace(0, 5, "onednn_op");
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (op_info) {
+    std::vector<pir::Type> op_item_inner_output_types;
+    if (op_item->num_results() > 0) {
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        op_item_inner_output_types.push_back(op_item->result_type(i));
+      }
+    }
+    auto attributes = op_item->attributes();
+    auto yaml_interface =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    OpRunTimeInfo runtime_info =
+        std::get<3>(yaml_interface->get_op_info_(target_op_name));
+    for (auto& attr : runtime_info.extra_args_default_value) {
+      attributes[attr.first] = attr.second;
+    }
+    pir::Operation* op_item_inner =
+        pir::Operation::Create(op_item->operands_source(),
+                               attributes,
+                               op_item_inner_output_types,
+                               op_info);
+    op_item->ReplaceAllUsesWith(op_item_inner->results());
+    for (auto iter = block->begin(); iter != block->end(); ++iter) {
+      if (*iter == *op_item) {
+        block->Assign(iter, op_item_inner);
+        break;
+      }
+    }
+    return op_item_inner;
+  } else {
+    return op_item;
+  }
+}
+
+#endif
 void ProcessBlock(
     const phi::Place& place,
     pir::Block* block,
@@ -2454,30 +2523,7 @@ void ProcessBlock(
 #ifdef PADDLE_WITH_DNNL
     if (op_item->HasTrait<OneDNNTrait>() &&
         kernel_key.backend() != phi::Backend::ONEDNN) {
-      std::vector<pir::Type> op_item_inner_output_types;
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          op_item_inner_output_types.push_back(op_item->result_type(i));
-        }
-      }
-      std::string target_op_name = op_item->name();
-      target_op_name.replace(0, 9, "pd_op");
-      auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-      if (!op_info) {
-        IR_THROW("Ctx should have corresponding OpInfo %s", target_op_name);
-      }
-      pir::Operation* op_item_inner =
-          pir::Operation::Create(op_item->operands_source(),
-                                 op_item->attributes(),
-                                 op_item_inner_output_types,
-                                 op_info);
-      op_item->ReplaceAllUsesWith(op_item_inner->results());
-      for (auto iter = block->begin(); iter != block->end(); ++iter) {
-        if (*iter == *op_item) {
-          block->Assign(iter, op_item_inner);
-          break;
-        }
-      }
+      auto op_item_inner = OneDNNOp2PdOp(op_item);
       op_item = op_item_inner;
       op_info_parser = GetOpYamlInfoParser(op_item_inner);
     }
@@ -2487,36 +2533,18 @@ void ProcessBlock(
         kernel_key.backend() == phi::Backend::CPU &&
         !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
         SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
-      std::string target_op_name = op_item->name();
-      target_op_name.replace(0, 5, "onednn_op");
-      auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
-      if (op_info) {
-        std::vector<pir::Type> op_item_inner_output_types;
-        if (op_item->num_results() > 0) {
-          for (size_t i = 0; i < op_item->num_results(); ++i) {
-            op_item_inner_output_types.push_back(op_item->result_type(i));
-          }
-        }
-        auto attributes = op_item->attributes();
-        auto yaml_interface =
-            op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-        OpRunTimeInfo runtime_info =
-            std::get<3>(yaml_interface->get_op_info_(target_op_name));
-        for (auto& attr : runtime_info.extra_args_default_value) {
-          attributes[attr.first] = attr.second;
-        }
-        pir::Operation* op_item_inner =
-            pir::Operation::Create(op_item->operands_source(),
-                                   attributes,
-                                   op_item_inner_output_types,
-                                   op_info);
-        op_item->ReplaceAllUsesWith(op_item_inner->results());
-        for (auto iter = block->begin(); iter != block->end(); ++iter) {
-          if (*iter == *op_item) {
-            block->Assign(iter, op_item_inner);
-            break;
-          }
-        }
+      auto op_item_inner = PdOp2OneDNNOp(op_item);
+      if (op_item_inner != op_item) {
+        op_item = op_item_inner;
+        op_info_parser = GetOpYamlInfoParser(op_item_inner);
+        kernel_key.set_backend(phi::Backend::ONEDNN);
+      }
+    } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
+               !op_item->HasTrait<OneDNNTrait>() &&
+               SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
+      // Support FLAGS_use_mkldnn
+      auto op_item_inner = PdOp2OneDNNOp(op_item);
+      if (op_item_inner != op_item) {
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
