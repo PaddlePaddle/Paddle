@@ -351,13 +351,6 @@ def amp_guard(
                 "If enable amp, dtype should be 'float16' or 'bfloat16'."
             )
 
-    # check tracer
-    tracer = _dygraph_tracer()
-    if not tracer:
-        raise ValueError(
-            "current_tracer is None, maybe it is not in imperative mode."
-        )
-
     amp_dtype = dtype
     amp_global_state().amp_dtype = amp_dtype
 
@@ -379,8 +372,38 @@ def amp_guard(
         amp_dtype = "float32"
 
     if in_pir_mode():
-        pass
+        amp_attrs = core._get_amp_attrs()
+        # set amp level
+        original_amp_level = amp_attrs._amp_level
+        amp_attrs._amp_level = amp_level
+        # set amp op list
+        original_white_list, original_black_list = core._get_amp_op_list()
+        core._set_amp_op_list(_white_list, _black_list)
+        # set amp dtype
+        original_amp_dtype = amp_attrs._amp_dtype
+        amp_attrs._amp_dtype = amp_dtype
+        # switch promote
+        if amp_level == AMP_LEVEL.O2:
+            original_use_promote = amp_attrs._use_promote
+            amp_attrs._use_promote = use_promote
+
+        try:
+            yield
+        finally:
+            _g_amp_state_ = original_state
+            amp_attrs._amp_level = original_amp_level
+            core._set_amp_op_list(original_white_list, original_black_list)
+            amp_attrs._amp_dtype = original_amp_dtype
+            if amp_level == AMP_LEVEL.O2:
+                amp_attrs._use_promote = original_use_promote
+
     else:
+        # check tracer
+        tracer = _dygraph_tracer()
+        if not tracer:
+            raise ValueError(
+                "current_tracer is None, maybe it is not in imperative mode."
+            )
         # check device_type:
         # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
         # Maybe we will support cpu for bfloat16.
