@@ -551,36 +551,24 @@ void AnalysisPredictor::InitPlace() {
 void AnalysisPredictor::ClearExtraParams() {
   auto var_names = scope_->LocalVarNames();
   std::vector<std::string> trt_repetitive_params;
-  for (size_t idx = 0; idx < inference_program_->Size(); ++idx) {
-    auto &block = inference_program_->Block(idx);
-    for (auto &op_desc : block.AllOps()) {
-      if (op_desc->Type() == "tensorrt_engine") {
-        auto trt_params = PADDLE_GET_CONST(std::vector<std::string>,
-                                           op_desc->GetAttr("parameters"));
-        trt_repetitive_params.insert(
-            trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
-      }
+  for (auto &op_desc : inference_program_->Block(0).AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      auto trt_params = PADDLE_GET_CONST(std::vector<std::string>,
+                                         op_desc->GetAttr("parameters"));
+      trt_repetitive_params.insert(
+          trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
     }
   }
+
   std::vector<std::string> extra_params;
-  for (size_t idx = 0; idx < inference_program_->Size(); ++idx) {
-    auto &block = inference_program_->Block(idx);
-    for (auto &var_desc : block.AllVars()) {
-      if (var_desc->Persistable()) {
-        // Clear repetitive parameters in tensorrt
-        if (scope_->FindVar(var_desc->Name()) &&
-            std::count(trt_repetitive_params.begin(),
-                       trt_repetitive_params.end(),
-                       var_desc->Name())) {
-          extra_params.emplace_back(var_desc->Name());
-        }
-        // NOTE(minghaipeng): Trick method to clear scale and zero_point
-        // parameters in quantized model
-        if (scope_->FindVar(var_desc->Name()) &&
-            (var_desc->Name().find(".scale_0") != std::string::npos ||
-             var_desc->Name().find("@zero_point") != std::string::npos)) {
-          extra_params.emplace_back(var_desc->Name());
-        }
+  for (auto &var_desc : inference_program_->Block(0).AllVars()) {
+    if (var_desc->Persistable()) {
+      // Clear repetitive parameters in tensorrt
+      if (scope_->FindVar(var_desc->Name()) &&
+          std::count(trt_repetitive_params.begin(),
+                     trt_repetitive_params.end(),
+                     var_desc->Name())) {
+        extra_params.emplace_back(var_desc->Name());
       }
     }
   }
@@ -735,7 +723,7 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
-    if (config_.use_optimized_model_ && !config_.ir_optim()) {
+    if (config_.skip_ir_pass_ && !config_.ir_optim()) {
       LoadParameters();
       ClearExtraParams();
 #ifdef PADDLE_WITH_CUDA
@@ -1599,7 +1587,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
-  argument_->SetUseOptimizedModel(config_.use_optimized_model_);
+  argument_->SetSkipIrPass(config_.skip_ir_pass_);
   argument_->SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_->SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program

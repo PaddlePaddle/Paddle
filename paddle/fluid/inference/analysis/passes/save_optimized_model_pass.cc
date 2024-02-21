@@ -52,6 +52,14 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
 
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
+  // Some vars may be deleted by pass, so we need to remove them in block
+  framework::BlockDesc* block = optimized_program_desc.MutableBlock(0);
+  for (auto& var_desc : block->AllVars()) {
+    if (var_desc->Persistable() && !scope.FindVar(var_desc->Name())) {
+      block->RemoveVar(var_desc->Name());
+    }
+  }
+
   auto IsPersistable = [](const framework::VarDesc* var) {
     if (var->Persistable() &&
         var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&

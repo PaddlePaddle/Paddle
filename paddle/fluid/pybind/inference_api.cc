@@ -859,9 +859,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::fraction_of_gpu_memory_for_pool)
       .def("switch_ir_optim",
            &AnalysisConfig::SwitchIrOptim,
-           py::arg("enable_ir_optim") = true,
-           py::arg("use_optimized_model") = false)
+           py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("skip_ir_pass", &AnalysisConfig::SkipIrPass, py::arg("x") = false)
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)

@@ -598,11 +598,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether the ir graph optimization is actived.
   ///
-  void SwitchIrOptim(bool enable_ir_optim = true,
-                     bool use_optimized_model = false) {
-    enable_ir_optim_ = enable_ir_optim;
-    use_optimized_model_ = use_optimized_model;
-  }
+  void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
   ///
   /// \brief A boolean state telling whether the ir graph optimization is
   /// actived.
@@ -610,6 +606,15 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use ir graph optimization.
   ///
   bool ir_optim() const { return enable_ir_optim_; }
+
+  ///
+  /// \brief Control whether to skip the IR Pass.
+  /// If turn on, it is highly recommended to use the optimized model for
+  /// inference.
+  ///
+  /// \param x Whether to use the optimized model.
+  ///
+  void SkipIrPass(int x = false) { skip_ir_pass_ = x; }
 
   ///
   /// \brief INTERNAL Determine whether to use the feed and fetch operators.
@@ -1318,8 +1323,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_optimized_model_{false};
   bool ir_debug_{false};
+  bool skip_ir_pass_{false};
 
   bool use_new_executor_{false};
 
