@@ -21,21 +21,21 @@ from paddle.amp.auto_cast import _update_list
 from paddle.base import core
 
 
-class TestAMPState(unittest.TestCase):
-    def test_pir_amp_state(self):
+class TestAmpAttrs(unittest.TestCase):
+    def test_pir_amp_attrs(self):
         with paddle.pir_utils.IrGuard():
-            amp_state = core._get_amp_state()
-            amp_state._use_promote = True
-            amp_state._amp_level = core.AmpLevel.O2
-            amp_state._amp_dtype = 'float16'
-            np.testing.assert_equal(core._get_amp_state()._use_promote, True)
+            amp_attrs = core._get_amp_attrs()
+            amp_attrs._use_promote = True
+            amp_attrs._amp_level = core.AmpLevel.O2
+            amp_attrs._amp_dtype = 'float16'
+            np.testing.assert_equal(core._get_amp_attrs()._use_promote, True)
             np.testing.assert_equal(
-                core._get_amp_state()._amp_level, core.AmpLevel.O2
+                core._get_amp_attrs()._amp_level, core.AmpLevel.O2
             )
-            np.testing.assert_equal(core._get_amp_state()._amp_dtype, 'float16')
-            amp_state._use_promote = False
-            amp_state._amp_level = core.AmpLevel.O0
-            amp_state._amp_dtype = 'float32'
+            np.testing.assert_equal(core._get_amp_attrs()._amp_dtype, 'float16')
+            amp_attrs._use_promote = False
+            amp_attrs._amp_level = core.AmpLevel.O0
+            amp_attrs._amp_dtype = 'float32'
 
 
 class TestPirAMPProgram(unittest.TestCase):
@@ -49,10 +49,10 @@ class TestPirAMPProgram(unittest.TestCase):
                 x = paddle.static.data('x', [3, 4], 'float32')
                 linear = paddle.nn.Linear(4, 5)
 
-                amp_state = core._get_amp_state()
-                amp_state._use_promote = True
-                amp_state._amp_level = core.AmpLevel.O1
-                amp_state._amp_dtype = 'float16'
+                amp_attrs = core._get_amp_attrs()
+                amp_attrs._use_promote = True
+                amp_attrs._amp_level = core.AmpLevel.O1
+                amp_attrs._amp_dtype = 'float16'
                 (
                     original_white_list,
                     original_black_list,
@@ -73,9 +73,9 @@ class TestPirAMPProgram(unittest.TestCase):
             np.testing.assert_equal(out2.dtype, core.DataType.FLOAT32)
             np.testing.assert_equal(cast_op_count, 3)
 
-            amp_state._use_promote = False
-            amp_state._amp_level = core.AmpLevel.O0
-            amp_state._amp_dtype = 'float32'
+            amp_attrs._use_promote = False
+            amp_attrs._amp_level = core.AmpLevel.O0
+            amp_attrs._amp_dtype = 'float32'
             core._set_amp_op_list(original_white_list, original_black_list)
             _white_list, _black_list = core._get_amp_op_list()
             np.testing.assert_equal(len(_white_list), 0)
