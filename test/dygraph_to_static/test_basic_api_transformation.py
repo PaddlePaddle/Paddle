@@ -62,11 +62,6 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             dyfunc_int_to_tensor,
             dyfunc_float_to_tensor,
         ]
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
 
     def get_dygraph_output(self):
         res = self.dygraph_func(self.input).numpy()
