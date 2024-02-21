@@ -381,15 +381,13 @@ cc_library(
   SRCS pass_test_util.cc
   DEPS graph pass)
 
-cc_test(
+paddle_test(
   node_test
-  SRCS node_test.cc
-  DEPS node)
-cc_test(
+  SRCS node_test.cc)
+paddle_test(
   pass_test
-  SRCS pass_test.cc
-  DEPS graph pass graph_helper)
-cc_test(
+  SRCS pass_test.cc)
+paddle_test(
   graph_test
   SRCS graph_test.cc
   DEPS graph graph_helper op_registry)
@@ -397,38 +395,31 @@ cc_test(
   graph_helper_test
   SRCS graph_helper_test.cc
   DEPS graph graph_helper op_registry)
-cc_test(
+paddle_test(
   graph_to_program_pass_test
-  SRCS graph_to_program_pass_test.cc
-  DEPS graph_to_program_pass)
+  SRCS graph_to_program_pass_test.cc)
 cc_test(
   cost_model_test
   SRCS cost_model_test.cc
   DEPS cost_model op_registry)
-cc_test(
+paddle_test(
   test_graph_pattern_detector
-  SRCS graph_pattern_detector_tester.cc
-  DEPS graph_pattern_detector)
-cc_test(
+  SRCS graph_pattern_detector_tester.cc)
+paddle_test(
   test_op_compat_sensible_pass
-  SRCS op_compat_sensible_pass_tester.cc
-  DEPS op_compat_sensible_pass)
-cc_test(
+  SRCS op_compat_sensible_pass_tester.cc)
+paddle_test(
   test_fc_fuse_pass_cc
-  SRCS fc_fuse_pass_tester.cc
-  DEPS fc_fuse_pass framework_proto)
-cc_test(
+  SRCS fc_fuse_pass_tester.cc)
+paddle_test(
   test_fc_lstm_fuse_pass_cc
-  SRCS fc_lstm_fuse_pass_tester.cc
-  DEPS fc_lstm_fuse_pass framework_proto)
-cc_test(
+  SRCS fc_lstm_fuse_pass_tester.cc)
+paddle_test(
   test_fc_gru_fuse_pass_cc
-  SRCS fc_gru_fuse_pass_tester.cc
-  DEPS fc_gru_fuse_pass framework_proto)
-cc_test(
+  SRCS fc_gru_fuse_pass_tester.cc)
+paddle_test(
   test_seqpool_concat_fuse_pass
-  SRCS seqpool_concat_fuse_pass_tester.cc
-  DEPS seqpool_concat_fuse_pass framework_proto)
+  SRCS seqpool_concat_fuse_pass_tester.cc)
 cc_test(
   test_seqpool_cvm_concat_fuse_pass
   SRCS seqpool_cvm_concat_fuse_pass_tester.cc
