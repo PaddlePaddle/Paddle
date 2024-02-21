@@ -31,8 +31,8 @@ class TestComplexMatMulLayer(unittest.TestCase):
     def compare_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = dg.to_variable(x)
-                y_var = dg.to_variable(y)
+                x_var = paddle.to_tensor(x)
+                y_var = paddle.to_tensor(y)
                 result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
                 np.testing.assert_allclose(
@@ -49,8 +49,8 @@ class TestComplexMatMulLayer(unittest.TestCase):
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = dg.to_variable(x)
-                y_var = dg.to_variable(y)
+                x_var = paddle.to_tensor(x)
+                y_var = paddle.to_tensor(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
                 np.testing.assert_allclose(

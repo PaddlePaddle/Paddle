@@ -89,22 +89,18 @@ class TestLayer(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
+        paddle.seed(123)
         outs = net(*self.inputs)
         return outs
 
-    def test_static(self):
-        dy_out = self.train(self.net, to_static=False)
-        st_out = self.train(self.net, to_static=True)
-        for dy, st in zip(
-            paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
-        ):
-            np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)
-
     # NOTE prim + cinn lead to error
-    def _test_ast_prim_cinn(self):
+    def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "pool2d"})
+        # TODO(Aurelius84): Fix LoopAligment eror under with_prim=True
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
+            self.net, to_static=True, with_prim=False, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)

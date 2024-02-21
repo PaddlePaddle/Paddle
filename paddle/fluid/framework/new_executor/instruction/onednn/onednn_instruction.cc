@@ -26,9 +26,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
@@ -86,6 +86,14 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
+    std::vector<int64_t> int_array =
+        attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+    return int_array;
+  } else if (attr_type_name == "paddle::dialect::DataTypeAttribute") {
+    phi::DataType dtype =
+        attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+    return dtype;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
@@ -282,6 +290,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
 
   // Step2: build layout_transform information
   if (op_attributes.count("data_format_tensors")) {
+    VLOG(6) << "data_format_tensors is not empty";
     if (op_attributes.count("data_format")) {
       auto data_layout = op_attributes.at("data_format")
                              .dyn_cast<pir::StrAttribute>()
@@ -290,6 +299,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
     } else {
       input_layout_ = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
     }
+    VLOG(6) << "input_layout = " << input_layout_;
 
     std::vector<pir::Attribute> data_format_tensors_attr =
         op->attributes()
@@ -298,11 +308,13 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .AsVector();
 
     for (auto& attr : data_format_tensors_attr) {
-      auto pair =
-          kernel_context_.InputRangeAt(yaml_info_parser.InputName2Id().at(
-              attr.dyn_cast<pir::StrAttribute>().AsString()));
+      auto data_format_tensor = attr.dyn_cast<pir::StrAttribute>().AsString();
+      auto pair = kernel_context_.InputRangeAt(
+          yaml_info_parser.InputName2Id().at(data_format_tensor));
+      VLOG(6) << "data_format_tensor = " << data_format_tensor;
       for (int i = pair.first; i < pair.second; ++i) {
         data_format_tensors_.insert(i);
+        VLOG(6) << data_format_tensor << " index = " << i;
       }
     }
   }
@@ -366,6 +378,10 @@ void OneDNNPhiKernelInstruction::Run() {
     if (input == nullptr) {
       continue;
     }
+    if (!input->initialized()) {
+      continue;
+    }
+    VLOG(6) << "input[" << i << "].layout() = " << input->layout();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
 
@@ -375,6 +391,7 @@ void OneDNNPhiKernelInstruction::Run() {
           input_layout_ != phi::DataLayout::kAnyLayout) {
         from_layout = input_layout_;
       }
+      VLOG(6) << "from_layout = " << from_layout;
 
       auto transed_tensor = const_cast<phi::DenseTensor*>(input);
 

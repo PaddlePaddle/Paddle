@@ -269,7 +269,7 @@ class CompiledProgram:
             ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not avaliable for single card training."
+            ), "DGC is not available for single card training."
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
@@ -631,7 +631,7 @@ class IpuStrategy:
 
     def register_patch(self):
         """
-        Register patchs function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
+        Register patch function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
         Use `release_patch` to release the patch.
 
         Examples:

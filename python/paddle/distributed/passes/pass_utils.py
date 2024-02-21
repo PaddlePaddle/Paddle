@@ -17,7 +17,7 @@ from collections import OrderedDict
 from enum import Enum
 
 from paddle.base import core
-from paddle.base.framework import Operator, Parameter, Program, get_flags
+from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -228,43 +228,6 @@ def var_can_be_deleted(var_name, block):
     return var is not None and not var.persistable
 
 
-def prepare_ir_program(cur_prog, next_prog):
-    set_output_names = set()
-    for op in cur_prog.global_block().ops:
-        for arg_name in op.output_arg_names:
-            if var_can_be_deleted(arg_name, cur_prog.global_block()):
-                set_output_names.add(arg_name)
-
-    set_input_names = set()
-    for op in next_prog.global_block().ops:
-        for arg_name in op.input_arg_names:
-            if var_can_be_deleted(arg_name, next_prog.global_block()):
-                set_input_names.add(arg_name)
-
-    shadow_var_names = sorted(set_output_names & set_input_names)
-    for var_name in shadow_var_names:
-        shadow_op_desc = cur_prog.global_block().desc.append_op()
-        shadow_op_desc.set_type("shadow_output")
-        shadow_op_desc.set_input('x', [var_name])
-        shadow_op_desc.set_output('out', ["@EMPTY@"])
-        shadow_op_desc._set_attr("name", var_name)
-        shadow_op = Operator(cur_prog.global_block(), shadow_op_desc)
-        cur_prog.global_block().ops.append(shadow_op)
-
-        data_op_desc = next_prog.global_block().desc._prepend_op()
-        data_op_desc.set_type("data")
-        data_op_desc._set_attr("shape", [])
-        data_op_desc._set_attr("dtype", 0)
-        data_op_desc._set_attr("place", 2)  # GPUPlace
-        data_op_desc._set_attr("name", var_name)
-        data_op_desc.set_output("out", [var_name])
-        data_op = Operator(next_prog.global_block(), data_op_desc)
-        next_prog.global_block().ops.insert(0, data_op)
-
-    cur_prog._sync_with_cpp()
-    next_prog._sync_with_cpp()
-
-
 def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     """
     Set `skip_gc_vars` for every job in jobs.
@@ -285,6 +248,7 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                 if op.type in [
                     "c_sync_comm_stream",
                     "conditional_block",
+                    "data",
                     "nop",
                     "while",
                 ]:
@@ -314,23 +278,70 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         if job_type == "backward":
             assert (
                 len(skip_gc_vars) == 0
-            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
 
-    if get_flags("FLAGS_enable_pir_in_executor")[
-        'FLAGS_enable_pir_in_executor'
-    ]:
-        for i, type in enumerate(job_types):
-            if i == len(job_types) - 1:
-                break
-            next_type = job_types[i + 1]
-            prepare_ir_program(
-                type_to_program[type], type_to_program[next_type]
+    return type_to_program
+
+
+def shadow_var_between_sub_programs(sub_programs):
+    """
+    Add shadow_output and data op pair to share vars between sub_programs.
+    """
+    suffixed_shadow_arg_names = (
+        set()
+    )  # arg_names that are required in later sub_programs
+    for sub_program in reversed(sub_programs):
+        # step 1: parse shadow arguments
+        block = sub_program.global_block()
+        input_arg_names = set()
+        output_arg_names = set()
+        shadow_arg_names = set()
+        for op in block.ops:
+            for input_arg_name in op.input_arg_names:
+                if var_can_be_deleted(input_arg_name, block):
+                    input_arg_names.add(input_arg_name)
+                    # NOTE(Ruibiao): When translating these codes to pir, we can simplely set
+                    # `shadow_arg_names=input_arg_names-output_arg_names` since the program
+                    # in pir satisfies SSA form.
+                    if input_arg_name not in output_arg_names:
+                        shadow_arg_names.add(input_arg_name)
+            for output_arg_name in op.output_arg_names:
+                output_arg_names.add(output_arg_name)
+
+        # step 2: add `shadow_output` op
+        shadow_arg_names_for_suffixed_programs = (
+            output_arg_names & suffixed_shadow_arg_names
+        )
+        for shadow_arg_name in shadow_arg_names_for_suffixed_programs:
+            block.append_op(
+                type="shadow_output",
+                inputs={"x": shadow_arg_name},
+                outputs={"out": shadow_arg_name},  # unused
+                attrs={"name": shadow_arg_name},
             )
 
-    return type_to_program
+        # step3: add `data` op
+        for shadow_arg_name in shadow_arg_names:
+            shadow_var = block.var(shadow_arg_name)
+            block._prepend_op(
+                type="data",
+                outputs={"out": shadow_arg_name},
+                attrs={
+                    "shape": shadow_var.shape,
+                    "dtype": shadow_var.dtype,
+                    "place": 2,  # GPUPlace
+                    "name": shadow_arg_name,
+                },
+            )
+
+        sub_program._sync_with_cpp()
+
+        # step4: update suffixed_shadow_arg_names
+        suffixed_shadow_arg_names -= shadow_arg_names_for_suffixed_programs
+        suffixed_shadow_arg_names |= shadow_arg_names
 
 
 def _create_param(dst_block, src_var):
@@ -535,7 +546,7 @@ def _overlap_send_recv(program):
     The finally target of this function is as follows:
         1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
         2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
-        3. 'recv_v2' opeator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
     """
     for block in program.blocks:
         for op in block.ops:
@@ -654,8 +665,13 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     return [fwd_prog, bwd_prog, opt_prog]
 
 
-def _program_for_vpp(program, num_model_chunks, dist_context):
-    _insert_sync_for_fthenb_1f1b(program, dist_context)
+def _program_for_vpp(
+    program, num_model_chunks, dist_context, enable_send_recv_overlap=False
+):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program, dist_context)
 
     oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
 
@@ -756,7 +772,7 @@ def _program_for_vpp(program, num_model_chunks, dist_context):
 
 def _add_event_dependency(recorder_op, waiter_op):
     '''
-    Add the extra event dependcy of the two operators.
+    Add the extra event dependency of the two operators.
     This function mainly aims for the cross-programs in pipeline parallelism,
     especial for the 'send_v2' 'recv_v2' etc.
     '''

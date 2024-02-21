@@ -54,6 +54,7 @@ llvm::FunctionType* ExternFunctionLLVMEmitter::llvm_fn_type() const {
   auto* fn_type = llvm::FunctionType::get(llvm_ret_type, arg_types, false);
   return fn_type;
 }
+
 const char* ExternFunctionLLVMEmitter::backend_kind() const { return nullptr; }
 
 void ExternFunctionLLVMEmitter::EmitImpl(const ir::Call* op) {

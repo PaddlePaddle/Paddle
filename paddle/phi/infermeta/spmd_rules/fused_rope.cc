@@ -87,7 +87,7 @@ void check_sin_cos(const DistMetaTensor& sin,
                     cos.dims(),
                     phi::errors::InvalidArgument(
                         "The dims of sin and cos must be the same. But "
-                        "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                        "received sin's dims is {%s}, cos's dims is {%s}.",
                         sin.dims(),
                         sin.dims()));
 
@@ -140,7 +140,7 @@ void check_sin_cos(const DistMetaTensor& sin,
         true,
         phi::errors::InvalidArgument(
             "The batch_size and seq_len of position_ids must be the same as "
-            "those of q. But recieved position_ids's "
+            "those of q. But received position_ids's "
             "shape is {%s}, q's shape is {%s}.",
             str_join(position_ids_shape),
             str_join(q_shape)));

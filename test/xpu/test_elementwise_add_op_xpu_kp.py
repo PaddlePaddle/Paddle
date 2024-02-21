@@ -57,7 +57,7 @@ class TestElementwiseAddOp(XPUOpTest):
                 max_relative_error=self.max_relative_error,
             )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
@@ -68,7 +68,7 @@ class TestElementwiseAddOp(XPUOpTest):
                 max_relative_error=self.max_relative_error,
             )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
@@ -338,8 +338,8 @@ class TestAddOp(unittest.TestCase):
         with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float32')
             np_y = np.array([1, 5, 2]).astype('float32')
-            x = base.dygraph.to_variable(np_x)
-            y = base.dygraph.to_variable(np_y)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
             z = paddle.add(x, y)
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])

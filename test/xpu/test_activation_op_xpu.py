@@ -664,7 +664,7 @@ class XPUTestReciprocalOP(XPUOpTestWrapper):
         self.op_name = 'reciprocal'
         self.use_dynamic_create_class = False
 
-    class XPUTestRecipocal(TestActivationOPBase):
+    class XPUTestReciprocal(TestActivationOPBase):
         def set_case(self):
             self.op_type = "reciprocal"
             self.dtype = self.in_type

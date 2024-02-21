@@ -27,7 +27,6 @@ import paddle.distributed as dist
 from paddle import base
 from paddle.autograd import no_grad
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
 from paddle.base.framework import (
     Variable,
@@ -542,10 +541,7 @@ class StaticGraphAdapter:
             # train and test may take different arguments
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
-            if (
-                self._amp_level == 'O2'
-                and input_dtypes[idx] == core.VarDesc.VarType.FP16
-            ):
+            if self._amp_level == 'O2' and input_dtypes[idx] == paddle.float16:
                 if isinstance(feed[n], core.LoDTensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
                 elif isinstance(feed[n], np.array):
@@ -827,7 +823,7 @@ class DynamicGraphAdapter:
         inputs = to_list(inputs)
         self._input_info = _update_input_info(inputs)
         labels = labels or []
-        labels = [to_variable(l) for l in to_list(labels)]
+        labels = [paddle.to_tensor(l) for l in to_list(labels)]
 
         # scaler should be initialized only once
         if self._amp_level != "O0" and self.model._scaler is None:
@@ -839,9 +835,11 @@ class DynamicGraphAdapter:
             level=self._amp_level,
         ):
             if self._nranks > 1:
-                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[paddle.to_tensor(x) for x in inputs])
             else:
-                outputs = self.model.network(*[to_variable(x) for x in inputs])
+                outputs = self.model.network(
+                    *[paddle.to_tensor(x) for x in inputs]
+                )
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -877,9 +875,9 @@ class DynamicGraphAdapter:
         inputs = to_list(inputs)
         self._input_info = _update_input_info(inputs)
         labels = labels or []
-        labels = [to_variable(l) for l in to_list(labels)]
+        labels = [paddle.to_tensor(l) for l in to_list(labels)]
 
-        outputs = self.model.network(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[paddle.to_tensor(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -936,7 +934,7 @@ class DynamicGraphAdapter:
     def predict_batch(self, inputs):
         self.model.network.eval()
         self.mode = 'test'
-        inputs = [to_variable(x) for x in to_list(inputs)]
+        inputs = [paddle.to_tensor(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, base.CUDAPlace):
@@ -976,7 +974,7 @@ class DynamicGraphAdapter:
         # which would happen when set_state_dict before minimize, the state would be
         # stored in optimizer._accumulators_holder and loaded lazily.
         # To contrive this when loading from static-graph saved states, extend
-        # state dict to include keys named accoring to dygraph naming rules.
+        # state dict to include keys named according to dygraph naming rules.
         # TODO: if len(self.model._optimizer._accumulators) > 0
         converted_state = dict(optim_state)
         opt_unq_name = self.model._optimizer._name
@@ -1429,7 +1427,7 @@ class Model:
         for optimizer states is not necessary if no need to restore the optimizer.
 
         NOTE: parameters are retrieved out from the file storing model states
-        accoring to their structured names.
+        according to their structured names.
 
         For fine-tuning or transfer-learning models where some of the layers have
         changed, keep parameters needed to restore have same structured names in
@@ -2471,7 +2469,7 @@ class Model:
             ]
         else:
             out_specs = to_list(specs)
-        # Note: checks each element has specificed `name`.
+        # Note: checks each element has specified `name`.
         if out_specs is not None:
             for i, spec in enumerate(out_specs):
                 assert isinstance(spec, Input)

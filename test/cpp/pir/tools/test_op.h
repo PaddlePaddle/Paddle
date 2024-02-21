@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/op_trait.h"
+#include "paddle/pir/include/core/operation_utils.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 #include "test/cpp/pir/tools/test_interface.h"
 #include "test/cpp/pir/tools/test_trait.h"

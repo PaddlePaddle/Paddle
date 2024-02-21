@@ -151,8 +151,8 @@ def _setitem_for_tensor_array(var, item, value):
     assert (
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
-    if isinstance(item, (Variable, int)):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+    if isinstance(item, (Variable, paddle.pir.Value, int)):
+        from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -248,16 +248,20 @@ def slice_is_same_to_original(start, end, step):
     return start == 0 and end == MAX_INTEGER and step == 1
 
 
-def parse_index(x, indices):
+def is_tensor_array_type(value):
     from .framework import in_pir_mode
 
     if in_pir_mode():
-        is_tensor_array = x.is_dense_tensor_array_type()
+        return value.is_dense_tensor_array_type()
     else:
-        is_tensor_array = (
-            hasattr(x, "desc")
-            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        return (
+            hasattr(value, "desc")
+            and value.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
         )
+
+
+def parse_index(x, indices):
+    is_tensor_array = is_tensor_array_type(x)
 
     advanced_index = (
         [] if is_tensor_array else [None] * 2 * len(x.shape)
@@ -448,7 +452,9 @@ def _setitem_static(x, indices, values):
     from . import in_dynamic_or_pir_mode
     from .framework import Variable, default_main_program, in_pir_mode
 
-    if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    is_tensor_array = is_tensor_array_type(x)
+
+    if is_tensor_array:
         return _setitem_for_tensor_array(x, indices, values)
 
     # step1: parsing the index and recording them

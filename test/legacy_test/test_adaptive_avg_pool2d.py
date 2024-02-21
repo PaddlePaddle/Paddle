@@ -353,8 +353,8 @@ class TestOutputSizeTensor(UnittestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(6, 6)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -367,7 +367,7 @@ class TestOutputSizeTensor(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[out1, out2])
             np.testing.assert_allclose(res[0], res[1])
             paddle.static.save_inference_model(

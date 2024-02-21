@@ -20,16 +20,21 @@
 # manual decomp interface declare are located in manual_op.h
 decomp_interface_declare_gen_op_list = [
     "add_n",
+    "any",
     "batch_norm",
     "batch_norm_",
     "dropout",
+    "embedding",
+    "flatten",
     "full_like",
     "gelu",
+    "hardswish",
     "group_norm",
     "index_select",
     "instance_norm",
     "layer_norm",
     "leaky_relu",
+    "log_softmax",
     "mean",
     "pow",
     "relu",
@@ -38,9 +43,11 @@ decomp_interface_declare_gen_op_list = [
     "silu",
     "softmax",
     "sqrt",
+    "square",
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -48,13 +55,17 @@ decomp_interface_declare_gen_op_list = [
 decomp_interface_implementation_gen_op_list = [
     "add_n",
     "dropout",
+    "embedding",
+    "flatten",
     "full_like",
     "gelu",
+    "hardswish",
     "group_norm",
     "index_select",
     "instance_norm",
     "layer_norm",
     "leaky_relu",
+    "log_softmax",
     "mean",
     "pow",
     "relu",
@@ -63,9 +74,11 @@ decomp_interface_implementation_gen_op_list = [
     "silu",
     "softmax",
     "sqrt",
+    "square",
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 
