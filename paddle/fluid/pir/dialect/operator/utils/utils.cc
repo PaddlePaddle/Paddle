@@ -188,6 +188,7 @@ static std::unordered_map<
 
            if (element_type == AttrType::BOOL) {
              std::vector<bool> vec_bools;
+             vec_bools.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_bools.push_back(
                    vec_element.dyn_cast<pir::BoolAttribute>().data());
@@ -195,6 +196,7 @@ static std::unordered_map<
              return VariantType{vec_bools};
            } else if (element_type == AttrType::INT32) {
              std::vector<int> vec_int32;
+             vec_int32.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_int32.push_back(
                    vec_element.dyn_cast<pir::Int32Attribute>().data());
@@ -202,6 +204,7 @@ static std::unordered_map<
              return VariantType{vec_int32};
            } else if (element_type == AttrType::INT64) {
              std::vector<int64_t> vec_int64;
+             vec_int64.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_int64.push_back(
                    vec_element.dyn_cast<pir::Int64Attribute>().data());
@@ -209,6 +212,7 @@ static std::unordered_map<
              return VariantType{vec_int64};
            } else if (element_type == AttrType::FLOAT) {
              std::vector<float> vec_float;
+             vec_float.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_float.push_back(
                    vec_element.dyn_cast<pir::FloatAttribute>().data());
@@ -216,6 +220,7 @@ static std::unordered_map<
              return VariantType{vec_float};
            } else if (element_type == AttrType::DOUBLE) {
              std::vector<double> vec_double;
+             vec_double.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_double.push_back(
                    vec_element.dyn_cast<pir::DoubleAttribute>().data());
@@ -223,6 +228,7 @@ static std::unordered_map<
              return VariantType{vec_double};
            } else if (element_type == AttrType::STRING) {
              std::vector<std::string> vec_string;
+             vec_string.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_string.push_back(
                    vec_element.dyn_cast<pir::StrAttribute>().AsString());

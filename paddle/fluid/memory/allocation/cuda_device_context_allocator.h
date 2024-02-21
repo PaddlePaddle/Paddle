@@ -129,7 +129,7 @@ class GPUContextAllocator : public Allocator {
 };
 
 /**
- * GPUContextAllocatorPool is a singletion stores mapping from
+ * GPUContextAllocatorPool is a singleton stores mapping from
  * CUDAPlace(s) to std::shared_ptr<GPUContextAllocator>. When a
  * phi::GPUContext's compute stream isn't default stream, it can call this
  * class to allocate GPU memory which will be released by a callback after

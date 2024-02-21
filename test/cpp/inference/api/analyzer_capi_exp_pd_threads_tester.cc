@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <fstream>
 #include <iostream>

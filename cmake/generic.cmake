@@ -989,12 +989,12 @@ function(go_library TARGET_NAME)
 
   # This custom command will always run since it depends on a not
   # existing file.
-  add_custom_command(OUTPUT dummy_rebulid_${TARGET_NAME} COMMAND cmake -E touch
+  add_custom_command(OUTPUT dummy_rebuild_${TARGET_NAME} COMMAND cmake -E touch
                                                                  ${dummyfile})
   # Create a custom target that depends on the custom command output
   # file, so the custom command can be referenced as a dependency by
   # `add_dependencies`.
-  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebulid_${TARGET_NAME})
+  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebuild_${TARGET_NAME})
 
   # Add dummy code to support `make target_name` under Terminal Command
   file(WRITE ${dummyfile}

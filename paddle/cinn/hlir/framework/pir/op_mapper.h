@@ -50,10 +50,10 @@ class OpMapper {
     return false;
   }
 
-  std::vector<::pir::Value> RealOprandSources(
+  std::vector<::pir::Value> RealOperandSources(
       const ::pir::Operation& op) const {
     CHECK(has(op, MapperType::OPERAND))
-        << "Not register OprandIndexsFunction for " << op.name();
+        << "Not register OperandIndexsFunction for " << op.name();
     std::vector<::pir::Value> inputs;
     for (auto idx : operand_funcs_.at(op.name())()) {
       inputs.push_back(op.operand_source(idx));

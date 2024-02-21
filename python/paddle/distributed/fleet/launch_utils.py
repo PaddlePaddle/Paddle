@@ -138,7 +138,7 @@ class JobServer:
         return f"{self.endpoint}"
 
     def __eq__(self, j):
-        return self.endpint == j.endpoint
+        return self.endpoint == j.endpoint
 
     def __ne__(self, j):
         return not self == j
@@ -1082,7 +1082,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
     assert (
         len(node_ranks[node_rank]) <= gpus_num
-    ), "number of ranks mapped to one node should not exceed the avaiable ones."
+    ), "number of ranks mapped to one node should not exceed the available ones."
     assert len(node_ranks) == len(
         node_ips
     ), "ranks length should be equal to ips length."
@@ -1164,7 +1164,7 @@ class ParameterServerLauncher:
             if args.servers:
                 assert (
                     len(args.servers.split(",")) == self.server_num
-                ), "The server_num and servers doesn't match. Expect servers endpoints num epual to server_num, but received servers enpoint num: {} and server_num {}".format(
+                ), "The server_num and servers doesn't match. Expect servers endpoints num equal to server_num, but received servers endpoint num: {} and server_num {}".format(
                     len(args.servers.split(",")), self.server_num
                 )
                 self.server_endpoints = args.servers
@@ -1186,7 +1186,7 @@ class ParameterServerLauncher:
             if args.workers:
                 assert (
                     len(args.workers.split(",")) == self.worker_num
-                ), "The worker_num and workers doesn't match. Expect workers endpoints num epual to worker_num, but received workers enpoint num: {} and worker_num {}".format(
+                ), "The worker_num and workers doesn't match. Expect workers endpoints num equal to worker_num, but received workers endpoint num: {} and worker_num {}".format(
                     len(args.workers.split(",")), self.worker_num
                 )
 
@@ -1238,7 +1238,7 @@ class ParameterServerLauncher:
             if args.coordinators:
                 assert (
                     len(args.coordinators.split(",")) == self.coordinator_num
-                ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num epual to coordinator_num, but received coordinator enpoint num: {} and coordinator_num {}".format(
+                ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num equal to coordinator_num, but received coordinator endpoint num: {} and coordinator_num {}".format(
                     len(args.coordinators.split(",")), self.coordinator_num
                 )
 
@@ -1271,7 +1271,7 @@ class ParameterServerLauncher:
                 if args.heter_workers:
                     assert len(args.heter_workers.split(";")) == len(
                         self.stage_heter_trainer_num
-                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num epual to heter_worker_num stage, but received heter_workers enpoint stage num: {} and heter_worker_num stage {}".format(
+                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num equal to heter_worker_num stage, but received heter_workers endpoint stage num: {} and heter_worker_num stage {}".format(
                         len(args.heter_workers.split(";")),
                         len(self.stage_heter_trainer_num),
                     )
@@ -1537,7 +1537,7 @@ class ParameterServerLauncher:
         pod = cluster.pods[self.node_rank]
         self.gloo_rendezvous_dir = tempfile.mkdtemp()
 
-        # 3. subproces start
+        # 3. subprocess start
         self.procs = {
             "worker": [],
             "coordinator": [],

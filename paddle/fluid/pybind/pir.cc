@@ -114,6 +114,7 @@ using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
+using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
@@ -446,8 +447,8 @@ void BindBlock(py::module *m) {
              py::list param_list;
              for (auto &op : self) {
                if (op.name() == "builtin.parameter" &&
-                   op.HasAttribute(kAttrIsPersisable)) {
-                 auto attrs = op.attribute(kAttrIsPersisable)
+                   op.HasAttribute(kAttrIsPersistable)) {
+                 auto attrs = op.attribute(kAttrIsPersistable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
                  for (uint32_t i = 0; i < attrs.size(); i++) {
@@ -592,6 +593,15 @@ void BindOperation(py::module *m) {
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_pylayer_op",
+           [](Operation &self) -> PyLayerOp {
+             auto pylayer_op = self.dyn_cast<PyLayerOp>();
+             if (!pylayer_op) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Can't cast non-pylayer_op type Operation to PyLayerOp."));
+             }
+             return pylayer_op;
+           })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
       .def("__repr__", [](Operation &self) {
@@ -776,12 +786,13 @@ void BindValue(py::module *m) {
       .def_property(
           "persistable",
           [](Value self) {
-            auto persistable = self.attribute<BoolAttribute>(kAttrIsPersisable);
+            auto persistable =
+                self.attribute<BoolAttribute>(kAttrIsPersistable);
             return !persistable || persistable.data();
           },
           [](Value self, bool persistable) {
             self.set_attribute(
-                kAttrIsPersisable,
+                kAttrIsPersistable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
       .def("all_used_ops",
@@ -1438,10 +1449,10 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
                 }
 
 
@@ -1513,10 +1524,10 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
                 }
 
                 >>> print(mappings)
@@ -1572,7 +1583,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+      cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
@@ -1581,8 +1592,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
-        std::make_unique<
-            cinn::dialect::ir::FuseShapeOpsIntoGenerateShapeOpPass>());
+        cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
@@ -1611,8 +1621,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager->AddPass(
-      std::make_unique<
-          cinn::dialect::ir::SplitGenerateShapeIntoShapeOpsPass>());
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

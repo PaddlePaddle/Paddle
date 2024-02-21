@@ -623,7 +623,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
       if (platform::is_custom_place(dev_ctx.GetPlace())) {
@@ -696,7 +696,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
       if (platform::is_custom_place(dev_ctx.GetPlace())) {

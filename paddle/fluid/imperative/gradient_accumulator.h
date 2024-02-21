@@ -48,8 +48,8 @@ class GradientAccumulator {
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
       inner_var_->SetForwardDataType(var->ForwardDataType());
-      inner_var_->InnerSetOverridedStopGradient(
-          var->InnerOverridedStopGradient());
+      inner_var_->InnerSetOverriddenStopGradient(
+          var->InnerOverriddenStopGradient());
       VLOG(6) << " Create inner grad var for (" << var->Name()
               << ") to store result of this Graph";
     }
@@ -102,14 +102,14 @@ class GradientAccumulator {
    *
    *    There are two types of gradient accumulation:
    *    1. Gradient accumulation in same batch
-   *    2. Gradient accumulation across batchs
+   *    2. Gradient accumulation across batches
    *    The order of execution between Hooks and gradient accumulation:
 
    *      [ Gradient accumulation in same batch]
    *                        |
    *            [ leaf GradVarBase hooks ]
    *                        |
-   *      [ Gradient accumulation across batchs ]
+   *      [ Gradient accumulation across batches ]
    *                        |
    *          [ Gradient reduce / allreduce hooks ]
 
