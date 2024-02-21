@@ -2203,6 +2203,14 @@
     out : Out
   drop_empty_grad : [x_grad]
 
+- op : multi_gru
+  inputs :
+    {x : X, weight_x : WeightX, weight_h : WeightH, bias : Bias, scale_weights : Scale_weights}
+  outputs :
+    hidden : Hidden
+  attrs :
+    {scale_data : Scale_data,  shift_data : Shift_data}
+
 - op : multiclass_nms3
   inputs :
     {bboxes : BBoxes, scores : Scores, rois_num : RoisNum}
