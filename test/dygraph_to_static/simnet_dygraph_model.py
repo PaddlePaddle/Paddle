@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+x  #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -298,6 +298,7 @@ class FC(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
+          import paddle
           import paddle.base as base
           from paddle.base.dygraph import FC
           import numpy as np
