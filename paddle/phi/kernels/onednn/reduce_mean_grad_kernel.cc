@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/reduce_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>

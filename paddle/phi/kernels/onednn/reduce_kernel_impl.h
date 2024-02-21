@@ -37,10 +37,6 @@ inline std::vector<int64_t> CalculateReducedDims(
   return output_dims;
 }
 
-bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx);
-
-bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx);
-
 template <typename T, typename Context>
 void ReduceKernel(const Context& dev_ctx,
                   const DenseTensor& x,

@@ -37,6 +37,4 @@ void MinRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    min_raw, OneDNN, ONEDNN, phi::MinRawKernel, float, phi::dtype::bfloat16) {
-  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
-}
+    min_raw, OneDNN, ONEDNN, phi::MinRawKernel, float, phi::dtype::bfloat16) {}

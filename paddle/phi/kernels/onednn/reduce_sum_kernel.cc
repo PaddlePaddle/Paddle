@@ -37,6 +37,4 @@ void SumRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::dtype::bfloat16) {
-  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
-}
+    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::dtype::bfloat16) {}
