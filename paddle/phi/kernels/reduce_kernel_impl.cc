@@ -22,7 +22,8 @@ namespace phi {
 // better to fallback to native implementation
 inline bool HasOptimizedOneDNNKernel(const KernelContext* ctx) {
   const DenseTensor& x = ctx->InputAt<phi::DenseTensor>(0);
-  const IntArray& dims_array = ctx->AttrAt<IntArray>(0);
+  const TensorRef& dims_tmp = ctx->AttrAt<TensorRef>(0);
+  IntArray dims_array = IntArray(*dims_tmp.Get());
   int ndims = x.dims().size();
   const bool reduce_all = recompute_reduce_all(x, dims_array);
   auto dims = dims_array.GetData();
@@ -65,24 +66,4 @@ bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx) {
   return true;
 }
 
-template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const IntArray& dims,
-               bool keep_dim,
-               DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  ReduceKernel<T, Context>(dev_ctx,
-                           x,
-                           dims,
-                           keep_dim,
-                           reduce_all,
-                           out,
-                           dnnl::algorithm::reduction_max);
-}
 }  // namespace phi
-
-PD_REGISTER_KERNEL(
-    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {
-  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
-}
