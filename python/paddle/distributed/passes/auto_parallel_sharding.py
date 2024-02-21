@@ -33,6 +33,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_dep_skip_op,
     is_forward_op,
     is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -1254,6 +1255,7 @@ class ShardingPass(PassBase):
                             grad_group.coalesce_var,
                             comm_stream,
                             "sharding_grad_comm_dep",
+                            op.dist_attr,
                         )
                     ]
                     # post dep
@@ -1267,6 +1269,7 @@ class ShardingPass(PassBase):
                             grad_group.vars,
                             comm_stream,
                             "sharding_grad_comm_dep",
+                            op.dist_attr,
                         )
                     )
 
@@ -1295,13 +1298,16 @@ class ShardingPass(PassBase):
                     op.type == "c_reduce_avg"
                     and not grad_group.is_in_local_shard
                 ):
+                    if idx not in dep_map:
+                        dep_map[idx] = []
                     dep_map[idx].append(
                         (
-                            idx,
-                            reduce_varname,
-                            reduce_varname,
+                            idx + 1,
+                            grad_group.coalesce_var,
+                            grad_group.coalesce_var,
                             None,
                             "sharding_reduce_avg_dep",
+                            op.dist_attr,
                         )
                     )
 
@@ -1318,6 +1324,7 @@ class ShardingPass(PassBase):
                 post_vars,
                 comm_stream,
                 op_namescope,
+                dist_attr,
             ) in dep_map[i][::-1]:
                 skip_insert_when_sequential_run = (
                     False if op_namescope == "sharding_reduce_avg_dep" else True
@@ -1338,11 +1345,19 @@ class ShardingPass(PassBase):
                     op_namescope=op_namescope,
                     skip_insert_when_sequential_run=skip_insert_when_sequential_run,
                 )
-                if depend_op is not None and comm_stream is not None:
-                    depend_op.dist_attr.execution_stream = comm_stream
-                    depend_op.dist_attr.scheduling_priority = (
-                        self.comm_op_scheduling_priority
+
+                if depend_op is not None:
+                    naive_set_dist_op_attr_for_program_by_mesh(
+                        depend_op,
+                        process_mesh=dist_attr.process_mesh,
+                        ctx=self._dist_context,
+                        chunk_id=dist_attr.chunk_id,
                     )
+                    if comm_stream is not None:
+                        depend_op.dist_attr.execution_stream = comm_stream
+                        depend_op.dist_attr.scheduling_priority = (
+                            self.comm_op_scheduling_priority
+                        )
 
         # hierarchical grad comm
         if self.enable_hierarchical_comm:
