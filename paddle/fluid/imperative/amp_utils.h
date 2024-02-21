@@ -251,7 +251,7 @@ static inline pir::Value Cast(const pir::Value& input,
                               const phi::DataType& dst_dtype,
                               const bool trace_backward UNUSED = true) {
   paddle::imperative::AutoCastGuard guard(
-      egr::Controller::Instance().GetCurrentAMPState(),
+      egr::Controller::Instance().GetCurrentAmpAttrs(),
       paddle::imperative::AmpLevel::O0);
   return paddle::dialect::cast(input, dst_dtype);
 }
