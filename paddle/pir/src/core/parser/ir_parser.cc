@@ -18,9 +18,9 @@
 
 namespace pir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {
-  lexer.reset(new Lexer{is});
+  lexer = std::make_unique<Lexer>(is);
   this->ctx = ctx;
-  builder.reset(new Builder{ctx});
+  builder = std::make_unique<Builder>(ctx);
 }
 
 Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
