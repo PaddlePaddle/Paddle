@@ -84,8 +84,8 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -132,8 +132,8 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -180,8 +180,8 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -229,8 +229,8 @@ class SmoothL1Loss(unittest.TestCase):
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
             dy_ret = smooth_l1_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)

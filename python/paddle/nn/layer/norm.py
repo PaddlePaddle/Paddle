@@ -935,17 +935,13 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.base.dygraph.base import to_variable
+            >>> import paddle
             >>> import numpy as np
 
-
-            >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with base.dygraph.guard():
-            ...     x = to_variable(x)
-            ...     batch_norm = nn.layer.norm.BatchNorm(10)
-            ...     hidden1 = batch_norm(x)
+            >>> x = paddle.rand(shape=(3, 10, 3, 7), dtype="float32")
+            >>> batch_norm = nn.BatchNorm(10)
+            >>> hidden1 = batch_norm(x)
     """
 
     def __init__(
@@ -1054,6 +1050,7 @@ class BatchNorm(Layer):
         self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
+        self.training = not self._is_test
 
     def forward(self, input):
         if in_dynamic_mode():

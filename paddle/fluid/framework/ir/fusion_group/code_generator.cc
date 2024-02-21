@@ -210,7 +210,7 @@ std::string CodeGenerator::Generate(
 std::set<int> CodeGenerator::DistilInputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> input_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetInputIds()) {
       if (id >= 0) {
@@ -224,7 +224,7 @@ std::set<int> CodeGenerator::DistilInputIds(
 std::set<int> CodeGenerator::DistilOutputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetOutputIds()) {
       output_ids.insert(id);
@@ -236,7 +236,7 @@ std::set<int> CodeGenerator::DistilOutputIds(
 std::set<int> CodeGenerator::DistilIntermediateIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> intermediate_output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetIntermediateOutputIds()) {
       intermediate_output_ids.insert(id);

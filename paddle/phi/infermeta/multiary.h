@@ -407,6 +407,18 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_roi_probs,
                                   MetaTensor* rpn_rois_num);
 
+void GraphKhopSamplerInferMeta(const MetaTensor& row,
+                               const MetaTensor& col_ptr,
+                               const MetaTensor& x,
+                               const MetaTensor& eids,
+                               const std::vector<int>& sample_sizes,
+                               bool return_eids,
+                               MetaTensor* out_src,
+                               MetaTensor* out_dst,
+                               MetaTensor* sample_index,
+                               MetaTensor* reindex_x,
+                               MetaTensor* out_eids);
+
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,

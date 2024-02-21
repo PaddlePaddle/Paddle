@@ -537,7 +537,7 @@ def fused_multi_head_attention(
     name=None,
 ):
     r"""
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:

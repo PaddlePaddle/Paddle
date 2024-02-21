@@ -24,6 +24,8 @@ namespace distributed {
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x);
 
+SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x);
+
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out);
 

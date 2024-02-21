@@ -28,11 +28,12 @@ class IrContext;
 namespace paddle {
 namespace drr {
 
-class DrrRewritePattern;
-class DrrPatternContext;
-
-class DrrPatternBase {
+class DrrPatternBase : public std::enable_shared_from_this<DrrPatternBase> {
  public:
+  TEST_API static std::unique_ptr<DrrRewritePattern> Build(
+      pir::IrContext* ir_context,
+      const std::shared_ptr<DrrPatternBase>& drr_pattern);
+
   virtual ~DrrPatternBase() = default;
 
   // Define the drr pattern.
@@ -42,11 +43,17 @@ class DrrPatternBase {
   virtual std::string name() const = 0;
 
   // Give the drr pattern benefit.
+  // If you want to control the application order of multiple patterns within a
+  // pass, you need to specify it. The larger the value, the earlier it is
+  // applied, usually set to the number of operators in the source pattern, with
+  // a default of 1.
   virtual uint32_t benefit() const { return 1; }
-
-  // Build the Drr Pattern.
-  std::unique_ptr<DrrRewritePattern> Build(pir::IrContext* ir_context) const;
 };
+
+template <typename T, typename... Args>
+auto Create(pir::IrContext* ir_context, Args&&... args) {
+  return T::Build(ir_context, std::make_shared<T>(std::forward<Args>(args)...));
+}
 
 }  // namespace drr
 }  // namespace paddle

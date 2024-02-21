@@ -108,7 +108,7 @@ struct GraphTrait<Variable, Function> {
 
 // clang-format off
 /*
-Graph = ([Variale], [Function], [Edge Variable Function], [Edge Function Variable])
+Graph = ([Variable], [Function], [Edge Variable Function], [Edge Function Variable])
 Edge T0 T1 = (T0, T1)
 */
 // clang-format on

@@ -615,7 +615,8 @@ function(paddle_test_build TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     endif()
     if(WITH_CINN AND NOT CINN_ONLY)
-      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>
+                            cinn_transforms)
       add_dependencies(${TARGET_NAME} cinnapi)
     endif()
     if(WITH_XPU)
@@ -763,12 +764,6 @@ function(hip_library TARGET_NAME)
     cmake_parse_arguments(hip_library "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     if(hip_library_SRCS)
-      # FindHIP.cmake defined hip_add_library, HIP_SOURCE_PROPERTY_FORMAT is requried if no .cu files found
-      if(NOT (${CMAKE_CURRENT_SOURCE_DIR} MATCHES ".*/operators"
-              OR ${CMAKE_CURRENT_SOURCE_DIR} MATCHES ".*/phi/kernels"))
-        set_source_files_properties(${hip_library_SRCS}
-                                    PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
-      endif()
       if(hip_library_SHARED OR hip_library_shared) # build *.so
         hip_add_library(${TARGET_NAME} SHARED ${hip_library_SRCS})
       else()
@@ -782,6 +777,10 @@ function(hip_library TARGET_NAME)
       endif()
       # cpplint code style
       foreach(source_file ${hip_library_SRCS})
+        if(NOT ${source_file} MATCHES "\\.cu$")
+          set_source_files_properties(${source_file}
+                                      PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
+        endif()
         string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
         if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
           list(APPEND hip_library_HEADERS
@@ -989,12 +988,12 @@ function(go_library TARGET_NAME)
 
   # This custom command will always run since it depends on a not
   # existing file.
-  add_custom_command(OUTPUT dummy_rebulid_${TARGET_NAME} COMMAND cmake -E touch
+  add_custom_command(OUTPUT dummy_rebuild_${TARGET_NAME} COMMAND cmake -E touch
                                                                  ${dummyfile})
   # Create a custom target that depends on the custom command output
   # file, so the custom command can be referenced as a dependency by
   # `add_dependencies`.
-  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebulid_${TARGET_NAME})
+  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebuild_${TARGET_NAME})
 
   # Add dummy code to support `make target_name` under Terminal Command
   file(WRITE ${dummyfile}

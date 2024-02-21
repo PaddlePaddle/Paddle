@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <string>
 #include <vector>
@@ -25,8 +25,8 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_string(infer_model, "", "model path");
 

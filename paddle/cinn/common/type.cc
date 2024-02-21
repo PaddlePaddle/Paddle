@@ -330,11 +330,11 @@ Type &Type::operator=(const Type &other) {
 }
 
 Type::Storage &Type::GetStorage() {
-  CHECK(storage_) << "The type not initializated! Please check.";
+  CHECK(storage_) << "The type not initialized! Please check.";
   return *storage_;
 }
 const Type::Storage &Type::GetStorage() const {
-  CHECK(storage_) << "The type not initializated! Please check.";
+  CHECK(storage_) << "The type not initialized! Please check.";
   return *storage_;
 }
 

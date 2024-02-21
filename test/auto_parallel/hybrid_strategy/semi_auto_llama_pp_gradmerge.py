@@ -19,6 +19,7 @@ import numpy as np
 from semi_auto_parallel_llama_model import (
     LlamaForCausalLMAuto,
     LlamaPretrainingCriterionAuto,
+    get_mesh,
     set_global_mesh,
 )
 
@@ -233,8 +234,13 @@ class TestLlamaAuto:
                 num_workers=0,
             )
 
-            dist_model, dist_loader = dist.to_static(
-                model, train_dataloader, criterion, optimizer, strategy=strategy
+            dist_loader = dist.shard_dataloader(
+                train_dataloader,
+                meshes=[get_mesh(0), get_mesh(-1)],
+                shard_dims="dp",
+            )
+            dist_model = dist.to_static(
+                model, dist_loader, criterion, optimizer, strategy=strategy
             )
 
             def validate_batch(batch):

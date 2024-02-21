@@ -16,7 +16,6 @@ import os
 
 import paddle
 from paddle.autograd import PyLayer
-from paddle.base import core
 from paddle.distributed import fleet
 from paddle.nn import functional as F
 
@@ -34,7 +33,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+    return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
 
 
 def is_fused_linear_param_grad_add_supported():
@@ -214,7 +213,10 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         if not fuse_matmul_bias:
             return paddle._C_ops.linear(x, weight, bias)
         else:
-            return paddle._legacy_C_ops.fused_gemm_epilogue(x, weight, bias)
+            result, _ = paddle._C_ops.fused_gemm_epilogue(
+                x, weight, bias, False, False, "none"
+            )
+            return result
 
     @staticmethod
     def backward(ctx, dy):
@@ -340,7 +342,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        gather_output(bool): whether to do allgahter for the output of each rank.
+        gather_output(bool): whether to do allgather for the output of each rank.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
@@ -547,7 +549,7 @@ class RowParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        input_is_parallel(bool): whether the input has alreadly been splitted across the mp group.
+        input_is_parallel(bool): whether the input has already been splitted across the mp group.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
@@ -756,7 +758,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             >>> # doctest: +SKIP('No img to demonstrate')
             >>> from paddle.distributed.fleet.layers.mpu import ParallelCrossEntropy
             >>> loss_func = ParallelCrossEntropy
-            >>> loss = loss_func(img, lable)
+            >>> loss = loss_func(img, label)
 
     """
 
