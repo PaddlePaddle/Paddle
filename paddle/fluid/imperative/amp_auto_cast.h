@@ -84,10 +84,10 @@ class AmpOperators {
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 
-class AMPState {
+class AmpAttrs {
  public:
-  AMPState();
-  ~AMPState();
+  AmpAttrs();
+  ~AmpAttrs();
   bool GetUsePromote() const;
   void SetUsePromote(bool use_promote);
   AmpLevel GetAmpLevel() const;
@@ -105,7 +105,7 @@ class AMPState {
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel guard_level);
+  AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel guard_level);
 
   ~AutoCastGuard();
 
@@ -114,7 +114,7 @@ class AutoCastGuard {
   AutoCastGuard& operator=(const AutoCastGuard& guard) = delete;
 
  private:
-  std::shared_ptr<AMPState> state_;
+  std::shared_ptr<AmpAttrs> state_;
   AmpLevel pre_amp_level_;
 };
 

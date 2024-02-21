@@ -57,6 +57,10 @@ std::vector<Node*> FindOpNodeByInputName(Graph* graph,
 template <typename T>
 size_t HashTensor(const phi::DenseTensor& in);
 
+void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
+                           phi::DenseTensor* weight_max,
+                           bool transpose);
+
 template <typename Tcpu,
           typename Txpu,
           typename std::enable_if<!std::is_same<Tcpu, Txpu>::value, Tcpu>::type*
@@ -67,8 +71,12 @@ void ConvertWeightWrapper(phi::DenseTensor* weight,
                           bool transpose,
                           const std::vector<float>& weight_scales,
                           bool per_channel_quant) {
-  ConvertWithQuant<Tcpu, Txpu>(
-      weight, weight_max, scale_max, transpose, per_channel_quant);
+  if (std::is_same<Tcpu, float>::value && std::is_same<Txpu, float16>::value) {
+    ConvertFromFp32ToFp16(weight, weight_max, transpose);
+  } else {
+    ConvertWithQuant<Tcpu, Txpu>(
+        weight, weight_max, scale_max, transpose, per_channel_quant);
+  }
 }
 
 template <typename Tcpu,

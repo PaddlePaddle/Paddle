@@ -58,7 +58,7 @@
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace py = pybind11;
+namespace py = pybind11;  // NOLINT
 
 namespace paddle {
 namespace pybind {

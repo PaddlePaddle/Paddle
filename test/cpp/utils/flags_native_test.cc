@@ -14,7 +14,7 @@
 
 #include "paddle/common/flags.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include "gtest/gtest.h"
 
 PD_DEFINE_int32(paddle_test_int32, 1, "test int32 flag");

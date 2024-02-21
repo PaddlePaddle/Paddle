@@ -149,7 +149,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log;
+    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log << "\nThe code is:\n" << code;
   }
 
   size_t size;

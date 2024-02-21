@@ -756,14 +756,14 @@ Expr PrimitiveNode::Make(const std::string &name,
 Expr Reduce::Make(Reduce::ReduceType reduce_type,
                   Expr init,
                   Expr body,
-                  const std::vector<Var> &reduce_aixs) {
+                  const std::vector<Var> &reduce_axis) {
   CHECK(body.defined());
   CHECK(init.defined());
   auto n = cinn::common::make_shared<Reduce>();
   n->init = init;
   n->body = body;
   n->reduce_type = reduce_type;
-  n->reduce_axis.append(reduce_aixs.begin(), reduce_aixs.end());
+  n->reduce_axis.append(reduce_axis.begin(), reduce_axis.end());
   CHECK(body.type().valid());
   if (init.defined()) {
     CHECK(init.type().valid());

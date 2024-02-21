@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <numeric>
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
@@ -24,6 +25,11 @@ namespace details {
 
 // empty_shape means x.shape=[]
 static std::vector<int64_t> empty_shape;
+
+template <typename T>
+static Tensor get_slice(const Tensor& x, int64_t idx) {
+  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
+}
 
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
@@ -585,12 +591,12 @@ Tensor hardswish_decomp(const Tensor& x) {
   const double THRESHOLD = 6.0;
   const double SCALE = 6.0;
 
-  // out = minimum(maxmum(x + offset, 0), threshold) * x / scale
-  auto minimun_out =
+  // out = minimum(maximum(x + offset, 0), threshold) * x / scale
+  auto minimum_out =
       minimum<T>(maximum<T>(x + full<T>(empty_shape, OFFSET, x.dtype()),
                             full<T>(empty_shape, 0.0, x.dtype())),
                  full<T>(empty_shape, THRESHOLD, x.dtype()));
-  return (minimun_out * x) / full<T>(empty_shape, SCALE, x.dtype());
+  return (minimum_out * x) / full<T>(empty_shape, SCALE, x.dtype());
 }
 
 template <typename T>
@@ -826,6 +832,93 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
 }
 
 template <typename T>
+Tensor tile_decomp(const Tensor& x, const IntArray& repeat_times) {
+  // x.shape = [3,4] repeat_time=(a,b,c)
+  // shape1 = [1,3,4]
+  // shape2 = [1,1,1,3,1,4]
+  // shape3 = [a,1,b,3,c,4]
+  // shape4 = shape1 -> [a, b*3, c*4]
+  // t1 = x.reshape(shape1)
+  // t2 = t1.reshape(shape2)
+  // t3 = t2.expand(shape3)
+  // res = t3.reshape(t3)
+  std::vector<int64_t> repeat_times_ = repeat_times.GetData();
+  std::vector<int64_t> shape1 = common::vectorize<int64_t>(x.dims());
+  auto diff = int64_t(repeat_times_.size()) - int64_t(shape1.size());
+  Tensor t1;
+  if (find_value(shape1, -1)) {
+    size_t repeat_time_length = repeat_times_.size();
+    std::vector<int64_t> unsqueeze_idx2;
+    if (diff > 0) {
+      std::vector<int64_t> unsqueeze_idx1(diff);
+      std::iota(unsqueeze_idx1.begin(), unsqueeze_idx1.end(), 0);
+      t1 = unsqueeze<T>(x, unsqueeze_idx1);
+    } else {
+      t1 = x;
+    }
+    auto length2 = t1.dims().size();
+    for (size_t i = 0; i < repeat_times_.size(); i++) {
+      unsqueeze_idx2.push_back(length2 - repeat_times_.size() + i * 2);
+    }
+
+    Tensor t2 = unsqueeze<T>(t1, unsqueeze_idx2);
+    std::vector<int64_t> ref_shape(t2.dims().size(), 1);
+    for (size_t i = 0; i < unsqueeze_idx2.size(); i++) {
+      ref_shape[unsqueeze_idx2[i]] = repeat_times_[i];
+    }
+    Tensor ref_t = full<T>(ref_shape, 1.0, t2.dtype());
+    Tensor t3 = t2 * ref_t;
+    Tensor origin_shape_t = shape<T>(t1);
+    std::vector<int64_t> t1_shape = common::vectorize<int64_t>(t1.dims());
+    std::vector<Tensor> res_s;
+    for (int64_t i = int64_t(length2) - 1; i >= 0; i--) {
+      auto relative_idx =
+          int64_t(repeat_time_length) - 1 - int64_t(length2 - i - 1);
+
+      if (relative_idx >= 0) {
+        res_s.insert(
+            res_s.begin(),
+            get_slice<T>(origin_shape_t, i) * repeat_times_[relative_idx]);
+      } else {
+        res_s.insert(res_s.begin(), get_slice<T>(origin_shape_t, i));
+      }
+    }
+    Tensor s4 = concat<T>(res_s, 0);
+    return backend::reshape_with_tensor<T>(t3, s4);
+
+  } else {
+    if (diff > 0) {
+      for (int64_t i = 0; i < diff; i++) {
+        shape1.insert(shape1.begin(), 1);
+      }
+    }
+
+    auto length = int64_t(shape1.size());
+    std::vector<int64_t> shape2 = shape1;
+    std::vector<int64_t> shape3 = shape1;
+    std::vector<int64_t> final_shape = shape1;
+    auto r_length = repeat_times_.size();
+    for (size_t j = 0; j < repeat_times_.size(); j++) {
+      int64_t i = int64_t(j);
+
+      shape2.insert(shape2.begin() + (length - 1 - i), 1);
+      shape3.insert(shape3.begin() + (length - 1 - i),
+                    repeat_times_[r_length - i - 1]);
+
+      final_shape[length - i - 1] =
+          final_shape[length - i - 1] * repeat_times_[r_length - i - 1];
+    }
+
+    t1 = reshape<T>(x, shape1);
+
+    auto t2 = reshape<T>(t1, shape2);
+    auto t3 = t2.expand(shape3);
+    auto res = reshape<T>(t3, final_shape);
+    return res;
+  }
+}
+
+template <typename T>
 Tensor square_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
   auto x_cast = x;
@@ -857,28 +950,56 @@ Tensor embedding_decomp(const Tensor& x,
 
   const int64_t NoPadding = -1;
   Tensor weight_tmp = weight;
-  if (padding_idx != NoPadding) {
-    std::vector<int64_t> put_shape{1, weight.dims()[1]};
-    Tensor padding_idx_tensor =
-        full<T>(put_shape, padding_idx, DataType::INT64);
-    Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
-    weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
-  }
-
-  if (x.dims().size() <= 1) {
-    auto out = gather<T>(weight_tmp, x);
-    if (x.dims().size() == 0) {
-      out = std::get<0>(squeeze_decomp<T>(out, {0}));
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  if (find_value(x_dim, -1)) {
+    if (padding_idx != NoPadding) {
+      Tensor put_shape = shape<T>(sum<T>(weight, {0}, weight.dtype(), true));
+      Tensor padding_idx_tensor =
+          backend::full_with_tensor<T>(put_shape, padding_idx, DataType::INT64);
+      Tensor zeros =
+          backend::full_with_tensor<T>(put_shape, 0.0, weight.dtype());
+      weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
     }
-    return out;
-  } else {
-    std::vector<int64_t> tar_shape{-1, 1};
-    auto x_reshape = reshape<T>(x, tar_shape);
-    auto out = gather<T>(weight_tmp, x_reshape);
 
-    auto res_dims = common::vectorize<int64_t>(x.dims());
-    res_dims.push_back(-1);
-    return reshape<T>(out, res_dims);
+    if (x.dims().size() <= 1) {
+      auto out = gather<T>(weight_tmp, x);
+      if (x.dims().size() == 0) {
+        out = squeeze<T>(out, {0});
+      }
+      return out;
+    } else {
+      std::vector<int64_t> tar_shape{-1, 1};
+      auto x_reshape = reshape<T>(x, tar_shape);
+      auto out = gather<T>(weight_tmp, x_reshape);
+      auto x_t_shape = shape<T>(x);
+      auto token_dim = get_slice<T>(shape<T>(out), 1);
+      auto res_t_shape = concat<T>({x_t_shape, token_dim}, 0);
+      return backend::reshape<T>(out, res_t_shape);
+    }
+  } else {
+    if (padding_idx != NoPadding) {
+      std::vector<int64_t> put_shape{1, weight.dims()[1]};
+      Tensor padding_idx_tensor =
+          full<T>(put_shape, padding_idx, DataType::INT64);
+      Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
+      weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
+    }
+
+    if (x.dims().size() <= 1) {
+      auto out = gather<T>(weight_tmp, x);
+      if (x.dims().size() == 0) {
+        out = std::get<0>(squeeze_decomp<T>(out, {0}));
+      }
+      return out;
+    } else {
+      std::vector<int64_t> tar_shape{-1, 1};
+      auto x_reshape = reshape<T>(x, tar_shape);
+      auto out = gather<T>(weight_tmp, x_reshape);
+
+      auto res_dims = common::vectorize<int64_t>(x.dims());
+      res_dims.push_back(-1);
+      return reshape<T>(out, res_dims);
+    }
   }
 }
 
