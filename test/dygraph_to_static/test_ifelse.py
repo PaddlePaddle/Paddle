@@ -589,7 +589,6 @@ def ifelse_temp_local_var(x):
     else:
         tmp = x + 2
         y = tmp * 2
-    # return tmp + 1
     return y
 
 
