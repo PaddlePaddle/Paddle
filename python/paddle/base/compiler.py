@@ -269,7 +269,7 @@ class CompiledProgram:
             ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not avaliable for single card training."
+            ), "DGC is not available for single card training."
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
