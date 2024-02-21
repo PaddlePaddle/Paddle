@@ -92,15 +92,8 @@ CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
-//  auto ctx = params.ctx;
 auto stream = params.stream;
-//  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-//       phi::memory_utils::Alloc(
-//          ctx->GetPlace(),
-//          bytes,
-//          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-
-  void *workspace = nullptr;
+void *workspace = params.workspace;
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
