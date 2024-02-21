@@ -16,6 +16,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "paddle/utils/test_macros.h"
+
 namespace phi {
 using LoD = std::vector<std::vector<std::size_t>>;
 
