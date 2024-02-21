@@ -37,10 +37,7 @@ else()
     DEPS phi common)
 endif()
 
-cc_test(
-  zero_copy_tensor_test
-  SRCS zero_copy_tensor_test.cc
-  DEPS paddle_inference_api)
+paddle_test(zero_copy_tensor_test SRCS zero_copy_tensor_test.cc)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
