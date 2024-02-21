@@ -43,6 +43,14 @@ def error_foo(x):
     return t(x)
 
 
+def created_layer_reconstruct():
+    x = paddle.to_tensor([1, 2], dtype="float32")
+    weight = nn.CrossEntropyLoss(axis=-1).weight
+    if weight is not None:
+        x += 1
+    return x
+
+
 def bar(x):
     a = A(x)
     t = paddle.to_tensor(x)
@@ -65,6 +73,9 @@ class TestInit(TestCaseBase):
             symbolic_translate(error_foo)(inputs)
 
         self.assertRaises(paddle.jit.sot.utils.exceptions.InnerError, run)
+
+    def test_created_layer_reconstruct(self):
+        self.assert_results(created_layer_reconstruct)
 
 
 if __name__ == "__main__":

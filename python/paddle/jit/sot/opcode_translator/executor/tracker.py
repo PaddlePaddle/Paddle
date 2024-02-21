@@ -435,17 +435,20 @@ class CreateLayerTracker(Tracker):
 
     def trace_value_from_frame(self):
         class_tracer = self.layer_class.tracker.trace_value_from_frame()
-        arg_tracers = [arg.tracker.trace_value_from_frame for arg in self.args]
+        arg_tracers = [
+            arg.tracker.trace_value_from_frame() for arg in self.args
+        ]
         kwarg_tracers_dict = {
-            k: v.tracker.trace_value_from_frame for k, v in self.kwargs.items()
+            k: v.tracker.trace_value_from_frame()
+            for k, v in self.kwargs.items()
         }
         kwarg_tracers = list(kwarg_tracers_dict.values())
 
         expr = "{}("
         expr += ", ".join(["{}"] * len(arg_tracers))
-        if len(kwarg_tracers) > 0:
+        if len(arg_tracers) and len(kwarg_tracers) > 0:
             expr += ", "
-            expr += ", ".join(f"{k}={{}}" for k in kwarg_tracers.keys())
+        expr += ", ".join(f"{k}={{}}" for k in kwarg_tracers_dict.keys())
         expr += ")"
 
         return StringifyExpression(
