@@ -11,37 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 
-
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
-
-
-def exp_sub_concat(x1, x2, x3):
-    y1 = paddle.concat([x1, x3], 0)
-    y2 = paddle.concat([x2, x3], 0)
-    # out = paddle.concat([y2, y3], 0)
-    return y1
+sys.path.append(dirname(dirname(__file__)))
+import utils
 
 
 class TestSubstituteDimExprNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = exp_sub_concat
 
-    def forward(self, x1, x2, x3):
-        out = self.fn(x1, x2, x3)
+    def exp_sub(self, x):
+        y = paddle.exp(x)
+        return y - x
+
+    def forward(self, x, y):
+        y2 = self.exp_sub(y)
+        z1 = paddle.concat([y, x], 0)
+        z2 = paddle.concat([y, y2], 0)
+        out = paddle.concat([z1, z2], 0)
         return out
 
 
@@ -55,29 +51,36 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape1 = [64, 96]
-        self.shape2 = [64, 96]
-        self.shape3 = [64, -1]
-        self.x1 = paddle.randn(self.shape1, dtype="float32")
-        self.x2 = paddle.randn(self.shape2, dtype="float32")
-        self.x3 = paddle.randn(self.shape3, dtype="float32")
-        self.x1.stop_gradient = False
-        self.x2.stop_gradient = False
-        self.x3.stop_gradient = False
+        self.shapex = [32, 64]
+        self.x = paddle.randn(self.shapex, dtype="float32")
+        self.x.stop_gradient = False
+        self.shapey = [32, 64]
+        self.y = paddle.randn(self.shapey, dtype="float32")
+        self.y.stop_gradient = False
+
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        paddle.seed(2022)
         net = TestSubstituteDimExprNet()
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
+        input_spec = [
+            InputSpec(shape=[32, 64], dtype="float32"),
+            InputSpec(shape=[128, None], dtype="float32"),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x1, self.x2, self.x3)
+        out = net(self.x, self.y)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        cinn_out = self.eval(use_cinn=True)
         dy_out = self.eval(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
