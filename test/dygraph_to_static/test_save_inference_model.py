@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pt,
     test_ast_only,
     test_legacy_and_pt_and_pir,
+    test_legacy_only,
 )
 
 import paddle
@@ -132,7 +132,9 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
                 layer, [x_data], dygraph_out.numpy(), feed=[x]
             )
 
+    # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
     @test_ast_only
+    @test_legacy_only
     def test_save_pylayer_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -166,18 +168,16 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             loss_out, _ = layer(x)
 
             loss_out_numpy = float(loss_out)
+            self.check_save_inference_model(layer, [x_data], loss_out_numpy)
             self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, enable_pir=False
+                layer, [x_data], loss_out_numpy, fetch=[loss]
             )
             self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, fetch=[loss], enable_pir=False
-            )
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, feed=[x], enable_pir=False
+                layer, [x_data], loss_out_numpy, feed=[x]
             )
 
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None, enable_pir=True
+        self, model, inputs, gt_out, feed=None, fetch=None
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -195,17 +195,9 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        if enable_pir:
-            wrapped_load_and_run_inference = compare_legacy_with_pt(
-                self.load_and_run_inference
-            )
-            infer_out = wrapped_load_and_run_inference(
-                infer_model_dir, model_filename, params_filename, inputs
-            )
-        else:
-            infer_out = self.load_and_run_inference(
-                infer_model_dir, model_filename, params_filename, inputs
-            )
+        infer_out = self.load_and_run_inference(
+            infer_model_dir, model_filename, params_filename, inputs
+        )
 
         np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 

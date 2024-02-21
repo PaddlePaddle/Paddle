@@ -87,7 +87,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
+                    f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                 )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
@@ -118,7 +118,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
+                        f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                     )
             else:
                 # determinate rng

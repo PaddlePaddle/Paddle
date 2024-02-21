@@ -18,8 +18,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
@@ -64,12 +64,11 @@ symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
       SimplifyDimExpr(shape_or_data.shape());
   if (!shape_or_data.data().has_value()) {
     return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
-  } else {
-    std::vector<symbol::DimExpr> simplified_data =
-        SimplifyDimExpr(shape_or_data.data().value());
-    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
-                                                simplified_data);
   }
+  std::vector<symbol::DimExpr> simplified_data =
+      SimplifyDimExpr(shape_or_data.data().value());
+  return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
+                                              simplified_data);
 }
 
 symbol::ShapeOrDataDimExprs SimplifyShapeOrData(

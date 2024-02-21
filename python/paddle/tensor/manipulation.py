@@ -1247,8 +1247,8 @@ def concat(x, axis=0, name=None):
     doesn't have any axis.
 
     Args:
-        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
-            float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
+        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
+            float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
@@ -1319,13 +1319,17 @@ def concat(x, axis=0, name=None):
                     [
                         'bool',
                         'float16',
+                        'bfloat16',
                         'float32',
                         'float64',
+                        'int16',
                         'int32',
                         'int64',
                         'int8',
                         'unit8',
                         'uint16',
+                        'complex64',
+                        'complex128',
                     ],
                     'concat',
                 )

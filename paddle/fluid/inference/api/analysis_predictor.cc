@@ -125,7 +125,7 @@
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
@@ -1992,7 +1992,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           LOG(ERROR)
               << "Allocate too much memory for the GPU memory pool, assigned "
               << config.memory_pool_init_size_mb() << " MB";
-          LOG(ERROR) << "Try to shink the value by setting "
+          LOG(ERROR) << "Try to shrink the value by setting "
                         "AnalysisConfig::EnableUseGpu(...)";
         }
         if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {

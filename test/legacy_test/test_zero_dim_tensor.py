@@ -144,6 +144,7 @@ class TestUnaryAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_unary(self):
         paddle.enable_static()
 
@@ -157,11 +158,20 @@ class TestUnaryAPI(unittest.TestCase):
                 x = paddle.rand([])
                 x.stop_gradient = False
                 out = api(x)
-                paddle.static.append_backward(out)
-
                 fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=fetch_list
+                )
+                fetch_list.extend(
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(
+                            _grad,
+                            (paddle.pir.Value, paddle.base.framework.Variable),
+                        )
+                    ]
+                )
 
                 # 1) Test Program
                 res = exe.run(main_prog, fetch_list=fetch_list)
@@ -169,10 +179,11 @@ class TestUnaryAPI(unittest.TestCase):
                     self.assertEqual(item.shape, ())
 
                 # 2) Test CompiledProgram Program
-                compile_prog = paddle.static.CompiledProgram(main_prog)
-                res = exe.run(compile_prog, fetch_list=fetch_list)
-                for item in res:
-                    self.assertEqual(item.shape, ())
+                if not paddle.framework.in_pir_mode():
+                    compile_prog = paddle.static.CompiledProgram(main_prog)
+                    res = exe.run(compile_prog, fetch_list=fetch_list)
+                    for item in res:
+                        self.assertEqual(item.shape, ())
 
         paddle.disable_static()
 
@@ -198,6 +209,13 @@ reduce_api_list = [
 
 # Use to test zero-dim of reduce API
 class TestReduceAPI(unittest.TestCase):
+    def assertShapeEqual(self, out, target_tuple):
+        if not paddle.framework.in_pir_mode():
+            out_shape = list(out.shape)
+        else:
+            out_shape = out.shape
+        self.assertEqual(out_shape, target_tuple)
+
     def test_dygraph_reduce(self):
         paddle.disable_static()
         for api in reduce_api_list:
@@ -289,6 +307,8 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    # TODO(SigureMo): Temporarily disable this test case in due to hanging in mac CI.
+    # @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
@@ -305,23 +325,34 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[x, out]
+                )
 
                 if api not in [paddle.median, paddle.nanmedian]:
                     out_empty_list = api(x, axis=[])
-                    self.assertEqual(out_empty_list.shape, ())
+                    self.assertShapeEqual(out_empty_list, [])
 
                 out1 = api(x, axis=0)
-                self.assertEqual(out1.shape, ())
+                self.assertShapeEqual(out1, [])
 
                 out2 = api(x, axis=-1)
-                self.assertEqual(out2.shape, ())
+                self.assertShapeEqual(out2, [])
 
                 fetch_list = [x, out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([x.grad_name, out.grad_name])
 
+                fetch_list.extend(
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(
+                            _grad,
+                            (paddle.pir.Value, paddle.base.framework.Variable),
+                        )
+                    ]
+                )
                 res = exe.run(main_prog, fetch_list=fetch_list)
+
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
                 if api not in [paddle.count_nonzero]:
@@ -340,16 +371,27 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, axis=None)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(
+                            _grad,
+                            (paddle.pir.Value, paddle.base.framework.Variable),
+                        )
+                    ]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (3, 5))
 
                 # 3) x is 1D, axis=0, reduce to 0D
@@ -359,16 +401,27 @@ class TestReduceAPI(unittest.TestCase):
                     x = paddle.rand([5])
                 x.stop_gradient = False
                 out = api(x, axis=0)
-                paddle.static.append_backward(out)
+                grad_list = paddle.static.append_backward(
+                    out, parameter_list=[out, x]
+                )
 
                 fetch_list = [out]
-                if block.has_var(x.grad_name):
-                    fetch_list.extend([out.grad_name, x.grad_name])
+                fetch_list.extend(
+                    [
+                        _grad
+                        for _param, _grad in grad_list
+                        if isinstance(
+                            _grad,
+                            (paddle.pir.Value, paddle.base.framework.Variable),
+                        )
+                    ]
+                )
 
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 if len(res) > 1:
                     self.assertEqual(res[1].shape, ())
+                if len(res) > 2:
                     self.assertEqual(res[2].shape, (5,))
 
         paddle.disable_static()
@@ -2875,7 +2928,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(x_1.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = None,
-        # using p_nrom, as_vector = True
+        # using p_norm, as_vector = True
         x_2 = paddle.arange(24, dtype="float32") - 12
         x_2.stop_gradient = False
         out_2 = paddle.linalg.norm(x_2, p=1)
@@ -2886,7 +2939,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x_2.grad.shape, [24])
 
         # 1D input, p = 1 ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_p = paddle.arange(24, dtype="float32") - 12
         x_2_p.stop_gradient = False
         out_2_p = paddle.linalg.norm(x_2_p, p=1, axis=0)
@@ -2897,7 +2950,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x_2_p.grad.shape, [24])
 
         # 1D input, p = fro ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
         out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
@@ -5188,7 +5241,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         out = paddle.t(x)
         grad_list = paddle.static.append_backward(out, parameter_list=[out, x])
-        # (_, out_grad), (_, x_grad) = grad_list
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(
@@ -5630,7 +5682,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = 1 ,axis = None,
-        # using p_nrom, as_vector = True
+        # using p_norm, as_vector = True
         x_2 = paddle.arange(24, dtype="float32") - 12
         x_2.stop_gradient = False
         out_2 = paddle.linalg.norm(x_2, p=1)
@@ -5642,7 +5694,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = 1 ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_p = paddle.arange(24, dtype="float32") - 12
         x_2_p.stop_gradient = False
         out_2_p = paddle.linalg.norm(x_2_p, p=1, axis=0)
@@ -5654,7 +5706,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (24,))
 
         # 1D input, p = fro ,axis = 0,
-        # using p_nrom, as_vector = False
+        # using p_norm, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
         out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
@@ -5666,7 +5718,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (24,))
 
         # 2D input, p = 1, axis = [0, 1]
-        # using p_matrix_norm ,depends on  paddle.sum
+        # using p_matrix_norm, depends on paddle.sum
         x_3 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_3.stop_gradient = False
         out_3 = paddle.linalg.norm(x_3, p=1, axis=[0, 1])
@@ -5780,7 +5832,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 3))
 
-        # p in (-2, 2)  depends on paddle.sum
+        # p in (-2, 2) depends on paddle.sum
         x6 = paddle.to_tensor([[1.0, 0, -1], [0, 1, 0], [1, 0, 1]])
         x6.stop_gradient = False
         out_2 = paddle.linalg.cond(x6, p=2)

@@ -38,7 +38,7 @@ H_FILE_TEMPLATE = """
 #include <vector>
 
 #include "paddle/utils/optional.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
@@ -54,8 +54,8 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/pir/dialect/operator/utils/amp_utils.h"
@@ -99,7 +99,7 @@ API_INNER_CODE_TEMPLATE = """
 
 
 AMP_LOGIC_TEMPLATE = """
-    if (egr::Controller::Instance().GetCurrentAMPState()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
+    if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
         VLOG(5) << "Check and Prepare For AMP";
         auto op_name = phi::TransToFluidOpName("{op_name}");
         std::vector<std::vector<pir::Value>> amp_values_vector = {{ {no_optional_inputs} }};
@@ -107,7 +107,7 @@ AMP_LOGIC_TEMPLATE = """
         auto amp_dst_dtype = paddle::dialect::GetAmpDestDtype("{op_name}", amp_values_vector);
         {new_inputs}
         {{
-            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAMPState(), paddle::imperative::AmpLevel::O0);
+            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
             return paddle::dialect::{op_name}({args});
         }}
     }}

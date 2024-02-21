@@ -15,14 +15,13 @@
 #pragma once
 
 #include <memory>
-#include <optional>
-#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for simplify the DimExpr after ShapeOptimizationPass
+// This is a helper pass for simplifying the DimExpr after ShapeOptimizationPass
 std::unique_ptr<::pir::Pass> CreateSimplifyDimExprPass();
 }  // namespace ir
 }  // namespace dialect

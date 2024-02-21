@@ -100,7 +100,7 @@ class Property {
  private:
   proto::PropertyVals property_;
 
-  // This thread-safe implementation seems to be redudent since the neural
+  // This thread-safe implementation seems to be redundant since the neural
   // networks are usually constructed in a single thread.
   static uint64_t GenerateId() {
     static std::atomic<std::uint64_t> uid{0};
