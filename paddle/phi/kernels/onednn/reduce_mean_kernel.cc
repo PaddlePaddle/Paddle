@@ -37,4 +37,5 @@ void MeanRawKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     mean_raw, OneDNN, ONEDNN, phi::MeanRawKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
 }

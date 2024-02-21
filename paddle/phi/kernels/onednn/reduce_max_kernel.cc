@@ -35,4 +35,6 @@ void MaxKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {}
+    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
+}

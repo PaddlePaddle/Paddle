@@ -59,4 +59,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    ONEDNN,
                    phi::MeanGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
+}

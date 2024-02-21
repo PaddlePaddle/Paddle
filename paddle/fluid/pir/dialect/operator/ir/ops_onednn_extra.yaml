@@ -159,12 +159,16 @@
 # - op : matmul_with_flatten_grad
 
 - op : max
+  dynamic_fallback : True
 
 - op : mean
+  dynamic_fallback : True
 
 - op : mean_grad
+  dynamic_fallback : True
 
 - op : min
+  dynamic_fallback : True
 
 - op : mish
 
@@ -268,8 +272,10 @@
 - op : subtract_grad
 
 - op : sum
+  dynamic_fallback : True
 
 - op : sum_grad
+  dynamic_fallback : True
 
 - op : swish
   extra_args : float beta=1.0
