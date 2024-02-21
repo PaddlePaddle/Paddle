@@ -28,6 +28,11 @@ SEED = 2020
 np.random.seed(SEED)
 
 
+def dyfunc_to_variable(x):
+    res = paddle.to_tensor(x, name=None, zero_copy=None)
+    return res
+
+
 def dyfunc_to_tensor(x):
     res1 = paddle.to_tensor(x, dtype=None, place=None, stop_gradient=True)
     res2 = paddle.tensor.to_tensor(data=res1)
