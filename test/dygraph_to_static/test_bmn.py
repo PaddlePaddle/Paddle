@@ -27,7 +27,6 @@ from dygraph_to_static_utils import (
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import base
 from paddle.base import ParamAttr
 from paddle.base.framework import unique_name
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
