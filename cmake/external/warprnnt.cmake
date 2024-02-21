@@ -31,7 +31,8 @@ if(WIN32)
       "<SOURCE_DIR>/")
 else()
   set(WARPCTC_PATCH_CUDA_COMMAND
-      patch -Nd ${SOURCE_DIR} <
+      git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
+      ${SOURCE_DIR} <
       ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
 endif()
 
@@ -40,7 +41,9 @@ if(NOT WIN32 AND WITH_GPU)
                                                   VERSION_GREATER 12.0)
     file(TO_NATIVE_PATH
          ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.patch native_src)
-    set(WARPRNNT_PATCH_COMMAND patch -Nd ${SOURCE_DIR} < ${native_src})
+    set(WARPRNNT_PATCH_COMMAND
+        git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
+        ${SOURCE_DIR} < ${native_src})
     set(WARPRNNT_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
 endif()
