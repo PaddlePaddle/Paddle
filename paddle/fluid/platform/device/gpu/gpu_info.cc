@@ -445,7 +445,7 @@ class RecordedGpuMallocHelper {
   const int dev_id_;
   const uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
-  cudaMemPool_t memPool_;
+  gpuMemPool_t memPool_;
 
   mutable std::unique_ptr<std::mutex> mtx_;
 

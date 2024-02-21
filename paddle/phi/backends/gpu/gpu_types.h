@@ -50,6 +50,7 @@ DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
+DECLARE_TYPE_FOR_GPU(gpuMemPool_t, cudaMemPool_t, hipMemPool_t);
 
 #undef DECLARE_TYPE_FOR_GPU
 
