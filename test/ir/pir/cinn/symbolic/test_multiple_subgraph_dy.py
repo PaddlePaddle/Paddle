@@ -41,7 +41,7 @@ class MultipleSubgraph(nn.Layer):
         return self.exp_sub(self.mlp(self.exp_sub(x)))
 
 
-class TestWhile(unittest.TestCase):
+class TestMultipleSubgraph(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
@@ -53,7 +53,6 @@ class TestWhile(unittest.TestCase):
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 2)
-        # TODO(Hongyu Jia): Check the usage of jit_kernel_structure with liujie, there should be three jit_kernels: RMSNorm, Matmul and RMSNorm.
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
@@ -71,11 +70,10 @@ class TestWhile(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

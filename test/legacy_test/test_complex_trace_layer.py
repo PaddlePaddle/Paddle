@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from numpy.random import random as rand
 
+import paddle
 import paddle.base.dygraph as dg
 from paddle import base, tensor
 
@@ -35,7 +36,7 @@ class TestComplexTraceLayer(unittest.TestCase):
             ).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
-                    var_x = dg.to_variable(input)
+                    var_x = paddle.to_tensor(input)
                     result = tensor.trace(
                         var_x, offset=1, axis1=0, axis2=2
                     ).numpy()

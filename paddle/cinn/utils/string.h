@@ -75,10 +75,10 @@ bool IsPrefix(const char& c);
 bool IsSuffix(const char& c);
 
 //! Tell if a string \p x start with \p str.
-bool Startswith(const std::string& x, const std::string& str);
+bool StartsWith(const std::string& x, const std::string& str);
 
 //! Tell if a string \p x ends with \p str.
-bool Endswith(const std::string& x, const std::string& str);
+bool EndsWith(const std::string& x, const std::string& str);
 
 template <typename T>
 std::string GetStreamCnt(const T& x) {

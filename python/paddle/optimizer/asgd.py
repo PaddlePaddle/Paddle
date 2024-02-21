@@ -128,7 +128,7 @@ class ASGD(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             p_new = p
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
@@ -167,7 +167,7 @@ class ASGD(Optimizer):
                 [1],
             )
 
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _assign_accumulator_master(
         self, block, name, param, assign_value, index

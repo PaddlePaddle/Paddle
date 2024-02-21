@@ -75,6 +75,7 @@ bool DrrRewritePattern::PatternGraphMatch(
     return false;
   }
   std::vector<const OpCall*> drr_output_sequence;
+  drr_output_sequence.reserve(bind_map.size());
   std::vector<pir::Operation*> ir_output_sequence;
   std::unordered_map<const OpCall*, pir::Operation*> output_op_map;
   for (const auto& pair : bind_map) {

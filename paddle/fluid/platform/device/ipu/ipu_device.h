@@ -20,10 +20,10 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-// get the number of all avaliable IPUs
+// get the number of all available IPUs
 int GetNumDevices();
 
-// get the device id of all avaliable IPUs
+// get the device id of all available IPUs
 std::vector<int> GetDeviceIds();
 
 }  // namespace ipu

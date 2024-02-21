@@ -635,7 +635,7 @@ void GradientAccumulator::CallReduceHooks() {
                     platform::errors::PreconditionNotMet(
                         "Only can call reduce hooks after the "
                         "gradient accumulation is completed in "
-                        "current batch or across batchs."));
+                        "current batch or across batches."));
   if (var_->HasVoidHook()) {
     for (const auto& hook : var_->GetVoidHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";

@@ -51,7 +51,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-namespace py = pybind11;
+namespace py = pybind11;  // NOLINT
 
 namespace pybind11 {
 namespace detail {
