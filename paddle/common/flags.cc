@@ -1091,6 +1091,34 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          "Use CUDA Graph in new executor");
 
 /*
+ * CUDA Graph / Allocator related FLAG
+ * Name: FLAGS_use_cuda_malloc_async_allocator
+ * Since Version: 2.7
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_cuda_malloc_async_allocator=true would allow
+ * CUDAMallocAsyncAllocator replace StreamSafeCUDAAllocator.
+ */
+PHI_DEFINE_EXPORTED_bool(use_cuda_malloc_async_allocator,
+                         false,
+                         "Enable CUDAMallocAsyncAllocator");
+
+/*
+ * CUDA Graph / Allocator related FLAG
+ * Name: FLAGS_auto_free_cudagraph_allocations_on_launch
+ * Since Version: 2.7
+ * Value Range: bool, default=true
+ * Example: When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add
+ * cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically
+ * release graph-owned blocks that have not freed before relaunching.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    auto_free_cudagraph_allocations_on_launch,
+    true,
+    "When enabling CUDA Graph with CUDAMallocAsyncAllocator, we add "
+    "cudaGraphInstantiateFlagAutoFreeOnLaunch so it would automatically "
+    "release graph-owned blocks that have not freed before relaunching.");
+
+/*
  * Executor related FLAG
  * Name: FLAGS_executor_log_deps_every_microseconds
  * Since Version: 2.5
@@ -1437,6 +1465,10 @@ PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
                          false,
                          "Whether to skip decomping op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(prim_check_ops,
+                         false,
+                         "Whether to check the decomposed program, to ensure "
+                         "that only the primitive operator is present.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

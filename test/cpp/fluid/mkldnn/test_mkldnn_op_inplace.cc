@@ -26,13 +26,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(elementwise_add);
 PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
-USE_OP_ITSELF(relu);
-PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
-USE_OP_ITSELF(softmax);
-PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
-PD_DECLARE_KERNEL(softmax, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {

@@ -1036,29 +1036,6 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
 
-    if env_dict.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
-        env_dict.get("CUDNN_LIBRARY")
-    ):
-        package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("CUDNN_LIBRARY"))
-        ]
-        shutil.copy(env_dict.get("CUDNN_LIBRARY"), libs_path)
-        if (
-            sys.platform.startswith("linux")
-            and env_dict.get("CUDNN_MAJOR_VERSION") == '8'
-        ):
-            # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
-            # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
-            # libcudnn_adv_train.so
-            cudnn_lib_files = glob.glob(
-                os.path.dirname(env_dict.get("CUDNN_LIBRARY"))
-                + '/libcudnn_*so.8'
-            )
-            for cudnn_lib in cudnn_lib_files:
-                if os.path.exists(cudnn_lib):
-                    package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
-                    shutil.copy(cudnn_lib, libs_path)
-
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))

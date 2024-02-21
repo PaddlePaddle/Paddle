@@ -110,7 +110,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
 
-    # Hidden assumption: availble labels don't include '.'
+    # Hidden assumption: available labels don't include '.'
     assert '.' not in input_labels
 
     # Verify that output labels all come from the set of input labels
@@ -195,7 +195,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     rhs:
         The equation right hand side
     n_bcast_dims:
-        The maxium number of broadcast dimensions
+        The maximum number of broadcast dimensions
 
     Returns
     -------
@@ -336,7 +336,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     plan matmul
     '''
     # Transpose and re-shape op1 and op2 in I, J1, K and I, J2, K
-    # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
+    # Then apply matmul(x, y, transpose_x=False, transpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
     op1_view, op2_view = (g_view[op] for op in (op1, op2))
@@ -366,7 +366,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
         step = transpose, [var2], var2, list(op2_dims)
         plan.add_step(step)
 
-    # Check if conditions hold for turnning the operation into a matmul
+    # Check if conditions hold for turning the operation into a matmul
     if (
         j1 + j2 > 0
         and k > 0
@@ -538,7 +538,7 @@ def plan_broadcast(plan, operands, nop_axes):
     varnames = [f'op{i}' for i in range(nop)]
 
     for i, op_axes in zip(range(nop), nop_axes):
-        # Re-arrange the dimesions according to the global layout
+        # Re-arrange the dimensions according to the global layout
         perm, fill = rearrange(op_axes)
         var = varnames[i]
         if perm:

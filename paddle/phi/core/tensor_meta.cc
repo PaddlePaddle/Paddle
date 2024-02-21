@@ -161,7 +161,7 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   lod = other.lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims);
+    strides = calc_strides(dims);
   } else {
     strides = other.strides;
   }
@@ -176,7 +176,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   lod = other.lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims);
+    strides = calc_strides(dims);
   } else {
     strides = other.strides;
   }
@@ -193,7 +193,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
   lod = std::move(other.lod);
   offset = other.offset;
   if (other.strides.size() == -1) {
-    strides == calc_strides(dims);
+    strides = calc_strides(dims);
   } else {
     strides = std::move(other.strides);
   }

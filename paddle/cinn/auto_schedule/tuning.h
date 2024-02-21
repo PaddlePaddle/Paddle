@@ -36,7 +36,7 @@ struct TuningOptions {
   int num_tuning_rounds = 1;
 
   // The number of measurement trials in a task, if it is 0,
-  // that means the tunner will return the best
+  // that means the tuner will return the best
   // candidate of schedule config without measurement.
   int num_measure_trials = 10;
 

@@ -51,7 +51,7 @@ def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
 
 class ImperativeQuantAware:
     """
-    Applying quantization aware training (QAT) to the dgraph model.
+    Applying quantization aware training (QAT) to the dygraph model.
     """
 
     def __init__(
@@ -116,7 +116,7 @@ class ImperativeQuantAware:
                 In this layer, user should both define quantization method and
                 dequantization method, that is, the function's input is non-quantized
                 weight and returns dequantized weight.
-                If None, will use uantization op defined by 'weight_quantize_type'.
+                If None, will use quantization op defined by 'weight_quantize_type'.
                 Default is None.
             act_quantize_layer(paddle.nn.Layer, optional): A paddle Layer that defines
                 how to quantize activation.
@@ -133,7 +133,7 @@ class ImperativeQuantAware:
             If user sets attribute 'skip_quant' to a Layer that support dynamic
             quantization and sets it to true, the layer would not be quantized
             during training. If this attribute is not sets or the attribute is
-            false, the Layer would be qunatized in training.
+            false, the Layer would be quantized in training.
 
         Examples:
             .. code-block:: python
@@ -154,7 +154,7 @@ class ImperativeQuantAware:
 
                 >>> # Add the fake quant logical.
                 >>> # The original model will be rewrite.
-                >>> # The outscale of outputs in supportted layers would be calculated.
+                >>> # The outscale of outputs in supported layers would be calculated.
                 >>> imperative_qat.quantize(model)
 
                 >>> # Fine-tune the quantized model
@@ -338,7 +338,7 @@ class ImperativeQuantizeInputs:
             assert (
                 not isinstance(layer, str)
                 and layer in self.fake_quant_input_layers
-            ), ("%s is unspported to be quantized." % layer)
+            ), ("%s is unsupported to be quantized." % layer)
 
         quantize_type = {
             'abs_max',

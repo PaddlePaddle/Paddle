@@ -25,7 +25,7 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           std::vector<float> scale_weights = {1.5f}) {
+           std::vector<float> scale_weights = {1.5f}) {  // NOLINT
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
@@ -57,7 +57,7 @@ void SetOp(ProgramDesc* prog,
 }
 
 ProgramDesc BuildProgramDesc(bool convWithExistingBias,
-                             std::vector<float> scale_weights = {1.5}) {
+                             std::vector<float> scale_weights = {1.5f}) {
   ProgramDesc prog;
   std::vector<std::string> nodes{"c", "weights", "f"};
   if (convWithExistingBias) nodes.push_back("conv_bias");
@@ -98,7 +98,7 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias,
 void MainTest(bool convWithExistingBias,
               int removed_nodes_count,
               float scale,
-              std::vector<float> scale_weights = {1.5f}) {
+              std::vector<float> scale_weights = {1.5f}) {  // NOLINT
   auto prog = BuildProgramDesc(convWithExistingBias, scale_weights);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   auto pass =

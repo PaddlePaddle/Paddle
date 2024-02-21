@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import builtins
 import inspect
+import sys
 import time
 import types
 import weakref
@@ -511,3 +512,14 @@ class StepInfoManager:
         self.step_record.clear()
         self.current_code = None
         self.current_step = -1
+
+
+def get_api_fullname(api):
+    api_name = api.__name__
+    module_str = api.__module__
+    while len(module_str) > 0:
+        module = sys.modules[module_str]
+        if hasattr(module, api_name):
+            return module_str + "." + api_name
+        module_str = module_str.rpartition(".")[0]
+    return None

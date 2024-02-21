@@ -68,7 +68,7 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("softmax_2_out") = softmax_2(src.Tensor("transpose_1_out"));
     const auto &matmul_2 =
         src.Op("pd_op.matmul",
-               {{"transpose_x", src.Attr("matmul_2_tradnspose_x")},
+               {{"transpose_x", src.Attr("matmul_2_transpose_x")},
                 {"transpose_y", src.Attr("matmul_2_transpose_y")}});
     src.Tensor("matmul_2_out") =
         matmul_2(src.Tensor("softmax_2_out"), src.Tensor("input_1"));

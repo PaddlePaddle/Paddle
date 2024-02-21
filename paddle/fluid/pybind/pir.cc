@@ -95,6 +95,7 @@ using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
+using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
@@ -262,10 +263,9 @@ void BindProgram(py::module *m) {
             }
   )DOC");
   program
-      .def("__init__",
-           [](Program &self) {
-             new (&self) Program(pir::IrContext::Instance());
-           })
+      .def(py::init([]() {
+        return std::make_unique<Program>(pir::IrContext::Instance());
+      }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
@@ -426,8 +426,8 @@ void BindBlock(py::module *m) {
              py::list param_list;
              for (auto &op : self) {
                if (op.name() == "builtin.parameter" &&
-                   op.HasAttribute(kAttrIsPersisable)) {
-                 auto attrs = op.attribute(kAttrIsPersisable)
+                   op.HasAttribute(kAttrIsPersistable)) {
+                 auto attrs = op.attribute(kAttrIsPersistable)
                                   .dyn_cast<pir::ArrayAttribute>()
                                   .AsVector();
                  for (uint32_t i = 0; i < attrs.size(); i++) {
@@ -572,6 +572,15 @@ void BindOperation(py::module *m) {
            })
       .def("as_if_op",
            [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_pylayer_op",
+           [](Operation &self) -> PyLayerOp {
+             auto pylayer_op = self.dyn_cast<PyLayerOp>();
+             if (!pylayer_op) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Can't cast non-pylayer_op type Operation to PyLayerOp."));
+             }
+             return pylayer_op;
+           })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
       .def("__repr__", [](Operation &self) {
@@ -756,12 +765,13 @@ void BindValue(py::module *m) {
       .def_property(
           "persistable",
           [](Value self) {
-            auto persistable = self.attribute<BoolAttribute>(kAttrIsPersisable);
+            auto persistable =
+                self.attribute<BoolAttribute>(kAttrIsPersistable);
             return !persistable || persistable.data();
           },
           [](Value self, bool persistable) {
             self.set_attribute(
-                kAttrIsPersisable,
+                kAttrIsPersistable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
       .def("all_used_ops",
@@ -1418,10 +1428,10 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
                 }
 
 
@@ -1493,10 +1503,10 @@ void BindUtils(pybind11::module *m) {
 
                 >>> print(pir_program)
                 {
-                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
-                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
-                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persistable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persistable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persistable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
                 }
 
                 >>> print(mappings)
@@ -1538,12 +1548,11 @@ void BindPassManager(pybind11::module *m) {
 
   )DOC");
   pass_manager
-      .def(
-          "__init__",
-          [](PassManager &self, uint8_t opt_level) {
-            new (&self) PassManager(pir::IrContext::Instance(), opt_level);
-          },
-          py::arg("opt_level") = 2)
+      .def(py::init([](uint8_t opt_level) {
+             return std::make_unique<PassManager>(pir::IrContext::Instance(),
+                                                  opt_level);
+           }),
+           py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
              self.AddPass(

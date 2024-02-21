@@ -17,8 +17,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-namespace pd = paddle::framework;
-
 namespace paddle {
 namespace framework {
 

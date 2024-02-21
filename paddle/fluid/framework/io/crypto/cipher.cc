@@ -50,7 +50,7 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
     return ret;
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Invalid cipher name is specied. "
+        "Invalid cipher name is specified. "
         "Please check you have specified valid cipher"
         " name in CryptoProperties."));
   }

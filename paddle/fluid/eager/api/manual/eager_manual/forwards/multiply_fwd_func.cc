@@ -52,7 +52,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentAMPState(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
@@ -399,7 +399,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentAMPState(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
