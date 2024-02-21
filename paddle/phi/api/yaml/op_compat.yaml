@@ -2636,15 +2636,6 @@
   attrs :
     {repeats : Repeats, axis : dim}
 
-- op : repeat_interleave_with_tensor_index
-  backward : repeat_interleave_with_tensor_index_grad
-  inputs :
-    {x : X, repeats: RepeatTensor}
-  outputs:
-    out : Out
-  attrs:
-    axis : dim
-
 - op : requantize
   inputs :
     input : Input
