@@ -244,11 +244,8 @@ set(op_dialect_srcs
     ${bwd_fused_op_source_file}
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
-    ${pir_update_op_source_file})
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  set(op_dialect_srcs ${op_dialect_srcs} ${api_source_file})
-endif()
+    ${pir_update_op_source_file}
+    ${api_source_file})
 
 if(WITH_MKLDNN)
   set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
@@ -264,21 +261,6 @@ cc_library(
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
-if(NOT (NOT WITH_PYTHON AND ON_INFER))
-  set(op_dialect_vjp_srcs
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
-      ${op_decomp_source_file}
-      ${op_vjp_source_file}
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
-else()
-  set(op_dialect_vjp_srcs
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
-      ${op_decomp_source_file}
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/base/decomp_trans.cc)
-endif()
 
 if(WITH_MKLDNN)
   set(op_dialect_vjp_srcs

@@ -224,6 +224,7 @@ static inline bool NeedCast(const pir::Value& value,
   return false;
 }
 
+#if !(!defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 static inline paddle::Tensor Cast(const paddle::Tensor& input,
                                   const phi::DataType& dst_dtype,
                                   const bool trace_backward = true) {
@@ -242,6 +243,7 @@ static inline paddle::Tensor Cast(const paddle::Tensor& input,
     }
   }
 }
+#endif
 
 static inline pir::Value Cast(const pir::Value& input,
                               const phi::DataType& dst_dtype,
