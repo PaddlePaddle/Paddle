@@ -80,16 +80,6 @@ bool ShapeSrOpInferSymbolicShape(
   return ShapeOpInferSymbolicShape(op, shape_analysis);
 }
 
-void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
-    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
-    int axis) {
-  for (size_t i = 1; i < shape_data_list.size(); ++i) {
-    shape_analysis->CreateDimExprBuilder().CstrEq(
-        shape_data_list[0].shape()[axis], shape_data_list[i].shape()[axis]);
-  }
-}
-
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -119,7 +109,8 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
     } else {
       for (int i = 0; i < rank; ++i) {
         if (i == axis) continue;
-        BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
+        details::BuildCstrEqForTensorListAlongAxis(
+            shape_analysis, shape_data_list, i);
       }
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
@@ -445,14 +436,14 @@ bool ConcatOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
-    for (size_t i = 1; i < shape_data_list.size(); ++i) {
-      for (size_t j = 0; j < rank; ++j) {
-        if (j != static_cast<size_t>(axis)) {
-          // This func have bug
-          BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
-          continue;
-        }
-        out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
+    for (size_t i = 0; i < rank; ++i) {
+      if (i != static_cast<size_t>(axis)) {
+        details::BuildCstrEqForTensorListAlongAxis(
+            shape_analysis, shape_data_list, i);
+        continue;
+      }
+      for (size_t j = 1; j < shape_data_list.size(); ++j) {
+        out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
       }
     }
     return out_dims;

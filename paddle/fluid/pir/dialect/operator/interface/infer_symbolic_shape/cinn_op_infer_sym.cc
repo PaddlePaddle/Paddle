@@ -41,18 +41,27 @@ bool ConcatOpInferSymbolicShape(
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  const int axis =
-      op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
+  int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  // TODO(zhangbopd): Need support GetShapeOrDataForValue().data() case.
   const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> out_dims =
         shape_analysis->GetShapeOrDataForValue(input_values[0]).shape();
+
+    size_t rank = out_dims.size();
+    axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+
     for (size_t i = 1; i < input_size; ++i) {
       const auto &operand_shape_or_data =
           shape_analysis->GetShapeOrDataForValue(input_values[i]);
       out_dims[axis] = out_dims[axis] + operand_shape_or_data.shape()[axis];
     }
+
+    for (size_t i = 1; i < rank; ++i) {
+      if (i == axis) continue;
+      paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
+          shape_analysis, input_values, i);
+    }
+
     return out_dims;
   };
 
