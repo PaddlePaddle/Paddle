@@ -323,8 +323,6 @@ option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
-option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
-       OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
@@ -418,16 +416,6 @@ if(NOT WITH_GPU AND WITH_NCCL)
   set(WITH_NCCL
       OFF
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
-endif()
-
-if(NOT WITH_GPU AND WITH_CUDNN_DSO)
-  message(
-    WARNING
-      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
-  )
-  set(WITH_CUDNN_DSO
-      OFF
-      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
 endif()
 
 # force WITH_XPU on when WITH_XPU_KP

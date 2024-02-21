@@ -24,7 +24,6 @@ env_dict={
     'LAPACK_LIB':'@LAPACK_LIB@',
     'GFORTRAN_LIB':'@GFORTRAN_LIB@',
     'GNU_RT_LIB_1':'@GNU_RT_LIB_1@',
-    'WITH_CUDNN_DSO':'@WITH_CUDNN_DSO@',
     'CUDNN_LIBRARY':'@CUDNN_LIBRARY@',
     'GNU_RT_LIB_2':'@GNU_RT_LIB_2@',
     'WITH_MKL':'@WITH_MKL@',

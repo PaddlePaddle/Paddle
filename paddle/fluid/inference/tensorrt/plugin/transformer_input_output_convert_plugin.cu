@@ -177,7 +177,7 @@ int TransformerInputConvertPlugin::enqueue(
   half* output0 = static_cast<half*>(outputs[0]);        // input(varlen)
   int32_t* output2 = static_cast<int32_t*>(outputs[2]);  // pos_id
   const auto input0_desc = inputDesc[0];
-  const int32_t B = input0_desc.dims.d[0];           // batchs
+  const int32_t B = input0_desc.dims.d[0];           // batches
   const int32_t MaxLength = input0_desc.dims.d[1];   // max token length
   const int32_t HiddenSize = input0_desc.dims.d[2];  // hidden size
 
@@ -222,7 +222,7 @@ int TransformerInputConvertPlugin::enqueue(
       B,
       MaxLength,
       vector_length /
-          num_threads);  //  batchs, max sequnce length, input0.dims.d[2]/*
+          num_threads);  //  batches, max sequnce length, input0.dims.d[2]/*
   remove_padding_kernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, output2, output0);  // input(no_varlen), pos_id, input(varlen)
   return cudaGetLastError() != cudaSuccess;
@@ -311,7 +311,7 @@ int TransformerOutputConvertPlugin::enqueue(
   half* output =
       static_cast<half*>(outputs[0]);  // qkv plugin output(no_varlen)
   const auto input1_desc = inputDesc[1];
-  const int32_t B = input1_desc.dims.d[0];           // batchs
+  const int32_t B = input1_desc.dims.d[0];           // batches
   const int32_t MaxLength = input1_desc.dims.d[1];   // max token length
   const int32_t HiddenSize = input1_desc.dims.d[2];  // hidden size
 
@@ -345,7 +345,7 @@ int TransformerOutputConvertPlugin::enqueue(
   const dim3 num_blocks(
       B,
       MaxLength,
-      vector_length / num_threads);  //  batchs, max sequnce length
+      vector_length / num_threads);  //  batches, max sequnce length
                                      //  (mask_id.dims.d[1]),
                                      //  input.dims.d[1]/*
   recover_padding_kernel<<<num_blocks, num_threads, 0, stream>>>(
