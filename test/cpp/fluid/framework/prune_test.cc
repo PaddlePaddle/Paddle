@@ -30,8 +30,8 @@ void AddOp(const std::string &type,
            f::AttributeMap attrs,
            paddle::framework::BlockDesc *block) {
   // insert output
-  for (auto kv : outputs) {
-    for (auto v : kv.second) {
+  for (auto const &kv : outputs) {
+    for (auto const &v : kv.second) {
       auto var = block->Var(v);
       var->SetDataType(paddle::framework::proto::VarType::FP32);
     }

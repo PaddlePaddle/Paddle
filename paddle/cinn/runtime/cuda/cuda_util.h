@@ -113,6 +113,7 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int block_x,
                            int block_y,
                            int block_z,
+                           int shared_memory_bytes,
                            void* stream);
 
 void cinn_call_cublas(void* v_args,

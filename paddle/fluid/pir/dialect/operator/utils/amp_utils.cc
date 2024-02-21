@@ -36,7 +36,7 @@ phi::DataType GetPromoteType(
     return dst_type;
   }
 
-  if (egr::Controller::Instance().GetCurrentAMPState()->GetAmpDtype() ==
+  if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpDtype() ==
       "float16") {
     if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_values_vector.size(); i++) {
@@ -75,7 +75,7 @@ phi::DataType GetPromoteType(
 
 pir::Value Cast(const pir::Value& input, const phi::DataType& dst_dtype) {
   paddle::imperative::AutoCastGuard guard(
-      egr::Controller::Instance().GetCurrentAMPState(),
+      egr::Controller::Instance().GetCurrentAmpAttrs(),
       paddle::imperative::AmpLevel::O0);
   return paddle::dialect::cast(input, dst_dtype);
 }
@@ -168,13 +168,13 @@ phi::DataType GetAmpDestDtype(
     const std::vector<std::vector<pir::Value>>& amp_values_vector) {
   auto amp_level = egr::Controller::Instance().GetAMPLevel();
   auto amp_setting_dtype =
-      egr::Controller::Instance().GetCurrentAMPState()->GetAmpPhiDtype();
+      egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
 
   bool use_promote = true;
   if (amp_level == paddle::imperative::AmpLevel::O2) {
     use_promote =
-        egr::Controller::Instance().GetCurrentAMPState()->GetUsePromote();
+        egr::Controller::Instance().GetCurrentAmpAttrs()->GetUsePromote();
   }
 
   if (use_promote) {

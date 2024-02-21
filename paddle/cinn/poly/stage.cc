@@ -751,8 +751,8 @@ void Stage::ComputeAt2(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -776,8 +776,8 @@ void Stage::ComputeAt3(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -788,8 +788,8 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
