@@ -17,7 +17,6 @@
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
-from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
@@ -222,7 +221,7 @@ def is_fused_matmul_bias_supported():
         and not paddle.is_compiled_with_rocm()
         or paddle.is_compiled_with_xpu()
     ):
-        return hasattr(core.eager.ops.legacy, "fused_gemm_epilogue")
+        return hasattr(paddle._C_ops, "fused_gemm_epilogue")
     else:
         return False
 

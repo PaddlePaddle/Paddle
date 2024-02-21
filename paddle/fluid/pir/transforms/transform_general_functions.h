@@ -16,10 +16,10 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
 
@@ -61,13 +61,13 @@ pir::Type GetDataTypeFromValue(pir::Value value);
  *
  * @return Operation*
  */
-Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
+TEST_API Operation* GetDefiningOpForInput(const Operation* op, uint32_t index);
 
 /**
  * @brief Get operations and the index of designative op operand (op result)
  that use the specific output of the operation.
  *
- * @param const Operation* cosnt pointer to an operation
+ * @param const Operation* const pointer to an operation
  * @param uint32_t index of result of the operation
 
  * @return std::vector<std::pair<Operation*, int32_t>>

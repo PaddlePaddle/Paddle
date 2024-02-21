@@ -20,11 +20,11 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_operand.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_operand.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace {
 
@@ -61,7 +61,7 @@ void GetUsedExternalValueImpl(
 namespace pir {
 
 std::string GetParameterNameFromValue(pir::Value value) {
-  pir::Operation* owner = value.dyn_cast<OpResult>().owner();
+  pir::Operation* owner = value.defining_op();
   std::string name;
   if (owner->isa<ParameterOp>()) {
     pir::ParameterOp op = owner->dyn_cast<pir::ParameterOp>();
@@ -104,7 +104,7 @@ Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
       index < op->num_operands() && op->operand_source(index),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand_source(index).dyn_cast<OpResult>().owner();
+  return op->operand_source(index).defining_op();
 }
 
 std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(

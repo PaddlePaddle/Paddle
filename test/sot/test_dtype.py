@@ -32,6 +32,16 @@ def tensor_dtype_guard(x):
     return x + 1
 
 
+def reconstruct_dtype():
+    x = paddle.to_tensor(1)
+    z = x.dtype
+    if x > 0:
+        y = paddle.to_tensor(1, dtype=z)
+    else:
+        y = 1
+    return y
+
+
 class TestTensorAstype(TestCaseBase):
     @run_in_both_default_and_pir
     def test_tensor_astype(self):
@@ -52,6 +62,12 @@ class TestTensorDtypeGuard(TestCaseBase):
             self.assertEqual(ctx.translate_count, 2)
             self.assert_results(tensor_dtype_guard, x)
             self.assertEqual(ctx.translate_count, 2)
+
+
+class TestDtypeReconstruct(TestCaseBase):
+    @run_in_both_default_and_pir
+    def test_dtype_reconstruct(self):
+        self.assert_results(reconstruct_dtype)
 
 
 if __name__ == "__main__":

@@ -614,7 +614,8 @@ function(paddle_test_build TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     endif()
     if(WITH_CINN AND NOT CINN_ONLY)
-      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>
+                            cinn_transforms)
       add_dependencies(${TARGET_NAME} cinnapi)
     endif()
     if(WITH_XPU)
@@ -988,12 +989,12 @@ function(go_library TARGET_NAME)
 
   # This custom command will always run since it depends on a not
   # existing file.
-  add_custom_command(OUTPUT dummy_rebulid_${TARGET_NAME} COMMAND cmake -E touch
+  add_custom_command(OUTPUT dummy_rebuild_${TARGET_NAME} COMMAND cmake -E touch
                                                                  ${dummyfile})
   # Create a custom target that depends on the custom command output
   # file, so the custom command can be referenced as a dependency by
   # `add_dependencies`.
-  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebulid_${TARGET_NAME})
+  add_custom_target(rebuild_${TARGET_NAME} DEPENDS dummy_rebuild_${TARGET_NAME})
 
   # Add dummy code to support `make target_name` under Terminal Command
   file(WRITE ${dummyfile}

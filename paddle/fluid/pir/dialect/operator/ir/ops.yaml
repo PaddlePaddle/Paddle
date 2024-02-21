@@ -97,6 +97,7 @@
     func : assign
   backward : assign_grad
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign_out_
   args : (Tensor x, Tensor output)
@@ -164,6 +165,16 @@
     param : [x]
   kernel :
     func : c_allreduce_max
+  inplace : (x -> out)
+
+- op : c_allreduce_min
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_min
   inplace : (x -> out)
 
 - op : c_allreduce_prod
@@ -376,6 +387,15 @@
     data_type : fpn_rois
   optional : rois_num, multi_level_rois_num
 
+- op : distributed_lookup_table
+  args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
+  output : Tensor[](outputs){ids.size()}
+  infer_meta :
+    func : DistributeLookupTableInferMeta
+  kernel :
+    func : distributed_lookup_table
+    data_type : dtype
+
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -438,6 +458,7 @@
     param : [x, weight, padding_idx]
     data_type : weight
   backward : embedding_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -512,6 +533,7 @@
 - op : feed
   args : (str name, int col)
   output : Tensor(out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fetch
   args : (Tensor x, str name, int col)
@@ -642,6 +664,16 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
 
+- op : fused_softmax_mask
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxMaskFuseInferMeta
+  kernel :
+    func : fused_softmax_mask
+    data_type : x
+  backward: fused_softmax_mask_grad
+
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
   output : Tensor(Out)
@@ -692,6 +724,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hardswish
   args : (Tensor x)
@@ -722,6 +755,7 @@
   kernel :
     func : increment
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -744,6 +778,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -811,6 +846,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : matmul_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
@@ -838,6 +874,7 @@
   kernel :
     func : max
   backward : max_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maximum
   args : (Tensor x, Tensor y)
@@ -954,6 +991,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -1022,6 +1060,7 @@
   kernel :
     func : prod
   backward : prod_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
@@ -1277,6 +1316,7 @@
   kernel :
     func : split
   backward : split_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)
@@ -1396,6 +1436,7 @@
     func : tril
   inplace: (x -> out)
   backward : tril_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril_indices
   args : (int rows, int cols, int offset, DataType dtype, Place place={})
@@ -1563,16 +1604,26 @@
   backward: fused_feedforward_grad
 
 - op: lars_momentum
-  args: (Tensor param,  Tensor velocity, Tensor grad, Tensor learning_rate, Tensor master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005}, float epsilon=0, bool multi_precision=false, float rescale_grad=1.0f)
-  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  args: (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, float lars_coeff=0.001f, float[] lars_weight_decay={0.0005f}, float epsilon=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
   infer_meta:
-    func: SparseMomentumInferMeta
-    param: [param, learning_rate, velocity]
+    func: LarsMomentumInferMeta
+    param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
   kernel:
     func: lars_momentum
     param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
     data_type: param
   optional: master_param, master_param_out
+  inplace : master_param -> master_param_out
+
+- op: match_matrix_tensor
+  args: (Tensor x, Tensor y, Tensor w, int dim_t=1)
+  output: Tensor(out), Tensor(tmp)
+  infer_meta:
+     func: MatchMatrixTensorInferMeta
+  kernel:
+     func: match_matrix_tensor
+  backward: match_matrix_tensor_grad
 
 - op: nce
   args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)

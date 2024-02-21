@@ -1,5 +1,5 @@
 set(PD_DIALECT_SOURCE_DIR
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir")
+    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir")
 
 # Generate pd_op_dialect files defining op using op_gen_file
 set(op_gen_parsed_yaml_file
@@ -12,16 +12,16 @@ set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 
 # YAML files for defining operators
 set(op_fwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
 set(op_bwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(fused_op_fwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
 )
 set(fused_op_bwd_yaml
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 set(pir_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
@@ -31,7 +31,7 @@ set(pir_op_bwd_src_yaml
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
@@ -222,6 +222,7 @@ file(
   op_dialect_srcs
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/trait/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/transforms/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/utils/*.cc")

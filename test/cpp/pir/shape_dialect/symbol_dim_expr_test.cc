@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace symbol::test {
 
@@ -47,6 +47,16 @@ TEST(DimExpr, Constraint) {
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
+  std::vector<DimExpr> lhs = builder.ConstShape({1, 2, 3});
+  std::vector<DimExpr> rhs = builder.ConstShape({1, 2, 3});
+  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> expr_pair =
+      builder.SplitAt(rhs, 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.first.size()), 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.second.size()), 2);
+  std::vector<DimExpr> merged =
+      builder.Concat(expr_pair.first, expr_pair.second);
+  builder.CstrEq(lhs, merged);
+  ASSERT_EQ(static_cast<int>(constraints.size()), 4);
 }
 
 /*
@@ -60,12 +70,32 @@ TEST(DimExpr, DataShapeExpr) {
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
   // x => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs x_data_shape{x_shapes};
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
   // y => {shape: [1, S1, 2], data: nullopt}
-  ShapeOrDataDimExprs y_data_shape{y_shapes};
-
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
   // out => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs out_value_shape{x_shapes};
+  ShapeOrDataDimExprs out_value_shape{
+      symbol::TensorShapeOrDataDimExprs(x_shapes)};
+}
+
+/*
+  Simulate the ShapeOrDataDimExprs result of below codes:
+  def (x, y):
+    out = pd.combine(x, y)
+*/
+TEST(DimExpr, TensorListShapeOrDataDimExprs) {
+  std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr("S1"), DimExpr(2)};
+  std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S3"), DimExpr(2)};
+  // x => {shape: [S0, S1, 2], data: nullopt}
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
+  // y => {shape: [1, S3, 2], data: nullopt}
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
+
+  // out => {shape: [S0, S1, 2], data: nullopt, shape: [1, S3, 2], data:
+  // nullopt}
+  ShapeOrDataDimExprs out_data_shape_list(
+      {symbol::TensorShapeOrDataDimExprs(x_shapes),
+       symbol::TensorShapeOrDataDimExprs(y_shapes)});
 }
 
 TEST(Simplify, NumberArithmetic) {

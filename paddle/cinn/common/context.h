@@ -24,7 +24,7 @@
 #include "paddle/cinn/common/debug_manager.h"
 #include "paddle/cinn/common/info_registry.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace cinn {
 

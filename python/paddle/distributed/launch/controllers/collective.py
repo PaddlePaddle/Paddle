@@ -16,7 +16,7 @@ import json
 import os
 
 from ..context.device import DeviceType
-from .controller import ControleMode, Controller
+from .controller import Controller, ControllerMode
 
 
 class CollectiveController(Controller):
@@ -29,7 +29,7 @@ class CollectiveController(Controller):
         # collective is the default mode
         if ctx:
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.COLLECTIVE
+            ctx.args.run_mode = ControllerMode.COLLECTIVE
             return True
         else:
             return False
@@ -45,7 +45,10 @@ class CollectiveController(Controller):
         ):
             return self._build_pod_with_args()
         else:
-            return self._build_pod_with_master()
+            if self.ctx.args.auto_parallel_config is None:
+                skip_run = True
+            # only when skip_run is Flase, should not reset pod
+            return self._build_pod_with_master(skip_run)
 
     def _build_pod_with_tuner(self):
         auto_parallel_config = self.ctx.args.auto_parallel_config
@@ -150,7 +153,7 @@ class CollectiveController(Controller):
 
         return True
 
-    def _build_pod_with_master(self):
+    def _build_pod_with_master(self, reset_pod=True):
         self.pod.replicas = self.pod_replicas()
 
         # rank will be reset when restart
@@ -161,7 +164,9 @@ class CollectiveController(Controller):
         # compatible
         endpoints = [
             f"{self.ctx.node.ip}:{p}"
-            for p in self.ctx.node.get_free_ports(self.pod.replicas)
+            for p in self.ctx.node.get_free_ports(
+                self.pod.replicas, self.pod.rank
+            )
         ]
 
         data = json.dumps(
@@ -205,7 +210,8 @@ class CollectiveController(Controller):
 
         job_endpoints = [i['endpoints'] for i in peer_list]
 
-        # self.pod.reset()
+        if reset_pod:
+            self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
             self.ctx.args.devices
@@ -256,7 +262,7 @@ class CollectiveElasticController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.COLLECTIVE
+            ctx.args.run_mode = ControllerMode.COLLECTIVE
             return True
         else:
             return False

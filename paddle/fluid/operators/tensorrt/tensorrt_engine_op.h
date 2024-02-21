@@ -291,15 +291,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = common::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
         // We need collect value range for shape tensor for Paddle-TRT's use.
-        // To be noticed, this method to identify all shape tensors is based on
-        // assumption that all shape tensors in the model have numbers <= 7.
-        // This is a simple method to identify all shape tensors with some
-        // mistakes, but it doesn't matter.
-        auto is_shape_tensor = t.numel() <= 7 && t.numel() >= 1;
+        // To be noticed, this method to identify all inputs/outputs is shape
+        // tensors; After, TRT Engine gets whether it is a real shape tensor.
+        auto is_shape_tensor = true;
         if (trt_engine->engine()) {
           auto *engine = trt_engine->engine();
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+          if (!is_shape_tensor) {
+            runtime_shape_tensor.erase(name);
+            VLOG(4) << "trt engine runtime delete shape name(" << name
+                    << "), dims(" << t.dims() << ")";
+          }
         }
         if ((t.dtype() == phi::DataType::INT32 ||
              t.dtype() == phi::DataType::INT64) &&
@@ -509,7 +512,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int binding_offset = 0;
     nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
-      // Initilize context and get offset by profile index
+      // Initialize context and get offset by profile index
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
@@ -603,7 +606,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                     "by "
                     "setting min_subgraph_size using EnableTensorrtEngine "
                     "interface.\n"
-                    "\tThe min_subgraph_size shouble to be greater than the "
+                    "\tThe min_subgraph_size should to be greater than the "
                     "number "
                     "of "
                     "nodes in the inconsistent subgraph.\n"));
@@ -825,7 +828,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "by "
               "setting min_subgraph_size using EnableTensorrtEngine "
               "interface.\n"
-              "\tThe min_subgraph_size shouble to be greater than the number "
+              "\tThe min_subgraph_size should to be greater than the number "
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch,

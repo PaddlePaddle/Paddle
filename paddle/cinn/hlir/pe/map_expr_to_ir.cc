@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/dim_expr.h"
-#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/map_expr.h"
@@ -31,7 +30,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr_inline);
 

@@ -30,16 +30,16 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace paddle {
 namespace translator {
@@ -185,7 +185,7 @@ void ProgramTranslator::Translate() {
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetIsPersisableAttributeForAllValue(block);
+    SetIsPersistableAttributeForAllValue(block);
   }
 }
 
@@ -501,7 +501,7 @@ void ProgramTranslator::TranslateWhileOperation(
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    body_block_context->PushValue(loop_var, body_block->AddArgument(val_type));
+    body_block_context->PushValue(loop_var, body_block->AddArg(val_type));
   }
 
   pir::Operation* while_op =
@@ -751,7 +751,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-  auto val = pir::OpResult(nullptr);
+  auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
       paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
     val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
@@ -768,13 +768,13 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   return param_map_.at(var_name);
 }
 
-void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+void ProgramTranslator::SetIsPersistableAttributeForAllValue(
     const BlockDesc& block) {
-  // Currently we set is persisable for operation that generated a value
+  // Currently we set is persistable for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
-    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VLOG(10) << "[op translated][is persistable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
@@ -787,36 +787,34 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
           defining_op,
           phi::errors::PreconditionNotMet(
               "Defining operator of [%s] can not be nullptr", var_name));
-      VLOG(8) << "[op translated][is persisable]" << var_name
+      VLOG(8) << "[op translated][is persistable]" << var_name
               << " from: " << defining_op->name();
-      std::vector<pir::Attribute> is_persisable;
-      if (defining_op->HasAttribute(kAttrIsPersisable)) {
-        is_persisable = defining_op->attribute(kAttrIsPersisable)
-                            .dyn_cast<pir::ArrayAttribute>()
-                            .AsVector();
+      std::vector<pir::Attribute> is_persistable;
+      if (defining_op->HasAttribute(kAttrIsPersistable)) {
+        is_persistable = defining_op->attribute(kAttrIsPersistable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
       } else {
-        is_persisable = std::vector<pir::Attribute>(
+        is_persistable = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      is_persisable[value.index()] =
+      is_persistable[value.index()] =
           pir::BoolAttribute::get(ctx_, var->Persistable());
-      defining_op->set_attribute(kAttrIsPersisable,
-                                 pir::ArrayAttribute::get(ctx_, is_persisable));
+      defining_op->set_attribute(
+          kAttrIsPersistable, pir::ArrayAttribute::get(ctx_, is_persistable));
     }
   }
 }
 
-std::unordered_map<std::string, std::vector<pir::OpResult>>
-ProgramTranslator::VarDesc2OpResult() {
-  std::unordered_map<std::string, std::vector<pir::OpResult>>
-      var_desc_2_opresult;
+std::unordered_map<std::string, std::vector<pir::Value>>
+ProgramTranslator::VarDesc2Value() {
+  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
   for (const auto& [var_name, value_info_list] : param_map_) {
     for (const auto& value_info : value_info_list) {
-      var_desc_2_opresult[var_name].push_back(
-          value_info.value.dyn_cast<pir::OpResult>());
+      var_desc_2_value[var_name].push_back(value_info.value);
     }
   }
-  return var_desc_2_opresult;
+  return var_desc_2_value;
 }
 
 }  // namespace translator

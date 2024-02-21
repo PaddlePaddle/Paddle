@@ -294,7 +294,7 @@ class GradStorage(InternalStorage):
         self._param_ids.append(id(param))
 
     @paddle.autograd.no_grad()
-    def manumal_relase(self):
+    def manual_release(self):
         """
         Release the buffer from InternalStorage. The InternalStorage will need to be rebuilt before use.
         """

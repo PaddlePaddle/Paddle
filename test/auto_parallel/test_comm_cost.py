@@ -51,7 +51,7 @@ class TestCommOpCost(unittest.TestCase):
         cluster = Cluster()
         cluster.build_from_file(cluster_json_path)
 
-        # Build CommConetxt
+        # Build CommContext
         CommContext._has_instance = None
         CommContext._instance = None
         comm_context = CommContext(cluster)
@@ -129,7 +129,7 @@ class TestCommOpCost(unittest.TestCase):
         cluster = Cluster()
         cluster.build_from_file(cluster_json_path)
 
-        # Build CommConetxt
+        # Build CommContext
         CommContext._has_instance = None
         CommContext._instance = None
         comm_context = CommContext(cluster)
