@@ -680,18 +680,6 @@ shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
 shutil.copy('${GNU_RT_LIB_1}', libs_path)
-if '${WITH_CUDNN_DSO}' == 'ON' and os.path.exists('${CUDNN_LIBRARY}'):
-    package_data['paddle.libs']+=[os.path.basename('${CUDNN_LIBRARY}')]
-    shutil.copy('${CUDNN_LIBRARY}', libs_path)
-    if sys.platform.startswith("linux") and '${CUDNN_MAJOR_VERSION}' == '8':
-        # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
-        # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
-        # libcudnn_adv_train.so
-        cudnn_lib_files = glob.glob(os.path.dirname('${CUDNN_LIBRARY}') + '/libcudnn_*so.8')
-        for cudnn_lib in cudnn_lib_files:
-            if os.path.exists(cudnn_lib):
-                package_data['paddle.libs']+=[os.path.basename(cudnn_lib)]
-                shutil.copy(cudnn_lib, libs_path)
 
 if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]

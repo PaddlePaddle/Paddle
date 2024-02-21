@@ -36,7 +36,7 @@ class TestComplexReshape(unittest.TestCase):
             shape = (2, -1)
             for place in self._places:
                 with dg.guard(place):
-                    x_var = dg.to_variable(x_np)
+                    x_var = paddle.to_tensor(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
                     np.testing.assert_allclose(
@@ -52,7 +52,7 @@ class TestComplexReshape(unittest.TestCase):
             shape_ = (2, 12)
             for place in self._places:
                 with dg.guard(place):
-                    x_var = dg.to_variable(x_np)
+                    x_var = paddle.to_tensor(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
                     np.testing.assert_allclose(
