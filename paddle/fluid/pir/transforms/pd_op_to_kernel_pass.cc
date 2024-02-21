@@ -1962,7 +1962,7 @@ std::vector<pir::Value> BuildInputs(
     auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
         kernel_fn_str, kernel_key);
 
-    int tensor_param_index = i;
+    int tensor_param_index = static_cast<int>(i);
     if (kernel.IsValid()) {
       tensor_param_index = op_info_parser->GetTensorParamIndexByArgsName(
           op_info_parser->InputNames()[i]);

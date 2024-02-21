@@ -1992,7 +1992,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           LOG(ERROR)
               << "Allocate too much memory for the GPU memory pool, assigned "
               << config.memory_pool_init_size_mb() << " MB";
-          LOG(ERROR) << "Try to shink the value by setting "
+          LOG(ERROR) << "Try to shrink the value by setting "
                         "AnalysisConfig::EnableUseGpu(...)";
         }
         if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {

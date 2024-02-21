@@ -25,7 +25,7 @@ namespace distributed {
 
 DimTrans::DimTrans(Type type) : type_(type) {}
 
-DimTrans::~DimTrans() {}
+DimTrans::~DimTrans() = default;
 
 DimTrans::Type DimTrans::type() const { return type_; }
 
@@ -39,7 +39,7 @@ InputDim::InputDim(int64_t dim) : DimTrans(DimTrans::Type::INPUTDIM) {
   input_dim_ = dim;
 }
 
-InputDim::~InputDim() {}
+InputDim::~InputDim() = default;
 
 int64_t InputDim::input_dim() const { return input_dim_; }
 

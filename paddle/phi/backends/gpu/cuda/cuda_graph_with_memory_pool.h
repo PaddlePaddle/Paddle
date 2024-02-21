@@ -38,10 +38,10 @@ inline bool IsCUDAGraphCapturing() {
 // Add reset callback if CUDA Graph is capturing.
 // Otherwise, invoke callback directly.
 template <typename Callback>
-inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
+inline void AddPostResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    return CUDAGraph::AddResetCallbackDuringCapturing(
+    return CUDAGraph::AddPostResetCallbackDuringCapturing(
         std::forward<Callback>(callback));
   }
 #endif
@@ -57,7 +57,7 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     size_t nbytes = size * sizeof(T);
     void *new_host_mem = new uint8_t[nbytes];
     std::memcpy(new_host_mem, host_mem, nbytes);
-    AddResetCallbackIfCapturingCUDAGraph(
+    AddPostResetCallbackIfCapturingCUDAGraph(
         [new_host_mem] { delete[] reinterpret_cast<uint8_t *>(new_host_mem); });
     return reinterpret_cast<T *>(new_host_mem);
   }
