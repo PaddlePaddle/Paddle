@@ -28,48 +28,36 @@ class Value;
 class PirInterpreter;
 class ValueExecutionInfo;
 
-class IfInstruction : public InstructionBase {
+class PyLayerInstruction : public InstructionBase {
  public:
-  IfInstruction(size_t id,
-                const platform::Place& place,
-                ::pir::Operation* op,
-                ValueExecutionInfo* value_exe_info,
-                interpreter::ExecutionConfig execution_config);
+  PyLayerInstruction(size_t id,
+                     const platform::Place& place,
+                     ::pir::Operation* op,
+                     ValueExecutionInfo* value_exe_info,
+                     interpreter::ExecutionConfig execution_config);
 
-  ~IfInstruction();
+  ~PyLayerInstruction();
 
   void Run() override;
 
-  const std::string& Name() const override { return cond_name_; }
+  const std::string& Name() const override { return name_; }
 
   ::pir::Operation* Operation() const override { return op_; }
 
-  PirInterpreter* TrueBranchInterpreter() const { return true_branch_inter_; }
-
-  PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
+  PirInterpreter* ForwardInterpreter() const { return fwd_inter_; }
 
  private:
   ::pir::Operation* op_;
 
-  std::string cond_name_{"if_instruction"};
-
-  Variable* cond_var_;
+  std::string name_{"pylayer_instruction"};
 
   std::vector<Variable*> output_vars_;
 
-  PirInterpreter* true_branch_inter_ = nullptr;
+  PirInterpreter* fwd_inter_ = nullptr;
 
-  PirInterpreter* false_branch_inter_ = nullptr;
+  std::vector<std::string> fwd_outputs_;
 
-  std::vector<std::string> true_branch_outputs_;
-
-  std::vector<std::string> false_branch_outputs_;
-
-  // TODO(zhangbo): Currently, only the output of IfOp is included. In the
-  // future, need to consider how to support IfGradOp using IfOp value.
-  std::vector<std::string> true_skip_gc_names_;
-
-  std::vector<std::string> false_skip_gc_names_;
+  std::vector<std::string> fwd_skip_gc_names_;
 };
 
 }  // namespace framework
