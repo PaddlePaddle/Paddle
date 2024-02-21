@@ -44,8 +44,9 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
 std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
                                                            "pd_op.unsqueeze"};
 
-static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
-  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+static bool has_dynamic_shape(const phi::DDim& dims) {
+  std::vector<int64_t> vec = common::vectorize<int64_t>(dims);
+  if (std::find(vec.begin(), vec.end(), 1) != vec.end()) {
     return true;
   } else {
     return false;
@@ -63,19 +64,36 @@ static void check_ops(const std::string& op_name) {
   return;
 }
 
-static const phi::DDim& GetValueDims(pir::Value value) {
-  if (!value.type()) {
+static const phi::DDim GetValueDims(pir::Value value) {
+  pir::Type origin_type = value.type();
+  if (!origin_type) {
     PADDLE_THROW(phi::errors::InvalidArgument("The type of value is nullptr."));
   }
-  if (value.type().isa<DenseTensorType>()) {
-    return value.type().dyn_cast<DenseTensorType>().dims();
-  } else if (value.type().isa<SelectedRowsType>()) {
-    return value.type().dyn_cast<SelectedRowsType>().dims();
+  auto getdims = [](pir::Type value_type) -> phi::DDim {
+    if (value_type.isa<DenseTensorType>()) {
+      return value_type.dyn_cast<DenseTensorType>().dims();
+    } else if (value_type.isa<SelectedRowsType>()) {
+      return value_type.dyn_cast<SelectedRowsType>().dims();
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "[Prim] Currently, we can only get shape for dense "
+          "tensor."));
+    }
+  };
+  phi::DDim value_dim;
+  if (origin_type.isa<pir::VectorType>()) {
+    pir::VectorType types = origin_type.dyn_cast<pir::VectorType>();
+    // all tensor dim in VectorType must be the same, expect dynamic shape.
+    for (size_t idx = 0; idx < types.size(); idx++) {
+      value_dim = getdims(types[idx]);
+      if (has_dynamic_shape(value_dim)) {
+        return value_dim;
+      }
+    }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "[Prim] Currently, we can only get shape for dense "
-        "tensor."));
+    value_dim = getdims(origin_type);
   }
+  return value_dim;
 }
 
 static phi::DataType GetValueDtype(pir::Value value) {
@@ -95,8 +113,7 @@ static phi::DataType GetValueDtype(pir::Value value) {
 static bool check_dynamic_shape(const pir::OpOperand& item,
                                 const pir::Operation& op) {
   auto dims = GetValueDims(item.source());
-  std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
-  if (find_value(shape, -1)) {
+  if (has_dynamic_shape(dims)) {
     VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << dims
             << "] in inputs of op " << op.name();
     return true;
@@ -187,12 +204,11 @@ void DecompProgram::check_decomp_outputs(
               orig_dim,
               decomp_dim));
 
-      std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
-      if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
+      if (has_dynamic_shape(orig_dim)) {
         VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << orig_dim
                 << "] in " << i << "-index output of origin op " << op_name;
       }
-      if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
+      if (has_dynamic_shape(decomp_dim)) {
         VLOG(6) << "[Prim] Decomp op receives dynamic shape [" << decomp_dim
                 << "] in " << i << "-index output of decomp op " << op_name;
       }

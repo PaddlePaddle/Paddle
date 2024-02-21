@@ -20,6 +20,7 @@
 namespace paddle {
 static std::set<std::string> primitive_set = {
     /* primitives*/
+    "pd_op.arange",
     "pd_op.add",
     "pd_op.subtract",
     "pd_op.multiply",
@@ -82,6 +83,7 @@ static std::set<std::string> primitive_set = {
     /* basic ops by PIR*/
     "builtin.combine",
     "builtin.slice",
+    "builtin.split",
     "pd_op.feed",
     "builtin.set_parameter",
     "builtin.parameter",
@@ -93,5 +95,7 @@ static std::set<std::string> primitive_set = {
     "pd_op.unsqueeze",
     "pd_op.top_p_sampling",
     "pd_op.tril",
+    "cf.yield",
+    "pd_op.increment_",
 };
 }  // namespace paddle
