@@ -78,7 +78,7 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
         in1_row_numel,
         out_value->numel() / out_rows.size(),
         phi::errors::InvalidArgument(
-            "The input and oupput width must be equal."
+            "The input and output width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
             out_value->numel() / out_rows.size()));

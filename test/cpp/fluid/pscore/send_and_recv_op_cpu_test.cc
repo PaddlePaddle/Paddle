@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>
@@ -99,7 +99,7 @@ void InitTensorsOnServer(framework::Scope* scope,
   auto ptr = w_value->mutable_data<float>(*place);
 
   for (int64_t i = 0; i < w_value->numel(); ++i) {
-    ptr[i] = static_cast<float>(i / 10);
+    ptr[i] = static_cast<float>(i) / 10.0;
   }
 }
 

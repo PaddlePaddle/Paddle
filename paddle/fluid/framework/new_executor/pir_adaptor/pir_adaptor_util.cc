@@ -234,6 +234,7 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::DataOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
+    paddle::dialect::PyLayerOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
 };
@@ -647,6 +648,13 @@ void HandleForSpecialOp(pir::Operation* op,
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
+    }
+  } else if (op->isa<paddle::dialect::PyLayerOp>()) {
+    auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
+
+    for (size_t i = 0; i < pylayer_op->num_results(); ++i) {
+      auto pylayer_op_out_value = pylayer_op->result(i);
+      BuildValue(pylayer_op_out_value, var_name_prefix, value_exe_info);
     }
   } else if (op->isa<paddle::dialect::WhileOp>()) {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();

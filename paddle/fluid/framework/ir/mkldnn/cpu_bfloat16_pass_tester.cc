@@ -127,7 +127,7 @@ ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
   SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_mkldnn, "float32");
   SetOp(&prog,
         "elementwise_add",
-        "ElemetwiseAdd",
+        "ElementwiseAdd",
         {"c", "e"},
         {"f"},
         use_mkldnn,

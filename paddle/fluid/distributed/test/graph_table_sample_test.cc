@@ -27,10 +27,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
-namespace framework = paddle::framework;
-namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
+
 namespace distributed = paddle::distributed;
 
 std::vector<std::string> edges = {std::string("37\t45\t0.34"),

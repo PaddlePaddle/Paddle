@@ -86,7 +86,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
 }
 
 void SectionWorker::PrepareUnusedVar() {
-  VLOG(5) << "begin prepare the unsed vars";
+  VLOG(5) << "begin prepare the unused vars";
   unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
 }
 
@@ -156,7 +156,7 @@ void SectionWorker::RunFThenB(std::unique_ptr<GarbageCollector> &gc) {
 }
 
 void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
-  // 1F1B scheduler, which runs forward phase and backward phase altertively
+  // 1F1B scheduler, which runs forward phase and backward phase alternatively
   // after startup phase. For a stage, the number of microbatches for
   // startup is num_pipeline_stages_ - pipeline_stage_ - 1, where
   // num_pipeline_stages_ is the total number of pipeline stages and

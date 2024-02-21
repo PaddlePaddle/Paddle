@@ -121,8 +121,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   // Step0: verify input args based on matmul logic
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   auto y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -227,12 +227,12 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 bool trans_x,
                                 bool trans_y) {
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
 
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   PADDLE_ENFORCE_EQ(max_ndim,
                     out_ndim,

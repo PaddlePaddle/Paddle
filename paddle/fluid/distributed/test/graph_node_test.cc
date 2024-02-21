@@ -43,9 +43,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
-namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 // void testSampleNodes(
@@ -410,8 +407,8 @@ void RunBrpcPushSparse() {
   // testCache();
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  prepare_file(edge_file_name, 1);
-  prepare_file(node_file_name, 0);
+  prepare_file(edge_file_name, true);
+  prepare_file(node_file_name, false);
   // auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   // host_sign_list_.push_back(ph_host.SerializeToString());
 
@@ -541,7 +538,7 @@ void RunBrpcPushSparse() {
   client1.load_node_file(std::string("user"), std::string(node_file_name));
   client1.load_node_file(std::string("item"), std::string(node_file_name));
   client1.load_edge_file(
-      std::string("user2item"), std::string(edge_file_name), 0);
+      std::string("user2item"), std::string(edge_file_name), false);
   nodes.clear();
   VLOG(0) << "start to pull graph list";
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);

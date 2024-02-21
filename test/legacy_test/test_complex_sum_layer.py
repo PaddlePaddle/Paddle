@@ -36,7 +36,7 @@ class TestComplexSumLayer(unittest.TestCase):
             ).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
-                    var_x = dg.to_variable(input)
+                    var_x = paddle.to_tensor(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
                     np.testing.assert_allclose(result, target, rtol=1e-05)

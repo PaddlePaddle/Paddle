@@ -102,14 +102,14 @@ class GradientAccumulator {
    *
    *    There are two types of gradient accumulation:
    *    1. Gradient accumulation in same batch
-   *    2. Gradient accumulation across batchs
+   *    2. Gradient accumulation across batches
    *    The order of execution between Hooks and gradient accumulation:
 
    *      [ Gradient accumulation in same batch]
    *                        |
    *            [ leaf GradVarBase hooks ]
    *                        |
-   *      [ Gradient accumulation across batchs ]
+   *      [ Gradient accumulation across batches ]
    *                        |
    *          [ Gradient reduce / allreduce hooks ]
 
