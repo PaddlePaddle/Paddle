@@ -183,7 +183,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
-      Get<std::vector<std::string>>("trt_enter_var_names"),
       Get<std::vector<std::string>>("trt_exclude_var_names"),
       "tensorrt_engine");
   fuser();

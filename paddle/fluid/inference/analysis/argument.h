@@ -244,9 +244,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(trt_enter_var_names,
-                      TRTEnterVarNames,
-                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(trt_exclude_var_names,
                       TRTExcludeVarNames,
                       std::vector<std::string>);
