@@ -331,9 +331,6 @@ void GroupScheduler::SplitWarpNumber() {
 void GroupScheduler::Tiling() {
   // apply tiling
 
-  std::cerr << "before flatten fuse: "
-            << ir_sch_->GetModule().GetExprs().front() << std::endl;
-
   MergeFlattenAxis();
   MergeReduceAxis();
 
