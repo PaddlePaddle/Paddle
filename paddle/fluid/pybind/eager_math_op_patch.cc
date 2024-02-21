@@ -818,12 +818,14 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
-    other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
-    has_other_double = true;
-  } else if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-             _supported_int_dtype_.end()) {
-    eager_gil_scoped_release guard;
-    self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+    } else {
+      other_double = CastPyArg2Double(other_obj, "__rdiv__", 0);
+      has_other_double = true;
+    }
   }
 
   // 2. create or get tensor for other_obj
