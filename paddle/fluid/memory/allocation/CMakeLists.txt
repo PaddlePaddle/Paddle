@@ -25,6 +25,7 @@ if(WITH_GPU OR WITH_ROCM)
     ALLOCATOR_SRCS
     cuda_allocator.cc
     cuda_managed_allocator.cc
+    cuda_malloc_async_allocator.cc
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
     thread_local_allocator.cc)

@@ -33,14 +33,25 @@ if(NOT WITH_SETUP_INSTALL)
   #NOTE(risemeup1):Initialize any submodules.
   message(
     STATUS
-      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+      "Check submodules of paddle, and run 'git submodule sync --recursive && git submodule update --init --recursive'"
   )
+
+  # execute_process does not support sequential commands, so we execute echo command separately
+  execute_process(
+    COMMAND git submodule sync --recursive
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    RESULT_VARIABLE result_var)
+  if(NOT result_var EQUAL 0)
+    message(FATAL_ERROR "Failed to sync submodule, please check your network !")
+  endif()
+
   execute_process(
     COMMAND git submodule update --init --recursive
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     RESULT_VARIABLE result_var)
   if(NOT result_var EQUAL 0)
-    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+    message(
+      FATAL_ERROR "Failed to update submodule, please check your network !")
   endif()
 
 endif()
