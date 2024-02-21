@@ -46,7 +46,7 @@ std::string StringFormat(const std::string &fmt_str, ...) {
 
 std::string RemoveSuffix(const std::string &name) {
   std::string res = name;
-  while (Endswith(res, "_outer") || Endswith(res, "_inner")) {
+  while (EndsWith(res, "_outer") || EndsWith(res, "_inner")) {
     res = res.substr(0, res.size() - 6);
   }
   return res;
@@ -68,10 +68,10 @@ std::string Uppercase(const std::string &x) {
   return res;
 }
 
-bool Startswith(const std::string &x, const std::string &str) {
+bool StartsWith(const std::string &x, const std::string &str) {
   return x.find(str) == 0;
 }
-bool Endswith(const std::string &x, const std::string &str) {
+bool EndsWith(const std::string &x, const std::string &str) {
   if (x.length() >= str.length()) {
     return std::equal(str.rbegin(), str.rend(), x.rbegin());
   }

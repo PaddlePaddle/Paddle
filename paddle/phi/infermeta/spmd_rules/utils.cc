@@ -407,7 +407,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (auto pair : partial_dim_to_type) {
       placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
     }
-    new_input_attrs.emplace_back(FromPlacements(e, placements));
+    new_input_attrs.emplace_back(FromPlacements(e, placements));  // NOLINT
   }
   std::swap(input_attrs, new_input_attrs);
 }

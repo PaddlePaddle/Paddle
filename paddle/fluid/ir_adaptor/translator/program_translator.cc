@@ -30,16 +30,16 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace paddle {
 namespace translator {
@@ -185,7 +185,7 @@ void ProgramTranslator::Translate() {
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetIsPersisableAttributeForAllValue(block);
+    SetIsPersistableAttributeForAllValue(block);
   }
 }
 
@@ -404,7 +404,7 @@ void ProgramTranslator::TranslateIfOperation(
                    true_block_context,
                    &true_region.front());
 
-    // insert tuple_push op to true block before yeild op
+    // insert tuple_push op to true block before yield op
     if (!for_bwd && push_pop_var_names_[op].size() != 0) {
       std::vector<pir::Value> local_values;
       local_values.push_back(cond_to_stack_value_[op][0]);
@@ -421,30 +421,30 @@ void ProgramTranslator::TranslateIfOperation(
       true_region.front().push_back(tuple_push_op);
     }
 
-    // insert yeild op to true block
-    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    std::vector<pir::Value> true_yeild_inputs;
+    // insert yield op to true block
+    auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    std::vector<pir::Value> true_yield_inputs;
     for (auto& out_name : cond_op_outputs) {
       if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
         out_name = out_name.substr(0, out_name.find("@RENAME@block"));
       }
-      true_yeild_inputs.push_back(true_block_context->at(out_name).value);
+      true_yield_inputs.push_back(true_block_context->at(out_name).value);
     }
     true_region.front().push_back(
-        pir::Operation::Create(true_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(true_yield_inputs, {}, {}, yield_info));
 
     // NOTE(zhangbo): The if_op of PIR requires that both true and false
     // branches must exist, and the number of outputs and dtypes must be
     // consistent. Only inconsistent shape is allowed. To be compatible with the
     // old IR design, only true branches are allowed. The false branch may
-    // require yeild some fake variables.
+    // require yield some fake variables.
     pir::Region& false_region = if_op->region(1);
     if (false_region.empty()) false_region.emplace_back();
     auto* false_block_context = translation_ctx->CreateInnerContext();
-    std::vector<pir::Value> false_yeild_inputs;
+    std::vector<pir::Value> false_yield_inputs;
     for (size_t id = 0; id < cond_op_outputs.size(); id++) {
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
-        auto true_type = true_yeild_inputs[id].type();
+        auto true_type = true_yield_inputs[id].type();
         pir::Operation* init_op =
             InsertInitOpOrCreateArrayToBlock(&false_region.front(), true_type);
         PADDLE_ENFORCE_NOT_NULL(
@@ -455,11 +455,11 @@ void ProgramTranslator::TranslateIfOperation(
         false_block_context->PushValue(
             cond_op_outputs[id], VariableDefiningInfo(init_op->result(0)));
       }
-      false_yeild_inputs.push_back(
+      false_yield_inputs.push_back(
           false_block_context->at(cond_op_outputs[id]).value);
     }
     false_region.front().push_back(
-        pir::Operation::Create(false_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -512,13 +512,13 @@ void ProgramTranslator::TranslateWhileOperation(
   TranslateBlock(
       sub_block, 0, sub_block.OpSize(), body_block_context, body_block);
 
-  auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-  std::vector<pir::Value> yeild_inputs{body_block_context->at(cond_var).value};
+  auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yield_inputs{body_block_context->at(cond_var).value};
   for (auto& loop_var : loop_vars) {
-    yeild_inputs.push_back(body_block_context->at(loop_var).value);
+    yield_inputs.push_back(body_block_context->at(loop_var).value);
   }
   body_block->push_back(
-      pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+      pir::Operation::Create(yield_inputs, {}, {}, yield_info));
   for (size_t idx = 0; idx < loop_vars.size(); ++idx) {
     translation_ctx->PushValue(loop_vars[idx], while_op->result(idx));
   }
@@ -768,13 +768,13 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   return param_map_.at(var_name);
 }
 
-void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+void ProgramTranslator::SetIsPersistableAttributeForAllValue(
     const BlockDesc& block) {
-  // Currently we set is persisable for operation that generated a value
+  // Currently we set is persistable for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
-    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VLOG(10) << "[op translated][is persistable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
@@ -787,21 +787,21 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
           defining_op,
           phi::errors::PreconditionNotMet(
               "Defining operator of [%s] can not be nullptr", var_name));
-      VLOG(8) << "[op translated][is persisable]" << var_name
+      VLOG(8) << "[op translated][is persistable]" << var_name
               << " from: " << defining_op->name();
-      std::vector<pir::Attribute> is_persisable;
-      if (defining_op->HasAttribute(kAttrIsPersisable)) {
-        is_persisable = defining_op->attribute(kAttrIsPersisable)
-                            .dyn_cast<pir::ArrayAttribute>()
-                            .AsVector();
+      std::vector<pir::Attribute> is_persistable;
+      if (defining_op->HasAttribute(kAttrIsPersistable)) {
+        is_persistable = defining_op->attribute(kAttrIsPersistable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
       } else {
-        is_persisable = std::vector<pir::Attribute>(
+        is_persistable = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      is_persisable[value.index()] =
+      is_persistable[value.index()] =
           pir::BoolAttribute::get(ctx_, var->Persistable());
-      defining_op->set_attribute(kAttrIsPersisable,
-                                 pir::ArrayAttribute::get(ctx_, is_persisable));
+      defining_op->set_attribute(
+          kAttrIsPersistable, pir::ArrayAttribute::get(ctx_, is_persistable));
     }
   }
 }

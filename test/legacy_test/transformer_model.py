@@ -60,7 +60,7 @@ def multi_head_attention(
 ):
     """
     Multi-Head Attention. Note that attn_bias is added to the logit before
-    computing softmax activiation to mask certain selected positions so that
+    computing softmax activation to mask certain selected positions so that
     they will not considered in attention weights.
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
@@ -220,7 +220,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
 
 def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
     """
-    Add residual connection, layer normalization and droput to the out tensor
+    Add residual connection, layer normalization and dropout to the out tensor
     optionally according to the value of process_cmd.
 
     This will be used before or after multi-head attention and position-wise
@@ -307,10 +307,10 @@ def encoder_layer(
 ):
     """The encoder layers that can be stacked to form a deep encoder.
 
-    This module consits of a multi-head (self) attention followed by
+    This module consists of a multi-head (self) attention followed by
     position-wise feed-forward networks and both the two components companied
     with the post_process_layer to add residual connection, layer normalization
-    and droput.
+    and dropout.
     """
     attn_output = multi_head_attention(
         enc_input,

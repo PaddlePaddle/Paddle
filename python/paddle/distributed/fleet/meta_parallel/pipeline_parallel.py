@@ -59,7 +59,7 @@ def get_action(is_dp, shard_split_param=False):
     return HOOK_ACTION.REDUCE
 
 
-# assume only the first stage and last stage need data, and data consumption is ordred
+# assume only the first stage and last stage need data, and data consumption is ordered
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
     def __init__(
@@ -118,7 +118,7 @@ class FakeMicroDataset:
                         else None
                     )
                 elif data is not None:
-                    self._check_data_vaild(data)
+                    self._check_data_valid(data)
                     output.append(data[begin:end, :].detach())
                 else:
                     output.append(None)
@@ -133,12 +133,12 @@ class FakeMicroDataset:
             )
             return inputs[micro_step].detach()
         elif inputs is not None:
-            self._check_data_vaild(inputs)
+            self._check_data_valid(inputs)
             return inputs[begin:end, :].detach()
         else:
             return None
 
-    def _check_data_vaild(self, data):
+    def _check_data_valid(self, data):
         batch_size = data.shape[0]
         assert self._micro_batch_size * self._acc_steps == batch_size, (
             "batch_size needs to be divisible by micro_batch_size. Currently, "
@@ -198,7 +198,7 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].delay_scale_loss
         # TODO(PP Dev): support dp_comm_overlap without use_main_grad training.
-        # This combination will trigger inplace check error during `reshape_` in funct `_split_tensors`.
+        # This combination will trigger inplace check error during `reshape_` in function `_split_tensors`.
         self._dp_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].dp_comm_overlap
@@ -818,7 +818,7 @@ class PipelineParallel(MetaParallelBase):
         if self.is_pipeline_last_stage(ignore_virtual=True):
             assert (
                 self.total_loss is not None
-            ), "train_batch() in last stage should obtain vaild loss"
+            ), "train_batch() in last stage should obtain valid loss"
             loss = (
                 self.total_loss.detach()
                 if not self._delay_scale_loss

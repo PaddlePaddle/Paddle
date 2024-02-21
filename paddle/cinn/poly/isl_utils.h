@@ -56,7 +56,7 @@ isl::union_set isl_sets_to_union_set(const std::vector<isl::set>& sets);
 std::string isl_map_get_statement_repr(__isl_keep isl_map* map,
                                        isl_dim_type type);
 
-isl_set* __isl_give isl_get_precending_aixs(isl_set* set,
+isl_set* __isl_give isl_get_precending_axis(isl_set* set,
                                             int level,
                                             bool with_tuple_name);
 

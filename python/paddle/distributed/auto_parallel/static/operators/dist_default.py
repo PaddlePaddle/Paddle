@@ -61,7 +61,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
     if var_name in ctx.grads_params:
         assert (
             var_name not in ctx.synced_gradient
-        ), f"in primtive mode, grad is already {var_name} synced"
+        ), f"in primitive mode, grad is already {var_name} synced"
         ctx.synced_gradient.add(var_name)
         sync_group = new_process_group(ctx.data_parallel_group)
 
@@ -554,7 +554,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         )
             dst_op.desc._set_attr('shape', shape_list)
 
-        # data parallel synchronization for primtive operators
+        # data parallel synchronization for primitive operators
         from paddle.incubate.autograd import prim_enabled
 
         if prim_enabled():

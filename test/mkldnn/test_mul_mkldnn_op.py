@@ -70,26 +70,11 @@ class TestMulOneDNNOp(OpTest):
             check_dygraph=False,
         )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ['Y'],
-            'Out',
-            set('X'),
-            check_pir_onednn=True,
-            check_dygraph=False,
-        )
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(core.CPUPlace(), ['Y'], 'Out', set('X'), check_pir_onednn=True)
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ['X'],
-            'Out',
-            set('Y'),
-            check_pir_onednn=True,
-            check_dygraph=False,
-        )
-
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out', set('Y'), check_pir_onednn=True)
 
 class TestMulXNumColDims2OneDNNOp(TestMulOneDNNOp):
     def init_shapes_and_attrs(self):
@@ -161,7 +146,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             check_dygraph=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),
@@ -174,7 +159,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             check_dygraph=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),
