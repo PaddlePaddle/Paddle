@@ -297,23 +297,23 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
         for dims in xpu_support_dims_list:
             dim_X = dims[0]
             dim_Y = dims[1]
-            for transose_x in [True, False]:
-                for transose_y in [True, False]:
+            for transpose_x in [True, False]:
+                for transpose_y in [True, False]:
                     for batch in batch_size:
                         no_need_check_grad = False
                         if batch >= 5:
                             no_need_check_grad = True
                         class_name = 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
-                            dim_X, dim_Y, transose_x, transose_y, batch
+                            dim_X, dim_Y, transpose_x, transpose_y, batch
                         )
                         shape_x, shape_y = generate_compatible_shapes(
-                            dim_X, dim_Y, transose_x, transose_y, batch
+                            dim_X, dim_Y, transpose_x, transpose_y, batch
                         )
                         attr_dict = {
                             'shape_X': shape_x,
                             'shape_Y': shape_y,
-                            'transpose_X': transose_x,
-                            'transpose_Y': transose_y,
+                            'transpose_X': transpose_x,
+                            'transpose_Y': transpose_y,
                             'no_need_check_grad': no_need_check_grad,
                             'op_type': "matmul",
                         }

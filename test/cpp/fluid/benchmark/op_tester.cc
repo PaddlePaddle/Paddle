@@ -181,7 +181,7 @@ void OpTester::CreateInputVarDesc() {
     PADDLE_ENFORCE_NOT_NULL(
         input,
         platform::errors::NotFound(
-            "The input %s of operator %s is not correctlly provided.",
+            "The input %s of operator %s is not correctly provided.",
             name,
             config_.op_type));
 

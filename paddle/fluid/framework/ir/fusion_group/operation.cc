@@ -96,8 +96,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+    int num_operands = 1;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
   // relu:

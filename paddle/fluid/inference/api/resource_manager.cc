@@ -138,7 +138,7 @@ GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
   InitGPUResource(stream);
 }
 
-GPUContextResource::~GPUContextResource() { DestroyGPUResource(); }
+GPUContextResource::~GPUContextResource() { DestroyGPUResource(); }  // NOLINT
 
 void GPUContextResource::InitGPUResource(void* stream) {
   phi::backends::gpu::GPUDeviceGuard guard(place_.device);

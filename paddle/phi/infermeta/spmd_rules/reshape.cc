@@ -79,21 +79,21 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
   int src_idx = 0, tgt_idx = 0;
   int s, t;
   int src_len, tgt_len;
-  src_len = static_cast<int64_t>(src_shape.size());
-  tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
+  src_len = static_cast<int>(src_shape.size());
+  tgt_len = static_cast<int>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
     std::vector<int64_t> src_dims, tgt_splitted_shape;
     if (src_idx >= src_len) {
       s = 1;
     } else {
-      s = src_shape[src_idx];
+      s = static_cast<int>(src_shape[src_idx]);
       src_dims.emplace_back(src_idx);
       src_idx++;
     }
     if (tgt_idx >= tgt_len) {
       t = 1;
     } else {
-      t = inferred_tgt_shape[tgt_idx];
+      t = static_cast<int>(inferred_tgt_shape[tgt_idx]);
       tgt_splitted_shape.emplace_back(t);
       tgt_idx++;
     }
@@ -110,11 +110,11 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       while (s != t) {
         if (s < t) {
           src_dims.emplace_back(src_idx);
-          s *= src_shape[src_idx];
+          s *= static_cast<int>(src_shape[src_idx]);
           src_idx++;
         } else {
           tgt_splitted_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
-          t *= inferred_tgt_shape[tgt_idx];
+          t *= static_cast<int>(inferred_tgt_shape[tgt_idx]);
           tgt_idx++;
         }
       }
@@ -149,8 +149,8 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
     x_shape.erase(x_shape.begin());
   }
 
-  int x_ndim = x_shape.size();
-  int out_ndim = shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -227,8 +227,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // Step0: Verify input args based on reshape logic
   auto x_shape = common::vectorize(x.dims());
   auto out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -297,7 +297,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   }
 
   VLOG(4) << "Transformation from output to input:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }

@@ -16,13 +16,13 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
+from auto_parallel_pass_test_base import AutoParallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestRecomputePass(AutoPallelPassTestBase):
+class TestRecomputePass(AutoParallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})

@@ -118,7 +118,7 @@ bool MakeGenerateShapeOpAttribute(
                                       symbol_bindings);
 }
 
-std::optional<pir::Value> GetOutOfRewritedGenerateShapeOp(
+std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
     pir::Value shape,
     pir::PatternRewriter* rewriter,
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
@@ -155,7 +155,7 @@ bool ReplaceShapeOpsToGenerateShape(
     return shape_analysis->GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =
-      GetOutOfRewritedGenerateShapeOp(
+      GetOutOfRewrittenGenerateShapeOp(
           shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
   shape_analysis->SetShapeOrDataForValue(
