@@ -48,7 +48,8 @@ class IRVisitorRequireReImpl {
       NODETY_FORALL(__)
 
       default:
-        LOG(FATAL) << "not supported NodeTy";
+        LOG(FATAL) << "not supported NodeTy, the expr->node_type() = "
+                   << expr->node_type();
 #undef __
     }
     return RetTy();
@@ -73,7 +74,7 @@ struct IRVisitor : public IRVisitorRequireReImpl<void> {
 #undef __m
 
   virtual void VisitDefault(const Object* obj) {
-    LOG(FATAL) << "not supported NodeTy";
+    // Do nothing since IRVisitor just go through the IR tree.
   }
 };
 // std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)>

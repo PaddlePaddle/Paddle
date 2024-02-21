@@ -52,6 +52,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/pylayer_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_output_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
@@ -712,6 +713,14 @@ void PirInterpreter::BuildInstruction() {
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
+      } else if (op.isa<paddle::dialect::PyLayerOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<PyLayerInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::PyLayerOp>().forward_block(),
+             dynamic_cast<PyLayerInstruction*>(
+                 vec_instruction_base_.back().get())
+                 ->ForwardInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
