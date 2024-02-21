@@ -30,15 +30,15 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
-                              const phi::KernelKey& expected_kernel_key,
-                              const phi::DenseTensor* tensor,
-                              const std::string& var_name,
-                              std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope,
-                              bool is_fetch_v2,
-                              bool static_build) {
+bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
+                               const phi::KernelKey& expected_kernel_key,
+                               const phi::DenseTensor* tensor,
+                               const std::string& var_name,
+                               std::string* new_var_name,
+                               std::vector<OpFuncNode>* op_func_nodes,
+                               bool use_local_scope,
+                               bool is_fetch_v2,
+                               bool static_build) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -95,7 +95,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
   return is_transferred;
 }
 
-void DataTranferHelper::RunAndConstructShareNode(
+void DataTransferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
     std::vector<OpFuncNode>* op_func_nodes,
@@ -116,7 +116,7 @@ void DataTranferHelper::RunAndConstructShareNode(
       op, src_var_name, dst_var_name, op_func_nodes, static_build);
 }
 
-void DataTranferHelper::RunAndConstructOpFuncNode(
+void DataTransferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
@@ -479,7 +479,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   bool transfered = false;
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   auto has_infer_varkernel_fn =
       (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
@@ -751,7 +751,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope,
                                  bool static_build) {
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {

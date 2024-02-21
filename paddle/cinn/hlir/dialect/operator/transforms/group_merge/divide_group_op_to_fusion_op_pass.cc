@@ -180,12 +180,11 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     // op fusion
     auto group_list = cinn::dialect::ir::OpFusionPassInternal(
         GetOpListNotIncludeYield(group_op.GetOperators()),
-        GetOutputOpList(group_op.GetOperators()),
-        nullptr);
+        GetOutputOpList(group_op.GetOperators()));
 
     // fusion merge
     auto merged_group_list =
-        cinn::dialect::ir::GeneralFusionMergePassInternal(group_list, nullptr);
+        cinn::dialect::ir::GeneralFusionMergePassInternal(group_list);
 
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
