@@ -37,51 +37,9 @@ inline std::vector<int64_t> CalculateReducedDims(
   return output_dims;
 }
 
-// oneDNN's reduction kernel is optimized only for reducing throughout the
-// most outer dims, so in case of another type of reduction, it would be
-// better to fallback to native implementation
-inline bool HasOptimizedOneDNNKernel(const KernelContext* ctx) {
-  const DenseTensor& x = ctx->InputAt<phi::DenseTensor>(0);
-  const IntArray& dims_array = ctx->AttrAt<IntArray>(0);
-  int ndims = x.dims().size();
-  const bool reduce_all = recompute_reduce_all(x, dims_array);
-  auto dims = dims_array.GetData();
+bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx);
 
-  // native reduce kernels don't support bf16
-  // so oneDNN kernel is enforced in that case
-  if (x.dtype() == phi::DataType::BFLOAT16) return true;
-
-  if (reduce_all) {
-    return true;
-  }
-
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) dims[i] = ndims + dims[i];
-  }
-  sort(dims.begin(), dims.end());
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[dims.size() - i - 1] != static_cast<int>(ndims - i - 1)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5 ||
-      !HasOptimizedOneDNNKernel(ctx)) {
-    return false;
-  }
-  return true;
-}
-
-bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5) {
-    return false;
-  }
-  return true;
-}
+bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx);
 
 template <typename T, typename Context>
 void ReduceKernel(const Context& dev_ctx,
