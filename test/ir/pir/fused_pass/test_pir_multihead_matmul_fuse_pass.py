@@ -25,7 +25,7 @@ np.random.seed(42)
 paddle.enable_static()
 
 
-class TestFused3EmbeddingEltwiseLayernormPattern(PassTest):
+class TestVitAttentionPattern(PassTest):
     r'''
     x        w
     |        |

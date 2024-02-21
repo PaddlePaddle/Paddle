@@ -15,5 +15,3 @@ endif()
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()
-
-set_tests_properties(test_vit_attention_fuse_pass PROPERTIES TIMEOUT 100)

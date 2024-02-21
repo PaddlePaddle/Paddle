@@ -29,6 +29,7 @@ endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
 set_tests_properties(test_map_op_another_pass PROPERTIES TIMEOUT 60)
+set_tests_properties(test_pir_multihead_matmul_fuse_pass PROPERTIES TIMEOUT 60)
 
 py_test_modules(
   test_subgraph_exporter
