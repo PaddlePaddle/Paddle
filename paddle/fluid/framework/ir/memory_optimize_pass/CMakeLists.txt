@@ -41,11 +41,9 @@ if(WITH_CINN)
     share_varinfo_into_cinn_pass
     SRCS share_varinfo_into_cinn_pass.cc
     DEPS pass enforce common graph_helper)
-  cc_test(
+  paddle_test(
     share_varinfo_into_cinn_pass_test
-    SRCS share_varinfo_into_cinn_pass_test.cc
-    DEPS share_varinfo_into_cinn_pass parallel_executor elementwise_add_op
-         mul_op cinn_launch_op)
+    SRCS share_varinfo_into_cinn_pass_test.cc)
   list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
 endif()
 
@@ -73,8 +71,7 @@ cc_library(
   SRCS inplace_addto_op_pass.cc
   DEPS memory_reuse_pass)
 
-cc_test(
+paddle_test(
   test_reference_count_pass_last_lived_ops
   SRCS test_reference_count_pass_last_lived_ops.cc
-  DEPS parallel_executor elementwise_mul_op elementwise_add_op generated_op phi
-       common)
+  DEPS common)
