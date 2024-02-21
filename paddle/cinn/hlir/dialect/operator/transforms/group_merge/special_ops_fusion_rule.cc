@@ -22,7 +22,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-bool GatherNdFusionFule(const ::pir::Operation* consumer,
+bool GatherNdFusionRule(const ::pir::Operation* consumer,
                         OpPatternKind producer_group_pattern) {
   if (producer_group_pattern == OpPatternKind::kReduction) {
     return false;
@@ -30,7 +30,7 @@ bool GatherNdFusionFule(const ::pir::Operation* consumer,
   return true;
 }
 
-bool SliceFusionFule(const ::pir::Operation* consumer,
+bool SliceFusionRule(const ::pir::Operation* consumer,
                      OpPatternKind producer_group_pattern) {
   if (producer_group_pattern == OpPatternKind::kReduction) {
     return false;
@@ -40,8 +40,8 @@ bool SliceFusionFule(const ::pir::Operation* consumer,
 
 void SpecialOpsFusionRule::Init() {
   RegisterConsumerOpRule(paddle::dialect::GatherNdOp::name(),
-                         &GatherNdFusionFule);
-  RegisterConsumerOpRule(cinn::dialect::SliceOp::name(), &SliceFusionFule);
+                         &GatherNdFusionRule);
+  RegisterConsumerOpRule(cinn::dialect::SliceOp::name(), &SliceFusionRule);
 }
 
 }  // namespace ir

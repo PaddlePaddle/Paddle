@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -26,10 +26,10 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -549,10 +549,10 @@ class ExpandOp : public pir::Op<ExpandOp,
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value x_,                     // NOLINT
                     const std::vector<int64_t> &shape = {});
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value x_,                     // NOLINT
-                    pir::Value shape_                  // NOLINT
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value x_,                     // NOLINT
+                             pir::Value shape_                  // NOLINT
   );
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT

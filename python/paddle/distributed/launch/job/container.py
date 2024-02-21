@@ -92,7 +92,7 @@ class Container:
         kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
         self._env.update(kwargs)
 
-    def _valide_env(self):
+    def _validate_env(self):
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
                 v, str
@@ -114,7 +114,7 @@ class Container:
         if self._proc and self._proc.alive():
             return True
 
-        self._valide_env()
+        self._validate_env()
 
         self._stdout = self._get_fd(self._out) or sys.stdout
         if self._out == self._err:

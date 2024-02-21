@@ -291,8 +291,8 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
+        _get_amp_attrs,
         _get_amp_op_list,
-        _get_amp_state,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
@@ -320,7 +320,7 @@ try:
 
     # isort: off
 
-    # custom devivce
+    # custom device
     from .libpaddle import (  # noqa: F401
         CustomDeviceEvent,
         CustomDeviceStream,
@@ -483,7 +483,7 @@ def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
 
-# ops in forward_blacklisk will not be replaced by composite ops.
+# ops in forward_blacklist will not be replaced by composite ops.
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 

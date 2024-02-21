@@ -154,8 +154,8 @@ class TestPaddingValueTensor(UnittestBase):
     def test_static(self):
         with static_guard():
             main_prog = paddle.static.Program()
-            starup_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, starup_prog):
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
                 fc = paddle.nn.Linear(4, 10)
                 x = paddle.randn([2, 4])
                 x.stop_gradient = False
@@ -168,7 +168,7 @@ class TestPaddingValueTensor(UnittestBase):
                 self.assertTrue(self.var_prefix() in str(main_prog))
 
                 exe = paddle.static.Executor()
-                exe.run(starup_prog)
+                exe.run(startup_prog)
                 res = exe.run(fetch_list=[feat, out])
                 gt = np.pad(
                     res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
@@ -191,8 +191,8 @@ class TestPaddingValueTensor(UnittestBase):
     def test_pir_static(self):
         with paddle.pir_utils.IrGuard():
             main_prog = paddle.static.Program()
-            starup_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, starup_prog):
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
                 fc = paddle.nn.Linear(4, 10)
                 x = paddle.randn([2, 4])
                 x.stop_gradient = False
@@ -204,7 +204,7 @@ class TestPaddingValueTensor(UnittestBase):
                 sgd.minimize(paddle.mean(out))
 
                 exe = paddle.static.Executor()
-                exe.run(starup_prog)
+                exe.run(startup_prog)
                 res = exe.run(fetch_list=[feat, out])
                 gt = np.pad(
                     res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
@@ -240,8 +240,8 @@ class TestPaddingValueTensor3(unittest.TestCase):
         with static_guard():
             np_x = np.random.random((16, 16)).astype('float32')
             main_prog = paddle.static.Program()
-            starup_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, starup_prog):
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.assign(np_x).astype('float32')
                 pad_value = paddle.assign([0.0]).astype('float64')
                 y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)
@@ -251,7 +251,7 @@ class TestPaddingValueTensor3(unittest.TestCase):
                 ).minimize(loss)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(
                 main_prog, fetch_list=[y] + [g for p, g in params_grads]
             )

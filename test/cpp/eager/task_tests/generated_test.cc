@@ -58,7 +58,7 @@ TEST(Generated, Sigmoid) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 0.5);
 
   std::vector<paddle::Tensor> target_tensors = {output_tensor};
-  VLOG(6) << "Runing Backward";
+  VLOG(6) << "Running Backward";
   Backward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";

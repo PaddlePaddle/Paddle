@@ -40,8 +40,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       std::stringstream oss;
       oss << less_than_ir->a();
       std::string var_name = oss.str();
-      if (utils::Startswith(var_name, "blockIdx") ||
-          utils::Startswith(var_name, "threadIdx")) {
+      if (utils::StartsWith(var_name, "blockIdx") ||
+          utils::StartsWith(var_name, "threadIdx")) {
         var_name_to_extent_[var_name] = less_than_ir->b();
       }
     }

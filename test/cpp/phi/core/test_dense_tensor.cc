@@ -142,7 +142,7 @@ TEST(dense_tensor, storage_properties) {
   bool caught_exception = false;
   try {
     tensor.storage_properties<OneDNNStorageProperties>();
-  } catch (phi::enforce::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     caught_exception = true;
   }
   EXPECT_TRUE(caught_exception);

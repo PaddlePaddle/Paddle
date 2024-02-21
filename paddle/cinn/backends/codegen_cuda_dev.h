@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -70,6 +71,13 @@ class CodeGenCUDA_Dev : public CodeGenC {
 
   static const std::string& GetSourceHeader();
 
+  ir::Expr GetDynSharedMemOffset() const {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      return Expr(0);
+    }
+    return dyn_shared_mem_offset_;
+  }
+
  protected:
   void Visit(const ir::_Var_* op) override;
   void Visit(const ir::_LoweredFunc_* op) override;
@@ -114,6 +122,8 @@ class CodeGenCUDA_Dev : public CodeGenC {
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
+
+  ir::Expr dyn_shared_mem_offset_{-1};
   std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };
 
