@@ -34,9 +34,9 @@
 // paddle/fluid/pir/dialect/CMakeLists.txt.
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "test/cpp/pir/tools/macros_utils.h"
-
 class AddOp : public pir::Op<AddOp> {
  public:
   using Op::Op;

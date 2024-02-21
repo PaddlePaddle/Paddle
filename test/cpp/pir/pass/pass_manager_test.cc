@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
