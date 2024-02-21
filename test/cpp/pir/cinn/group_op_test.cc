@@ -26,12 +26,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -259,8 +259,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     ::pir::Builder builder = ::pir::Builder(ctx, program->block());
     VLOG(4) << "Before GroupOpPattern: " << *program;
     std::vector<::pir::Operation*> group_ops = group_op.GetOperators();
-    auto yeild_op = group_ops.back();
-    std::vector<::pir::Type> output_type{yeild_op->operand_source(0).type()};
+    auto yield_op = group_ops.back();
+    std::vector<::pir::Type> output_type{yield_op->operand_source(0).type()};
 
     // construct hlir::Group
     Group group({group_ops.begin(), group_ops.end() - 1});

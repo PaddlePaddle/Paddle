@@ -46,8 +46,8 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "build/paddle/fluid/framework/framework.pb.h"
@@ -131,6 +131,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::YieldOp::name(),
     IfOp::name(),
     WhileOp::name(),
+    PyLayerOp::name(),
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
@@ -249,7 +250,7 @@ static phi::Backend DeriveBackend(const std::string& op,
                                   const OpYamlInfoParser* op_info_parser,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
-  // NOTE: Paramters are initilizered on executor place defined
+  // NOTE: Parameters are initilizered on executor place defined
   if ((op.compare(pir::SetParameterOp::name()) == 0 ||
        op.compare(pir::ShadowOutputOp::name()) == 0) &&
       place.GetType() == phi::AllocationType::GPU) {
@@ -395,8 +396,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   pir::Operation* op =
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
   block->push_back(op);
   auto new_in = op->result(0);
@@ -435,8 +436,8 @@ static pir::Value AddOneDNN2PaddleLayoutTransferOp(
       pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
 
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
 
   block->push_back(op);
@@ -625,8 +626,8 @@ pir::Value AddDtypeTransferOp(pir::Value in,
       {in}, op_attribute, {output_types}, kernel_op_info);
 
   auto in_op = in.defining_op();
-  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
-    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  if (in_op && in_op->HasAttribute(kAttrIsPersistable)) {
+    op->set_attribute(kAttrIsPersistable, in_op->attribute(kAttrIsPersistable));
   }
   block->push_back(op);
   pir::Value new_in = op->result(0);
@@ -1211,6 +1212,51 @@ void HandleForIfOp(
   }
 }
 
+void HandleForPyLayerOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  auto old_vec_ins = op_item->operand_source(0);
+
+  PADDLE_ENFORCE_EQ(
+      map_value_pair->count(old_vec_ins),
+      true,
+      phi::errors::PreconditionNotMet(
+          "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
+  auto new_vec_ins = map_value_pair->at(old_vec_ins);
+
+  auto old_pylayerop = op_item->dyn_cast<PyLayerOp>();
+  std::vector<pir::Type> new_pylayerop_outputs;
+  for (size_t i = 0; i < old_pylayerop.num_results(); ++i) {
+    new_pylayerop_outputs.push_back(
+        ConvertOpTypeToKernelType(ctx, old_pylayerop.result(i).type(), place));
+  }
+
+  // Create PyLayerOp and insert to kernel dialect program
+  pir::Builder builder(ctx, block);
+  auto new_pylayerop =
+      builder.Build<PyLayerOp>(new_vec_ins, std::move(new_pylayerop_outputs));
+
+  // process sub block
+  auto& fwd_block = new_pylayerop.forward_block();
+  ProcessBlock(place,
+               &old_pylayerop.forward_block(),
+               &fwd_block,
+               ctx,
+               map_op_pair,
+               map_value_pair,
+               true);
+
+  // update map
+  (*map_op_pair)[op_item] = new_pylayerop;
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    (*map_value_pair)[op_item->result(i)] = new_pylayerop->result(i);
+  }
+}
+
 void HandleForWhileOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1322,6 +1368,11 @@ void HandleForSpecialOp(
     bool for_if_block) {
   if (op_item->isa<IfOp>()) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+
+  if (op_item->isa<PyLayerOp>()) {
+    HandleForPyLayerOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
 
@@ -1962,7 +2013,7 @@ std::vector<pir::Value> BuildInputs(
     auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
         kernel_fn_str, kernel_key);
 
-    int tensor_param_index = i;
+    int tensor_param_index = static_cast<int>(i);
     if (kernel.IsValid()) {
       tensor_param_index = op_info_parser->GetTensorParamIndexByArgsName(
           op_info_parser->InputNames()[i]);

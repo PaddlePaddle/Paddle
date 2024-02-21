@@ -193,7 +193,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {"X": ["expand_v2_input"], "Y": ["shapeT1_data"]},
                 ]
                 ops_config = [
@@ -209,7 +209,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "expand_as_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     },

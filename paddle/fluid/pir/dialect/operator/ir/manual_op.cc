@@ -47,10 +47,10 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {
@@ -2991,7 +2991,7 @@ void SliceArrayDenseOp::VerifySig() {
   {
     auto input_size = num_operands();
     IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 1.",
+               "The size %d of inputs must be equal to 2.",
                input_size);
     IR_ENFORCE((*this)
                    ->operand_source(0)
@@ -4342,7 +4342,6 @@ bool ShapeBroadcastOp::InferSymbolicShape(
                                     : ComputeBroadcastShape(y_data, x_data);
 
   pir::Value res = result(0);
-  // TODO(HongyuJia): use op->result(0) to infer the shape
   std::vector<symbol::DimExpr> shape{std::int64_t(output_data.size())};
 
   symbol::ShapeOrDataDimExprs output_data_shape{
