@@ -18,7 +18,6 @@ from seq2seq_utils import Seq2SeqModelHyperParams as args
 import paddle
 from paddle import base
 from paddle.base import ParamAttr
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding, Layer
 
 INF = 1.0 * 1e5
@@ -211,10 +210,10 @@ class BaseModel(paddle.nn.Layer):
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transforme dygraph code successfully.
         # Because nested list can't be transformed now.
-        enc_hidden_0 = to_variable(
+        enc_hidden_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        enc_cell_0 = to_variable(
+        enc_cell_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         zero = paddle.zeros(shape=[1], dtype="int64")
@@ -312,10 +311,10 @@ class BaseModel(paddle.nn.Layer):
             self.batch_size = src.shape[0]
 
         src_emb = self.src_embeder(self._transpose_batch_time(src))
-        enc_hidden_0 = to_variable(
+        enc_hidden_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        enc_cell_0 = to_variable(
+        enc_cell_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         zero = paddle.zeros(shape=[1], dtype="int64")
@@ -367,20 +366,20 @@ class BaseModel(paddle.nn.Layer):
 
         # beam search
         batch_beam_shape = (self.batch_size, self.beam_size)
-        vocab_size_tensor = to_variable(
+        vocab_size_tensor = paddle.to_tensor(
             np.full((1), self.tar_vocab_size)
         ).astype("int64")
-        start_token_tensor = to_variable(
+        start_token_tensor = paddle.to_tensor(
             np.full(batch_beam_shape, self.beam_start_token, dtype='int64')
         )
-        end_token_tensor = to_variable(
+        end_token_tensor = paddle.to_tensor(
             np.full(batch_beam_shape, self.beam_end_token, dtype='int64')
         )
         step_input = self.tar_embeder(start_token_tensor)
-        beam_finished = to_variable(
+        beam_finished = paddle.to_tensor(
             np.full(batch_beam_shape, 0, dtype='float32')
         )
-        beam_state_log_probs = to_variable(
+        beam_state_log_probs = paddle.to_tensor(
             np.array(
                 [[0.0] + [-self.kinf] * (self.beam_size - 1)], dtype="float32"
             )
@@ -395,7 +394,9 @@ class BaseModel(paddle.nn.Layer):
 
         batch_pos = paddle.expand(
             paddle.unsqueeze(
-                to_variable(np.arange(0, self.batch_size, 1, dtype="int64")),
+                paddle.to_tensor(
+                    np.arange(0, self.batch_size, 1, dtype="int64")
+                ),
                 [1],
             ),
             [-1, self.beam_size],
@@ -403,7 +404,7 @@ class BaseModel(paddle.nn.Layer):
         predicted_ids = []
         parent_ids = []
 
-        for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
+        for step_idx in range(paddle.paddle.to_tensor(self.beam_max_step_num)):
             if paddle.sum(1 - beam_finished) == 0:
                 break
             step_input = self._merge_batch_beams(step_input)
@@ -437,7 +438,7 @@ class BaseModel(paddle.nn.Layer):
             )
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
-            noend_mask_tensor = to_variable(
+            noend_mask_tensor = paddle.to_tensor(
                 np.array(noend_array, dtype='float32')
             )
 
@@ -726,11 +727,11 @@ class AttentionModel(paddle.nn.Layer):
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
-        enc_hidden_0 = to_variable(
+        enc_hidden_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         enc_hidden_0.stop_gradient = True
-        enc_cell_0 = to_variable(
+        enc_cell_0 = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         enc_hidden_0.stop_gradient = True
@@ -789,7 +790,7 @@ class AttentionModel(paddle.nn.Layer):
         enc_outputs = self._transpose_batch_time(enc_outputs)
 
         # train
-        input_feed = to_variable(
+        input_feed = paddle.to_tensor(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         # NOTE: set stop_gradient here, otherwise grad var is null

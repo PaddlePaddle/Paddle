@@ -22,27 +22,10 @@ from dygraph_to_static_utils import (
 
 import paddle
 from paddle import base, to_tensor
-from paddle.base import dygraph
-from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 
 SEED = 2020
 np.random.seed(SEED)
-
-
-def dyfunc_to_variable(x):
-    res = base.dygraph.to_variable(x, name=None, zero_copy=None)
-    return res
-
-
-def dyfunc_to_variable_2(x):
-    res = dygraph.to_variable(value=np.zeros(shape=(1), dtype=np.int32))
-    return res
-
-
-def dyfunc_to_variable_3(x):
-    res = to_variable(x, name=None, zero_copy=None)
-    return res
 
 
 def dyfunc_to_tensor(x):
@@ -73,9 +56,6 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             dyfunc_bool_to_tensor,
             dyfunc_int_to_tensor,
             dyfunc_float_to_tensor,
-            dyfunc_to_variable,
-            dyfunc_to_variable_2,
-            dyfunc_to_variable_3,
         ]
         self.place = (
             paddle.CUDAPlace(0)
