@@ -265,7 +265,7 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 

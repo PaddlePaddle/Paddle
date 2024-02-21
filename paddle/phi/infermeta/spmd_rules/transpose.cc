@@ -82,7 +82,7 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({x_sharding_info});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 

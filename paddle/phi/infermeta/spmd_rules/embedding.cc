@@ -308,7 +308,7 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   w_grad_dist_attr.set_partial_status(partial_on_dims);
 
   // Step2.3: Update inputs info.
-  // NOTE: Reshard happend on intemediate operators must be ensure propagated
+  // NOTE: Reshard happened on intermediate operators must be ensure propagated
   // back to first inputs.
   t0 = DistMetaTensor(t0.dims(), t0_dist_attr);
   const auto& t0_dims = t0.dist_attr().dims_mapping();

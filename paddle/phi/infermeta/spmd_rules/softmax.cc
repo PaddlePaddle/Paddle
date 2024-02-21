@@ -70,7 +70,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
             << "resharded dims_mapping[" << str_join(x_dims_mapping) << "].";
   }
 
-  // Avoid multiple tensor axes sharded by same mesh deminsion
+  // Avoid multiple tensor axes sharded by same mesh dimension
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}}, false);
 
