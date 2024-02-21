@@ -54,11 +54,10 @@ class TestWhile(unittest.TestCase):
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 2)
         # TODO(Hongyu Jia): Check the usage of jit_kernel_structure with liujie, there should be three jit_kernels: RMSNorm, Matmul and RMSNorm.
-        utils.check_jit_kernel_structure(
-            static_fn, {utils.JIT_KERNEL_NAME: 1, utils.JIT_KERNEL_NAME: 1}
-        )
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
+        paddle.seed(2024)
         net = MultipleSubgraph()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),

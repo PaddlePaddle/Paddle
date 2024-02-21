@@ -62,6 +62,7 @@ class TestLlamaMLP(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
+        paddle.seed(2024)
         net = LlamaMLP()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
