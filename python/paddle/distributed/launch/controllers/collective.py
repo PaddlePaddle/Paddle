@@ -16,7 +16,7 @@ import json
 import os
 
 from ..context.device import DeviceType
-from .controller import ControleMode, Controller
+from .controller import Controller, ControllerMode
 
 
 class CollectiveController(Controller):
@@ -29,7 +29,7 @@ class CollectiveController(Controller):
         # collective is the default mode
         if ctx:
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.COLLECTIVE
+            ctx.args.run_mode = ControllerMode.COLLECTIVE
             return True
         else:
             return False
@@ -262,7 +262,7 @@ class CollectiveElasticController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.COLLECTIVE
+            ctx.args.run_mode = ControllerMode.COLLECTIVE
             return True
         else:
             return False

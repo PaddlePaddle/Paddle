@@ -1395,7 +1395,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
 }
 
 bool LLVM_WillVarLowerAsPointer(const std::string &var_name) {
-  return var_name == "_args" || utils::Endswith(var_name, "__ptr");
+  return var_name == "_args" || utils::EndsWith(var_name, "__ptr");
 }
 
 void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,

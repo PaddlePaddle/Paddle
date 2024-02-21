@@ -130,7 +130,7 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
             return np.ones([1, 2, 3, 4]).astype(np.float32)
 
         dics = [{}]
-        dics_intput = [
+        dics_input = [
             {"X": ["tile_input"], "RepeatTimes": ["repeat_times"]},
         ]
         ops_config = [
@@ -146,7 +146,7 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
             },
             {
                 "op_type": "tile",
-                "op_inputs": dics_intput[0],
+                "op_inputs": dics_input[0],
                 "op_outputs": {"Out": ["tile_out"]},
                 "op_attrs": dics[0],
             },
@@ -218,7 +218,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
             return np.ones([1, 2, 3, 4]).astype(np.float32)
 
         dics = [{}]
-        dics_intput = [
+        dics_input = [
             {
                 "X": ["tile_input"],
                 "repeat_times_tensor": ["repeat_times1", "repeat_times2"],
@@ -247,7 +247,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
             },
             {
                 "op_type": "tile",
-                "op_inputs": dics_intput[0],
+                "op_inputs": dics_input[0],
                 "op_outputs": {"Out": ["tile_out"]},
                 "op_attrs": dics[0],
             },
