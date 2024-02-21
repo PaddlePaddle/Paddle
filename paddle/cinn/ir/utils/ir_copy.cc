@@ -41,7 +41,6 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
 
  protected:
   // The methods of ir nodes follows the order defined in node.h
-
   Expr Visit(const ir::IntImm* op) override {
     return Expr(make_shared<IntImm>(op->type(), op->value));
   }

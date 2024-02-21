@@ -128,7 +128,7 @@ fused_attention_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentAMPState(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_attention_dygraph_function(NEW_X,
                                               NEW_LnScale,

@@ -203,6 +203,10 @@ void PrintOperationImpl(pir::Operation* op,
     if_op.Print(printer);
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
     while_op.Print(printer);
+  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
+    pylayer_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
   }
 }
 
