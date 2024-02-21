@@ -480,7 +480,7 @@ class TestMemEffAttentionAPIWithStopGradient(unittest.TestCase):
             )
 
 
-class TestQKVTTT(TestMemEffAttentionAPIWithStopGradient):
+class TestQKVFTT(TestMemEffAttentionAPIWithStopGradient):
     def setUp(self):
         self.name = "MemEffAttnQKV_TTT"
         self.place = paddle.CUDAPlace(0)
