@@ -54,7 +54,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
-#include "paddle/fluid/pir/transforms/enable_onednn_pass.h"
 COMMON_DECLARE_bool(use_mkldnn);
 #endif
 
