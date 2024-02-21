@@ -20,7 +20,7 @@
 
 namespace pir {
 
-#define CHECK_BLOCKOPEREND_NULL_IMPL(func_name)                 \
+#define CHECK_BLOCK_OPERAND_NULL_IMPL(func_name)                \
   IR_ENFORCE(impl_,                                             \
              "impl_ pointer is null when call func:" #func_name \
              " , in class: BlockOperand.")
@@ -34,27 +34,27 @@ BlockOperand &BlockOperand::operator=(const BlockOperand &rhs) {
 BlockOperand::operator bool() const { return impl_ && impl_->source(); }
 
 BlockOperand BlockOperand::next_use() const {
-  CHECK_BLOCKOPEREND_NULL_IMPL(next_use);
+  CHECK_BLOCK_OPERAND_NULL_IMPL(next_use);
   return impl_->next_use();
 }
 
 Block *BlockOperand::source() const {
-  CHECK_BLOCKOPEREND_NULL_IMPL(source);
+  CHECK_BLOCK_OPERAND_NULL_IMPL(source);
   return impl_->source();
 }
 
 void BlockOperand::set_source(Block *source) {
-  CHECK_BLOCKOPEREND_NULL_IMPL(set_source);
+  CHECK_BLOCK_OPERAND_NULL_IMPL(set_source);
   impl_->set_source(source);
 }
 
 Operation *BlockOperand::owner() const {
-  CHECK_BLOCKOPEREND_NULL_IMPL(owner);
+  CHECK_BLOCK_OPERAND_NULL_IMPL(owner);
   return impl_->owner();
 }
 
 void BlockOperand::RemoveFromUdChain() {
-  CHECK_BLOCKOPEREND_NULL_IMPL(RemoveFromUdChain);
+  CHECK_BLOCK_OPERAND_NULL_IMPL(RemoveFromUdChain);
   return impl_->RemoveFromUdChain();
 }
 
