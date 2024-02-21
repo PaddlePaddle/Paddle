@@ -12,6 +12,13 @@ set(WARMUP_BATCH_SIZE
     100
     CACHE STRING "Default warmup_batch_size.")
 function(inference_download INSTALL_DIR URL FILENAME)
+  if("$ENV{SKIP_DOWNLOAD_INFERENCE_DATA}" STREQUAL "ON")
+    message(
+      STATUS
+        "SKIP_DOWNLOAD_INFERENCE_DATA is set to ON, skip downloading ${FILENAME}"
+    )
+    return()
+  endif()
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
   ExternalProject_Add(
@@ -30,6 +37,13 @@ function(inference_download INSTALL_DIR URL FILENAME)
 endfunction()
 
 function(inference_download_and_uncompress INSTALL_DIR URL FILENAME CHECK_SUM)
+  if("$ENV{SKIP_DOWNLOAD_INFERENCE_DATA}" STREQUAL "ON")
+    message(
+      STATUS
+        "SKIP_DOWNLOAD_INFERENCE_DATA is set to ON, skip downloading ${FILENAME}"
+    )
+    return()
+  endif()
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%./\\]" "_" FILENAME_EX ${FILENAME})
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
@@ -53,6 +67,13 @@ endfunction()
 
 function(inference_download_and_uncompress_without_verify INSTALL_DIR URL
          FILENAME)
+  if("$ENV{SKIP_DOWNLOAD_INFERENCE_DATA}" STREQUAL "ON")
+    message(
+      STATUS
+        "SKIP_DOWNLOAD_INFERENCE_DATA is set to ON, skip downloading ${FILENAME}"
+    )
+    return()
+  endif()
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%./\\]" "_" FILENAME_EX ${FILENAME})
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
