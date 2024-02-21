@@ -71,10 +71,14 @@ class SubGraphFuser {
   SubGraphFuser(Graph *graph,
                 const NodeInsideSubgraphTeller &teller,
                 int min_subgraph_size,
+                std::vector<std::string> trt_enter_var_names = {},
+                std::vector<std::string> trt_exclude_var_names = {},
                 std::string name = "tensorrt_engine")
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
         min_subgraph_size_{min_subgraph_size},
+        trt_enter_var_names_(trt_enter_var_names),
+        trt_exclude_var_names_(trt_exclude_var_names),
         name_{name} {}
 
   // The main method which run all the logic.
@@ -88,6 +92,8 @@ class SubGraphFuser {
   Graph *graph_;
   NodeInsideSubgraphTeller node_inside_subgraph_teller_;
   int min_subgraph_size_;
+  std::vector<std::string> trt_enter_var_names_;
+  std::vector<std::string> trt_exclude_var_names_;
   const std::string name_;
 };
 
