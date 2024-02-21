@@ -642,6 +642,10 @@ class OpcodeExecutorBase:
             self.stack.top,
         )
 
+    def END_FOR(self, instr: Instruction):
+        self.POP_TOP(instr)
+        self.POP_TOP(instr)
+
     # unary operators
     UNARY_POSITIVE = tos_op_wrapper(operator.pos)
     UNARY_NEGATIVE = tos_op_wrapper(operator.neg)
@@ -2094,7 +2098,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
             backup_iter_idx = iterator.idx
 
             self._inline_call_for_loop(iterator, instr)
-            self._lasti = self.indexof(instr.jump_to)
+            if sys.version_info < (3, 12):
+                self._lasti = self.indexof(instr.jump_to)
+            else:
+                self._lasti = self.indexof(instr.jump_to) + 1
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
