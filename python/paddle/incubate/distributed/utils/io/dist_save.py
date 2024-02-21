@@ -57,10 +57,10 @@ def save(state_dict, path, **configs):
                 If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
                 Default: False.
             2. gather_to(int|list|tuple|None):
-                To specify which global rank to save in.Defalut is None.
+                To specify which global rank to save in.Default is None.
                 None value means distributed saving with no gathering to a single card.
             3. state_type(str):
-                Value can be 'params' or 'opt', specifying to save parametres or optimizer state.
+                Value can be 'params' or 'opt', specifying to save parameters or optimizer state.
             4. max_grouped_size(str|int):
                 To limit the max size(how many bits) a object group to be transfered a time.
                 If str, the format must be as num+'G/M/K', for example, 3G, 2K, 10M, etc. Default is 3G.
@@ -86,7 +86,7 @@ def save(state_dict, path, **configs):
             >>> # gather params to rank 0 and then save
             >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
 
-            >>> # save whoe params on all ranks
+            >>> # save whole params on all ranks
             >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
 
             >>> # save optimizer state dict on rank 0
@@ -343,7 +343,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
             f"s list size: {sum(len(s) for s in s_list)} output: {len(output_state)}"
         )
 
-    # Because each size of groups may be different, here we should wait all objetcs gatherd.
+    # Because each size of groups may be different, here we should wait all objects gatherd.
     # The while block breaks until all objects from every rank are empty, which means all of the objects transforming is done.
     while True:
         s_list = []
@@ -375,7 +375,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
 
 def _same_keys(state_dict, group):
     """
-    Check whther all keys in each dict in the group are the same.
+    Check whether all keys in each dict in the group are the same.
     Used in sharding strategy to determine whether a dict needs to be gathered.
     """
     keys = list(state_dict.keys())
