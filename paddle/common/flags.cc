@@ -1562,6 +1562,18 @@ PHI_DEFINE_EXPORTED_string(
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
 
+/**
+ * Using CINN in executor FLAG
+ * Name: enable_cinn_in_executor
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use CINN
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_in_executor,
+                         false,
+                         "Enable CINN in executor");
+
 PHI_DEFINE_EXPORTED_string(op_dir,  // NOLINT
                            "",
                            "Specify path for loading user-defined op library.");

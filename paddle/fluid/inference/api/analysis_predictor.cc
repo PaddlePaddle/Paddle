@@ -105,6 +105,10 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/fluid/pybind/add_cinn_pass.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
@@ -128,6 +132,7 @@
 #include "paddle/pir/include/pass/pass_manager.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_cinn_in_executor);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
@@ -797,6 +802,15 @@ bool AnalysisPredictor::PrepareExecutor() {
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
       }
+#ifdef PADDLE_WITH_CINN
+      if (FLAGS_enable_cinn_in_executor) {
+        VLOG(4) << "[CINN] Begin AddCinnPass";
+        auto cinn_pm = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        paddle::pybind::AddCinnPass(cinn_pm, *pir_program_.get());
+        cinn_pm->Run(pir_program_.get());
+      }
+#endif
 
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);

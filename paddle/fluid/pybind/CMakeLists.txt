@@ -1,3 +1,15 @@
+set(ADD_CINN_PASS_DEPS op_dialect pir)
+
+if(WITH_CINN)
+  set(ADD_CINN_PASS_DEPS ${ADD_CINN_PASS_DEPS} cinn_op_dialect cinnapi
+                         pir_transforms cinn_transforms)
+endif()
+
+cc_library(
+  add_cinn_pass
+  SRCS add_cinn_pass.cc
+  DEPS ${ADD_CINN_PASS_DEPS})
+
 set(PYBIND_DEPS
     init
     init_phi
@@ -47,6 +59,7 @@ set(PYBIND_DEPS
     detail_op_handle
     static_tensor_operants
     type_info
+    add_cinn_pass
     auto_parallel)
 
 if(WITH_CINN)
