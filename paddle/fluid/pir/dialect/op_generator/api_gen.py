@@ -99,7 +99,7 @@ API_INNER_CODE_TEMPLATE = """
 
 
 AMP_LOGIC_TEMPLATE = """
-    if (egr::Controller::Instance().GetCurrentAMPState()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
+    if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
         VLOG(5) << "Check and Prepare For AMP";
         auto op_name = phi::TransToFluidOpName("{op_name}");
         std::vector<std::vector<pir::Value>> amp_values_vector = {{ {no_optional_inputs} }};
@@ -107,7 +107,7 @@ AMP_LOGIC_TEMPLATE = """
         auto amp_dst_dtype = paddle::dialect::GetAmpDestDtype("{op_name}", amp_values_vector);
         {new_inputs}
         {{
-            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAMPState(), paddle::imperative::AmpLevel::O0);
+            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
             return paddle::dialect::{op_name}({args});
         }}
     }}
