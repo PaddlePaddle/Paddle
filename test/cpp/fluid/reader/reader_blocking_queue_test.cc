@@ -203,7 +203,7 @@ struct MyClass {
   MyClass() : val_(0) {}
   explicit MyClass(int val) : val_(val) {}
   MyClass(const MyClass& b) { val_ = b.val_; }
-  MyClass(MyClass&& b) { val_ = b.val_; }
+  MyClass(MyClass&& b) noexcept { val_ = b.val_; }
   MyClass& operator=(const MyClass& b) {
     if (this != &b) {
       val_ = b.val_;

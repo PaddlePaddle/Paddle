@@ -94,7 +94,7 @@ struct PD_INFER_DECL XpuConfig {
 
   // Reserved xpu global memory size for xpu_context;
   // If not set(-1), default memory size for xpu_context is 128MB in XPU2 or
-  // 64MB in XPU1. If set 1*1024*1024, memory size for xpu_conext will be 1MB;
+  // 64MB in XPU1. If set 1*1024*1024, memory size for xpu_context will be 1MB;
   int context_gm_size{-1};
   // xpu_context(from baidu::xpu::api::create_context) for execution.
   // If context is nullptr, new context will be created by default.
@@ -207,7 +207,7 @@ struct DistConfig {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 /// to be specified, and various optimizations(subgraph fusion, memory
-/// optimazation, TensorRT engine, etc.)
+/// optimization, TensorRT engine, etc.)
 /// to be done. Users can manage these settings by creating and modifying an
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
@@ -558,7 +558,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return string The custom device type.
   ///
   std::string custom_device_type() const { return custom_device_type_; }
-  /// \brief Get whether the custom device mixed preicsion is enabled.
+  /// \brief Get whether the custom device mixed precision is enabled.
   ///
   /// \return bool custom device mixed is enabled.
   ///
@@ -653,7 +653,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   ///
   /// \brief Turn on the TensorRT engine.
-  /// The TensorRT engine will accelerate some subgraphes in the original Fluid
+  /// The TensorRT engine will accelerate some subgraphs in the original Fluid
   /// computation graph. In some models such as resnet50, GoogleNet and so on,
   /// it gains significant performance acceleration.
   ///
@@ -896,7 +896,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
-  /// \param precision_mode Precion used in Lite sub-graph engine.
+  /// \param precision_mode Precision used in Lite sub-graph engine.
   /// \param passes_filter Set the passes used in Lite sub-graph engine.
   /// \param ops_filter Operators not supported by Lite.
   ///

@@ -100,7 +100,7 @@ class TestRollFP16OpCase3(TestRollOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OP(TestRollOp):
     def init_dtype_type(self):
@@ -124,7 +124,7 @@ class TestRollBF16OP(TestRollOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase2(TestRollOp):
     def init_dtype_type(self):
@@ -153,7 +153,7 @@ class TestRollBF16OpCase2(TestRollOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase3(TestRollOp):
     def init_dtype_type(self):

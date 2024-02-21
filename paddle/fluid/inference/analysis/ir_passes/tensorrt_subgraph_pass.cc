@@ -281,7 +281,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   engine_hash_key += precision;
 
   engine_hash_key += "#";
-  engine_hash_key += use_cuda_graph;
+  engine_hash_key += std::to_string(use_cuda_graph);
 
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;

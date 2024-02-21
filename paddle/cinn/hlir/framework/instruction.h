@@ -103,7 +103,7 @@ class Instruction {
     int flag = -1;
     void* stream = nullptr;
     for (int idx = 0; idx < 4; idx++) {
-      if (utils::Startswith(out_args_[idx][0], "kernel_pack")) {
+      if (utils::StartsWith(out_args_[idx][0], "kernel_pack")) {
         VLOG(3) << "PreRun " << idx << "-th function of fn_:" << fn_names_[idx];
         flag = idx;
         auto& pod_args = args_cached_[idx];

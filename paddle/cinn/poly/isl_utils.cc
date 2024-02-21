@@ -136,7 +136,7 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
   return set.apply(transform);
 }
 
-isl_set *isl_get_precending_aixs(isl_set *set,
+isl_set *isl_get_precending_axis(isl_set *set,
                                  int level,
                                  bool with_tuple_name) {
   int n = isl_set_dim(set, isl_dim_set);
@@ -233,9 +233,9 @@ int isl_max_level_compatible(isl_set *a, isl_set *b) {
   int compatible_level = -1;
   for (int i = 0; i < std::min(an, bn); i++) {
     isl::set a_prefix =
-        isl::manage(isl_get_precending_aixs(isl_set_copy(a), i, false));
+        isl::manage(isl_get_precending_axis(isl_set_copy(a), i, false));
     isl::set b_prefix =
-        isl::manage(isl_get_precending_aixs(isl_set_copy(b), i, false));
+        isl::manage(isl_get_precending_axis(isl_set_copy(b), i, false));
 
     a_prefix = isl::manage(isl_set_set_tuple_name(a_prefix.release(), "s"));
     b_prefix = isl::manage(isl_set_set_tuple_name(b_prefix.release(), "s"));
@@ -522,7 +522,7 @@ std::vector<std::string> GetRelatedInputAxies(
   auto transformed_domain = temp_set.apply(x);
   for (auto &i : dim_out_names) {
     out_set.insert(i);
-    if (utils::Endswith(i, "_inner") || utils::Endswith(i, "_outer")) {
+    if (utils::EndsWith(i, "_inner") || utils::EndsWith(i, "_outer")) {
       out_set_without_suffix.insert(utils::RemoveSuffix(i));
     }
   }

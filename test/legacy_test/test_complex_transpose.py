@@ -37,7 +37,7 @@ class TestComplexTransposeLayer(unittest.TestCase):
             np_trans = np.transpose(data, perm)
             for place in self._places:
                 with dg.guard(place):
-                    var = dg.to_variable(data)
+                    var = paddle.to_tensor(data)
                     trans = paddle.transpose(var, perm=perm)
                 np.testing.assert_allclose(trans.numpy(), np_trans, rtol=1e-05)
 

@@ -21,7 +21,7 @@ class TestCollectiveAllToAllSingleAPI(test_base.TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_alltooall_single_nccl_dygraph(self):
+    def test_alltoall_single_nccl_dygraph(self):
         dtypes_to_test = [
             "float16",
             "float32",
