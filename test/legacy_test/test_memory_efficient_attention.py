@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import random
 import re
@@ -393,12 +394,12 @@ class TestMemEffAttentionAPIWithStopGradient(unittest.TestCase):
         self.attention_bias = None
         self.scale = 1.0 / np.sqrt(self.shape[-1])
         self.seed = 2023
-        self.q_grad_stop_gradient = False
+        self.q_grad_stop_gradient = True
         self.k_grad_stop_gradient = False
         self.v_grad_stop_gradient = False
 
     def test_all(self):
-        print(
+        logging.info(
             f"Test All case shape {self.shape} dtype {self.dtype} name {self.name}"
         )
 
@@ -490,7 +491,7 @@ class TestQKVTTT(TestMemEffAttentionAPIWithStopGradient):
         self.attention_bias = None
         self.scale = 1.0 / np.sqrt(self.shape[-1])
         self.seed = 2023
-        self.q_grad_stop_gradient = True
+        self.q_grad_stop_gradient = False
         self.k_grad_stop_gradient = True
         self.v_grad_stop_gradient = True
 
