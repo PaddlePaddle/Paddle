@@ -210,7 +210,7 @@ class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
          &res.Tensor("dy"),
          &res.Tensor("dweight"),
          &res.InputNoneTensor()},
-        {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
+        {&res.Tensor("dweight_inplace"), &res.Tensor("dbias_out")});
   }
 };
 
