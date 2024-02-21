@@ -112,7 +112,7 @@ class API_TestDygraphChunk(unittest.TestCase):
         with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
-            input = base.dygraph.to_variable(input_1)
+            input = paddle.to_tensor(input_1)
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
@@ -126,7 +126,7 @@ class API_TestDygraphChunk(unittest.TestCase):
         with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("bool")
             # input is a variable which shape is [4, 6, 6]
-            input = base.dygraph.to_variable(input_1)
+            input = paddle.to_tensor(input_1)
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
@@ -140,7 +140,7 @@ class API_TestDygraphChunk(unittest.TestCase):
         with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
-            input = base.dygraph.to_variable(input_1)
+            input = paddle.to_tensor(input_1)
             num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=num1)
             x0_out = x0.numpy()
