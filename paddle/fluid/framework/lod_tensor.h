@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
