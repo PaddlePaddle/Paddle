@@ -172,7 +172,7 @@ struct GroupClusterNode {
                  const ScheduleInfoNode& inner_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
-    if (inner_sch_node.type != "") {
+    if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::None) {
       // all the data need add sch node
       for (auto op : ops) {
         alignment_schedule_info[op].push_back(inner_sch_node);
@@ -211,20 +211,22 @@ struct GroupClusterNode {
 
     for (auto op : node.ops) {
       if (!inner_ops.count(op)) {
-        ops.push_back(op);
+        this->ops.push_back(op);
         // copy align info
         if (node.alignment_schedule_info.count(op)) {
-          alignment_schedule_info[op] = node.alignment_schedule_info.at(op);
+          this->alignment_schedule_info[op] =
+              node.alignment_schedule_info.at(op);
         }
 
-        if (pre_sch_node.type != "") {
-          alignment_schedule_info[op].push_back(pre_sch_node);
+        if (pre_sch_node.type !=
+            hlir::framework::pir::ScheduleAlignType::None) {
+          this->alignment_schedule_info[op].push_back(pre_sch_node);
         }
       }
     }
 
     if (group_kind < node.group_kind) {
-      group_kind = node.group_kind;
+      this->group_kind = node.group_kind;
     }
   }
 
@@ -242,8 +244,8 @@ struct GroupClusterNode {
   // step 1: Ensure the insert point and create GroupOp here.
   auto* last_op = group_ops.back();
 
-  auto output_value = node.output_value;
-  auto alignment_schedule_info = node.alignment_schedule_info;
+  auto& output_value = node.output_value;
+  auto& alignment_schedule_info = node.alignment_schedule_info;
   std::vector<pir::Type> output_types;
 
   for (auto& value : output_value) {
@@ -361,7 +363,7 @@ bool CanFuse(const GroupClusterNode& first,
     }
 
     if (first.loop_ranges != second.loop_ranges) {
-      sch_node->type = "broadcast";
+      sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
       sch_node->axis_info = first.reduce_axis;
       sch_node->factor_info = first.loop_ranges;
     }
@@ -488,7 +490,7 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
 
-    sch_node->type = "broadcast";
+    sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
@@ -515,8 +517,8 @@ bool CanOpMergeNode(
     const std::unordered_map<::pir::Operation*, GroupClusterNode>& op_path_info,
     ::pir::Operation* pre_op,
     ::pir::Operation* cur_op) {
-  auto node1 = op_path_info.at(pre_op);
-  auto node2 = op_path_info.at(cur_op);
+  const auto& node1 = op_path_info.at(pre_op);
+  const auto& node2 = op_path_info.at(cur_op);
   // reduce can not fuse with any op in first stage
   if (cinn::hlir::framework::pir::CompatibleInfo::OpKind(*pre_op) ==
       cinn::hlir::framework::kReduction) {
