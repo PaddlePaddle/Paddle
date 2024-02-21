@@ -573,6 +573,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
 }
 
 void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
+  // TODO(phlrain): this is primary verion for loop aligment
+  // will be update by a new method
   auto& align_info = group->alignment_schedule_info;
   auto& ops = group->ops;
   for (auto op1 : ops) {
@@ -586,7 +588,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         1,
         phi::errors::Unimplemented("only suppopt one transform yet"));
 
-    if (it->second[0].type == "broadcast") {
+    if (it->second[0].type == ScheduleAlignType::Broadcast) {
       // get broadcast op
       auto broadcast_axes = it->second[0].axis_info;
       auto output_shape = it->second[0].factor_info;
@@ -619,8 +621,6 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
 
       cinn::ir::BroadcastInfo info;
       if (in_dim.size() == 1u && in_dim[0] == 1u) {
-        std::cerr << "!!!!!!!!!!!!!!!!!!!! " << output_shape.size()
-                  << std::endl;
         info.full_broadcast = true;
         for (size_t i = 0; i < output_shape.size(); ++i) {
           std::cerr << i << "    shape   " << output_shape[i] << std::endl;
@@ -669,11 +669,10 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           info.output_shape.push_back(output_shape[broadcast_axes[i]]);
         }
       }
-
-      if (info.broadcast_axes.size() == 0) {
-        std::cerr << "opname " << it->first->name() << std::endl;
-        throw std::runtime_error(" changed axes is zero");
-      }
+      PADDLE_ENFORCE_NE(
+          info.broadcast_axes.size(),
+          0,
+          phi::errors::PreconditionNotMet("broadcast axes can not be zero"));
 
       for (size_t i = 0; i < it->first->num_operands(); ++i) {
         if (!align_info.count(it->first->operand_source(i).defining_op())) {

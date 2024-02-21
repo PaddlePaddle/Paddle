@@ -37,9 +37,9 @@ class AddStoreInFusionOpPattern : public pir::OpRewritePattern<::pir::YieldOp> {
               ->isa<cinn::dialect::ReshapeOp>()) {
         auto pre_name = op->operand_source(i).defining_op()->name();
 
-        // if (op->operand_source(i).use_count() > 1) {
-        //   continue;
-        // }
+        if (op->operand_source(i).use_count() > 1) {
+          continue;
+        }
 
         if ((pre_name != "cinn_op.reduce_sum") &&
             (pre_name != "cinn_op.reduce_max")) {

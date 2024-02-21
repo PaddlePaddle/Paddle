@@ -395,11 +395,6 @@ void GroupScheduler::VariableTypeAssignment() {
       ir_sch_->SetBuffer(block, "local", false);
     }
   }
-
-  for (auto& name : group_tile_info_->thread_sync_before_names) {
-    auto loops = ir_sch_->GetLoops(name);
-    ir_sch_->SyncThreads(loops.front(), false);
-  }
 }
 
 void GroupScheduler::SetReduceType() {

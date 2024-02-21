@@ -172,7 +172,7 @@ struct GroupClusterNode {
                  const ScheduleInfoNode& inner_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
-    if (inner_sch_node.type != "") {
+    if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::None) {
       // all the data need add sch node
       for (auto op : ops) {
         alignment_schedule_info[op].push_back(inner_sch_node);
@@ -217,7 +217,8 @@ struct GroupClusterNode {
           alignment_schedule_info[op] = node.alignment_schedule_info.at(op);
         }
 
-        if (pre_sch_node.type != "") {
+        if (pre_sch_node.type !=
+            hlir::framework::pir::ScheduleAlignType::None) {
           alignment_schedule_info[op].push_back(pre_sch_node);
         }
       }
@@ -361,7 +362,7 @@ bool CanFuse(const GroupClusterNode& first,
     }
 
     if (first.loop_ranges != second.loop_ranges) {
-      sch_node->type = "broadcast";
+      sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
       sch_node->axis_info = first.reduce_axis;
       sch_node->factor_info = first.loop_ranges;
     }
@@ -488,7 +489,7 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
 
-    sch_node->type = "broadcast";
+    sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
