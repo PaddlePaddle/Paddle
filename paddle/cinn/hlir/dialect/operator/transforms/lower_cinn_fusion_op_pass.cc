@@ -504,7 +504,6 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   std::unordered_map<pir::Block*, GroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
-                                                 group,
                                                  shape_analysis,
                                                  value_to_dim_expr_idx,
                                                  group_inputs,
