@@ -504,6 +504,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   std::unordered_map<pir::Block*, GroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
+                                                 group,
                                                  shape_analysis,
                                                  value_to_dim_expr_idx,
                                                  group_inputs,
@@ -641,8 +642,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    VLOG(0) << "####### "
-            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
     group->set_value_to_shape_or_data_exprs(
         CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {
