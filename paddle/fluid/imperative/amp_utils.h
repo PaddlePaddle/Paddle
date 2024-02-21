@@ -15,7 +15,9 @@
 #pragma once
 #include <string>
 
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#endif
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/type_defs.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
@@ -224,7 +226,7 @@ static inline bool NeedCast(const pir::Value& value,
   return false;
 }
 
-#if !(!defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
+#if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 static inline paddle::Tensor Cast(const paddle::Tensor& input,
                                   const phi::DataType& dst_dtype,
                                   const bool trace_backward = true) {
