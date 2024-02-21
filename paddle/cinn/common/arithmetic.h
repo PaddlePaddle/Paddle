@@ -13,20 +13,18 @@
 // limitations under the License.
 
 /**
- * This file includes some arithmatic utilities, such as simplifying/solving a
+ * This file includes some arithmetic utilities, such as simplifying/solving a
  * math equation/CINN expression.
  */
 #pragma once
-
-#include "paddle/cinn/ir/ir.h"
-
 #include <ginac/ginac.h>
-
 #include <limits>
 #include <map>
 #include <set>
 #include <string>
 #include <tuple>
+
+#include "paddle/cinn/ir/ir.h"
 
 #ifdef As
 #undef As
