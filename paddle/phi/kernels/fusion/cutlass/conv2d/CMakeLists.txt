@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.23)
-#set(PYTHON_EXECUTABLE python)
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
   message(
@@ -14,10 +13,6 @@ if(NOT DEFINED COMPUTE_CAPABILITY)
       "please set COMPUTE_CAPABILITY with -DCOMPUTE_CAPABILITY=your gpu compute capability"
   )
 endif()
-
-#project (Demo1)
-#message(${CMAKE_CURRENT_SOURCE_DIR})
-#message(${CMAKE_CURRENT_BINARY_DIR})
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cutlass/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
