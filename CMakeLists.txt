@@ -65,7 +65,6 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
-option(WITH_XFT "Compile PaddlePaddle with xFT" ON)
 
 find_package(Git REQUIRED)
 
@@ -330,7 +329,13 @@ option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
-
+option(WITH_XFT "Compile PaddlePaddle with xFT" ${AVX_FOUND})
+if(NOT
+   (WITH_AVX
+    AND AVX512F_FOUND
+    AND AVX512F_FLAG))
+  set(WITH_XFT OFF)
+endif()
 if(WITH_RECORD_BUILDTIME)
   set_property(
     GLOBAL
@@ -672,6 +677,9 @@ if(WITH_ARM)
   set(WITH_AVX
       OFF
       CACHE STRING "Disable AVX when compiling WITH_AVX=OFF." FORCE)
+  set(WITH_XFT
+      OFF
+      CACHE STRING "Disable XFT when compiling WITH_ARM=ON." FORCE)
   add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
@@ -685,6 +693,9 @@ if(WITH_SW)
   set(WITH_MKL
       OFF
       CACHE STRING "Disable MKL when compiling WITH_SW=ON." FORCE)
+  set(WITH_XFT
+      OFF
+      CACHE STRING "Disable XFT when compiling WITH_SW=ON." FORCE)
   add_definitions(-DPADDLE_WITH_SW)
 endif()
 
@@ -706,6 +717,9 @@ if(WITH_LOONGARCH)
   set(WITH_MKL
       OFF
       CACHE STRING "Disable MKL when compiling WITH_LOONGARCH=ON." FORCE)
+  set(WITH_XFT
+      OFF
+      CACHE STRING "Disable XFT when compiling WITH_LOONGARCH=ON." FORCE)
   add_definitions(-DPADDLE_WITH_LOONGARCH)
 endif()
 

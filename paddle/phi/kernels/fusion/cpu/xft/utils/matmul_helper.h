@@ -91,7 +91,7 @@ class MMHelper {
         if (trans) {
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -101,7 +101,7 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -114,7 +114,7 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -125,7 +125,7 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -142,7 +142,7 @@ class MMHelper {
         if (trans) {  // right
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -153,7 +153,7 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -167,7 +167,7 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -179,7 +179,7 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -197,7 +197,7 @@ class MMHelper {
         if (trans) {  // right
           quantizedWeight.Resize(colsPerSplit, rows);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -208,7 +208,7 @@ class MMHelper {
           }
         } else {
           quantizedWeight.Resize(rows, colsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -222,7 +222,7 @@ class MMHelper {
         int rowsPerSplit = splitSize;
         if (trans) {
           quantizedWeight.Resize(cols, rowsPerSplit);
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -234,7 +234,7 @@ class MMHelper {
         } else {
           quantizedWeight.Resize(rowsPerSplit, cols);
           const float *base = src + splitOffset * quantizedWeight.Stride();
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
           for (int i = 0; i < quantizedWeight.Rows(); ++i) {
@@ -2118,7 +2118,7 @@ class MMHelper {
 #elif defined(AVX512_BF16_WEIGHT_ONLY_BF16)
       if (M > USE_AMX_M) {
         // Timline t("onednn_amx_sgemm_f32bf16f32_compute_residential");
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for collapse(2)
 #endif
         for (int i = 0; i < M; ++i) {

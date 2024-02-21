@@ -140,7 +140,7 @@ class KVCacheTensor {
           batchSize);
       return;
     }
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel for
 #endif
     for (int seq = 0; seq < seqLen; ++seq) {

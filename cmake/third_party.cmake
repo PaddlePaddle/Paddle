@@ -180,6 +180,17 @@ if(APPLE)
   endif()
 endif()
 
+if(APPLE)
+  if(WITH_XFT)
+    message(
+      WARNING "Mac is not supported with XFT in Paddle yet. Force WITH_XFT=OFF."
+    )
+    set(WITH_XFT
+        OFF
+        CACHE STRING "Disable XFT for building on mac" FORCE)
+  endif()
+endif()
+
 if(WIN32 OR APPLE)
   message(STATUS "Disable XBYAK in Windows and MacOS")
   set(WITH_XBYAK
@@ -581,7 +592,13 @@ if(WITH_CUDNN_FRONTEND)
   include(external/cudnn-frontend) # download cudnn-frontend
   list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
-
+if(NOT
+   (WITH_AVX
+    AND AVX512F_FOUND
+    AND AVX512F_FLAG
+    AND AVX2_FOUND))
+  set(WITH_XFT OFF)
+endif()
 if(WITH_XFT)
   include(external/xdnn)
   list(APPEND third_party_deps extern_xdnn)

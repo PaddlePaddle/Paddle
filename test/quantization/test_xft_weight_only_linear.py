@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.base.layer_helper import LayerHelper
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 np.random.seed(123)
 paddle.seed(123)
@@ -71,12 +74,11 @@ def xft_weight_only_linear(
 
 class XFTWeightOnlyLinearTestCase(unittest.TestCase):
     def test_weight_only_linear(self):
-        x = paddle.rand(shape=(16, 1, 4096), dtype='float32') * (
-            1 / math.sqrt(4096)
-        )
-        weight = paddle.rand(shape=(4096, 12288), dtype='float32') * (
-            1 / math.sqrt(4096)
-        )
+        paddle.set_device("cpu")
+        x = paddle.rand(shape=(16, 1, 4096), dtype='float32').cpu()
+        x = x * (1 / math.sqrt(4096))
+        weight = paddle.rand(shape=(4096, 12288), dtype='float32').cpu()
+        weight = weight * (1 / math.sqrt(4096))
 
         weight_quant, scale, zero_point = xft_weight_quantize(
             weight, "weight_only_int8", paddle.int8

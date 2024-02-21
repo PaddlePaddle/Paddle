@@ -109,7 +109,6 @@ if(WITH_XFT)
   # add_definitions(-DAVX512_FP16_WEIGHT_ONLY_NF4=true)
 
   list(APPEND PHI_DEPS xdnn)
-
 endif()
 
 if(WITH_DGC)
@@ -141,8 +140,16 @@ if(WITH_AVX
    AND WITH_MKL)
   set_source_files_properties(
     kernels/fusion/cpu/self_dp_attention_kernel.cc
-    kernels/fusion/cpu/xft_weight_only_linear.cc
-    kernels/fusion/cpu/xft_weight_quantize.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+endif()
+
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_XFT)
+  set_source_files_properties(
+    kernels/fusion/cpu/xft_weight_only_linear_kernel.cc
+    kernels/fusion/cpu/xft_weight_quantize_kernel.cc
     PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
 endif()
 

@@ -87,6 +87,7 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${XDNN_STATIC_LIB}
   BUILD_BYPRODUCTS ${XDNN_LIB}
+  COMMAND ${CMAKE_COMMAND} -E remove <SOURCE_DIR>/VERSION
   # CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
   #            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
   #            -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
@@ -108,3 +109,7 @@ include_directories(${XDNN_INSTALL_DIR})
 add_library(xdnn STATIC IMPORTED GLOBAL)
 set_property(TARGET xdnn PROPERTY IMPORTED_LOCATION ${XDNN_STATIC_LIB})
 add_dependencies(xdnn ${XDNN_PROJECT})
+if(NOT WIN32)
+  add_definitions(-DPADDLE_WITH_XFT)
+  target_compile_options(xdnn INTERFACE -fopenmp)
+endif()

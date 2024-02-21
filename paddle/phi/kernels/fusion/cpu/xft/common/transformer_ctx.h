@@ -113,6 +113,7 @@ struct DecoderContext {
     this->numThreads = numThreads;
 
     if (numThreads == 0) {
+#if defined(PADDLE_WITH_XFT)
 #pragma omp parallel
       {
         int tid = omp_get_thread_num();
@@ -120,6 +121,9 @@ struct DecoderContext {
           this->numThreads = omp_get_num_threads();
         }
       }
+#else
+      this->numThreads = 0;
+#endif
     }
 
     this->rawBufSize = 4 * 32 * intermediateSize +
