@@ -486,7 +486,7 @@ void ReplaceWithGroupOp(pir::Block* block,
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
-  const auto* first_op = group_ops.front();
+  auto* first_op = group_ops.front();
   builder.SetInsertionPointAfter(first_op);
   VLOG(6) << "Insert GroupOp after " << first_op->name();
 
@@ -498,11 +498,11 @@ void ReplaceWithGroupOp(pir::Block* block,
 
     auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
     for (auto op : group_ops) {
-      op->MoveTo(group_block, new_group_op.block()->end());
+      op->MoveTo(new_group_op.block(), new_group_op.block()->end());
     }
     return new_group_op;
   };
-  auto& new_group_op = CreateGroupOp();
+  auto new_group_op = CreateGroupOp();
 
   // step 3: Replace outputs of inner ops
   const std::vector<pir::Value> group_outs = new_group_op->results();
