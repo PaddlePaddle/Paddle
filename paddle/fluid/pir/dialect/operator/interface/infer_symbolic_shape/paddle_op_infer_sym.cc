@@ -970,23 +970,9 @@ bool Where_OpInferSymbolicShape(
   return WhereOpInferSymbolicShape(op, shape_analysis);
 }
 
-bool AssignOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
-bool Assign_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return AssignOpInferSymbolicShape(op, shape_analysis);
-}
-
 bool BitwiseAndOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool BitwiseAnd_OpInferSymbolicShape(
@@ -996,16 +982,13 @@ bool BitwiseAnd_OpInferSymbolicShape(
 
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  // This Op has NO InferMeta in yaml, just return true
   return true;
 }
 
 bool GreaterThanOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool GreaterThan_OpInferSymbolicShape(
@@ -1013,23 +996,9 @@ bool GreaterThan_OpInferSymbolicShape(
   return GreaterThanOpInferSymbolicShape(op, shape_analysis);
 }
 
-bool IncrementOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
-bool Increment_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return IncrementOpInferSymbolicShape(op, shape_analysis);
-}
-
 bool LessThanOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool LessThan_OpInferSymbolicShape(
@@ -1039,9 +1008,7 @@ bool LessThan_OpInferSymbolicShape(
 
 bool LogicalAndOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool LogicalAnd_OpInferSymbolicShape(
@@ -1049,23 +1016,9 @@ bool LogicalAnd_OpInferSymbolicShape(
   return LogicalAndOpInferSymbolicShape(op, shape_analysis);
 }
 
-bool LogicalNotOpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
-bool LogicalNot_OpInferSymbolicShape(
-    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return LogicalNotOpInferSymbolicShape(op, shape_analysis);
-}
-
 bool NotEqualOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return InferSymbolicShapeElementWiseBinary(op, shape_analysis);
 }
 
 bool NotEqual_OpInferSymbolicShape(

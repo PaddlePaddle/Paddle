@@ -17,6 +17,21 @@
 
 namespace cinn::dialect {
 
+bool BroadcastOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const std::vector<int> shape = GetVectorAttr<int>(op, "out_shape");
+
+  std::vector<symbol::DimExpr> out_dims;
+  for (int dim : shape) {
+    out_dims.emplace_back(static_cast<std::int64_t>(dim));
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  return true;
+}
+
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // TODO(zhangbopd): Not implemented yet, different from the one in paddle
