@@ -29,7 +29,7 @@ np.random.seed(SEED)
 
 
 def dyfunc_to_variable(x):
-    res = paddle.to_tensor(x, name=None, zero_copy=None)
+    res = paddle.to_tensor(x)
     return res
 
 
