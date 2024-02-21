@@ -978,16 +978,26 @@ Tensor embedding_decomp(const Tensor& x,
 template <typename T>
 Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
   std::vector<int64_t> tmp_shape{-1, 1};
-  auto arange_tmp =
-      reshape<T>(arange<T>(0, index.dims()[0], 1, index.dtype()), tmp_shape);
+  auto index_dim = get_slice<T>(shape<T>(index), 0);
+  auto start =
+      backend::full_with_tensor<T>(shape<T>(index_dim), 0, index_dim.dtype());
+  auto step =
+      backend::full_with_tensor<T>(shape<T>(index_dim), 1, index_dim.dtype());
+  auto arange_tmp = reshape<T>(
+      backend::arange_with_tensor<T>(start, index_dim, step, index.dtype()),
+      tmp_shape);
+
   auto index_res = reshape<T>(
-      expand<T>(arange_tmp, phi::vectorize(index.dims())), tmp_shape);
+      backend::expand_with_tensor<T>(arange_tmp, shape<T>(index)), tmp_shape);
   auto index_ = reshape<T>(index, tmp_shape);
+  auto concat_res = concat<T>({index_res, index_}, 1);
+  auto res = backend::reshape<T>(gather_nd<T>(x, concat_res), shape<T>(index));
 
-  std::vector<Tensor> concat_x{index_res, index_};
-  auto concat_res = concat<T>(concat_x, 1);
-
-  return reshape<T>(gather_nd<T>(x, concat_res), phi::vectorize(index.dims()));
+  if (res.dtype() != x.dtype()) {
+    return cast<T>(res, x.dtype());
+  } else {
+    return res;
+  }
 }
 
 }  // namespace details
