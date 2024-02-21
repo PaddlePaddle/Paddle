@@ -75,7 +75,7 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> x_sharding_info(
       {x_axes, x_dims_mapping});
@@ -143,7 +143,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::pair<std::string, std::vector<int64_t>> out_sharding_info(
       {out_axes, out_dims_mapping});

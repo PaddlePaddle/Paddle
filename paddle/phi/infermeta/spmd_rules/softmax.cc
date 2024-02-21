@@ -57,7 +57,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // naive support for sharding on softmax_axis
   // softmax_axis should be resharded as replicated (TODO: support sharding on
   // softmax_axis effeciently)
@@ -126,7 +126,7 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   // so set its dim mapping to -1
   out_dims_mapping[axis] = -1;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}});
 

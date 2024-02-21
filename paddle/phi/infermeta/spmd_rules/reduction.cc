@@ -90,7 +90,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
   // get einsum notation for output
   std::string out_axes = GetOutputNotation(x_ndim, alphabet, axis, keep_dim);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> x_sharding_info(x_axes,
                                                                x_dims_mapping);

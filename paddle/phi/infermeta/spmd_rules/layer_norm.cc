@@ -82,7 +82,7 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // get output notation
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input sharding
   // As the mean and variance in outputs are `flattened` from
   // x[0:begin_norm_axis], only the first axis can be sharded,
@@ -215,7 +215,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   std::string bias_axes(1, x_axes[x_ndim - 1]);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // For the axes after norm_axis in both input and output tensors,
   // set their dims mappings to -1. For the other axes, set input
   // tensor's dims mapping the same as output tensor's dims mapping.
