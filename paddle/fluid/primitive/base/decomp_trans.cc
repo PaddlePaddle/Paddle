@@ -54,8 +54,9 @@ static bool has_dynamic_shape(const phi::DDim& dims) {
 }
 
 static void check_ops(const std::string& op_name) {
-  auto it = primitive_set.find(op_name);
-  if (it == primitive_set.end()) {
+  auto primitives_set = GetPrimitiveOpNames();
+  auto it = primitives_set.find(op_name);
+  if (it == primitives_set.end()) {
     PADDLE_THROW(
         phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
                                      "should not contain none primitive op %s.",
