@@ -57,7 +57,7 @@ bool ConcatOpInferSymbolicShape(
     }
 
     for (size_t i = 1; i < rank; ++i) {
-      if (i == axis) continue;
+      if (i == static_cast<size_t>(axis)) continue;
       paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
           shape_analysis, input_values, i);
     }
