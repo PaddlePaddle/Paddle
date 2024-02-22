@@ -44,8 +44,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
-    FusedGemmEpilogueOp::name(),
-    FusedGemmEpilogueGradOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -244,6 +242,11 @@ static std::unordered_map<
 };
 
 VariantType GetAttributeData(const pir::Attribute& attr) {
+  AttrType attr_type = GetAttributeType(attr);
+  return kAttrCastMap[attr_type](attr);
+}
+
+paddle::any TransAttrToAny(const pir::Attribute& attr) {
   AttrType attr_type = GetAttributeType(attr);
   return kAttrCastMap[attr_type](attr);
 }
