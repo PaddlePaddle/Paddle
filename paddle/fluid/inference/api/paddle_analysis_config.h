@@ -811,7 +811,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
-  void Specify_tensorrt_subgraph(
+  void Disable_tensorrt_subgraph(
       const std::vector<std::string>& var_name_not_trt);
 
   ///
