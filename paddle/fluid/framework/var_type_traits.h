@@ -97,8 +97,8 @@ namespace paddle {
 namespace framework {
 
 TEST_API const char *ToTypeName(int var_id);
-const std::type_index &VarTraitIdToTypeIndex(int var_id);
-int TypeIndexToVarTraitId(const std::type_index &type);
+TEST_API const std::type_index &VarTraitIdToTypeIndex(int var_id);
+TEST_API int TypeIndexToVarTraitId(const std::type_index &type);
 
 namespace detail {
 

@@ -56,7 +56,7 @@ class ThreadPool {
       std::packaged_task<std::unique_ptr<common::enforce::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
-  static ThreadPool* GetInstance();
+  TEST_API static ThreadPool* GetInstance();
 
   ~ThreadPool();
 
