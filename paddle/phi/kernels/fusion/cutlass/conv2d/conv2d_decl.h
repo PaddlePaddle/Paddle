@@ -13,11 +13,8 @@
 // limitations under the License.
 #pragma once
 #include <cuda_fp16.h>
-#include <glog/logging.h>
 #include <map>
 #include <vector>
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace phi {
 namespace fusion {
@@ -47,23 +44,27 @@ typedef struct {
   int oh;
   int ow;
   int groups;
-  const phi::GPUContext *ctx;
+  // const phi::GPUContext *ctx;
+  cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;
+  void *workspace = nullptr;
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
-void Conv2dBiasAddRelu(const ConvAllParams &params);
-void Conv2dBiasRelu(const ConvAllParams &params);
-void Conv2dBiasLeakyRelu(const ConvAllParams &params);
-void Conv2dBiasSilu(const ConvAllParams &params);
-void Conv2dBias(const ConvAllParams &params);
-void Conv2dBiasSigmoid(const ConvAllParams &params);
+extern "C" void Conv2dBiasAddRelu(ConvAllParams params);
+extern "C" void Conv2dBiasRelu(ConvAllParams params);
+extern "C" void Conv2dBiasLeakyRelu(ConvAllParams params);
+extern "C" void Conv2dBiasSilu(ConvAllParams params);
+extern "C" void Conv2dBias(ConvAllParams params);
+extern "C" void Conv2dBiasSigmoid(ConvAllParams params);
 
-void Conv2dDepthwiseBias(const ConvAllParams &params);
-void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
+extern "C" void Conv2dDepthwiseBias(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasRelu(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasSigmoid(ConvAllParams params);
+extern "C" void Conv2dDepthwiseBiasSilu(ConvAllParams params);
+
+extern "C" int HelloFromCutlassConv2d(int a, int b);
 
 }  // namespace cutlass_internal
 }  // namespace fusion

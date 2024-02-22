@@ -44,8 +44,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
-    FusedGemmEpilogueOp::name(),
-    FusedGemmEpilogueGradOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
