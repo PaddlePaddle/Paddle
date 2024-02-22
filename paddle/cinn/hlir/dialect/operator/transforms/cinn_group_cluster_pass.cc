@@ -158,7 +158,7 @@ struct GroupClusterNode {
                  const ScheduleInfoNode& inner_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
-    if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::None) {
+    if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::kNone) {
       for (auto op : ops) {
         alignment_schedule_info[op].push_back(inner_sch_node);
       }
@@ -204,7 +204,7 @@ struct GroupClusterNode {
         }
 
         if (pre_sch_node.type !=
-            hlir::framework::pir::ScheduleAlignType::None) {
+            hlir::framework::pir::ScheduleAlignType::kNone) {
           this->alignment_schedule_info[op].push_back(pre_sch_node);
         }
       }
@@ -395,7 +395,7 @@ bool CanFuse(const GroupClusterNode& first,
     }
 
     if (first.loop_ranges != second.loop_ranges) {
-      sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
+      sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
       sch_node->axis_info = first.reduce_axis;
       sch_node->factor_info = first.loop_ranges;
     }
@@ -410,19 +410,19 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
                               std::vector<std::vector<int>>* pre_ids_ptr) {
   auto& node_list = *node_list_ptr;
   auto& pre_ids = *pre_ids_ptr;
-  std::unordered_map<::pir::Value, size_t> all_ouput_values;
+  std::unordered_map<::pir::Value, size_t> all_output_values;
   for (auto& node : node_list) {
     auto node_outside_input = node.GetOutsideInput();
     for (auto& val : node_outside_input) {
-      size_t id = all_ouput_values.size();
-      all_ouput_values.emplace(val, id);
+      size_t id = all_output_values.size();
+      all_output_values.emplace(val, id);
     }
   }
 
-  std::vector<std::vector<pir::Value>> ouput_values_list;
+  std::vector<std::vector<pir::Value>> output_values_list;
   for (auto& node : node_list) {
-    ouput_values_list.push_back(
-        GenerateOutputValue(node.ops, all_ouput_values));
+    output_values_list.push_back(
+        GenerateOutputValue(node.ops, all_output_values));
   }
 
   std::vector<std::vector<int>> next_ids;
@@ -433,7 +433,7 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
         continue;
       }
 
-      auto pre_out_list = ouput_values_list[i];
+      auto pre_out_list = output_values_list[i];
       auto next_in_set = node_list[j].GetOutsideInput();
 
       for (auto val : pre_out_list) {
@@ -524,7 +524,7 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
 
-    sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
+    sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
@@ -750,11 +750,11 @@ class CinnGroupClusterPattern
       ir_mapping.Add(val, val);
     }
 
-    std::unordered_map<::pir::Value, size_t> all_ouput_values;
+    std::unordered_map<::pir::Value, size_t> all_output_values;
     auto yield_op = group_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      size_t id = all_ouput_values.size();
-      all_ouput_values.emplace(yield_op->operand_source(i), id);
+      size_t id = all_output_values.size();
+      all_output_values.emplace(yield_op->operand_source(i), id);
     }
 
     auto split_res = GroupSplit(group_op);
@@ -763,8 +763,8 @@ class CinnGroupClusterPattern
     for (auto& node : split_res) {
       auto node_outside_input = node.GetOutsideInput();
       for (auto& val : node_outside_input) {
-        size_t id = all_ouput_values.size();
-        all_ouput_values.emplace(val, id);
+        size_t id = all_output_values.size();
+        all_output_values.emplace(val, id);
       }
     }
 
@@ -776,7 +776,7 @@ class CinnGroupClusterPattern
     }
 
     for (auto& node : split_res) {
-      auto output_value = GenerateOutputValue(node.ops, all_ouput_values);
+      auto output_value = GenerateOutputValue(node.ops, all_output_values);
       std::vector<pir::Operation*> tmp_ops(node.ops.begin(), node.ops.end());
       std::sort(tmp_ops.begin(),
                 tmp_ops.end(),
