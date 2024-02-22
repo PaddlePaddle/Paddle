@@ -25,8 +25,6 @@ namespace phi {
 namespace distributed {
 
 using auto_parallel::str_join;
-const int kBatchDimIndex = 0;
-const int kSeqlenDimIndex = 1;
 const int kNumHeadsDimIndex = 2;
 const int kHeadDimIndex = 3;
 
@@ -82,7 +80,8 @@ void check_k_or_v(const DistMetaTensor& k_or_v,
 void check_sin_cos(const DistMetaTensor& sin,
                    const DistMetaTensor& cos,
                    const DistMetaTensor& position_ids,
-                   const std::vector<int64_t>& q_shape) {
+                   const std::vector<int64_t>& q_shape,
+                   bool time_major) {
   PADDLE_ENFORCE_EQ(sin.dims(),
                     cos.dims(),
                     phi::errors::InvalidArgument(
@@ -99,6 +98,9 @@ void check_sin_cos(const DistMetaTensor& sin,
       phi::errors::InvalidArgument(
           "The Tensor sin/cos's ndim must be 2 or 4. but given [%d]", ndim));
 
+  const int kBatchDimIndex = time_major ? 1 : 0;
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+
   int batch_size = q_shape[kBatchDimIndex];
   int seq_len = q_shape[kSeqlenDimIndex];
   int head_dim = q_shape[kHeadDimIndex];
@@ -107,11 +109,11 @@ void check_sin_cos(const DistMetaTensor& sin,
   int head_dim_index = ndim == 2 ? 1 : 3;
   if (ndim == 4) {
     PADDLE_ENFORCE_EQ(
-        (shape[kBatchDimIndex] == 1 && shape[kNumHeadsDimIndex] == 1),
+        (shape[0] == 1 && shape[kNumHeadsDimIndex] == 1),
         true,
         phi::errors::InvalidArgument("The batch_size and num_heads of sin/cos "
                                      "must be 1, but given [%d], [%d]",
-                                     shape[kBatchDimIndex],
+                                     shape[0],
                                      shape[kNumHeadsDimIndex]));
   }
 
@@ -161,6 +163,7 @@ void infer_sin_cos(const DistMetaTensor& sin,
                    const DistMetaTensor& cos,
                    const DistMetaTensor& position_ids,
                    const std::vector<int64_t>& q_shape,
+                   bool time_major,
                    TensorDistAttr* sin_dist_attr_dst,
                    TensorDistAttr* cos_dist_attr_dst) {
   const TensorDistAttr& sin_dist_attr_src = sin.dist_attr();
@@ -175,7 +178,7 @@ void infer_sin_cos(const DistMetaTensor& sin,
   // if one of sin cos is empty, they are all useless in kernel
   if (!IsEmpty(sin_shape) && !IsEmpty(cos_shape)) {
     // check sin, cos, position_ids's shape
-    check_sin_cos(sin, cos, position_ids, q_shape);
+    check_sin_cos(sin, cos, position_ids, q_shape, time_major);
     if (sin_shape.size() == 4) {
       *sin_dist_attr_dst = UnShardTensorDims(sin_dist_attr_src, {1, 3});
       *cos_dist_attr_dst = UnShardTensorDims(cos_dist_attr_src, {1, 3});
@@ -192,7 +195,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
                             const DistMetaTensor& sin,
                             const DistMetaTensor& cos,
                             const DistMetaTensor& position_ids,
-                            bool use_neox_rotary_style) {
+                            bool use_neox_rotary_style,
+                            bool time_major) {
   check_q(q);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>>
@@ -202,7 +206,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   inputs_sharding_info.emplace_back(qkv_axes, q_dist_attr_src.dims_mapping());
 
   const TensorDistAttr& k_dist_attr_src = k.dist_attr();
-  // q_shape = [bs, seq_len, num_heads, head_dim]
+  // q_shape equals [bs, seq_len, num_heads, head_dim] if time_major is False,
+  // otherwise [seq_len, bs, num_heads, head_dim]
   std::vector<int64_t> q_shape = common::vectorize(q.dims());
   bool is_k_none = IsEmpty(common::vectorize(k.dims()));
   // except for q, all other inputs are optional.
@@ -219,7 +224,7 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   }
 
   const TensorDistAttr& position_ids_dist_attr_src = position_ids.dist_attr();
-  std::string position_ids_axes = "ab";
+  std::string position_ids_axes = time_major ? "ba" : "ab";
   bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
   if (!is_ids_none) {
     inputs_sharding_info.emplace_back(
@@ -232,7 +237,9 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
       GetDimsMappingForAxes(qkv_axes, axis_to_dim_map);
   TensorDistAttr q_dist_attr_dst = CopyTensorDistAttrForOutput(q_dist_attr_src);
   q_dist_attr_dst.set_dims_mapping(out_dims_mapping);
-  q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {1, 3});
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+  q_dist_attr_dst =
+      UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
 
   TensorDistAttr k_dist_attr_dst = CopyTensorDistAttrForOutput(k_dist_attr_src);
   k_dist_attr_dst.set_process_mesh(q_dist_attr_dst.process_mesh());
@@ -248,8 +255,13 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
 
   TensorDistAttr sin_dist_attr_dst;
   TensorDistAttr cos_dist_attr_dst;
-  infer_sin_cos(
-      sin, cos, position_ids, q_shape, &sin_dist_attr_dst, &cos_dist_attr_dst);
+  infer_sin_cos(sin,
+                cos,
+                position_ids,
+                q_shape,
+                time_major,
+                &sin_dist_attr_dst,
+                &cos_dist_attr_dst);
 
   std::vector<int64_t> position_ids_dims_mapping =
       GetDimsMappingForAxes(position_ids_axes, axis_to_dim_map);
@@ -279,7 +291,8 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                                    const DistMetaTensor& out_q,
                                    const DistMetaTensor& out_k,
                                    const DistMetaTensor& out_v,
-                                   bool use_neox_rotary_style) {
+                                   bool use_neox_rotary_style,
+                                   bool time_major) {
   check_q(out_q);
   std::vector<std::pair<std::string, std::vector<int64_t>>>
       outputs_sharding_info;
@@ -316,7 +329,10 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   TensorDistAttr q_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_q_dist_attr_src);
   q_dist_attr_dst.set_dims_mapping(dims_mapping);
-  q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {1, 3});
+
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+  q_dist_attr_dst =
+      UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
   TensorDistAttr out_q_dist_attr_dst = q_dist_attr_dst;
 
   TensorDistAttr k_dist_attr_dst = CopyTensorDistAttrForOutput(k.dist_attr());
@@ -341,10 +357,11 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                 cos,
                 position_ids,
                 out_q_shape,
+                time_major,
                 &sin_dist_attr_dst,
                 &cos_dist_attr_dst);
 
-  std::string position_ids_axes = "ab";
+  std::string position_ids_axes = time_major ? "ba" : "ab";
   std::vector<int64_t> position_ids_dims_mapping =
       GetDimsMappingForAxes(position_ids_axes, axis_to_dim_map);
   TensorDistAttr position_ids_dist_attr_dst =
@@ -372,7 +389,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& out_q_grad,
                                 const DistMetaTensor& out_k_grad,
                                 const DistMetaTensor& out_v_grad,
-                                bool use_neox_rotary_style) {
+                                bool use_neox_rotary_style,
+                                bool time_major) {
   // NOTE(zhonghui): The forward and backward kernels of fuse rope are same, so
   // the spmd rules can be shared.
   SpmdInfo spmd_info = FusedRopeInferSpmd(out_q_grad,
@@ -381,7 +399,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                           sin,
                                           cos,
                                           position_ids,
-                                          use_neox_rotary_style);
+                                          use_neox_rotary_style,
+                                          time_major);
   std::vector<ArgDistAttr> dist_attrs;
   std::vector<int> order = {3, 4, 5, 0, 1, 2};
   for (int ind : order) {
