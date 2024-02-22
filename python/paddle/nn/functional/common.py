@@ -906,6 +906,15 @@ def upsample(
             [2, 3, 12, 12]
 
     """
+    if data_format == 'NCHW':
+        dim_size = len(x.shape)
+        if dim_size == 3:
+            data_format = 'NCW'
+        elif dim_size == 4:
+            data_format = 'NCHW'
+        elif dim_size == 5:
+            data_format = 'NCDHW'
+
     return interpolate(
         x, size, scale_factor, mode, align_corners, align_mode, data_format
     )
