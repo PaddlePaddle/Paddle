@@ -86,7 +86,24 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "matmul"};
+      "feed",
+      "fetch",
+      "conv2d",
+      "conv2d_grad",
+      "dropout",
+      "slice",
+      "concat",
+      "gather_nd",
+      "pool2d",
+      "split",
+      "matmul",
+      "matmul_grad",
+      "transpose",
+      "embedding_grad",
+      "embedding",
+      "gather",
+      "arange",
+  };
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -131,6 +148,21 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
     return tensor_type && tensor_type.dims().size() == 0U;
   };
+
+  auto HasNegDim = [](const ::pir::Type& type) {
+    auto tensor_type = type.dyn_cast<::pir::DenseTensorType>();
+
+    if (tensor_type) {
+      for (size_t i = 0; i < tensor_type.dims().size(); ++i) {
+        if (tensor_type.dims()[i] < 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   // Judge for vector<Type>
   auto HasZeroDimInVT = [&](const std::vector<::pir::Type>& types) {
     for (auto& type : types) {
@@ -144,7 +176,7 @@ bool HaveZeroDimInput(const ::pir::Operation& op) {
     if (!value || !value.type()) continue;
     if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
       if (HasZeroDimInVT(vector_type.data())) return true;
-    } else if (HasZeroDim(value.type())) {
+    } else if (HasZeroDim(value.type()) || HasNegDim(value.type())) {
       return true;
     }
   }
@@ -186,7 +218,9 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
+  // if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op))
+  // {
+  if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;
@@ -319,6 +353,8 @@ static utils::Attribute ConvertArrayAttribute(
                       "ArrayAttribute";
       }
     }
+  } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
+    // do nothing for now
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
   }
@@ -398,7 +434,7 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
-  if (op_name == "generate_shape") {
+  if (op_name == "generate_shape" || op_name == "store") {
     return hlir::framework::kNonFusible;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
