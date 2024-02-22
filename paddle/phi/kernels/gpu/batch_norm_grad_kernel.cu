@@ -948,7 +948,8 @@ void BatchNormGradFunctor(const Context &ctx,
         size_t workspace_size = 0;
         void *workspace_ptr = nullptr;
         DenseTensor workspace_tensor;
-        auto reserve_space_size = reserve_space->memory_size();
+        auto reserve_space_size =
+            reserve_space ? reserve_space->memory_size() : 0;
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(

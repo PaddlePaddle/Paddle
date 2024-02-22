@@ -4512,14 +4512,17 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
   if (q) {
+    VLOG(3) << "FusedRopeInferMeta Set Q dims and dtype";
     out_q->set_dims(q.dims());
     out_q->set_dtype(q.dtype());
   }
-  if (k) {
+  if (out_k) {
+    VLOG(3) << "FusedRopeInferMeta Set K dims and dtype";
     out_k->set_dims(k.dims());
     out_k->set_dtype(k.dtype());
   }
-  if (v) {
+  if (out_v) {
+    VLOG(3) << "FusedRopeInferMeta Set V dims and dtype";
     out_v->set_dims(v.dims());
     out_v->set_dtype(v.dtype());
   }

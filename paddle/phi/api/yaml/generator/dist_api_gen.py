@@ -187,6 +187,15 @@ MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out});
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
+MULTI_SINGLE_OPTIONAL_OUT_CREATION_TEMPLATE_NO_SPMD = """
+    auto dist_out_{idx} = SetKernelDistOutput({out}.get_ptr());
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (dense_out_{idx} && !rank_is_in_current_mesh) {{
+      *dense_out_{idx} = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
+"""
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
@@ -200,6 +209,16 @@ MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput(&{out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
+MULTI_SINGLE_OPTIONAL_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{idx} = SetKernelDistOutput({out}.get_ptr(), spmd_info.second[{idx}]);
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (dense_out_{idx} && !rank_is_in_current_mesh) {{
+      *dense_out_{idx} = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
+"""
+# TODO(GhostScreaming): Support inplace and optional output use spmd_info
 MULTI_SINGLE_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
     phi::distributed::TensorDistAttr dist_out_attr_{idx};
     if ({out}.get_ptr()) {{
@@ -231,6 +250,18 @@ MULTI_INPLACE_VECTOR_OUT_CREATION_TEMPLATE = """
     std::vector<phi::DenseTensor*> dense_out_{idx}(dist_out_{idx}.size());
     for (size_t i = 0; i < dist_out_{idx}.size(); ++i) {{
         dense_out_{idx}[i] = const_cast<phi::DenseTensor*>(&dist_out_{idx}[i]->value());
+    }}
+"""
+MULTI_VECTOR_OPTIONAL_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{idx} = SetKernelDistOutput({dist_output_arg}, {in_name}.get_ptr());
+    std::vector<phi::DenseTensor*> dense_out_{idx}(dist_out_{idx}.size());
+    for (size_t i = 0; i < dist_out_{idx}.size(); ++i) {{
+        dense_out_{idx}[i] = dist_out_{idx}[i] ? const_cast<phi::DenseTensor*>(&dist_out_{idx}[i]->value()) : nullptr;
+        if (dense_out_{idx}[i] && !rank_is_in_current_mesh) {{
+            *dense_out_{idx}[i] = phi::DenseTensor(
+                    std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+                    phi::DenseTensorMeta());
+        }}
     }}
 """
 MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
@@ -625,6 +656,9 @@ class DistForwardAPI(ForwardAPI):
 
     def is_inplace_output(self, i):
         return self.outputs['names'][i] in self.inplace_map
+
+    def is_optional_output(self, i):
+        return self.outputs['names'][i] in self.optional_vars
 
     def is_inplace_and_optional_output(self, i):
         return (
@@ -1130,6 +1164,10 @@ class DistForwardAPI(ForwardAPI):
                                 output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE.format(
                                     idx=i, out=get_out_code
                                 )
+                            elif self.is_optional_output(i):
+                                output_creation_code += MULTI_SINGLE_OPTIONAL_OUT_CREATION_TEMPLATE.format(
+                                    idx=i, out=get_out_code
+                                )
                             else:
                                 output_creation_code += (
                                     MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
@@ -1139,6 +1177,10 @@ class DistForwardAPI(ForwardAPI):
                         else:
                             if self.need_to_generate_code_for_inplace_impl(i):
                                 output_creation_code += MULTI_SINGLE_INPLACE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                                    idx=i, out=get_out_code
+                                )
+                            elif self.is_optional_output(i):
+                                output_creation_code += MULTI_SINGLE_OPTIONAL_OUT_CREATION_TEMPLATE_NO_SPMD.format(
                                     idx=i, out=get_out_code
                                 )
                             else:
@@ -1173,6 +1215,12 @@ class DistForwardAPI(ForwardAPI):
                             )
                         if self.need_to_generate_code_for_inplace_impl(i):
                             output_creation_code += MULTI_INPLACE_VECTOR_OUT_CREATION_TEMPLATE.format(
+                                idx=i,
+                                dist_output_arg=dist_output_arg,
+                                in_name=get_out_code,
+                            )
+                        elif self.is_optional_output(i):
+                            output_creation_code += MULTI_VECTOR_OPTIONAL_OUT_CREATION_TEMPLATE.format(
                                 idx=i,
                                 dist_output_arg=dist_output_arg,
                                 in_name=get_out_code,

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/utils/optional.h"
 
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x);
 
@@ -38,7 +39,7 @@ std::tuple<paddle::Tensor,
            paddle::Tensor&,
            paddle::Tensor,
            paddle::Tensor,
-           paddle::Tensor>
+           paddle::optional<paddle::Tensor>>
 sync_batch_norm__ad_func(const paddle::Tensor& x,
                          paddle::Tensor& mean,      // NOLINT
                          paddle::Tensor& variance,  // NOLINT

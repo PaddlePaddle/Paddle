@@ -1541,7 +1541,7 @@
     func : lamb {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
            lamb_sr {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
     data_type : param
-  optional : master_param, skip_update, beta1_pow_out, beta2_pow_out, master_param_outs
+  optional : master_param, skip_update, master_param_outs
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - op : layer_norm
@@ -1795,7 +1795,7 @@
   kernel :
     func : masked_multihead_attention
     data_type : x
-  optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
+  optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth, beam_cache_offset_out
   inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
 
 - op : masked_select
@@ -2289,7 +2289,7 @@
     func : rmsprop {dense, dense, dense, dense, dense, dense, dense-> dense, dense, dense, dense, dense}
            rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense, dense-> dense, dense, dense, dense, dense}
     data_type : param
-  optional : mean_grad, master_param, master_param_outs
+  optional : mean_grad, master_param, mean_grad_out, master_param_outs
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out), (master_param->master_param_outs)
 
 - op : roi_align
