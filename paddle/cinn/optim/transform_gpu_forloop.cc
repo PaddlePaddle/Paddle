@@ -319,6 +319,8 @@ class LocalAxisVisitor : public ir::IRMutator<> {
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
     auto store = expr->As<ir::Store>();
+
+    ir::IRMutator<>::Visit(op, expr);
     if (!store->tensor.as_tensor_ref()->buffer.defined()) {
       return;
     }
@@ -332,11 +334,11 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         indice = cinn::common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
     auto load = expr->As<ir::Load>();
+
     if (load->is_addr_scalar()) {
       return;
     }
