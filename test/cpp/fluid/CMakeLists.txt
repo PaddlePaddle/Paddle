@@ -142,3 +142,5 @@ if(WITH_ONNXRUNTIME AND WIN32)
   # be build only in CI, so suppose the generator in Windows is Ninja.
   copy_onnx(op_debug_string_test)
 endif()
+
+add_subdirectory(distributed)

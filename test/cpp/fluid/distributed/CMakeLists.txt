@@ -1,8 +1,6 @@
 set_source_files_properties(
   table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-paddle_test(
-  table_test
-  SRCS table_test.cc)
+paddle_test(table_test SRCS table_test.cc)
 
 set_source_files_properties(
   dense_table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
