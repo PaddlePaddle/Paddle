@@ -1001,6 +1001,31 @@ Tensor embedding_decomp(const Tensor& x,
   return res;
 }
 
+template <typename T>
+Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
+  std::vector<int64_t> tmp_shape{-1, 1};
+  auto index_dim = get_slice<T>(shape<T>(index), 0);
+  auto start =
+      backend::full_with_tensor<T>(shape<T>(index_dim), 0, index_dim.dtype());
+  auto step =
+      backend::full_with_tensor<T>(shape<T>(index_dim), 1, index_dim.dtype());
+  auto arange_tmp = reshape<T>(
+      backend::arange_with_tensor<T>(start, index_dim, step, index.dtype()),
+      tmp_shape);
+
+  auto index_res = reshape<T>(
+      backend::expand_with_tensor<T>(arange_tmp, shape<T>(index)), tmp_shape);
+  auto index_ = reshape<T>(index, tmp_shape);
+  auto concat_res = concat<T>({index_res, index_}, 1);
+  auto res = backend::reshape<T>(gather_nd<T>(x, concat_res), shape<T>(index));
+
+  if (res.dtype() != x.dtype()) {
+    return cast<T>(res, x.dtype());
+  } else {
+    return res;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
