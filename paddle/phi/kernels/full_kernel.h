@@ -25,11 +25,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FullKernel(const Context& dev_ctx,
-                const IntArray& shape,
-                const Scalar& val,
-                DataType dtype,
-                DenseTensor* out);
+TEST_API void FullKernel(const Context& dev_ctx,
+                         const IntArray& shape,
+                         const Scalar& val,
+                         DataType dtype,
+                         DenseTensor* out);
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
