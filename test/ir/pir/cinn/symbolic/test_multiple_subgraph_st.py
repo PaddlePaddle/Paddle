@@ -31,7 +31,12 @@ class MultipleSubgraph(nn.Layer):
     def __init__(self):
         super().__init__()
         self.hidden_size = 768
-        self.mlp = nn.Linear(self.hidden_size, self.hidden_size)
+        self.weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Constant(value=0.5)
+        )
+        self.mlp = nn.Linear(
+            self.hidden_size, self.hidden_size, weight_attr=self.weight_attr
+        )
 
     def exp_sub(self, x):
         y = paddle.exp(x)

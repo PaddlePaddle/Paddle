@@ -98,7 +98,7 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
       x_axes, x_dims_mapping);
@@ -125,7 +125,7 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
 }
 
 // NOTE(lizhiyu): This function is only for `cast` right now to support partial
-// propagatation
+// propagation
 SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
@@ -145,7 +145,7 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
       x_axes, x_dims_mapping);
@@ -204,7 +204,7 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
   std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
       out_axes, out_dims_mapping);
@@ -259,13 +259,13 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   std::string x_axes, y_axes, out_axes;
   GetBinaryNotations(x_shape, y_shape, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
@@ -332,7 +332,7 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
   std::string x_axes, y_axes, out_axes;
   GetBinaryNotations(x_shape, y_shape, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}});
@@ -436,7 +436,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                    "the rank of input as [%d].",
                                    out_grad.dims().size(),
                                    y.dims().size()));
-  // The backward rule of elementwise follows the princple: the dist_attr
+  // The backward rule of elementwise follows the principle: the dist_attr
   // of input should equal to out_grad.
   // Caution the special case when the inputs calculate together with different
   // shape it means one of the input is broadcast to same shape with the other
