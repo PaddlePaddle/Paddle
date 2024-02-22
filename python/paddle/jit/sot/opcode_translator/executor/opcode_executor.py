@@ -2150,13 +2150,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
-        return self.compile_return(ret_val)
-
-    def RETURN_CONST(self, instr: Instruction):
-        ret_const = self._co_consts[instr.arg]
-        return self.compile_return(ret_const)
-
-    def compile_return(self, ret_val):
         compile_fn = self._graph.get_compiled_fn(ret_val)
         if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
