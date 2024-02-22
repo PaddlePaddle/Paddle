@@ -19,6 +19,8 @@
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+const int vlog_level = 3;
+
 namespace pir {
 namespace {
 
@@ -28,8 +30,10 @@ using PassPipelineRunner =
 void PrintProgram(pir::ModuleOp m, std::string mgs) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(m.program());
-  VLOG(3) << "===================== " << mgs << " =====================\n"
-          << pir::CustomPrintHelper(*m.program(), shape_analysis.PrintHook());
+  VLOG(vlog_level) << "===================== " << mgs
+                   << " =====================\n"
+                   << pir::CustomPrintHelper(*m.program(),
+                                             shape_analysis.PrintHook());
 }
 
 void DebugPrintOpInfo(
@@ -71,7 +75,7 @@ void DebugPrintOpInfo(
       print_stream << "]";
     }
     print_stream << " }";
-    VLOG(3) << print_stream.str();
+    VLOG(vlog_level) << print_stream.str();
   }
 }
 
@@ -91,8 +95,9 @@ class ShapeOptimizationPass : public pir::Pass {
   ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
-    VLOG(3) << "===================== ShapeOptimizationPass Run start... "
-               "=====================";
+    VLOG(vlog_level)
+        << "===================== ShapeOptimizationPass Run start... "
+           "=====================";
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     PrintProgram(module_op, "Origin Program");
@@ -105,8 +110,8 @@ class ShapeOptimizationPass : public pir::Pass {
     };
 
     PrintProgram(module_op, "ShapeOptimizationPass Program");
-    VLOG(3) << "===================== ShapeOptimizationPass Run End. "
-               "=====================";
+    VLOG(vlog_level) << "===================== ShapeOptimizationPass Run End. "
+                        "=====================";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

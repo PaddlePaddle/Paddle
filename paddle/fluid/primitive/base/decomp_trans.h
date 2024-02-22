@@ -72,6 +72,7 @@ class DecompProgram {
   std::vector<pir::Value> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
+  std::set<std::string> decomposed_ops_set;
 };
 
 bool has_decomp_rule(const pir::Operation& op);
