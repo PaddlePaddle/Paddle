@@ -117,21 +117,21 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  // for (BucketContext& bucket_context : bucket_contexts_) {
-  //   VLOG(4) << "===========================Apply tactics on Bucket ["
-  //           << bucket_context.predicate << "]==========================";
-  //   ApplyTactics(&bucket_context);
-  // }
-  std::cerr << "dy shape schedule\n";
-  LoopReorderAligment();
-  std::cerr << "after reorder\n";
-  Tiling();
+  for (BucketContext& bucket_context : bucket_contexts_) {
+    VLOG(4) << "===========================Apply tactics on Bucket ["
+            << bucket_context.predicate << "]==========================";
+    ApplyTactics(&bucket_context);
+  }
+  // std::cerr << "dy shape schedule\n";
+  // LoopReorderAligment();
+  // std::cerr << "after reorder\n";
+  // Tiling();
 
-  BindCudaInfo();
+  // BindCudaInfo();
 
-  VariableTypeAssignment();
-  Unroll();
-  SetReduceType();
+  // VariableTypeAssignment();
+  // Unroll();
+  // SetReduceType();
 }
 
 void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {

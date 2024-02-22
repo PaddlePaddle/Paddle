@@ -283,9 +283,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
-  // ir::IRSchedule ir_sch(
-  //     mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
-  ir::IRSchedule ir_sch(mod_expr);
+  ir::IRSchedule ir_sch(
+      mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
   ir_sch.MergeExprs();
   std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
@@ -436,9 +435,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr({func_body});
-  // ir::IRSchedule ir_sch(mod_expr);
-  ir::IRSchedule ir_sch(
-      mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
+  ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
@@ -647,6 +644,9 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
           }
         } else {
           for (size_t i = 0; i < broadcast_axes.size(); ++i) {
+            std::cerr << "broadcast axes " << broadcast_axes[i] << std::endl;
+            std::cerr << in_dim << std::endl;
+            std::cerr << output_shape[broadcast_axes[i]] << std::endl;
             if (in_dim[i] != output_shape[broadcast_axes[i]]) {
               if (in_dim[i] != 1) {
                 throw std::runtime_error("Only support 1 - D broadcast ");
@@ -661,6 +661,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         std::set<int> axes_set;
         for (size_t i = 0; i < broadcast_axes.size(); ++i) {
           axes_set.insert(broadcast_axes[i]);
+          std::cerr << "broadcast axes " << broadcast_axes[i] << std::endl;
           if (in_dim[broadcast_axes[i]] != 1) {
             throw std::runtime_error("Only support 1 - D broadcast ");
           }
