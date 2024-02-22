@@ -15,9 +15,11 @@
 #include "paddle/fluid/pybind/add_cinn_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
@@ -134,7 +136,7 @@ void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
 #endif
