@@ -4517,13 +4517,17 @@ void FusedRopeInferMeta(const MetaTensor& q,
     out_k->set_dims(k.dims());
     out_k->set_dtype(k.dtype());
   } else {
-    out_k->set_dtype(q.dtype());
+    if (out_k) {
+      out_k->set_dtype(q.dtype());
+    }
   }
   if (v) {
     out_v->set_dims(v.dims());
     out_v->set_dtype(v.dtype());
   } else {
-    out_v->set_dtype(q.dtype());
+    if (out_v) {
+      out_v->set_dtype(q.dtype());
+    }
   }
 }
 
