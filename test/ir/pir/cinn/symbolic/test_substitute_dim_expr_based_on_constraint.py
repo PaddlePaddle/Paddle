@@ -29,15 +29,10 @@ class TestSubstituteDimExprNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def exp_sub(self, x):
-        y = paddle.exp(x)
-        return y - x
-
-    def forward(self, x, y):
-        y2 = self.exp_sub(y)
-        z1 = paddle.concat([y, x], 0)
-        z2 = paddle.concat([y, y2], 0)
-        out = paddle.concat([z1, z2], 0)
+    def forward(self, x, y1, y2):
+        z1 = paddle.concat([y1, x], 0)
+        z2 = paddle.concat([y1, y2], 0)
+        out = z1 + z2
         return out
 
 
@@ -51,12 +46,14 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shapex = [32, 64]
+        self.shapex = [32, 128]
         self.x = paddle.randn(self.shapex, dtype="float32")
         self.x.stop_gradient = False
-        self.shapey = [32, 64]
-        self.y = paddle.randn(self.shapey, dtype="float32")
-        self.y.stop_gradient = False
+        self.shapey = [32, 128]
+        self.y1 = paddle.randn(self.shapey, dtype="float32")
+        self.y1.stop_gradient = False
+        self.y2 = paddle.randn(self.shapey, dtype="float32")
+        self.y2.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -65,12 +62,13 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
     def eval(self, use_cinn):
         net = TestSubstituteDimExprNet()
         input_spec = [
-            InputSpec(shape=[32, 64], dtype="float32"),
-            InputSpec(shape=[128, None], dtype="float32"),
+            InputSpec(shape=[32, 128], dtype="float32"),
+            InputSpec(shape=[32, None], dtype="float32"),
+            InputSpec(shape=[32, None], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.y)
+        out = net(self.x, self.y1, self.y2)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out

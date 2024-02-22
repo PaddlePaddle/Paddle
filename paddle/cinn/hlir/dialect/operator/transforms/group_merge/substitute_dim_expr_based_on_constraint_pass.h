@@ -21,7 +21,7 @@ namespace dialect {
 namespace ir {
 
 // This is a helper pass for substituting the dim expr express based on the
-// constraint.
+// constraints symbol::Equal<symbol::DimExpr>.
 std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintPass();
 }  // namespace ir
 }  // namespace dialect

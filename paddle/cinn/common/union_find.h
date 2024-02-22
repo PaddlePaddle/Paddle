@@ -114,7 +114,7 @@ struct UnionFind {
 template <typename T>
 class UnionFindSet {
  public:
-  const T& Find(const T& x) {
+  T Find(const T& x) {
     if (parent.find(x) == parent.end()) {
       return x;
     }
@@ -147,7 +147,7 @@ class UnionFindSet {
   }
 
  private:
-  std::unordered_map<T, T> parent;  // map<child,father>
+  std::unordered_map<T, T> parent;
 };
 
 }  // namespace common
