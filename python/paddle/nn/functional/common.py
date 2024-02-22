@@ -906,8 +906,8 @@ def upsample(
             [2, 3, 12, 12]
 
     """
-    dim_size = len(x.shape)
-    if data_format == 'NCHW' and dim_size != 4:
+    if data_format == 'NCHW':
+        dim_size = len(x.shape)
         if dim_size == 3:
             data_format = 'NCW'
         elif dim_size == 5:
