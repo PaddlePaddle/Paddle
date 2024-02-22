@@ -14,14 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraint_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 
-#include <unordered_map>
+#include "paddle/cinn/common/dim_expr_util.h"
 #include "paddle/cinn/common/union_find.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn {
 namespace dialect {
@@ -53,30 +49,26 @@ void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
 symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     const symbol::TensorShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        dim_expr_substitution) {
-  auto SubstituteDimExpr =
+        substitution_pattern) {
+  auto SubstituteOneDimExpr =
       [](const std::vector<symbol::DimExpr>& original_dim_expr,
          const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-             dim_expr_substitution) -> std::vector<symbol::DimExpr> {
+             substitution_pattern) -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> substituted_dim_expr{};
     for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-      const auto& dim_expr_to_substitute = dim_expr_substitution.find(dim_expr);
-      if (dim_expr_to_substitute != dim_expr_substitution.end()) {
-        substituted_dim_expr.push_back(dim_expr_to_substitute->second);
-      } else {
-        substituted_dim_expr.push_back(dim_expr);
-      }
+      substituted_dim_expr.push_back(
+          cinn::common::SubstituteDimExpr(dim_expr, substitution_pattern));
     }
     return substituted_dim_expr;
   };
 
   std::vector<symbol::DimExpr> substituted_shape =
-      SubstituteDimExpr(shape_or_data.shape(), dim_expr_substitution);
+      SubstituteOneDimExpr(shape_or_data.shape(), substitution_pattern);
   if (!shape_or_data.data().has_value()) {
     return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape);
   } else {
-    std::vector<symbol::DimExpr> substituted_data =
-        SubstituteDimExpr(shape_or_data.data().value(), dim_expr_substitution);
+    std::vector<symbol::DimExpr> substituted_data = SubstituteOneDimExpr(
+        shape_or_data.data().value(), substitution_pattern);
     return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape,
                                                 substituted_data);
   }
@@ -85,18 +77,18 @@ symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
 symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
     const symbol::ShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        dim_expr_substitution) {
+        substitution_pattern) {
   auto lambdas = symbol::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
-            tensor_shape_or_data, dim_expr_substitution));
+            tensor_shape_or_data, substitution_pattern));
       },
       [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
         symbol::TensorListShapeOrDataDimExprs substituted_tensor_list;
         for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
              tensor_list) {
           substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
-              tensor_shape_or_data, dim_expr_substitution));
+              tensor_shape_or_data, substitution_pattern));
         }
         return symbol::ShapeOrDataDimExprs(substituted_tensor_list);
       }};
@@ -107,45 +99,46 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
       shape_analysis.CreateDimExprBuilder().constraints();
-  cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
-  for (const auto& constraint : dim_expr_constraints) {
-    CHECK(std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint))
-        << "The DimExprConstraint type is no Equal<DimExpr>, this part is to "
-           "be completed.";
-    const auto& data =
-        std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
-    union_find_set.Union(data->lhs, data->rhs);
-  }
+  const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
+    cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
+    for (const auto& constraint : dim_expr_constraints) {
+      CHECK(std::holds_alternative<symbol::Equal<symbol::DimExpr>>(constraint))
+          << "The DimExprConstraint type is no Equal<DimExpr>, this part is to "
+             "be completed.";
+      const auto& data =
+          std::get<symbol::Equal<symbol::DimExpr>>(constraint).data;
+      union_find_set.Union(data->lhs, data->rhs);
+    }
+    return union_find_set;
+  }();
+
   const std::vector<std::vector<symbol::DimExpr>>& dim_expr_clusters =
       union_find_set.Clusters();
-
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_substitution;
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
   for (const auto& dim_expr_cluster : dim_expr_clusters) {
-    if (dim_expr_cluster.size() == 0) {
-      continue;
-    }
-    auto dim_expr_best = dim_expr_cluster[0];
+    CHECK(!dim_expr_cluster.empty());
+    auto dim_expr_root = dim_expr_cluster[0];
     for (const auto& dim_expr : dim_expr_cluster) {
       if (std::holds_alternative<std::int64_t>(dim_expr)) {
-        dim_expr_best = dim_expr;
+        dim_expr_root = dim_expr;
         break;
       }
     }
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (dim_expr != dim_expr_best) {
-        dim_expr_substitution[dim_expr] = dim_expr_best;
+      if (dim_expr != dim_expr_root) {
+        substitution_pattern[dim_expr] = dim_expr_root;
       }
     }
   }
-  return dim_expr_substitution;
+  return substitution_pattern;
 }
 
-void SubstituteDimExprBasedOnConstraint(pir::ModuleOp module_op) {
-  VLOG(4) << "SubstituteDimExprBasedOnConstraint start";
+void SubstituteDimExprBasedOnConstraints(pir::ModuleOp module_op) {
+  VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
   pir::ShapeConstraintIRAnalysis shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-      dim_expr_substitution = GetDimExprSubstitution(shape_analysis);
+      substitution_pattern = GetDimExprSubstitution(shape_analysis);
   VisitEachOp(module_op, [&](pir::Operation& op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis.HasShapeOrDataForValue(value)) {
@@ -155,23 +148,23 @@ void SubstituteDimExprBasedOnConstraint(pir::ModuleOp module_op) {
         const symbol::ShapeOrDataDimExprs& origin_shape_or_data =
             shape_analysis.GetShapeOrDataForValue(value);
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-            SubstituteShapeOrData(origin_shape_or_data, dim_expr_substitution);
+            SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
         shape_analysis.SetShapeOrDataForValue(value, substituted_shape_or_data);
       }
     });
     // TODO(JiaWenxuan): substitute the attribute "sym_shape_str" of the op
   });
-  VLOG(4) << "SubstituteDimExprBasedOnConstraint end";
+  VLOG(4) << "SubstituteDimExprBasedOnConstraints end";
 }
 
-class SubstituteDimExprBasedOnConstraintPass : public pir::Pass {
+class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
  public:
-  SubstituteDimExprBasedOnConstraintPass()
-      : pir::Pass("substitute_dim_expr_based_on_constraint_pass", 1) {}
+  SubstituteDimExprBasedOnConstraintsPass()
+      : pir::Pass("substitute_dim_expr_based_on_constraints_pass", 1) {}
 
   void Run(pir::Operation* op) override {
     pir::ModuleOp module_op = op->dyn_cast<pir::ModuleOp>();
-    SubstituteDimExprBasedOnConstraint(module_op);
+    SubstituteDimExprBasedOnConstraints(module_op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
@@ -181,8 +174,8 @@ class SubstituteDimExprBasedOnConstraintPass : public pir::Pass {
 
 }  // namespace
 
-std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintPass() {
-  return std::make_unique<SubstituteDimExprBasedOnConstraintPass>();
+std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintsPass() {
+  return std::make_unique<SubstituteDimExprBasedOnConstraintsPass>();
 }
 
 }  // namespace ir

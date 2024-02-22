@@ -98,45 +98,32 @@ struct UnionFind {
   std::vector<cinn::common::Shared<UnionFindNode>> nodes;
 };
 
-// template <typename T >
-// class UnionFindSet{
-// public:
-//   const T& Find(const T& x);
-
-//   void Union(const T& p,const T& q);
-
-//   std::vector<std::vector<T>> Clusters();
-
-// private:
-//   std::unordered_map<T, T> parent;  // map<child,father>
-// };
-
 template <typename T>
 class UnionFindSet {
  public:
   T Find(const T& x) {
-    if (parent.find(x) == parent.end()) {
+    if (parent_.find(x) == parent_.end()) {
       return x;
     }
-    if (parent[x] != x) {
-      parent[x] = Find(parent[x]);
+    if (parent_[x] != x) {
+      parent_[x] = Find(parent_[x]);
     }
-    return parent[x];
+    return parent_[x];
   }
 
   void Union(const T& p, const T& q) {
-    if (parent.find(p) == parent.end()) {
-      parent[p] = p;
+    if (parent_.find(p) == parent_.end()) {
+      parent_[p] = p;
     }
-    if (parent.find(q) == parent.end()) {
-      parent[q] = q;
+    if (parent_.find(q) == parent_.end()) {
+      parent_[q] = q;
     }
-    parent[Find(q)] = Find(p);
+    parent_[Find(q)] = Find(p);
   }
 
-  std::vector<std::vector<T>> Clusters() {
+  std::vector<std::vector<T>> Clusters() const {
     std::unordered_map<T, std::vector<T>> clusters_map;
-    for (auto it = parent.begin(); it != parent.end(); it++) {
+    for (auto it = parent_.begin(); it != parent_.end(); it++) {
       clusters_map[it->second].emplace_back(it->first);
     }
     std::vector<std::vector<T>> clusters;
@@ -147,7 +134,7 @@ class UnionFindSet {
   }
 
  private:
-  std::unordered_map<T, T> parent;
+  std::unordered_map<T, T> parent_;
 };
 
 }  // namespace common

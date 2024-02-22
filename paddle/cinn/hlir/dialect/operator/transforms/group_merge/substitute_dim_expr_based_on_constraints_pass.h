@@ -20,9 +20,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for substituting the dim expr express based on the
+// This is a helper pass for substituting DimExpr based on the
 // constraints symbol::Equal<symbol::DimExpr>.
-std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintPass();
+std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintsPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
