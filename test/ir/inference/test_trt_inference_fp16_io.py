@@ -123,7 +123,6 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'alexnet/inference.pdiparams'),
         )
-
         config.enable_use_gpu(256, 0, PrecisionType.Half)
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,

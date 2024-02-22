@@ -149,10 +149,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool use_cuda_graph = Get<bool>("use_cuda_graph");
-
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
-
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
   auto teller = [&](const framework::ir::Node *node) {
@@ -185,7 +183,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
-      Get<std::vector<std::string>>("trt_enter_var_names"),
       Get<std::vector<std::string>>("trt_exclude_var_names"),
       "tensorrt_engine");
   fuser();
@@ -247,7 +244,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   // some ops are only implemented in paddle-trt,
   // but not in paddle ,we should revert it.
-  for (auto *op_node : framework::ir::TopologyVarientSort(
+  for (auto *op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(0))) {
     if (op_node->Op()->Type() == "matrix_multiply") {
       auto origin_type =
@@ -285,7 +282,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   engine_hash_key += precision;
 
   engine_hash_key += "#";
-  engine_hash_key += use_cuda_graph;
+  engine_hash_key += std::to_string(use_cuda_graph);
 
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
@@ -318,7 +315,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
   for (auto node : subgraph) {
     if (node->NodeType() == Node::Type::kOperation) {

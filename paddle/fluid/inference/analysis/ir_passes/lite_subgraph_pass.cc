@@ -430,7 +430,7 @@ void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {
   };
 
   SubGraphFuser fuser(
-      graph, teller, 0 /* min_subgraph_size */, {}, {}, "lite_engine");
+      graph, teller, 0 /* min_subgraph_size */, {}, "lite_engine");
   fuser();
 
   std::vector<std::string> repetitive_params;

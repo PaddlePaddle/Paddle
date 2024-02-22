@@ -17,6 +17,7 @@
 #include <tuple>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -33,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -484,7 +484,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
   CP_MEMBER(trt_ops_run_float_);
-  CP_MEMBER(trt_enter_var_names_);
   CP_MEMBER(trt_exclude_var_names_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
@@ -864,19 +863,11 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
-
 void AnalysisConfig::Specify_tensorrt_subgraph(
-    const std::vector<std::string> &var_name_into_trt,
     const std::vector<std::string> &var_name_not_trt) {
-  if (!trt_enter_var_names_.empty()) {
-    trt_enter_var_names_.insert(trt_enter_var_names_.end(),
-                                var_name_into_trt.begin(),
-                                var_name_into_trt.end());
-  } else {
-    trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
-                                  var_name_not_trt.begin(),
-                                  var_name_not_trt.end());
-  }
+  trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
+                                var_name_not_trt.begin(),
+                                var_name_not_trt.end());
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
@@ -1109,6 +1100,9 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
+  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+    pass_builder_->DeletePass(delete_pass);
+  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
@@ -1138,9 +1132,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
 
-  for (auto &name : trt_enter_var_names_) ss << name.c_str();
-  ss << ";";
-  for (auto &name : trt_enter_var_names_) ss << name.c_str();
+  for (auto &name : trt_exclude_var_names_) ss << name.c_str();
   ss << ";";
 
   ss << trt_use_dla_;
