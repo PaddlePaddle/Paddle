@@ -56,8 +56,8 @@ void per_channel_scale(
   }
 }
 
-template <typename T>
-void group_wise_scale(T* scale,
+template <typename T, typename ScaleT>
+void group_wise_scale(ScaleT* scale,
                       const T* input,
                       size_t m,
                       size_t n,
@@ -72,7 +72,7 @@ void group_wise_scale(T* scale,
                   : max;
       }
       scale[static_cast<int>(j / group_size) * n + i] =
-          static_cast<T>(max / bound);
+          static_cast<ScaleT>(max / bound);
     }
   }
 }
