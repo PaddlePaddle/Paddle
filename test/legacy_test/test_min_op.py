@@ -64,6 +64,7 @@ class ApiMinTest(unittest.TestCase):
             (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=(0, 1))).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
 
