@@ -13,9 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-
 #include "glog/logging.h"
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -424,10 +422,25 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
+
+    bool continue_run = true;
+
+    for (auto *node : subgraph) {
+      for (auto tmp_name : node->outputs) {
+        if (std::find(trt_exclude_var_names_.begin(),
+                      trt_exclude_var_names_.end(),
+                      tmp_name->Name()) != trt_exclude_var_names_.end()) {
+          continue_run = false;
+        }
+      }
+    }
+
+    if (continue_run == false) continue;
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
-    // replace this sub-graph with the first node. Two steps: 1. Create a Block
-    // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
-    // as deleted. 3. Replace the deleted node with the new Block Node.
+    // replace this sub-graph with the first node. Two steps: 1. Create a
+    // Block Node that contains this subgraph 2. Mark the nodes inside the
+    // sub-graph as deleted. 3. Replace the deleted node with the new Block
+    // Node.
     framework::OpDesc empty_desc;
     empty_desc.SetType(name_);
     auto *block_node = graph_->CreateOpNode(&empty_desc);
@@ -439,8 +452,8 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
     for (auto *node : subgraph) {
-      // TODO(Superjomn) need a unified mechanism to treat deleted node in each
-      // pass.
+      // TODO(Superjomn) need a unified mechanism to treat deleted node in
+      // each pass.
       Agent(node).set_deleted(true);
       Agent(block_node).subgraph()->push_back(node);
     }
