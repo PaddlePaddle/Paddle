@@ -116,7 +116,8 @@ void TensorNameMap(pir::Operation* op,
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
