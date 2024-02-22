@@ -28,6 +28,16 @@
     data_type : input
   optional : bias, residual_param
 
+- op: multi_gru
+  args: (Tensor x, Tensor[] weight_x, Tensor[] weight_h, Tensor[] bias, Tensor[] scale_weights, str activation="tanh", str gate_activation="sigmoid", int layers=1, bool origin_mode=false, str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=1.0, bool force_fp32_output=false)
+  output: Tensor(hidden)
+  infer_meta:
+     func: MultiGruInferMeta
+  kernel:
+     func: multi_gru
+     data_type : x
+  optional: bias, scale_weights
+
 - op : quantize
   args : (Tensor input, bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false)
   output : Tensor(output)
