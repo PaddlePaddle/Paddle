@@ -681,6 +681,12 @@ bool WhileOp::InferSymbolicShape(
           << body_program->module_op().operation()->id();
 
   pir::InferSymExprForBlock(body(), shape_analysis);
+
+  const auto &last_op = body().back();
+  shape_analysis->SetShapeOrDataForValue(
+      result(0),
+      shape_analysis->GetShapeOrDataForValue(last_op.operand_source(0)));
+
   return true;
 }
 
