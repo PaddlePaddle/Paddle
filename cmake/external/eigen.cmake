@@ -57,7 +57,6 @@ if(CMAKE_COMPILER_IS_GNUCC)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
          complex_header)
     set(EIGEN_PATCH_COMMAND
-        git checkout -- . && git checkout ${EIGEN_TAG} &&
         ${EIGEN_PATCH_COMMAND} && patch -Nd
         ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
   endif()
