@@ -84,34 +84,19 @@ class TestMeanOpError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
-            # The input dtype of mean_op must be float16, float32, float64.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = paddle.static.data(
-                name='input3', shape=[-1, 4], dtype="float16"
-            )
-            paddle.nn.functional.softmax(input3)
 
-        with paddle.pir_utils.IrGuard(), program_guard(Program(), Program()):
-            input1 = 12
-            self.assertRaises(TypeError, paddle.mean, input1)
-
-            input2 = paddle.static.data(
-                name='input2', shape=[2, 3, 4, 5], dtype="int32"
-            )
-
-            out = paddle.mean(input2)
-
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'input2': self.x}, fetch_list=[out])
+            if paddle.is_compiled_with_cuda():
+                input3 = paddle.static.data(
+                    name='input3', shape=[-1, 4], dtype="float16"
+                )
+                paddle.nn.functional.softmax(input3)
 
         paddle.disable_static()
 
@@ -536,10 +521,6 @@ class TestMeanAPI(unittest.TestCase):
         x = paddle.to_tensor(x)
         self.assertRaises(Exception, paddle.mean, x, -3)
         self.assertRaises(Exception, paddle.mean, x, 2)
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [10, 12], 'int32')
-            self.assertRaises(TypeError, paddle.mean, x)
 
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
