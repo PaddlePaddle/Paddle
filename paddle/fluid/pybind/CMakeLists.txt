@@ -50,11 +50,6 @@ set(PYBIND_DEPS
     cinn_pass_entry
     auto_parallel)
 
-if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
-                  sub_graph_checker)
-endif()
-
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   if(WITH_HETERPS)

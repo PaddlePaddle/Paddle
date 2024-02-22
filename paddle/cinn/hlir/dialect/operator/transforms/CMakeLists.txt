@@ -20,7 +20,7 @@ set(CINN_PASS_ENTRY_DEPS op_dialect pir)
 
 if(WITH_CINN)
   set(CINN_PASS_ENTRY_DEPS ${CINN_PASS_ENTRY_DEPS} cinn_op_dialect cinnapi
-                           pir_transforms cinn_transforms)
+                           pir_transforms cinn_transforms sub_graph_checker)
 endif()
 
 cc_library(
