@@ -23,5 +23,7 @@ if(WITH_CINN)
                            pir_transforms cinn_transforms)
 endif()
 
-cinn_cc_library(cinn_pass_entry SRCS cinn_pass_entry.cc DEPS
-                ${CINN_PASS_ENTRY_DEPS})
+cc_library(
+  cinn_pass_entry
+  SRCS cinn_pass_entry.cc
+  DEPS ${CINN_PASS_ENTRY_DEPS})
