@@ -708,7 +708,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      group->output_ops.insert(yield_op->operand_source(i).defining_op());
+      auto in = yield_op->operand_source(i);
+      group->output_values.push_back(in);
+
+      group->output_ops.insert(in.defining_op());
     }
 
     // Rebuild other informations
