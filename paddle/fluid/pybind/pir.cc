@@ -140,6 +140,7 @@ USE_PIR_PASS(batch_norm_act_fuse_pass);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {

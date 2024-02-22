@@ -47,7 +47,6 @@
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(check_infer_symbolic);
-COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace cinn::dialect::ir {
 
