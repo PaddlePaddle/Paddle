@@ -123,7 +123,7 @@ def intlist2str(input):
     return return_str
 
 
-# Generate simt conv2d_depthwsie code.
+# Generate simt conv2d_depthwise code.
 
 
 def generate_conv2d_depthwise():

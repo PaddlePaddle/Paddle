@@ -109,7 +109,7 @@ class TestSparseSGDOp(unittest.TestCase):
         param_array = np.full((height, self.row_numel), 5.0).astype("float32")
         param.set(param_array, place)
 
-        # create and initialize LeraningRate Variable
+        # create and initialize LearningRate Variable
         lr = scope.var('LearningRate').get_tensor()
         lr_array = np.full((1), 2.0).astype("float32")
         lr.set(lr_array, place)

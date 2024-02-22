@@ -47,7 +47,7 @@ DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)

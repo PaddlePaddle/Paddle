@@ -578,7 +578,7 @@ def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not complied with CUDA and not support the bfloat16",
+        "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestCUDNNBf16Case(parent):
         def init_kernel_type(self):
@@ -598,7 +598,7 @@ def create_test_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not complied with CUDA and not support the bfloat16",
+        "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestBf16Case(parent):
         def init_kernel_type(self):

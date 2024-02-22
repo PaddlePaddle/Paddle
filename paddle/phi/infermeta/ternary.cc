@@ -946,7 +946,7 @@ void NllLossRawInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(label_dims.size(),
                       3,
                       phi::errors::InvalidArgument(
-                          "Expected Input(Lable) dimensions=3, received %d.",
+                          "Expected Input(Label) dimensions=3, received %d.",
                           label_dims.size()));
     auto input0 = x_dims[0];
     auto input2 = x_dims[2];
@@ -1588,7 +1588,8 @@ void QuantLinearInferMeta(const MetaTensor& x,
           in_mat_dims,
           w_dims0,
           common::make_ddim({w_dims0, w_dims1})));
-  output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  output_dims.reserve(static_cast<size_t>(in_num_col_dims) +
+                      static_cast<size_t>(1));
   for (int i = 0; i < in_num_col_dims; ++i) {
     output_dims.push_back(in_dims[i]);
   }

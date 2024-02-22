@@ -51,7 +51,8 @@ void SeqPoolJitCode::genCode() {
   }
   // part of rest_w * height
   const int rest = w_ % block;
-  pool_height_of_rest_width(rest, (w_ - rest) * sizeof(float), max_num_regs);
+  pool_height_of_rest_width(
+      rest, static_cast<int>((w_ - rest) * sizeof(float)), max_num_regs);
   ret();
 }
 

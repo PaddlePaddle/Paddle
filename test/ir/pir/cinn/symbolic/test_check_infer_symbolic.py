@@ -28,16 +28,17 @@ def apply_to_static(net, use_cinn):
     )
 
 
-def exp_sub(x):
+def exp_sub_concat(x):
     y = paddle.exp(x)
     z = y - x
-    return z
+    out = paddle.concat([z, x], 0)
+    return out
 
 
 class CheckInferSymbolicNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = exp_sub
+        self.fn = exp_sub_concat
 
     def forward(self, x):
         out = self.fn(x)

@@ -30,8 +30,8 @@
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 namespace cinn {

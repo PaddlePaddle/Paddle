@@ -37,7 +37,8 @@ struct SingleEncoderXPUPattern : public PatternBase {
                           const std::string& matmul_type_2,
                           bool norm_before,
                           bool with_q_scale,
-                          bool with_mask);
+                          bool with_mask,
+                          bool is_smooth_quant);
 
   // declare operator node's name
   // If norm_before, use ln_0 & ln_1.
@@ -132,6 +133,13 @@ struct SingleEncoderXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(ln_2_out);
   PATTERN_DECL_NODE(ln_2_mean);
   PATTERN_DECL_NODE(ln_2_variance);
+  // smooth quant
+  PATTERN_DECL_NODE(smooth_scale_1);
+  PATTERN_DECL_NODE(smooth_scale_2);
+  PATTERN_DECL_NODE(smooth_scale_1_weight);
+  PATTERN_DECL_NODE(smooth_scale_2_weight);
+  PATTERN_DECL_NODE(smooth_scale_1_out);
+  PATTERN_DECL_NODE(smooth_scale_2_out);
 
  private:
   std::string act_type_;
@@ -141,6 +149,7 @@ struct SingleEncoderXPUPattern : public PatternBase {
   bool norm_before_{false};
   bool with_q_scale_{false};
   bool with_mask_{true};
+  bool is_smooth_quant_{false};
 };
 
 SingleEncoderXPUPattern::SingleEncoderXPUPattern(
@@ -152,7 +161,8 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
     const std::string& matmul_type_2,
     bool norm_before,
     bool with_q_scale,
-    bool with_mask)
+    bool with_mask,
+    bool is_smooth_quant)
     : PatternBase(pattern, name_scope, name_scope),
       act_type_(act_type),
       matmul_type_0_(matmul_type_0),
@@ -160,7 +170,8 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
       matmul_type_2_(matmul_type_2),
       norm_before_(norm_before),
       with_q_scale_(with_q_scale),
-      with_mask_(with_mask) {
+      with_mask_(with_mask),
+      is_smooth_quant_(is_smooth_quant) {
   // layer_norm 0
   PDNode* ln_0_x = pattern->NewNode(ln_0_x_repr());
   PDNode* ln_0_bias = nullptr;
@@ -169,6 +180,9 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   PDNode* ln_0_out = nullptr;
   PDNode* ln_0_mean = nullptr;
   PDNode* ln_0_variance = nullptr;
+  PDNode* smooth_scale_1_weight = nullptr;
+  PDNode* smooth_scale_1 = nullptr;
+  PDNode* smooth_scale_1_out = nullptr;
   if (norm_before_) {
     ln_0_x->assert_is_op_input("layer_norm", "X")->assert_var_not_persistable();
     ln_0_bias = pattern->NewNode(ln_0_bias_repr())
@@ -187,6 +201,19 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
     ln_0_variance = pattern->NewNode(ln_0_variance_repr())
                         ->assert_is_op_output("layer_norm", "Variance")
                         ->assert_var_not_persistable();
+  }
+  if (!norm_before_ && is_smooth_quant_) {
+    VLOG(3) << "build first smooth_quant_scale";
+    ln_0_x->assert_is_op_input("elementwise_mul", "X")
+        ->assert_var_not_persistable();
+    smooth_scale_1_weight = pattern->NewNode(smooth_scale_1_weight_repr())
+                                ->assert_is_op_input("elementwise_mul", "Y")
+                                ->assert_is_persistable_var();
+    smooth_scale_1 = pattern->NewNode(smooth_scale_1_repr())
+                         ->assert_is_op("elementwise_mul");
+    smooth_scale_1_out = pattern->NewNode(smooth_scale_1_out_repr())
+                             ->assert_is_op_output("elementwise_mul", "Out")
+                             ->assert_var_not_persistable();
   }
 
   // q: matmul + add + reshape + transpose
@@ -362,6 +389,22 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* ln_1_variance = pattern->NewNode(ln_1_variance_repr())
                             ->assert_is_op_output("layer_norm", "Variance")
                             ->assert_var_not_persistable();
+  PDNode* smooth_scale_2_weight = nullptr;
+  PDNode* smooth_scale_2 = nullptr;
+  PDNode* smooth_scale_2_out = nullptr;
+  if (!norm_before_ && is_smooth_quant_) {
+    VLOG(3) << "build second smooth_quant_scale";
+    ln_1_out->assert_is_op_input("elementwise_mul", "X")
+        ->assert_var_not_persistable();
+    smooth_scale_2_weight = pattern->NewNode(smooth_scale_2_weight_repr())
+                                ->assert_is_op_input("elementwise_mul", "Y")
+                                ->assert_is_persistable_var();
+    smooth_scale_2 = pattern->NewNode(smooth_scale_2_repr())
+                         ->assert_is_op("elementwise_mul");
+    smooth_scale_2_out = pattern->NewNode(smooth_scale_2_out_repr())
+                             ->assert_is_op_output("elementwise_mul", "Out")
+                             ->assert_var_not_persistable();
+  }
   auto qkv_matmul_2_w = pattern->NewNode(qkv_matmul_2_w_repr())
                             ->assert_is_op_input(matmul_type_0_, "Y")
                             ->assert_is_persistable_var();
@@ -471,7 +514,15 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
       .LinksTo({qkv_matmul_1_out});
   qkv_add_0->LinksFrom({qkv_matmul_1_out, qkv_add_0_bias})
       .LinksTo({qkv_add_0_out});
-  qkv_add_1->LinksFrom({qkv_add_0_out, q_matmul_x}).LinksTo({qkv_add_1_out});
+  if (!norm_before_ && is_smooth_quant_) {
+    smooth_scale_1->LinksFrom({q_matmul_x, smooth_scale_1_weight})
+        .LinksTo({smooth_scale_1_out});
+    qkv_add_1->LinksFrom({qkv_add_0_out, smooth_scale_1_out})
+        .LinksTo({qkv_add_1_out});
+  } else {
+    qkv_add_1->LinksFrom({qkv_add_0_out, q_matmul_x}).LinksTo({qkv_add_1_out});
+  }
+
   ln_1->LinksFrom({qkv_add_1_out, ln_1_bias, ln_1_scale})
       .LinksTo({ln_1_out, ln_1_mean, ln_1_variance});
   qkv_matmul_2->LinksFrom({ln_1_out, qkv_matmul_2_w})
@@ -487,7 +538,14 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
     qkv_add_4->LinksFrom({qkv_add_3_out, qkv_add_1_out})
         .LinksTo({qkv_add_4_out});
   } else {
-    qkv_add_4->LinksFrom({qkv_add_3_out, ln_1_out}).LinksTo({qkv_add_4_out});
+    if (is_smooth_quant_) {
+      smooth_scale_2->LinksFrom({ln_1_out, smooth_scale_2_weight})
+          .LinksTo({smooth_scale_2_out});
+      qkv_add_4->LinksFrom({qkv_add_3_out, smooth_scale_2_out})
+          .LinksTo({qkv_add_4_out});
+    } else {
+      qkv_add_4->LinksFrom({qkv_add_3_out, ln_1_out}).LinksTo({qkv_add_4_out});
+    }
     ln_2->LinksFrom({qkv_add_4_out, ln_2_bias, ln_2_scale})
         .LinksTo({ln_2_out, ln_2_mean, ln_2_variance});
   }
@@ -512,7 +570,8 @@ void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                                   pattern_param.matmul_type_2,
                                   pattern_param.norm_before,
                                   pattern_param.with_q_scale,
-                                  pattern_param.with_mask);
+                                  pattern_param.with_mask,
+                                  pattern_param.is_smooth_quant);
     while (ApplyMultiEncoderXPUFuse(graph)) {
       multi_encoder_fused_counts++;
     }
@@ -530,7 +589,9 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
     BlockDesc* block,
     std::unordered_map<std::string, std::vector<Node*>>* node_maps,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
-    std::vector<Node*>* input_max_nodes) const {
+    std::vector<Node*>* input_max_nodes,
+    std::vector<std::string>* quant_types,
+    const std::string* act_type) const {
   // mul input_max, output_max * 6 + matmul x_max,y_max,output_max * 2
   auto quant_mul_ops = node_maps->find("quant_mul_ops")->second;
   auto matmul_ops = node_maps->find("matmul_ops")->second;
@@ -541,12 +602,18 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
   for (size_t i = 0; i < quant_mul_ops.size(); ++i) {
     auto input_name = quant_mul_ops[i]->Op()->Input("X")[0];
     auto output_name = mul_add_ops[i]->Op()->Output("Out")[0];
-    if (var_quant_scales->find(input_name) != var_quant_scales->end() &&
+    if (quant_mul_ops[i]->Op()->HasAttr("enable_int8") &&
+        PADDLE_GET_CONST(bool,
+                         quant_mul_ops[i]->Op()->GetAttr("enable_int8")) &&
+        var_quant_scales->find(input_name) != var_quant_scales->end() &&
         var_quant_scales->find(output_name) != var_quant_scales->end()) {
       input_max[i * 2] = var_quant_scales->at(input_name)[0];
       input_max[i * 2 + 1] = var_quant_scales->at(output_name)[0];
       VLOG(3) << quant_mul_ops[i] << " input_max: " << input_max[i * 2]
               << ", output_max(ew_add): " << input_max[i * 2 + 1];
+      quant_types->push_back("enable_int8");
+    } else {
+      quant_types->push_back("not_quantized");
     }
   }
   float max_qkv_input = std::max(input_max[0], input_max[2]);
@@ -561,6 +628,22 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
   input_max[5] = max_qkv_output;
   VLOG(3) << "max_qkv_input: " << max_qkv_input
           << ", max_qkv_output: " << max_qkv_output;
+
+  if (*act_type == "gelu") {
+    // use gelu10 according to whitepaper http://arxiv.org/abs/2004.09602
+    float gelu_out_threshold = 10.f;
+    if (std::getenv("QUANT_GELU_OUT_THRESHOLD")) {
+      gelu_out_threshold = atof(std::getenv("QUANT_GELU_OUT_THRESHOLD"));
+      PADDLE_ENFORCE_GT(
+          gelu_out_threshold,
+          0.f,
+          phi::errors::InvalidArgument(
+              "QUANT_GELU_OUT_THRESHOLD should be an positive float value: %f",
+              gelu_out_threshold));
+    }
+    input_max[9] = std::min(gelu_out_threshold, input_max[9]);
+    input_max[10] = std::min(gelu_out_threshold, input_max[10]);
+  }
 
   auto input_x_name = matmul_ops[0]->Op()->Input("X")[0];
   auto input_y_name = matmul_ops[0]->Op()->Input("Y")[0];
@@ -583,6 +666,9 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
             << "          Y_max: " << input_max[matmul_offset * 2 + 1]
             << "        Out_max: " << input_max[matmul_offset * 2 + 2];
     matmul_quants[0] = true;
+    quant_types->push_back("enable_int8");
+  } else {
+    quant_types->push_back("not_quantized");
   }
   input_x_name = matmul_ops[1]->Op()->Input("X")[0];
   input_y_name = matmul_ops[1]->Op()->Input("Y")[0];
@@ -599,8 +685,11 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
             << "          Y_max: " << input_max[matmul_offset * 2 + 4]
             << "        Out_max: " << input_max[matmul_offset * 2 + 5];
     matmul_quants[1] = true;
+    quant_types->push_back("enable_int8");
+  } else {
+    quant_types->push_back("not_quantized");
   }
-  if (matmul_quants[0] == false || matmul_quants[1] == false) {
+  if (matmul_quants[0] == false && matmul_quants[1] == false) {
     // For backward compatible, API uses the size of input_max vector to
     // check whether it is mul quant or mul+matmul quant.
     input_max.resize(quant_mul_ops.size() * 2);
@@ -644,6 +733,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
     Node* k_w,
     Node* v_w,
     bool enable_int8,
+    bool local_quant,
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     Node** qkv_w_intx,
     Node** qkv_w_max,
@@ -676,9 +766,14 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
     CastToFp32(&k_w_t);
     CastToFp32(&v_w_t);
     phi::ConcatKernel<float>(*cpu_ctx, in_tensors, 0, &qkv_w_intx_t);
-    ConvertWithQuant<float, int16_t>(
-        &qkv_w_intx_t, &qkv_w_max_t, &qkv_scale_max_t, false);
-    qkv_w_intx_hash = HashTensor<int16_t>(qkv_w_intx_t);
+    if (local_quant) {
+      qkv_w_intx_hash = HashTensor<float>(qkv_w_intx_t);
+      ConvertFromFp32ToFp16(&qkv_w_intx_t, &qkv_w_max_t, false);
+    } else {
+      ConvertWithQuant<float, int16_t>(
+          &qkv_w_intx_t, &qkv_w_max_t, &qkv_scale_max_t, false);
+      qkv_w_intx_hash = HashTensor<int16_t>(qkv_w_intx_t);
+    }
   } else {
     phi::ConcatKernel<int8_t>(*cpu_ctx, in_tensors, 0, &qkv_w_intx_t);
     std::unordered_map<std::string, std::vector<float>> var_quant_scales =
@@ -854,7 +949,12 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     const std::string& matmul_type_2,
     bool norm_before,
     bool with_q_scale,
-    bool with_mask) const {
+    bool with_mask,
+    bool is_smooth_quant) const {
+  bool local_quant = false;
+  if (std::getenv("XPU_LOCAL_QUANT")) {
+    local_quant = atoi(std::getenv("XPU_LOCAL_QUANT"));
+  }
   GraphPatternDetector gpd;
   patterns::SingleEncoderXPUPattern pattern(gpd.mutable_pattern(),
                                             name_scope_,
@@ -864,7 +964,8 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                                             matmul_type_2,
                                             norm_before,
                                             with_q_scale,
-                                            with_mask);
+                                            with_mask,
+                                            is_smooth_quant);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -959,6 +1060,13 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     GET_IR_NODE(ln_2_out);
     GET_IR_NODE(ln_2_mean);
     GET_IR_NODE(ln_2_variance);
+    // smooth quant
+    GET_IR_NODE(smooth_scale_1);
+    GET_IR_NODE(smooth_scale_2);
+    GET_IR_NODE(smooth_scale_1_weight);
+    GET_IR_NODE(smooth_scale_2_weight);
+    GET_IR_NODE(smooth_scale_1_out);
+    GET_IR_NODE(smooth_scale_2_out);
 
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
@@ -974,6 +1082,8 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     std::vector<Node*> input_max;
     std::unordered_map<std::string, std::vector<float>> var_quant_scales =
         GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
+    std::vector<std::string> quant_types;
+    std::vector<Node*> new_add_nodes;
     if (use_precision == "int8") {
       std::unordered_map<std::string, std::vector<Node*>> node_maps;
       std::vector<Node*> quant_mul_ops = {q_matmul,
@@ -992,10 +1102,15 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       node_maps.insert(std::make_pair("softmax_ops", softmax_ops));
       input_max.resize((quant_mul_ops.size() * 2 + quant_mul_ops.size() * 3),
                        nullptr);
-      PrepareInputMax(
-          graph, scope, block, &node_maps, &var_quant_scales, &input_max);
+      PrepareInputMax(graph,
+                      scope,
+                      block,
+                      &node_maps,
+                      &var_quant_scales,
+                      &input_max,
+                      &quant_types,
+                      &act_type);
     }
-
     Node* qkv_w_intx = nullptr;
     Node* qkv_w_max = nullptr;
     Node* qkv_scale_max = nullptr;
@@ -1006,39 +1121,60 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                      k_matmul_w,
                      v_matmul_w,
                      (use_precision == "int8"),
+                     local_quant,
                      &var_quant_scales,
                      &qkv_w_intx,
                      &qkv_w_max,
                      &qkv_scale_max);
+    new_add_nodes.push_back(qkv_w_intx);
+    new_add_nodes.push_back(qkv_w_max);
+    new_add_nodes.push_back(qkv_scale_max);
 
-#define PREPARE_QKV_MATMUL_W(idx_)                                \
-  Node* qkv_matmul_##idx_##_w_intx = nullptr;                     \
-  Node* qkv_matmul_##idx_##_w_max = nullptr;                      \
-  Node* qkv_matmul_##idx_##_scale_max = nullptr;                  \
-  if (use_precision != "int8") {                                  \
-    PrepareWeight<float, int16_t>(graph,                          \
-                                  scope,                          \
-                                  block,                          \
-                                  qkv_matmul_##idx_##_w,          \
-                                  &qkv_matmul_##idx_##_w_intx,    \
-                                  &qkv_matmul_##idx_##_w_max,     \
-                                  &qkv_matmul_##idx_##_scale_max, \
-                                  true,                           \
-                                  std::vector<float>({}));        \
-  } else {                                                        \
-    std::vector<float> weight_scales =                            \
-        var_quant_scales.at(qkv_matmul_##idx_##_w->Name());       \
-    is_per_channel = (weight_scales.size() != 1);                 \
-    PrepareWeight<int8_t, int8_t>(graph,                          \
-                                  scope,                          \
-                                  block,                          \
-                                  qkv_matmul_##idx_##_w,          \
-                                  &qkv_matmul_##idx_##_w_intx,    \
-                                  &qkv_matmul_##idx_##_w_max,     \
-                                  &qkv_matmul_##idx_##_scale_max, \
-                                  true,                           \
-                                  weight_scales);                 \
-  }
+#define PREPARE_QKV_MATMUL_W(idx_)                                  \
+  Node* qkv_matmul_##idx_##_w_intx = nullptr;                       \
+  Node* qkv_matmul_##idx_##_w_max = nullptr;                        \
+  Node* qkv_matmul_##idx_##_scale_max = nullptr;                    \
+  if (var_quant_scales.find(qkv_matmul_##idx_##_w->Name()) ==       \
+      var_quant_scales.end()) {                                     \
+    if (local_quant) {                                              \
+      PrepareWeight<float, float16>(graph,                          \
+                                    scope,                          \
+                                    block,                          \
+                                    qkv_matmul_##idx_##_w,          \
+                                    &qkv_matmul_##idx_##_w_intx,    \
+                                    &qkv_matmul_##idx_##_w_max,     \
+                                    &qkv_matmul_##idx_##_scale_max, \
+                                    true,                           \
+                                    std::vector<float>({}));        \
+    } else {                                                        \
+      PrepareWeight<float, int16_t>(graph,                          \
+                                    scope,                          \
+                                    block,                          \
+                                    qkv_matmul_##idx_##_w,          \
+                                    &qkv_matmul_##idx_##_w_intx,    \
+                                    &qkv_matmul_##idx_##_w_max,     \
+                                    &qkv_matmul_##idx_##_scale_max, \
+                                    true,                           \
+                                    std::vector<float>({}));        \
+    }                                                               \
+  } else {                                                          \
+    std::vector<float> weight_scales =                              \
+        var_quant_scales.at(qkv_matmul_##idx_##_w->Name());         \
+    is_per_channel = (weight_scales.size() != 1);                   \
+    PrepareWeight<int8_t, int8_t>(graph,                            \
+                                  scope,                            \
+                                  block,                            \
+                                  qkv_matmul_##idx_##_w,            \
+                                  &qkv_matmul_##idx_##_w_intx,      \
+                                  &qkv_matmul_##idx_##_w_max,       \
+                                  &qkv_matmul_##idx_##_scale_max,   \
+                                  true,                             \
+                                  weight_scales);                   \
+  }                                                                 \
+  new_add_nodes.push_back(qkv_matmul_##idx_##_w_intx);              \
+  new_add_nodes.push_back(qkv_matmul_##idx_##_w_max);               \
+  new_add_nodes.push_back(qkv_matmul_##idx_##_scale_max);
+
     PREPARE_QKV_MATMUL_W(1);
     PREPARE_QKV_MATMUL_W(2);
     PREPARE_QKV_MATMUL_W(3);
@@ -1071,24 +1207,33 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       }
     }
     op_desc.SetInput("fc_input_max", fc_input_max_names);
-    op_desc.SetInput("fc_weight",
-                     {qkv_w_intx->Name(),
-                      qkv_matmul_1_w_intx->Name(),
-                      qkv_matmul_2_w_intx->Name(),
-                      qkv_matmul_3_w_intx->Name()});
-    if (!is_per_channel) {
-      op_desc.SetInput("fc_weight_max",
-                       {qkv_w_max->Name(),
-                        qkv_matmul_1_w_max->Name(),
-                        qkv_matmul_2_w_max->Name(),
-                        qkv_matmul_3_w_max->Name()});
-    } else {
-      op_desc.SetInput("fc_weight_max",
-                       {qkv_scale_max->Name(),
-                        qkv_matmul_1_scale_max->Name(),
-                        qkv_matmul_2_scale_max->Name(),
-                        qkv_matmul_3_scale_max->Name()});
+    std::vector<Node*> fc_weight_nodes = {
+        qkv_matmul_1_w_intx, qkv_matmul_2_w_intx, qkv_matmul_3_w_intx};
+    std::vector<std::string> fc_weight_names;
+    fc_weight_names.push_back(qkv_w_intx->Name());
+    for (size_t i = 0; i < fc_weight_nodes.size(); i++) {
+      if (fc_weight_nodes[i]) {
+        fc_weight_names.push_back(fc_weight_nodes[i]->Name());
+      }
     }
+    op_desc.SetInput("fc_weight", fc_weight_names);
+    std::vector<std::string> fc_weight_max_names;
+
+    std::vector<Node*> fc_weight_max_nodes = {
+        qkv_w_max, qkv_matmul_1_w_max, qkv_matmul_2_w_max, qkv_matmul_3_w_max};
+    std::vector<Node*> fc_weight_sacle_nodes = {qkv_scale_max,
+                                                qkv_matmul_1_scale_max,
+                                                qkv_matmul_2_scale_max,
+                                                qkv_matmul_3_scale_max};
+
+    for (size_t i = 0; i < fc_weight_sacle_nodes.size(); i++) {
+      if (fc_weight_sacle_nodes[i]) {
+        fc_weight_max_names.push_back(fc_weight_sacle_nodes[i]->Name());
+      } else {
+        fc_weight_max_names.push_back(fc_weight_max_nodes[i]->Name());
+      }
+    }
+    op_desc.SetInput("fc_weight_max", fc_weight_max_names);
     op_desc.SetInput("fc_bias",
                      {qkv_add_bias_fp32->Name(),
                       qkv_add_0_bias_fp32->Name(),
@@ -1104,6 +1249,17 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     if (with_mask) {
       op_desc.SetInput("mask", {qk_add_mask->Name()});
     }
+    std::vector<std::string> smooth_scale_names;
+    if (is_smooth_quant) {
+      smooth_scale_names.push_back(smooth_scale_1_weight->Name());
+      smooth_scale_names.push_back(smooth_scale_2_weight->Name());
+      for (auto smooth_scale_name : smooth_scale_names) {
+        auto* in =
+            scope->FindVar(smooth_scale_name)->GetMutable<phi::DenseTensor>();
+        CastToFp16(in);
+      }
+    }
+    op_desc.SetInput("smooth_scale_weight", {smooth_scale_names});
     op_desc.SetAttr("norm_before", norm_before);
     op_desc.SetAttr("hidden_dim",
                     static_cast<int>(q_matmul_w->Var()->GetShape()[0]));
@@ -1119,6 +1275,13 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     op_desc.SetAttr("relative_type", static_cast<int>(0));
     op_desc.SetAttr("use_precision", use_precision);
     op_desc.SetAttr("is_per_channel", is_per_channel);
+    // if quant,skip softmax,and use qk_matmul out_threshold as softmax_max
+    auto softmax_max_name = qk_matmul->Op()->Output("Out")[0];
+    if (var_quant_scales.find(softmax_max_name) != var_quant_scales.end()) {
+      op_desc.SetAttr("softmax_max_value",
+                      var_quant_scales.at(softmax_max_name)[0]);
+    }
+    op_desc.SetAttr("quant_types", quant_types);
     if (norm_before) {
       op_desc.SetOutput("out", {qkv_add_4_out->Name()});
     } else {
@@ -1132,20 +1295,11 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
         IR_NODE_LINK_TO(node, single_encoder_xpu);
       }
     }
-    if (is_per_channel) {
-      IR_NODE_LINK_TO(qkv_scale_max, single_encoder_xpu);
-      IR_NODE_LINK_TO(qkv_matmul_1_scale_max, single_encoder_xpu);
-      IR_NODE_LINK_TO(qkv_matmul_2_scale_max, single_encoder_xpu);
-      IR_NODE_LINK_TO(qkv_matmul_3_scale_max, single_encoder_xpu);
+    for (auto* node : new_add_nodes) {
+      if (node) {
+        IR_NODE_LINK_TO(node, single_encoder_xpu);
+      }
     }
-    IR_NODE_LINK_TO(qkv_w_intx, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_1_w_intx, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_2_w_intx, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_3_w_intx, single_encoder_xpu);
-    IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_add_bias_fp32, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_add_0_bias_fp32, single_encoder_xpu);
     IR_NODE_LINK_TO(qkv_add_2_bias_fp32, single_encoder_xpu);
@@ -1161,6 +1315,10 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       IR_NODE_LINK_TO(single_encoder_xpu, qkv_add_4_out);
     } else {
       IR_NODE_LINK_TO(single_encoder_xpu, ln_2_out);
+    }
+    if (is_smooth_quant) {
+      IR_NODE_LINK_TO(smooth_scale_1_weight, single_encoder_xpu);
+      IR_NODE_LINK_TO(smooth_scale_2_weight, single_encoder_xpu);
     }
 
     // Delete nodes
@@ -1241,6 +1399,12 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       delete_nodes.insert(qk_add);
       delete_nodes.insert(qk_add_out);
     }
+    if (is_smooth_quant) {
+      delete_nodes.insert(smooth_scale_1);
+      delete_nodes.insert(smooth_scale_2);
+      delete_nodes.insert(smooth_scale_1_out);
+      delete_nodes.insert(smooth_scale_2_out);
+    }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -1288,7 +1452,8 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
                                      "fc_weight_max",
                                      "fc_bias",
                                      "ln_scale",
-                                     "ln_bias"};
+                                     "ln_bias",
+                                     "smooth_scale_weight"};
   std::map<std::string, std::vector<std::string>> arg_names_map;
   std::string mask_name = single_encoders[0]->Op()->Inputs().count("mask") > 0
                               ? single_encoders[0]->Op()->Inputs().at("mask")[0]
@@ -1375,6 +1540,22 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
       "is_per_channel",
       PADDLE_GET_CONST(bool,
                        single_encoders[0]->Op()->GetAttr("is_per_channel")));
+  std::vector<float> softmax_max_values;
+  for (auto* single_encoder : single_encoders) {
+    if (single_encoder->Op()->HasAttr("softmax_max_value")) {
+      softmax_max_values.push_back(PADDLE_GET_CONST(
+          float, single_encoder->Op()->GetAttr("softmax_max_value")));
+    }
+  }
+  op_desc.SetAttr("softmax_max_value", softmax_max_values);
+  std::vector<std::string> quant_types;
+  for (auto* single_encoder : single_encoders) {
+    auto per_quant_types = PADDLE_GET_CONST(
+        std::vector<std::string>, single_encoder->Op()->GetAttr("quant_types"));
+    quant_types.insert(
+        quant_types.end(), per_quant_types.begin(), per_quant_types.end());
+  }
+  op_desc.SetAttr("quant_types", quant_types);
   op_desc.SetOutput("out", {out_name});
   op_desc.SetOutput("x_fp16", {x_fp16_name});
   op_desc.SetOutput("out_fp16", {out_fp16_name});
@@ -1411,8 +1592,7 @@ int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
     auto use_precision = op_desc->GetAttrIfExists<std::string>("use_precision");
     if (node->IsVar() ||  //
         op_desc->Type() != "multi_encoder_xpu" ||
-        (use_precision != "float16" && use_precision != "int8") ||
-        op_desc->Inputs().count("mask") == 0)
+        (use_precision != "float16") || op_desc->Inputs().count("mask") == 0)
       continue;
 
     auto* block = op_desc->Block();
@@ -1462,10 +1642,15 @@ std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
     const {
   return std::vector<PatternParam>{
       // Params are arranged in alphabetic order
-      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true},
-      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true},
-      {"gelu", "mul", "matmul", "matmul", false, true, true},
-      {"relu", "mul", "matmul", "matmul", false, true, true},
+      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true, false},
+      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true, false},
+      {"gelu", "mul", "matmul", "matmul", false, true, true, false},
+      {"relu", "mul", "matmul", "matmul", false, true, true, false},
+
+      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true, true},
+      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true, true},
+      {"gelu", "mul", "matmul", "matmul", false, true, true, true},
+      {"relu", "mul", "matmul", "matmul", false, true, true, true},
   };
 }
 

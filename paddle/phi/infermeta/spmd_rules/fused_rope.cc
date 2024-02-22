@@ -25,7 +25,7 @@ namespace phi {
 namespace distributed {
 
 using auto_parallel::str_join;
-const int kNumheadsDimIndex = 2;
+const int kNumHeadsDimIndex = 2;
 const int kHeadDimIndex = 3;
 
 void check_q(const DistMetaTensor& q) {
@@ -109,12 +109,12 @@ void check_sin_cos(const DistMetaTensor& sin,
   int head_dim_index = ndim == 2 ? 1 : 3;
   if (ndim == 4) {
     PADDLE_ENFORCE_EQ(
-        (shape[0] == 1 && shape[kNumheadsDimIndex] == 1),
+        (shape[0] == 1 && shape[kNumHeadsDimIndex] == 1),
         true,
         phi::errors::InvalidArgument("The batch_size and num_heads of sin/cos "
                                      "must be 1, but given [%d], [%d]",
                                      shape[0],
-                                     shape[kNumheadsDimIndex]));
+                                     shape[kNumHeadsDimIndex]));
   }
 
   const std::vector<int64_t> position_ids_shape =
