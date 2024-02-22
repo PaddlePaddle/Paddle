@@ -1,33 +1,12 @@
-cc_test(
-  test_custom_kernel
-  SRCS test_custom_kernel.cc
-  DEPS phi common)
-cc_test(
-  test_dense_tensor
-  SRCS test_dense_tensor.cc
-  DEPS phi common)
-cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
-cc_test(test_type_info SRCS test_type_info.cc)
-cc_test(
-  test_kernel_factory
-  SRCS test_kernel_factory.cc
-  DEPS phi common)
-cc_test(
-  test_sparse_coo_tensor
-  SRCS test_sparse_coo_tensor.cc
-  DEPS phi common)
-cc_test(
-  test_sparse_csr_tensor
-  SRCS test_sparse_csr_tensor.cc
-  DEPS phi common)
-cc_test(
-  test_op_utils
-  SRCS test_op_utils.cc
-  DEPS op_compat_infos)
-cc_test(
-  test_meta_fn_utils
-  SRCS test_meta_fn_utils.cc
-  DEPS phi common)
+paddle_test(test_custom_kernel SRCS test_custom_kernel.cc DEPS common)
+paddle_test(test_dense_tensor SRCS test_dense_tensor.cc DEPS common)
+paddle_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
+paddle_test(test_type_info SRCS test_type_info.cc)
+paddle_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS common)
+paddle_test(test_sparse_coo_tensor SRCS test_sparse_coo_tensor.cc DEPS common)
+paddle_test(test_sparse_csr_tensor SRCS test_sparse_csr_tensor.cc DEPS common)
+paddle_test(test_op_utils SRCS test_op_utils.cc)
+paddle_test(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS common)
 
 cc_test(
   test_ddim
