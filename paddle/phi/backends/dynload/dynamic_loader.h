@@ -39,7 +39,7 @@ void* GetWarpRNNTDsoHandle();
 void* GetFlashAttnDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
+TEST_API void* GetMKLMLDsoHandle();
 void* GetLAPACKDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
