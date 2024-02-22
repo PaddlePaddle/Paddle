@@ -103,8 +103,9 @@ struct ScheduleContext {
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
-  std::shared_ptr<GroupTileInfo>
-      group_tile_info;  // used for tile first strategy
+  // Will tile information be modified during the schedule process?
+  // If so, it is necessary to store a separate copy for each context
+  std::shared_ptr<GroupTileInfo> group_tile_info;
 };
 
 class ScheduleTactic {

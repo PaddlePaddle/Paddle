@@ -1125,7 +1125,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       ir::GroupScheduler::Make(&ir_sch,
                                output_tensor_names,
                                target_,
-                               /* is_dy_shape = */ have_dy_shape,
+                               /* is_dy_shape = */ true,
                                group_tile_info);
   group_scheduler->Schedule();
   return ir_sch.GetModule().GetExprs().at(0);

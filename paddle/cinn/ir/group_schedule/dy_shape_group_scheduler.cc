@@ -18,6 +18,7 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -85,7 +86,8 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
-                                     std::move(bucket_info)};
+                                     std::move(bucket_info),
+                                     group_tile_info_};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
@@ -117,21 +119,28 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  for (BucketContext& bucket_context : bucket_contexts_) {
-    VLOG(4) << "===========================Apply tactics on Bucket ["
-            << bucket_context.predicate << "]==========================";
-    ApplyTactics(&bucket_context);
-  }
-  // std::cerr << "dy shape schedule\n";
+  // for (BucketContext& bucket_context : bucket_contexts_) {
+  //   VLOG(4) << "===========================Apply tactics on Bucket ["
+  //           << bucket_context.predicate << "]==========================";
+  //   ApplyTactics(&bucket_context);
+  // }
+
+  ScheduleContext schedule_context{OutputTensorNames(),
+                                   target_,
+                                   IterativeSpaceInfo(),
+                                   BucketInfo(),
+                                   group_tile_info_};
+  LoopReorderAlignmentTactic loop_reorder_tactic;
+  loop_reorder_tactic.Init(&schedule_context);
+  schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
+    loop_reorder_tactic.Apply(ir_sch_, node->id());
+  });
   // LoopReorderAligment();
-  // std::cerr << "after reorder\n";
-  // Tiling();
-
-  // BindCudaInfo();
-
-  // VariableTypeAssignment();
-  // Unroll();
-  // SetReduceType();
+  Tiling();
+  BindCudaInfo();
+  VariableTypeAssignment();
+  Unroll();
+  SetReduceType();
 }
 
 void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {
