@@ -41,7 +41,7 @@ class StringTensor : public TensorBase,
   /// \brief Construct a string tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of string tensor.
-  StringTensor(Allocator* a, StringTensorMeta&& meta);
+  TEST_API StringTensor(Allocator* a, StringTensorMeta&& meta);
 
   StringTensor(const std::shared_ptr<phi::Allocation>& holder,
                const StringTensorMeta& meta);

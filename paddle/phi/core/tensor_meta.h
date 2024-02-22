@@ -94,7 +94,7 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
 
 struct StringTensorMeta {
   StringTensorMeta() = default;
-  explicit StringTensorMeta(const DDim& dims);
+  TEST_API explicit StringTensorMeta(const DDim& dims);
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
