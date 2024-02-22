@@ -59,9 +59,7 @@ class TestSkipIrPassApi(InferencePassTest):
         self.test_model = SkipIrPassTestNet()
         self.input_data = (np.ones([1, 3, 32, 32])).astype('float32')
         self.path_prefix = "inference_test_models/skip_ir_pass_test"
-        x = paddle.to_tensor(self.input_data)
-        y = self.test_model(x)
-        print(y.shape)
+        self.cache_dir = "inference_test_models/cache/"
         paddle.jit.save(
             self.test_model,
             self.path_prefix,
@@ -90,7 +88,8 @@ class TestSkipIrPassApi(InferencePassTest):
             {"x": [1, 3, 32, 32]},
         )
         config.exp_disable_tensorrt_ops(["elemenwise_add"])
-        config.enable_save_optim_model()
+        config.set_optim_cache_dir(self.cache_dir)
+        config.enable_save_optim_model(True)
 
         # predictor
         predictor = create_predictor(config)
@@ -106,13 +105,13 @@ class TestSkipIrPassApi(InferencePassTest):
             predictor.get_output_names()[0]
         )
         out = output_tensor.copy_to_cpu()
-        out = out.numpy().flatten()
+        out = np.array(out).flatten()
         return out
 
     def inference_skip_ir_pass(self):
         config = Config(
-            self.path_prefix + "/cache" + "_optimized.pdmodel",
-            self.path_prefix + "/cache" + "_optimized.pdiparams",
+            self.cache_dir + "_optimized.pdmodel",
+            self.cache_dir + "_optimized.pdiparams",
         )
         config.enable_use_gpu(100, 0)
         config.skip_ir_pass(True)
@@ -131,7 +130,7 @@ class TestSkipIrPassApi(InferencePassTest):
             predictor.get_output_names()[0]
         )
         out = output_tensor.copy_to_cpu()
-        out = out.numpy().flatten()
+        out = np.array(out).flatten()
         return out
 
     def test_check_output(self):

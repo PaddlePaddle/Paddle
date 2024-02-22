@@ -723,7 +723,7 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
-    if (config_.skip_ir_pass_ && !config_.ir_optim()) {
+    if (config_.skip_ir_pass_) {
       LoadParameters();
       ClearExtraParams();
 #ifdef PADDLE_WITH_CUDA
