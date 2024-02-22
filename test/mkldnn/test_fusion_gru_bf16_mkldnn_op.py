@@ -32,7 +32,9 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False)
+            self.check_output(
+                check_dygraph=False, check_pir_onednn=self.check_pir_onednn
+            )
 
     def setUp(self):
         self.op_type = "fusion_gru"
