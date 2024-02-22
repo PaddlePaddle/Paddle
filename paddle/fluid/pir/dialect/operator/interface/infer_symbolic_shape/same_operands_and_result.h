@@ -82,3 +82,7 @@ bool ReluOpInferSymbolicShape(pir::Operation *op,
 bool Relu_OpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::ScaleOpInferSymbolicShape;
+}
