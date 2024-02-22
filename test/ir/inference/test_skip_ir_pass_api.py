@@ -77,7 +77,7 @@ class TestSkipIrPassApi(InferencePassTest):
         config.enable_tensorrt_engine(
             workspace_size=1 << 30,
             max_batch_size=1,
-            min_subgraph_size=3,
+            min_subgraph_size=1,
             precision_mode=paddle.inference.PrecisionType.Float32,
             use_static=True,
             use_calib_mode=False,
@@ -87,7 +87,7 @@ class TestSkipIrPassApi(InferencePassTest):
             {"x": [1, 3, 64, 64]},
             {"x": [1, 3, 32, 32]},
         )
-        config.exp_disable_tensorrt_ops(["elemenwise_add"])
+        config.exp_disable_tensorrt_ops(["elementwise_add"])
         config.set_optim_cache_dir(self.cache_dir)
         config.enable_save_optim_model(True)
 
