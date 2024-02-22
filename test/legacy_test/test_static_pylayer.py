@@ -23,6 +23,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 
@@ -31,6 +32,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_return_single_var(self):
         """
         pseudocode:
@@ -41,9 +43,9 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         def forward_fn(x):
             return 3 * x
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.static.data(name="X", shape=[1], dtype="float32")
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
 
@@ -54,12 +56,13 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         exe = base.Executor(place)
         x = np.array([2.0], dtype=np.float32)
-        (ret,) = exe.run(main_program, feed={"X": x}, fetch_list=[out.name])
+        (ret,) = exe.run(main_program, feed={"X": x}, fetch_list=[out])
         np.testing.assert_allclose(
             np.asarray(ret), np.array([6.0], np.float32), rtol=1e-05
         )
 
     # NOTE: Users should not be able to return none when actually using it.
+    @test_with_pir_api
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -70,9 +73,9 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         def forward_fn(x):
             return 3 * x
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.full(shape=[], dtype='float32', fill_value=2.0)
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
 
@@ -82,7 +85,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        (ret,) = exe.run(main_program, fetch_list=[out])
         np.testing.assert_allclose(
             np.asarray(ret), np.array(6.0, np.float32), rtol=1e-05
         )
@@ -129,13 +132,14 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         )
         self.assertEqual(x_grad.shape, ())
 
+    @test_with_pir_api
     def test_return_var_typle(self):
         def forward_fn(a, b):
             return 3 * a, -2 * b
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data_1 = paddle.full(shape=[2, 4], dtype='float32', fill_value=-2.0)
             data_2 = paddle.full(shape=[4, 5], dtype='float32', fill_value=10.0)
             out_1, out_2 = paddle.static.nn.static_pylayer(
@@ -148,9 +152,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        ret_1, ret_2 = exe.run(
-            main_program, fetch_list=[out_1.name, out_2.name]
-        )
+        ret_1, ret_2 = exe.run(main_program, fetch_list=[out_1, out_2])
         np.testing.assert_allclose(
             np.asarray(ret_1),
             np.full((2, 4), -6.0, dtype=np.float32),
@@ -163,15 +165,16 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
             rtol=1e-05,
         )
 
+    @test_with_pir_api
     def test_return_forward_none(self):
         input_shape = (1, 3)
 
         def forward_fn(x):
             y = 3 * x
 
-        main_program = Program()
-        start_program = Program()
-        with program_guard(main_program, start_program):
+        main_program = paddle.static.Program()
+        start_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, start_program):
             data = paddle.full(
                 shape=input_shape, dtype='float32', fill_value=-2.0
             )

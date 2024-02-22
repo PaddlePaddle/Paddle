@@ -137,7 +137,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
       return false;
     }
 
-    // the iter val can't appear in mulitple indices
+    // the iter val can't appear in multiple indices
     for (int i = 0; i < indices.size() - 1; ++i) {
       auto repeat_found =
           ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
@@ -184,9 +184,9 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 };
 
 // find tensors accessed sequentially in a for-loop to be vectorized,
-// and substitue the corresponding cuda built-in vector for them
+// and substitute the corresponding cuda built-in vector for them
 class CudaVectorizer : public IRMutator<Expr *> {
-  const Var iter_var_;  // the loop var of the vecotrized loop
+  const Var iter_var_;  // the loop var of the vectorized loop
   const int factor_;    // the factor for vectorize
 
   std::set<std::string> write_teller_;
@@ -258,7 +258,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     }
 
     auto vectorized_var = tensor2vectorized_vars_.at(tensor->name);
-    // substitue a new tensor with the vector name and dtype
+    // substitute a new tensor with the vector name and dtype
     auto t = vectorized_var->type().is_cpp_handle()
                  ? node->tensor->type().PointerOf()
                  : node->tensor->type();
@@ -286,7 +286,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     GET_CUDA_VECTOR_TYPE_NAME(type.is_bfloat16(), "bfloat16");
 #undef GET_CUDA_VECTOR_TYPE_NAME
 
-    // others are not implementd yet
+    // others are not implemented yet
     CINN_NOT_IMPLEMENTED
     return "";
   }
@@ -727,15 +727,15 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
 
   void Visit(const For *forloop, Expr *expr) {
     auto *node = expr->As<For>();
-    auto loopvar_name = forloop->loop_var->name;
+    auto loop_var_name = forloop->loop_var->name;
     if (forloop->extent.As<IntImm>()) {
       var_intervals.emplace(
-          loopvar_name,
+          loop_var_name,
           cinn::common::CasInterval{static_cast<int64_t>(0),
                                     forloop->extent.as_int64() - 1});
     } else {
       var_intervals.emplace(
-          loopvar_name,
+          loop_var_name,
           cinn::common::CasInterval{Expr(0), forloop->extent - 1});
     }
     // the extent the forloops marked as Vectorized should be int constant
@@ -842,7 +842,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     } else {
       IRMutator::Visit(forloop, expr);
     }
-    var_intervals.erase(loopvar_name);
+    var_intervals.erase(loop_var_name);
   }
 
   //! unroll the forloop if its' extent is min type by solving the condition

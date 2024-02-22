@@ -25,7 +25,7 @@ from .master import Master
 from .watcher import Watcher
 
 
-class ControleMode:
+class ControllerMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
