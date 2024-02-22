@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-
-#include <array>
-#include <queue>
-#include <unordered_map>
-#include <unordered_set>
+#include "paddle/phi/core/flags.h"
 
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
@@ -25,6 +21,9 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
   return cudaSuccess;
 }
 #endif
+
+PHI_DECLARE_bool(use_cuda_malloc_async_allocator);
+PHI_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace phi {
 namespace backends {
@@ -111,10 +110,12 @@ void CUDAGraph::Reset() {
 #endif
   // callback should be called in reverse order because the latter added
   // callback may rely on the former added callback.
-  for (auto iter = callbacks_.rbegin(); iter != callbacks_.rend(); ++iter) {
+  for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
+       iter != cudagraph_post_reset_callbacks_.rend();
+       ++iter) {
     (*iter)();
   }
-  callbacks_.clear();
+  cudagraph_post_reset_callbacks_.clear();
   is_reset_ = true;
 }
 
@@ -127,7 +128,7 @@ void CUDAGraph::Replay() {
   size_t n = exec_graphs_.size();
   for (size_t i = 0; i < n; ++i) {
     if (!is_first_run_) {
-      for (auto &hook : pre_hooks_[i]) {
+      for (auto &hook : cudagraph_pre_replay_callbacks_[i]) {
         hook(exec_graphs_[i]);
       }
     }
@@ -211,12 +212,33 @@ void CUDAGraph::EndSegmentCapture() {
     return;
   }
 
-  capturing_graph_->pre_hooks_.emplace_back(
+  for (auto &cudagraph_post_capture_callback :
+       capturing_graph_->cudagraph_post_capture_callbacks_) {
+    cudagraph_post_capture_callback();
+  }
+  capturing_graph_->cudagraph_post_capture_callbacks_.clear();
+
+  capturing_graph_->cudagraph_pre_replay_callbacks_.emplace_back(
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
+  // if forward graph is registered, this graph is a backward graph
+  // we check whether there is remain blocks that is unreleased by this
   cudaGraphExec_t exec_graph;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  if (FLAGS_use_cuda_malloc_async_allocator &&
+      FLAGS_auto_free_cudagraph_allocations_on_launch) {
+#if CUDA_VERSION >= 11040
+    VLOG(1) << "cudaGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
+        &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
+        "CUDA version >= 11.4.0"));
+#endif
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;

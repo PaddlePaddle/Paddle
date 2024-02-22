@@ -14,14 +14,17 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <set>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "glog/logging.h"
@@ -245,9 +248,14 @@ class CUDAGraph {
 
   void Reset();
 
-  void AddResetCallback(std::function<void()> callback) {
+  void AddPostResetCallback(std::function<void()> callback) {
     std::lock_guard<std::mutex> guard(mtx_);
-    callbacks_.push_back(std::move(callback));
+    cudagraph_post_reset_callbacks_.push_back(std::move(callback));
+  }
+
+  void AddPostCaptureCallback(std::function<void()> callback) {
+    std::lock_guard<std::mutex> guard(mtx_);
+    cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
@@ -260,8 +268,14 @@ class CUDAGraph {
   static void BeginSegmentCapture();
   static void EndSegmentCapture();
 
-  static void AddResetCallbackDuringCapturing(std::function<void()> callback) {
-    capturing_graph_->AddResetCallback(std::move(callback));
+  static void AddPostResetCallbackDuringCapturing(
+      std::function<void()> callback) {
+    capturing_graph_->AddPostResetCallback(std::move(callback));
+  }
+
+  static void AddPostCaptureCallbackDuringCapturing(
+      std::function<void()> callback) {
+    capturing_graph_->AddPostCaptureCallback(std::move(callback));
   }
 
   // No need to add CUDA_VERSION macro because capturing_graph_ would
@@ -316,14 +330,30 @@ class CUDAGraph {
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
-  std::vector<std::function<void()>> callbacks_;
   bool is_reset_{false};
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
-  // we collect all callbacks as a sequence of 'prehooks', i.e. these functions
-  // are called prior to the execution of the cudagraph.
-  std::vector<std::vector<cudaGraphExecuterSetter_t>> pre_hooks_;
+
+  // Holds callbacks that are triggered after the CUDA graph is reset. These
+  // callbacks are used for operations that need to be performed following the
+  // reset of a CUDA graph.
+  std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
+
+  // Contains callbacks that are invoked after the CUDA graph has been captured.
+  // These callbacks are crucial for managing memory allocations related to the
+  // CUDA graph. They ensure that memory blocks not associated with a graph (as
+  // detailed in cuda_malloc_async_allocator) are not erroneously released
+  // during the graph's lifecycle.
+  std::vector<std::function<void()>> cudagraph_post_capture_callbacks_;
+
+  // Maintains a collection of 'pre-hooks' - functions that are executed before
+  // the CUDA graph is replayed. These pre-hooks are essential for setting up
+  // the necessary conditions or states required for the correct execution of
+  // the CUDA graph.
+  std::vector<std::vector<cudaGraphExecuterSetter_t>>
+      cudagraph_pre_replay_callbacks_;
+
   std::mutex func_mtx_;
 
   bool is_first_run_{true};
