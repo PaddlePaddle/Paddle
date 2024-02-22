@@ -1,6 +1,6 @@
 paddle_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS
-            common)
-paddle_test(im2col_test SRCS im2col_test.cc DEPS common)
+            common allocator)
+paddle_test(im2col_test SRCS im2col_test.cc DEPS common phi)
 paddle_test(vol2col_test SRCS vol2col_test.cc DEPS common)
 paddle_test(beam_search_test SRCS beam_search_test.cc)
 if(WITH_GPU)
