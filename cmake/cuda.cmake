@@ -82,7 +82,7 @@ function(detect_installed_gpus out_variable)
       set(CUDA_gpu_detect_output
           ${nvcc_out}
           CACHE INTERNAL
-                "Returned GPU architetures from detect_installed_gpus tool"
+                "Returned GPU architectures from detect_installed_gpus tool"
                 FORCE)
     endif()
   endif()
@@ -122,7 +122,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
   set(CUDA_ARCH_NAME
       ${archs_name_default}
-      CACHE STRING "Select target NVIDIA GPU achitecture.")
+      CACHE STRING "Select target NVIDIA GPU architecture.")
   set_property(CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${archs_names})
   mark_as_advanced(CUDA_ARCH_NAME)
 
