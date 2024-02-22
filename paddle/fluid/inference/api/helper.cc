@@ -50,11 +50,11 @@ std::string to_string<std::vector<std::vector<float>>>(
   return ss.str();
 }
 
-void RegisterAllCustomOperator() {
+void RegisterAllCustomOperator(bool use_pir) {
   auto &op_meta_info_map = OpMetaInfoMap::Instance();
   const auto &meta_info_map = op_meta_info_map.GetMap();
   for (auto &pair : meta_info_map) {
-    if (FLAGS_enable_pir_in_executor) {
+    if (use_pir) {
       ::pir::IrContext *ctx = ::pir::IrContext::Instance();
       auto *custom_dialect =
           ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();

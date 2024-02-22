@@ -23,7 +23,7 @@ namespace inference {
 namespace analysis {
 
 void InferenceOpReplacePass::RunImpl(Argument* argument) {
-  if (FLAGS_enable_pir_in_executor) {
+  if (argument->use_pir()) {
     return;
   }
 

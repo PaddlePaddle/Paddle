@@ -1197,6 +1197,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_compiler_enabled() const;
 
+  void EnableUsePIR() { use_pir_ = true; }
+
+  void DisableUsePIR() { use_pir_ = false; }
+
+  bool pir_enabled() const { return use_pir_; }
+
  protected:
   // Update the config.
   void Update();
@@ -1413,6 +1419,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  bool use_pir_{false};
 };
 
 }  // namespace paddle

@@ -208,9 +208,10 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
-  if (FLAGS_enable_pir_in_executor) {
+  if (argument->use_pir()) {
     return;
   }
+
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
       true,

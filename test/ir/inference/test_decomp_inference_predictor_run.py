@@ -67,10 +67,10 @@ class TestPredictorRunWithTensor(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def enable_pir(self, flag: bool):
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})
+    # def enable_pir(self, flag: bool):
+    #     paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})
 
-    def init_predictor(self):
+    def init_predictor(self, use_pir: bool):
         config = Config(
             os.path.join(
                 self.temp_dir.name,
@@ -85,6 +85,10 @@ class TestPredictorRunWithTensor(unittest.TestCase):
             config.enable_use_gpu(256, 0)
         config.switch_ir_optim(False)
         config.enable_new_executor()
+        if use_pir:
+            config.enable_use_pir()
+        else:
+            config.disable_use_pir()
         predictor = create_predictor(config)
         return predictor
 
@@ -117,12 +121,12 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return outputs[0]
 
     def test_output_prim_inorder(self):
-        self.enable_pir(False)
-        predictor = self.init_predictor()
+        # self.enable_pir(False)
+        predictor = self.init_predictor(False)
         output = self.get_inorder_output(predictor)
-        self.enable_pir(True)
+        # self.enable_pir(True)
         paddle.core._set_prim_all_enabled(True)
-        pir_predictor = self.init_predictor()
+        pir_predictor = self.init_predictor(True)
         pir_output = self.get_inorder_output(pir_predictor)
         paddle.core._set_prim_all_enabled(False)
 

@@ -369,7 +369,7 @@ AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
   }
   if (config_.new_executor_enabled()) {
     config_.EnableMemoryOptim(false);
-    if (FLAGS_enable_pir_in_executor) {
+    if (config_.pir_enabled()) {
       config_.SwitchIrOptim(false);
     }
   }
@@ -788,7 +788,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto output_names = GetOutputNames();
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-    if (FLAGS_enable_pir_in_executor) {
+    if (config_.pir_enabled()) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
@@ -1584,6 +1584,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
   argument_->SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_->SetModelFromMemory(config_.model_from_memory_);
+  argument_->SetUsePIR(config_.pir_enabled());
   // Analyze inference_program
   argument_->SetPredictorID(predictor_id_);
   argument_->SetRootPredictorID(root_predictor_id_);
@@ -1820,14 +1821,14 @@ void AnalysisPredictor::PrepareArgument() {
         model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
-      if (!FLAGS_enable_pir_in_executor) {
+      if (!config_.pir_enabled()) {
         pass_builder->AppendPass("map_op_to_another_pass");
         pass_builder->AppendPass("simplify_with_basic_ops_pass");
         pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
       }
       pass_builder->AppendPass("auto_mixed_precision_pass");
-      if (!FLAGS_enable_pir_in_executor) {
+      if (!config_.pir_enabled()) {
         pass_builder->AppendPass("inplace_op_var_pass");
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
@@ -1949,8 +1950,9 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   // Register custom operators compiled by the user.
   // This function can only be executed once per process.
   static std::once_flag custom_operators_registered;
-  std::call_once(custom_operators_registered,
-                 []() { inference::RegisterAllCustomOperator(); });
+  std::call_once(custom_operators_registered, [config]() {
+    inference::RegisterAllCustomOperator(config.pir_enabled());
+  });
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
