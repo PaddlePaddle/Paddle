@@ -25,8 +25,9 @@ namespace gen {
 
 void AdamJitCode::loadArgs() {
   static constexpr int32_t one_as_float = 0x3f800000;
-  static constexpr int32_t mask_all_ones = 0xFFFFFFFF;
-  static constexpr int64_t mask_8_divisible = 0xFFFFFFFFFFFFFFF8;
+  static constexpr int32_t mask_all_ones = static_cast<int32_t>(0xFFFFFFFF);
+  static constexpr int64_t mask_8_divisible =
+      static_cast<int64_t>(0xFFFFFFFFFFFFFFF8);
   static constexpr int64_t abi_pushes_offset = num_g_abi_regs * 8;
 
   mov(reg_mom2_out_ptr, ptr[rsp + (abi_pushes_offset + 8)]);

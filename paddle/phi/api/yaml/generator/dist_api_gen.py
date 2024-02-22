@@ -311,9 +311,9 @@ KERNEL_SELECTION_TEMPLATE = """
 # Both Tensor, std::vector<Tensor>, paddle::optional<Tensor> and
 # paddle::optional<std::vector<Tensor>> use the same template
 INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{name} = ReshardApiInputToKernelInput(dev_ctx, {name}, spmd_info.first[{idx}]);"""
+      auto dist_input_{name} = ReshardApiInputToKernelInput(dev_ctx, {name}, spmd_info.first[{idx}], "{name}");"""
 GENERAL_INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{name} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {name}, spmd_info.first[{idx}]);"""
+      auto dist_input_{name} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {name}, spmd_info.first[{idx}], "{name}");"""
 UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
       // API `{}` does not need to support ReshardInput at this time
 """

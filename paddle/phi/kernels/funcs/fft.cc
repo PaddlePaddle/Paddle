@@ -234,7 +234,7 @@ struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet factor
+    // compute factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= in_sizes[axis];
@@ -291,7 +291,7 @@ struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet normalization factor
+    // compute normalization factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= in_sizes[axis];
@@ -348,7 +348,7 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet normalization factor
+    // compute normalization factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= out_sizes[axis];

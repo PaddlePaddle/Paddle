@@ -82,7 +82,7 @@ static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
       true,
       phi::errors::PreconditionNotMet(
           "The size of tensor b must not be %d after getting new dims", 0));
-  // if b_dims_vec.size() == 1, just retun original vec
+  // if b_dims_vec.size() == 1, just return original vec
   return b_dims_vec;
 }
 

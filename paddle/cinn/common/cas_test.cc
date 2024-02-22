@@ -371,7 +371,7 @@ TEST(CAS, SimplifyCompoundMod) {
 #endif
   }
 }
-TEST(CAS, SimplifyNegtive) {
+TEST(CAS, SimplifyNegative) {
   {  // (-1*x) /2
     Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::FracOp::Make(-x, Expr(2));

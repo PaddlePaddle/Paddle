@@ -2469,7 +2469,7 @@ class Model:
             ]
         else:
             out_specs = to_list(specs)
-        # Note: checks each element has specificed `name`.
+        # Note: checks each element has specified `name`.
         if out_specs is not None:
             for i, spec in enumerate(out_specs):
                 assert isinstance(spec, Input)

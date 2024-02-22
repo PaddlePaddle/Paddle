@@ -571,7 +571,7 @@ class TestComplexElementwiseDivOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -581,7 +581,7 @@ class TestComplexElementwiseDivOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

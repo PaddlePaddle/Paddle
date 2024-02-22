@@ -145,7 +145,7 @@ def monkey_patch_value():
         """
         Value don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Value do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
@@ -155,7 +155,7 @@ def monkey_patch_value():
         """
         Value don't have 'contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Value do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
@@ -166,7 +166,7 @@ def monkey_patch_value():
         """
         Value don't have 'is_contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Value do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
@@ -693,7 +693,7 @@ def monkey_patch_value():
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
         ('__neg__', _scalar_neg_),
-        # For compare opeartors
+        # For compare operators
         (
             '__eq__',
             _binary_creator_('__eq__', paddle.tensor.equal, False, None),

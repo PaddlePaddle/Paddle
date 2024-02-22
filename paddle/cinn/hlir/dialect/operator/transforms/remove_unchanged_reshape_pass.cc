@@ -59,6 +59,25 @@ class RemoveUnchangedReshapePattern
   }
 };
 
+class MergeReshapePattern
+    : public pir::OpRewritePattern<cinn::dialect::ReshapeOp> {
+ public:
+  using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (auto pre_shape = op->operand_source(0)
+                             .defining_op()
+                             ->dyn_cast<cinn::dialect::ReshapeOp>()) {
+      op->operand(0).set_source(pre_shape->operand_source(0));
+
+      return true;
+    }
+
+    return false;
+  }
+};
+
 class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
  public:
   RemoveUnchangedReshapePass()
@@ -69,6 +88,7 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
 
     // remove out_shape equal in_shape reshape op
     ps.Add<RemoveUnchangedReshapePattern>(context);
+    ps.Add<MergeReshapePattern>(context);
 
     return ps;
   }

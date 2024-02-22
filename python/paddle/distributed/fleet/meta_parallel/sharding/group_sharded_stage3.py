@@ -323,10 +323,10 @@ class GroupShardedStage3(nn.Layer):
                 tmp_var._share_buffer_to(param)
                 del tmp_var
             for grad_storage in self._grad_storages.values():
-                grad_storage.manumal_relase()
+                grad_storage.manual_release()
                 grad_storage.rebuild()
 
-    # Update param memery slice
+    # Update param memory slice
     def _update_params_slice(self):
         update_list = self._update_params()
 
@@ -385,7 +385,7 @@ class GroupShardedStage3(nn.Layer):
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
-            # Updata optimizer master weights
+            # Update optimizer master weights
             if (
                 param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
             ) and not self._offload:
@@ -537,7 +537,7 @@ class GroupShardedStage3(nn.Layer):
             )
         param.status = "part"
 
-        # Updata optimizer master weights
+        # Update optimizer master weights
         if (
             param.trainable
             and (

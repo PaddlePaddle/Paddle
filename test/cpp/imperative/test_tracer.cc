@@ -44,10 +44,6 @@ PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);
 #endif
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-
 namespace paddle {
 namespace imperative {
 
@@ -160,7 +156,7 @@ TEST(test_tracer, test_track_backward_output) {
       new imperative::VarBase(true, "x_in"));
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
-  x_in->SetOverridedStopGradient(false);
+  x_in->SetOverriddenStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
@@ -208,7 +204,7 @@ TEST(test_tracer, test_track_backward_input) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
-  x_in->SetOverridedStopGradient(false);
+  x_in->SetOverriddenStopGradient(false);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
@@ -249,10 +245,10 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::Tracer tracer;
   std::shared_ptr<imperative::VarBase> x_in(
       new imperative::VarBase(true, "x_in"));
-  x_in->SetOverridedStopGradient(false);  // force to run backward
+  x_in->SetOverriddenStopGradient(false);  // force to run backward
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
-  y_in->SetOverridedStopGradient(false);
+  y_in->SetOverriddenStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
@@ -391,8 +387,8 @@ TEST(test_tracer, test_var_without_grad_var) {
       new imperative::VarBase(true, "y_in"));
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
-  x_in->SetOverridedStopGradient(false);
-  y_in->SetOverridedStopGradient(false);
+  x_in->SetOverriddenStopGradient(false);
+  y_in->SetOverriddenStopGradient(false);
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims1 = {2, 5};
@@ -484,8 +480,8 @@ static void TestVarOpDestructionMain(const platform::Place& place,
         ->Resize({tensor_size, tensor_size})
         .mutable_data<float>(place);
 
-    x->SetOverridedStopGradient(false);
-    y->SetOverridedStopGradient(true);
+    x->SetOverriddenStopGradient(false);
+    y->SetOverriddenStopGradient(true);
 
     for (size_t i = 0; i < loop_num; ++i) {
       size_t var_wrapper_num = var_wrappers.size();
