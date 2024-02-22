@@ -927,7 +927,7 @@ def get_paddle_extra_install_requirements():
     paddle_cuda_install_requirements = os.getenv(
         "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
     )
-    if paddle_cuda_install_requirements is not None:
+    if paddle_cuda_install_requirements == "ON":
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
