@@ -30,14 +30,5 @@ Tensor full(const IntArray& shape,
   return backend::full<T>(shape, value, dtype, place);
 }
 
-template <typename T>
-Tensor arange(const Scalar& start,
-              const Scalar& end,
-              const Scalar& step,
-              DataType dtype = DataType::FLOAT64,
-              Place place = CPUPlace()) {
-  return backend::arange<T>(start, end, step, dtype, place);
-}
-
 }  // namespace primitive
 }  // namespace paddle
