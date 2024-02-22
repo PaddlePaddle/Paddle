@@ -1086,6 +1086,18 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void SwiGLUGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (y && y_grad) {
+    y_grad->share_meta(y);
+  }
+}
+
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        float min,
                                        float max,
