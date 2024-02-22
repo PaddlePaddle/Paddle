@@ -95,11 +95,26 @@ bool IsLastReshape(::pir::Operation* input_op) {
   return false;
 }
 
+std::string BuildGroupId(const ::pir::GroupOpsVec& ops_list) {
+  std::string group_id;
+  for (auto& op : ops_list) {
+    if (group_id != "") {
+      group_id += "_";
+    }
+    group_id += op->name();
+  }
+
+  return group_id;
+}
 struct GroupClusterNode {
+  // all the ops in each Node
   std::vector<::pir::Operation*> ops;
+  // group kind
   cinn::hlir::framework::OpPatternKind group_kind{
       cinn::hlir::framework::kElementWise};
+  // reduce_axis if kind is Reduce else empty
   std::vector<int64_t> reduce_axis;
+  // if kind is reduce, loop ranges = reduce_op input dim
   std::vector<int64_t> loop_ranges;
 
   std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
@@ -139,41 +154,11 @@ struct GroupClusterNode {
     return ss.str();
   }
 
-  void GenerateOutputValue(
-      const std::unordered_map<::pir::Value, size_t>& outside_need_value) {
-    output_value.clear();
-
-    std::vector<::pir::Value> temp_out;
-    for (auto& op : ops) {
-      if (op->name() == "cf.yield") {
-        continue;
-      }
-
-      std::unordered_set<::pir::Value> inserted_val;
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        if (outside_need_value.count(op->result(i))) {
-          if (!inserted_val.count(op->result(i))) {
-            temp_out.push_back(op->result(i));
-
-            inserted_val.insert(op->result(i));
-          }
-        }
-      }
-    }
-    std::sort(temp_out.begin(),
-              temp_out.end(),
-              [&outside_need_value](::pir::Value a, ::pir::Value b) {
-                return outside_need_value.at(a) < outside_need_value.at(b);
-              });
-    output_value.swap(temp_out);
-  }
-
   void MergeNode(const GroupClusterNode& node,
                  const ScheduleInfoNode& inner_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
     if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::None) {
-      // all the data need add sch node
       for (auto op : ops) {
         alignment_schedule_info[op].push_back(inner_sch_node);
       }
@@ -229,36 +214,73 @@ struct GroupClusterNode {
       this->group_kind = node.group_kind;
     }
   }
-
-  std::vector<::pir::Value> output_value;
 };
 
-::pir::Operation* ReplaceWithGroupOp(pir::PatternRewriter* rewriter,
-                                     const ::pir::GroupOpsVec& group_ops,
-                                     const GroupClusterNode& node,
-                                     ::pir::IrMapping* ir_mapping) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+std::vector<::pir::Value> GenerateOutputValue(
+    const std::vector<::pir::Operation*>& ops,
+    const std::unordered_map<::pir::Value, size_t>& outside_need_value) {
+  std::vector<::pir::Value> temp_out;
+  for (auto& op : ops) {
+    if (op->name() == "cf.yield") {
+      continue;
+    }
 
-  // step 1: Ensure the insert point and create GroupOp here.
-  auto* last_op = group_ops.back();
+    std::unordered_set<::pir::Value> inserted_val;
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      if (outside_need_value.count(op->result(i))) {
+        if (!inserted_val.count(op->result(i))) {
+          temp_out.push_back(op->result(i));
 
-  auto& output_value = node.output_value;
-  auto& alignment_schedule_info = node.alignment_schedule_info;
+          inserted_val.insert(op->result(i));
+        }
+      }
+    }
+  }
+  std::sort(temp_out.begin(),
+            temp_out.end(),
+            [&outside_need_value](::pir::Value a, ::pir::Value b) {
+              return outside_need_value.at(a) < outside_need_value.at(b);
+            });
+
+  return temp_out;
+}
+
+cinn::dialect::GroupInfo BuildGroupInfo(
+    const ::pir::GroupOpsVec& vec_new_op_list,
+    const GroupClusterNode& node,
+    const std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>&
+        new_align_info) {
+  cinn::dialect::GroupInfo group_info({});
+  group_info.group_id = BuildGroupId(vec_new_op_list);
+  group_info.loop_ranges = node.loop_ranges;
+  group_info.reduce_axis = node.reduce_axis;
+  group_info.op_pattern_kind = node.group_kind;
+  group_info.alignment_schedule_info = new_align_info;
+
+  return group_info;
+}
+
+std::vector<pir::Type> BuildOutType(
+    const std::vector<::pir::Value>& output_value) {
   std::vector<pir::Type> output_types;
 
   for (auto& value : output_value) {
     output_types.emplace_back(value.type());
   }
 
+  return output_types;
+}
+
+::pir::GroupOpsVec CloneOps(
+    const ::pir::GroupOpsVec& group_ops,
+    const GroupClusterNode& node,
+    ::pir::IrMapping* ir_mapping,
+    std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>*
+        align_info) {
+  std::vector<::pir::Operation*> vec_new_op_list;
   ::pir::CloneOptions clone_options(false, true, false);
 
-  std::vector<::pir::Operation*> vec_new_op_list;
-  std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
-      new_align_info;
-
-  std::string group_id;
+  auto& alignment_schedule_info = node.alignment_schedule_info;
   for (auto op : group_ops) {
     auto new_op = op->Clone(*ir_mapping, clone_options);
     auto& shape_analysis =
@@ -270,24 +292,34 @@ struct GroupClusterNode {
     }
 
     vec_new_op_list.push_back(new_op);
-    if (group_id != "") {
-      group_id += "_";
-    }
-    group_id += new_op->name();
 
     if (alignment_schedule_info.count(op)) {
-      new_align_info[new_op] = alignment_schedule_info.at(op);
+      align_info->emplace(new_op, alignment_schedule_info.at(op));
     }
   }
 
-  cinn::dialect::GroupInfo group_info({});
-  group_info.group_id = group_id;
-  group_info.loop_ranges = node.loop_ranges;
-  group_info.reduce_axis = node.reduce_axis;
-  group_info.op_pattern_kind = node.group_kind;
-  group_info.alignment_schedule_info = new_align_info;
+  return vec_new_op_list;
+}
 
+::pir::Operation* ReplaceWithGroupOp(
+    pir::PatternRewriter* rewriter,
+    const ::pir::GroupOpsVec& group_ops,
+    const GroupClusterNode& node,
+    const std::vector<::pir::Value> output_value,
+    ::pir::IrMapping* ir_mapping) {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
+  std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
+      new_align_info;
+
+  auto vec_new_op_list = CloneOps(group_ops, node, ir_mapping, &new_align_info);
+
+  auto group_info = BuildGroupInfo(vec_new_op_list, node, new_align_info);
   // step 2: Replace the old op with GroupOp.
+
+  auto output_types = BuildOutType(output_value);
   auto new_fusion_op =
       rewriter->Build<cinn::dialect::FusionOp>(output_types, group_info);
   pir::Block* fusion_block = new_fusion_op.block();
@@ -387,8 +419,10 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
     }
   }
 
+  std::vector<std::vector<pir::Value>> ouput_values_list;
   for (auto& node : node_list) {
-    node.GenerateOutputValue(all_ouput_values);
+    ouput_values_list.push_back(
+        GenerateOutputValue(node.ops, all_ouput_values));
   }
 
   std::vector<std::vector<int>> next_ids;
@@ -399,7 +433,7 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
         continue;
       }
 
-      auto pre_out_list = node_list[i].output_value;
+      auto pre_out_list = ouput_values_list[i];
       auto next_in_set = node_list[j].GetOutsideInput();
 
       for (auto val : pre_out_list) {
@@ -735,34 +769,34 @@ class CinnGroupClusterPattern
     }
 
     size_t index = 0;
-    std::unordered_map<pir::Operation*, size_t> op2id;
+    std::unordered_map<pir::Operation*, size_t> op_order;
 
     for (auto op1 : group_op.GetOperators()) {
-      op2id[op1] = index++;
+      op_order[op1] = index++;
     }
 
     for (auto& node : split_res) {
-      node.GenerateOutputValue(all_ouput_values);
+      auto output_value = GenerateOutputValue(node.ops, all_ouput_values);
       std::vector<pir::Operation*> tmp_ops(node.ops.begin(), node.ops.end());
       std::sort(tmp_ops.begin(),
                 tmp_ops.end(),
-                [&op2id](pir::Operation* a, pir::Operation* b) {
-                  return op2id.at(a) < op2id.at(b);
+                [&op_order](pir::Operation* a, pir::Operation* b) {
+                  return op_order.at(a) < op_order.at(b);
                 });
 
       std::unique(tmp_ops.begin(), tmp_ops.end());
 
       auto node_outside_input = node.GetOutsideInput();
 
-      auto insert_point =
-          ReplaceWithGroupOp(&rewriter, tmp_ops, node, &ir_mapping);
+      auto insert_point = ReplaceWithGroupOp(
+          &rewriter, tmp_ops, node, output_value, &ir_mapping);
 
-      for (size_t i = 0; i < node.output_value.size(); ++i) {
-        ir_mapping.Add(node.output_value[i], insert_point->result(i));
+      for (size_t i = 0; i < output_value.size(); ++i) {
+        ir_mapping.Add(output_value[i], insert_point->result(i));
       }
 
-      std::unordered_set<::pir::Value> local_outs(node.output_value.begin(),
-                                                  node.output_value.end());
+      std::unordered_set<::pir::Value> local_outs(output_value.begin(),
+                                                  output_value.end());
 
       int local_index = 0;
 
@@ -771,11 +805,11 @@ class CinnGroupClusterPattern
         value_order[yield_op->operand_source(i)] = i;
       }
 
-      for (size_t i = 0; i < node.output_value.size(); ++i) {
-        if (value_order.count(node.output_value[i])) {
+      for (size_t i = 0; i < output_value.size(); ++i) {
+        if (value_order.count(output_value[i])) {
           // replace
           rewriter.ReplaceAllUsesWith(
-              group_op.result(value_order.at(node.output_value[i])),
+              group_op.result(value_order.at(output_value[i])),
               insert_point->result(i));
         }
       }
