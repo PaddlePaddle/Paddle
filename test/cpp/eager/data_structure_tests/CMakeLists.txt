@@ -4,11 +4,11 @@ endif()
 nv_test(
   test_egr_ds_eager_tensor
   SRCS eager_tensor_test.cc
-  DEPS fleet_executor final_dygraph_function ${eager_deps})
+  DEPS pir fleet_executor final_dygraph_function ${eager_deps})
 nv_test(
   test_egr_ds_auotgrad_meta
   SRCS autograd_meta_test.cc
-  DEPS fleet_executor final_dygraph_function ${eager_deps})
+  DEPS pir fleet_executor final_dygraph_function ${eager_deps})
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_test(
