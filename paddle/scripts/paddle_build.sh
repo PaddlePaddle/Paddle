@@ -1181,9 +1181,9 @@ function generate_api_spec() {
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-        pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
-        pip --no-cache-dir install ${PADDLE_ROOT}/dist/*whl
+        pip install ${PADDLE_ROOT}/dist/*whl
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
@@ -3366,7 +3366,7 @@ function distribute_test() {
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
 
-    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
+    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test dygraph_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"

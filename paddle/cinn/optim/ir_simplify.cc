@@ -43,7 +43,7 @@ using utils::Replace;
 namespace {
 
 //! Simplify some sub-expression in the `expr`. Due to the simplify strategy
-//! just fit several kinds of IR noedes, we partition the original expression to
+//! just fit several kinds of IR nodes, we partition the original expression to
 //! several sub-expression those supported by simplify, and process each of
 //! them.
 void PartialSimplify(

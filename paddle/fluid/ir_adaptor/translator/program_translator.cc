@@ -404,7 +404,7 @@ void ProgramTranslator::TranslateIfOperation(
                    true_block_context,
                    &true_region.front());
 
-    // insert tuple_push op to true block before yeild op
+    // insert tuple_push op to true block before yield op
     if (!for_bwd && push_pop_var_names_[op].size() != 0) {
       std::vector<pir::Value> local_values;
       local_values.push_back(cond_to_stack_value_[op][0]);
@@ -421,30 +421,30 @@ void ProgramTranslator::TranslateIfOperation(
       true_region.front().push_back(tuple_push_op);
     }
 
-    // insert yeild op to true block
-    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    std::vector<pir::Value> true_yeild_inputs;
+    // insert yield op to true block
+    auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    std::vector<pir::Value> true_yield_inputs;
     for (auto& out_name : cond_op_outputs) {
       if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
         out_name = out_name.substr(0, out_name.find("@RENAME@block"));
       }
-      true_yeild_inputs.push_back(true_block_context->at(out_name).value);
+      true_yield_inputs.push_back(true_block_context->at(out_name).value);
     }
     true_region.front().push_back(
-        pir::Operation::Create(true_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(true_yield_inputs, {}, {}, yield_info));
 
     // NOTE(zhangbo): The if_op of PIR requires that both true and false
     // branches must exist, and the number of outputs and dtypes must be
     // consistent. Only inconsistent shape is allowed. To be compatible with the
     // old IR design, only true branches are allowed. The false branch may
-    // require yeild some fake variables.
+    // require yield some fake variables.
     pir::Region& false_region = if_op->region(1);
     if (false_region.empty()) false_region.emplace_back();
     auto* false_block_context = translation_ctx->CreateInnerContext();
-    std::vector<pir::Value> false_yeild_inputs;
+    std::vector<pir::Value> false_yield_inputs;
     for (size_t id = 0; id < cond_op_outputs.size(); id++) {
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
-        auto true_type = true_yeild_inputs[id].type();
+        auto true_type = true_yield_inputs[id].type();
         pir::Operation* init_op =
             InsertInitOpOrCreateArrayToBlock(&false_region.front(), true_type);
         PADDLE_ENFORCE_NOT_NULL(
@@ -455,11 +455,11 @@ void ProgramTranslator::TranslateIfOperation(
         false_block_context->PushValue(
             cond_op_outputs[id], VariableDefiningInfo(init_op->result(0)));
       }
-      false_yeild_inputs.push_back(
+      false_yield_inputs.push_back(
           false_block_context->at(cond_op_outputs[id]).value);
     }
     false_region.front().push_back(
-        pir::Operation::Create(false_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -512,13 +512,13 @@ void ProgramTranslator::TranslateWhileOperation(
   TranslateBlock(
       sub_block, 0, sub_block.OpSize(), body_block_context, body_block);
 
-  auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-  std::vector<pir::Value> yeild_inputs{body_block_context->at(cond_var).value};
+  auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yield_inputs{body_block_context->at(cond_var).value};
   for (auto& loop_var : loop_vars) {
-    yeild_inputs.push_back(body_block_context->at(loop_var).value);
+    yield_inputs.push_back(body_block_context->at(loop_var).value);
   }
   body_block->push_back(
-      pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+      pir::Operation::Create(yield_inputs, {}, {}, yield_info));
   for (size_t idx = 0; idx < loop_vars.size(); ++idx) {
     translation_ctx->PushValue(loop_vars[idx], while_op->result(idx));
   }
