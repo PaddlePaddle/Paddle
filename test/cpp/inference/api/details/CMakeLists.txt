@@ -13,26 +13,17 @@
 # limitations under the License.
 #
 
-cc_library(
-  reset_tensor_array
-  SRCS reset_tensor_array.cc
-  DEPS lod_tensor scope)
-if(WITH_ONNXRUNTIME)
-  cc_library(
-    zero_copy_tensor
-    SRCS zero_copy_tensor.cc
-    DEPS scope lod_tensor enforce onnxruntime common)
-  cc_library(
-    zero_copy_tensor_dummy
-    SRCS zero_copy_tensor_dummy.cc
-    DEPS onnxruntime phi common)
-else()
-  cc_library(
-    zero_copy_tensor
-    SRCS zero_copy_tensor.cc
-    DEPS scope lod_tensor enforce common)
-  cc_library(
-    zero_copy_tensor_dummy
-    SRCS zero_copy_tensor_dummy.cc
-    DEPS phi common)
+inference_base_test(
+  zero_copy_tensor_test
+  SRCS
+  zero_copy_tensor_test.cc
+  DEPS
+  paddle_inference_api
+  ARGS
+  --dirname=${WORD2VEC_MODEL_DIR})
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(zero_copy_tensor_test)
 endif()

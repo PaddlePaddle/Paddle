@@ -1514,3 +1514,5 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     endif()
   endif()
 endif()
+
+add_subdirectory(details)
