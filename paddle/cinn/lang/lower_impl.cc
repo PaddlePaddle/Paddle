@@ -30,6 +30,8 @@
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace lang {
 namespace detail {
