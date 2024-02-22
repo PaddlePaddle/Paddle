@@ -794,8 +794,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
       .def("exp_enable_mixed_precision_ops",
            &AnalysisConfig::Exp_EnableMixedPrecisionOps)
-      .def("enable_use_pir", &AnalysisConfig::EnableUsePIR)
-      .def("disable_use_pir", &AnalysisConfig::DisableUsePIR)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -869,6 +867,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_new_executor",
            &AnalysisConfig::EnableNewExecutor,
            py::arg("x") = true)
+      .def("enable_new_ir", &AnalysisConfig::EnableNewIR, py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)

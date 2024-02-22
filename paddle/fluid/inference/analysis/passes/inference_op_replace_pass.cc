@@ -16,8 +16,6 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
-COMMON_DECLARE_bool(enable_pir_in_executor);
-
 namespace paddle {
 namespace inference {
 namespace analysis {

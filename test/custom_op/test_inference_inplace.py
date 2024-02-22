@@ -83,9 +83,6 @@ class TestPredictorRunWithTensor(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    # def enable_pir(self, flag: bool):
-    #     paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})
-
     def init_predictor(self, use_pir: bool):
         config = Config(
             os.path.join(
@@ -101,9 +98,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         config.switch_ir_optim(False)
         config.enable_new_executor()
         if use_pir:
-            config.enable_use_pir()
-        else:
-            config.disable_use_pir()
+            config.enable_new_ir()
         predictor = create_predictor(config)
         return predictor
 
@@ -127,10 +122,8 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return outputs[0]
 
     def test_output(self):
-        # self.enable_pir(True)
         pir_predictor = self.init_predictor(True)
         pir_output = self.get_outputs(pir_predictor)
-        # self.enable_pir(False)
         predictor = self.init_predictor(False)
         output = self.get_outputs(predictor)
         np.testing.assert_allclose(

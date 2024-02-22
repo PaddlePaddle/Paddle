@@ -22,8 +22,6 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/pir/include/core/ir_context.h"
 
-COMMON_DECLARE_bool(enable_pir_in_executor);
-
 namespace paddle {
 namespace inference {
 
