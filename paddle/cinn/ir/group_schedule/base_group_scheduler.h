@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -22,31 +23,31 @@ namespace ir {
 
 using SymbolicPredicate = Expr;
 
-struct GroupTileInfo {
-  GroupTileInfo() {}
+// struct GroupTileInfo {
+//   GroupTileInfo() {}
 
-  std::vector<int64_t> reduce_axis_;
-  int64_t data_rank;
+//   std::vector<int64_t> reduce_axis_;
+//   int64_t data_rank;
 
-  int64_t block_num{-1};
-  int64_t warp_num;
-  int64_t flatten_inner_num;
-  int64_t reduce_numel;
-  int64_t reduce_inner_num;
-  int64_t reduce_block;
+//   int64_t block_num{-1};
+//   int64_t warp_num;
+//   int64_t flatten_inner_num;
+//   int64_t reduce_numel;
+//   int64_t reduce_inner_num;
+//   int64_t reduce_block;
 
-  std::set<std::string> reduce_var_names;
-  std::set<std::string> temp_var_names;
+//   std::set<std::string> reduce_var_names;
+//   std::set<std::string> temp_var_names;
 
-  std::set<std::string> shared_var_names;
-  std::set<std::string> direct_output_var_names;
-  std::vector<std::string> thread_sync_before_names;
+//   std::set<std::string> shared_var_names;
+//   std::set<std::string> direct_output_var_names;
+//   std::vector<std::string> thread_sync_before_names;
 
-  int reduce_type{-1};
+//   int reduce_type{-1};
 
-  std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
-};
+//   std::unordered_map<std::string, BroadcastInfo> broadcast_info;
+//   std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
+// };
 
 /**
  * The base class used for scheduling fusion groups.
