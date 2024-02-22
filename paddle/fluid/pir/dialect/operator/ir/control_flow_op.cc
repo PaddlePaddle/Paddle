@@ -24,6 +24,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -304,6 +305,22 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
     }
   }
   return res;
+}
+
+bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  VLOG(3) << "############ IfOp::InferSymbolicShape start...";
+  pir::Program *t_program = true_block().parent_program();
+  VLOG(3) << "##### IfOp::InferSymbolicShape: t_program id = "
+          << true_block().parent_program()->module_op().operation()->id();
+  VLOG(3) << "##### IfOp::InferSymbolicShape: f_program id = "
+          << false_block().parent_program()->module_op().operation()->id();
+
+  // infer true block
+  pir::InferSymExprForBlock(true_block(), shape_analysis);
+
+  // infer false block
+  pir::InferSymExprForBlock(false_block(), shape_analysis);
+  return true;
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT

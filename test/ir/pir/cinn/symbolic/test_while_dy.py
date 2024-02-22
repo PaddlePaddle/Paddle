@@ -36,9 +36,9 @@ class WhileExpSub(nn.Layer):
         while x.sum() > paddle.full([1], 0) and loop_count < paddle.full(
             [1], 1, 'int32'
         ):
-            y = paddle.exp(x)
-            x = y - x
-            # x = paddle.exp(x) - x
+            # y = paddle.exp(x)
+            # x = y - x
+            x = paddle.exp(x) - x
             loop_count += 1
         return x
 
