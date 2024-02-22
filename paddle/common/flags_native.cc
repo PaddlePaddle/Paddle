@@ -14,8 +14,8 @@
 
 #include "paddle/common/flags.h"
 
-#include <assert.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <map>

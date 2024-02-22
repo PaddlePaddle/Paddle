@@ -69,10 +69,10 @@ void LowerIntrin(Expr *e, Target target) {
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
       CHECK(node);
-      LowerCpuintrinsicOp(node, expr);
+      LowerCpuIntrinsicOp(node, expr);
     }
 
-    void LowerCpuintrinsicOp(ir::Call *op, Expr *expr) {
+    void LowerCpuIntrinsicOp(ir::Call *op, Expr *expr) {
       auto *node = expr->As<ir::Call>();
       if (kIntrinsicCalls.count(node->name)) {
         CHECK(!node->name.empty());
