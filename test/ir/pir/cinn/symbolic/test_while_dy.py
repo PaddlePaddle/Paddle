@@ -32,11 +32,15 @@ class WhileExpSub(nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        loop_count = 0
-        while x.sum() > 0 and loop_count < 1:
+        loop_count = paddle.full([1], 0)
+        while x.sum() > paddle.full([1], 0) and loop_count < paddle.full(
+            [1], 1, 'int32'
+        ):
             y = paddle.exp(x)
             x = y - x
+            # x = paddle.exp(x) - x
             loop_count += 1
+        return x
 
 
 class TestWhile(unittest.TestCase):
