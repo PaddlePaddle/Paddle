@@ -484,6 +484,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
   CP_MEMBER(trt_ops_run_float_);
+  CP_MEMBER(trt_exclude_var_names_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -863,6 +864,13 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
+void AnalysisConfig::Specify_tensorrt_subgraph(
+    const std::vector<std::string> &var_name_not_trt) {
+  trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
+                                var_name_not_trt.begin(),
+                                var_name_not_trt.end());
+}
+
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
@@ -1123,6 +1131,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << dlnne_min_subgraph_size_;
 
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
+  ss << ";";
+
+  for (auto &name : trt_exclude_var_names_) ss << name.c_str();
   ss << ";";
 
   ss << trt_use_dla_;
