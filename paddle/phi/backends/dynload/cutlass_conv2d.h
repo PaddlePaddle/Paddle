@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,17 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <vector>
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
 
-#include "paddle/fluid/framework/variable.h"
+#include <mutex>  // NOLINT
 
-namespace paddle {
-namespace framework {
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 
-class Variable;
+namespace phi {
+namespace dynload {
 
-TEST_API void InitializeVariable(Variable* var, proto::VarType::Type var_type);
-void CopyVariable(const Variable& src_var, Variable* dst_var);
+void* GetCutlassConv2dHandle();
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace dynload
+}  // namespace phi
