@@ -861,7 +861,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
-      .def("skip_ir_pass", &AnalysisConfig::SkipIrPass, py::arg("x") = false)
+      .def("skip_ir_pass", &AnalysisConfig::SkipIrPass, py::arg("x") = true)
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)

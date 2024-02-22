@@ -612,9 +612,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// If turn on, it is highly recommended to use the optimized model for
   /// inference.
   ///
-  /// \param x Whether to use the optimized model.
+  /// \param x Whether to skip All IR Pass.
   ///
-  void SkipIrPass(int x = false) { skip_ir_pass_ = x; }
+  void SkipIrPass(int x = true) { skip_ir_pass_ = x; }
 
   ///
   /// \brief INTERNAL Determine whether to use the feed and fetch operators.
