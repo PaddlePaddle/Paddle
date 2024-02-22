@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pybind/add_cinn_pass.h"
 
-#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -26,6 +25,7 @@
 #include "paddle/pir/include/pass/pass_manager.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
