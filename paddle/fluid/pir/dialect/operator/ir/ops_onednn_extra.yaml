@@ -156,10 +156,10 @@
   extra_args : str mkldnn_data_type="float32"
   data_format_tensors : x, y, out_grad
 
-- op : mul
+- op : matmul_with_flatten
   extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
-- op : mul_grad
+- op : matmul_with_flatten_grad
   extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
 - op : max

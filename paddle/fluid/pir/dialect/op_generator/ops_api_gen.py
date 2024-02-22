@@ -107,7 +107,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'onednn_to_paddle_layout',
     'lrn',
     'multi_gru',
-    'mul',
+    'matmul_with_flatten',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

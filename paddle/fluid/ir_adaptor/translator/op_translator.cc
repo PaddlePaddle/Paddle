@@ -1454,6 +1454,11 @@ struct MulOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulOp::name();
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::LookUpOpInfo(ctx, op_desc);
+    }
+#endif
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
@@ -1468,6 +1473,13 @@ struct MulOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::TranslateOpAttribute(
+          ctx, normalized_op_name, op_attr_infos, op_desc);
+    }
+#endif
+
     pir::AttributeMap attribute_map = {};
 
     attribute_map["transpose_x"] = pir::BoolAttribute::get(ctx, false);
@@ -1483,6 +1495,12 @@ struct MulOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::GenerateOperationInput(
+          ctx, param_map, op_desc, normalized_op_name, input_infos, block);
+    }
+#endif
     const int x_num_col_dims =
         PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"));
     const int y_num_col_dims =
@@ -1558,6 +1576,13 @@ struct MulOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Operation* operation,
                              const OpOutputMapping& arg_to_idx) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::RecordOpResultMapping(
+          ctx, param_map, op_desc, operation, arg_to_idx);
+    }
+#endif
+
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
     if (op_desc.HasOutput("Out")) {
@@ -1608,6 +1633,12 @@ struct MulGradOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulGradOp::name();
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::LookUpOpInfo(ctx, op_desc);
+    }
+#endif
+
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -1624,6 +1655,13 @@ struct MulGradOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::TranslateOpAttribute(
+          ctx, normalized_op_name, op_attr_infos, op_desc);
+    }
+#endif
+
     pir::AttributeMap attribute_map = {};
 
     attribute_map["transpose_x"] = pir::BoolAttribute::get(ctx, false);
@@ -1639,6 +1677,13 @@ struct MulGradOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::GenerateOperationInput(
+          ctx, param_map, op_desc, normalized_op_name, input_infos, block);
+    }
+#endif
+
     const int x_num_col_dims =
         PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"));
     const int y_num_col_dims =
@@ -1731,6 +1776,13 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Operation* operation,
                              const OpOutputMapping& arg_to_idx) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return OpTranscriber::RecordOpResultMapping(
+          ctx, param_map, op_desc, operation, arg_to_idx);
+    }
+#endif
+
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
 
