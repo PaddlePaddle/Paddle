@@ -73,7 +73,7 @@ std::unordered_set<::pir::Value> GetListOutsideInput(
   std::unordered_set<pir::Value> outside_ops;
   auto block_inner_output = GetInnerGeneValue(ops);
 
-  for (auto& op : ops) {
+  for (const auto& op : ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       if (!block_inner_output.count(op->operand_source(i)) &&
           !outside_ops.count(op->operand_source(i))) {
@@ -97,7 +97,7 @@ bool IsLastReshape(::pir::Operation* input_op) {
 
 std::string BuildGroupId(const ::pir::GroupOpsVec& ops_list) {
   std::string group_id;
-  for (auto& op : ops_list) {
+  for (const auto& op : ops_list) {
     if (group_id != "") {
       group_id += "_";
     }
@@ -114,13 +114,14 @@ struct GroupClusterNode {
       cinn::hlir::framework::kElementWise};
   // reduce_axis if kind is Reduce else empty
   std::vector<int64_t> reduce_axis;
-  // if kind is reduce, loop ranges = reduce_op input dim
+  // if kind is reduce, loop ranges equal input dim
+  // if kind id elementwise or broadcast, loop ranges equal output dim
   std::vector<int64_t> loop_ranges;
 
   std::unordered_map<::pir::Operation*, std::vector<ScheduleInfoNode>>
       alignment_schedule_info;
 
-  std::unordered_set<::pir::Value> GetOutsideInput() {
+  std::unordered_set<::pir::Value> GetOutsideInput() const {
     return GetListOutsideInput(ops);
   }
 
@@ -141,7 +142,7 @@ struct GroupClusterNode {
     }
     ss << "\n";
 
-    for (auto op : ops) {
+    for (const auto& op : ops) {
       printer.PrintOperation(op);
       if (alignment_schedule_info.count(op)) {
         for (auto& node : alignment_schedule_info.at(op)) {
@@ -159,34 +160,35 @@ struct GroupClusterNode {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
     if (inner_sch_node.type != hlir::framework::pir::ScheduleAlignType::kNone) {
-      for (auto op : ops) {
-        alignment_schedule_info[op].push_back(inner_sch_node);
+      for (const auto& op : ops) {
+        this->alignment_schedule_info[op].push_back(inner_sch_node);
       }
     }
-    for (auto op : node.ops) {
+    for (const auto& op : node.ops) {
       if (!inner_ops.count(op)) {
-        ops.push_back(op);
+        this->ops.push_back(op);
         // copy align info
         if (node.alignment_schedule_info.count(op)) {
-          alignment_schedule_info[op] = node.alignment_schedule_info.at(op);
+          this->alignment_schedule_info[op] =
+              node.alignment_schedule_info.at(op);
         }
       }
     }
 
-    if (group_kind < node.group_kind) {
-      group_kind = node.group_kind;
+    if (this->group_kind < node.group_kind) {
+      this->group_kind = node.group_kind;
     }
 
     if ((node.group_kind == cinn::hlir::framework::kReduction) ||
         (node.group_kind == cinn::hlir::framework::kBroadcast)) {
-      loop_ranges = node.loop_ranges;
+      this->loop_ranges = node.loop_ranges;
     }
     if (node.group_kind == cinn::hlir::framework::kReduction) {
-      reduce_axis = node.reduce_axis;
+      this->reduce_axis = node.reduce_axis;
     }
 
     if ((ops.size() == 1) && (ops.front()->name() == "cinn_op.reshape")) {
-      loop_ranges = node.loop_ranges;
+      this->loop_ranges = node.loop_ranges;
     }
   }
 
@@ -194,7 +196,7 @@ struct GroupClusterNode {
                     const ScheduleInfoNode& pre_sch_node) {
     std::unordered_set<::pir::Operation*> inner_ops(ops.begin(), ops.end());
 
-    for (auto op : node.ops) {
+    for (const auto& op : node.ops) {
       if (!inner_ops.count(op)) {
         this->ops.push_back(op);
         // copy align info
@@ -220,8 +222,8 @@ std::vector<::pir::Value> GenerateOutputValue(
     const std::vector<::pir::Operation*>& ops,
     const std::unordered_map<::pir::Value, size_t>& outside_need_value) {
   std::vector<::pir::Value> temp_out;
-  for (auto& op : ops) {
-    if (op->name() == "cf.yield") {
+  for (const auto& op : ops) {
+    if (op->isa<pir::YieldOp>()) {
       continue;
     }
 
@@ -264,7 +266,7 @@ std::vector<pir::Type> BuildOutType(
     const std::vector<::pir::Value>& output_value) {
   std::vector<pir::Type> output_types;
 
-  for (auto& value : output_value) {
+  for (const auto& value : output_value) {
     output_types.emplace_back(value.type());
   }
 
@@ -408,21 +410,22 @@ bool CanFuse(const GroupClusterNode& first,
 
 std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
                               std::vector<std::vector<int>>* pre_ids_ptr) {
+  // sort node list by topological sort
+  // TODO(phlrain): One node may have two pre node, need update here
   auto& node_list = *node_list_ptr;
   auto& pre_ids = *pre_ids_ptr;
-  std::unordered_map<::pir::Value, size_t> all_output_values;
-  for (auto& node : node_list) {
+  std::unordered_map<::pir::Value, size_t> in_out_values;
+  for (const auto& node : node_list) {
     auto node_outside_input = node.GetOutsideInput();
-    for (auto& val : node_outside_input) {
-      size_t id = all_output_values.size();
-      all_output_values.emplace(val, id);
+    for (const auto& val : node_outside_input) {
+      size_t id = in_out_values.size();
+      in_out_values.emplace(val, id);
     }
   }
 
   std::vector<std::vector<pir::Value>> output_values_list;
-  for (auto& node : node_list) {
-    output_values_list.push_back(
-        GenerateOutputValue(node.ops, all_output_values));
+  for (const auto& node : node_list) {
+    output_values_list.push_back(GenerateOutputValue(node.ops, in_out_values));
   }
 
   std::vector<std::vector<int>> next_ids;
@@ -433,7 +436,7 @@ std::vector<int> SortNodeList(std::vector<GroupClusterNode>* node_list_ptr,
         continue;
       }
 
-      auto pre_out_list = output_values_list[i];
+      const auto& pre_out_list = output_values_list[i];
       auto next_in_set = node_list[j].GetOutsideInput();
 
       for (auto val : pre_out_list) {
@@ -592,9 +595,71 @@ bool ShouldOutputPreNode(
   return false;
 }
 
-std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+std::vector<GroupClusterNode> NodeMergeWithNode(
+    const std::vector<GroupClusterNode>& first_stage_output) {
+  // stage 2 merge
+  // for now we merge node in same pass
+  // only for vertial fuse
+  std::vector<GroupClusterNode> second_stage_output = first_stage_output;
+  while (true) {
+    bool fused = false;
+    std::vector<GroupClusterNode> temp_out;
 
+    std::set<int> fused_index;
+
+    std::vector<std::vector<int>> pre_ids_info;
+    auto sort_list = SortNodeList(&second_stage_output, &pre_ids_info);
+
+    std::reverse(sort_list.begin(), sort_list.end());
+    for (auto node_index : sort_list) {
+      if (fused_index.count(node_index)) {
+        continue;
+      }
+      const auto& node = second_stage_output[node_index];
+      const auto& pre_ids = pre_ids_info[node_index];
+
+      GroupClusterNode new_node = node;
+
+      for (auto pre_id : pre_ids) {
+        // get pre id
+
+        if (fused_index.count(pre_id)) {
+          continue;
+        }
+
+        // can new_node merge with pre_id node
+        const auto& pre_node = second_stage_output[pre_id];
+
+        ScheduleInfoNode sch_node;
+        auto can_fuse = CanFuse(pre_node, new_node, &sch_node);
+
+        if (can_fuse) {
+          // merge pre node to new_node
+          new_node.MergeNode(pre_node, sch_node);
+
+          fused_index.insert(pre_id);
+          fused = true;
+        } else {
+          temp_out.insert(temp_out.begin(), pre_node);
+        }
+      }
+      temp_out.insert(temp_out.end(), new_node);
+    }
+
+    if (temp_out.size() >= second_stage_output.size()) {
+      break;
+    }
+    second_stage_output.swap(temp_out);
+    if (fused == false) {
+      break;
+    }
+  }
+
+  return second_stage_output;
+}
+
+std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
+  // op merge with op
   auto inner_values = GetInnerGeneValue(group_op.GetOperators());
 
   std::unordered_map<::pir::Operation*, GroupClusterNode> op_path;
@@ -612,6 +677,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     }
   }
 
+  // first stage op fuse op
   for (auto* op : op_list) {
     if (op->isa<::pir::YieldOp>()) {
       continue;
@@ -651,6 +717,8 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     if (yield_output_ops.count(op) ||
         cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op) ==
             cinn::hlir::framework::kReduction) {
+      // TODO(phlrain): yiled output no nedd to push into first stage output,
+      // Update here
       if (!first_output_ops.count(op)) {
         first_stage_output.push_back(op_path[op]);
         first_output_ops.insert(op);
@@ -658,66 +726,19 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
     }
   }
 
+  return first_stage_output;
+}
+
+std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
+  // stage 1
+  auto first_stage_output = OpMergeWithOp(group_op);
+
   if (first_stage_output.size() <= 1) {
     return first_stage_output;
   }
-  // stage 2 merge
-  // for now we merge node in same pass
-  // only for vertial fuse
-  std::vector<GroupClusterNode> second_stage_output = first_stage_output;
-  while (true) {
-    bool fused = false;
-    std::vector<GroupClusterNode> temp_out;
 
-    std::set<int> fused_index;
-
-    std::vector<std::vector<int>> pre_ids_info;
-    auto sort_list = SortNodeList(&second_stage_output, &pre_ids_info);
-
-    std::reverse(sort_list.begin(), sort_list.end());
-    for (auto node_index : sort_list) {
-      if (fused_index.count(node_index)) {
-        continue;
-      }
-      auto& node = second_stage_output[node_index];
-      auto& pre_ids = pre_ids_info[node_index];
-
-      GroupClusterNode new_node = node;
-
-      for (auto pre_id : pre_ids) {
-        // get pre id
-
-        if (fused_index.count(pre_id)) {
-          continue;
-        }
-
-        // can new_node merge with pre_id node
-        auto& pre_node = second_stage_output[pre_id];
-
-        ScheduleInfoNode sch_node;
-        auto can_fuse = CanFuse(pre_node, new_node, &sch_node);
-
-        if (can_fuse) {
-          // merge pre node to new_node
-          new_node.MergeNode(pre_node, sch_node);
-
-          fused_index.insert(pre_id);
-          fused = true;
-        } else {
-          temp_out.insert(temp_out.begin(), pre_node);
-        }
-      }
-      temp_out.insert(temp_out.end(), new_node);
-    }
-
-    if (temp_out.size() >= second_stage_output.size()) {
-      break;
-    }
-    second_stage_output.swap(temp_out);
-    if (fused == false) {
-      break;
-    }
-  }
+  // stage 2
+  auto second_stage_output = NodeMergeWithNode(first_stage_output);
 
   if (second_stage_output.size() == 1) {
     return second_stage_output;
@@ -734,6 +755,49 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   return sorted_out;
 }
 
+std::vector<::pir::Operation*> SortByOriginalOrderAndUniq(
+    cinn::dialect::GroupOp group_op,
+    const std::vector<::pir::Operation*>& ops) {
+  size_t index = 0;
+  std::unordered_map<pir::Operation*, size_t> op2order_value;
+
+  for (auto op : group_op.GetOperators()) {
+    op2order_value[op] = index++;
+  }
+
+  std::vector<pir::Operation*> tmp_ops(ops);
+  std::sort(tmp_ops.begin(),
+            tmp_ops.end(),
+            [&op2order_value](pir::Operation* a, pir::Operation* b) {
+              return op2order_value.at(a) < op2order_value.at(b);
+            });
+
+  std::unique(tmp_ops.begin(), tmp_ops.end());
+
+  return tmp_ops;
+}
+
+std::unordered_map<::pir::Value, size_t> BuildValueOrderByYieldOp(
+    const std::vector<GroupClusterNode>& node_list,
+    cinn::dialect::GroupOp group_op) {
+  std::unordered_map<::pir::Value, size_t> all_output_values;
+  auto yield_op = group_op.GetOperators().back();
+  for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+    size_t id = all_output_values.size();
+    all_output_values.emplace(yield_op->operand_source(i), id);
+  }
+
+  for (size_t i = 0; i < node_list.size(); ++i) {
+    auto node_outside_input = node_list[i].GetOutsideInput();
+    for (const auto& val : node_outside_input) {
+      size_t id = all_output_values.size();
+      all_output_values.emplace(val, id);
+    }
+  }
+
+  return all_output_values;
+}
+
 }  // namespace
 
 class CinnGroupClusterPattern
@@ -746,71 +810,34 @@ class CinnGroupClusterPattern
     ::pir::IrMapping ir_mapping;
 
     auto group_outside_input = GetListOutsideInput(group_op.GetOperators());
+    // insert initial input to ir mapping
     for (auto val : group_outside_input) {
       ir_mapping.Add(val, val);
     }
 
-    std::unordered_map<::pir::Value, size_t> all_output_values;
-    auto yield_op = group_op.GetOperators().back();
-    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      size_t id = all_output_values.size();
-      all_output_values.emplace(yield_op->operand_source(i), id);
-    }
-
     auto split_res = GroupSplit(group_op);
-    // need sort split res
+
+    auto all_output_values = BuildValueOrderByYieldOp(split_res, group_op);
 
     for (auto& node : split_res) {
-      auto node_outside_input = node.GetOutsideInput();
-      for (auto& val : node_outside_input) {
-        size_t id = all_output_values.size();
-        all_output_values.emplace(val, id);
-      }
-    }
+      auto output_values = GenerateOutputValue(node.ops, all_output_values);
+      auto uniq_ops = SortByOriginalOrderAndUniq(group_op, node.ops);
 
-    size_t index = 0;
-    std::unordered_map<pir::Operation*, size_t> op_order;
+      auto new_group_op = ReplaceWithGroupOp(
+          &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
-    for (auto op1 : group_op.GetOperators()) {
-      op_order[op1] = index++;
-    }
-
-    for (auto& node : split_res) {
-      auto output_value = GenerateOutputValue(node.ops, all_output_values);
-      std::vector<pir::Operation*> tmp_ops(node.ops.begin(), node.ops.end());
-      std::sort(tmp_ops.begin(),
-                tmp_ops.end(),
-                [&op_order](pir::Operation* a, pir::Operation* b) {
-                  return op_order.at(a) < op_order.at(b);
-                });
-
-      std::unique(tmp_ops.begin(), tmp_ops.end());
-
-      auto node_outside_input = node.GetOutsideInput();
-
-      auto insert_point = ReplaceWithGroupOp(
-          &rewriter, tmp_ops, node, output_value, &ir_mapping);
-
-      for (size_t i = 0; i < output_value.size(); ++i) {
-        ir_mapping.Add(output_value[i], insert_point->result(i));
+      // update ir mapping
+      for (size_t i = 0; i < output_values.size(); ++i) {
+        ir_mapping.Add(output_values[i], new_group_op->result(i));
       }
 
-      std::unordered_set<::pir::Value> local_outs(output_value.begin(),
-                                                  output_value.end());
-
-      int local_index = 0;
-
-      std::unordered_map<::pir::Value, size_t> value_order;
-      for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-        value_order[yield_op->operand_source(i)] = i;
-      }
-
-      for (size_t i = 0; i < output_value.size(); ++i) {
-        if (value_order.count(output_value[i])) {
-          // replace
-          rewriter.ReplaceAllUsesWith(
-              group_op.result(value_order.at(output_value[i])),
-              insert_point->result(i));
+      for (size_t i = 0; i < output_values.size(); ++i) {
+        auto find_it = all_output_values.find(output_values[i]);
+        if ((find_it != all_output_values.end()) &&
+            (find_it->second < group_op->num_results())) {
+          // id < num_results means yiled input
+          rewriter.ReplaceAllUsesWith(group_op.result(find_it->second),
+                                      new_group_op->result(i));
         }
       }
     }
