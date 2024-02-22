@@ -2118,3 +2118,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
         return Stop(state="Return")
+
+    def RETURN_CONST(self, instr: Instruction):
+        ret_const = self._co_consts[instr.arg]
+        self._graph.start_compile(ret_const)
+        self._graph.pycode_gen.gen_return()
+        self.new_code = self._graph.pycode_gen.gen_pycode()
+        return Stop(state="Return")
