@@ -234,6 +234,7 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::DataOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
+    paddle::dialect::PyLayerOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
 };
@@ -648,6 +649,13 @@ void HandleForSpecialOp(pir::Operation* op,
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
     }
+  } else if (op->isa<paddle::dialect::PyLayerOp>()) {
+    auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
+
+    for (size_t i = 0; i < pylayer_op->num_results(); ++i) {
+      auto pylayer_op_out_value = pylayer_op->result(i);
+      BuildValue(pylayer_op_out_value, var_name_prefix, value_exe_info);
+    }
   } else if (op->isa<paddle::dialect::WhileOp>()) {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
@@ -807,7 +815,14 @@ void BuildRuntimeContext(pir::Operation* op,
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
-    runtime_ctx->inputs[legacy_attr_name].push_back(var);
+    if (var->IsType<VariableRefArray>()) {
+      for (auto single_var : var->Get<VariableRefArray>()) {
+        runtime_ctx->inputs[legacy_attr_name].push_back(
+            const_cast<framework::Variable*>(single_var));
+      }
+    } else {
+      runtime_ctx->inputs[legacy_attr_name].push_back(var);
+    }
   }
 
   auto& output_name_list = op_yaml_info.OutputNames();

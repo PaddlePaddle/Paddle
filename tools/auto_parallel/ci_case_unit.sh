@@ -52,10 +52,17 @@ main() {
     elif [[ $exec_case =~ "dygraph_unit_test" ]];then
         cd ${dygraph_case_path}
         case_list_unit
-    elif [[ $exec_case =~ "test_semi_auto_parallel_hybrid_strategy" ]];then
+    elif [[ $exec_case =~ "test_semi_auto_parallel_llama_model" ]];then
         cd ${auto_case_path}
         export PYTHONPATH=../..:$PYTHNPATH
-        python test_semi_auto_parallel_hybrid_strategy.py >>${log_path}/$exec_case 2>&1
+        python test_semi_auto_parallel_llama_model.py >>${log_path}/$exec_case 2>&1
+        if [ $? -eq 0 ]; then
+            tail -n 10 ${log_path}/$exec_case
+        fi
+    elif [[ $exec_case =~ "test_semi_auto_parallel_llama_model_amp" ]];then
+        cd ${auto_case_path}
+        export PYTHONPATH=../..:$PYTHNPATH
+        python test_semi_auto_parallel_llama_model_amp.py >>${log_path}/$exec_case 2>&1
         if [ $? -eq 0 ]; then
             tail -n 10 ${log_path}/$exec_case
         fi

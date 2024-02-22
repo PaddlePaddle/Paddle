@@ -21,8 +21,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
-#include <errno.h>
-#include <stdio.h>
+#include <cerrno>
+#include <cstdio>
 
 namespace phi {
 namespace distributed {
