@@ -50,8 +50,15 @@ __current_device_type__ = None
 def get_current_device_type():
     global __current_device_type__
     if __current_device_type__ is None:
-        current_device = _current_expected_place_()
-        device_type = current_device.get_device_type()
+        if paddle.is_compiled_with_cuda():
+            device_type = "gpu"
+        elif paddle.is_compiled_with_xpu():
+            device_type = "xpu"
+        elif paddle.is_compiled_with_custom_device():
+            current_device = _current_expected_place_()
+            device_type = current_device.get_device_type()
+        else:
+            device_type = "unknown"
         assert (
             device_type in alignment.keys()
         ), f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
