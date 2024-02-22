@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -263,19 +263,35 @@ class RecordedGpuMallocHelper {
     CUDADeviceGuard guard(dev_id_);
 
     std::call_once(set_cudamempoolattr_once_flag_, [&]() {
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaDeviceGetDefaultMemPool(&memPool_, dev_id_));
+#else  // PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipDeviceGetDefaultMemPool(&memPool_, dev_id_));
+#endif
       uint64_t thresholdVal = FLAGS_cuda_memory_async_pool_realease_threshold;
       VLOG(10) << "[cudaMallocAsync] set cudaMemPoolAttrReleaseThreshold to "
                << thresholdVal;
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemPoolSetAttribute(memPool_,
                                   cudaMemPoolAttrReleaseThreshold,
                                   reinterpret_cast<void *>(&thresholdVal)));
+#else  // PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemPoolSetAttribute(memPool_,
+                                  hipMemPoolAttrReleaseThreshold,
+                                  reinterpret_cast<void *>(&thresholdVal)));
+#endif
     });
 
     gpuError_t result;
+#ifdef PADDLE_WITH_CUDA
     result = cudaMallocAsync(ptr, size, stream);
+#else  // PADDLE_WITH_HIP
+    result = hipMallocAsync(ptr, size, stream);
+#endif
     VLOG(10) << "[cudaMallocAsync] ptr = " << (*ptr)
              << " size = " << static_cast<double>(size) / (1 << 20)
              << " MB result = " << result << " stream = " << stream;
@@ -344,11 +360,15 @@ class RecordedGpuMallocHelper {
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
+#ifdef PADDLE_WITH_CUDA
     auto err = cudaFreeAsync(ptr, stream);
+#else  // PADDLE_WITH_HIP
+    auto err = hipFreeAsync(ptr, stream);
+#endif
     VLOG(10) << "[cudaFreeAsync] ptr = " << ptr
              << " size =" << static_cast<double>(size) / (1 << 20)
              << " MB result = " << err << " stream = " << stream;
-    if (err != cudaErrorCudartUnloading) {
+    if (err != gpuErrorCudartUnloading) {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);

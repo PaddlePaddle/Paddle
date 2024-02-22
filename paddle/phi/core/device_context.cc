@@ -15,7 +15,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"

@@ -39,7 +39,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
-#if CUDA_VERSION < 11000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11000
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
 using cudaFunction_t = void *;
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
@@ -110,7 +110,7 @@ class CUDAKernelParams {
   void **kernelParams;
 };
 
-using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
+using cudaGraphExecuterSetter_t = std::function<void(gpuGraphExec_t)>;
 
 //  ** class CUDAGraphNodeLauncher
 //
@@ -153,7 +153,7 @@ class CUDAGraphNodeLauncher {
   //      kernel<<<>>>(id, ...);  // Launching the kernel with id
   //      return cudaFunc;
   //  };
-  using cudaKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
+  using cudaKernelCallback_t = std::function<gpuFunction_t(unsigned int)>;
 
   //  [Kernel Launch]
   //  With the callbacks defined and the CUDA function obtained, the kernel can
@@ -162,7 +162,7 @@ class CUDAGraphNodeLauncher {
                         cudaKernelCallback_t cudakernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
-      cudaGraph_t graph);
+      gpuGraph_t graph);
 
   parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
 
@@ -178,11 +178,11 @@ class CUDAGraphNodeLauncher {
   unsigned int GenerateIdentifier() { return id++; }
 
   unsigned int id;
-  std::unordered_map<cudaFunction_t, std::map<unsigned int, parameterSetter_t>>
+  std::unordered_map<gpuFunction_t, std::map<unsigned int, parameterSetter_t>>
       parameterSetters;
 };
 
-#if CUDA_VERSION >= 10010
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 #else
 enum cudaStreamCaptureMode {
@@ -261,8 +261,8 @@ class CUDAGraph {
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
 
   static void BeginCapture(phi::GPUPlace place,
-                           cudaStream_t stream,
-                           cudaStreamCaptureMode mode);
+                           gpuStream_t stream,
+                           gpuStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
 
   static void BeginSegmentCapture();
@@ -291,9 +291,9 @@ class CUDAGraph {
   static bool IsValidCapturing();
 
   static bool IsThreadLocalCapturing() {
-#if CUDA_VERSION >= 10010
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     return IsCapturing() &&
-           capturing_graph_->capture_mode_ == cudaStreamCaptureModeThreadLocal;
+           capturing_graph_->capture_mode_ == gpuStreamCaptureModeThreadLocal;
 #else
     return false;
 #endif
@@ -321,12 +321,12 @@ class CUDAGraph {
   static CUDAGraphID UniqueID();
 
  private:
-#if CUDA_VERSION >= 10010
-  std::vector<cudaGraph_t> graphs_;
-  std::vector<cudaGraphExec_t> exec_graphs_;
-  cudaStreamCaptureMode capture_mode_;
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
+  std::vector<gpuGraph_t> graphs_;
+  std::vector<gpuGraphExec_t> exec_graphs_;
+  gpuStreamCaptureMode capture_mode_;
 #endif
-  cudaStream_t stream_{nullptr};
+  gpuStream_t stream_{nullptr};
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
@@ -362,15 +362,19 @@ class CUDAGraph {
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
-#if CUDA_VERSION >= 10010
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
 class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
+      gpuStreamCaptureMode mode = gpuStreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
+#ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(hipThreadExchangeStreamCaptureMode(&mode));
+#endif
       // After cudaThreadExchangeStreamCaptureMode is called,
       // the variable "mode" would be set to the old capturing mode.
       old_mode_ = mode;
@@ -380,12 +384,16 @@ class CUDAGraphCaptureModeGuard {
   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(
+#ifdef PADDLE_WITH_CUDA
           cudaThreadExchangeStreamCaptureMode(&old_mode_));
+#else
+          hipThreadExchangeStreamCaptureMode(&old_mode_));
+#endif
     }
   }
 
  private:
-  cudaStreamCaptureMode old_mode_;
+  gpuStreamCaptureMode old_mode_;
 };
 #else
 class CUDAGraphCaptureModeGuard {
@@ -393,7 +401,7 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
+      gpuStreamCaptureMode mode = gpuStreamCaptureModeRelaxed) {}
 };
 #endif
 

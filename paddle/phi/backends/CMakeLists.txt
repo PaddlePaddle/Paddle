@@ -9,9 +9,9 @@ endif()
 
 if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
-       gpu/gpu_resources.cc)
+       gpu/gpu_resources.cc gpu/gpu_graph.cc)
   if(WITH_GPU)
-    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)

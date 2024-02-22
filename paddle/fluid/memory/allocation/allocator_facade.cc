@@ -40,7 +40,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -48,6 +48,10 @@
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/fluid/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"  // NOLINT
 #endif
 #endif
 
