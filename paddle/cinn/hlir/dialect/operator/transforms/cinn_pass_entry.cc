@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_pass_entry.h"
 
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
@@ -50,11 +49,9 @@ COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(check_infer_symbolic);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
-namespace paddle::pybind {
+namespace cinn::dialect::ir {
 
-namespace {
-
-static bool HasDynamicShape(const pir::Program &program) {
+bool HasDynamicShape(const pir::Program &program) {
   for (const auto &op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
       continue;
@@ -71,8 +68,6 @@ static bool HasDynamicShape(const pir::Program &program) {
   }
   return false;
 }
-
-}  // namespace
 
 void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
                  pir::Program &program) {                          // NOLINT
@@ -142,14 +137,4 @@ void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
 #endif
 }
 
-void InferSymbolicShapePass(
-    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
-    pir::Program &program) {                          // NOLINT
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
-}
-
-}  // namespace paddle::pybind
+}  // namespace cinn::dialect::ir

@@ -15,3 +15,13 @@ if(NOT CINN_ONLY)
                   ${cinn_transforms_deps})
 
 endif()
+
+set(CINN_PASS_ENTRY_DEPS op_dialect pir)
+
+if(WITH_CINN)
+  set(CINN_PASS_ENTRY_DEPS ${CINN_PASS_ENTRY_DEPS} cinn_op_dialect cinnapi
+                           pir_transforms cinn_transforms)
+endif()
+
+cinn_cc_library(cinn_pass_entry SRCS cinn_pass_entry.cc DEPS
+                ${CINN_PASS_ENTRY_DEPS})
