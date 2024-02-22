@@ -666,6 +666,18 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
   }
   return res;
 }
+
+bool WhileOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  VLOG(3) << "############ WhileOp::InferSymbolicShape start...";
+  pir::Program *body_program = body().parent_program();
+  VLOG(3) << "##### WhileOp::InferSymbolicShape: sub_program id = "
+          << body_program->module_op().operation()->id();
+
+  pir::InferSymExprForBlock(body(), shape_analysis);
+  return true;
+}
+
 std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
