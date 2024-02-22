@@ -2154,7 +2154,10 @@ def OpGenerator(
                             "data_format_tensors"
                         ]
                         op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
-                        op["attrs"] = op["attrs"] + onednn_item["attrs"]
+                        if onednn_item["attrs"] is not None:
+                            op["attrs"] = op["attrs"] + onednn_item["attrs"]
+                        else:
+                            op["attrs"] = op["attrs"]
                 elif op['name'] in ops_onednn_extra_map:
                     onednn_item = ops_onednn_extra_map[op['name']]
                     op["is_onednn_only"] = onednn_item["is_onednn_only"]
