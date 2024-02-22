@@ -33,6 +33,7 @@ find_package(CUDA)
 set(CUDA_NVCC_FLAGS
     -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)
+set(CMAKE_BUILD_TYPE "Release")
 file(GLOB all_cutlass_conv2d_cu
      "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
 list(APPEND all_cutlass_conv2d_cu "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_util.cu")
