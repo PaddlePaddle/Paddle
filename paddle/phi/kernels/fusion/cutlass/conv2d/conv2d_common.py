@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
-sys.path.append("../")
+dirname, filename = os.path.split(os.path.abspath(sys.argv[0]))
+sys.path.append(dirname + "/../")
 from util import SubstituteTemplate
 
 # For beginners, these template parameters may be difficult to understand.
@@ -90,14 +92,8 @@ CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
-  auto ctx = params.ctx;
-  auto stream = ctx->stream();
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-       phi::memory_utils::Alloc(
-          ctx->GetPlace(),
-          bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  void *workspace = tmp_gpu_ptrs_data->ptr();
+auto stream = params.stream;
+void *workspace = params.workspace;
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
@@ -122,7 +118,7 @@ std::vector<std::function<cutlass::Status(const ConvAllParams)>>
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(const ConvAllParams& params) {
+void ${func_name}(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -161,7 +157,7 @@ void ${func_name}(const ConvAllParams& params) {
 # this function is invoked by phi kernel
 
 CommonWrapperForPhi = """
-void ${op_name}(const ConvAllParams& params) {
+void ${op_name}(ConvAllParams params) {
     ${dispatch_body}
 }
 """
