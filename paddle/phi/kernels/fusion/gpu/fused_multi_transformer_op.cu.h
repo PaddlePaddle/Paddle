@@ -101,14 +101,11 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
       stream = comm_ctx->GetStream();
 
       VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
+    } else {
+      comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
+      stream = ctx.stream();
+      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
     }
-    // else {
-    //   comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id,
-    //   place);
-
-    //   stream = ctx.stream();
-    //   VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
-    // }
     if (comm_ctx) {
       comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
     } else {

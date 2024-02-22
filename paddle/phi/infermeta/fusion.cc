@@ -1085,21 +1085,21 @@ void FusedMultiTransformerInferMeta(
     const std::vector<const MetaTensor*>& ln_scales,
     const std::vector<const MetaTensor*>& ln_biases,
     const std::vector<const MetaTensor*>& qkv_weights,
-    const std::vector<const MetaTensor*>& qkv_biases,
-    const std::vector<const MetaTensor*>& cache_kvs,
-    const std::vector<const MetaTensor*>& pre_caches,
+    const paddle::optional<std::vector<const MetaTensor*>>& qkv_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
+    const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
     const MetaTensor& rotary_tensor,
     const MetaTensor& time_step,
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
     const std::vector<const MetaTensor*>& out_linear_weights,
-    const std::vector<const MetaTensor*>& out_linear_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& out_linear_biases,
     const std::vector<const MetaTensor*>& ffn_ln_scales,
     const std::vector<const MetaTensor*>& ffn_ln_biases,
     const std::vector<const MetaTensor*>& ffn1_weights,
-    const std::vector<const MetaTensor*>& ffn1_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn1_biases,
     const std::vector<const MetaTensor*>& ffn2_weights,
-    const std::vector<const MetaTensor*>& ffn2_biases,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -1143,9 +1143,9 @@ void FusedMultiTransformerInferMeta(
           x_dim,
           y_dim));
 
-  if (!cache_kvs.empty()) {
+  if (cache_kvs) {
     // [2, batch_size, num_head, max_seq_len, head_size]
-    const auto& c_dim = cache_kvs[0]->dims();
+    const auto& c_dim = cache_kvs.get()[0]->dims();
 
     PADDLE_ENFORCE_EQ(
         c_dim.size(),

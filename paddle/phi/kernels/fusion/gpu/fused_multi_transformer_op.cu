@@ -32,21 +32,21 @@ void FusedMultiTransformerKernel(
     const std::vector<const DenseTensor *> &ln_scales,
     const std::vector<const DenseTensor *> &ln_biases,
     const std::vector<const DenseTensor *> &qkv_weights,
-    const std::vector<const DenseTensor *> &qkv_biases,
-    const std::vector<const DenseTensor *> &cache_kvs,
-    const std::vector<const DenseTensor *> &pre_caches,
+    const paddle::optional<std::vector<const DenseTensor *>> &qkv_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &cache_kvs,
+    const paddle::optional<std::vector<const DenseTensor *>> &pre_caches,
     const paddle::optional<DenseTensor> &rotary_tensor,
     const paddle::optional<DenseTensor> &time_step,
     const paddle::optional<DenseTensor> &seq_lengths,
     const paddle::optional<DenseTensor> &src_mask,
     const std::vector<const DenseTensor *> &out_linear_weights,
-    const std::vector<const DenseTensor *> &out_linear_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &out_linear_biases,
     const std::vector<const DenseTensor *> &ffn_ln_scales,
     const std::vector<const DenseTensor *> &ffn_ln_biases,
     const std::vector<const DenseTensor *> &ffn1_weights,
-    const std::vector<const DenseTensor *> &ffn1_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_biases,
     const std::vector<const DenseTensor *> &ffn2_weights,
-    const std::vector<const DenseTensor *> &ffn2_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_biases,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -132,7 +132,8 @@ void FusedMultiTransformerKernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  bool compute_bias = !qkv_biases.empty() && time_step_t == nullptr;
+  bool compute_bias =
+      qkv_biases && !qkv_biases.get().empty() && time_step_t == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
   // compute_bias as false.
@@ -155,8 +156,8 @@ void FusedMultiTransformerKernel(
   auto fmha_compute =
       FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
   int cache_offset = 0;
-  if (pre_caches.size() > 0) {
-    cache_offset = pre_caches[0]->dims()[3];
+  if (pre_caches && pre_caches.get().size() > 0) {
+    cache_offset = pre_caches.get()[0]->dims()[3];
   }
 
   auto out_seq_len = seq_len;
@@ -344,7 +345,7 @@ void FusedMultiTransformerKernel(
 
     // step2. qkv
     const phi::DenseTensor *qkv_bias =
-        !qkv_biases.empty() ? qkv_biases[i] : nullptr;
+        qkv_biases && !qkv_biases.get().empty() ? qkv_biases.get()[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
     const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
@@ -362,7 +363,7 @@ void FusedMultiTransformerKernel(
 
     // step3. fmha
     const phi::DenseTensor *cache_kv =
-        cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+        cache_kvs && cache_kvs.get().size() > 0 ? cache_kvs.get()[i] : nullptr;
     phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
     if (time_step_t) {  // generation decoder stage
@@ -385,7 +386,8 @@ void FusedMultiTransformerKernel(
               1. / std::sqrt(dim_head));
     } else if (cache_kv_out) {  // generation context stage
       const phi::DenseTensor *pre_cache_kv_tensor =
-          pre_caches.size() > 0 ? pre_caches[i] : nullptr;
+          pre_caches && pre_caches.get().size() > 0 ? pre_caches.get()[i]
+                                                    : nullptr;
       phi::DenseTensor *pre_cache_kv_out_tmp =
           cache_offset > 0 ? &pre_cache_kv_out : nullptr;
       phi::DenseTensor *src_mask_tmp =
@@ -547,7 +549,7 @@ void FusedMultiTransformerKernel(
     if (pre_layer_norm) {
       auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
       auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
-      auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+      auto *out_linear_bias_data = out_linear_biases.get()[i]->data<T>();
 
       // inplace
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
@@ -565,7 +567,7 @@ void FusedMultiTransformerKernel(
     } else {
       auto *ln_scale_data = ln_scales[i]->data<U>();
       auto *ln_bias_data = ln_biases[i]->data<U>();
-      auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+      auto *out_linear_bias_data = out_linear_biases.get()[i]->data<T>();
       auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           dev_ctx,
@@ -585,8 +587,12 @@ void FusedMultiTransformerKernel(
 #endif
 
     // step6. ffn matmul1
-    ffn1_cublas_linear.ComputeForward(
-        buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, act_method);
+    ffn1_cublas_linear.ComputeForward(buf1,
+                                      ffn1_weights[i],
+                                      ffn1_biases.get()[i],
+                                      nullptr,
+                                      &ffn1_out,
+                                      act_method);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
     VLOG(0) << "step6";
@@ -624,7 +630,7 @@ void FusedMultiTransformerKernel(
             dev_ctx,
             buf1->data<T>(),
             bias_dropout_residual_out_data,
-            ffn2_biases[i]->data<T>(),
+            ffn2_biases.get()[i]->data<T>(),
             ln_scale_data,
             ln_bias_data,
             buf1->data<T>(),
@@ -637,7 +643,7 @@ void FusedMultiTransformerKernel(
             dev_ctx,
             buf1->data<T>(),
             bias_dropout_residual_out_data,
-            ffn2_biases[i]->data<T>(),
+            ffn2_biases.get()[i]->data<T>(),
             buf1->data<T>(),
             dropout_mask_out_data);
       }
@@ -648,7 +654,7 @@ void FusedMultiTransformerKernel(
           dev_ctx,
           buf0->data<T>(),
           buf1->data<T>(),
-          ffn2_biases[i]->data<T>(),
+          ffn2_biases.get()[i]->data<T>(),
           ln_scale_data,
           ln_bias_data,
           buf0->data<T>(),
@@ -694,21 +700,21 @@ void FusedMultiTransformerKernel(
     const std::vector<const DenseTensor *> &ln_scales,
     const std::vector<const DenseTensor *> &ln_biases,
     const std::vector<const DenseTensor *> &qkv_weights,
-    const std::vector<const DenseTensor *> &qkv_biases,
-    const std::vector<const DenseTensor *> &cache_kvs,
-    const std::vector<const DenseTensor *> &pre_caches,
+    const paddle::optional<std::vector<const DenseTensor *>> &qkv_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &cache_kvs,
+    const paddle::optional<std::vector<const DenseTensor *>> &pre_caches,
     const paddle::optional<DenseTensor> &rotary_tensor,
     const paddle::optional<DenseTensor> &time_step,
     const paddle::optional<DenseTensor> &seq_lengths,
     const paddle::optional<DenseTensor> &src_mask,
     const std::vector<const DenseTensor *> &out_linear_weights,
-    const std::vector<const DenseTensor *> &out_linear_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &out_linear_biases,
     const std::vector<const DenseTensor *> &ffn_ln_scales,
     const std::vector<const DenseTensor *> &ffn_ln_biases,
     const std::vector<const DenseTensor *> &ffn1_weights,
-    const std::vector<const DenseTensor *> &ffn1_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_biases,
     const std::vector<const DenseTensor *> &ffn2_weights,
-    const std::vector<const DenseTensor *> &ffn2_biases,
+    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_biases,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -796,7 +802,8 @@ void FusedMultiTransformerKernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  bool compute_bias = !qkv_biases.empty() && time_step_t == nullptr;
+  bool compute_bias =
+      qkv_biases && !qkv_biases.get().empty() && time_step_t == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
   // set compute_bias as false.
@@ -819,8 +826,8 @@ void FusedMultiTransformerKernel(
   auto fmha_compute =
       FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
   int cache_offset = 0;
-  if (pre_caches.size() > 0) {
-    cache_offset = pre_caches[0]->dims()[3];
+  if (pre_caches && pre_caches.get().size() > 0) {
+    cache_offset = pre_caches.get()[0]->dims()[3];
   }
 
   auto out_seq_len = seq_len;
@@ -1018,7 +1025,7 @@ void FusedMultiTransformerKernel(
 
     // step2. qkv
     const phi::DenseTensor *qkv_bias =
-        !qkv_biases.empty() ? qkv_biases[i] : nullptr;
+        qkv_biases && !qkv_biases.get().empty() ? qkv_biases.get()[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
     const phi::DenseTensor *bias = time_step_t ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
@@ -1036,7 +1043,7 @@ void FusedMultiTransformerKernel(
 
     // step3. fmha
     const phi::DenseTensor *cache_kv =
-        cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+        cache_kvs && cache_kvs.get().size() > 0 ? cache_kvs.get()[i] : nullptr;
     phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
     if (time_step_t) {  // generation decoder stage
@@ -1059,7 +1066,8 @@ void FusedMultiTransformerKernel(
               1. / std::sqrt(dim_head));
     } else if (cache_kv_out) {  // generation context stage
       const phi::DenseTensor *pre_cache_kv_tensor =
-          pre_caches.size() > 0 ? pre_caches[i] : nullptr;
+          pre_caches && pre_caches.get().size() > 0 ? pre_caches.get()[i]
+                                                    : nullptr;
       phi::DenseTensor *pre_cache_kv_out_tmp =
           cache_offset > 0 ? &pre_cache_kv_out : nullptr;
       phi::DenseTensor *src_mask_tmp =
@@ -1222,7 +1230,7 @@ void FusedMultiTransformerKernel(
     if (pre_layer_norm) {
       auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
       auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
-      auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+      auto *out_linear_bias_data = out_linear_biases.get()[i]->data<T>();
 
       // inplace
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
@@ -1240,7 +1248,7 @@ void FusedMultiTransformerKernel(
     } else {
       auto *ln_scale_data = ln_scales[i]->data<U>();
       auto *ln_bias_data = ln_biases[i]->data<U>();
-      auto *out_linear_bias_data = out_linear_biases[i]->data<T>();
+      auto *out_linear_bias_data = out_linear_biases.get()[i]->data<T>();
       auto *residual_data = (i == 0 ? x_data : buf1->data<T>());
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           dev_ctx,
@@ -1270,7 +1278,7 @@ void FusedMultiTransformerKernel(
     // TODO(wangxi): remove dropout mask in inference
     fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                             ffn1_out_data,
-                                            ffn1_biases[i]->data<T>(),
+                                            ffn1_biases.get()[i]->data<T>(),
                                             act_method,
                                             ffn1_dropout_out_data,
                                             ffn1_dropout_mask_data);
@@ -1309,7 +1317,7 @@ void FusedMultiTransformerKernel(
             dev_ctx,
             buf1->data<T>(),
             bias_dropout_residual_out_data,
-            ffn2_biases[i]->data<T>(),
+            ffn2_biases.get()[i]->data<T>(),
             ln_scale_data,
             ln_bias_data,
             buf1->data<T>(),
@@ -1322,7 +1330,7 @@ void FusedMultiTransformerKernel(
             dev_ctx,
             buf1->data<T>(),
             bias_dropout_residual_out_data,
-            ffn2_biases[i]->data<T>(),
+            ffn2_biases.get()[i]->data<T>(),
             buf1->data<T>(),
             dropout_mask_out_data);
       }
@@ -1333,7 +1341,7 @@ void FusedMultiTransformerKernel(
           dev_ctx,
           buf0->data<T>(),
           buf1->data<T>(),
-          ffn2_biases[i]->data<T>(),
+          ffn2_biases.get()[i]->data<T>(),
           ln_scale_data,
           ln_bias_data,
           buf0->data<T>(),

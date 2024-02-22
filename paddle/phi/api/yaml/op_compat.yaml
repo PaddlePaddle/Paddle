@@ -3562,6 +3562,31 @@
   outputs :
     {out : Out, intermediate_out : IntermediateOut}
 
+- op: fused_multi_transformer
+  inputs:
+    x: X
+    ln_scales: LnScale
+    ln_biases: LnBias
+    qkv_weights: QKVW
+    qkv_biases: QKVBias
+    cache_kvs: CacheKV
+    pre_caches: PreCaches
+    rotary_tensor: RotaryPosEmb
+    time_step: TimeStep
+    seq_lengths: SeqLengths
+    src_mask: SrcMask
+    out_linear_weights: OutLinearW
+    out_linear_biases: OutLinearBias
+    ffn_ln_scales: FFNLnScale
+    ffn_ln_biases: FFNLnBias
+    ffn1_weights: FFN1Weight
+    ffn1_biases: FFN1Bias
+    ffn2_weights: FFN2Weight
+    ffn2_biases: FFN2Bias
+  outputs:
+    out: Out
+    cache_kv_outs: CacheKVOut
+
 - op: fusion_squared_mat_sub
   inputs :
     x : X
