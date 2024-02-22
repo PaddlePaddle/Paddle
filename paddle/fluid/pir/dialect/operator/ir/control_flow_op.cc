@@ -315,21 +315,21 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
   // infer false block
   pir::InferSymExprForBlock(false_block(), shape_analysis);
 
+  auto GetSymExprForBlockResult =
+      [shape_analysis](const pir::Operation &op,
+                       uint32_t idx) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  };
+
   // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
   // result_num == 0 should be supported in future
   if (num_results() > 0) {
-    auto GetSymExprForBlockResult =
-        [shape_analysis](const pir::Operation &op,
-                         uint32_t idx) -> const std::vector<symbol::DimExpr> & {
-      const auto &shape_or_data =
-          shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
-      if (shape_or_data.data().has_value()) {
-        return shape_or_data.data().value();
-      } else {
-        return shape_or_data.shape();
-      }
-    };
-
     for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
       const auto &true_dims =
           GetSymExprForBlockResult(true_block().back(), rst_idx);
