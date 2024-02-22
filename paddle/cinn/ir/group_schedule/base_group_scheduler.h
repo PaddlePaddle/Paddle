@@ -70,15 +70,17 @@ class GroupScheduler {
 
     schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
 
-    auto vec_axis = group_tile_info_->reduce_axis_;
+    if (group_tile_info_) {
+      auto vec_axis = group_tile_info_->reduce_axis_;
 
-    // reduce axis have be re-order to last
-    int32_t reduce_start_idx = group_tile_info_->data_rank - vec_axis.size();
-    for (int32_t i = 0; i < group_tile_info_->data_rank; ++i) {
-      if (i >= reduce_start_idx) {
-        vec_reduce_axis.push_back(i);
-      } else {
-        vec_flatten_axis.push_back(i);
+      // reduce axis have be re-order to last
+      int32_t reduce_start_idx = group_tile_info_->data_rank - vec_axis.size();
+      for (int32_t i = 0; i < group_tile_info_->data_rank; ++i) {
+        if (i >= reduce_start_idx) {
+          vec_reduce_axis.push_back(i);
+        } else {
+          vec_flatten_axis.push_back(i);
+        }
       }
     }
   }

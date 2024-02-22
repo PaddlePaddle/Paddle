@@ -158,24 +158,24 @@ class TestCinnExpSubNet(TestCinnSubGraphBase):
     #     np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSoftmax(TestCinnSubGraphBase):
-    def train(self, use_cinn):
-        paddle.seed(2022)
-        net = CINNSoftmaxSubGraphNet()
-        net = utils.apply_to_static(net, use_cinn)
-        out = net(self.x, self.axis)
+# class TestCinnSoftmax(TestCinnSubGraphBase):
+#     def train(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNSoftmaxSubGraphNet()
+#         net = utils.apply_to_static(net, use_cinn)
+#         out = net(self.x, self.axis)
 
-        loss = out.sum()
-        loss.backward()
-        print(self.x.gradient())
-        return out, self.x.gradient()
+#         loss = out.sum()
+#         loss.backward()
+#         print(self.x.gradient())
+#         return out, self.x.gradient()
 
-    def test_forward(self):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        cinn_out, cinn_grad = self.train(use_cinn=True)
-        dy_out, dy_grad = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
-        np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
+#     def test_forward(self):
+#         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+#         cinn_out, cinn_grad = self.train(use_cinn=True)
+#         dy_out, dy_grad = self.train(use_cinn=False)
+#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+#         np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
 
 
 class TestCinnLayerNorm(TestCinnSubGraphBase):

@@ -363,7 +363,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::Broadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
