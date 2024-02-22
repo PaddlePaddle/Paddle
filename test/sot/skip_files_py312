@@ -16,7 +16,5 @@
 ./test_min_graph_size.py
 ./test_side_effects.py
 ./test_sot_cost_model.py
-./test_sot_export.py
 ./test_sot_resnet.py
 ./test_sot_resnet50_backward.py
-./test_str_format.py
