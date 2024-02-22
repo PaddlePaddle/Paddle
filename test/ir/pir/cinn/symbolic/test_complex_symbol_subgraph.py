@@ -36,10 +36,10 @@ class ComplexSymbolSubgraph(nn.Layer):
             self.hidden_size, self.intermediate_size, bias_attr=False
         )
 
-    def forward(self, x):
-        y = paddle.concat([x, x, x], 1)
-        z = self.linear(y)
-        return paddle.exp(z) - z
+    def forward(self, a, b):
+        c = paddle.concat([a, a, b], 1)
+        d = self.linear(c)
+        return paddle.exp(d) - d
 
 
 class TestComplexSymbolSubgraph(unittest.TestCase):
@@ -61,10 +61,11 @@ class TestComplexSymbolSubgraph(unittest.TestCase):
         net = ComplexSymbolSubgraph()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
+            InputSpec(shape=[1, None, 768], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.hidden_states)
+        out = net(self.hidden_states, self.hidden_states)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
