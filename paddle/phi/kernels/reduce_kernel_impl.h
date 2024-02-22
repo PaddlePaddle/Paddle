@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,19 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
+#include "paddle/phi/core/kernel_context.h"
 
-#include <vector>
+namespace phi {
 
-#include "paddle/fluid/framework/variable.h"
+bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx);
 
-namespace paddle {
-namespace framework {
+bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx);
 
-class Variable;
-
-TEST_API void InitializeVariable(Variable* var, proto::VarType::Type var_type);
-void CopyVariable(const Variable& src_var, Variable* dst_var);
-
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace phi
