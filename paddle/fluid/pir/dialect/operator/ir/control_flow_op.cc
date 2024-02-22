@@ -309,24 +309,72 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
 }
 
 bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(3) << "############ IfOp::InferSymbolicShape start...";
-  VLOG(3) << "##### IfOp::InferSymbolicShape: t_program id = "
-          << true_block().parent_program()->module_op().operation()->id();
-  VLOG(3) << "##### IfOp::InferSymbolicShape: f_program id = "
-          << false_block().parent_program()->module_op().operation()->id();
-
   // infer true block
   pir::InferSymExprForBlock(true_block(), shape_analysis);
 
   // infer false block
   pir::InferSymExprForBlock(false_block(), shape_analysis);
 
-  auto &true_last_op = true_block().back();
-  shape_analysis->SetShapeOrDataForValue(
-      result(0),
-      shape_analysis->GetShapeOrDataForValue(true_last_op.operand_source(0)));
+  // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
+  // result_num == 0 should be supported in future
+  if (num_results() > 0) {
+    auto GetSymExprForBlockResult =
+        [shape_analysis](const pir::Operation &op,
+                         uint32_t idx) -> const std::vector<symbol::DimExpr> & {
+      const auto &shape_or_data =
+          shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
+      if (shape_or_data.data().has_value()) {
+        return shape_or_data.data().value();
+      } else {
+        return shape_or_data.shape();
+      }
+    };
 
-  return true;
+    for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+      const auto &true_dims =
+          GetSymExprForBlockResult(true_block().back(), rst_idx);
+      const auto &false_dims =
+          GetSymExprForBlockResult(false_block().back(), rst_idx);
+
+      // merge shape for true and false block, new symbol will be assigned when
+      // the dims is not equal in true and false block, even if the dims are all
+      // constant, since we don't know which will be returned in compile time
+      // examples:
+      // true_block    false_block    return
+      // [1, 128]       [1, 256]      [1, S0]
+      // [1, S0]        [1, S1]       [1, S2]
+      // [1, S0]        [S1, S2]      [S1, S3]
+      // [1, S0]        [1, S0]       [1, S0]
+
+      std::vector<symbol::DimExpr> out_dims = true_dims;
+      if (false_dims.size() != 0) {
+        // now only support results of true and false block have same rank.
+        PADDLE_ENFORCE_EQ(true_dims.size(),
+                          false_dims.size(),
+                          phi::errors::PreconditionNotMet(
+                              "The true and false block should have same rank, "
+                              "but got true_rank(%d) and false_rank(%d)",
+                              true_dims.size(),
+                              false_dims.size()));
+        for (size_t i = 0; i < true_dims.size(); i++) {
+          if (true_dims[i] != false_dims[i]) {
+            out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+          }
+        }
+      }
+
+      shape_analysis->SetShapeOrDataForValue(
+          result(rst_idx),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(out_dims)});
+    }
+
+    return true;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("IfOp::InferSymbolicShape: now only "
+                                   "support num_results() == 1."));
+  }
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT

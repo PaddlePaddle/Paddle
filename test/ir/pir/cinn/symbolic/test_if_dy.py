@@ -35,11 +35,14 @@ class IfSubgraph(nn.Layer):
         y = paddle.exp(x)
         return y - x
 
-    def forward(self, x):
+    def forward(self, x, y):
         if x.shape[-1] > 1:
             x = self.exp_sub(x)
+        else:
+            y = paddle.abs(y)
         x = paddle.nn.functional.relu(x)
-        return x
+        y = paddle.logical_not(y)
+        return x, y
 
 
 class TestIfSubgraph(unittest.TestCase):
@@ -52,6 +55,10 @@ class TestIfSubgraph(unittest.TestCase):
         self.x = paddle.randn(self.shape, dtype="float32")
         self.x.stop_gradient = False
 
+        self.y_shape = [2, 256]
+        self.y = paddle.randn(self.y_shape, dtype="float32")
+        self.y.stop_gradient = False
+
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
@@ -59,21 +66,25 @@ class TestIfSubgraph(unittest.TestCase):
     def eval(self, use_cinn):
         net = IfSubgraph()
         input_spec = [
-            InputSpec(shape=[None, None], dtype="bool"),
+            InputSpec(shape=[None, None], dtype="float32"),
+            InputSpec(shape=[None, None], dtype="float32"),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x)
+        out = net(self.x, self.y)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
+        dy_out_x, dy_out_y = self.eval(use_cinn=False)
         if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
+            cinn_out_x, cinn_out_y = self.eval(use_cinn=True)
             np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+                cinn_out_x.numpy(), dy_out_x.numpy(), atol=1e-6, rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                cinn_out_y.numpy(), dy_out_y.numpy(), atol=1e-6, rtol=1e-6
             )
 
 
