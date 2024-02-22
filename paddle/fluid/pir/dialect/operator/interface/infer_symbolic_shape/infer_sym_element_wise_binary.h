@@ -16,6 +16,9 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+bool InferSymbolicShapeElementWiseBinary(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 namespace paddle::dialect {
 bool AddOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis);
