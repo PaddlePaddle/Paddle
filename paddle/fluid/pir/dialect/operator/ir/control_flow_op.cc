@@ -680,12 +680,35 @@ bool WhileOp::InferSymbolicShape(
   VLOG(3) << "##### WhileOp::InferSymbolicShape: sub_program id = "
           << body_program->module_op().operation()->id();
 
+  for (auto &value : block_args()) {
+    std::vector<symbol::DimExpr> sym_dims;
+    const std::vector<int64_t> &dims =
+        common::vectorize(value.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    for (auto dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == pir::ShapedTypeInterface::kDynamic) {
+        symbol::DimExpr symbolic_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = symbolic_dim_expr;
+      } else {
+        symbol::DimExpr numeric_dim_expr(dim);
+        dim_expr = numeric_dim_expr;
+      }
+      sym_dims.push_back(dim_expr);
+    }
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_dims)};
+    shape_analysis->SetShapeOrDataForValue(value, shape_data);
+  }
+
   pir::InferSymExprForBlock(body(), shape_analysis);
 
   const auto &last_op = body().back();
-  shape_analysis->SetShapeOrDataForValue(
-      result(0),
-      shape_analysis->GetShapeOrDataForValue(last_op.operand_source(0)));
+  for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
+    shape_analysis->SetShapeOrDataForValue(
+        result(i - 1),
+        shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
 
   return true;
 }
