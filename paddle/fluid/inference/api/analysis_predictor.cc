@@ -46,6 +46,7 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"

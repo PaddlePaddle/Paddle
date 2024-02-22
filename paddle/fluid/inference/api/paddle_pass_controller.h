@@ -23,7 +23,7 @@
 
 #include "paddle_infer_declare.h"  // NOLINT
 ///
-/// \file paddle_pass_manager.h
+/// \file paddle_pass_controller.h
 ///
 
 /// \namespace paddle

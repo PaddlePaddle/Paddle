@@ -1413,7 +1413,7 @@ struct PD_INFER_DECL AnalysisConfig {
   friend class paddle_infer::experimental::InternalUtils;
 
   // pass controller
-  bool use_pass_controller_{true};
+  bool use_pass_controller_{false};
   // fleet exe related
   DistConfig dist_config_{};
 

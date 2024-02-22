@@ -11,13 +11,19 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#ifdef PADDLE_WITH_TENSORRT
-#include "paddle/fluid/inference/tensorrt/helper.h"
-#endif
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
+namespace paddle_infer {
+int GetTrtVersion() {
+  auto trt_runtime_version = GetTrtRuntimeVersion();
+  return std::get<0>(trt_runtime_version) * 1000 +
+         std::get<1>(trt_runtime_version) * 100 +
+         std::get<2>(trt_runtime_version);
+  return 0;
+}
+}  // namespace paddle_infer
 namespace paddle {
-namespace inference {
 std::vector<std::string> GetClosedPasses(
     const std::vector<std::string> &origin_passes,
     const std::vector<std::string> &ctrl_passes) {
@@ -30,6 +36,7 @@ std::vector<std::string> GetClosedPasses(
   }
   return closed_passes;
 }
+
 TEST(GPU, gpu_pass_ctrl_test_fp32) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0, AnalysisConfig::Precision::kHalf);
@@ -63,10 +70,7 @@ TEST(TRT, trt_pass_ctrl_test_fp16) {
                                        config.use_gpu(),
                                        config.tensorrt_engine_enabled());
   auto closed_passes = GetClosedPasses(orgin_passes, ctrl_passes);
-  auto trt_runtime_ver = paddle::inference::tensorrt::GetTrtRuntimeVersion();
-  auto trt_runtime_version = std::get<0>(trt_runtime_ver) * 1000 +
-                             std::get<1>(trt_runtime_ver) * 100 +
-                             std::get<2>(trt_runtime_ver);
+  auto trt_runtime_version = paddle_infer::GetTrtVersion();
   if (trt_runtime_version >= 8600) {
     ASSERT_EQ(closed_passes.size(), size_t(10));
     auto it = std::find(closed_passes.begin(),
@@ -127,10 +131,7 @@ TEST(TRT, trt_pass_ctrl_test_fp32) {
                                        static_cast<int64_t>(0),
                                        config.use_gpu(),
                                        config.tensorrt_engine_enabled());
-  auto trt_runtime_ver = paddle::inference::tensorrt::GetTrtRuntimeVersion();
-  auto trt_runtime_version = std::get<0>(trt_runtime_ver) * 1000 +
-                             std::get<1>(trt_runtime_ver) * 100 +
-                             std::get<2>(trt_runtime_ver);
+  auto trt_runtime_version = paddle_infer::GetTrtVersion();
   auto closed_passes = GetClosedPasses(orgin_passes, ctrl_passes);
   if (trt_runtime_version >= 8600) {
     ASSERT_EQ(closed_passes.size(), size_t(9));
@@ -173,5 +174,4 @@ TEST(TRT, trt_pass_ctrl_test_fp32) {
   }
 }
 
-}  // namespace inference
 }  // namespace paddle
