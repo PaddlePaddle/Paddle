@@ -1113,7 +1113,7 @@ class Resharder:
         self._has_sent = {}
         self._has_recv = {}
         self._has_allgather = {}
-        # to avoid reshard repeatly
+        # to avoid reshard repeatedly
         self._has_resharded = {}
 
     @property

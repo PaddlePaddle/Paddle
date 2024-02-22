@@ -85,7 +85,3 @@ TEST(Pool2dOpConverter, avg_ceil_test) { test_pool2d(true, true, "avg"); }
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
-USE_OP_ITSELF(pool2d);
-PD_DECLARE_KERNEL(pool2d, OneDNN, ONEDNN);
-PD_DECLARE_KERNEL(pool2d, CPU, ALL_LAYOUT);

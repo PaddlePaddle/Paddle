@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -24,9 +25,8 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {
@@ -52,7 +52,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentAMPState(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
@@ -399,7 +399,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentAMPState(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }

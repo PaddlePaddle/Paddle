@@ -521,7 +521,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-      "quant_dequant_xpu_pass",
+      // "quant_dequant_xpu_pass", open this pass when use old int8 model
       "delete_quant_dequant_linear_op_pass",
       "delete_weight_dequant_linear_op_pass",
       "delete_assign_op_pass",

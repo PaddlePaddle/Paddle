@@ -25,7 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -79,6 +79,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::RequantizeOp::name(),
+    paddle::onednn::dialect::MultiGruOp::name(),
 #endif
     CReduceMinOp::name(),
     PushSparseV2Op::name()};
@@ -188,6 +189,7 @@ static std::unordered_map<
 
            if (element_type == AttrType::BOOL) {
              std::vector<bool> vec_bools;
+             vec_bools.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_bools.push_back(
                    vec_element.dyn_cast<pir::BoolAttribute>().data());
@@ -195,6 +197,7 @@ static std::unordered_map<
              return VariantType{vec_bools};
            } else if (element_type == AttrType::INT32) {
              std::vector<int> vec_int32;
+             vec_int32.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_int32.push_back(
                    vec_element.dyn_cast<pir::Int32Attribute>().data());
@@ -202,6 +205,7 @@ static std::unordered_map<
              return VariantType{vec_int32};
            } else if (element_type == AttrType::INT64) {
              std::vector<int64_t> vec_int64;
+             vec_int64.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_int64.push_back(
                    vec_element.dyn_cast<pir::Int64Attribute>().data());
@@ -209,6 +213,7 @@ static std::unordered_map<
              return VariantType{vec_int64};
            } else if (element_type == AttrType::FLOAT) {
              std::vector<float> vec_float;
+             vec_float.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_float.push_back(
                    vec_element.dyn_cast<pir::FloatAttribute>().data());
@@ -216,6 +221,7 @@ static std::unordered_map<
              return VariantType{vec_float};
            } else if (element_type == AttrType::DOUBLE) {
              std::vector<double> vec_double;
+             vec_double.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_double.push_back(
                    vec_element.dyn_cast<pir::DoubleAttribute>().data());
@@ -223,6 +229,7 @@ static std::unordered_map<
              return VariantType{vec_double};
            } else if (element_type == AttrType::STRING) {
              std::vector<std::string> vec_string;
+             vec_string.reserve(attr_vec.size());
              for (auto vec_element : attr_vec) {
                vec_string.push_back(
                    vec_element.dyn_cast<pir::StrAttribute>().AsString());
@@ -237,6 +244,11 @@ static std::unordered_map<
 };
 
 VariantType GetAttributeData(const pir::Attribute& attr) {
+  AttrType attr_type = GetAttributeType(attr);
+  return kAttrCastMap[attr_type](attr);
+}
+
+paddle::any TransAttrToAny(const pir::Attribute& attr) {
   AttrType attr_type = GetAttributeType(attr);
   return kAttrCastMap[attr_type](attr);
 }
@@ -395,15 +407,33 @@ void CheckValueDataType(const pir::Value& value,
   DoValueCheck(value, input_name, expected_dtype, op_name);
 }
 
+bool IsSameDataTypeForValues(const std::vector<pir::Value>& vector_value) {
+  if (vector_value.size() <= 1) {
+    return true;
+  }
+  auto dtype = GetValueDataType(vector_value[0]);
+  for (size_t i = 1; i < vector_value.size(); ++i) {
+    if (GetValueDataType(vector_value[i]) != dtype) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name) {
   VLOG(6) << "CheckVectorOfValueDataType for " << op_name
           << ", input: " << input_name;
-  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-  for (auto& value : vector_value) {
-    DoValueCheck(value, input_name, expected_dtype, op_name);
+  if (vector_value.size() == 0) {
+    return;
   }
+  if (!IsSameDataTypeForValues(vector_value)) {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "All the Values in the input must have the same data type."));
+  }
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  DoValueCheck(vector_value[0], input_name, expected_dtype, op_name);
 }
 
 void CheckDataType(const phi::DataType& dtype,
@@ -439,41 +469,47 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
   }
 }
 
-std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+std::vector<int64_t> ParseValueShape(const pir::Value& shape,
                                      bool* is_from_tensor) {
   std::vector<int64_t> vec_shape;
-  if (shape_.isa<pir::OpResult>() &&
-      shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+  if (shape.isa<pir::OpResult>() &&
+      shape.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
     vec_shape = paddle::dialect::GetInt64Vector(
-        shape_.defining_op()
+        shape.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"));
-  } else if (shape_.isa<pir::OpResult>() &&
-             shape_.defining_op()->isa<paddle::dialect::StackOp>()) {
-    std::vector<pir::Value> inputs = shape_.defining_op()
-                                         ->operand_source(0)
-                                         .defining_op()
-                                         ->operands_source();
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+    auto shape_item = shape.defining_op()
+                          ->dyn_cast<paddle::dialect::FullOp>()
+                          .attribute("value")
+                          .dyn_cast<pir::FloatAttribute>()
+                          .data();
+    vec_shape = {static_cast<int64_t>(shape_item)};
+  } else if (shape.isa<pir::OpResult>() &&
+             shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+    std::vector<pir::Value> inputs =
+        shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
       auto tmp = ParseValueShape(item, is_from_tensor);
       vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
     }
-  } else if (shape_.type().isa<pir::VectorType>()) {
-    size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
+  } else if (shape.type().isa<pir::VectorType>()) {
+    size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
-  } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
+  } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
     common::DDim shape_dim =
-        shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+        shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     size_t shape_size = common::product(shape_dim);
     if (common::contain_unknown_dim(shape_dim)) {
       shape_size = 1;
     }
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
-  } else if (shape_.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+  } else if (shape.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     common::DDim shape_dim =
-        shape_.type()
+        shape.type()
             .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
             .dims();
     size_t shape_size = common::product(shape_dim);

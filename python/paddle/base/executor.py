@@ -684,7 +684,7 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
     )
 
 
-def _get_program_cache_key(feed, fetch_list):
+def _get_feed_fetch_var_names(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
@@ -692,7 +692,11 @@ def _get_program_cache_key(feed, fetch_list):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-    return str(feed_var_names + fetch_var_names)
+    return feed_var_names + fetch_var_names
+
+
+def _get_program_cache_key(feed, fetch_list):
+    return str(_get_feed_fetch_var_names(feed, fetch_list))
 
 
 def _as_lodtensor(data, place, dtype=None):
@@ -1028,7 +1032,7 @@ class _ExecutorCache:
 
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
-            skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
+            skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
@@ -1055,7 +1059,7 @@ class _ExecutorCache:
                 # if enables distributed training with prim mechanism (prim is behind of distributed)
                 # step 1: translate program to pir program.
                 # step 2: decompose PHI ops in pir program into prim ops.
-                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding corresponding forward op.
                 if (
                     os.getenv("FLAGS_enable_prim_after_distribute")
                     in ['True', 'true', '1']
@@ -1410,7 +1414,7 @@ class Executor:
     @classmethod
     def _split_optimize_ops_in_fetch_list(cls, fetch_list):
         """
-        Split optimize_ops from fetch_list, which provided to specify program prunning.
+        Split optimize_ops from fetch_list, which provided to specify program pruning.
         Args:
             fetch_list(list): The original fetch_list.
             Possible types of fetch_list are:
@@ -1666,7 +1670,7 @@ class Executor:
                 and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
-                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
+                If the parameter is True, the program will be pruned according to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.

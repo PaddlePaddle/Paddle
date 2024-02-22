@@ -415,7 +415,7 @@ class Layer:
         self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
-        # Records orignal functions after @to_static to support to rollback
+        # Records original functions after @to_static to support to rollback
         self._original_funcs = collections.OrderedDict()
 
     def train(self):
@@ -2264,7 +2264,11 @@ class Layer:
         # 4. share Tensor to origin param / Tensor
         dst_tensor = t.value().get_tensor()
         src_tensor = new_t.value().get_tensor()
-        dst_tensor._share_data_with(src_tensor)
+        if t._is_initialized():
+            dst_tensor._share_data_with(src_tensor)
+        else:
+            # If the tensor is not initialized, we can't check the memory size.
+            dst_tensor._share_data_nocheck_with(src_tensor)
 
         return t
 

@@ -417,11 +417,11 @@ def search_all(tuner_cfg):
         f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
     )
     if tuner_cfg.get("schedule_prior", False):
-        pruned_all_cfgs = sort_by_sepecial(pruned_all_cfgs, tuner_cfg)
+        pruned_all_cfgs = sort_by_special(pruned_all_cfgs, tuner_cfg)
     return pruned_all_cfgs
 
 
-def sort_by_sepecial(cfgs, tuner_cfg):
+def sort_by_special(cfgs, tuner_cfg):
     assert tuner_cfg.get("schedule_prior", False)
     prior_strategy = tuner_cfg["schedule_prior"]
     prior_strategy.sort(reverse=True)
@@ -613,7 +613,7 @@ def search_by_dp_estimation(tuner_cfg):
         if task not in new_all_cfgs and task["nodes"] <= tuner_cfg["nodes"]:
             new_all_cfgs.append(task)
 
-    # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    # expanding sharding degree to run overlap and non-overlap to calculate overlap benefits
     sharding_all_cfgs = []
     if tuner_cfg["search_algo"].get("sharding_overlap", None):
         for task in new_all_cfgs:
@@ -1678,11 +1678,11 @@ def gbs_default_candidates(tuner_cfg):
         dp_candidate, mp_candidate, pp_candidate = gbs_dp_mp_pp_candidates(
             tuner_cfg, num_gpus, num_nodes
         )
-        sharding_dgree_candidate = dp_candidate
+        sharding_degree_candidate = dp_candidate
         candidates["dp_degree"] = [1]
         candidates["mp_degree"] = [mp_candidate]
         candidates["pp_degree"] = [pp_candidate]
-        candidates["sharding_degree"] = [sharding_dgree_candidate]
+        candidates["sharding_degree"] = [sharding_degree_candidate]
         candidates["sharding_stage"] = [1]
         candidates["use_recompute"] = [False]
         candidates["recompute_granularity"] = [None]

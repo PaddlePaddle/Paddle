@@ -247,7 +247,7 @@ void AttentionLSTMOpMaker::Make() {
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
            "(phi::DenseTensor) the combined bias of LSTM, shape (1x4D)."
-           "Note: we should add the bias of hidden and context accorindg to "
+           "Note: we should add the bias of hidden and context according to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
   AddOutput(
