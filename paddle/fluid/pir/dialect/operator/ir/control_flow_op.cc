@@ -168,6 +168,7 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpResult(op);
   os << " = pd_op.if";
   printer.PrintOpOperands(op);
+  printer.PrintAttributeMap(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{\n";
@@ -309,7 +310,6 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
 
 bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
   VLOG(3) << "############ IfOp::InferSymbolicShape start...";
-  pir::Program *t_program = true_block().parent_program();
   VLOG(3) << "##### IfOp::InferSymbolicShape: t_program id = "
           << true_block().parent_program()->module_op().operation()->id();
   VLOG(3) << "##### IfOp::InferSymbolicShape: f_program id = "
@@ -320,6 +320,12 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
 
   // infer false block
   pir::InferSymExprForBlock(false_block(), shape_analysis);
+
+  auto &true_last_op = true_block().back();
+  shape_analysis->SetShapeOrDataForValue(
+      result(0),
+      shape_analysis->GetShapeOrDataForValue(true_last_op.operand_source(0)));
+
   return true;
 }
 
