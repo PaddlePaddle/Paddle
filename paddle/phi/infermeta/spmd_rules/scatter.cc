@@ -102,7 +102,7 @@ SpmdInfo ScatterInferSpmd(const DistMetaTensor& x,
   LOG_SPMD_INPUT(x);
   LOG_SPMD_INPUT(index);
   LOG_SPMD_INPUT(updates);
-  VLOG(4) << "Out dist_attr: [" << out_dist_attr.to_string() << "]";
+  VLOG(4) << "Out dist_attr: [" << out_dist_attr.to_string() << "]\n\n";
   return {{x_dist_attr_dst, index_dist_attr_dst, updates_dist_attr_dst},
           {out_dist_attr}};
 }
@@ -161,6 +161,7 @@ SpmdInfo ScatterInferSpmdReverse(const DistMetaTensor& x,
   LOG_SPMD_INPUT(x);
   LOG_SPMD_INPUT(index);
   LOG_SPMD_INPUT(updates);
+  VLOG(4) << std::endl;
   return {{x_dist_attr_dst, index_dist_attr_dst, updates_dist_attr_dst},
           {out_dist_attr_dst}};
 }
