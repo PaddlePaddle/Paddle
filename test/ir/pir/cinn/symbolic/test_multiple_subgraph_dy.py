@@ -61,6 +61,7 @@ class TestMultipleSubgraph(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
+        paddle.seed(2024)
         net = MultipleSubgraph()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
@@ -74,11 +75,10 @@ class TestMultipleSubgraph(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
