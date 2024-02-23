@@ -79,11 +79,9 @@ class LLMInt8LinearTestCase(unittest.TestCase):
                 max=127.0,
             )
         ).astype('int8')
-        # import pdb;pdb.set_trace()
         return quant_x, row_ranges
 
     def get_linear_out(self):
-        # out = self.linear(self.x)
         outlier_cols = (
             paddle.nonzero(paddle.max(self.x, axis=[0, 1]) > self.threshold)
             .reshape([-1])
