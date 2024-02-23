@@ -352,9 +352,10 @@ class TestLinearInterpOpAPI2_0_case2(unittest.TestCase):
         x_data = np.random.random((1, 3, 128)).astype("float32")
         with base.dygraph.guard():
             x = paddle.to_tensor(x_data)
-            interp = paddle.nn.functional.upsample(
-                x, size=[64], mode='linear', align_mode=1, align_corners=False
+            up_layer = paddle.nn.Upsample(
+                size=[64], mode='linear', align_mode=1, align_corners=False
             )
+            interp = up_layer(x)
             expect = linear_interp_np(
                 x_data, out_w=64, align_mode=1, align_corners=False
             )

@@ -405,7 +405,7 @@ class Upsample(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(
+        out = F.upsample(
             x,
             size=self.size,
             scale_factor=self.scale_factor,

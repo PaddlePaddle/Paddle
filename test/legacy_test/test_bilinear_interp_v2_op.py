@@ -991,12 +991,10 @@ class TestBilinearInterpOpAPI_dy5(unittest.TestCase):
             expect_res = bilinear_interp_np(
                 input_data, out_h=12, out_w=12, align_corners=False
             )
-            out = paddle.nn.functional.upsample(
-                x=input_x,
-                scale_factor=scale,
-                mode="bilinear",
-                align_corners=False,
+            up_layer = paddle.nn.Upsample(
+                scale_factor=scale, mode="bilinear", align_corners=False
             )
+            out = up_layer(input_x)
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
