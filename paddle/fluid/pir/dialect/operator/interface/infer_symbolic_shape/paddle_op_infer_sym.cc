@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
@@ -1010,7 +1011,21 @@ bool Where_OpInferSymbolicShape(
 
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // This Op has NO InferMeta in yaml, just return true
+  const common::DDim &result_dims =
+      op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+  std::vector<symbol::DimExpr> out_dims;
+  for (int i = 0; i < result_dims.size(); i++) {
+    if (result_dims[i] == -1) {
+      out_dims.emplace_back(shape_analysis->GetNextSymName());
+    } else {
+      out_dims.emplace_back(result_dims[i]);
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
   return true;
 }
 
