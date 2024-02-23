@@ -925,11 +925,11 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             framework._current_expected_place(), framework.core.CPUPlace
         ):
             # TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
-            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy.
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not satisfy.
             # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
             # (2): when used in flask framework, it may result in hang.
             # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
-            # So, we temporally diable the zero_copy strategy.
+            # So, we temporally disable the zero_copy strategy.
             if zero_copy is True:
                 warnings.warn(
                     "Currently, zero_copy is not supported, and it will be discarded."

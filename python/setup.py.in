@@ -399,7 +399,7 @@ def get_paddle_extra_install_requirements():
     paddle_cuda_install_requirements = os.getenv(
         "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
     )
-    if paddle_cuda_install_requirements is not None:
+    if paddle_cuda_install_requirements == "ON":
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -685,9 +685,10 @@ if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
-if len('${FLASHATTN_LIBRARIES}') > 1:
-    package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
-    shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
+if '${WITH_GPU}' == 'ON':
+    if len('${FLASHATTN_LIBRARIES}') > 1:
+        package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
+        shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)

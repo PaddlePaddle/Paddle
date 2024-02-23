@@ -103,7 +103,7 @@ void testFeatureNodeSerializeFloat64() {
   ASSERT_LE(eps * eps, 1e-5);
 }
 
-// void testSingleSampleNeighboor(
+// void testSingleSampleNeighbour(
 //     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
 //   std::vector<std::vector<int64_t>> vs;
 //   std::vector<std::vector<float>> vs1;
