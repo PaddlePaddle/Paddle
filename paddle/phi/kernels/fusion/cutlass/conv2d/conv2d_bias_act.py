@@ -21,7 +21,7 @@ from conv2d_common import (
     CommonTail,
     GenerateFunctionForPhi,
 )
-from util import SubstituteTemplate, TileDesc
+from util import SubstituteTemplate, TileDesc, parse_args
 
 # this is a file's header part
 
@@ -174,6 +174,7 @@ def generate_sm75_1688():
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
         # For a function, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
+        all_kernel_declares = ""
         kernel_dict["epi_func"] = ActTag[epi_func]
         suffix = 0
         for iterator_algorithm in iterator_algorithms:
@@ -203,17 +204,32 @@ def generate_sm75_1688():
                         cba_kernel = cba_kernel_no_alpha
                         if epi_func in [CbaAct.LeakyRelu]:
                             cba_kernel = cba_kernel_alpha
-                        sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
+                        # sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
 
-                        # with open("generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu", "w") as f:
-                        #     f.write(SubstituteTemplate(cba_kernel, kernel_dict))
-                        #     f.close()
+                        with open(
+                            "generated_tmp/"
+                            + kernel_dict["kernel_func_name"]
+                            + ".cu",
+                            "w",
+                        ) as f:
+                            f.write(
+                                cba_header
+                                + SubstituteTemplate(cba_kernel, kernel_dict)
+                                + CommonTail
+                            )
+                            f.close()
 
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
                         )
+                        all_kernel_declares += (
+                            "cutlass::Status "
+                            + kernel_dict["kernel_func_name"]
+                            + "(const ConvAllParams& params);"
+                        )
 
         # Generate op code
+        op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
         sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
@@ -270,6 +286,7 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
         # For a function, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
+        all_kernel_declares = ""
         kernel_dict["epi_func"] = ActTag[epi_func]
         suffix = 0
         for iterator_algorithm in iterator_algorithms:
@@ -313,27 +330,52 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                         cba_kernel = cba_kernel_no_alpha
                         if epi_func in [CbaAct.LeakyRelu]:
                             cba_kernel = cba_kernel_alpha
-                        sm80_code += SubstituteTemplate(cba_kernel, kernel_dict)
+                        # sm80_code += SubstituteTemplate(cba_kernel, kernel_dict)
+
+                        with open(
+                            "generated_tmp/"
+                            + kernel_dict["kernel_func_name"]
+                            + ".cu",
+                            "w",
+                        ) as f:
+                            f.write(
+                                cba_header
+                                + SubstituteTemplate(cba_kernel, kernel_dict)
+                                + CommonTail
+                            )
+                            f.close()
+
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
                         )
 
+                        all_kernel_declares += (
+                            "cutlass::Status "
+                            + kernel_dict["kernel_func_name"]
+                            + "(const ConvAllParams& params);"
+                        )
+
         # Generate op code
+        op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
         sm80_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm80_code
 
 
 if __name__ == "__main__":
-    sm_versions_and_types = [
-        ["75", "fp16"],
-        ["80", "fp16"],
-        ["80", "bf16"],
-    ]
+    sm_versions_and_types = []
+    args = parse_args()
+
     all_code = cba_header
-    all_code += generate_sm75_1688()
-    all_code += generate_sm80_16816()
-    all_code += generate_sm80_16816(cutlass_dtype="cutlass::bfloat16_t")
+    if args.cuda_arch == "75":
+        sm_versions_and_types.append(["75", "fp16"])
+        all_code += generate_sm75_1688()
+    if args.cuda_arch == "80":
+        sm_versions_and_types.append(["80", "fp16"])
+        sm_versions_and_types.append(["80", "bf16"])
+        all_code += generate_sm80_16816()
+        all_code += generate_sm80_16816(cutlass_dtype="cutlass::bfloat16_t")
+
     all_code += GenerateFunctionForPhi(
         sm_versions_and_types, SupportedAct, UnderScoreName, CamelName
     )

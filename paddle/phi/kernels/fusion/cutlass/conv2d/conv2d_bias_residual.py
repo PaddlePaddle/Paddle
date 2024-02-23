@@ -196,6 +196,7 @@ def generate_sm75_1688():
 
         # Generate op code with sm_version
         op_dict["all_kernel_func_name"] = all_kernel_names
+        op_dict["kernel_func_declare"] = ";"
         sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
 

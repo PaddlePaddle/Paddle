@@ -116,6 +116,9 @@ void *workspace = params.workspace;
 # ${enum_op_name} is like CONV2D_BIAS_SILU
 
 CommonConvFunction = """
+
+${kernel_func_declare}
+
 std::vector<std::function<cutlass::Status(const ConvAllParams)>>
     ${func_name}_all_func =  {${all_kernel_func_name}};
 
