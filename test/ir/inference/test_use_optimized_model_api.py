@@ -21,7 +21,7 @@ import paddle
 from paddle.base import core
 from paddle.inference import Config, create_predictor
 
-# -------------------- SkipIrPassTestNet ----------------------
+# -------------------------- TestNet --------------------------
 #            x
 #          /   \
 #     conv2d    \                                  x
@@ -36,7 +36,7 @@ from paddle.inference import Config, create_predictor
 # -------------------------------------------------------------
 
 
-class SkipIrPassTestNet(paddle.nn.Layer):
+class TestNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 6, kernel_size=3, bias_attr=False)
@@ -53,12 +53,12 @@ class SkipIrPassTestNet(paddle.nn.Layer):
         return y
 
 
-class TestSkipIrPassApi(InferencePassTest):
+class UseOptimizedModel(InferencePassTest):
     def setUp(self):
         paddle.disable_static()
-        self.test_model = SkipIrPassTestNet()
+        self.test_model = TestNet()
         self.input_data = (np.ones([1, 3, 32, 32])).astype('float32')
-        self.path_prefix = "inference_test_models/skip_ir_pass_test"
+        self.path_prefix = "inference_test_models/use_optimized_model_test"
         self.cache_dir = "inference_test_models/cache/"
         paddle.jit.save(
             self.test_model,
@@ -68,78 +68,52 @@ class TestSkipIrPassApi(InferencePassTest):
             ],
         )
 
-    def inference_with_ir_pass(self):
+    def test_check_output(self):
         # Config
         config = Config(
             self.path_prefix + ".pdmodel", self.path_prefix + ".pdiparams"
         )
-        config.enable_use_gpu(100, 0)
-        config.enable_tensorrt_engine(
-            workspace_size=1 << 30,
-            max_batch_size=1,
-            min_subgraph_size=1,
-            precision_mode=paddle.inference.PrecisionType.Float32,
-            use_static=True,
-            use_calib_mode=False,
-        )
-        config.set_trt_dynamic_shape_info(
-            {"x": [1, 3, 16, 16]},
-            {"x": [1, 3, 64, 64]},
-            {"x": [1, 3, 32, 32]},
-        )
-        config.exp_disable_tensorrt_ops(["elementwise_add"])
-        config.set_optim_cache_dir(self.cache_dir)
-        config.enable_save_optim_model(True)
-
-        # predictor
-        predictor = create_predictor(config)
-
-        # inference
-        input_tensor = predictor.get_input_handle(
-            predictor.get_input_names()[0]
-        )
-        input_tensor.reshape(self.input_data.shape)
-        input_tensor.copy_from_cpu(self.input_data.copy())
-        predictor.run()
-        output_tensor = predictor.get_output_handle(
-            predictor.get_output_names()[0]
-        )
-        out = output_tensor.copy_to_cpu()
-        out = np.array(out).flatten()
-        return out
-
-    def inference_skip_ir_pass(self):
-        config = Config(
-            self.cache_dir + "_optimized.pdmodel",
-            self.cache_dir + "_optimized.pdiparams",
-        )
-        config.enable_use_gpu(100, 0)
-        config.skip_ir_pass(True)
-
-        # predictor
-        predictor = create_predictor(config)
-
-        # inference
-        input_tensor = predictor.get_input_handle(
-            predictor.get_input_names()[0]
-        )
-        input_tensor.reshape(self.input_data.shape)
-        input_tensor.copy_from_cpu(self.input_data.copy())
-        predictor.run()
-        output_tensor = predictor.get_output_handle(
-            predictor.get_output_names()[0]
-        )
-        out = output_tensor.copy_to_cpu()
-        out = np.array(out).flatten()
-        return out
-
-    def test_check_output(self):
         if core.is_compiled_with_cuda():
-            out_with_ir_pass = self.inference_with_ir_pass()
-            out_wihout_ir_pass = self.inference_skip_ir_pass()
-            np.testing.assert_allclose(
-                out_with_ir_pass, out_wihout_ir_pass, rtol=5e-5, atol=1e-2
+            config.enable_use_gpu(100, 0)
+            config.enable_tensorrt_engine(
+                workspace_size=1 << 30,
+                max_batch_size=1,
+                min_subgraph_size=1,
+                precision_mode=paddle.inference.PrecisionType.Float32,
+                use_static=True,
+                use_calib_mode=False,
             )
+            config.set_trt_dynamic_shape_info(
+                {"x": [1, 3, 16, 16]},
+                {"x": [1, 3, 64, 64]},
+                {"x": [1, 3, 32, 32]},
+            )
+            config.exp_disable_tensorrt_ops(["elementwise_add"])
+        config.set_optim_cache_dir(self.cache_dir)
+        config.use_optimized_model(True)
+        out_origin_model = self.inference(config)
+        out_optimized_model = self.inference(config)
+        np.testing.assert_allclose(
+            out_origin_model, out_optimized_model, rtol=5e-5, atol=1e-2
+        )
+
+    def inference(self, config):
+        # predictor
+        predictor = create_predictor(config)
+
+        # inference
+        input_tensor = predictor.get_input_handle(
+            predictor.get_input_names()[0]
+        )
+        input_tensor.reshape(self.input_data.shape)
+        input_tensor.copy_from_cpu(self.input_data.copy())
+        predictor.run()
+        output_tensor = predictor.get_output_handle(
+            predictor.get_output_names()[0]
+        )
+        out = output_tensor.copy_to_cpu()
+        out = np.array(out).flatten()
+        return out
 
 
 if __name__ == "__main__":

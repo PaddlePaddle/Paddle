@@ -409,6 +409,23 @@ bool AnalysisPredictor::Init(
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
+  // Use Optimized model to inference
+  if (config_.use_optimized_model_) {
+    std::string optimized_model_path = GetOptimizedModelPath();
+    std::string optimized_model = optimized_model_path + ".pdmodel";
+    std::string optimized_params = optimized_model_path + ".pdiparams";
+    if (PathExists(optimized_model) && PathExists(optimized_params)) {
+      config_.SetModel(optimized_model, optimized_params);
+    } else {
+      LOG(INFO) << "The optimized model is not found and will fallback to "
+                   "original model. "
+                   "The witch to save the optimized model will be turned on "
+                   "and the optimized model will be available next time.";
+      config_.EnableSaveOptimModel(true);
+      config_.UseOptimizedModel(false);
+    }
+  }
+
   if (!PrepareScope(parent_scope)) {
     return false;
   }
@@ -546,6 +563,27 @@ void AnalysisPredictor::InitPlace() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+}
+
+std::string AnalysisPredictor::GetOptimizedModelPath() {
+  std::string model_opt_cache_dir = config_.opt_cache_dir_;
+  if (!model_opt_cache_dir.empty()) {
+    if (!PathExists(model_opt_cache_dir)) {
+      PADDLE_ENFORCE_NE(
+          MKDIR(model_opt_cache_dir.c_str()),
+          -1,
+          platform::errors::PreconditionNotMet(
+              "Can not create optimize cache directory: %s, Make sure you "
+              "have permission to write",
+              model_opt_cache_dir));
+    }
+  } else {
+    model_opt_cache_dir =
+        !config_.model_dir().empty()
+            ? config_.model_dir()
+            : inference::analysis::GetDirRoot(config_.prog_file());
+  }
+  return model_opt_cache_dir + "/" + "_optimized";
 }
 
 void AnalysisPredictor::ClearExtraParams() {
@@ -723,7 +761,7 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
-    if (config_.skip_ir_pass_) {
+    if (config_.use_optimized_model_) {
       LoadParameters();
       ClearExtraParams();
 #ifdef PADDLE_WITH_CUDA
@@ -1587,7 +1625,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
-  argument_->SetSkipIrPass(config_.skip_ir_pass_);
   argument_->SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_->SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
@@ -1606,6 +1643,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetModelProgramPath(config_.prog_file());
     argument_->SetModelParamsPath(config_.params_file());
   }
+  argument_->SetOptimizedModelSavePath(GetOptimizedModelPath());
   // For JITLayer
   argument_->SetSkipLoadParams(config_.skip_load_params_);
 
