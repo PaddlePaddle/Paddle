@@ -661,7 +661,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                 np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             interp = interpolate(
                 x, size=[12, 12], mode='bicubic', align_corners=False
             )
