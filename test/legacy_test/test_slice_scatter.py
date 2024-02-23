@@ -264,7 +264,7 @@ class TestSliceScatterApi4DAxis3Float32(TestSliceScatterApi4DAxis3):
         self.dtype = 'float32'
 
 
-class TestSliceScatterApiBroadcase2D(TestSliceScatterApi):
+class TestSliceScatterApiBroadcast2D(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 9]
         self.value_shape = [8, 1]
@@ -274,12 +274,12 @@ class TestSliceScatterApiBroadcase2D(TestSliceScatterApi):
         self.strides = [2]
 
 
-class TestSliceScatterApiBroadcase2DFloat32(TestSliceScatterApiBroadcase2D):
+class TestSliceScatterApiBroadcast2DFloat32(TestSliceScatterApiBroadcast2D):
     def init_dtype(self):
         self.dtype = 'float32'
 
 
-class TestSliceScatterApiBroadcase3D(TestSliceScatterApi):
+class TestSliceScatterApiBroadcast3D(TestSliceScatterApi):
     def init_shape(self):
         self.x_shape = [8, 9, 6]
         self.value_shape = [1, 9, 1]
@@ -289,7 +289,7 @@ class TestSliceScatterApiBroadcase3D(TestSliceScatterApi):
         self.strides = [3, 2]
 
 
-class TestSliceScatterApiBroadcase3DFloat32(TestSliceScatterApiBroadcase3D):
+class TestSliceScatterApiBroadcast3DFloat32(TestSliceScatterApiBroadcast3D):
     def init_dtype(self):
         self.dtype = 'float32'
 

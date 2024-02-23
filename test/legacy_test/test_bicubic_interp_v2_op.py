@@ -674,7 +674,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
 class TestBicubicOpError(unittest.TestCase):
     def test_imperative_errors(self):
-        # the input of interpoalte must be Variable.
+        # the input of interpolate must be Variable.
         x1 = base.create_lod_tensor(
             np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
         )
@@ -687,7 +687,7 @@ class TestBicubicOpError(unittest.TestCase):
             )
 
             out = interpolate(
-                x, size=[12, 12], mode='UNKONWN', align_corners=False
+                x, size=[12, 12], mode='UNKNOWN', align_corners=False
             )
 
         def test_input_shape():
@@ -696,7 +696,7 @@ class TestBicubicOpError(unittest.TestCase):
                 x, size=[12, 12], mode='BICUBIC', align_corners=False
             )
 
-        def test_align_corcers():
+        def test_align_corners():
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
@@ -887,7 +887,7 @@ class TestBicubicOpError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_mode_type)
         self.assertRaises(ValueError, test_input_shape)
-        self.assertRaises(TypeError, test_align_corcers)
+        self.assertRaises(TypeError, test_align_corners)
         self.assertRaises(ValueError, test_attr_data_format)
         self.assertRaises(TypeError, test_actual_shape)
         self.assertRaises(ValueError, test_scale_value)
