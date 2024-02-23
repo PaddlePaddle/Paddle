@@ -80,7 +80,7 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {
-  VLOG(3) << "Call SubPPMeshToGlobalReshardFunction Eval";
+  VLOG(3) << "Call SubMeshToGlobalReshardFunction Eval";
   const TensorDistAttr& in_dist_attr = in.dist_attr();
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
