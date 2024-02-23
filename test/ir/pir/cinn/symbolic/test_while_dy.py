@@ -40,6 +40,7 @@ class WhileExpSub(nn.Layer):
             # x = y - x
             x = paddle.exp(x) - x
             loop_count += 1
+        x = paddle.exp(x)
         return x
 
 

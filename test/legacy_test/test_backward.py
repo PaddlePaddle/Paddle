@@ -378,12 +378,12 @@ class TestAppendBackwardWithError(unittest.TestCase):
 
 
 class TestGradientsWithOptimizer(unittest.TestCase):
-    def _check_grad_op_name(self, forward_list, optimiezed_list):
+    def _check_grad_op_name(self, forward_list, optimized_list):
         backward_list = [op + "_grad" for op in reversed(forward_list)]
-        idx = optimiezed_list.index(backward_list[0], len(backward_list))
+        idx = optimized_list.index(backward_list[0], len(backward_list))
 
         self.assertListEqual(
-            backward_list, optimiezed_list[idx : idx + len(backward_list)]
+            backward_list, optimized_list[idx : idx + len(backward_list)]
         )
 
     def test_gradient_with_optimizer(self):

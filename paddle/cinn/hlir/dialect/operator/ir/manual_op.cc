@@ -268,7 +268,7 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
   if (inputs.empty()) {
-    VLOG(4) << "GenerateShapeOp inputs is empty";
+    VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
       CHECK(attr.isa<pir::Int64Attribute>());
     }

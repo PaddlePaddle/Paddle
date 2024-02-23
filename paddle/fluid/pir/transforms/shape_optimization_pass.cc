@@ -127,7 +127,7 @@ void InferSymExprForBlock(const Block& block,
     auto infer_symbolic_shape_interface =
         op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
-      VLOG(3) << op.name() << " has InferSymbolicShapeInterface.";
+      VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
       PADDLE_ENFORCE(
           infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
           "InferSymbolicShape for %s failed.",
@@ -139,7 +139,8 @@ void InferSymExprForBlock(const Block& block,
             &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
       }
     } else {
-      VLOG(3) << op.name() + " DOES NOT have InferSymbolicShapeInterface!";
+      VLOG(vlog_level) << op.name() +
+                              " DOES NOT have InferSymbolicShapeInterface!";
       PADDLE_THROW(phi::errors::Unimplemented(
           op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
     }
