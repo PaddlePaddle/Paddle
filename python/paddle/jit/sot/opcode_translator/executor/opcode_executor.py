@@ -1495,7 +1495,7 @@ class OpcodeExecutorBase:
         )
 
     def CALL_INTRINSIC_1(self, instr: Instruction):
-        Intrinsic_Func = IntrinsicsUnaryFunctions(instr.arg)
+        intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
         if Intrinsic_Func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
             raise RuntimeError("invalid intrinsic function")
         elif (
