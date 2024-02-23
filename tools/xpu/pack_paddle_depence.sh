@@ -34,16 +34,6 @@ elif [[ $# -eq 7 ]]; then
   XHPC_DIR_NAME=$7
 fi
 
-if [ -f /etc/os-release ]; then
-    OS_ID=$(awk -F= '/^ID=/{gsub("\"", "", $2); print $2}' /etc/os-release)
-    OS_VERSION_ID=$(awk -F= '/^VERSION_ID/{gsub("\"", "", $2); gsub("\\.", "", $2); print $2}' /etc/os-release)
-
-    echo "OS ID: $OS_ID"                      # ubuntu, centos or others
-    echo "OS Version ID: $OS_VERSION_ID"      # 1804, 2004, 7 or others
-else
-    echo "Error: /etc/os-release file not found. Unable to determine OS information."
-fi
-
 BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
 
 mkdir -p xpu/include/xhpc/xblas
@@ -84,22 +74,9 @@ function xhpc_prepare() {
 
 function local_prepare() {
     # xre prepare
-    if [[ ${XRE_DIR_NAME} == *ubuntu* ]]; then
-        # xre ubuntu package name has version number, so do some trick here
-        if [[ ! -d ${LOCAL_PATH}/${XRE_DIR_NAME} ]]; then
-            XRE_TAR_NAME=xre-ubuntu_${OS_VERSION_ID}_x86_64.tar.gz
-            XRE_VER_DIR_NAME=xre-ubuntu_${OS_VERSION_ID}_x86_64
-            tar -zxf  ${LOCAL_PATH}/${XRE_TAR_NAME} -C ${LOCAL_PATH}
-            mv ${LOCAL_PATH}/${XRE_VER_DIR_NAME} ${LOCAL_PATH}/${XRE_DIR_NAME}
-        fi
-    elif [[ ${XRE_DIR_NAME} == *bdcentos* ]]; then
-        if [[ ! -d ${LOCAL_PATH}/${XRE_DIR_NAME} ]]; then
-            XRE_TAR_NAME=${XRE_DIR_NAME}.tar.gz
-            tar -zxf  ${LOCAL_PATH}/${XRE_TAR_NAME} -C ${LOCAL_PATH}
-        fi
-    else
-        echo "unsupport platform for XPaddle right now, please check"
-        exit 1
+    if [[ ! -d ${LOCAL_PATH}/${XRE_DIR_NAME} ]]; then
+        XRE_TAR_NAME=${XRE_DIR_NAME}.tar.gz
+        tar -zxf  ${LOCAL_PATH}/${XRE_TAR_NAME} -C ${LOCAL_PATH}
     fi
 
     # xccl prepare
@@ -140,6 +117,7 @@ if [[ $XRE_URL != *"$BOS_PATTERN"* ]]; then
     build_from="local"
     LOCAL_PATH=$(dirname "$XRE_URL")
     echo "LOCAL_PATH: ${LOCAL_PATH}"
+
     local_prepare
     local_assemble
 else
