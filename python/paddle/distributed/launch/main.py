@@ -457,6 +457,12 @@ def launch():
 
             gbs_cur_cfg = gbs_tuner.search_once()
             best_gbs = None
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "gbs_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
             while gbs_cur_cfg:
                 ctx = copy.deepcopy(raw_ctx)
                 log_dir = "Job{}_GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS{}_Recompute_{}_granularity_{}".format(
@@ -472,11 +478,6 @@ def launch():
                     gbs_cur_cfg["recompute_granularity"],
                 )
                 ctx.args.log_dir = log_dir
-
-                # every task has own job id
-                job_id += 1
-                task_job_id = "gbs_tuner_" + str(job_id)
-                ctx.args.job_id = task_job_id
 
                 # generate script args of task
                 gbs_new_args = gen_new_args(
@@ -617,6 +618,12 @@ def launch():
             )
             cur_cfg["acc_steps"] = acc_steps
             cur_cfg["global_batch_size"] = global_batch_size
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "auto_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
             if "sharding_overlap" in cur_cfg:
                 log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
                     job_id,
@@ -651,11 +658,6 @@ def launch():
             ctx.args.log_dir = os.path.join(
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )
-
-            # every task has own job id
-            job_id += 1
-            task_job_id = "auto_tuner_" + str(job_id)
-            ctx.args.job_id = task_job_id
 
             # generate script args of task
             new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
