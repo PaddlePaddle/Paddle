@@ -24,6 +24,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -167,6 +168,7 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpResult(op);
   os << " = pd_op.if";
   printer.PrintOpOperands(op);
+  printer.PrintAttributeMap(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{\n";
@@ -304,6 +306,75 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
     }
   }
   return res;
+}
+
+bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // infer true block
+  pir::InferSymExprForBlock(true_block(), shape_analysis);
+
+  // infer false block
+  pir::InferSymExprForBlock(false_block(), shape_analysis);
+
+  auto GetSymExprForBlockResult =
+      [shape_analysis](const pir::Operation &op,
+                       uint32_t idx) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  };
+
+  // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
+  // result_num == 0 should be supported in future
+  if (num_results() > 0) {
+    for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+      const auto &true_dims =
+          GetSymExprForBlockResult(true_block().back(), rst_idx);
+      const auto &false_dims =
+          GetSymExprForBlockResult(false_block().back(), rst_idx);
+
+      // merge shape for true and false block, new symbol will be assigned when
+      // the dims is not equal in true and false block, even if the dims are all
+      // constant, since we don't know which will be returned in compile time
+      // examples:
+      // true_block    false_block    return
+      // [1, 128]       [1, 256]      [1, S0]
+      // [1, S0]        [1, S1]       [1, S2]
+      // [1, S0]        [S1, S2]      [S1, S3]
+      // [1, S0]        [1, S0]       [1, S0]
+
+      std::vector<symbol::DimExpr> out_dims = true_dims;
+      if (false_dims.size() != 0) {
+        // now only support results of true and false block have same rank.
+        PADDLE_ENFORCE_EQ(true_dims.size(),
+                          false_dims.size(),
+                          phi::errors::PreconditionNotMet(
+                              "The true and false block should have same rank, "
+                              "but got true_rank(%d) and false_rank(%d)",
+                              true_dims.size(),
+                              false_dims.size()));
+        for (size_t i = 0; i < true_dims.size(); i++) {
+          if (true_dims[i] != false_dims[i]) {
+            out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+          }
+        }
+      }
+
+      shape_analysis->SetShapeOrDataForValue(
+          result(rst_idx),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(out_dims)});
+    }
+
+    return true;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("IfOp::InferSymbolicShape: now only "
+                                   "support num_results() == 1."));
+  }
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
@@ -649,6 +720,47 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
   }
   return res;
 }
+
+bool WhileOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  VLOG(3) << "############ WhileOp::InferSymbolicShape start...";
+  pir::Program *body_program = body().parent_program();
+  VLOG(3) << "##### WhileOp::InferSymbolicShape: sub_program id = "
+          << body_program->module_op().operation()->id();
+
+  for (auto &value : block_args()) {
+    std::vector<symbol::DimExpr> sym_dims;
+    const std::vector<int64_t> &dims =
+        common::vectorize(value.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    for (auto dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == pir::ShapedTypeInterface::kDynamic) {
+        symbol::DimExpr symbolic_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = symbolic_dim_expr;
+      } else {
+        symbol::DimExpr numeric_dim_expr(dim);
+        dim_expr = numeric_dim_expr;
+      }
+      sym_dims.push_back(dim_expr);
+    }
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_dims)};
+    shape_analysis->SetShapeOrDataForValue(value, shape_data);
+  }
+
+  pir::InferSymExprForBlock(body(), shape_analysis);
+
+  const auto &last_op = body().back();
+  for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
+    shape_analysis->SetShapeOrDataForValue(
+        result(i - 1),
+        shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
+
+  return true;
+}
+
 std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
