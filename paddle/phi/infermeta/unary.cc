@@ -2564,6 +2564,18 @@ void MultinomialInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::INT64);
 }
 
+void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
+                                       MetaTensor* out,
+                                       MetaTensor* out_scale,
+                                       MetaTensor* out_state,
+                                       MetaTensor* out_accum) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out_scale->set_dims({1});
+  out_state->set_dims({1});
+  out_accum->set_dims({1});
+}
+
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,

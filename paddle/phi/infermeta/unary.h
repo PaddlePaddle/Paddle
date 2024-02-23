@@ -389,6 +389,12 @@ void MultinomialInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
 
+void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
+                                       MetaTensor* out,
+                                       MetaTensor* out_scale,
+                                       MetaTensor* out_state,
+                                       MetaTensor* out_accum);
+
 void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
