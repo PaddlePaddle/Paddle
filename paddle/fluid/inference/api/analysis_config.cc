@@ -1586,7 +1586,7 @@ void AnalysisConfig::Exp_EnableMixedPrecisionOps(
   mixed_white_list_ = white_list;
 }
 
-void AnalysisConfig::Exp_EnableCINNCompiler() {
+void AnalysisConfig::EnableCINN() {
 #ifdef PADDLE_WITH_CINN
   use_cinn_compiler_ = true;
   Update();

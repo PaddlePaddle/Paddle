@@ -133,9 +133,6 @@
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
-#ifdef PADDLE_WITH_CINN
-COMMON_DECLARE_bool(use_cinn);
-#endif
 
 namespace paddle {
 namespace {
@@ -805,11 +802,17 @@ bool AnalysisPredictor::PrepareExecutor() {
         decomp_object.decomp_program();
       }
 #ifdef PADDLE_WITH_CINN
-      if (FLAGS_use_cinn) {
+      if (config_.cinn_compiler_enabled()) {
         VLOG(4) << "[CINN] Begin AddCinnPass";
         auto cinn_pm = std::make_shared<::pir::PassManager>(
             ::pir::IrContext::Instance(), 2);
         cinn::dialect::ir::AddCinnPass(cinn_pm, *pir_program_.get());
+        if (!config_.glog_info_disabled()) {
+          cinn_pm.EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          cinn_pm.EnableIRPrinting();
+        }
         cinn_pm->Run(pir_program_.get());
       }
 #endif

@@ -1187,7 +1187,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Enable use cinn compiler optimization.
   ///
-  void Exp_EnableCINNCompiler();
+  void EnableCINN();
 
   ///
   /// \brief A boolean state telling whether the CINN compiler optimization is
