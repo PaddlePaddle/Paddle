@@ -2208,7 +2208,7 @@ Note:
 Returns the indices of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2252,7 +2252,7 @@ Note:
 Returns the values of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2305,7 +2305,7 @@ Note:
 Returns the compressed row index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2349,7 +2349,7 @@ Note:
 Returns the column index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
