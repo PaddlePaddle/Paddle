@@ -1204,7 +1204,7 @@ static std::string GenerateGradNodeCreationContent(
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "      grad_node->SetTensorWrapper%s(%s);\n";
+          "      grad_node->SetTensorWrapper_%s(%s);\n";
       // Replace output directly with input in inplace op.
       if (!forward_inplace_map.empty() &&
           forward_inplace_map.count(tensor_wrapper_name)) {
@@ -2941,7 +2941,7 @@ static std::string GenerateGradNodeHeaderContents(
             CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "   void SetTensorWrapper%s(%s) {\n    %s\n  }\n";
+          "   void SetTensorWrapper_%s(%s) {\n    %s\n  }\n";
       set_tensor_wrappers_str +=
           paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
                                   tensor_wrapper_name,
