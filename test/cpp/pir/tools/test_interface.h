@@ -45,9 +45,9 @@ class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
   template <class ConcreteOp>
   struct Model : public Concept {
     static void InferShape(pir::Operation *op) {
-      ConcreteOp concret_op = ConcreteOp(op);
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      concret_op.InferShape();
+      ConcreteOp concrete_op = ConcreteOp(op);
+      if (concrete_op == nullptr) throw("concrete_op is nullptr");
+      concrete_op.InferShape();
     }
 
     Model() : Concept(InferShape) {}

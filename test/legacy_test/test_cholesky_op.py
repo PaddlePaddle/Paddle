@@ -209,7 +209,7 @@ class TestCholeskySingularAPI(unittest.TestCase):
                         [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                     ]
                 ).astype("float64")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 try:
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:

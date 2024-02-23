@@ -50,7 +50,7 @@ int main(int argc, char** argv) {  // NOLINT
   char* env_str = nullptr;
   if (!envs.empty()) {
     std::string env_string = "--tryfromenv=";
-    for (auto t : envs) {
+    for (auto const& t : envs) {
       env_string += t + ",";
     }
     env_string = env_string.substr(0, env_string.length() - 1);
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {  // NOLINT
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (strstr(env_str, "enable_gpu_memory_usage_log")) {
+  if (strstr(env_str, "enable_gpu_memory_usage_log")) {  // NOLINT
     VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
     FLAGS_enable_gpu_memory_usage_log = true;
   }

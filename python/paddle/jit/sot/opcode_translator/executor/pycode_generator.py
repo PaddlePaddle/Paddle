@@ -1037,6 +1037,8 @@ class PyCodeGen:
         only generator operator instruction, do nothing for
         operands.
         """
+        if sys.version_info >= (3, 12):
+            cmp_op <<= 4
         self._add_instr("COMPARE_OP", cmp_op)
 
     def _add_instr(self, *args, **kwargs):
