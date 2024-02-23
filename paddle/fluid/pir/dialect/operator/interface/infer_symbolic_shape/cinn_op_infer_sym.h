@@ -18,6 +18,8 @@
 namespace cinn::dialect {
 // using paddle::dialect::ScaleOpInferSymbolicShape;
 
+bool BroadcastOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 bool ConcatOpInferSymbolicShape(pir::Operation *op,
