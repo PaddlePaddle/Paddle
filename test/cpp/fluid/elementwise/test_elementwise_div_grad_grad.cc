@@ -60,8 +60,8 @@ class TestElementwiseDivGradGradWithoutDout
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
     for (size_t i = 0; i < numel; ++i) {
-      // dY(Y@GRAD) = Out * dX * ddY / Y - dX * ddX / Y
-      dy[i] = (feed_datas_["DX"][i] / feed_datas_["Y"][i]) *
+      // dY(Y@GRAD) = 2 * Out * dX * ddY / Y - dX * ddX / Y
+      dy[i] = (2 * feed_datas_["DX"][i] / feed_datas_["Y"][i]) *
               (feed_datas_["Out"][i] * feed_datas_["DDY"][i] -
                feed_datas_["DDX"][i]);
       // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
