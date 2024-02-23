@@ -36,6 +36,48 @@ bool BroadcastOpInferSymbolicShape(
   return true;
 }
 
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // TODO(zhangbopd): Not implemented yet, different from the one in paddle
+  // dialect. And Currently only support start/end/axis with single value.
+  pir::AttributeMap attributes = op->attributes();
+
+  auto GetAttrInt64Value = [&](const std::string &name) -> int64_t {
+    std::vector<pir::Attribute> attr =
+        attributes[name].dyn_cast<pir::ArrayAttribute>().AsVector();
+    PADDLE_ENFORCE_GT(
+        attr.size(),
+        0,
+        phi::errors::PreconditionNotMet(
+            "Only Support [%s] op len(%s) == 1 , but received %d.",
+            op->name(),
+            name,
+            attr.size()));
+    return attr[0].dyn_cast<pir::Int64Attribute>().data();
+  };
+
+  const int64_t start = GetAttrInt64Value("starts");
+  const int64_t end = GetAttrInt64Value("ends");
+  const int64_t axis = GetAttrInt64Value("axes");
+
+  const pir::Value operand_source = op->operand_source(0);
+  const auto &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    for (int64_t dim : shape) {
+      out_dims.emplace_back(dim);
+    }
+    return out_dims;
+  }();
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
 bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto input_values = op->operands_source();
