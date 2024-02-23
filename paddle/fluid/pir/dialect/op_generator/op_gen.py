@@ -1345,7 +1345,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
 
-            if op_name in PD_MANUAL_OP_LIST:
+            if op_name in PD_MANUAL_OP_LIST and dialect_name != "onednn_op":
                 continue
             if op_kernel_map is None:
                 func_list = [None]
