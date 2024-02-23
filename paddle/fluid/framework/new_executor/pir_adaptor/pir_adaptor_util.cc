@@ -556,11 +556,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->operand_source(0);
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (value.defining_op()->HasAttribute(kAttrIsPersistable) &&
-        value.attribute<pir::BoolAttribute>(kAttrIsPersistable).data()) {
-      VLOG(6) << "Handle for builtin.shadow_output persistable value:"
-              << var_name;
-      scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+    if (auto bool_atttr =
+            value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
+      if (bool_atttr.data()) {
+        VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+                << var_name;
+        scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+      }
     }
 
     // change operand name to param_name

@@ -74,6 +74,7 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
@@ -952,9 +953,11 @@ AnalysisMiddleVariable(const Program &program,
                                             forward_inputs.end());
   range_block_do(
       program.block(), backward_range, [&backward_inputs](Operation *op) {
-        for (auto &t : op->operands()) {
-          backward_inputs.insert(t.source());
-        }
+        pir::Walk(op, [&](Operation *inner_op) {
+          for (auto &t : inner_op->operands()) {
+            backward_inputs.insert(t.source());
+          }
+        });
       });
 
   range_block_do(
