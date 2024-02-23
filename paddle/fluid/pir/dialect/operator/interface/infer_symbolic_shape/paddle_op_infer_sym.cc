@@ -1006,8 +1006,8 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  shape_analysis->SetShapeOrDataForValue(
+      result(0), shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
   return true;
 }
 
