@@ -40,7 +40,4 @@ bool ReduceSumOpInferSymbolicShape(
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
-bool SliceOpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis);
-
 }  // namespace cinn::dialect
