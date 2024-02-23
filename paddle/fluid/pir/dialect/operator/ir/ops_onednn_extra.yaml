@@ -15,7 +15,7 @@
 
 - op : abs_grad
 
-- op : add_n_with_kernel
+- op : add_n_onednn
   extra_args : str mkldnn_data_type="float32"
 
 - op : batch_norm
