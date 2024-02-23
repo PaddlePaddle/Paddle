@@ -233,7 +233,7 @@ class FusionMergePassHelper : public FusionHelperBase {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }
@@ -488,7 +488,7 @@ class FusionMergePassHelper : public FusionHelperBase {
                         fusionable_consumers) {
     VLOG(3) << "VerticalFuse...!";
     GroupList fused_groups;
-    GroupPtr master_fuesd_group(nullptr);
+    GroupPtr master_fused_group(nullptr);
     for (auto& consumer : fusionable_consumers) {
       auto fused_group = std::make_shared<Graph::Group>();
       // update depth using consumer depth.
@@ -623,8 +623,8 @@ class FusionMergePassHelper : public FusionHelperBase {
       fusion_groups_[postion] = fused_group;
       fusion_groups_index_[fused_group] = postion;
 
-      if (!master_fuesd_group.get()) {
-        master_fuesd_group = fused_group;
+      if (!master_fused_group.get()) {
+        master_fused_group = fused_group;
       }
       CHECK(fused_group->output_nodes.size())
           << "No output node is found, " << fused_group->group_id;
@@ -654,8 +654,8 @@ class FusionMergePassHelper : public FusionHelperBase {
 
       if (be_output) {
         VLOG(4) << "Insert Id " << node->id() << " Into Group "
-                << master_fuesd_group->group_id;
-        master_fuesd_group->output_nodes.insert(node);
+                << master_fused_group->group_id;
+        master_fused_group->output_nodes.insert(node);
       }
     }
     // insert unfusionable consumer groups
@@ -663,10 +663,10 @@ class FusionMergePassHelper : public FusionHelperBase {
       if (fusionable_consumers.count(consumer)) {
         continue;
       }
-      master_fuesd_group->mut_consumer_groups()->insert(consumer);
+      master_fused_group->mut_consumer_groups()->insert(consumer);
       // update consumer's producer
       consumer->mut_producer_groups()->erase(producer);
-      consumer->mut_producer_groups()->insert(master_fuesd_group);
+      consumer->mut_producer_groups()->insert(master_fused_group);
     }
   }
 
@@ -979,7 +979,7 @@ class FusionMergePassHelper : public FusionHelperBase {
           // element-wise and injective op must be horizontal relation.
           {OpPatternKind::kInjective, is_same_size},
           // element-wise and reduce op must be horizontal relation.
-          {OpPatternKind::kReduction, honrizontal_elementwise_fuse_reduce}};
+          {OpPatternKind::kReduction, horizontal_elementwise_fuse_reduce}};
       // vertical
       relation.vertical_relation = {
           {OpPatternKind::kElementWise, is_same_size},
@@ -1044,7 +1044,7 @@ class FusionMergePassHelper : public FusionHelperBase {
       // horizontal
       relation.horizontal_relation = {
           // reduce and element-wise op must be horizontal relation.
-          {OpPatternKind::kElementWise, honrizontal_elementwise_fuse_reduce},
+          {OpPatternKind::kElementWise, horizontal_elementwise_fuse_reduce},
           // reduce and broadcast op must be horizontal relation.
           {OpPatternKind::kBroadcast, is_same_size},
           // reduce and injective op must be horizontal relation.
