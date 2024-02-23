@@ -361,6 +361,26 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
   new_config.is_run_mkldnn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
+
+  // Step5: Handle skip_transform_inputs
+  if (op_attributes.count("skip_transform_inputs")) {
+    std::vector<pir::Attribute> skip_transform_inputs =
+        op->attributes()
+            .at("skip_transform_inputs")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+
+    for (auto& input : skip_transform_inputs) {
+      auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
+      auto pair = kernel_context_.InputRangeAt(
+          yaml_info_parser.InputName2Id().at(input_name));
+      VLOG(6) << "skip_transform_input = " << input_name;
+      for (int i = pair.first; i < pair.second; ++i) {
+        skip_format_tensors_.insert(i);
+        VLOG(6) << input_name << " index = " << i;
+      }
+    }
+  }
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
@@ -379,6 +399,9 @@ void OneDNNPhiKernelInstruction::Run() {
       continue;
     }
     if (!input->initialized()) {
+      continue;
+    }
+    if (skip_format_tensors_.count(i)) {
       continue;
     }
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();

@@ -239,7 +239,7 @@ class TestAdamaxOpV2(unittest.TestCase):
             )
 
 
-class TestAdamaxOpMultiPrecison(unittest.TestCase):
+class TestAdamaxOpMultiPrecision(unittest.TestCase):
     def _test_adamax_op_dygraph_place_amp(self, place, use_amp=False):
         import paddle
 

@@ -167,7 +167,7 @@ struct PD_INFER_DECL PaddleTensor {
 /// to device,
 /// eliminating additional CPU copy. ZeroCopyTensor is only used in the
 /// AnalysisPredictor.
-/// It is obtained through PaddlePredictor::GetinputTensor()
+/// It is obtained through PaddlePredictor::GetInputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 
 class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
@@ -467,7 +467,7 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
 
 }  // namespace paddle
 
-// forward declation
+// forward declaration
 using cudaStream_t = struct CUstream_st*;
 using hipStream_t = struct ihipStream_t*;
 

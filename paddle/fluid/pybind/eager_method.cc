@@ -43,6 +43,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -61,7 +62,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
@@ -112,8 +112,9 @@ phi::DenseTensor ReshardXToReplicated(
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
     dist_attr.clean_partial_status();
-
     // reshard to replicate dist tensor
+    VLOG(4) << "Reshard tensor: "
+            << paddle::experimental::ReshardDebugInfo(*dist_tensor, dist_attr);
     auto* func =
         phi::distributed::ChooseProperReshardFunction(*dist_tensor, dist_attr);
     auto* dev_ctx =
@@ -1782,13 +1783,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
               new SetValueWithTensorGradNode(1, 2));  // NOLINT
-          grad_node->SetAttributestarts(slice_starts);
-          grad_node->SetAttributeends(slice_ends);
-          grad_node->SetAttributesteps(slice_strides);
-          grad_node->SetAttributeaxes(slice_axes);
-          grad_node->SetAttributedecrease_axes(decrease_axis);
-          grad_node->SetAttributenone_axes(none_axes);
-          grad_node->SetTensorWrappervalues(values_tmp);
+          grad_node->SetAttribute_starts(slice_starts);
+          grad_node->SetAttribute_ends(slice_ends);
+          grad_node->SetAttribute_steps(slice_strides);
+          grad_node->SetAttribute_axes(slice_axes);
+          grad_node->SetAttribute_decrease_axes(decrease_axis);
+          grad_node->SetAttribute_none_axes(none_axes);
+          grad_node->SetTensorWrapper_values(values_tmp);
 
           paddle::memory::LogDeviceMemoryStats(
               egr::Controller::Instance().GetExpectedPlace(),
@@ -2207,7 +2208,7 @@ Note:
 Returns the indices of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2251,7 +2252,7 @@ Note:
 Returns the values of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2304,7 +2305,7 @@ Note:
 Returns the compressed row index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2348,7 +2349,7 @@ Note:
 Returns the column index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 

@@ -577,9 +577,9 @@ def _grad(ys, xs, v=None):
             inputs.
     """
     if framework.in_dygraph_mode():
-        # paddle.grad returns a list though the inputs is a signle Tensor. The
+        # paddle.grad returns a list though the inputs is a single Tensor. The
         # follow code snippet fixes the problem by return the first element of
-        # xs_grad when the xs is a signle Tensor.
+        # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
             isinstance(xs, paddle.base.framework.Variable)
@@ -595,12 +595,12 @@ def _grad(ys, xs, v=None):
 def _separate(xs):
     """
     ``_separate`` separates ``xs`` from the computation graph through ``clone``
-    or ``deteach`` .
+    or ``detach`` .
 
-    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
+    Internally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
     computional graph, which will reduce gradients along all path from ys to xs.
 
-    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and
+    However, functional autograd API such as ``vjp``, ``jvp`` is stateless, and
     only compute gradients with a given ``func`` .
 
     For example, given a ``func`` :math:`y0=f(x0)`, supposing forward path is:
