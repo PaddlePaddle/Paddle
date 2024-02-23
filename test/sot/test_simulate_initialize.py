@@ -43,9 +43,15 @@ def error_foo(x):
     return t(x)
 
 
+class NopLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = None
+
+
 def created_layer_reconstruct():
     x = paddle.to_tensor([1, 2], dtype="float32")
-    weight = nn.CrossEntropyLoss(axis=-1).weight
+    weight = NopLayer().weight
     if weight is not None:
         x += 1
     return x
