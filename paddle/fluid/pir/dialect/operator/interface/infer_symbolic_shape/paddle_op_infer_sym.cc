@@ -324,7 +324,16 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     const std::vector<symbol::DimExpr> out_data = [&] {
       std::vector<symbol::DimExpr> out_data;
-      for (int64_t i = starts[0]; i < ends[0]; i++) {
+      const int64_t start =
+          starts[0] < 0
+              ? starts[0] + operand_shape_or_data.data().value().size()
+              : starts[0];
+      const int64_t end =
+          static_cast<int64_t>(std::numeric_limits<int>::max()) == ends[0]
+              ? operand_shape_or_data.data().value().size()
+              : ends[0];
+
+      for (int64_t i = start; i < end; i++) {
         out_data.push_back(operand_shape_or_data.data().value()[i]);
       }
       return out_data;
@@ -351,7 +360,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
                  static_cast<int64_t>(std::numeric_limits<int>::max());
     };
     for (size_t i = 0; i < axes.size(); ++i) {
-      int64_t axis = axes[i];
+      const int64_t axis = axes[i];
       auto end =
           IsMaxInt(dim_expr_ends[i]) ? out_shape[axis] : dim_expr_ends[i];
 

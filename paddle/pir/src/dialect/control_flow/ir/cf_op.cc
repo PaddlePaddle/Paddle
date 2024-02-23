@@ -27,7 +27,6 @@ void YieldOp::Build(Builder &builder,
 
 bool YieldOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(3) << "############ YieldOp::InferSymbolicShape start...";
   // YieldOp has no output, just return true
   return true;
 }
