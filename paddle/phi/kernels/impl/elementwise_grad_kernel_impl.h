@@ -120,8 +120,7 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
 template <typename T>
 struct DivGradDX {
   HOSTDEVICE T operator()(T x UNUSED, T y, T out UNUSED, T dout) const {
-    // return dout / y;
-    return dout;
+    return dout / y;
   }
 };
 
@@ -161,11 +160,6 @@ struct DivDoubleDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return static_cast<T>(2) * y * out * dout - x * dout;
   }
-};
-
-template <typename T>
-struct DivGradDX_OLD {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
 };
 
 template <typename T, typename Context>
@@ -215,22 +209,30 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     // manually compute grad_x = dout / y
     tmp.Resize(out.dims());
     dev_ctx.template Alloc<T>(&tmp);
-    phi::funcs::
-        ElemwiseGradCompute<Context, T, DivGradDX_OLD<T>, DivDoubleDY<T>>(
-            dev_ctx,
-            grad_out,  // x, useless here, just for placeholder
-            y,         // y
-            out,       // out, useless here, just for placeholder
-            grad_out,  // dout
-            axis,
-            &tmp,                // dx
-            nullptr,             // dy
-            DivGradDX_OLD<T>(),  // dx=dout/y
-            DivDoubleDY<T>());   // useless here, just for placeholder
+    phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
+        dev_ctx,
+        grad_out,  // x, useless here, just for placeholder
+        y,         // y
+        out,       // out, useless here, just for placeholder
+        grad_out,  // dout
+        axis,
+        &tmp,               // dx
+        nullptr,            // dy, useless here, just for placeholder
+        DivGradDX<T>(),     // dx=dout/y
+        DivDoubleDY<T>());  // useless here, just for placeholder
   }
   if (dy) {
     // dX_div_Y = dX / Y;
-    DenseTensor dX_div_Y = tmp;
+    DenseTensor dX_div_Y;
+    if (ddout) {
+      // use ddout as temporary mem pool if ddout exist,
+      // as ddout will be re-computed at last
+      dX_div_Y = *ddout;
+    } else {
+      // or allocate mem pool for dX_div_Y
+      dX_div_Y.Resize(out.dims());
+      dev_ctx.template Alloc<T>(&dX_div_Y);
+    }
     funcs::DefaultElementwiseOperator<Context,
                                       T,
                                       funcs::DivideFunctor<T>,
@@ -270,6 +272,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
 
   if (ddout) {
     // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+    tmp = *ddout;
     funcs::DefaultElementwiseOperator<Context,
                                       T,
                                       funcs::MultiplyFunctor<T>,
@@ -533,7 +536,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
 
         // NOTE: in the following ElemwiseGradCompute, for the
         // first output tensor is nullptr, the branch to calculate first
-        // output tensor will not be activated, DivGradDx function will not
+        // output tensor will not be activated, DivGradDX function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
         phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
@@ -588,7 +591,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
 
         // NOTE: in the following ElemwiseGradCompute, for the
         // first output tensor is nullptr, the branch to calculate first
-        // output tensor will not be activated, DivGradDx function will not
+        // output tensor will not be activated, DivGradDX function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
         phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
