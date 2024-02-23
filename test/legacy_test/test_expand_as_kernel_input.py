@@ -122,5 +122,4 @@ class TestExpandAsKernelInput(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.set_device("gpu:4")
     unittest.main()
