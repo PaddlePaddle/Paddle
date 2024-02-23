@@ -1195,7 +1195,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether the CINN compiler optimization is turned on.
   ///
-  bool cinn_compiler_enabled() const;
+  bool cinn_enabled() const;
 
  protected:
   // Update the config.

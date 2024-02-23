@@ -802,7 +802,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         decomp_object.decomp_program();
       }
 #ifdef PADDLE_WITH_CINN
-      if (config_.cinn_compiler_enabled()) {
+      if (config_.cinn_enabled()) {
         VLOG(4) << "[CINN] Begin AddCinnPass";
         auto cinn_pm = std::make_shared<::pir::PassManager>(
             ::pir::IrContext::Instance(), 2);

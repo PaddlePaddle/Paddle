@@ -1597,8 +1597,6 @@ void AnalysisConfig::EnableCINN() {
 #endif
 }
 
-bool AnalysisConfig::cinn_compiler_enabled() const {
-  return use_cinn_compiler_;
-}
+bool AnalysisConfig::cinn_enabled() const { return use_cinn_compiler_; }
 
 }  // namespace paddle
