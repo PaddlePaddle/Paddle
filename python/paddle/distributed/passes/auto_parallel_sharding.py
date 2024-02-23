@@ -1087,6 +1087,18 @@ class ShardingPass(PassBase):
                     persistable=False,
                     stop_gradient=True,
                 )
+                ref_dist_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        group.vars[0]
+                    )
+                )
+                set_var_dist_attr(
+                    self._dist_context,
+                    group.coalesce_var,
+                    ref_dist_attr.dims_mapping,
+                    ref_dist_attr.process_mesh,
+                    ref_dist_attr.chunk_id,
+                )
                 coalesce_op_map[group.coalesce_op_idx] = group
                 last_reduce_op_idx = group.reduce_op_indices.pop()
                 modify_reduce_op_map[last_reduce_op_idx] = group
@@ -1162,6 +1174,20 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
+
+                ref_dist_attr = (
+                    self._dist_context.get_tensor_dist_attr_for_program(
+                        group.coalesce_var
+                    )
+                )
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    coalesce_op,
+                    ref_dist_attr.process_mesh,
+                    ref_dist_attr.dims_mapping,
+                    self._dist_context,
+                    chunk_id=ref_dist_attr.chunk_id,
+                )
+
                 depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
