@@ -94,8 +94,8 @@ DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
 DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);
 DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
-DECLARE_TYPE_FOR_GPU(gpuGraphNode_t, CUgraphNode, hipGraphNode_t);
-DECLARE_TYPE_FOR_GPU(gpuGraphNodeType, CUgraphNodeType, hipGraphNodeType);
+DECLARE_TYPE_FOR_GPU(gpuGraphNode_t, cudaGraphNode_t, hipGraphNode_t);
+DECLARE_TYPE_FOR_GPU(gpuGraphNodeType, cudaGraphNodeType, hipGraphNodeType);
 DECLARE_TYPE_FOR_GPU(gpuKernelNodeParams,
                      CUDA_KERNEL_NODE_PARAMS,
                      hipKernelNodeParams);
