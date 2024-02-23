@@ -2569,11 +2569,17 @@ void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        MetaTensor* out_scale,
                                        MetaTensor* out_state,
                                        MetaTensor* out_accum) {
-  out->set_dims(x.dims());
-  out->share_lod(x);
-  out_scale->set_dims({1});
-  out_state->set_dims({1});
-  out_accum->set_dims({1});
+  if (out) {
+    out->set_dims(x.dims());
+    out->share_lod(x);
+    out_scale->set_dims({1});
+  }
+  if (out_state) {
+    out_state->set_dims({1});
+  }
+  if (out_accum) {
+    out_accum->set_dims({1});
+  }
 }
 
 void NanmedianInferMeta(const MetaTensor& x,

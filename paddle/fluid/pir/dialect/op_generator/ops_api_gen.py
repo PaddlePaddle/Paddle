@@ -107,6 +107,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'onednn_to_paddle_layout',
     'lrn',
     'multi_gru',
+    'moving_average_abs_max_scale',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
