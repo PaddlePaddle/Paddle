@@ -30,6 +30,8 @@ using VectorizedFusedRopeCudaKernelFunc =
              int64_t seq_len,
              int64_t num_heads,
              int64_t head_dim,
+             int64_t batch_stride,
+             int64_t seq_stride,
              phi::Array<T*, 3> outs_data,
              int num_inputs,
              MPType div_c);
@@ -39,9 +41,12 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     const int64_t* position_ids_data,
                                     bool flag_sin_cos,
                                     int64_t index,
+                                    int64_t batch_size,
                                     int64_t seq_len,
                                     int64_t num_heads,
                                     int64_t head_dim,
+                                    int64_t batch_stride,
+                                    int64_t seq_stride,
                                     MPType* out_sin,
                                     MPType* out_cos,
                                     MPType div_c) {
@@ -51,17 +56,16 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
   if (flag_sin_cos) {
 #pragma unroll
     for (int64_t nx = 0; nx < VecSize; ++nx) {
-      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int64_t pos_seq_ori = index_wc / (num_heads * head_dim);
+      int64_t pos_seq_ori = (index + nx) / seq_stride % seq_len;
       int64_t pos_seq;
       if (position_ids_data) {
-        int64_t pos_bs = (index + nx) / (seq_len * num_heads * head_dim);
+        int64_t pos_bs = (index + nx) / batch_stride % batch_size;
         int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
         pos_seq = position_ids_data[index_ids];
       } else {
         pos_seq = pos_seq_ori;
       }
-      int64_t pos_head = index_wc % head_dim;
+      int64_t pos_head = (index + nx) % head_dim;
       int64_t index_sc = pos_seq * head_dim + pos_head;
       const T* sin_input = sin_cos_data[0] + index_sc;
       const T* cos_input = sin_cos_data[1] + index_sc;
@@ -73,9 +77,9 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
       // get sin_index and cos_index
-      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int64_t pos_seq = index_wc / (num_heads * head_dim);
-      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
+      int64_t pos_seq = (index + nx) / seq_stride % seq_len;
+
+      MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
       MPType indicses =
           static_cast<MPType>(1) /
           pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
@@ -97,6 +101,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
@@ -119,9 +125,12 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
                         div_c);
@@ -172,6 +181,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
@@ -194,9 +205,12 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
                         div_c);

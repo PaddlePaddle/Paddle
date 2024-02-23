@@ -50,7 +50,7 @@ paddle::Tensor reshard_ad_function(
         std::shared_ptr<ReshardGradNode>(new ReshardGradNode(1, 1));  // NOLINT
 
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperNoNeedBufferInput(input);
+    grad_node->SetTensorWrapperNoNeedBuffer_Input(input);
   }
 
   // Forward API Call
