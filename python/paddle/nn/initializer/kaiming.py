@@ -52,7 +52,7 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool, optional): whether to use uniform or normal distribution. Default is True.
-        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         seed (int32, optional): random seed. Default is 0.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
@@ -107,7 +107,7 @@ class MSRAInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype == core.VarDesc.VarType.FP16 or (
             var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
         ):
@@ -252,7 +252,7 @@ class KaimingNormal(MSRAInitializer):
         \frac{gain}{\sqrt{{fan\_in}}}
 
     Args:
-        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
 

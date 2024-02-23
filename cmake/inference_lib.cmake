@@ -66,7 +66,7 @@ function(copy TARGET)
   endforeach()
 endfunction()
 
-function(copy_part_of_thrid_party TARGET DST)
+function(copy_part_of_third_party TARGET DST)
   if(${CBLAS_PROVIDER} STREQUAL MKLML)
     set(dst_dir "${DST}/third_party/install/mklml")
     if(WIN32)
@@ -233,7 +233,7 @@ copy(
   SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR})
 
-copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
+copy_part_of_third_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 
@@ -365,7 +365,7 @@ add_custom_command(
 set(PADDLE_INFERENCE_C_INSTALL_DIR
     "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir"
     CACHE STRING "A path setting CAPI paddle inference shared")
-copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
+copy_part_of_third_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)

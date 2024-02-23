@@ -7274,7 +7274,7 @@ class Program:
                 >>> paddle.save(prog.state_dict(), path)
         """
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file.
+        # can not be imported at the beginning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 

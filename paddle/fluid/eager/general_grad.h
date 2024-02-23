@@ -166,10 +166,10 @@ class GeneralGrad {
     }  // TODO(jiabin): May we need some check here.
   }
 
-  // Get Graph Info Betweent input target GradNode and outputs,
+  // Get Graph Info Between input target GradNode and outputs,
   // record depending_nodes_
   void GetGraphInfoBetweenTargets(const std::deque<GradNodeBase*>& init_queue) {
-    VLOG(6) << "Runing In GetGraphInfoBetweenTargets";
+    VLOG(6) << "Running In GetGraphInfoBetweenTargets";
 
     // Copy nodes
     std::deque<GradNodeBase*> queue = init_queue;
