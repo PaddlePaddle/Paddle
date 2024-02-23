@@ -263,11 +263,11 @@ void GroupScheduler::SplitReduceInner() {
       if (group_tile_info_->reduce_var_names.count(name)) {
         ir_sch_->FactorizeReduction(loops[reduce_current_axis], 0);
       }
-
-      std::cerr << "after reorder: " << ir_sch_->GetModule().GetExprs().front()
-                << std::endl;
     }
   }
+
+  std::cerr << "after reorder: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 }
 
 void GroupScheduler::ReorderFlattenInnerWithReduceAxis() {
@@ -341,11 +341,16 @@ void GroupScheduler::Tiling() {
   // apply tiling
 
   MergeFlattenAxis();
+  std::cerr << "after merge: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
   MergeReduceAxis();
 
   reduce_current_axis = 1;
 
   SplitFlattenInner();
+
+  std::cerr << "after split flattern inner: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
   SplitReduceInner();
 
   ReorderFlattenInnerWithReduceAxis();
