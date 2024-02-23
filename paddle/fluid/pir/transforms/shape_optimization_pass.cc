@@ -85,29 +85,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   shape_analysis.Init();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
-      for (auto& op : block) {
-        auto infer_symbolic_shape_interface =
-            op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-        if (infer_symbolic_shape_interface) {
-          VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
-          PADDLE_ENFORCE(infer_symbolic_shape_interface.InferSymbolicShape(
-                             &shape_analysis),
-                         "InferSymbolicShape for %s failed.",
-                         op.name());
-          if (op.num_results() > 0) {
-            // TODO(lanxianghit): deal with the ops which have more than 1
-            // ACTUAL results
-            pir::shape::SetShapeAttrForOp(
-                &op, shape_analysis.GetShapeOrDataForValue(op.result(0)));
-          }
-        } else {
-          VLOG(vlog_level) << op.name() +
-                                  " DOES NOT have InferSymbolicShapeInterface!";
-          PADDLE_THROW(phi::errors::Unimplemented(
-              op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
-        }
-        DebugPrintOpInfo(&op, &shape_analysis);
-      }
+      InferSymExprForBlock(block, &shape_analysis);
     }
   }
 }
@@ -142,6 +120,33 @@ class ShapeOptimizationPass : public pir::Pass {
 };
 
 }  // namespace
+
+void InferSymExprForBlock(const Block& block,
+                          ShapeConstraintIRAnalysis* shape_analysis) {
+  for (auto& op : block) {
+    auto infer_symbolic_shape_interface =
+        op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+    if (infer_symbolic_shape_interface) {
+      VLOG(vlog_level) << op.name() << " has InferSymbolicShapeInterface.";
+      PADDLE_ENFORCE(
+          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
+          "InferSymbolicShape for %s failed.",
+          op.name());
+      if (op.num_results() > 0) {
+        // TODO(lanxianghit): deal with the ops which have more than 1
+        // ACTUAL results
+        pir::shape::SetShapeAttrForOp(
+            &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+      }
+    } else {
+      VLOG(vlog_level) << op.name() +
+                              " DOES NOT have InferSymbolicShapeInterface!";
+      PADDLE_THROW(phi::errors::Unimplemented(
+          op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+    }
+    DebugPrintOpInfo(&op, shape_analysis);
+  }
+}
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
   return std::make_unique<ShapeOptimizationPass>();

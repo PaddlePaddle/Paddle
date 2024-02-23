@@ -324,28 +324,28 @@ fused_gate_attention_dygraph_function(
       grad_node->SetAttrMap(std::move(attrs));
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
-      grad_node->SetTensorWrapperFMHAOut(FMHAOut);
-      grad_node->SetTensorWrapperQuery(Query);
-      grad_node->SetTensorWrapperSoftmaxOut(SoftmaxOut);
-      grad_node->SetTensorWrapperOutLinearBias(OutLinearBias);
-      grad_node->SetTensorWrapperOutLinearWeight(OutLinearWeight);
+      grad_node->SetTensorWrapper_FMHAOut(FMHAOut);
+      grad_node->SetTensorWrapper_Query(Query);
+      grad_node->SetTensorWrapper_SoftmaxOut(SoftmaxOut);
+      grad_node->SetTensorWrapper_OutLinearBias(OutLinearBias);
+      grad_node->SetTensorWrapper_OutLinearWeight(OutLinearWeight);
 
       grad_node->SetGradOutMeta(Query, 0);
       grad_node->SetGradOutMeta(OutLinearWeight, 10);
       grad_node->SetGradOutMeta(OutLinearBias, 11);
 
       if (merge_qkv) {
-        grad_node->SetTensorWrapperQKVTransposeOut(QKVTransposeOut);
-        grad_node->SetTensorWrapperQKVWeight(QKVWeight);
+        grad_node->SetTensorWrapper_QKVTransposeOut(QKVTransposeOut);
+        grad_node->SetTensorWrapper_QKVWeight(QKVWeight);
         grad_node->SetGradOutMeta(QKVWeight, 5);
       } else {
-        grad_node->SetTensorWrapperKey(Key);
-        grad_node->SetTensorWrapperQueryWeight(QueryWeight);
-        grad_node->SetTensorWrapperKeyWeight(KeyWeight);
-        grad_node->SetTensorWrapperValueWeight(ValueWeight);
-        grad_node->SetTensorWrapperQueryTransposeOut(QueryTransposeOut);
-        grad_node->SetTensorWrapperKeyTransposeOut(KeyTransposeOut);
-        grad_node->SetTensorWrapperValueTransposeOut(ValueTransposeOut);
+        grad_node->SetTensorWrapper_Key(Key);
+        grad_node->SetTensorWrapper_QueryWeight(QueryWeight);
+        grad_node->SetTensorWrapper_KeyWeight(KeyWeight);
+        grad_node->SetTensorWrapper_ValueWeight(ValueWeight);
+        grad_node->SetTensorWrapper_QueryTransposeOut(QueryTransposeOut);
+        grad_node->SetTensorWrapper_KeyTransposeOut(KeyTransposeOut);
+        grad_node->SetTensorWrapper_ValueTransposeOut(ValueTransposeOut);
 
         grad_node->SetGradOutMeta(Key, 1);
         grad_node->SetGradOutMeta(QueryWeight, 2);
@@ -354,21 +354,21 @@ fused_gate_attention_dygraph_function(
       }
 
       if (has_gating) {
-        grad_node->SetTensorWrapperGateWeight(GateWeight);
+        grad_node->SetTensorWrapper_GateWeight(GateWeight);
         grad_node->SetGradOutMeta(GateWeight, 8);
-        grad_node->SetTensorWrapperGateBias(GateBias);
+        grad_node->SetTensorWrapper_GateBias(GateBias);
         grad_node->SetGradOutMeta(GateBias, 9);
-        grad_node->SetTensorWrapperGateOut(GateOut);
+        grad_node->SetTensorWrapper_GateOut(GateOut);
       }
 
       if (NonbatchedBias.initialized()) {
-        grad_node->SetTensorWrapperNonbatchedBias(NonbatchedBias);
+        grad_node->SetTensorWrapper_NonbatchedBias(NonbatchedBias);
         grad_node->SetGradOutMeta(NonbatchedBias, 6);
       }
 
       if (use_flash_attn) {
-        grad_node->SetTensorWrapperSoftmaxLse(SoftmaxLse);
-        grad_node->SetTensorWrapperSrcMask(SrcMask);
+        grad_node->SetTensorWrapper_SoftmaxLse(SoftmaxLse);
+        grad_node->SetTensorWrapper_SrcMask(SrcMask);
         grad_node->SetGradOutMeta(SrcMask, 7);
       }
 

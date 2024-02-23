@@ -23,7 +23,7 @@ paddle.enable_static()
 np.random.seed(0)
 
 
-def test_fuse_resenet_unit():
+def test_fuse_resnet_unit():
     tests = [[1, 4096, 768, 12], [10, 4097, 756, 12], [10, 4097, 756, 12]]
     for test in tests:
         batch_size = test[0]
@@ -74,4 +74,4 @@ def test_fuse_resenet_unit():
 
 
 if __name__ == '__main__':
-    test_fuse_resenet_unit()
+    test_fuse_resnet_unit()

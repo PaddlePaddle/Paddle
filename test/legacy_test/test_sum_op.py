@@ -86,16 +86,16 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, True, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, False
         )
 
@@ -108,7 +108,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             array[i] *= rows[i]
         return array
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -198,7 +198,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
