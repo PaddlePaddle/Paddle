@@ -23,7 +23,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_pass_entry.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -83,6 +82,7 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
@@ -1523,19 +1523,51 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
+namespace {
+
+bool HasDynamicShape(const pir::Program &program) {
+  for (const auto &op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+                 pir::Program &program) {                          // NOLINT
+#ifdef PADDLE_WITH_CINN
+  cinn::dialect::ir::AddCinnPass(pass_manager, program);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
+}
+
+}  // namespace
+
 void InferSymbolicShapePass(
     std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (cinn::dialect::ir::HasDynamicShape(program) &&
-      FLAGS_pir_apply_shape_optimization_pass) {
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
 
 void BindIrPass(pybind11::module *m) {
-  m->def("add_cinn_pass", cinn::dialect::ir::AddCinnPass);
+  m->def("add_cinn_pass", AddCinnPass);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,

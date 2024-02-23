@@ -16,14 +16,9 @@ if(NOT CINN_ONLY)
 
 endif()
 
-set(CINN_PASS_ENTRY_DEPS op_dialect pir)
-
 if(WITH_CINN)
-  set(CINN_PASS_ENTRY_DEPS ${CINN_PASS_ENTRY_DEPS} cinn_op_dialect cinnapi
-                           pir_transforms cinn_transforms)
+  cc_library(
+    add_cinn_pass
+    SRCS add_cinn_pass.cc
+    DEPS op_dialect pir cinn_op_dialect cinnapi pir_transforms cinn_transforms)
 endif()
-
-cc_library(
-  cinn_pass_entry
-  SRCS cinn_pass_entry.cc
-  DEPS ${CINN_PASS_ENTRY_DEPS})

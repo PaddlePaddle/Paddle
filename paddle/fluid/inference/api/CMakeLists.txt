@@ -94,7 +94,7 @@ if(WITH_ONNXRUNTIME)
   set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} onnxruntime
                               paddle2onnx)
 elseif(WITH_CINN)
-  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} cinn_pass_entry)
+  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} add_cinn_pass)
 endif()
 cc_library(
   analysis_predictor

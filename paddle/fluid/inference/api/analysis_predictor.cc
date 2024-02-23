@@ -106,7 +106,7 @@
 #endif
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_pass_entry.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #endif
 
 #include "paddle/common/flags.h"

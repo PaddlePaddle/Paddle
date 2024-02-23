@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_pass_entry.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
@@ -50,6 +50,7 @@ COMMON_DECLARE_bool(check_infer_symbolic);
 
 namespace cinn::dialect::ir {
 
+namespace {
 bool HasDynamicShape(const pir::Program &program) {
   for (const auto &op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
@@ -67,6 +68,7 @@ bool HasDynamicShape(const pir::Program &program) {
   }
   return false;
 }
+}  // namespace
 
 void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
                  pir::Program &program) {                          // NOLINT

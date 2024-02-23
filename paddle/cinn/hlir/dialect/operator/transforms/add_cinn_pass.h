@@ -25,8 +25,6 @@ class Program;
 
 namespace cinn::dialect::ir {
 
-bool HasDynamicShape(const pir::Program &program);
-
 void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
                  pir::Program &program);                           // NOLINT
 
