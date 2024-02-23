@@ -267,13 +267,12 @@ void GenerateShapeOp::Build(
     const std::vector<pir::Value>& inputs,
     const std::vector<pir::Attribute>& output_dim_exprs,
     const GenerateShapeOp::SymbolBindings& symbol_bindings) {
-  // CHECK(!inputs.empty()) << ". output_dim_exprs: " << [&] {
-  //   std::stringstream ss;
-  //   for (const auto& attr : output_dim_exprs) {
-  //     ss << attr;
-  //   }
-  //   return ss.str();
-  // }();
+  if (inputs.empty()) {
+    VLOG(4) << "GenerateShapeOp inputs is empty";
+    for (const auto& attr : output_dim_exprs) {
+      CHECK(attr.isa<pir::Int64Attribute>());
+    }
+  }
   argument.AddInputs(inputs);
   argument.AddAttribute("output_dim_exprs",
                         builder.array_attr(output_dim_exprs));
