@@ -46,7 +46,7 @@ if(NOT WITH_SETUP_INSTALL)
   endif()
 
   execute_process(
-    COMMAND git submodule update --init --recursive
+    COMMAND git submodule update --init --recursive --force
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     RESULT_VARIABLE result_var)
   if(NOT result_var EQUAL 0)

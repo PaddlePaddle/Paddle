@@ -1373,6 +1373,7 @@ class OutputSelector:
     @staticmethod
     def constant_to_variable_promotion(out_with_blocks, name):
         from paddle.jit.dy2static.convert_operators import to_static_variable
+        from paddle.jit.dy2static.utils import UndefinedVar
 
         promotion_builtin_types = (bool, int, float)
         outs, _ = zip(*out_with_blocks)
@@ -1419,13 +1420,20 @@ class OutputSelector:
         ):
             warnings.warn(
                 "Return results from different branches in cond are not same type: "
-                f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
-                f"'{type(outs[0])}'"
+                + f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
+                + f"'{type(outs[0])}'"
             )
             return [
                 constant_to_variable_with_block(out, block)
                 for out, block in out_with_blocks
             ]
+
+        if any(isinstance(out, UndefinedVar) for out in outs):
+            warnings.warn(
+                f"Return results has maybe unbound local variable `{name}`, please ensure do not use `{name}`"
+                + "after cond."
+            )
+            return [UndefinedVar(name) for _ in out_with_blocks]
 
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
