@@ -329,7 +329,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .AsVector();
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
     std::string fluid_op_name =
-        phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
 
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();

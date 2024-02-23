@@ -220,7 +220,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
 
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
     std::string fluid_op_name =
-        phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
     for (auto& attr : data_format_tensors_attr) {
       auto input_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       data_format_tensors_.insert(
@@ -243,7 +243,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
 
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
     std::string fluid_op_name =
-        phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
 
     for (auto& input : skip_transform_inputs) {
       auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
