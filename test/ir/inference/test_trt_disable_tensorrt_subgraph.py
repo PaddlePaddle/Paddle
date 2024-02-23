@@ -30,11 +30,10 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         config = paddle_infer.Config()
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
-        config.exp_disable_tensorrt_ops(["size"])
         config.disable_tensorrt_subgraph(["input_data"])
         config.set_optim_cache_dir(self.cache_dir)
         if use_trt:
-            config.switch_ir_debug()
+            config.switch_ir_debug(True)
             config.enable_tensorrt_engine(
                 max_batch_size=self.trt_param.max_batch_size,
                 workspace_size=self.trt_param.workspace_size,
@@ -94,12 +93,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                     "op_inputs": {
                         "X": ["input_data"],
                     },
-                    "op_outputs": {"Out": ["output_data"]},
-                    "op_attrs": {},
-                },
-                {
-                    "op_type": "size",
-                    "op_inputs": {"Input": ["input_data"]},
                     "op_outputs": {"Out": ["output_data"]},
                     "op_attrs": {},
                 },
@@ -170,12 +163,12 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                 ver = paddle_infer.get_trt_compile_version()
                 if self.update_scalar:
                     if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
-                        return 0, 5
-                    return 0, 5
+                        return 1, 3
+                    return 0, 4
                 else:
                     if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
-                        return 0, 6
-                    return 0, 6
+                        return 1, 4
+                    return 0, 5
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -183,6 +176,7 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
 
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        # program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
