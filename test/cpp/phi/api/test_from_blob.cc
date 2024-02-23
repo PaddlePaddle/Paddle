@@ -35,7 +35,7 @@ using paddle::from_blob;
 using phi::DataType;
 
 namespace paddle {
-phi::Place GetPlaceFromPtr(void* data);
+TEST_API phi::Place GetPlaceFromPtr(void* data);
 }  // namespace paddle
 
 TEST(from_blob, CPU) {
