@@ -149,12 +149,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureModeRelaxed,
 DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
                          cudaStreamCaptureStatusActive,
                          hipStreamCaptureStatusActive);
-DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
-                         cudaGraphNodeTypeKernel,
-                         hipGraphNodeTypeKernel);
-DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
-                         cudaGraphInstantiateFlagAutoFreeOnLaunch,
-                         hipGraphInstantiateFlagAutoFreeOnLaunch);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
@@ -166,28 +160,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
   const auto GPU_FUNC = CUDA_FUNC;
 #endif
 
-DECLARE_FUNCTION_FOR_GPU(gpuGraphGetNodes, cudaGraphGetNodes, hipGraphGetNodes);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphGetEdges, cudaGraphGetEdges, hipGraphGetEdges);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphLaunch, cudaGraphLaunch, hipGraphLaunch);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiate,
-                         cudaGraphInstantiate,
-                         hipGraphInstantiate);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiateWithFlags,
-                         cudaGraphInstantiateWithFlags,
-                         hipGraphInstantiateWithFlags);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphDestroy, cudaGraphDestroy, hipGraphDestroy);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphExecDestroy,
-                         cudaGraphExecDestroy,
-                         hipGraphExecDestroy);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphNodeGetType,
-                         cudaGraphNodeGetType,
-                         hipGraphNodeGetType);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphExecKernelNodeSetParams,
-                         cudaGraphExecKernelNodeSetParams,
-                         hipGraphExecKernelNodeSetParams);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphKernelNodeGetParams,
-                         cudaGraphKernelNodeGetParams,
-                         hipGraphKernelNodeGetParams);
 DECLARE_FUNCTION_FOR_GPU(gpuStreamCreateWithPriority,
                          cudaStreamCreateWithPriority,
                          hipStreamCreateWithPriority);
