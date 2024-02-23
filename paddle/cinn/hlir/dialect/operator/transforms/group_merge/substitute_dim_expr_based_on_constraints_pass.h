@@ -20,11 +20,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-// Split One GroupOp to multi small GroupOp
-// Each small GroupOp can Generate one kernel by CINN backend
-
-IR_API std::unique_ptr<pir::Pass> CreateCinnGroupClusterPass();
-
+// This is a helper pass for substituting DimExpr based on the
+// constraints symbol::Equal<symbol::DimExpr>.
+std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintsPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

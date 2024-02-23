@@ -25,7 +25,7 @@
 
 extern "C" {
 int max_num_workers = std::thread::hardware_concurrency();
-// move to standlone file
+// move to standalone file
 struct param_context_t {
   int major_v;
   int minor_v;
