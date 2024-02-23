@@ -478,7 +478,7 @@ class OpcodeExecutorBase:
         elif space == Space.globals:
             self._globals[name] = value
 
-    def _find_names_in_space(self, names: list, space: tuple):
+    def _find_names_in_space(self, names, space):
         target_names = [
             name for name in names if self.find_space_of_var_name(name) in space
         ]
@@ -1776,7 +1776,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             false_start_code = self._graph.pycode_gen.gen_load_object(
                 false_fn, false_fn.__code__.co_name
             )
-            for stack_arg in self.stack:
+            for stack_arg in list(self.stack)[:-1]:
                 var_loader.load(stack_arg)
             for name in false_fn_input_var_names:
                 var_loader.load(self.get_var(name, allow_undefined=True))
@@ -1912,7 +1912,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._instructions, loop_body_start_idx, loop_body_end_idx
         )
         loop_body_inputs = self._find_names_in_space(
-            loop_body_read_names, (Space.locals, Space.cells)
+            loop_body_read_names | loop_body_write_names,
+            (Space.locals, Space.cells),
         ) + ["_break_flag"]
         loop_body_outputs = list(loop_body_write_names) + ["_break_flag"]
 
@@ -2033,7 +2034,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
 
         # 7. unpack and update changed vars, keep break_flag in stack
-        self._graph.pycode_gen.gen_unpack_sequence(len(loop_body_inputs))
+        self._graph.pycode_gen.gen_unpack_sequence(len(loop_body_outputs))
 
         for name in loop_body_outputs[:-1]:
             self._graph.pycode_gen.gen_store(name, self._code)
@@ -2086,8 +2087,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._instructions, start_idx, end_idx
         )
 
+        # why add write_names as input? check case in test/sot/test_12_for_loop.py
+        # test_for_without_zero_iter
         input_var_names = self._find_names_in_space(
-            read_names, (Space.locals, Space.cells)
+            read_names | write_names, (Space.locals, Space.cells)
         ) + [iterator.id]
         output_var_names = list(write_names) + [iterator.id]
 
@@ -2140,6 +2143,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
             log_do(3, lambda: dis.dis(inline_call_fn))
 
+            return inline_call_fn
+
         inline_call_fn = create_inline_call_fn()
 
         # 3. create function variable
@@ -2162,5 +2167,5 @@ class OpcodeExecutor(OpcodeExecutorBase):
         slice_variable = SliceVariable(
             slice_const, self._graph, ConstTracker(slice_const)
         )
-        for name, var in zip(input_var_names[:-1], ret[slice_variable]):
+        for name, var in zip(output_var_names[:-1], ret[slice_variable]):
             self.set_var(name, var)
