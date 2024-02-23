@@ -29,8 +29,7 @@
 
 namespace phi {
 
-// Note(qili93): refer to the following links for CUAA Runtime API supported by
-// HIP
+// Note(qili93): CUDA Runtime API supported by HIP
 // https://github.com/ROCm/HIPIFY/blob/master/doc/markdown/CUDA_Runtime_API_functions_supported_by_HIP.md
 
 #ifdef PADDLE_WITH_HIP

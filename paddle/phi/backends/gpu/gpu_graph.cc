@@ -286,7 +286,7 @@ static std::string ConcatPath(const std::string &dirname,
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
-#if defined(PADDLE_WITH_CUDA) || CUDA_VERSION >= 11030
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11030
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
