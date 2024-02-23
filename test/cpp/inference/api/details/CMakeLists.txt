@@ -19,6 +19,7 @@ inference_base_test(
   zero_copy_tensor_test.cc
   DEPS
   paddle_inference_api
+  paddle_inference_shared
   ARGS
   --dirname=${WORD2VEC_MODEL_DIR})
 
