@@ -743,6 +743,19 @@ void BuildScope(const pir::Block& block,
           << GenScopeTreeDebugInfo(
                  const_cast<Scope*>(value_exe_info->GetScope()->root()));
 
+  VLOG(6) << "Start handle keyword blockargument!";
+  for (auto& kwarg : block.kwargs()) {
+    VLOG(6) << "link keyword blockargument in variable"
+            << value_exe_info->GetScope();
+    Variable* var = value_exe_info->GetScope()->FindVar(kwarg.first);
+    PADDLE_ENFORCE(var,
+                   paddle::platform::errors::InvalidArgument(
+                       "The variable %s shoud exist", kwarg.first));
+
+    value_exe_info->Add(kwarg.second, kwarg.first);
+  }
+  VLOG(6) << "Finished handle keyword blockargument!";
+
   for (auto& op : block) {
     std::string op_name = op.name();
     if (op.attributes().count("op_name")) {
@@ -815,7 +828,14 @@ void BuildRuntimeContext(pir::Operation* op,
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
-    runtime_ctx->inputs[legacy_attr_name].push_back(var);
+    if (var->IsType<VariableRefArray>()) {
+      for (auto single_var : var->Get<VariableRefArray>()) {
+        runtime_ctx->inputs[legacy_attr_name].push_back(
+            const_cast<framework::Variable*>(single_var));
+      }
+    } else {
+      runtime_ctx->inputs[legacy_attr_name].push_back(var);
+    }
   }
 
   auto& output_name_list = op_yaml_info.OutputNames();

@@ -1293,7 +1293,8 @@ void RegisterOperatorWithMetaInfoMap(
       continue;
     }
     for (const auto& meta_info : pair.second) {
-      LOG(INFO) << "register pir custom op :" << pair.first;
+      LOG(INFO) << "register pir custom op :"
+                << OpMetaInfoHelper::GetOpName(meta_info);
       custom_dialect->RegisterCustomOp(meta_info);
     }
 

@@ -1433,6 +1433,8 @@
     batched_input : BatchedInput
     batched_out : BatchedOut
     hidden : Hidden
+  attrs :
+    {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
@@ -2202,6 +2204,14 @@
   outputs :
     out : Out
   drop_empty_grad : [x_grad]
+
+- op : multi_gru
+  inputs :
+    {x : X, weight_x : WeightX, weight_h : WeightH, bias : Bias, scale_weights : Scale_weights}
+  outputs :
+    hidden : Hidden
+  attrs :
+    {scale_data : Scale_data,  shift_data : Shift_data}
 
 - op : multiclass_nms3
   inputs :
