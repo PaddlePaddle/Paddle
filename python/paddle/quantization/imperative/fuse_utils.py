@@ -92,7 +92,7 @@ def _fuse_layers(model, layers_list):
 
 
 def _fuse_func(layer_list):
-    '''choose the fuser method and fuse layers'''
+    '''choose the fuse method and fuse layers'''
     types = tuple(type(m) for m in layer_list)
     fusion_method = types_to_fusion_method.get(types, None)
     new_layers = [None] * len(layer_list)
