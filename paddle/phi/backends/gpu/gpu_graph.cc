@@ -239,8 +239,13 @@ void CUDAGraph::EndSegmentCapture() {
         "CUDA version >= 11.4.0"));
 #endif
   } else {
+#if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(
-        gpuGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+        cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+#endif
   }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()

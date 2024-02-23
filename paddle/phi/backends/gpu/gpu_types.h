@@ -126,9 +126,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
 DECLARE_FUNCTION_FOR_GPU(gpuGraphGetNodes, cudaGraphGetNodes, hipGraphGetNodes);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphGetEdges, cudaGraphGetEdges, hipGraphGetEdges);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphLaunch, cudaGraphLaunch, hipGraphLaunch);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiate,
-                         cudaGraphInstantiate,
-                         hipGraphInstantiate);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphDestroy, cudaGraphDestroy, hipGraphDestroy);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphExecDestroy,
                          cudaGraphExecDestroy,
