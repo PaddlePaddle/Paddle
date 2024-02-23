@@ -97,7 +97,7 @@ DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
 DECLARE_TYPE_FOR_GPU(gpuGraphNode_t, cudaGraphNode_t, hipGraphNode_t);
 DECLARE_TYPE_FOR_GPU(gpuGraphNodeType, cudaGraphNodeType, hipGraphNodeType);
 DECLARE_TYPE_FOR_GPU(gpuKernelNodeParams,
-                     CUDA_KERNEL_NODE_PARAMS,
+                     cudaKernelNodeParams,
                      hipKernelNodeParams);
 DECLARE_TYPE_FOR_GPU(gpuStreamCaptureMode,
                      cudaStreamCaptureMode,
@@ -150,7 +150,7 @@ DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
                          cudaStreamCaptureStatusActive,
                          hipStreamCaptureStatusActive);
 DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
-                         CU_GRAPH_NODE_TYPE_KERNEL,
+                         cudaGraphNodeTypeKernel,
                          hipGraphNodeTypeKernel);
 DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
                          cudaGraphInstantiateFlagAutoFreeOnLaunch,
