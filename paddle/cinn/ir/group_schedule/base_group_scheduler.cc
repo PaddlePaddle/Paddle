@@ -245,18 +245,27 @@ void GroupScheduler::SplitReduceInner() {
                       group_tile_info_->reduce_inner_num));
         split_factors.emplace_back(group_tile_info_->reduce_inner_num);
       } else {
+        split_factors.emplace_back(group_tile_info_->reduce_inner_num);
         split_factors.emplace_back(
             std::ceil(group_tile_info_->reduce_block * 1.0 /
                       group_tile_info_->reduce_inner_num));
-        split_factors.emplace_back(group_tile_info_->reduce_inner_num);
       }
 
       auto split_loops =
           ir_sch_->Split(loops[reduce_current_axis], split_factors);
 
+      loops = ir_sch_->GetLoops(name);
+
+      ir_sch_->Reorder(
+          {loops[reduce_current_axis + 1], loops[reduce_current_axis]});
+
+      loops = ir_sch_->GetLoops(name);
       if (group_tile_info_->reduce_var_names.count(name)) {
-        ir_sch_->FactorizeReduction(split_loops[0], 0);
+        ir_sch_->FactorizeReduction(loops[reduce_current_axis], 0);
       }
+
+      std::cerr << "after reorder: " << ir_sch_->GetModule().GetExprs().front()
+                << std::endl;
     }
   }
 }
@@ -342,6 +351,9 @@ void GroupScheduler::Tiling() {
   ReorderFlattenInnerWithReduceAxis();
 
   SplitWarpNumber();
+
+  std::cerr << "after split warp number: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 }
 
 void GroupScheduler::Unroll() {
