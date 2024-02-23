@@ -39,7 +39,7 @@ class SparseCsrTensor : public TensorBase,
   SparseCsrTensor(SparseCsrTensor&& other) = default;
 
   /// \brief SparseCsrTensor shallow copy constructor.
-  SparseCsrTensor(const SparseCsrTensor& other);
+  TEST_API SparseCsrTensor(const SparseCsrTensor& other);
 
   /// \brief create the sparse csr tensor.
   /// \param non_zero_crows The compresessed row index of non zero elements in
@@ -48,10 +48,10 @@ class SparseCsrTensor : public TensorBase,
   /// dense tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  SparseCsrTensor(const DenseTensor& non_zero_crows,
-                  const DenseTensor& non_zero_cols,
-                  const DenseTensor& non_zero_elements,
-                  const DDim& dims);
+  TEST_API SparseCsrTensor(const DenseTensor& non_zero_crows,
+                           const DenseTensor& non_zero_cols,
+                           const DenseTensor& non_zero_elements,
+                           const DDim& dims);
 
   /// \brief SparseCsrTensor shallow copy assignment.
   SparseCsrTensor& operator=(const SparseCsrTensor& other);
@@ -142,7 +142,7 @@ class SparseCsrTensor : public TensorBase,
   /// \brief resize sparse csr tensor.
   /// \param dense_dims The dims of original dense tensor.
   /// \param non_zero_num The total number of non zero element
-  void Resize(const DDim& dense_dims, const int64_t non_zero_num);
+  TEST_API void Resize(const DDim& dense_dims, const int64_t non_zero_num);
 
   /// \brief set the member of sparse csr tensor.
   /// \param non_zero_crows The compresessed row index of non zero elements in
