@@ -59,7 +59,7 @@ def get_action(is_dp, shard_split_param=False):
     return HOOK_ACTION.REDUCE
 
 
-# assume only the first stage and last stage need data, and data consumption is ordred
+# assume only the first stage and last stage need data, and data consumption is ordered
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
     def __init__(
@@ -170,7 +170,7 @@ class PipelineParallel(MetaParallelBase):
             'accumulate_steps'
         ]
         # If sent tensor are not the same from different hosts,
-        # they shouldn't been sent partially and then concated as a whole tensor.
+        # they shouldn't been sent partially and then concatenated as a whole tensor.
         self._enable_partial_send_recv = self._strategy.pipeline_configs[
             'enable_partial_send_recv'
         ]
@@ -198,7 +198,7 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].delay_scale_loss
         # TODO(PP Dev): support dp_comm_overlap without use_main_grad training.
-        # This combination will trigger inplace check error during `reshape_` in funct `_split_tensors`.
+        # This combination will trigger inplace check error during `reshape_` in function `_split_tensors`.
         self._dp_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].dp_comm_overlap
@@ -640,7 +640,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _wrap_data(self, data):
         """
-        for backward compatibilty, wrap data to Fake FakeMicroDataset if it is of type list or tuple
+        for backward compatibility, wrap data to Fake FakeMicroDataset if it is of type list or tuple
         """
         if (not isinstance(data, tuple)) and (not isinstance(data, list)):
             return data

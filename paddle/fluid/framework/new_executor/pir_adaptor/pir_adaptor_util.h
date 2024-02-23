@@ -45,10 +45,12 @@ namespace framework {
 
 class IfInstruction;
 class WhileInstruction;
+class PyLayerInstruction;
 class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class PyLayerInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
@@ -126,7 +128,7 @@ inline bool IsInvalid(pir::Value value) {
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
-                    bool force_persisable,
+                    bool force_persistable,
                     ValueExecutionInfo* value_exe_info);
 
 void BuildScope(const pir::Block& block,

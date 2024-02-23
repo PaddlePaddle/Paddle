@@ -102,8 +102,10 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     auto store = CreateOrGetGlobalTCPStore();
     if (phi::CPUContext::classof(&dev_ctx)) {
 #if defined(PADDLE_WITH_GLOO)
-      CommContextManager::CreateGlooCommContext(
-          store, unique_comm_key, rank, world_size);
+      CommContextManager::CreateGlooCommContext(store,
+                                                unique_comm_key,
+                                                static_cast<int>(rank),
+                                                static_cast<int>(world_size));
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
@@ -116,8 +118,10 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (phi::GPUContext::classof(&dev_ctx)) {
-        CommContextManager::CreateNCCLCommContext(
-            store, unique_comm_key, rank, world_size);
+        CommContextManager::CreateNCCLCommContext(store,
+                                                  unique_comm_key,
+                                                  static_cast<int>(rank),
+                                                  static_cast<int>(world_size));
       }
 #else
       PADDLE_THROW(phi::errors::Unimplemented(

@@ -33,7 +33,7 @@ class SimpleNet(paddle.nn.Layer):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
+    "core is not compiled with CUDA and not support the float16",
 )
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -42,7 +42,7 @@ class SimpleNet(paddle.nn.Layer):
 )
 class TestMasterGrad(unittest.TestCase):
     def check_results(
-        self, fp32_grads, op_list, total_steps, accumulate_batchs_num
+        self, fp32_grads, op_list, total_steps, accumulate_batches_num
     ):
         for grad in fp32_grads:
             self.assertEqual(grad.dtype, paddle.float32)
@@ -50,7 +50,7 @@ class TestMasterGrad(unittest.TestCase):
         self.assertEqual(int(op_list['matmul_v2'].split(',')[0]), total_steps)
         self.assertEqual(
             int(op_list['adam_'].split(',')[0]),
-            2 * (total_steps / accumulate_batchs_num),
+            2 * (total_steps / accumulate_batches_num),
         )
         # Since two additional casts are called when constructing master grad,
         # the number of operators of this type +2
@@ -59,7 +59,9 @@ class TestMasterGrad(unittest.TestCase):
             total_steps * 2 + 2,
         )
 
-    def run_dygraph(self, total_steps, accumulate_batchs_num, model, optimizer):
+    def run_dygraph(
+        self, total_steps, accumulate_batches_num, model, optimizer
+    ):
         model, opt = paddle.amp.decorate(
             model, optimizers=optimizer, level='O2', master_grad=True
         )
@@ -77,7 +79,7 @@ class TestMasterGrad(unittest.TestCase):
             scaled = scaler.scale(loss)
             scaled.backward()
             fp32_grads = [model.linear.weight.grad, model.linear.bias.grad]
-            if (i + 1) % accumulate_batchs_num == 0:
+            if (i + 1) % accumulate_batches_num == 0:
                 scaler.step(opt)
                 scaler.update()
                 opt.clear_grad()
@@ -87,26 +89,26 @@ class TestMasterGrad(unittest.TestCase):
 
     def test_adam_master_grad(self):
         total_steps = 4
-        accumulate_batchs_num = 2
+        accumulate_batches_num = 2
         model = SimpleNet(2, 4)
         opt = paddle.optimizer.Adam(parameters=model.parameters())
         fp32_grads, op_list = self.run_dygraph(
-            total_steps, accumulate_batchs_num, model, opt
+            total_steps, accumulate_batches_num, model, opt
         )
         self.check_results(
-            fp32_grads, op_list, total_steps, accumulate_batchs_num
+            fp32_grads, op_list, total_steps, accumulate_batches_num
         )
 
     def test_momentum_master_grad(self):
         total_steps = 4
-        accumulate_batchs_num = 1
+        accumulate_batches_num = 1
         model = SimpleNet(2, 4)
         L1Decay = paddle.regularizer.L1Decay(0.0001)
         opt = paddle.optimizer.Momentum(
             parameters=model.parameters(), weight_decay=L1Decay
         )
         fp32_grads, op_list = self.run_dygraph(
-            total_steps, accumulate_batchs_num, model, opt
+            total_steps, accumulate_batches_num, model, opt
         )
         for grad in fp32_grads:
             self.assertEqual(grad.dtype, paddle.float32)

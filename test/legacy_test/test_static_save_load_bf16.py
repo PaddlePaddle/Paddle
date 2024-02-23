@@ -127,7 +127,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(self.temp_dir.name, "test_1")
@@ -142,7 +142,7 @@ class TestSaveLoadBF16(unittest.TestCase):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been set to zero
+                    # make sure all the parameter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             paddle.static.load(

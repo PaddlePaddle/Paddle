@@ -31,8 +31,6 @@ PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
 namespace egr {
 
@@ -58,7 +56,7 @@ TEST(Generated, Sigmoid) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 0.5);
 
   std::vector<paddle::Tensor> target_tensors = {output_tensor};
-  VLOG(6) << "Runing Backward";
+  VLOG(6) << "Running Backward";
   Backward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";
@@ -145,7 +143,3 @@ TEST(Generated, ElementwiseAdd) {
 }
 
 }  // namespace egr
-
-USE_OP_ITSELF(sigmoid);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(matmul_v2);

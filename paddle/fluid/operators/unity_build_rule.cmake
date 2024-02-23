@@ -131,8 +131,6 @@ register_unity_group(
   l1_norm_op.cc
   label_smooth_op.cc
   generated_op
-  mkldnn/layer_norm_mkldnn_op.cc
-  mkldnn/layer_norm_mkldnn_op.cc
   linspace_op.cc
   load_combine_op.cc
   load_op.cc)

@@ -1,10 +1,10 @@
-//  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/utils/string/split.h"
+#pragma once
 
-#include <string>
+#include "paddle/pir/include/pass/pass.h"
 
-#include "gtest/gtest.h"
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-TEST(StringSplit, StringSplit) {
-  std::string to_split = "0,1,2,3,4,5";
-  int i = 0;
-  for (auto s : paddle::string::Split(to_split, ',')) {
-    EXPECT_EQ(atoi(s.c_str()), i);
-    i++;
-  }
-}
+// This is a helper pass for substituting DimExpr based on the
+// constraints symbol::Equal<symbol::DimExpr>.
+std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintsPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

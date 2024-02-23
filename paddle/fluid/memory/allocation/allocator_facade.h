@@ -80,6 +80,7 @@ class AllocatorFacade {
                     const phi::Stream& stream);
 
   bool IsStreamSafeCUDAAllocatorUsed();
+  bool IsCUDAMallocAsyncAllocatorUsed();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.

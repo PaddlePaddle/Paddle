@@ -86,16 +86,16 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, True, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, False
         )
 
@@ -108,7 +108,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             array[i] *= rows[i]
         return array
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -198,7 +198,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -583,8 +583,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(
                 shape=self.x.shape, name='x', dtype='float32'
@@ -606,7 +606,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.0)
             sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(
                 feed={'x': self.x.numpy().astype('float32')}, fetch_list=[out]
             )
