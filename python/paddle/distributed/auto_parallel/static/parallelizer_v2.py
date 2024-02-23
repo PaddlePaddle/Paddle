@@ -231,7 +231,7 @@ class Parallelizer:
         # NOTE(zhaoyinglia):
         # Guarantee the order of params_grads is same between dynamic mode and static mode
         # by making parameter_list equal to model.parameters(),
-        # because the order affact the result of ClipGradByGLobalNorm.
+        # because the order affect the result of ClipGradByGLobalNorm.
         # If parameter_list is not None, the order of params_grads is same with parameter_list.
         # If parameter_list is None, params_grads will be as prog.global_block().all_parameters().
         with program_guard(main_program, startup_program):

@@ -133,7 +133,7 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
         self.assertEqual(x_grad.shape, ())
 
     @test_with_pir_api
-    def test_return_var_typle(self):
+    def test_return_var_type(self):
         def forward_fn(a, b):
             return 3 * a, -2 * b
 

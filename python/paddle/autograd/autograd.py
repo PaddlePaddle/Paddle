@@ -48,7 +48,7 @@ class Jacobian:
 
     Notes:
 
-        Eclipsis index is not supported currently.
+        Ellipsis index is not supported currently.
 
     Args:
 
@@ -495,7 +495,7 @@ def jacobian(
 
     Returns:
 
-        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys derived from xs.
 
     Examples:
 
@@ -579,7 +579,7 @@ def hessian(
 
     Returns:
 
-        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys derived from xs.
 
     Examples:
 

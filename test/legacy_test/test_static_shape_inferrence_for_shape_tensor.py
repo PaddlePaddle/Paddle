@@ -17,7 +17,7 @@ import unittest
 import paddle
 
 
-class StaticShapeInferrenceTest(unittest.TestCase):
+class StaticShapeInferenceTest(unittest.TestCase):
     def test_static_graph(self):
         paddle.enable_static()
         data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
