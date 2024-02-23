@@ -95,6 +95,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
@@ -198,7 +199,11 @@ std::string GetValueInfo(Value v) {
     ss << "define_op_name=" << op_result.owner()->name();
     ss << ", index=" << op_result.index();
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
-    ss << "block_arg, index = " << arg.index();
+    if (arg.is_kwarg()) {
+      ss << "keyword block_arg, keyword = " << arg.keyword();
+    } else {
+      ss << "position block_arg, index = " << arg.index();
+    }
   }
   if (!v.type()) {
     ss << ", dtype=<<NULL TYPE>>";
@@ -408,6 +413,7 @@ void BindBlock(py::module *m) {
            })
       .def("__len__", [](Block &self) { return self.size(); })
       .def("args", &Block::args, return_value_policy::reference)
+      .def("kwargs", &Block::kwargs, return_value_policy::reference)
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
@@ -1116,7 +1122,7 @@ SplitedResult SplitForwardBackward(
   std::unordered_set<pir::Value> backward_inputs;
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-  pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
+  pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
   // forward program construct.
@@ -1137,28 +1143,14 @@ SplitedResult SplitForwardBackward(
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
-  auto create_data_fn = [&backward_builder,
-                         &backward_inputs,
-                         &backward_value_map,
-                         &counter](const pir::Value &v) {
-    if (v.impl() == nullptr || !backward_inputs.count(v)) {
-      return;
+  auto create_kwarg_fn = [&backward_block,
+                          &backward_inputs,
+                          &backward_value_map,
+                          &counter](const pir::Value &v) {
+    if (v && backward_inputs.count(v)) {
+      backward_value_map[v] = backward_block.AddKwarg(
+          "input_" + std::to_string(counter++), v.type());
     }
-    auto value_type = v.type().dyn_cast<DenseTensorType>();
-    auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = common::vectorize(value_type.dims());
-    auto place = phi::Place();
-
-    paddle::dialect::DataOp op =
-        backward_builder.Build<paddle::dialect::DataOp>(
-            std::string("input_") + std::to_string(counter),
-            shape,
-            dtype,
-            place);
-    counter += 1;
-    pir::Value target = op->results()[0].Value::impl();
-    target.set_type(v.type());
-    backward_value_map[v] = target;
   };
 
   auto create_output_fn_forward = [&ctx,
@@ -1227,21 +1219,23 @@ SplitedResult SplitForwardBackward(
     VLOG(4) << "Create pd.data for backward program: fo, start with input_"
             << counter;
     std::for_each(
-        forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+        forward_outputs.begin(), forward_outputs.end(), create_kwarg_fn);
     VLOG(4) << "Create pd.data for backward program: fx, start with input_"
             << counter;
-    std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
+    std::for_each(
+        forward_inputs.begin(), forward_inputs.end(), create_kwarg_fn);
     VLOG(4) << "Create pd.data for backward program: fp, start with input_"
             << counter;
-    std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
+    std::for_each(
+        forward_params.begin(), forward_params.end(), create_kwarg_fn);
     VLOG(4) << "Create pd.data for backward program: fm, start with input_"
             << counter;
-    std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
+    std::for_each(middle_values.begin(), middle_values.end(), create_kwarg_fn);
     VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
             << counter;
     std::for_each(forward_outputs_grads.begin(),
                   forward_outputs_grads.end(),
-                  create_data_fn);
+                  create_kwarg_fn);
     VLOG(4) << "Create pd.data for backward program end. input_" << counter;
   }
 
@@ -1589,6 +1583,8 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(

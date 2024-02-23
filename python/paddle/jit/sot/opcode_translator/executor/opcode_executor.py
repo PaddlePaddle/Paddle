@@ -1171,7 +1171,12 @@ class OpcodeExecutorBase:
         push_n=1
     )  # call instance, in, not in may call TensorVariable.get_py_value, which raise BreakGraphError
     def COMPARE_OP(self, instr: Instruction):
-        op = dis.cmp_op[instr.arg]
+        cmp_op_index = instr.arg
+        if sys.version_info >= (3, 12):
+            # Python 3.12 use lower 4 bits to store the inline cache `jump mask`
+            # see https://github.com/python/cpython/pull/100924
+            cmp_op_index >>= 4
+        op = dis.cmp_op[cmp_op_index]
         right, left = self.stack.pop(), self.stack.pop()
         self.stack.push(
             BuiltinVariable(
@@ -2109,6 +2114,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
+        return self.compile_return(ret_val)
+
+    def RETURN_CONST(self, instr: Instruction):
+        ret_const = self._co_consts[instr.arg]
+        return self.compile_return(ret_const)
+
+    def compile_return(self, ret_val):
         compile_fn = self._graph.get_compiled_fn(ret_val)
         if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
