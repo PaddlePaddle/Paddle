@@ -16,7 +16,7 @@ if(NOT CINN_ONLY)
 
 endif()
 
-set(CINN_PASS_ENTRY_DEPS op_dialect pir sub_graph_checker)
+set(CINN_PASS_ENTRY_DEPS op_dialect pir)
 
 if(WITH_CINN)
   set(CINN_PASS_ENTRY_DEPS ${CINN_PASS_ENTRY_DEPS} cinn_op_dialect cinnapi
