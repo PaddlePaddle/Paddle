@@ -43,6 +43,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -61,7 +62,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
@@ -70,10 +70,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
-
 
 namespace paddle {
 namespace pybind {
@@ -114,8 +112,9 @@ phi::DenseTensor ReshardXToReplicated(
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
     dist_attr.clean_partial_status();
-
     // reshard to replicate dist tensor
+    VLOG(4) << "Reshard tensor: "
+            << paddle::experimental::ReshardDebugInfo(*dist_tensor, dist_attr);
     auto* func =
         phi::distributed::ChooseProperReshardFunction(*dist_tensor, dist_attr);
     auto* dev_ctx =
@@ -3138,7 +3137,8 @@ static PyObject* tensor_method__uva(TensorObject* self,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
-  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  int device_id =
+      pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);  // NOLINT
   phi::DenseTensor* dense_tensor = nullptr;
   if (self->tensor.is_dist_tensor()) {
     dense_tensor =

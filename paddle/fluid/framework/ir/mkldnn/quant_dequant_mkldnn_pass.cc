@@ -424,7 +424,7 @@ void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
   const int rank = axis.size();
   auto in_stride = common::stride(in_dims);
   auto out_stride = common::stride(out_dims);
-  const int count = input->numel();
+  const int count = static_cast<int>(input->numel());
 
   phi::DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
@@ -519,7 +519,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
 
     int step_n = 1;
     for (int i = 1; i < weight_dims.size(); i++) {
-      step_n *= weight_dims[i];
+      step_n *= weight_dims[i];  // NOLINT
     }
     int step_c = step_n / size;
     for (int i = 0; i < weight_dims[0]; i++) {

@@ -1075,7 +1075,7 @@ class OpcodeExecutorBase:
         assert isinstance(instr.arg, int)
         self._call_shape = self._co_consts[instr.arg].get_py_value()
 
-    def CALL(self, instr: Instruction):
+    def call(self, instr: Instruction):
         assert isinstance(instr.arg, int)
         assert instr.arg + 2 <= len(self.stack)
         is_method = not isinstance(self.stack.peek[instr.arg + 2], NullVariable)
@@ -1092,6 +1092,12 @@ class OpcodeExecutorBase:
             self.stack.pop()
         self.stack.push(fn(*args, **kwargs))
         self._call_shape = None
+
+    CALL = (
+        call_break_graph_decorator(push_n=1)(call)
+        if sys.version_info >= (3, 12)
+        else call
+    )
 
     @call_break_graph_decorator(push_n=1)
     def CALL_FUNCTION(self, instr: Instruction):
@@ -1165,7 +1171,12 @@ class OpcodeExecutorBase:
         push_n=1
     )  # call instance, in, not in may call TensorVariable.get_py_value, which raise BreakGraphError
     def COMPARE_OP(self, instr: Instruction):
-        op = dis.cmp_op[instr.arg]
+        cmp_op_index = instr.arg
+        if sys.version_info >= (3, 12):
+            # Python 3.12 use lower 4 bits to store the inline cache `jump mask`
+            # see https://github.com/python/cpython/pull/100924
+            cmp_op_index >>= 4
+        op = dis.cmp_op[cmp_op_index]
         right, left = self.stack.pop(), self.stack.pop()
         self.stack.push(
             BuiltinVariable(

@@ -154,6 +154,32 @@ void BuildProgram3(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(matmul_op2.out(), "dx", 3);
 }
 
+void BuildProgram4(pir::Builder &builder) {  // NOLINT
+  paddle::dialect::FullOp input_x = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2048, 5120}, 1.5, phi::DataType::FLOAT16);
+  paddle::dialect::FullOp input_dy = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2048, 6912}, 2.5, phi::DataType::FLOAT16);
+  paddle::dialect::FullOp input_weight_grad =
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{5120, 6912}, 1.0, phi::DataType::FLOAT16);
+
+  paddle::dialect::ReshapeOp reshape_x =
+      builder.Build<paddle::dialect::ReshapeOp>(
+          input_x.out(), std::vector<int64_t>{4096, 5120});
+  paddle::dialect::ReshapeOp reshape_dy =
+      builder.Build<paddle::dialect::ReshapeOp>(
+          input_dy.out(), std::vector<int64_t>{4096, 6912});
+  paddle::dialect::MatmulOp matmul_op =
+      builder.Build<paddle::dialect::MatmulOp>(
+          reshape_x.out(), reshape_dy.out(), true, false);
+  paddle::dialect::ReshapeOp output_dw =
+      builder.Build<paddle::dialect::ReshapeOp>(
+          matmul_op.out(), std::vector<int64_t>{5120, 6912});
+  paddle::dialect::Add_Op add__op1 = builder.Build<paddle::dialect::Add_Op>(
+      input_weight_grad.out(), output_dw.out());
+  builder.Build<paddle::dialect::FetchOp>(add__op1.out(), "dw", 0);
+}
+
 bool verify_pass(const pir::Program &program) {
   for (auto &op : *(program.block())) {
     if (op.name() == paddle::dialect::FusedLinearParamGradAddOp::name()) {
@@ -237,4 +263,24 @@ TEST(DrrTest, FusedLinearParamGradAdd3) {
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(verify_pass(program), true);
+}
+
+TEST(DrrTest, FusedMatmulReshapeMatmulAddPattern) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
+  BuildProgram4(builder);
+
+  EXPECT_EQ(program.block()->size(), 12u);
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateFusedLinearParamGradAddPass());
+  pm.EnablePassTiming();
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(verify_pass(program), true);
+  EXPECT_EQ(program.block()->size(), 5u);
 }
