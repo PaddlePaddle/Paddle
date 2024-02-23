@@ -100,16 +100,9 @@ else()
 endif()
 
 if(WITH_GPU)
-  cc_test(
+  paddle_test(
     copy_cross_scope_test
-    SRCS copy_cross_scope_test.cc
-    DEPS op_registry
-         copy_cross_scope_op
-         scope
-         device_context
-         enforce
-         executor
-         common)
+    SRCS copy_cross_scope_test.cc)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
