@@ -390,11 +390,11 @@ class MemoryUtils {
 
 namespace memory_utils {
 
-Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
-                               size_t size,
-                               const phi::Stream& stream);
+TEST_API Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+                                        size_t size,
+                                        const phi::Stream& stream);
 
-Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
+TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,

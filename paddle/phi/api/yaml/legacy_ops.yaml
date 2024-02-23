@@ -77,6 +77,7 @@
     backend : place
   data_transform :
     support_trans_dtype : start, end, step
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign
   args : (Tensor x)
@@ -583,6 +584,23 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
+
+- op : fused_gemm_epilogue
+  args : (Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation)
+  output : Tensor(out), Tensor(reserve_space)
+  invoke : fused_gemm_epilogue_impl(x, y, bias, trans_x, trans_y, activation)
+  backward: fused_gemm_epilogue_grad
+  optional: reserve_space
+
+- op : fused_softmax_mask
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxMaskFuseInferMeta
+  kernel :
+    func : fused_softmax_mask
+    data_type : x
+  backward: fused_softmax_mask_grad
 
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)

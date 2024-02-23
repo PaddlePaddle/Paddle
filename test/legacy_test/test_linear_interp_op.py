@@ -256,7 +256,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             data_format='NCW',
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(

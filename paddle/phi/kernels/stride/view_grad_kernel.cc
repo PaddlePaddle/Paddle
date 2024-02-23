@@ -39,7 +39,7 @@ void ViewDtypeGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    view_grad_shape, STRIDED, phi::ViewShapeGradKernel) {}
+    view_shape_grad, STRIDED, phi::ViewShapeGradKernel) {}
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    view_grad_dtype, STRIDED, phi::ViewDtypeGradKernel) {}
+    view_dtype_grad, STRIDED, phi::ViewDtypeGradKernel) {}

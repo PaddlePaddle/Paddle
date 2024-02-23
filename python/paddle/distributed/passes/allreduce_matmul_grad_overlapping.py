@@ -29,7 +29,7 @@ logger = get_logger(logging.INFO)
 #   dX, dY = matmul_grad(X, Y, dOut)
 #   dX = c_allreduce_sum(dX)
 # Split matmul_grad to 2 matmul:
-#   dX = mutmul(dOut, Y^T)
+#   dX = matmul(dOut, Y^T)
 #   dX = c_allreduce_sum(dX)
 #   dY = matmul(X^T, dOut)
 #
@@ -119,7 +119,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             ctx=self.dist_context,
             chunk_id=x_dist_attr.chunk_id,
         )
-        block._sync_with_cpp()
 
         return out
 
@@ -154,7 +153,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             y_grad = matmul_grad_op.output("Y@GRAD")
             op_role = matmul_grad_op.attr("op_role")
 
-            # NOTE(Ruibiao): Required OP scheduling order: mutmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
+            # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
             # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
             # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
@@ -242,5 +241,5 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 matmul_op, matmul_grad_dist_attr
             )
 
-            block._remove_op(matmul_grad_id)
-            block._sync_with_cpp()
+            block._remove_op(matmul_grad_id, sync=False)
+        block._sync_with_cpp()

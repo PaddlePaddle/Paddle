@@ -30,6 +30,8 @@
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace ir {
 
@@ -184,7 +186,7 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
 std::vector<Expr> _LoweredFunc_::CudaPrepareAllocTempBufferExprs() const {
   std::vector<Expr> alloc_output_buffer_exprs;
   for (auto temp_buf : temp_bufs) {
-    if (utils::Startswith(temp_buf->name, "_")) {
+    if (utils::StartsWith(temp_buf->name, "_")) {
       temp_buf->name = temp_buf->name.substr(1);
     }
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {

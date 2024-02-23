@@ -250,8 +250,8 @@ TEST_F(CinnGraphSymbolizationTest, feed_map) {
 }
 
 TEST_F(CinnGraphSymbolizationTest, scope) {
-  auto prame_names = test_->GetGraphInputParameterNames();
-  ASSERT_EQ(prame_names, std::unordered_set<std::string>({"var2"}));
+  auto param_names = test_->GetGraphInputParameterNames();
+  ASSERT_EQ(param_names, std::unordered_set<std::string>({"var2"}));
 
   auto cinn_scope = CreateCinnScope();
 

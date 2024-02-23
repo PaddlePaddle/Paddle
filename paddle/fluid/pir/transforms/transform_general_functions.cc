@@ -20,11 +20,11 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_operand.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_operand.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace {
 

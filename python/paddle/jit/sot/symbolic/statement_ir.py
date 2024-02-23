@@ -24,9 +24,10 @@ import weakref
 from typing import Any, Callable
 
 import paddle
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
-from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
+from ..utils import NameGenerator, Singleton, flatten_extend, get_api_fullname
 
 
 class Reference:  # to unify weak_ref and strong_ref
@@ -134,9 +135,10 @@ class ApiStatement(Statement):
         outputs: list[Symbol],
         stacks: list[str],
     ):
-        super().__init__(
-            "api", api.__module__ + "." + api.__name__, inputs, outputs, stacks
-        )
+        fullname = get_api_fullname(api)
+        if fullname is None:
+            fullname = "paddle." + api.__name__
+        super().__init__("api", fullname, inputs, outputs, stacks)
         self.api = api
 
 

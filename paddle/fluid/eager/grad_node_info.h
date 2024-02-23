@@ -255,7 +255,7 @@ class GradNodeBase {
                       size_t slot_rank);
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  TEST_API void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in,
                       const AutogradMeta* fwd_in_other,
                       size_t slot_rank);
@@ -292,12 +292,12 @@ class GradNodeBase {
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
-  GetGradientHookFuntions() {
+  GetGradientHookFunctions() {
     VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
-  void SetGradientHookFuntions(
+  void SetGradientHookFunctions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
     VLOG(7) << "SetGradientHookFunctions ";

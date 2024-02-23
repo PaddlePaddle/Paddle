@@ -27,11 +27,11 @@ from typing import TYPE_CHECKING
 import opcode
 
 import paddle
+from paddle.jit.utils import OrderedSet
 
 from ...utils import (
     FallbackError,
     InnerError,
-    OrderedSet,
     ResumeFnNameFactory,
     is_clean_code,
     list_contain_by_id,
@@ -797,6 +797,8 @@ class PyCodeGen:
         if name not in self._code_options["co_names"]:
             self._code_options["co_names"].append(name)
         idx = self._code_options["co_names"].index(name)
+        if sys.version_info >= (3, 12):
+            idx <<= 1
         self._add_instr("LOAD_ATTR", arg=idx, argval=name)
 
     def gen_store_attr(self, name: str):
@@ -878,7 +880,8 @@ class PyCodeGen:
 
     def gen_call_function(self, argc=0):
         if sys.version_info >= (3, 11):
-            self._add_instr("PRECALL", arg=argc, argval=argc)
+            if sys.version_info < (3, 12):
+                self._add_instr("PRECALL", arg=argc, argval=argc)
             self._add_instr("CALL", arg=argc, argval=argc)
         else:
             self._add_instr("CALL_FUNCTION", arg=argc, argval=argc)
@@ -891,7 +894,8 @@ class PyCodeGen:
 
     def gen_call_method(self, argc=0):
         if sys.version_info >= (3, 11):
-            self._add_instr("PRECALL", arg=argc, argval=argc)
+            if sys.version_info < (3, 12):
+                self._add_instr("PRECALL", arg=argc, argval=argc)
             self._add_instr("CALL", arg=argc, argval=argc)
         else:
             self._add_instr("CALL_METHOD", arg=argc, argval=argc)
@@ -1033,6 +1037,8 @@ class PyCodeGen:
         only generator operator instruction, do nothing for
         operands.
         """
+        if sys.version_info >= (3, 12):
+            cmp_op <<= 4
         self._add_instr("COMPARE_OP", cmp_op)
 
     def _add_instr(self, *args, **kwargs):

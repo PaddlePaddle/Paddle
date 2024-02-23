@@ -754,7 +754,7 @@ const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
 
 void create_vars(ProgramDesc* prog,
                  const std::initializer_list<std::string>& names) {
-  for (auto name : names) prog->MutableBlock(0)->Var(name);
+  for (auto const& name : names) prog->MutableBlock(0)->Var(name);
 }
 
 void SetMultiGruOp(ProgramDesc* prog,

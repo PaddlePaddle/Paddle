@@ -812,7 +812,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             )
             cf_yield([next_cond, *unified_next_vars])
 
-            # Reset type of UndefinedVar from next_vars
+            # Reset type and stop_gradient of UndefinedVar from next_vars
             for idx, value in undefined_var_mapping.items():
                 if idx in constant_next_var_indices:
                     continue
@@ -820,6 +820,13 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 value.set_type(value_new_type)
                 cur_block.args()[idx].set_type(value_new_type)
                 while_op.as_operation().results()[idx].set_type(value_new_type)
+
+                value_new_stop_gradient = flatten(next_vars)[idx].stop_gradient
+                value.stop_gradient = value_new_stop_gradient
+                cur_block.args()[idx].stop_gradient = value_new_stop_gradient
+                while_op.as_operation().results()[
+                    idx
+                ].stop_gradient = value_new_stop_gradient
 
         # Restore the outputs by variable and constants
         optimized_results = while_op.optimize_update()
@@ -1366,6 +1373,7 @@ class OutputSelector:
     @staticmethod
     def constant_to_variable_promotion(out_with_blocks, name):
         from paddle.jit.dy2static.convert_operators import to_static_variable
+        from paddle.jit.dy2static.utils import UndefinedVar
 
         promotion_builtin_types = (bool, int, float)
         outs, _ = zip(*out_with_blocks)
@@ -1412,13 +1420,20 @@ class OutputSelector:
         ):
             warnings.warn(
                 "Return results from different branches in cond are not same type: "
-                f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
-                f"'{type(outs[0])}'"
+                + f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
+                + f"'{type(outs[0])}'"
             )
             return [
                 constant_to_variable_with_block(out, block)
                 for out, block in out_with_blocks
             ]
+
+        if any(isinstance(out, UndefinedVar) for out in outs):
+            warnings.warn(
+                f"Return results has maybe unbound local variable `{name}`, please ensure do not use `{name}`"
+                + "after cond."
+            )
+            return [UndefinedVar(name) for _ in out_with_blocks]
 
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "

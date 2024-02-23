@@ -173,11 +173,11 @@ void gather_grad(const Tensor& x,
   }
   // scatter grad to grad_x
   auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_tranposed = tmp_grad_x;
+  auto tmp_grad_x_transposed = tmp_grad_x;
   if (tmp_grad_x.dims().size() > 0) {
-    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+    tmp_grad_x_transposed = transpose<T>(tmp_grad_x, reverse_perm);
   }
-  set_output<T>(tmp_grad_x_tranposed, grad_x);
+  set_output<T>(tmp_grad_x_transposed, grad_x);
 }
 
 template <typename T>
@@ -355,11 +355,11 @@ void divide_grad(const Tensor& x,
                  Tensor* dx,
                  Tensor* dy) {
   if (dy) {
-    // dy = -(x/y^2) * dout
-    auto dy_res = -(x / y.pow(2.0)) * out_grad;
-    if (x.dims() != y.dims()) {
+    // dy = -(x/y^2) * dout = -out * dout / y
+    auto dy_res = -out * out_grad / y;
+    if (out.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dy_res, dy);
       } else {
@@ -373,9 +373,8 @@ void divide_grad(const Tensor& x,
     }
   }  // indicate we will compute dy
   if (dx) {
-    // dx = (1/y) * dout
-    auto one_tensor = full<T>(common::vectorize(y.dims()), 1.0, y.dtype());
-    auto dx_res = one_tensor / y * out_grad;
+    // dx = (1/y) * dout = dout / y
+    auto dx_res = out_grad / y;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -387,7 +386,6 @@ void divide_grad(const Tensor& x,
         auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
         set_output<T>(dx_tmp, dx);
       }
-
     } else {
       set_output<T>(dx_res, dx);
     }
