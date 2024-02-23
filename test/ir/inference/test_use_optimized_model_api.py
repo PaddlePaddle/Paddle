@@ -18,7 +18,6 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle.base import core
 from paddle.inference import Config, create_predictor
 
 # -------------------------- TestNet --------------------------
@@ -59,7 +58,7 @@ class UseOptimizedModel(InferencePassTest):
         self.test_model = TestNet()
         self.input_data = (np.ones([1, 3, 32, 32])).astype('float32')
         self.path_prefix = "inference_test_models/use_optimized_model_test"
-        self.cache_dir = "inference_test_models/cache/"
+        self.cache_dir = "inference_test_models/cache"
         paddle.jit.save(
             self.test_model,
             self.path_prefix,
@@ -69,35 +68,32 @@ class UseOptimizedModel(InferencePassTest):
         )
 
     def test_check_output(self):
+        out_origin_model = self.inference()
+        out_optimized_model = self.inference()
+        np.testing.assert_allclose(
+            out_origin_model, out_optimized_model, rtol=1e-5, atol=1e-2
+        )
+
+    def inference(self):
         # Config
         config = Config(
             self.path_prefix + ".pdmodel", self.path_prefix + ".pdiparams"
         )
-        if core.is_compiled_with_cuda():
-            config.enable_use_gpu(100, 0)
-            config.enable_tensorrt_engine(
-                workspace_size=1 << 30,
-                max_batch_size=1,
-                min_subgraph_size=1,
-                precision_mode=paddle.inference.PrecisionType.Float32,
-                use_static=True,
-                use_calib_mode=False,
-            )
-            config.set_trt_dynamic_shape_info(
-                {"x": [1, 3, 16, 16]},
-                {"x": [1, 3, 64, 64]},
-                {"x": [1, 3, 32, 32]},
-            )
-            config.exp_disable_tensorrt_ops(["elementwise_add"])
+        # if core.is_compiled_with_cuda():
+        config.enable_use_gpu(100, 0)
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 30,
+            max_batch_size=1,
+            min_subgraph_size=1,
+            precision_mode=paddle.inference.PrecisionType.Float32,
+            use_static=True,
+            use_calib_mode=False,
+        )
+        config.enable_tuned_tensorrt_dynamic_shape()
+        config.exp_disable_tensorrt_ops(["elementwise_add"])
         config.set_optim_cache_dir(self.cache_dir)
         config.use_optimized_model(True)
-        out_origin_model = self.inference(config)
-        out_optimized_model = self.inference(config)
-        np.testing.assert_allclose(
-            out_origin_model, out_optimized_model, rtol=5e-5, atol=1e-2
-        )
 
-    def inference(self, config):
         # predictor
         predictor = create_predictor(config)
 

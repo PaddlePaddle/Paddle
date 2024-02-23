@@ -414,13 +414,14 @@ bool AnalysisPredictor::Init(
     std::string optimized_model_path = GetOptimizedModelPath();
     std::string optimized_model = optimized_model_path + ".pdmodel";
     std::string optimized_params = optimized_model_path + ".pdiparams";
-    if (PathExists(optimized_model) && PathExists(optimized_params)) {
+    if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
+      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
     } else {
-      LOG(INFO) << "The optimized model is not found and will fallback to "
-                   "original model. "
-                   "The witch to save the optimized model will be turned on "
-                   "and the optimized model will be available next time.";
+      LOG(WARNING)
+          << "The optimized model is not found, fallback to original model. "
+             "EnableSaveOptimModel will be turned on and the optimized model "
+             "can be available next time.";
       config_.EnableSaveOptimModel(true);
       config_.UseOptimizedModel(false);
     }
