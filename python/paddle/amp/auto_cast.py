@@ -367,11 +367,10 @@ def amp_guard(
         custom_white_list, custom_black_list, level, dtype
     )
 
-    if not enable:
-        amp_level = AMP_LEVEL.O0
-        amp_dtype = "float32"
-
     if in_pir_mode():
+        if not enable:
+            amp_level = AMP_LEVEL.O0
+            amp_dtype = "float32"
         amp_attrs = core._get_amp_attrs()
         # set amp level
         original_amp_level = amp_attrs._amp_level
@@ -455,6 +454,10 @@ def amp_guard(
                         )
                     )
                     enable = False
+
+        if not enable:
+            amp_level = AMP_LEVEL.O0
+            amp_dtype = "float32"
 
         # master_grad_hook will run at the end of backward.
         # Since backward_final_hook will be cleared once they have been
