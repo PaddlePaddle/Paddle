@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import atexit  # noqa: F401
+from . import io  # noqa: F401
 from .spawn import spawn
 from .launch.main import launch
 from .parallel import (  # noqa: F401
