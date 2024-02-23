@@ -19,7 +19,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
-#include "paddle/phi/kernels/broadcast_kernel.h"
+#include "paddle/phi/kernels/p_recv_kernel.h"
+#include "paddle/phi/kernels/p_send_kernel.h"
 
 namespace phi {
 namespace distributed {
@@ -79,37 +80,55 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {
-  VLOG(3) << "Call SubMeshToGlobalReshardFunction Eval";
+  VLOG(3) << "Call SubPPMeshToGlobalReshardFunction Eval";
   const TensorDistAttr& in_dist_attr = in.dist_attr();
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
 
   std::vector<ProcessMesh> sub_process_meshes = GetSubMeshes(out_process_mesh);
   const std::vector<int64_t>& in_process_ids = in_process_mesh.process_ids();
+  const std::vector<int64_t>& out_process_ids = out_process_mesh.process_ids();
   std::unordered_map<int64_t, std::vector<int64_t>> send2recv_map;
+  std::unordered_map<int64_t, int64_t> recv2send_map;
 
   for (const ProcessMesh& sub_mesh : sub_process_meshes) {
+    if (sub_mesh == in_process_mesh) {
+      continue;
+    }
     const std::vector<int64_t>& sub_process_ids = sub_mesh.process_ids();
     for (size_t i = 0; i < sub_process_ids.size(); ++i) {
       int64_t send_id = in_process_ids[i];
       send2recv_map[send_id].push_back(sub_process_ids[i]);
+      recv2send_map[sub_process_ids[i]] = send_id;
     }
   }
 
+  std::vector<int64_t> all_process_ids =
+      GetUnionProcessIds(in_process_ids, out_process_ids);
   int64_t cur_global_rank = GetCurGlobalRank();
-  std::vector<int64_t> recv_process_ids = send2recv_map[cur_global_rank];
   DataType dtype = in.dtype();
-  const DenseTensor& in_dense_value = in.value();
-  RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
-                            BroadcastKernel,
-                            dtype,
-                            recv_process_ids,
-                            in_dense_value,
-                            cur_global_rank,
-                            GetMutableTensor(out));
-
   if (IsCurRankInMesh(in_process_mesh)) {
+    const DenseTensor& in_dense_value = in.value();
+    std::vector<int64_t>& recv_vec = send2recv_map[cur_global_rank];
+    for (int64_t recv_id : recv_vec) {
+      RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+                                PSendKernel,
+                                dtype,
+                                all_process_ids,
+                                in_dense_value,
+                                recv_id,
+                                true /*dynamic_shape*/);
+    }
     SetValue(out, in_dense_value);
+  } else {
+    int64_t send_id = recv2send_map[cur_global_rank];
+    RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+                              PRecv,
+                              dtype,
+                              all_process_ids,
+                              send_id,
+                              true /*dynamic_shape*/,
+                              GetMutableTensor(out));
   }
   SetDistProps(out, in.dims(), out_dist_attr);
 }
