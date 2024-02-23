@@ -808,10 +808,10 @@ bool AnalysisPredictor::PrepareExecutor() {
             ::pir::IrContext::Instance(), 2);
         cinn::dialect::ir::AddCinnPass(cinn_pm, *pir_program_.get());
         if (!config_.glog_info_disabled()) {
-          cinn_pm.EnablePrintStatistics();
+          cinn_pm->EnablePrintStatistics();
         }
         if (config_.ir_debug_) {
-          cinn_pm.EnableIRPrinting();
+          cinn_pm->EnableIRPrinting();
         }
         cinn_pm->Run(pir_program_.get());
       }
