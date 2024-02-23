@@ -357,7 +357,7 @@ Tensor BroadcastTo(const Tensor& A,
       [=](const std::vector<Expr>& indice) {
         std::vector<Expr> broadcast_indice;
         for (int idx = 0; idx < axes.size(); ++idx) {
-          int a_shape_i = A_shape[idx].as_int32();
+          int a_shape_i = A_shape[idx].as_int64();
           if (a_shape_i == 1) {
             broadcast_indice.push_back(ir::Expr(0));
           } else if (a_shape_i == out_shape[axes[idx]]) {

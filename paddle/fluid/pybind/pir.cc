@@ -87,6 +87,8 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
@@ -97,6 +99,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
@@ -1563,6 +1566,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = HasDynamicShape(program);
+  has_dynamic_shape = false;
 
   if (FLAGS_print_ir) {
     pass_manager->EnableIRPrinting();
@@ -1575,8 +1579,12 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pass_manager->AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
+
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
@@ -1591,10 +1599,13 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   }
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
+  auto t1 = cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass();
+  // pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
@@ -1613,8 +1624,11 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pass_manager->EnableIRPrinting();
+
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
+
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "

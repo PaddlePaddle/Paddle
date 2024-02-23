@@ -121,6 +121,12 @@ struct Group {
   std::string fn_name{""};
   std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
+  std::unordered_map<::pir::Operation*,
+                     std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
+      alignment_schedule_info;
+  std::vector<int64_t> reduce_axis;
+  std::vector<int64_t> loop_ranges;
+
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
       return std::hash<uint64_t>()(reinterpret_cast<uint64_t>(group.get()));
