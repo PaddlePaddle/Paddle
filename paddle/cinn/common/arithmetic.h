@@ -17,14 +17,16 @@
  * math equation/CINN expression.
  */
 #pragma once
-#include <ginac/ginac.h>
-#include <limits>
-#include <map>
-#include <set>
-#include <string>
-#include <tuple>
 
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"  // NOLINT, Should be in front of other header files
+
+#include <ginac/ginac.h>  // NOLINT
+
+#include <limits>  // NOLINT
+#include <map>     // NOLINT
+#include <set>     // NOLINT
+#include <string>  // NOLINT
+#include <tuple>   // NOLINT
 
 #ifdef As
 #undef As
