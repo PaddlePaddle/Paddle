@@ -45,6 +45,8 @@ class Conv2dAddActFusePattern
     pir::Value add_input = op.x();
     IR_ENFORCE(add_input == conv2d_out);
 
+    if (!pir::ValueIsPersitable(op.y())) return false;
+
     pir::Value add_out = op.out();
     if (!add_out.HasOneUse()) return false;
 
@@ -116,6 +118,8 @@ class Conv2dAdd2ActFusePattern
     paddle::dialect::AddOp add1_op = pir::GetDefiningOpForInput(add2_op, 1)
                                          ->dyn_cast<paddle::dialect::AddOp>();
     if (!add1_op) return false;
+
+    if (!pir::ValueIsPersitable(add1_op.y())) return false;
 
     pir::Value add1_out = add1_op.out();
     if (!add1_out.HasOneUse()) return false;
