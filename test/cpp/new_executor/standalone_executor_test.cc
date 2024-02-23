@@ -116,7 +116,7 @@ ProgramDesc load_from_file(const std::string& file_name) {
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   ProgramDesc program_desc(buffer);
   return program_desc;

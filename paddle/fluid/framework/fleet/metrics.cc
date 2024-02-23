@@ -327,7 +327,7 @@ void BasicAucCalculator::computeWuAuc() {
     if (wuauc_records_[i].uid_ != prev_uid) {
       std::vector<WuaucRecord> single_user_recs(
           wuauc_records_.begin() + prev_pos, wuauc_records_.begin() + i);
-      roc_data = computeSingelUserAuc(single_user_recs);
+      roc_data = computeSingleUserAuc(single_user_recs);
       if (roc_data.auc_ != -1) {
         double ins_num = (roc_data.tp_ + roc_data.fp_);
         _user_cnt += 1;
@@ -343,7 +343,7 @@ void BasicAucCalculator::computeWuAuc() {
 
   std::vector<WuaucRecord> single_user_recs(wuauc_records_.begin() + prev_pos,
                                             wuauc_records_.end());
-  roc_data = computeSingelUserAuc(single_user_recs);
+  roc_data = computeSingleUserAuc(single_user_recs);
   if (roc_data.auc_ != -1) {
     double ins_num = (roc_data.tp_ + roc_data.fp_);
     _user_cnt += 1;
@@ -353,7 +353,7 @@ void BasicAucCalculator::computeWuAuc() {
   }
 }
 
-BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingelUserAuc(
+BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingleUserAuc(
     const std::vector<WuaucRecord>& records) {
   double tp = 0.0;
   double fp = 0.0;

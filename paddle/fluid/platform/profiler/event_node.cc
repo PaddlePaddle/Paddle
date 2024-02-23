@@ -340,7 +340,7 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
 
   // build relationship between host event node and op supplement node
   for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
-    int op_supplement_count = 0;
+    int op_supplement_count = 0;  // NOLINT
     bool hasenter = false;
     std::vector<OperatorSupplementEventNode*>::iterator firstposition;
     std::vector<OperatorSupplementEventNode*>::iterator lastposition =

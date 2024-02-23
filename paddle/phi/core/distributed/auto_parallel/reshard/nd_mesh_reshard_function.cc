@@ -90,7 +90,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call SameNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& process_mesh = out_dist_attr.process_mesh();
 
@@ -287,7 +287,7 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                       const DistTensor& in,
                                       const TensorDistAttr& out_dist_attr,
                                       DistTensor* out) {
-  VLOG(3) << "Call CrossNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
 
   // Construct a `DistTensor` by `dtype` of `in` tensor to avoid using default

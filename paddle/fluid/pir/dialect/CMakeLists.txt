@@ -222,6 +222,7 @@ file(
   op_dialect_srcs
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/trait/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/transforms/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/utils/*.cc")

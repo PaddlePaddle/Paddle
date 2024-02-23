@@ -33,11 +33,11 @@ void MeanGradKernel(const Context& dev_ctx,
     for (size_t i = 0; i < dims.size(); ++i) {
       reduce_dims[i] = (reduce_dims[i] >= 0)
                            ? reduce_dims[i]
-                           : input_dims.size() + reduce_dims[i];
-      number_of_elements *= input_dims[reduce_dims[i]];
+                           : input_dims.size() + reduce_dims[i];  // NOLINT
+      number_of_elements *= input_dims[reduce_dims[i]];           // NOLINT
     }
   } else {
-    number_of_elements = x.numel();
+    number_of_elements = static_cast<int>(x.numel());
   }
   const IntArray new_dims = IntArray(reduce_dims);
   ReduceGradKernel<T, Context>(dev_ctx,

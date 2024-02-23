@@ -194,8 +194,8 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
-  VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
-  VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+  LOG_FIRST_N(INFO, 1) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
+  LOG_FIRST_N(INFO, 1) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(op);
 
@@ -243,7 +243,7 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
     return name;
   }
   auto cinn_op_name = name.substr(pos + 1);
-  VLOG(4) << "GetOpName: " << name << " -> " << cinn_op_name;
+  VLOG(7) << "GetOpName: " << name << " -> " << cinn_op_name;
   CHECK(cinn_op_name != "")
       << "Found empty cinn_op_name, maybe you should implement OpPattern for "
       << name;

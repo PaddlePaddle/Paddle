@@ -25,8 +25,8 @@ namespace paddle {
 namespace distributed {
 
 static bool IsStreamSafeAllocator() {
-  return FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_use_stream_safe_cuda_allocator;
+  return (FLAGS_allocator_strategy == "auto_growth" &&
+          FLAGS_use_stream_safe_cuda_allocator);
 }
 
 static Backend TransToBackend(platform::Place place) {

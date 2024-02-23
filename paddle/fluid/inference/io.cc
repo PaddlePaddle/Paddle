@@ -86,7 +86,7 @@ void LoadPersistables(framework::Executor* executor,
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
-  std::vector<std::string> paramlist;
+  std::vector<std::string> param_list;
 
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
@@ -107,7 +107,7 @@ void LoadPersistables(framework::Executor* executor,
       new_var->SetPersistable(true);
 
       if (!param_filename.empty()) {
-        paramlist.push_back(new_var->Name());
+        param_list.push_back(new_var->Name());
       } else {
         // append_op
         framework::OpDesc* op = load_block->AppendOp();
@@ -120,12 +120,12 @@ void LoadPersistables(framework::Executor* executor,
   }
 
   if (!param_filename.empty()) {
-    // sort paramlist to have consistent ordering
-    std::sort(paramlist.begin(), paramlist.end());
+    // sort param_list to have consistent ordering
+    std::sort(param_list.begin(), param_list.end());
     // append just the load_combine op
     framework::OpDesc* op = load_block->AppendOp();
     op->SetType("load_combine");
-    op->SetOutput("Out", paramlist);
+    op->SetOutput("Out", param_list);
     op->SetAttr("file_path", {param_filename});
     op->SetAttr("model_from_memory", {model_from_memory});
     op->CheckAttrs();
