@@ -21,9 +21,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
@@ -38,6 +40,12 @@ np.random.seed(seed)
 paddle.seed(seed)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
         self.config()
@@ -697,6 +705,12 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -708,6 +722,12 @@ class TestFusedMultiTransformerOpVariableGenCache1(TestFusedMultiTransformerOp):
         # self.pre_layer_norm = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -722,6 +742,12 @@ class TestFusedMultiTransformerOpVariableGenCache2(TestFusedMultiTransformerOp):
             self.x_type = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -738,6 +764,12 @@ class TestFusedMultiTransformerOpVariableGenCache3(TestFusedMultiTransformerOp):
             self.x_type = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -753,6 +785,12 @@ class TestFusedMultiTransformerOpVariableGenCache4(TestFusedMultiTransformerOp):
             self.x_type = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -766,6 +804,12 @@ class TestFusedMultiTransformerOpVariableDecoder1(TestFusedMultiTransformerOp):
         self.pre_layer_norm = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
@@ -782,6 +826,12 @@ class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
             self.x_type = np.float16
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformerInt8 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
