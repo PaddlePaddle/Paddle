@@ -2512,6 +2512,12 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         input_shape = input.shape
+
+        if not isinstance(num_or_sections, (int, list, tuple)):
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                "received %s." % (type(num_or_sections))
+            )
         if isinstance(num_or_sections, int):
             assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
