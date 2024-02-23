@@ -3569,6 +3569,7 @@ void ReshapeInferMeta(const MetaTensor& x,
   if (!config.is_runtime && shape.FromTensor()) {
     out->set_dims(common::make_ddim(shape_data));
     out->share_lod(x);
+    out->set_dtype(x.dtype());
     return;
   }
   InferMetaFromVecValue(x, shape_data, out);
