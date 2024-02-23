@@ -105,9 +105,9 @@ class Converter:
                 >>> import numpy as np
                 >>> from paddle.distributed.auto_parallel.static.converter import Converter
                 >>> complete_tensors = np.arange(4).reshape([2, 2])
-                >>> partitial_tensors = np.split(complete_tensors, 2, axis=0)
+                >>> partial_tensors = np.split(complete_tensors, 2, axis=0)
                 >>> name = "tmp_0"
-                >>> tensors_dict = {name: partitial_tensors}
+                >>> tensors_dict = {name: partial_tensors}
                 >>> strategy_1 = {
                 ...     name: {
                 ...         "process_shape": [2],
@@ -345,7 +345,7 @@ class Converter:
     @staticmethod
     def merge(partition_tensor_list, tensor, partition_index, complete_shape):
         """
-        Merge partitial tensors to a complete.
+        Merge partial tensors to a complete.
 
         Returns:
             None

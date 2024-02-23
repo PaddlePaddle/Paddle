@@ -493,7 +493,7 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api
