@@ -91,22 +91,6 @@ DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 // use rocblas_handle for workround.
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
-DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
-DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);
-DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
-DECLARE_TYPE_FOR_GPU(gpuGraphNode_t, cudaGraphNode_t, hipGraphNode_t);
-DECLARE_TYPE_FOR_GPU(gpuGraphNodeType, cudaGraphNodeType, hipGraphNodeType);
-DECLARE_TYPE_FOR_GPU(gpuKernelNodeParams,
-                     cudaKernelNodeParams,
-                     hipKernelNodeParams);
-DECLARE_TYPE_FOR_GPU(gpuStreamCaptureMode,
-                     cudaStreamCaptureMode,
-                     hipStreamCaptureMode);
-DECLARE_TYPE_FOR_GPU(gpuStreamCaptureStatus,
-                     cudaStreamCaptureStatus,
-                     hipStreamCaptureStatus);
-DECLARE_TYPE_FOR_GPU(gpuMemPool_t, cudaMemPool_t, hipMemPool_t);
-
 #undef DECLARE_TYPE_FOR_GPU
 
 #ifdef PADDLE_WITH_HIP
@@ -125,30 +109,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 DECLARE_CONSTANT_FOR_GPU(gpuErrorCudartUnloading,
                          cudaErrorCudartUnloading,
                          hipErrorDeinitialized);
-DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,
-                         cudaMemcpyKind::cudaMemcpyHostToDevice,
-                         hipMemcpyKind::hipMemcpyHostToDevice);
-DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToHost,
-                         cudaMemcpyKind::cudaMemcpyDeviceToHost,
-                         hipMemcpyKind::hipMemcpyDeviceToHost);
-DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
-                         cudaMemcpyKind::cudaMemcpyDeviceToDevice,
-                         hipMemcpyKind::hipMemcpyDeviceToDevice);
-DECLARE_CONSTANT_FOR_GPU(gpuEventDisableTiming,
-                         cudaEventDisableTiming,
-                         hipEventDisableTiming);
-DECLARE_CONSTANT_FOR_GPU(gpuStreamNonBlocking,
-                         cudaStreamNonBlocking,
-                         hipStreamNonBlocking);
-DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureModeThreadLocal,
-                         cudaStreamCaptureModeThreadLocal,
-                         hipStreamCaptureModeThreadLocal);
-DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureModeRelaxed,
-                         cudaStreamCaptureModeRelaxed,
-                         hipStreamCaptureModeRelaxed);
-DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
-                         cudaStreamCaptureStatusActive,
-                         hipStreamCaptureStatusActive);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
@@ -183,6 +143,8 @@ DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
                          hipEventSynchronize);
 
 #undef DECLARE_FUNCTION_FOR_GPU
+
+using CUDAGraphID = unsigned long long;  // NOLINT
 
 }  // namespace paddle
 
