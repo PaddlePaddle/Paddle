@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -173,6 +174,23 @@ class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
+class DeleteUselessBroadcastPattern
+    : public pir::OpRewritePattern<cinn::dialect::BroadcastOp> {
+ public:
+  using pir::OpRewritePattern<cinn::dialect::BroadcastOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(cinn::dialect::BroadcastOp broadcast,
+                       pir::PatternRewriter& rewriter) const override {
+    if (!broadcast->GetParentOp()->isa<cinn::dialect::FusionOp>()) {
+      rewriter.ReplaceAllUsesWith(broadcast.result(0),
+                                  broadcast->operand_source(0));
+      rewriter.EraseOp(broadcast);
+      return true;
+    }
+    return false;
+  }
+};
+
 class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
  public:
   AddBroadcastToElementwisePass()
@@ -228,8 +246,24 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
   }
 };
 
+class DeleteUselessBroadcastPass : public pir::PatternRewritePass {
+ public:
+  DeleteUselessBroadcastPass()
+      : pir::PatternRewritePass("delete_useless_broadcast_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<DeleteUselessBroadcastPattern>(context);
+    return ps;
+  }
+};
+
 std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass() {
   return std::make_unique<AddBroadcastToElementwisePass>();
+}
+
+std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass() {
+  return std::make_unique<DeleteUselessBroadcastPass>();
 }
 
 }  // namespace ir

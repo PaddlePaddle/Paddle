@@ -177,6 +177,41 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
   return true;
 }
 
+bool IsTempDenySpecialOp(const ::pir::Operation& op) {
+  if (op->isa<cinn::dialect::GenerateShapeOp>()) {
+    return false;
+  }
+
+  auto GetNumElementsFromValue = [&](const ::pir::Value& value) {
+    int64_t numel = -1;
+    if (value && value.type()) {
+      auto type = value.type().dyn_cast<::pir::DenseTensorType>();
+      if (!::common::contain_unknown_dim(type.dims())) {
+        numel = ::common::product(type.dims());
+      }
+    }
+    return numel;
+  };
+  const int64_t max_value_numel = [&] {
+    int64_t max_value_numel = -1;
+    for (uint32_t i = 0; i < op.num_operands(); ++i) {
+      max_value_numel = std::max(GetNumElementsFromValue(op.operand_source(i)),
+                                 max_value_numel);
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      max_value_numel =
+          std::max(GetNumElementsFromValue(op.result(i)), max_value_numel);
+    }
+    return max_value_numel;
+  }();
+
+  if (0 <= max_value_numel && max_value_numel < 32) {
+    return true;
+  }
+
+  return false;
+}
+
 bool IsRegisteredInCINN(const ::pir::Operation& op) {
   if (CompatibleInfo::OP_NAMES.find(op.name()) !=
       CompatibleInfo::OP_NAMES.end()) {
@@ -190,6 +225,9 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
             << "So mark IsSupportForCinn: " << false;
+    return false;
+  }
+  if (IsTempDenySpecialOp(op)) {
     return false;
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);

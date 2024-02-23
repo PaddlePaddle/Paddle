@@ -264,18 +264,20 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   if (!has_minus_one) {
     if (product < total_extent) {
       std::ostringstream os;
-      os << "In Split, the factors' product should be not larger than or equal "
-            "to original loop's extent!"
-         << std::endl;
+      os << "In Split, the factors' product[" << product
+         << "] should be not larger than or equal "
+            "to original loop's extent["
+         << total_extent << "]!" << std::endl;
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     return validated_factors;
   } else {
     if (product > total_extent) {
       std::ostringstream os;
-      os << "In Split, the factors' product should be not larger than or equal "
-            "to original loop's extent!"
-         << std::endl;
+      os << "In Split, the factors' product[" << product
+         << "] should be not larger than or equal "
+            "to original loop's extent["
+         << total_extent << "]!" << std::endl;
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     int minus_one_candidate = static_cast<int>(
