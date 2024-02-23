@@ -50,3 +50,11 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_semi_auto_parallel_llama_model_amp
                        PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_semi_auto_parallel_hybrid_sharding_strategy MODULES
+    test_semi_auto_parallel_hybrid_sharding_strategy ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_semi_auto_parallel_hybrid_sharding_strategy
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
+endif()
