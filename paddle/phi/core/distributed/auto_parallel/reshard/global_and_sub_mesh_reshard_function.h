@@ -19,7 +19,7 @@
 namespace phi {
 namespace distributed {
 
-class GlobalToSubPPMeshReshardFunction final : public ReshardFunction {
+class GlobalToSubMeshReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
@@ -29,10 +29,10 @@ class GlobalToSubPPMeshReshardFunction final : public ReshardFunction {
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
 
-  std::string Name() override { return "GlobalToSubPPMeshReshardFunction"; }
+  std::string Name() override { return "GlobalToSubMeshReshardFunction"; }
 };
 
-class SubPPMeshToGlobalReshardFunction final : public ReshardFunction {
+class SubMeshToGlobalReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
@@ -42,7 +42,7 @@ class SubPPMeshToGlobalReshardFunction final : public ReshardFunction {
             const TensorDistAttr& out_dist_attr,
             DistTensor* out) override;
 
-  std::string Name() override { return "GlobalToSubPPMeshReshardFunction"; }
+  std::string Name() override { return "SubMeshToGlobalReshardFunction"; }
 };
 
 }  // namespace distributed
