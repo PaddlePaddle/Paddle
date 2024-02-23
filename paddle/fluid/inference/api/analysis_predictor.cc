@@ -827,13 +827,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
         params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
                                                     sub_scope_);
+        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
         constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-
-        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
         gpu_pm.AddPass(std::move(constant_folding_pass));
+
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
