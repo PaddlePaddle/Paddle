@@ -188,7 +188,7 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
-        # parant block value is outside_value
+        # parent block value is outside_value
         self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
