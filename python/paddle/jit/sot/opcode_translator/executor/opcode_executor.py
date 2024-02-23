@@ -676,6 +676,21 @@ class OpcodeExecutorBase:
     def BINARY_SUBSCR(self, instr: Instruction):
         key = self.stack.pop()
         container = self.stack.pop()
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    @call_break_graph_decorator(push_n=1)
+    def BINARY_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    def binary_subscr_operation(self, key, container, opname):
         assert isinstance(key, VariableBase)
         # TODO(xiongkun): getitem / getattr support key and attr as variable.
         if isinstance(key, TensorVariable) and isinstance(
@@ -690,7 +705,7 @@ class OpcodeExecutorBase:
 
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in BINARY_SUBSCR, {container}[{key}]"
+                f"Key is a TensorVariable in {opname}, {container}[{key}]"
             )
 
         result = BuiltinVariable(
@@ -864,11 +879,28 @@ class OpcodeExecutorBase:
         key = self.stack.pop()
         container = self.stack.pop()
         value = self.stack.pop()
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    @call_break_graph_decorator(push_n=0)
+    def STORE_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        value = self.stack.pop()
+
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    def store_subscr_operation(self, key, container, value, opname):
         assert isinstance(key, VariableBase)
         self._graph.add_global_guarded_variable(key)
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in STORE_SUBSCR, {container}[{key}] = {value}"
+                f"Key is a TensorVariable in {opname}, {container}[{key}] = {value}"
             )
         # TODO(xiongkun): support tensor[tensor] = tensor, dy2static is not the same with dygraph.
         container[key.get_py_value()] = value
