@@ -22,7 +22,6 @@ import sys
 import traceback
 import types
 from dataclasses import dataclass
-from enum import Enum
 from itertools import chain
 from typing import Any, Callable
 
@@ -66,6 +65,8 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     FORMAT_VALUE_FLAG as FV,
     MAKE_FUNCTION_FLAG as MF,
+    MAX_INTRINSIC_1,
+    Intrinsics_UnaryFunctions,
 )
 from .pycode_generator import PyCodeGen
 from .tracker import (
@@ -1495,39 +1496,21 @@ class OpcodeExecutorBase:
         )
 
     def CALL_INTRINSIC_1(self, instr: Instruction):
-        MAX_INTRINSIC_1 = 11  # in Python 3.12
         assert isinstance(instr.arg, int)
         assert instr.arg <= MAX_INTRINSIC_1
+        opce: OpcodeExecutorBase = self
 
-        OpcodeExecutor_ = self
+        def to_func(args):
+            if args == Intrinsics_UnaryFunctions.INTRINSIC_1_INVALID:
+                raise RuntimeError("invalid intrinsic function")
+            elif args == Intrinsics_UnaryFunctions.INTRINSIC_UNARY_POSITIVE:
+                return opce.UNARY_POSITIVE
+            elif args == Intrinsics_UnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+                return opce.LIST_TO_TUPLE
+            else:
+                raise FallbackError(f"No support Intrinsics, {args.name}")
 
-        class Intrinsics_UnaryFunctions(Enum):
-            INTRINSIC_1_INVALID = 0
-            INTRINSIC_PRINT = 1  # no support, print
-            INTRINSIC_IMPORT_STAR = 2  # no support, `from module import *`
-            INTRINSIC_STOPITERATION_ERROR = (
-                3  # no support, generator or coroutine
-            )
-            INTRINSIC_ASYNC_GEN_WRAP = 4  # no support, async
-            INTRINSIC_UNARY_POSITIVE = 5
-            INTRINSIC_LIST_TO_TUPLE = 6
-            INTRINSIC_TYPEVAR = 7  # no support, PEP 695
-            INTRINSIC_PARAMSPEC = 8  # no support, PEP 695
-            INTRINSIC_TYPEVARTUPLE = 9  # no support, PEP 695
-            INTRINSIC_SUBSCRIPT_GENERIC = 10  # no support, PEP 695
-            INTRINSIC_TYPEALIAS = 11  # no support, PEP 695
-
-            def to_func(self):
-                if self == self.INTRINSIC_1_INVALID:
-                    raise RuntimeError("invalid intrinsic function")
-                elif self == self.INTRINSIC_UNARY_POSITIVE:
-                    return OpcodeExecutor_.UNARY_POSITIVE
-                elif self == self.INTRINSIC_LIST_TO_TUPLE:
-                    return OpcodeExecutor_.LIST_TO_TUPLE
-                else:
-                    raise BreakGraphError(f"No support Intrinsics, {self.name}")
-
-        Intrinsics_UnaryFunctions(instr.arg).to_func()(instr)
+        to_func(Intrinsics_UnaryFunctions(instr.arg))(instr)
 
 
 class OpcodeExecutor(OpcodeExecutorBase):
