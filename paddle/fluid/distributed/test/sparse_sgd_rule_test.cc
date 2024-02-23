@@ -121,7 +121,7 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
 
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 10, ptr_grad);
-  std::array<float, 10> label = {-0.100000,
+  std::array<float, 11> label = {-0.100000,
                                  -0.200000,
                                  -0.300000,
                                  -0.400000,
