@@ -1501,9 +1501,9 @@ class OpcodeExecutorBase:
         elif (
             intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
         ):
-            return self.UNARY_POSITIVE(instr)
+            self.UNARY_POSITIVE(instr)
         elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
-            return self.LIST_TO_TUPLE(instr)
+            self.LIST_TO_TUPLE(instr)
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
