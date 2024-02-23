@@ -17,12 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(save);
-PD_DECLARE_KERNEL(save, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(save_sr, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cast, CPU, ALL_LAYOUT);
-USE_OP_ITSELF(load);
-PD_DECLARE_KERNEL(load, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(load_sr, CPU, ALL_LAYOUT);
 
 TEST(SaveLoadOp, CPU) {
