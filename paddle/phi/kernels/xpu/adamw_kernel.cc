@@ -97,8 +97,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     skip_update_ = skip_update_vec[0];
   }
 
-  // skip_update=true, just copy input to output, and TensorCopy will call
-  // mutable_data
+  // skip_update=true, just copy input to output
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
@@ -495,23 +494,27 @@ void AdamwDenseKernel(const Context& dev_ctx,
     const float* master_param_in_data = master_param->data<float>();
     float* master_param_out_data =
         dev_ctx.template Alloc<float>(master_param_outs);
-    // convert grad to float
-    float* grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
-    // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
-    int r = xpu::cast<XPUType, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(grad.template data<T>()),
-        grad_fp32,
-        grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    // convert grad to float if necessary
+    float* grad_fp32 = nullptr;
+    const auto grad_type = grad.dtype();
+    if (grad_type != phi::DataType::FLOAT32) {
+      grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
+      PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
+      // int cast(Context* ctx, const TX* x, TY* y, int64_t len);
+      int r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(grad.template data<T>()),
+          grad_fp32,
+          grad.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    }
     // int adamw(Context* ctx, const T* g, const float* mom1, const float* mom2,
     // const T* param, const float* beta1_pow, const float* beta2_pow, const
     // float* lr, float* moment1_out, float* moment2_out, T* param_out, float
     // beta1, float beta2, float epsilon, float coeff, int64_t n);
     r = xpu::adamw<float>(
         dev_ctx.x_context(),
-        grad_fp32,
+        (grad_type == phi::DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
         moment_in_fp16 ? moment1_input_for_xdnn
                        : moment1.template data<float>(),
         moment_in_fp16 ? moment2_input_for_xdnn

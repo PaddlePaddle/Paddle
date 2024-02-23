@@ -26,7 +26,6 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 def adamw_step(inputs, attributes):
@@ -60,8 +59,8 @@ def adamw_step(inputs, attributes):
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-    param_out = param - lr_t * (moment1_out / (np.sqrt(moment2_out) + epsilon))
+    denom = (np.sqrt(moment2_out) / np.sqrt(1.0 - beta2_pow)) + epsilon
+    param_out = param + ((moment1_out / denom) * (-(lr / (1.0 - beta1_pow))))
     return param_out, moment1_out, moment2_out
 
 
@@ -677,7 +676,7 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
         param = paddle.randn(shape).astype(paddle.bfloat16)
         master_weight = param.astype(paddle.float32)
         grad = paddle.randn(shape).astype(paddle.bfloat16)
-        main_grad = grad.astype(paddle.bfloat16)
+        main_grad = grad.astype(paddle.float32)
         moment1 = paddle.randn(shape).astype(paddle.float32)
         moment2 = paddle.randn(shape).astype(paddle.float32).abs()
         lr = paddle.zeros([1]).astype(paddle.float32)
@@ -696,7 +695,7 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
         # reference code
         _, _, _, _, _, _ = paddle._C_ops.adamw_(
             ref_param,
-            main_grad.astype(paddle.float32),
+            main_grad,
             lr,
             ref_moment_1,
             ref_moment_2,
@@ -780,9 +779,6 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
         return places
 
     def test_main(self):
-        xpu_version = core.get_xpu_device_version(0)
-        if xpu_version != core.XPUVersion.XPU3:
-            return
         for _ in range(1):
             shape = paddle.randint(1, 1024, [2])
             for place in self._get_places():
@@ -791,6 +787,61 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
                     self._test_adamw_op_dygraph_place_amp_with_maingrad(
                         place, shape, use_main_grad
                     )
+
+
+class TestAdamWOpMultiPrecison(unittest.TestCase):
+    def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+
+        input = paddle.randn((5, 5))
+
+        model = paddle.nn.Linear(5, 5)
+
+        optimizer = paddle.optimizer.AdamW(
+            parameters=[
+                {
+                    'params': model.parameters(),
+                    'weight_decay': 0.001,
+                    'beta1': 0.1,
+                    'beta2': 0.99,
+                }
+            ],
+            multi_precision=use_amp,
+        )
+
+        for idx in range(2):
+            if place == 'xpu' and use_amp:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'xpu' and use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+
+    def _get_places(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_xpu():
+            places.append('xpu')
+        return places
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._test_adamw_op_dygraph_place_amp(place, use_amp)
 
 
 support_types = get_xpu_op_support_types('adamw')
