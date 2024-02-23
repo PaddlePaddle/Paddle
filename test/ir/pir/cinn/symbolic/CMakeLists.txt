@@ -67,7 +67,7 @@ if(WITH_GPU)
       FLAGS_pir_apply_shape_optimization_pass=0 FLAGS_enable_pir_api=1
       ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_if_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  set_tests_properties(test_if_dy PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(test_llama_if_dy PROPERTIES LABELS "RUN_TYPE=CINN")
 
   add_test(
     NAME test_cinn_reduce_symbolic_demo
