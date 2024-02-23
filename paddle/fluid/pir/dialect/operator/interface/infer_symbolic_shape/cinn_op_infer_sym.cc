@@ -63,17 +63,24 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const pir::Value operand_source = op->operand_source(0);
   const auto &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
-
-  const std::vector<symbol::DimExpr> &out_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    for (int64_t dim : shape) {
-      out_dims.emplace_back(dim);
+  const auto GetOutDimExprs = [&]() -> symbol::TensorShapeOrDataDimExprs {
+    std::vector<symbol::DimExpr> out_sym_shape = operand_shape_or_data.shape();
+    if (end == std::numeric_limits<int>::max()) {
+      out_sym_shape[axis] = out_sym_shape[axis] - start;
+    } else {
+      out_sym_shape[axis] = end - start;
     }
-    return out_dims;
-  }();
-
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
+    symbol::TensorShapeOrDataDimExprs shape_dim_expr(out_sym_shape);
+    if (operand_shape_or_data.data().has_value()) {
+      std::vector<symbol::DimExpr> out_data;
+      for (int64_t i = start; i < end; i++) {
+        out_data.push_back(operand_shape_or_data.data().value()[i]);
+      }
+      shape_dim_expr.SetData(out_data);
+    }
+    return shape_dim_expr;
+  };
+  symbol::ShapeOrDataDimExprs shape_data{GetOutDimExprs()};
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
