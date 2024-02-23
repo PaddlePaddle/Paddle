@@ -534,7 +534,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(with_profile_);
 
   // cinn compiler related.
-  CP_MEMBER(use_cinn_compiler_);
+  CP_MEMBER(use_cinn_);
 
   // glog related.
   CP_MEMBER(with_glog_info_);
@@ -603,7 +603,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_ || use_cinn_compiler_) {
+  if (use_tensorrt_ || use_cinn_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -977,7 +977,7 @@ void AnalysisConfig::Update() {
   }
 
   // TODO(wilber): An ugly method to update pass, need to be fixed.
-  if (use_cinn_compiler_) {
+  if (use_cinn_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kCINNCompilerPasses) {
       pass_builder()->AppendPass(pass);
@@ -1464,7 +1464,7 @@ std::string AnalysisConfig::Summary() {
   }
 
   // cinn compiler
-  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
+  os.InsertRow({"use_cinn_compiler", use_cinn_ ? "true" : "false"});
 
   // ir info
   os.InsertRow(
@@ -1588,7 +1588,7 @@ void AnalysisConfig::Exp_EnableMixedPrecisionOps(
 
 void AnalysisConfig::EnableCINN() {
 #ifdef PADDLE_WITH_CINN
-  use_cinn_compiler_ = true;
+  use_cinn_ = true;
   Update();
 #else
   PADDLE_THROW(platform::errors::Unavailable(
@@ -1597,6 +1597,6 @@ void AnalysisConfig::EnableCINN() {
 #endif
 }
 
-bool AnalysisConfig::cinn_enabled() const { return use_cinn_compiler_; }
+bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
 }  // namespace paddle

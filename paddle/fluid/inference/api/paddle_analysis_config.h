@@ -1338,7 +1338,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool lite_zero_copy_;
 
   // CINN compiler related.
-  bool use_cinn_compiler_{false};
+  bool use_cinn_{false};
 
   // XPU related.
   bool use_xpu_{false};
