@@ -95,7 +95,7 @@ class ControllerBase:
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            # if self.ctx.continous_log():
+            # if self.ctx.continuous_log():
             # default to print log
             self.pod.logs()
 

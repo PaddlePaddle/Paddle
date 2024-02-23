@@ -59,7 +59,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         N = len(self.lod[0])
 
         # fp32 X input for reference implementation and
-        # corressponding bf16 data as input to GRU oneDNN bf16 kernel
+        # corresponding bf16 data as input to GRU oneDNN bf16 kernel
         x_fp32 = np.random.rand(T, self.M).astype('float32')
         x_bf16 = convert_float_to_uint16(x_fp32)
 

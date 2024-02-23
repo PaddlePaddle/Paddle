@@ -44,7 +44,7 @@ void CoordinatorService::FLService(
   uint32_t from_client_id = request->client_id();
   VLOG(0) << "fl-ps > recv from client id: " << from_client_id
           << ", msg_type: " << msg_type;
-  // TODO(ziyoujiyi): find is not thread safe, beacuse of RB_Tree traversal
+  // TODO(ziyoujiyi): find is not thread safe, because of RB_Tree traversal
   auto itr = _service_handle_map.find(msg_type);
   if (itr == _service_handle_map.end()) {
     LOG(ERROR) << "fl-ps > unknown flClient2Coordinator msg type: " << msg_type;

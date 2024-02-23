@@ -191,12 +191,13 @@ class HybridCommunicateGroup:
 
         assert (
             self._check_valid_topo()
-        ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
+        ), "nranks: {}, mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
             self.nranks,
             self._mp_degree,
             self._sharding_degree,
             self._pp_degree,
             self._dp_degree,
+            self._sep_degree,
         )
 
         # create comm group for pipe parallel

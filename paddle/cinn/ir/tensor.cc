@@ -336,7 +336,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
                                    const Target &target) const {
   CHECK(contains_reduce_axis())
       << "InitReduction only works on a reduce tensor";
-  // return if already rexists.
+  // return if already exists.
   std::string init_reduce_tensor_name = GenReduceInitTensorNameOf(name);
   if (stages->Lookup(init_reduce_tensor_name))
     return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
@@ -471,7 +471,7 @@ void _Tensor_::Bind(lang::Buffer &buffer) {
     if (this->buffer == buffer.buffer()) return;
     this->buffer->Unbind(this);
   }
-  // Extract the tensors thouse has binded to this buffer.
+  // Extract the tensors those has binded to this buffer.
   buffer_depended_tensor_names_ = buffer.buffer()->binded_tensor_names();
 
   buffer.buffer()->BindTo(this);
