@@ -629,7 +629,7 @@ class Section(DeviceWorker):
         schedule_mode_str = pipeline_opt["schedule_mode"]
         # F-then-B scheduler which runs Forward phase for all microbatches,
         # then runs Backward phase for all microbatches.
-        # 1F1B scheduler, which runs forward phase and backward phase altertively
+        # 1F1B scheduler, which runs forward phase and backward phase alternatively
         # after startup phase.
         assert schedule_mode_str in ["F-then-B", "1F1B"], (
             "The schedule mode " "for pipeline must be one of F-then-B or 1F1B"

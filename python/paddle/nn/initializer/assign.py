@@ -66,7 +66,7 @@ class NumpyArrayInitializer(Initializer):
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             out_dtype = core.VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
