@@ -48,7 +48,6 @@ from .dist_context import DistributedContext, get_default_distributed_context
 from .dist_input_spec import DistributedInputSpec
 from .dist_loader import (
     DistributedDataLoader,
-    DistributedDataLoaderFromGenerator,
 )
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
@@ -459,37 +458,6 @@ class Engine:
             dist_main_block.desc._remove_op(idx, idx + 1)
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
-
-        # Insert read op to forward TaskNode for fleet executor if 1F1B pass is setted
-        if (
-            self.main_program._pipeline_opt
-            and not auto_utils.use_new_executor()
-        ):
-            assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
-            fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
-            fwd_task = None
-            if self._strategy.pipeline.schedule_mode == "1F1B":
-                fwd_task = fleet_opt["tasks"][1]
-            elif self._strategy.pipeline.schedule_mode == "stream":
-                fwd_task = fleet_opt["tasks"][0]
-            assert fwd_task is not None
-            fwd_prog = fwd_task.get_program()
-            fwd_block = fwd_prog.global_block()
-
-            for var in feed_list:
-                if var.name not in fwd_block.vars:
-                    fwd_block._clone_variable(var)
-
-            for op_desc in read_ops_desc:
-                new_op_desc = fwd_block.desc._prepend_op()
-                new_op_desc.copy_from(op_desc)
-                new_op = Operator(
-                    fwd_block, new_op_desc, type=new_op_desc.type()
-                )
-                fwd_block.ops.insert(0, new_op)
-
-            fwd_block._sync_with_cpp()
-            fwd_task.set_program(fwd_prog)
 
     def _prepare_feed(self, data, user_feeds, mode):
         feeds = {}
@@ -1084,35 +1052,19 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        if auto_utils.use_new_executor():
-            local_batch_size = self._validate_batch_size(batch_size)
-            train_dataloader = self._prepare_dataloader(
-                train_data,
-                return_list=False,
-                batch_size=local_batch_size,
-                epochs=epochs,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = (
-                len(train_dataloader)
-                if steps_per_epoch is None
-                else steps_per_epoch
-            )
-        else:
-            micro_batch_size = self._validate_batch_size(batch_size)
-            train_dataloader = self._prepare_dataloader_from_generator(
-                dataset=train_data,
-                capacity=70,
-                iterable=False,
-                batch_size=micro_batch_size,
-                epochs=epochs,
-                steps_per_epoch=steps_per_epoch,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = train_dataloader._steps
-            local_batch_size = micro_batch_size
-            if self._strategy.pipeline.enable:
-                local_batch_size = micro_batch_size * self._acc_steps
+        local_batch_size = self._validate_batch_size(batch_size)
+        train_dataloader = self._prepare_dataloader(
+            train_data,
+            return_list=False,
+            batch_size=local_batch_size,
+            epochs=epochs,
+            collate_fn=collate_fn,
+        )
+        steps_per_epoch = (
+            len(train_dataloader)
+            if steps_per_epoch is None
+            else steps_per_epoch
+        )
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
@@ -1138,44 +1090,36 @@ class Engine:
             cbks.on_epoch_begin(epoch)
 
             for step, batch in enumerate(train_dataloader):
-                if auto_utils.use_new_executor():
-                    batches = self._validate_batch(batch)
-                else:
-                    batches = [{}]
+                batches = self._validate_batch(batch)
 
-                try:
-                    for micro_batch in batches:
-                        with paddle.profiler.utils._nvprof_range(
-                            iter_id=step,
-                            start=nvprof_range[0],
-                            end=nvprof_range[1],
-                        ):
-                            cbks.on_batch_begin('train', step, logs)
-                            outs = self._executor.run(
-                                self.main_program,
-                                feed=micro_batch,
-                                fetch_list=fetch_names,
-                                use_program_cache=self._strategy.use_cache,
-                                return_numpy=self._strategy.return_numpy,
-                            )
+                for micro_batch in batches:
+                    with paddle.profiler.utils._nvprof_range(
+                        iter_id=step,
+                        start=nvprof_range[0],
+                        end=nvprof_range[1],
+                    ):
+                        cbks.on_batch_begin('train', step, logs)
+                        outs = self._executor.run(
+                            self.main_program,
+                            feed=micro_batch,
+                            fetch_list=fetch_names,
+                            use_program_cache=self._strategy.use_cache,
+                            return_numpy=self._strategy.return_numpy,
+                        )
 
-                            lr = auto_utils.get_lr(self.optimizer)
-                            logs = self._prepare_logger(
-                                outs,
-                                epoch,
-                                step,
-                                lr,
-                                fetch_names,
-                                fetch_indices,
-                                self._mode,
-                            )
-                            cbks.on_batch_end('train', step, logs)
-                except core.EOFException:
-                    break
+                        lr = auto_utils.get_lr(self.optimizer)
+                        logs = self._prepare_logger(
+                            outs,
+                            epoch,
+                            step,
+                            lr,
+                            fetch_names,
+                            fetch_indices,
+                            self._mode,
+                        )
+                        cbks.on_batch_end('train', step, logs)
 
                 if steps_per_epoch and step >= steps_per_epoch:
-                    if not auto_utils.use_new_executor():
-                        train_dataloader._reset()
                     break
 
             if valid_data and (epoch + 1) % valid_freq == 0:
@@ -1269,29 +1213,14 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        if auto_utils.use_new_executor():
-            local_batch_size = self._validate_batch_size(batch_size)
-            valid_dataloader = self._prepare_dataloader(
-                valid_data,
-                return_list=False,
-                batch_size=local_batch_size,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = len(valid_dataloader) if steps is None else steps
-        else:
-            micro_batch_size = self._validate_batch_size(batch_size)
-            valid_dataloader = self._prepare_dataloader_from_generator(
-                dataset=valid_data,
-                capacity=70,
-                iterable=False,
-                batch_size=micro_batch_size,
-                steps_per_epoch=steps,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = valid_dataloader._steps
-            local_batch_size = micro_batch_size
-            if self._strategy.pipeline.enable:
-                local_batch_size = micro_batch_size * self._acc_steps
+        local_batch_size = self._validate_batch_size(batch_size)
+        valid_dataloader = self._prepare_dataloader(
+            valid_data,
+            return_list=False,
+            batch_size=local_batch_size,
+            collate_fn=collate_fn,
+        )
+        steps_per_epoch = len(valid_dataloader) if steps is None else steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
@@ -1310,27 +1239,18 @@ class Engine:
         )
         logs = {}
         for step, batch in enumerate(valid_dataloader):
-            if auto_utils.use_new_executor():
-                batches = self._validate_batch(batch)
-            else:
-                batches = [{}]
-
-            try:
-                for micro_batch in batches:
-                    cbks.on_batch_begin('eval', step, logs)
-                    outs = self._executor.run(
-                        self.main_program,
-                        feed=micro_batch,
-                        fetch_list=fetch_names,
-                        use_program_cache=self._strategy.use_cache,
-                        return_numpy=self._strategy.return_numpy,
-                    )
-            except core.EOFException:
-                break
+            batches = self._validate_batch(batch)
+            for micro_batch in batches:
+                cbks.on_batch_begin('eval', step, logs)
+                outs = self._executor.run(
+                    self.main_program,
+                    feed=micro_batch,
+                    fetch_list=fetch_names,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy,
+                )
 
             if steps_per_epoch and step >= steps_per_epoch:
-                if not auto_utils.use_new_executor():
-                    valid_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1403,26 +1323,14 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        if auto_utils.use_new_executor():
-            local_batch_size = self._validate_batch_size(batch_size)
-            test_dataloader = self._prepare_dataloader(
-                test_data,
-                return_list=False,
-                batch_size=local_batch_size,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = len(test_dataloader) if steps is None else steps
-        else:
-            micro_batch_size = self._validate_batch_size(batch_size)
-            test_dataloader = self._prepare_dataloader_from_generator(
-                dataset=test_data,
-                capacity=70,
-                iterable=False,
-                batch_size=micro_batch_size,
-                steps_per_epoch=steps,
-                collate_fn=collate_fn,
-            )
-            steps_per_epoch = test_dataloader._steps
+        local_batch_size = self._validate_batch_size(batch_size)
+        test_dataloader = self._prepare_dataloader(
+            test_data,
+            return_list=False,
+            batch_size=local_batch_size,
+            collate_fn=collate_fn,
+        )
+        steps_per_epoch = len(test_dataloader) if steps is None else steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
@@ -1432,27 +1340,18 @@ class Engine:
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
         for step, batch in enumerate(test_dataloader):
-            if auto_utils.use_new_executor():
-                batches = self._validate_batch(batch)
-            else:
-                batches = [{}]
-
-            try:
-                for micro_batch in batches:
-                    cbks.on_batch_begin('predict', step, logs)
-                    outs = self._executor.run(
-                        self.main_program,
-                        feed=micro_batch,
-                        fetch_list=fetch_names,
-                        use_program_cache=self._strategy.use_cache,
-                        return_numpy=self._strategy.return_numpy,
-                    )
-            except core.EOFException:
-                break
+            batches = self._validate_batch(batch)
+            for micro_batch in batches:
+                cbks.on_batch_begin('predict', step, logs)
+                outs = self._executor.run(
+                    self.main_program,
+                    feed=micro_batch,
+                    fetch_list=fetch_names,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy,
+                )
 
             if steps_per_epoch and step >= steps_per_epoch:
-                if not auto_utils.use_new_executor():
-                    test_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1507,48 +1406,6 @@ class Engine:
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             places=places,
-        )
-        return dataloader
-
-    def dataloader_from_generator(
-        self,
-        dataset,
-        capacity=70,
-        use_double_buffer=True,
-        iterable=True,
-        use_multiprocess=False,
-        drop_last=True,
-        batch_size=1,
-        epochs=1,
-        steps_per_epoch=None,
-        collate_fn=None,
-        sample_split=1,
-        mode=None,
-    ):
-        if mode is not None:
-            self.to_mode(mode)
-
-        if not self._has_prepared[self._mode]:
-            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-                dataset, sample_split, batch_size
-            )
-            self._prepare_program(self._mode)
-        else:
-            self._switch_mode(self._mode)
-
-        micro_batch_size = self._validate_batch_size(batch_size)
-        dataloader = self._prepare_dataloader_from_generator(
-            dataset=dataset,
-            capacity=capacity,
-            use_double_buffer=use_double_buffer,
-            iterable=iterable,
-            return_list=False,
-            use_multiprocess=use_multiprocess,
-            drop_last=drop_last,
-            batch_size=micro_batch_size,
-            epochs=epochs,
-            steps_per_epoch=steps_per_epoch,
-            collate_fn=collate_fn,
         )
         return dataloader
 
@@ -1720,66 +1577,6 @@ class Engine:
 
         return dataloader
 
-    def _prepare_dataloader_from_generator(
-        self,
-        dataset,
-        capacity=None,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=False,
-        use_multiprocess=False,
-        drop_last=True,
-        batch_size=1,
-        epochs=1,
-        steps_per_epoch=None,
-        collate_fn=None,
-    ):
-        dist_context = self._dist_contexts[self._mode]
-        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
-        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
-        dist_main_block = dist_main_prog.global_block()
-
-        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
-        # Cause predict_program does not contain labels var,
-        # then we will add labels var from serial_program to dist_program,
-        # that maintains the length of feed_list equal to the length of dataset's values.
-        inputs_var = dist_context.serial_feed_vars["inputs"]
-        labels_var = dist_context.serial_feed_vars["labels"]
-        feed_list = []
-        for var in inputs_var + labels_var:
-            if var.name in dist_main_block.vars:
-                feed_list.append(dist_main_block.vars[var.name])
-            else:
-                copy_var = dist_main_block._clone_variable(var, var.persistable)
-                copy_var.desc.set_original_id(var.desc.original_id())
-                feed_list.append(copy_var)
-
-        places = paddle.static.cuda_places()
-        with static.program_guard(dist_main_prog, dist_startup_prog):
-            dataloader = DistributedDataLoaderFromGenerator(
-                dataset=dataset,
-                feed_list=feed_list,
-                capacity=capacity,
-                use_double_buffer=use_double_buffer,
-                iterable=iterable,
-                return_list=return_list,
-                use_multiprocess=use_multiprocess,
-                drop_last=drop_last,
-                places=places,
-                batch_size=batch_size,
-                epochs=epochs,
-                steps_per_epoch=steps_per_epoch,
-                collate_fn=collate_fn,
-                split_data=self._strategy.split_data,
-                data_parallel_world_size=self._dp_world_sizes,
-                data_parallel_rank=self._dp_ranks,
-                acc_steps=1
-                if not self._strategy.pipeline.enable
-                else self._acc_steps,
-            )
-        self._prepare_reader(feed_list)
-        return dataloader
-
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
         self._mode = 'train'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1791,25 +1588,17 @@ class Engine:
         if batch_size is None:
             return None
 
-        if auto_utils.use_new_executor():
-            assert (
-                len(set(self._dp_world_sizes)) == 1
-            ), "DistributedBatchSampler only support one data parallel group, but got [{}] different data parallel groups".format(
-                len(set(self._dp_world_sizes))
-            )
-            assert (
-                batch_size % self._dp_world_sizes[0] == 0
-            ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
-                str(batch_size), str(self._dp_world_sizes[0])
-            )
-            return batch_size // self._dp_world_sizes[0]
-        else:
-            assert (
-                batch_size % self._acc_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
-                batch_size, self._acc_steps
-            )
-            return batch_size // self._acc_steps
+        assert (
+            len(set(self._dp_world_sizes)) == 1
+        ), "DistributedBatchSampler only support one data parallel group, but got [{}] different data parallel groups".format(
+            len(set(self._dp_world_sizes))
+        )
+        assert (
+            batch_size % self._dp_world_sizes[0] == 0
+        ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
+            str(batch_size), str(self._dp_world_sizes[0])
+        )
+        return batch_size // self._dp_world_sizes[0]
 
     def _validate_batch(self, batch):
         if batch is None:
