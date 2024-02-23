@@ -225,18 +225,27 @@ void CUDAGraph::EndSegmentCapture() {
   gpuGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
       FLAGS_auto_free_cudagraph_allocations_on_launch) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 11040
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11040
     VLOG(1) << "cudaGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
-    PADDLE_ENFORCE_GPU_SUCCESS(gpuGraphInstantiateWithFlags(
-        &exec_graph, graph, gpuGraphInstantiateFlagAutoFreeOnLaunch));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
+        &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+#elif defined(PADDLE_WITH_HIP)
+    VLOG(1) << "hipGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGraphInstantiateWithFlags(
+        &exec_graph, graph, hipGraphInstantiateFlagAutoFreeOnLaunch));
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
         "CUDA version >= 11.4.0"));
 #endif
   } else {
+#if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(
-        gpuGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+        cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+#endif
   }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
@@ -282,7 +291,7 @@ static std::string ConcatPath(const std::string &dirname,
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
-#if defined(PADDLE_WITH_CUDA) || CUDA_VERSION >= 11030
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11030
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");

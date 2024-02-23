@@ -29,8 +29,7 @@
 
 namespace phi {
 
-// Note(qili93): refer to the following links for CUAA Runtime API supported by
-// HIP
+// Note(qili93): CUDA Runtime API supported by HIP
 // https://github.com/ROCm/HIPIFY/blob/master/doc/markdown/CUDA_Runtime_API_functions_supported_by_HIP.md
 
 #ifdef PADDLE_WITH_HIP
@@ -113,9 +112,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
 DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
                          cudaGraphNodeTypeKernel,
                          hipGraphNodeTypeKernel);
-DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
-                         cudaGraphInstantiateFlagAutoFreeOnLaunch,
-                         hipGraphInstantiateFlagAutoFreeOnLaunch);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
@@ -130,12 +126,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
 DECLARE_FUNCTION_FOR_GPU(gpuGraphGetNodes, cudaGraphGetNodes, hipGraphGetNodes);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphGetEdges, cudaGraphGetEdges, hipGraphGetEdges);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphLaunch, cudaGraphLaunch, hipGraphLaunch);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiate,
-                         cudaGraphInstantiate,
-                         hipGraphInstantiate);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiateWithFlags,
-                         cudaGraphInstantiateWithFlags,
-                         hipGraphInstantiateWithFlags);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphDestroy, cudaGraphDestroy, hipGraphDestroy);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphExecDestroy,
                          cudaGraphExecDestroy,
