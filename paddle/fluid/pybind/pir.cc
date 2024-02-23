@@ -1138,7 +1138,7 @@ SplitedResult SplitForwardBackward(
       });
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
-  // backward program construc.
+  // backward program construct.
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
@@ -1160,7 +1160,7 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
-    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatly by
+    // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
     // calling SplitForwardBackward multi-times.
     std::string shadow_output_name =
         std::string("output_") + std::to_string(counter);

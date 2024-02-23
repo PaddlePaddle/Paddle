@@ -108,7 +108,7 @@ void Interpreter::Impl::Build(const Target& target,
                               const std::string& model_name) {
   CHECK(!var_map_.empty());
   VLOG(3) << "Program:\n" << *program_;
-  // applay frontend pass
+  // apply frontend pass
   std::unordered_set<std::string> fetch_var_ids;
   for (auto& name : fetch_names_) {
     CHECK(var_map_.count(name)) << "var_map finds no fetch var " << name;

@@ -74,7 +74,7 @@ class TranslationContext {
   Container container_;
   TranslationContext* parent_ = nullptr;
   std::vector<std::unique_ptr<TranslationContext>>
-      sons_;  // used to seperate different block
+      sons_;  // used to separate different block
 };
 
 class ProgramTranslator {
@@ -100,11 +100,11 @@ class ProgramTranslator {
   std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
   std::unordered_set<std::string> parameter_visited_;
 
-  /// In the legacy program desc, there are two special named varibales:
+  /// In the legacy program desc, there are two special named variables:
   /// 1. "feed", the input variable of feed op
   /// 2. "fetch", the output variable of fetch op
   /// However, new feed has no input and new fetch has no output
-  /// So we don't handle these two vairables when
+  /// So we don't handle these two variables when
   /// `Get/SetParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
