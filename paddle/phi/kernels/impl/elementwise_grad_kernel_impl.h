@@ -191,7 +191,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   // ddY_safe == null ? 0 : ddY
   DenseTensor ddX_safe, ddY_safe;
   phi::funcs::GetDoubleGradSafeTensor<Context, T>(
-      dev_ctx, out, ddx.get_ptr(), &ddX_safe);
+      dev_ctx, x, ddx.get_ptr(), &ddX_safe);
   phi::funcs::GetDoubleGradSafeTensor<Context, T>(
       dev_ctx, y, ddy.get_ptr(), &ddY_safe);
 
@@ -202,11 +202,11 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   // inplace ddx
   DenseTensor tmp;  // grad_x can be reused in computation of dx and dy for the
                     // common item: dout/y
-  if (grad_x.get_ptr()) {
-    // if grad_x exist, reuse it as tmp
-    tmp = grad_x.get();
+  if (grad_x.get_ptr() && grad_x.get().dims() == out.dims()) {
+    // if grad_x exist and is not broadcasted, reuse it as tmp
+    tmp = grad_x.get();  // tmp = dout/y
   } else {
-    // manually compute grad_x = dout / y
+    // manually compute grad_x = dout/y
     tmp.Resize(out.dims());
     dev_ctx.template Alloc<T>(&tmp);
     phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
@@ -221,23 +221,28 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
         DivGradDX<T>(),     // dx=dout/y
         DivDoubleDY<T>());  // useless here, just for placeholder
   }
+
+  // dX_div_Y = dX / Y;
+  DenseTensor dX_div_Y;
+  if (ddout) {
+    // use ddout as temporary mem pool if ddout exist,
+    // as ddout will be re-computed at last
+    dX_div_Y = *ddout;
+  } else {
+    // or allocate mem pool for dX_div_Y
+    dX_div_Y.Resize(out.dims());
+    dev_ctx.template Alloc<T>(&dX_div_Y);
+  }
+  funcs::DefaultElementwiseOperator<Context,
+                                    T,
+                                    funcs::DivideFunctor<T>,
+                                    funcs::InverseDivideFunctor<T>>(
+      dev_ctx,
+      tmp,
+      y,
+      &dX_div_Y,
+      axis);  // compute grad_x/y = z_g/y^2 into dX_div_Y
   if (dy) {
-    // dX_div_Y = dX / Y;
-    DenseTensor dX_div_Y;
-    if (ddout) {
-      // use ddout as temporary mem pool if ddout exist,
-      // as ddout will be re-computed at last
-      dX_div_Y = *ddout;
-    } else {
-      // or allocate mem pool for dX_div_Y
-      dX_div_Y.Resize(out.dims());
-      dev_ctx.template Alloc<T>(&dX_div_Y);
-    }
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::DivideFunctor<T>,
-                                      funcs::InverseDivideFunctor<T>>(
-        dev_ctx, tmp, y, &dX_div_Y, axis);  // compute dout/y^2 into dX_div_Y
     // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
     // first output tensor is nullptr, the branch to calculate first
     // output tensor will not be activated, DivGradDx function will not
@@ -255,7 +260,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
         nullptr,            // dx
         dy,                 // dy
         DivGradDX<T>(),     // useless here, just for placeholder
-        DivDoubleDY<T>());  // 2 * ddy * out * grad_x / y - ddx * grad_x / y
+        DivDoubleDY<T>());  // 2 * ddy * out * (grad_x / y) - ddx * (grad_x / y)
   }
 
   if (dx) {
@@ -264,7 +269,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                       T,
                                       funcs::MultiplyFunctor<T>,
                                       funcs::InverseMultiplyFunctor<T>>(
-        dev_ctx, tmp, ddY_safe, dx, axis);  // dx=z_g*y_g_g/y^2
+        dev_ctx, dX_div_Y, ddY_safe, dx, axis);  // dx=z_g*y_g_g/y^2
     auto& place = *dev_ctx.eigen_device();
     auto dx_result = phi::EigenVector<T>::Flatten(*dx);
     dx_result.device(place) = static_cast<T>(-1) * dx_result;
@@ -272,22 +277,21 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
 
   if (ddout) {
     // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
-    tmp = *ddout;
     funcs::DefaultElementwiseOperator<Context,
                                       T,
                                       funcs::MultiplyFunctor<T>,
                                       funcs::InverseMultiplyFunctor<T>>(
-        dev_ctx, out, ddY_safe, &tmp, axis);  // tmp = z*y_g_g
+        dev_ctx, out, ddY_safe, ddout, axis);  // tmp = z*y_g_g
     funcs::DefaultElementwiseOperator<Context,
                                       T,
                                       funcs::SubtractFunctor<T>,
                                       funcs::InverseSubtractFunctor<T>>(
-        dev_ctx, ddX_safe, tmp, &tmp, axis);  // tmp = x_g_g - z*y_g_g
+        dev_ctx, ddX_safe, *ddout, ddout, axis);  // tmp = x_g_g - z*y_g_g
     funcs::DefaultElementwiseOperator<Context,
                                       T,
                                       funcs::DivideFunctor<T>,
                                       funcs::InverseDivideFunctor<T>>(
-        dev_ctx, tmp, y, ddout, axis);  // ddout = (x_g_g - z*y_g_g)/y
+        dev_ctx, *ddout, y, ddout, axis);  // ddout = (x_g_g - z*y_g_g)/y
   }
 }
 
