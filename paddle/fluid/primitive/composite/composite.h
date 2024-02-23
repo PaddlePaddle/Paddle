@@ -338,6 +338,16 @@ Tensor silu_decomp(const Tensor& x) {
 }
 
 template <typename T>
+Tensor swiglu_decomp(const Tensor& x, const paddle::optional<Tensor>& y) {
+  auto y_ptr = y.get_ptr();
+  if (y_ptr) {
+    return silu_decomp<T>(x) * y;
+  } else {
+    return silu_decomp<T>(x);
+  }
+}
+
+template <typename T>
 Tensor relu_decomp(const Tensor& x) {
   return maximum<T>(x, full<T>(empty_shape, 0.0, x.dtype()));
 }
