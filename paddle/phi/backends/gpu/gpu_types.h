@@ -113,9 +113,6 @@ DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
 DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
                          cudaGraphNodeTypeKernel,
                          hipGraphNodeTypeKernel);
-DECLARE_CONSTANT_FOR_GPU(gpuGraphInstantiateFlagAutoFreeOnLaunch,
-                         cudaGraphInstantiateFlagAutoFreeOnLaunch,
-                         hipGraphInstantiateFlagAutoFreeOnLaunch);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
