@@ -293,7 +293,7 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
+        self._already_create_accumulator = set()
 
         self._create_master_grad_states()
 
@@ -400,12 +400,12 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -416,7 +416,7 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, (framework.Block, pir.Block))

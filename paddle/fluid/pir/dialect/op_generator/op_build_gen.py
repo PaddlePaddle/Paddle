@@ -27,6 +27,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'InterpolateInferMeta',
     'DeformableConvInferMeta',
     'MatrixNMSInferMeta',
+    'IndexSampleInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}

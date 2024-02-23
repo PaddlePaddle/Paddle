@@ -183,6 +183,11 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
+  if (is_input) {
+    for (auto &kwarg : block->kwargs()) {
+      value2name[kwarg.second] = kwarg.first;
+    }
+  }
   for (auto &op : *block) {
     std::string name;
     if (is_input && op.name() == "pd_op.data") {

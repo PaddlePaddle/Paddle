@@ -28,8 +28,6 @@
 
 namespace cinn {
 
-PD_DECLARE_bool(cinn_runtime_display_debug_info);
-
 namespace ir {
 class Expr;
 }  // namespace ir

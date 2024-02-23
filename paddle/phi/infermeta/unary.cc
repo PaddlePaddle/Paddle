@@ -1152,9 +1152,8 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
-  std::vector<int> broadcast_dims;
   std::vector<int> output_dims;
-  std::vector<std::vector<int>> ellipsis_dims(2);
+  std::vector<std::vector<int>> broadcast_shapes(2);
 
   std::vector<DDim> input_dims;
   for (auto& i : inputs) {
@@ -1168,8 +1167,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                       &labeltype,
                       &all_labels,
                       &label2perms,
-                      &ellipsis_dims,
-                      &broadcast_dims,
+                      &broadcast_shapes,
                       &output_dims,
                       &right,
                       &input_strs);
@@ -3806,6 +3804,7 @@ void SliceArrayDenseInferMeta(const MetaTensor& input,
   }
   // out->set_dims(input.dims());
   out->set_dtype(input.dtype());
+  out->set_dims(input.dims());
 }
 
 void SliceRawInferMeta(const MetaTensor& input,

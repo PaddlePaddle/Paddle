@@ -1155,8 +1155,8 @@ inline bool IsVarNonnegative(
 // Return if the var is binded with thread or block in cuda(which implies it is
 // non-negative).
 inline bool IsVarBinded(const std::string& var_name) {
-  return utils::Startswith(var_name, "threadIdx") ||
-         utils::Startswith(var_name, "blockIdx");
+  return utils::StartsWith(var_name, "threadIdx") ||
+         utils::StartsWith(var_name, "blockIdx");
 }
 
 /**
