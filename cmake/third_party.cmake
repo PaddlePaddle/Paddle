@@ -13,7 +13,7 @@
 # limitations under the License.
 
 include(ExternalProject)
-# Creat a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
+# Create a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
 
 set(THIRD_PARTY_PATH
     "${CMAKE_BINARY_DIR}/third_party"
@@ -55,8 +55,8 @@ if(NOT WITH_SETUP_INSTALL)
   endif()
 
 endif()
-# cache funciton to avoid repeat download code of third_party.
-# This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
+# cache function to avoid repeat download code of third_party.
+# This function has 4 parameters, URL / REPOSITORY / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
 # 2. REPOSITORY:    specify git REPOSITORY of 3rd party
 # 3. TAG:           specify git tag/branch/commitID of 3rd party
@@ -64,7 +64,7 @@ endif()
 #
 # The function Return 1 PARENT_SCOPE variables:
 #  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add,
-#                            and you no longer need to set any donwnload steps in ExternalProject_Add.
+#                            and you no longer need to set any download steps in ExternalProject_Add.
 # For example:
 #    Cache_third_party(${TARGET}
 #            REPOSITORY ${TARGET_REPOSITORY}
@@ -145,10 +145,10 @@ macro(UNSET_VAR VAR_NAME)
   unset(${VAR_NAME})
 endmacro()
 
-# Funciton to Download the dependencies during compilation
+# Function to Download the dependencies during compilation
 # This function has 2 parameters, URL / DIRNAME:
 # 1. URL:           The download url of 3rd dependencies
-# 2. NAME:          The name of file, that determin the dirname
+# 2. NAME:          The name of file, that determine the dirname
 #
 function(file_download_and_uncompress URL NAME)
   set(options "")
