@@ -439,6 +439,14 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_output_grad_none(list_of_list):
+    for list_ in list_of_list:
+        for value in list_:
+            if value is not None:
+                return False
+    return True
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
