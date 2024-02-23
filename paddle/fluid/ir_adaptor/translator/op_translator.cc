@@ -1357,11 +1357,6 @@ struct AddNOpTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     std::string target_op_name =
         GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
-    if (IsInplace(op_desc)) {
-      target_op_name += "_";
-    } else {
-      target_op_name += "_with_kernel";
-    }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op add_n should have corresponding OpInfo %s", target_op_name);
