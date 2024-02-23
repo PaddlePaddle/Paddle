@@ -201,7 +201,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_5)
 
-        # ValueError: channel dimmention
+        # ValueError: channel dimension
         x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, -1],

@@ -1783,13 +1783,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
               new SetValueWithTensorGradNode(1, 2));  // NOLINT
-          grad_node->SetAttributestarts(slice_starts);
-          grad_node->SetAttributeends(slice_ends);
-          grad_node->SetAttributesteps(slice_strides);
-          grad_node->SetAttributeaxes(slice_axes);
-          grad_node->SetAttributedecrease_axes(decrease_axis);
-          grad_node->SetAttributenone_axes(none_axes);
-          grad_node->SetTensorWrappervalues(values_tmp);
+          grad_node->SetAttribute_starts(slice_starts);
+          grad_node->SetAttribute_ends(slice_ends);
+          grad_node->SetAttribute_steps(slice_strides);
+          grad_node->SetAttribute_axes(slice_axes);
+          grad_node->SetAttribute_decrease_axes(decrease_axis);
+          grad_node->SetAttribute_none_axes(none_axes);
+          grad_node->SetTensorWrapper_values(values_tmp);
 
           paddle::memory::LogDeviceMemoryStats(
               egr::Controller::Instance().GetExpectedPlace(),

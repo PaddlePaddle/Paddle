@@ -2537,6 +2537,39 @@ void ProcessBlock(
     bool for_if_block) {
   auto inputs_by_data_op = GetInputsByDataOp(block);
 
+  for (auto& [keyword, arg] : block->kwargs()) {
+    auto new_arg = new_block->AddKwarg(keyword, arg.type());
+    (*map_value_pair)[arg] = new_arg;
+    if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+      new_arg.set_type(AllocatedDenseTensorType::get(
+          ctx, phi::CPUPlace(), dense_tensor_type));
+    }
+  }
+  if (platform::is_gpu_place(place)) {
+    for (auto& [keyword, arg] : block->kwargs()) {
+      if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
+        auto dtype = dense_tensor_type.dtype();
+        phi::KernelKey shadow_key{
+            phi::Backend::GPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+        std::unordered_map<std::string, pir::Attribute> attr_map{
+            {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
+            {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
+            {"kernel_key", KernelAttribute::get(ctx, shadow_key)}};
+
+        auto out_type =
+            AllocatedDenseTensorType::get(ctx, place, dense_tensor_type);
+
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+        pir::Operation* shadow_op = pir::Operation::Create(
+            {(*map_value_pair)[arg]}, attr_map, {out_type}, phi_kernel_op_info);
+
+        new_block->push_back(shadow_op);
+        (*map_value_pair)[arg] = shadow_op->result(0);
+      }
+    }
+  }
+
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
     VLOG(6) << "op name " << op_item->name();
