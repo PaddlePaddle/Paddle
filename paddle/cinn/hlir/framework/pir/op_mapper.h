@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
+#include <glog/logging.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/include/core/operation.h"
 

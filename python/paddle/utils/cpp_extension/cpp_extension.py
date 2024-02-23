@@ -488,7 +488,7 @@ class BuildExtension(build_ext):
                         cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=True
+                    cflags, self.compiler.compiler_type, use_std17=True
                 )
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:

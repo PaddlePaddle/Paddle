@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/block.h"
 
+#include <glog/logging.h>
 #include <unordered_set>
 
 #include "paddle/common/enforce.h"

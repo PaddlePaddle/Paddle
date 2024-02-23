@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/builtin_op.h"
+#include <glog/logging.h>
+
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
