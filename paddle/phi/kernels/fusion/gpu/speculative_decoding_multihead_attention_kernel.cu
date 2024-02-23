@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/none.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 namespace fusion {
@@ -42,12 +43,8 @@ void SpeculativeDecodingMultiheadAttentionKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& pre_key_cache,
     const paddle::optional<DenseTensor>& pre_value_cache,
-    const paddle::optional<DenseTensor>& rope_emb,
     const paddle::optional<DenseTensor>& mask,
-    const paddle::optional<DenseTensor>& tgt_mask,
     const paddle::optional<DenseTensor>& qkv_bias,
-    const paddle::optional<DenseTensor>& out_shift,
-    const paddle::optional<DenseTensor>& out_smooth,
     int token_num_in_cache,
     int max_seq_len,
     bool use_neox_style,
@@ -70,6 +67,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
   const int num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
   const int cache_token_num = key_cache_dims[0] * key_cache_dims[2];
+
   const int bsz = cum_offsets.dims()[0];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
           << " num_head: " << num_head << " dim_head: " << dim_head;
@@ -111,8 +109,8 @@ void SpeculativeDecodingMultiheadAttentionKernel(
     unpadding_k.Resize({{token_num, num_head, dim_head}});
     unpadding_v.Resize({{token_num, num_head, dim_head}});
 
-    unpadding_k_after_cache.Resize({{token_num + token_num_in_cache, num_head, dim_head}});
-    unpadding_v_after_cache.Resize({{token_num + token_num_in_cache, num_head, dim_head}});
+    unpadding_k_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
+    unpadding_v_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
 
     dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
     dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
@@ -139,23 +137,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
   qkv_buf = qkv;
   *key_cache_out = key_cache;
   *value_cache_out = value_cache;
-  VLOG(3) << "[specu] qkv_buf dims: " << qkv_buf.dims();
 
-  // if (rope_emb) {
-  //   rotary_qk_variable(dev_ctx,
-  //                      qkv_buf.data<T>(),
-  //                      qkv_buf.data<T>(),
-  //                      rope_emb.get().data<float>(),
-  //                      padding_offsets.data<int>(),
-  //                      sequence_lengths_data,
-  //                      token_num,
-  //                      num_head,
-  //                      max_seq_len,
-  //                      rope_emb.get().dims()[2],
-  //                      dim_head,
-  //                      use_neox_style);
-  // }
-  // VLOG(3) << "rope end";
   if (max_enc_len_this_time > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     if (!pre_key_cache) {
@@ -171,14 +153,6 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                             num_head,
                             max_seq_len,
                             dim_head);
-      VLOG(3) << "qkv split end";
-      VLOG(3) << "-------unpadding_q dims: " << unpadding_q.dims();
-      VLOG(3) << "-------unpadding_k dims: " << unpadding_k.dims();
-      VLOG(3) << "-------unpadding_v dims: " << unpadding_v.dims();
-      VLOG(3) << "-------cu_seqlens_q dims: " << cu_seqlens_q.dims();
-      VLOG(3) << "-------cu_seqlens_k dims: " << cu_seqlens_k.dims();
-      VLOG(3) << "-------causual: " << causual;
-      VLOG(3) << "-------max_enc_len_this_time: " << max_enc_len_this_time;
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -200,7 +174,6 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                                       &softmax_lse,
                                       &seed_offset);
       VLOG(3) << "-------fmha_buf dims: " << fmha_buf.dims();
-
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -220,13 +193,6 @@ void SpeculativeDecodingMultiheadAttentionKernel(
           pre_cache_length,
           dim_head);
 
-      VLOG(3) << "-------unpadding_q dims: " << unpadding_q.dims();
-      VLOG(3) << "-------unpadding_k dims: " << unpadding_k.dims();
-      VLOG(3) << "-------unpadding_v dims: " << unpadding_v.dims();
-      VLOG(3) << "-------cu_seqlens_q dims: " << cu_seqlens_q.dims();
-      VLOG(3) << "-------cu_seqlens_k dims: " << cu_seqlens_k.dims();
-      VLOG(3) << "-------causual: " << causual;
-      VLOG(3) << "-------max_enc_len_this_time: " << max_enc_len_this_time;
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                 q_trans,
                                 k_trans,
@@ -251,9 +217,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
   }
 
   if (max_dec_len_this_time > 0) {
-    VLOG(3) << "YOU HAVE GOT HERE!";
     const int* sequence_lengths_data = seq_lens_decoder.data<int>();
-    VLOG(3) << "YOU HAVE GOT HERE1!";
 
     qkv_transpose_split<T>(dev_ctx,
                       unpadding_q.data<T>(),
@@ -267,38 +231,18 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                       num_head,
                       max_seq_len,
                       dim_head);
-    // // [bsz, num_head, cache_seq_len, dim_head] -> [bsz * cache_seq_len, num_head, dim_head]
-    // auto key_cache_transed =
-    //     phi::Transpose<T>(dev_ctx, key_cache, {0, 2, 1, 3});
-    // auto value_cache_transed =
-    //     phi::Transpose<T>(dev_ctx, value_cache, {0, 2, 1, 3});
-
-    // auto key_cache_reshaped = phi::Reshape<T>(
-    //     dev_ctx,
-    //     key_cache_transed,
-    //     {key_cache_transed.dims()[0] * key_cache_transed.dims()[1],
-    //     key_cache_transed.dims()[2],
-    //     key_cache_transed.dims()[3]});
-    // auto value_cache_reshaped = phi::Reshape<T>(
-    //     dev_ctx,
-    //     value_cache_transed,
-    //     {value_cache_transed.dims()[0] * value_cache_transed.dims()[1],
-    //     value_cache_transed.dims()[2],
-    //     value_cache_transed.dims()[3]});
-
 
     // 写一个 kernel，更新 cache_k, cache_v
-    // TODO(Wanglongzhi2001): check the concat dim.
-    // unpadding_k = phi::Concat<T>(dev_ctx, {&unpadding_k, &key_cache_reshaped}, 0); // key_cache: [1, max_seq_len, num_head, dim_head] 
-    // unpadding_v = phi::Concat<T>(dev_ctx, {&unpadding_v, &value_cache_reshaped}, 0);
-    // 更新 k，将 unpadding_k 更新到 key_cache 后面
-    // TODO(Wanglongzhi2001): 查看 key_cache 原地更新和 key_cache_out 的关系
-    VLOG(3) << "YOU HAVE GOT HERE 3!";
+    // 更新 k，将 unpadding_k 拼接到 key_cache 后面
+    phi::DenseTensor key_cache_transed =
+        phi::Transpose<T, phi::GPUContext>(dev_ctx, key_cache, {0, 2, 1, 3});
+    phi::DenseTensor value_cache_transed =
+        phi::Transpose<T, phi::GPUContext>(dev_ctx, value_cache, {0, 2, 1, 3});
     CacheKernel<T>(dev_ctx,
       unpadding_k,
       unpadding_v,
-      key_cache,
-      value_cache,
+      key_cache_transed,
+      value_cache_transed,
       unpadding_k_after_cache,
       unpadding_v_after_cache,
       token_num_in_cache,
@@ -306,13 +250,22 @@ void SpeculativeDecodingMultiheadAttentionKernel(
       token_num,
       num_head,
       dim_head);
-    VLOG(3) << "YOU HAVE GOT HERE 4!";
     VLOG(3) << "-------unpadding_q dims: " << unpadding_q.dims();
     VLOG(3) << "-------unpadding_k dims: " << unpadding_k.dims();
     VLOG(3) << "-------unpadding_v dims: " << unpadding_v.dims();
+    VLOG(3) << "-------unpadding_k_after_cache dims: " << unpadding_k_after_cache.dims();
+    VLOG(3) << "-------unpadding_v_after_cache dims: " << unpadding_v_after_cache.dims();
+
     VLOG(3) << "-------cu_seqlens_q dims: " << cu_seqlens_q.dims();
     VLOG(3) << "-------cu_seqlens_k dims: " << cu_seqlens_k.dims();
-    VLOG(3) << "-------max_dec_len_this_time: " << max_enc_len_this_time;
+    VLOG(3) << "-------max_dec_len_this_time: " << max_dec_len_this_time;
+    // paddle::funcs::TensorFormatter formatter;
+    // formatter.Print(unpadding_q, "unpadding_q");
+    // formatter.Print(unpadding_k_after_cache, "unpadding_k_after_cache");
+    // formatter.Print(unpadding_v_after_cache, "unpadding_v_after_cache");
+    // formatter.Print(key_cache, "key_cache");
+    // formatter.Print(value_cache, "value_cache");
+
     phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                     unpadding_q,
                                     unpadding_k_after_cache,
@@ -333,6 +286,8 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                                     &softmax_out,
                                     &softmax_lse,
                                     &seed_offset);
+    // formatter.Print(fmha_buf, "fmha_buf");
+    VLOG(3) << "-------fmha_buf dims: " << fmha_buf.dims();
   }
 }
 

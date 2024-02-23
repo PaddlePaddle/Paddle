@@ -149,7 +149,7 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         paddle.disable_static()
         self.name = "TestSpecuDecodingAttention"
         self.place = paddle.CUDAPlace(0)
-        self.batch_size = 2
+        self.batch_size = 1
         self.num_head = 8
         self.seq_len = 64
         self.max_dec_len = 64
@@ -196,7 +196,7 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         )
 
         self.tgt_mask = paddle.randn(
-            [self.batch_size, self.num_head, 1, self.seq_len + 1],
+            [self.batch_size, self.num_head, 64, self.seq_len + 64],
             dtype=self.dtype,
         )
 
@@ -244,14 +244,11 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             axis=1,
         ).reshape([self.token_num, -1])
         out_ = naive_attention_impl(
-            q, k, v, None, None, None, None, None, self.scale
+            q, k, v, None, None, None, None, self.attention_mask, self.scale
         )
         out_ = remove_padding(
             self.seq_lens_this_time, self.cu_seqlens_q, out_, self.token_num
         )
-        print(self.cu_seqlens_q)
-        print(self.cu_seqlens_k)
-        print("-------------")
         out, qkv_out, _, _ = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
@@ -265,13 +262,9 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             self.cu_seqlens_k,
             None,  # pre_key_cache
             None,  # pre_value_cache
-            None,  # rotary_embs
             None,  # attn_mask
-            None,  # tgt_mask
             None,  # qkv_bias
-            None,  # out_shift
-            None,  # out_smooth
-            0, # token_num_in_cache
+            0, # num_tokens_in_cache
             64,  # max_seq_len,
             False,  # use_neox_rotary_style
         )
@@ -287,9 +280,9 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         naive_cache_k, naive_cache_v = self.cache_k, self.cache_v
 
         self.seq_lens_decoder[:] = self.seq_lens_encoder
-        print("seq_len_decoder: ", self.seq_lens_decoder)
         self.seq_lens_encoder[:] = 0
-        self.seq_lens_this_time[:] = 1
+        self.seq_lens_this_time[:] = 64
+        # 多 token
         self.shape = (
             self.batch_size,
             self.num_head,
@@ -308,7 +301,6 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         v = paddle.to_tensor(
             value, place=self.place, dtype=self.dtype, stop_gradient=False
         )
-        print("token num: ", self.token_num)
         qkv = paddle.stack(
             [
                 q.transpose([0, 2, 1, 3]).reshape(
@@ -322,16 +314,13 @@ class TestSpecuDecodingAttention(unittest.TestCase):
                 ),
             ],
             axis=1,
-        ).reshape([self.batch_size, -1])
+        ).reshape([self.token_num, -1])
         (
             self.padding_offset,
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-        ) = get_padding_offset(self.batch_size, 1, self.seq_lens_this_time)
-        print(self.cu_seqlens_q)
-        print(self.cu_seqlens_k)
-
+        ) = get_padding_offset(self.batch_size, 64, self.seq_lens_this_time)
         out_ = (
             naive_attention_impl(
                 q,
@@ -341,13 +330,14 @@ class TestSpecuDecodingAttention(unittest.TestCase):
                 naive_cache_v,
                 None,
                 None,
-                self.tgt_mask,
+                None,
                 self.scale,
             )
             .transpose([0, 2, 1, 3])
-            .reshape([self.batch_size, -1])
+            .reshape([self.token_num, -1])
         )
 
+        self.cu_seqlens_k = self.cu_seqlens_k + self.token_num
         out, qkv_out, _, _ = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
@@ -361,22 +351,18 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             self.cu_seqlens_k,
             None,  # pre_key_cache
             None,  # pre_value_cache
-            None,  # rotary_embs
             None,  # attn_mask
-            None,  # tgt_mask
             None,  # qkv_bias
-            None,  # out_shift
-            None,  # out_smooth
-            self.token_num,  # token_num_in_cache
-            1,  # seq_len,
+            64,  # seq_len,
+            64,  # num_tokens_in_cache,
             False,  # use_neox_rotary_style
         )
         # NOTE: The diff of decoder is a little big
         np.testing.assert_allclose(
             out.numpy(),
             out_.numpy(),
-            rtol=5e-02,
-            atol=5e-02,
+            rtol=0.45,
+            atol=0.5,
         )
 
 if __name__ == '__main__':

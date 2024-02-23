@@ -30,12 +30,8 @@ def speculative_decoding_multihead_attention(
     cu_seqlens_k,
     pre_key_cache=None,
     pre_value_cache=None,
-    rope_emb=None,
     mask=None,
-    tgt_mask=None,
     qkv_bias=None,
-    out_shift=None,
-    out_smooth=None,
     token_num_in_cache=-1,
     max_seq_len=-1,
     use_neox_style=False,
@@ -279,12 +275,8 @@ def speculative_decoding_multihead_attention(
             cu_seqlens_k,
             pre_key_cache,
             pre_value_cache,
-            rope_emb,
             mask,
-            tgt_mask,
             qkv_bias,
-            out_shift,
-            out_smooth,
             token_num_in_cache,
             max_seq_len,
             use_neox_style,
@@ -307,18 +299,6 @@ def speculative_decoding_multihead_attention(
     inputs['cu_seqlens_k'] = cu_seqlens_k
     inputs['pre_key_cache'] = pre_key_cache
     inputs['pre_value_cache'] = pre_value_cache
-    if rope_emb is not None:
-        inputs['rope_emb'] = rope_emb
-    if mask is not None:
-        inputs['mask'] = mask
-    if tgt_mask is not None:
-        inputs['tgt_mask'] = tgt_mask
-    if qkv_bias is not None:
-        inputs["qkv_bias"] = qkv_bias
-    if out_shift is not None:
-        inputs["out_shift"] = out_shift
-    if out_smooth is not None:
-        inputs["out_smooth"] = out_smooth
 
     outputs = {
         'fmha_out': out,

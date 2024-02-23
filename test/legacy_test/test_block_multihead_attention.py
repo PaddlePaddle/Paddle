@@ -418,6 +418,8 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
 
         self.seq_lens_decoder[:] = self.seq_lens_encoder
         self.seq_lens_encoder[:] = 0
+        print("self.seq_lens_encoder: ", self.seq_lens_encoder)
+        print("self.seq_lens_decoder: ", self.seq_lens_decoder)
         self.seq_lens_this_time[:] = 1
         self.shape = (
             self.batch_size,
@@ -458,6 +460,7 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             self.cu_seqlens_q,
             self.cu_seqlens_k,
         ) = get_padding_offset(self.batch_size, 1, self.seq_lens_this_time)
+        print("-----decoding------")
         out_ = (
             naive_attention_impl(
                 q,
@@ -473,6 +476,8 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             .transpose([0, 2, 1, 3])
             .reshape([self.batch_size, -1])
         )
+        print("self.seq_lens_encoder: ", self.seq_lens_encoder)
+        print("self.seq_lens_decoder: ", self.seq_lens_decoder)
         out, _, cache_k_out, cache_v_out = block_multihead_attention(
             qkv,
             self.cache_k,

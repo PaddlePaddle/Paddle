@@ -1055,50 +1055,47 @@ __global__ void cache_kernel(
   }
 }
 
-template <typename T>
+// 将 key_cache 和 value_cache 里的前 token_num_in_cache slice 出来，然后将 unpadding_k 和 unpadding_v 拼接在后面
+template <typename T, int VecSize = 1>
 __global__ void write_cache_to_unpadding_kv_kernel(
-    const T *__restrict__ unpadding_k,    // [cur_num_tokens, num_heads, head_size]
-    const T *__restrict__ unpadding_v,    // [cur_num_tokens, num_heads, head_size]
+    const T *__restrict__ unpadding_k,    // [cur_num_tokens, num_heads, dim_head]
+    const T *__restrict__ unpadding_v,    // [cur_num_tokens, num_heads, dim_head]
     const T *__restrict__ key_cache,    // [1, max_seq_len, num_head, dim_head] 
     const T *__restrict__ value_cache,  // [1, max_seq_len, num_head, dim_head] 
-    T *__restrict__ unpadding_k_after_cache,  
-    T *__restrict__ unpadding_v_after_cache,  
+    T *__restrict__ unpadding_k_after_cache,  // [cur_token_num + token_num_in_cache, num_head, dim_head]
+    T *__restrict__ unpadding_v_after_cache,  // [cur_token_num + token_num_in_cache, num_head, dim_head]
     // const int *__restrict__ padding_offsets,  // [num_tokens]
-    const int token_num_in_cache,     // [bsz]
-    const int cur_num_tokens_k,
+    const int token_num_in_cache,     // [bsz]，kv_cache 里的 token 数目
+    const int cur_num_tokens_k, // 当前 query 的 token数目
     const int num_heads,
-    const int head_size) {
+    const int dim_head) {
 
-  // using LoadT = phi::AlignedVector<T, VecSize>;
-  // LoadT src_vec;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT unpadding_k_after_cache_vec;
+  LoadT unpadding_v_after_cache_vec;
   
-  int64_t idx = threadIdx.x;
-  // int64_t global_thread_idx = blockDim.x * blockIdx.x+ threadIdx.x;
-  const int64_t hidden_size = num_heads * head_size;
+  int64_t idx = (blockDim.x * blockIdx.x + threadIdx.x) * VecSize;
+  int stride = blockDim.x * gridDim.x * VecSize;
+
+  const int64_t hidden_size = num_heads * dim_head;
   const int64_t offset = cur_num_tokens_k * hidden_size;
   const int64_t cur_hidden_size = token_num_in_cache * hidden_size;
 
-  if (idx <= cur_hidden_size) {
-    unpadding_k_after_cache[idx] = key_cache[idx];
-    unpadding_v_after_cache[idx] = value_cache[idx];
+  for (; idx < cur_hidden_size; idx+=stride) {
+    phi::Load<T, VecSize>(&key_cache[idx], &unpadding_k_after_cache_vec);
+    phi::Load<T, VecSize>(&value_cache[idx], &unpadding_v_after_cache_vec);
+
+    phi::Store<T, VecSize>(unpadding_k_after_cache_vec, &unpadding_k_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_v_after_cache_vec, &unpadding_v_after_cache[idx]);
   }
 
-  if (idx <= offset) {
-    unpadding_k_after_cache[cur_hidden_size + idx] = unpadding_k[idx];
-    // key_cache[cur_hidden_size + global_thread_idx + 1] = unpadding_k[idx + 1];
+  for (; cur_hidden_size <= idx && idx < cur_hidden_size + offset; idx+=stride) {
+    phi::Load<T, VecSize>(&unpadding_k[idx - cur_hidden_size], &unpadding_k_after_cache_vec);
+    phi::Load<T, VecSize>(&unpadding_v[idx - cur_hidden_size], &unpadding_v_after_cache_vec);
 
-    unpadding_v_after_cache[cur_hidden_size + idx] = unpadding_v[idx];
-    // value_cache[cur_hidden_size + global_thread_idx + 1] = unpadding_v[idx + 1];
+    phi::Store<T, VecSize>(unpadding_k_after_cache_vec, &unpadding_k_after_cache[idx]);
+    phi::Store<T, VecSize>(unpadding_v_after_cache_vec, &unpadding_v_after_cache[idx]);
   }
-  // for (int32_t linear_index = global_thread_idx * VecSize,
-  //             step = gridDim.x * blockDim.x * VecSize;
-  //     linear_index < elem_cnt;
-  //     linear_index += step) {
-  //   int32_t bias = linear_index % offset;
-  //   int32_t token_idx = linear_index / offset;
-  //   int64_t tgt_idx = 0;
-  // }
-
 }
 
 template <typename T, int VecSize = 1>
@@ -1395,14 +1392,14 @@ void CacheKernel(
   typedef typename traits_::DataType DataType_;
 
   // stage 1: write qkv to cache [pre_cache_length:]
-  int elem_nums = batch_size * num_heads * head_size;  // just k and v
+  int elem_nums = unpadding_k_after_cache.numel();  // just k and v
   constexpr int PackSize = 16 / sizeof(T);
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
 
-  write_cache_to_unpadding_kv_kernel<DataType_><<<1, elem_nums, 0, dev_ctx.stream()>>>(
+  write_cache_to_unpadding_kv_kernel<DataType_, PackSize><<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
     reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_k.data<T>())),
     reinterpret_cast<DataType_ *>(const_cast<T*>(unpadding_v.data<T>())),
     reinterpret_cast<DataType_ *>(const_cast<T*>(key_cache.data<T>())),
