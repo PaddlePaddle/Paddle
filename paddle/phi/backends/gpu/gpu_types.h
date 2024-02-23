@@ -130,9 +130,6 @@ DECLARE_FUNCTION_FOR_GPU(gpuGraphLaunch, cudaGraphLaunch, hipGraphLaunch);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiate,
                          cudaGraphInstantiate,
                          hipGraphInstantiate);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiateWithFlags,
-                         cudaGraphInstantiateWithFlags,
-                         hipGraphInstantiateWithFlags);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphDestroy, cudaGraphDestroy, hipGraphDestroy);
 DECLARE_FUNCTION_FOR_GPU(gpuGraphExecDestroy,
                          cudaGraphExecDestroy,
