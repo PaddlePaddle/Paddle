@@ -108,6 +108,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'lrn',
     'multi_gru',
     'moving_average_abs_max_scale',
+    'moving_average_abs_max_scale_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
