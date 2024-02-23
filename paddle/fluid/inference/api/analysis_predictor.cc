@@ -1733,8 +1733,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
-  if (config_.use_cinn_) {
-    argument_->SetUseCinnCompiler(config_.use_cinn_);
+  if (config_.cinn_enabled()) {
+    argument_->SetUseCinnCompiler(true);
   }
 
 #ifdef PADDLE_WITH_DNNL
@@ -1809,7 +1809,7 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
-    if (!config_.use_cinn_) {
+    if (!config_.cinn_enabled()) {
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
         pass_builder->ClearPasses();
