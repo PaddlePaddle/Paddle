@@ -170,7 +170,7 @@ class PipelineParallel(MetaParallelBase):
             'accumulate_steps'
         ]
         # If sent tensor are not the same from different hosts,
-        # they shouldn't been sent partially and then concated as a whole tensor.
+        # they shouldn't been sent partially and then concatenated as a whole tensor.
         self._enable_partial_send_recv = self._strategy.pipeline_configs[
             'enable_partial_send_recv'
         ]
@@ -640,7 +640,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _wrap_data(self, data):
         """
-        for backward compatibilty, wrap data to Fake FakeMicroDataset if it is of type list or tuple
+        for backward compatibility, wrap data to Fake FakeMicroDataset if it is of type list or tuple
         """
         if (not isinstance(data, tuple)) and (not isinstance(data, list)):
             return data

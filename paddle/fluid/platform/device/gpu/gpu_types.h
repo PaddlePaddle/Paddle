@@ -109,6 +109,12 @@ DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 DECLARE_CONSTANT_FOR_GPU(gpuErrorCudartUnloading,
                          cudaErrorCudartUnloading,
                          hipErrorDeinitialized);
+DECLARE_CONSTANT_FOR_GPU(gpuEventDisableTiming,
+                         cudaEventDisableTiming,
+                         hipEventDisableTiming);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamNonBlocking,
+                         cudaStreamNonBlocking,
+                         hipStreamNonBlocking);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
