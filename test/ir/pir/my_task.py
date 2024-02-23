@@ -167,6 +167,7 @@ class TestTask(unittest.TestCase):
         for cinn_res, base_res, fetch_name in zip(
             cinn_out, base_out, fetch_list
         ):
+            print(fetch_name)
             np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
 
     def check_infer(self, enable_cinn):

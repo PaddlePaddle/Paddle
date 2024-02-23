@@ -156,8 +156,8 @@ void GroupScheduler::LoopReorderAligment() {
     ir_sch_->Reorder(name, new_order);
   }
 
-  // std::cerr << "after loop reorder func body: "
-  //           << ir_sch_->GetModule().GetExprs().front() << std::endl;
+  std::cerr << "after loop reorder func body: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
 }
 
 bool GroupScheduler::NeedOrderLoops() {
