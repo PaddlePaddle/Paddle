@@ -1018,6 +1018,26 @@ bool TopPSamplingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+
+  const auto &x_dims = [op, shape_analysis] {
+    const auto &shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  }();
+
+  // all the result have the same shape
+  for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+    const std::vector<symbol::DimExpr> out_dims{x_dims[0], 1};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(rst_idx),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_dims)});
+  }
+
   return true;
 }
 
