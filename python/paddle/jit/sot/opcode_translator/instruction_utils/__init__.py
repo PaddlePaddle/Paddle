@@ -30,6 +30,5 @@ from .instruction_utils import (  # noqa: F401
 )
 from .opcode_analysis import (  # noqa: F401
     Space,
-    analysis_inputs,
-    analysis_used_names_with_space,
+    analysis_used_names,
 )
