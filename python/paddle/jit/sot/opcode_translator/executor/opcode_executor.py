@@ -1496,16 +1496,16 @@ class OpcodeExecutorBase:
 
     def CALL_INTRINSIC_1(self, instr: Instruction):
         intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
-        if Intrinsic_Func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
+        if intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
             raise RuntimeError("invalid intrinsic function")
         elif (
-            Intrinsic_Func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
+            intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
         ):
             return self.UNARY_POSITIVE(instr)
-        elif Intrinsic_Func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+        elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
             return self.LIST_TO_TUPLE(instr)
         else:
-            raise FallbackError(f"No support Intrinsics, {Intrinsic_Func.name}")
+            raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
 
 class OpcodeExecutor(OpcodeExecutorBase):
