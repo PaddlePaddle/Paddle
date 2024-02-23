@@ -37,7 +37,8 @@ class CALL_FUNCTION_EX_FLAG:
     CFE_HAS_KWARGS = 0x01
 
 
-class Intrinsics_UnaryFunctions(Enum):
+# see https://github.com/python/cpython/blob/3.12/Python/intrinsics.c#L211-L225
+class IntrinsicsUnaryFunctions(Enum):
     INTRINSIC_1_INVALID = 0
     INTRINSIC_PRINT = 1  # no support, only non-interactive mode
     INTRINSIC_IMPORT_STAR = 2  # no support, `from module import *`
@@ -50,6 +51,3 @@ class Intrinsics_UnaryFunctions(Enum):
     INTRINSIC_TYPEVARTUPLE = 9  # no support, PEP 695
     INTRINSIC_SUBSCRIPT_GENERIC = 10  # no support, PEP 695
     INTRINSIC_TYPEALIAS = 11  # no support, PEP 695
-
-
-MAX_INTRINSIC_1 = 11  # in Python 3.12, association `Intrinsics_UnaryFunctions`
