@@ -39,6 +39,7 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
+    SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -146,10 +147,12 @@ class VariableLoader:
         self._pycode_gen: PyCodeGen = pycode_gen
 
     def load(self, var):
-        if isinstance(var, NullVariable):
+        if var is SotUndefinedVar():
+            self._pycode_gen.gen_load_const(SotUndefinedVar())
+        elif isinstance(var, NullVariable):
             var.reconstruct(self._pycode_gen)
-            return
-        self._pycode_gen.gen_load(self._store_var_info[var.id])
+        else:
+            self._pycode_gen.gen_load(self._store_var_info[var.id])
 
 
 class FunctionGraph:

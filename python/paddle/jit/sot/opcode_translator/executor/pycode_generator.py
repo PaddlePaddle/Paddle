@@ -707,14 +707,13 @@ class PyCodeGen:
 
         if obj_name not in self._f_globals:
             self._f_globals[obj_name] = obj
-        self.gen_load_global(obj_name, push_null=push_null)
+        return self.gen_load_global(obj_name, push_null=push_null)
 
     def gen_load_null_variable(self):
         """
         Generate the bytecode for loading a null variable.
         """
         null_var = self.global_null_variable
-        self.gen_load_object(null_var, "___null_var", push_null=False)
 
     def gen_load_fast(self, name):
         """

@@ -440,7 +440,7 @@ class OpcodeExecutorBase:
             )
         return False
 
-    def get_var(self, name: str):
+    def get_var(self, name: str, allow_undefined=False):
         """
         Gets the variable with the given name.
 
@@ -462,6 +462,8 @@ class OpcodeExecutorBase:
             return self._globals.get(name)
         elif name in self._builtins.keys():
             return self._builtins[name]
+        elif allow_undefined:
+            return SotUndefinedVar()
         else:
             raise InnerError(f'Can not get var: {name}')
 
@@ -1659,7 +1661,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
-            _var = self.get_var(name)
+            _var = self.get_var(name, allow_undefined=True)
+            if _var is SotUndefinedVar():
+                continue
             if _var not in stack:
                 store_vars.append(_var)
             store_var_info[_var.id] = name
@@ -1694,8 +1698,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
         stack_size_after_if = len(self.stack) - 1
 
         # 2. create true_fn and false_fn
-        def create_if_branch_fn(start_idx, input_var_names, output_var_names):
-            if self._instruction[start_idx].opname == "RETURN_VALUE":
+        def create_if_branch_fn(start_idx, input_var_names):
+            if self._instructions[start_idx].opname == "RETURN_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1703,45 +1707,52 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 input_var_names, stack_size=stack_size_after_if
             )
             pycode_gen.extend_instrs(origin_instrs[start_idx:])
-            pycode_gen.set_function_outputs(output_var_names)
+            # the resume_fn contains return code, so we don't need set output here
+            # global vars are updated correctly, and need local vars will return
             resume_fn = pycode_gen.create_function()
             return resume_fn
 
-        true_fn_read_names, true_fn_write_names = analysis_used_names(
+        true_fn_read_names, _ = analysis_used_names(
             self._instructions, self.indexof(instr) + 1
         )
         true_fn_input_var_names = self._find_names_in_space(
             true_fn_read_names, (Space.locals, Space.cells)
         )
-        true_fn_output_var_names = list(true_fn_write_names)
 
         true_fn = create_if_branch_fn(
             start_idx=true_fn_start_index,
             input_var_names=true_fn_input_var_names,
-            output_var_names=true_fn_output_var_names,
         )
 
-        false_fn_read_names, false_fn_write_names = analysis_used_names(
+        false_fn_read_names, _ = analysis_used_names(
             self._instructions, self.indexof(instr.jump_to)
         )
         false_fn_input_var_names = self._find_names_in_space(
             false_fn_read_names, (Space.locals, Space.cells)
         )
-        false_fn_output_var_names = list(false_fn_write_names)
 
         false_fn = create_if_branch_fn(
             start_idx=false_fn_start_index,
             input_var_names=false_fn_input_var_names,
-            output_var_names=false_fn_output_var_names,
         )
 
-        # 3. compile codes before if
-        update_var_names = list(true_fn_write_names | false_fn_write_names)
+        # 4. setup vars which is created in loop as Undefind
+        for name in true_fn_input_var_names[:-1]:
+            if not self.has_var(name):
+                self._graph.pycode_gen.gen_load_const(SotUndefinedVar())
+                self._graph.pycode_gen.gen_store(name, self._code)
+        for name in false_fn_input_var_names:
+            if not self.has_var(name):
+                self._graph.pycode_gen.gen_load_const(SotUndefinedVar())
+                self._graph.pycode_gen.gen_store(name, self._code)
+
+        # 4. compile codes before if
+        update_var_names = list(true_fn_read_names | false_fn_read_names)
         var_loader = self.get_compute_fn_and_update_changed_vars(
             update_var_names, self.stack, cur_index
         )
 
-        # 4. create if sturcture and call true_fn and false_fn
+        # 5. create if sturcture and call true_fn and false_fn
         var_loader.load(result)
         if_code = self._graph.pycode_gen.add_instr(instr.opname)
 
@@ -1750,10 +1761,11 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_load_object(
             true_fn, true_fn.__code__.co_name
         )
-        for stack_arg in self.stack[:-1]:
+        for stack_arg in list(self.stack)[:-1]:
             var_loader.load(stack_arg)
-        for name in true_fn_output_var_names:
-            var_loader.load(self.get_var(name))
+
+        for name in true_fn_input_var_names:
+            var_loader.load(self.get_var(name, allow_undefined=True))
 
         self._graph.pycode_gen.gen_call_function(
             argc=true_fn.__code__.co_argcount,
@@ -1767,7 +1779,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             for stack_arg in self.stack:
                 var_loader.load(stack_arg)
             for name in false_fn_input_var_names:
-                var_loader.load(self.get_var(name))
+                var_loader.load(self.get_var(name, allow_undefined=True))
 
             self._graph.pycode_gen.gen_call_function(
                 argc=false_fn.__code__.co_argcount,
@@ -1812,17 +1824,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         stack_size_after_call = len(self.stack) - pop_n + push_n
 
         # 2. create resume function
-        read_names, write_names = analysis_used_names(
-            self._instructions, next_index
-        )
+        read_names, _ = analysis_used_names(self._instructions, next_index)
 
         input_var_names = self._find_names_in_space(
             read_names, (Space.locals, Space.cells)
         )
-        output_var_names = list(write_names)
 
         def create_resume_fn():
-            if self._instruction[next_index].opname == "RETURN_VALUE":
+            if self._instructions[next_index].opname == "RETURN_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1830,7 +1839,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 input_var_names, stack_size=stack_size_after_call
             )
             pycode_gen.extend_instrs(origin_instrs[next_index:])
-            pycode_gen.set_function_outputs(output_var_names)
+            # the resume_fn contains return code, so we don't need set output here
+            # global vars are updated correctly, and need local vars will return
             resume_fn = pycode_gen.create_function()
             return resume_fn
 
@@ -1838,7 +1848,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 3. compile sub graph before call
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            write_names, self.stack, cur_index
+            read_names, self.stack, cur_index
         )
 
         # 4. recover stack
@@ -1864,7 +1874,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 shift_n, stack_size_after_call + shift_n
             )
             for name in input_var_names:
-                var_loader.load(self.get_var(name))
+                var_loader.load(self.get_var(name, allow_undefined=True))
             self._graph.pycode_gen.gen_call_function(
                 argc=resume_fn.__code__.co_argcount,
             )
@@ -1958,16 +1968,15 @@ class OpcodeExecutor(OpcodeExecutorBase):
         loop_body_fn = create_loop_body()
 
         # 3. create after loop part function, stack size minus 1 for iterator
-        after_loop_read_names, after_loop_write_names = analysis_used_names(
+        after_loop_read_names, _ = analysis_used_names(
             self._instructions, loop_body_end_idx, len(self._instructions)
         )
         after_loop_fn_inputs = self._find_names_in_space(
             after_loop_read_names, (Space.locals, Space.cells)
         )
-        after_loop_fn_outputs = list(after_loop_write_names)
 
         def create_after_loop_fn():
-            if self._instruction[loop_body_end_idx].opname == "RETURN_VALUE":
+            if self._instructions[loop_body_end_idx].opname == "RETURN_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1975,7 +1984,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 after_loop_fn_inputs, stack_size=len(self.stack) - 1
             )
             pycode_gen.extend_instrs(origin_instrs[loop_body_end_idx:])
-            pycode_gen.set_function_outputs(after_loop_fn_outputs)
+            # the resume_fn contains return code, so we don't need set output here
+            # global vars are updated correctly, and need local vars will return
             loop_body_fn = pycode_gen.create_function()
             return loop_body_fn
 
@@ -1992,7 +2002,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self._graph.pycode_gen.gen_store(name, self._code)
 
         # 5. compile sub graph before for-loop
-        update_names = list(loop_body_write_names | after_loop_write_names)
+        update_names = list(loop_body_read_names | after_loop_read_names)
         var_loader = self.get_compute_fn_and_update_changed_vars(
             update_names, self.stack, self.indexof(for_iter)
         )
@@ -2004,7 +2014,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 6.2. copy FOR_ITER and unpack logic
         self._graph.pycode_gen.extend_instrs(
-            self._instructions[self.indexof(for_iter) : loop_body_start_idx]
+            self._instructions[for_iter_idx:loop_body_start_idx]
         )
 
         # 6.3 load loop body, prepare inputs and call
@@ -2022,13 +2032,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
             argc=loop_body_fn.__code__.co_argcount
         )
 
-        # 7 unpack and update changed vars, keep break_flag in stack
+        # 7. unpack and update changed vars, keep break_flag in stack
         self._graph.pycode_gen.gen_unpack_sequence(len(loop_body_inputs))
 
-        for name in loop_body_inputs[:-1]:
+        for name in loop_body_outputs[:-1]:
             self._graph.pycode_gen.gen_store(name, self._code)
 
-        # 9. create the tail of a for loop, jump back to FOR_ITER
+        # 8. create the tail of a for loop, jump back to FOR_ITER
         #    and process case if break
         jump_if_break = self._graph.pycode_gen.gen_pop_jump(
             direction=JumpDirection.FORWARD, suffix=PopJumpCond.FALSE
@@ -2041,7 +2051,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         for_iter.jump_to = nop
         jump_if_break.jump_to = nop
 
-        # 8. prepare inputs and call after_loop_fn
+        # 9. prepare inputs and call after_loop_fn
         if after_loop_fn is not None:
             self._graph.pycode_gen.gen_load_object(
                 after_loop_fn, after_loop_fn.__code__.co_name
@@ -2141,7 +2151,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 4. prepare input datas and call
         input_vars = [
-            self.get_var(name) if self.has_var(name) else SotUndefinedVar()
+            self.get_var(name, allow_undefined=True)
             for name in input_var_names[:-1]
         ] + [iterator]
 
