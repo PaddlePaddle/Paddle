@@ -49,11 +49,12 @@ class AllocatorFacade {
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
   ~AllocatorFacade();
 
-  static AllocatorFacade& Instance();
+  TEST_API static AllocatorFacade& Instance();
 
   AllocatorFacadePrivate* GetPrivate() const;
 
-  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
