@@ -128,12 +128,12 @@ bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,
     const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
-  bool rewrited = false;
+  bool rewritten = false;
   while (RewriteOneGenerateShapeOpToRunFirst(
       ir_context, block, dim_exprs_accessor)) {
-    rewrited = true;
+    rewritten = true;
   }
-  return rewrited;
+  return rewritten;
 }
 
 }  // namespace cinn::dialect

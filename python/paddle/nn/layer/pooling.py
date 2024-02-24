@@ -1143,7 +1143,7 @@ class AdaptiveMaxPool3D(Layer):
 
 class MaxUnPool1D(Layer):
     r"""
-    This API implements max unpooling 1d opereation.
+    This API implements max unpooling 1d operation.
 
     `max_unpool1d` accepts the output of `max_pool1d` as input,
     including the indices of the maximum value and calculate the partial inverse.
@@ -1231,7 +1231,7 @@ class MaxUnPool1D(Layer):
 
 class MaxUnPool2D(Layer):
     r"""
-    This API implements max unpooling 2d opereation.
+    This API implements max unpooling 2d operation.
 
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
     Including the indices of the maximum value and calculating the partial inverse
@@ -1323,7 +1323,7 @@ class MaxUnPool2D(Layer):
 
 class MaxUnPool3D(Layer):
     r"""
-    This API implements max unpooling 3d opereation.
+    This API implements max unpooling 3d operation.
 
     `max_unpool3d` accepts the output of `max_pool3d` as input,
     including the indices of the maximum value and calculate the partial inverse.
@@ -1481,7 +1481,7 @@ class FractionalMaxPool2D(Layer):
 
             >>> x = paddle.rand([2, 3, 32, 32])
 
-            >>> # disjont: without `kernel_size`
+            >>> # disjoint: without `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
@@ -1597,7 +1597,7 @@ class FractionalMaxPool3D(Layer):
 
             >>> x = paddle.rand([2, 3, 8, 32, 32])
 
-            >>> # disjont: without `kernel_size`
+            >>> # disjoint: without `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)

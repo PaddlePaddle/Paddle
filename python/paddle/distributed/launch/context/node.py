@@ -43,9 +43,16 @@ class Node:
         except:
             return '127.0.0.1'
 
-    def get_free_ports(self, n=1):
-        free_ports = [self.get_free_port() for i in range(n)]
-        self.free_ports += free_ports
+    def get_free_ports(self, n=1, rank=0):
+        if os.environ.get('FLAGS_FIXED_PORT') is None:
+            free_ports = [self.get_free_port() for i in range(n)]
+            self.free_ports += free_ports
+        else:
+            start_port = int(os.environ.get('FLAGS_FIXED_PORT'))
+            free_ports = list(
+                range(start_port + rank, start_port + rank + n, 1)
+            )
+            self.free_ports += free_ports
         return free_ports
 
     def get_ports_occupied(self):

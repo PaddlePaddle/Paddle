@@ -25,7 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace tests {
 
-namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
 paddle::Tensor CreateInputTensor() {

@@ -746,6 +746,8 @@ class PyCodeGen:
         if name not in self._code_options["co_names"]:
             self._code_options["co_names"].append(name)
         idx = self._code_options["co_names"].index(name)
+        if sys.version_info >= (3, 12):
+            idx <<= 1
         return self.add_instr("LOAD_ATTR", arg=idx, argval=name)
 
     def gen_store_attr(self, name: str):
@@ -827,25 +829,25 @@ class PyCodeGen:
 
     def gen_call_function(self, argc=0):
         if sys.version_info >= (3, 11):
-            if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+            if sys.version_info < (3, 12):
                 self.add_instr("PRECALL", arg=argc, argval=argc)
-            return self.add_instr("CALL", arg=argc, argval=argc)
+            self.add_instr("CALL", arg=argc, argval=argc)
         else:
-            return self.add_instr("CALL_FUNCTION", arg=argc, argval=argc)
+            self.add_instr("CALL_FUNCTION", arg=argc, argval=argc)
 
     def gen_call_function_ex(self, has_kwargs):
         flag = 0
         if has_kwargs:
             flag |= CALL_FUNCTION_EX_FLAG.CFE_HAS_KWARGS
-        return self.add_instr("CALL_FUNCTION_EX", arg=flag, argval=flag)
+        self.add_instr("CALL_FUNCTION_EX", arg=flag, argval=flag)
 
     def gen_call_method(self, argc=0):
         if sys.version_info >= (3, 11):
-            if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
+            if sys.version_info < (3, 12):
                 self.add_instr("PRECALL", arg=argc, argval=argc)
-            return self.add_instr("CALL", arg=argc, argval=argc)
+            self.add_instr("CALL", arg=argc, argval=argc)
         else:
-            return self.add_instr("CALL_METHOD", arg=argc, argval=argc)
+            self.add_instr("CALL_METHOD", arg=argc, argval=argc)
 
     def gen_kw_names(self, kw_names: tuple[str, ...] | None):
         if kw_names is None:
@@ -855,7 +857,7 @@ class PyCodeGen:
         if kw_names not in self._code_options["co_consts"]:
             self._code_options["co_consts"].append(kw_names)
         idx = self._code_options["co_consts"].index(kw_names)
-        return self.add_instr("KW_NAMES", arg=idx, argval=kw_names)
+        self.add_instr("KW_NAMES", arg=idx, argval=kw_names)
 
     def gen_pop_top(self):
         return self.add_instr("POP_TOP")
@@ -984,6 +986,8 @@ class PyCodeGen:
         only generator operator instruction, do nothing for
         operands.
         """
+        if sys.version_info >= (3, 12):
+            cmp_op <<= 4
         return self.add_instr("COMPARE_OP", cmp_op)
 
     def add_instr(self, *args, **kwargs):

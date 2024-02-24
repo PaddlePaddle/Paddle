@@ -737,7 +737,7 @@ class AMPPass(PassBase):
     def _update_backward_cast_ops(self):
         """
         move param grad cast to the end of backward segment
-        in order to enabel fp16 allreduce
+        in order to enable fp16 allreduce
         """
         # TODO filter optimize ops in future
 

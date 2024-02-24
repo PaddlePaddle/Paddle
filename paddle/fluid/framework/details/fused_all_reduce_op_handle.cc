@@ -60,7 +60,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
       num_of_all_reduce_(num_of_all_reduce) {}
 #endif
 
-FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
+FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;

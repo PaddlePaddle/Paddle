@@ -30,6 +30,7 @@ decomp_interface_declare_gen_op_list = [
     "gelu",
     "hardswish",
     "group_norm",
+    "index_sample",
     "index_select",
     "instance_norm",
     "layer_norm",
@@ -47,6 +48,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -60,6 +62,7 @@ decomp_interface_implementation_gen_op_list = [
     "gelu",
     "hardswish",
     "group_norm",
+    "index_sample",
     "index_select",
     "instance_norm",
     "layer_norm",
@@ -77,6 +80,7 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 
