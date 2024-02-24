@@ -129,7 +129,7 @@ class DefaultKernelSignatureMap {
 
 class OpUtilsMap {
  public:
-  static OpUtilsMap& Instance();
+  TEST_API static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
     return fluid_op_to_phi_kernel_.count(op_type) ||

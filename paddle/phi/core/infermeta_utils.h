@@ -40,7 +40,7 @@ class InferMetaContext {
   void SetMetaConfig(MetaConfig config);
   const MetaConfig& GetMetaConfig() const;
 
-  void EmplaceBackInput(MetaTensor input);
+  TEST_API void EmplaceBackInput(MetaTensor input);
   TEST_API void EmplaceBackOutput(MetaTensor output);
   TEST_API void EmplaceBackAttr(Attribute attr);
 
@@ -65,7 +65,7 @@ class InferMetaContext {
 
   TEST_API const Attribute& AttrAt(size_t idx) const;
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  TEST_API const std::pair<int, int>& InputRangeAt(size_t idx) const;
   TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   virtual ~InferMetaContext() = default;
