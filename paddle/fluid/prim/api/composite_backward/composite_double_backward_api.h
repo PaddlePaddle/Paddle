@@ -610,14 +610,14 @@ void subtract_double_grad(const Tensor& y,
                           Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx - ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
+    if (grad_x_grad && grad_y_grad) {
+      set_output<T>(grad_x_grad.get() - grad_y_grad.get(), grad_out_grad);
     } else if (grad_x_grad) {
       set_output<T>(grad_x_grad.get(), grad_out_grad);
     } else if (grad_y_grad) {
       set_output<T>(-grad_y_grad.get(), grad_out_grad);
     } else {
-      set_output<T>(grad_x_grad.get() - grad_y_grad.get(), grad_out_grad);
+      grad_out_grad = nullptr;
     }
   }
 }
