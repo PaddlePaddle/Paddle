@@ -46,11 +46,12 @@ class TestElementwiseDivGradGradWithoutDout
  public:
   TestElementwiseDivGradGradWithoutDout(const platform::Place &place,
                                         const framework::DDim &dims)
-      : TestElementwiseOpGradGrad<T>("elementwise_div_grad_grad",
-                                     place,
-                                     dims,
-                                     {"Y", "Out", "DDX", "DDY", "DX"},
-                                     {"Y@GRAD", "DDOut"}) {}
+      : TestElementwiseOpGradGrad<T>(
+            "elementwise_div_grad_grad",
+            place,
+            dims,
+            {"X", "Y", "Out", "DX", "DOut", "DDX", "DDY"},
+            {"X@GRAD", "Y@GRAD", "DDOut"}) {}
 
   using TestElementwiseOpGradGrad<T>::feed_datas_;
   using TestElementwiseOpGradGrad<T>::expected_outs_;
@@ -76,12 +77,16 @@ class TestElementwiseDivGradGradWithoutDout
   std::unique_ptr<framework::OperatorBase> CreateTestOp() override {
     auto op = framework::OpRegistry::CreateOp(
         this->op_type_,
-        {{"Y", {"Y"}},
-         {"Out", {"Out"}},
-         {"DDX", {"DDX"}},
-         {"DDY", {"DDY"}},
-         {"DX", {"DX"}}},
-        {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}},
+        {
+            {"X", {"X"}},
+            {"Y", {"Y"}},
+            {"Out", {"Out"}},
+            {"DX", {"DX"}},
+            {"DOut", {"DOut"}},
+            {"DDX", {"DDX"}},
+            {"DDY", {"DDY"}},
+        },
+        {{"X@GRAD", {"X@GRAD"}}, {"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}},
         {{"use_mkldnn", false}, {"axis", 0}});
     return op;
   }
