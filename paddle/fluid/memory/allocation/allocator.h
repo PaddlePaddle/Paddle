@@ -195,7 +195,7 @@ class Allocator : public phi::Allocator {
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
-  virtual void FreeImpl(phi::Allocation* allocation);
+  TEST_API virtual void FreeImpl(phi::Allocation* allocation);
   virtual uint64_t ReleaseImpl(const platform::Place& place UNUSED) {
     return 0;
   }

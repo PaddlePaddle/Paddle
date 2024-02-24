@@ -35,9 +35,9 @@ class NaiveBestFitAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  phi::Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const platform::Place &place) override;
+  TEST_API phi::Allocation *AllocateImpl(size_t size) override;
+  TEST_API void FreeImpl(phi::Allocation *allocation) override;
+  TEST_API uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
   platform::Place place_;

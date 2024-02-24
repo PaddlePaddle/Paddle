@@ -34,11 +34,11 @@ namespace allocation {
 class CPUAllocator : public Allocator {
  public:
   constexpr static size_t kAlignment = 4096UL;
-  bool IsAllocThreadSafe() const override;
+  TEST_API bool IsAllocThreadSafe() const override;
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
-  phi::Allocation* AllocateImpl(size_t size) override;
+  TEST_API phi::Allocation* AllocateImpl(size_t size) override;
 };
 }  // namespace allocation
 }  // namespace memory

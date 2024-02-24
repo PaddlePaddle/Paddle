@@ -105,7 +105,7 @@ class BestFitAllocation : public Allocation {
 // the prev-chunk and the next-chunk when possible.
 class BestFitAllocator : public Allocator {
  public:
-  explicit BestFitAllocator(phi::Allocation* allocation);
+  TEST_API explicit BestFitAllocator(phi::Allocation* allocation);
 
   void* BasePtr() const { return allocation_->ptr(); }
 
