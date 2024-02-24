@@ -24,8 +24,8 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-TEST_API extern std::once_flag mklml_dso_flag;
-TEST_API extern void *mklml_dso_handle;
+extern std::once_flag mklml_dso_flag;
+extern void *mklml_dso_handle;
 
 /**
  * The following macro definition can generate structs
