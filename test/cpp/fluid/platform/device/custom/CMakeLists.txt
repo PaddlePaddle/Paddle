@@ -1,1 +1,6 @@
-# Note(Liyulingyue): create an empty cmake file to avoid conflict
+if(WITH_CUSTOM_DEVICE)
+  cc_test(
+    custom_device_test
+    SRCS custom_device_test.cc
+    DEPS phi common gradient_accumulator)
+endif()
