@@ -1,1 +1,1 @@
-# (Liyulingyue) create an empty cmake file to avoid conflict
+# Note(Liyulingyue): create an empty cmake file to avoid conflict
