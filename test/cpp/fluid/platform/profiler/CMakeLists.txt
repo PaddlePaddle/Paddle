@@ -1,8 +1,5 @@
 add_subdirectory(dump)
-cc_test(
-  test_event_node
-  SRCS test_event_node.cc
-  DEPS event_node profiler_logger)
+paddle_test(test_event_node SRCS test_event_node.cc)
 cc_test(
   test_extra_info
   SRCS test_extra_info.cc

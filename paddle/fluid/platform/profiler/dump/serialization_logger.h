@@ -28,20 +28,21 @@ namespace platform {
 class SerializationLogger : public BaseLogger {
  public:
   explicit SerializationLogger(const std::string& filename);
-  explicit SerializationLogger(const char* filename);
-  ~SerializationLogger();
+  TEST_API explicit SerializationLogger(const char* filename);
+  TEST_API ~SerializationLogger();
   std::string filename() { return filename_; }
   void LogDeviceTraceEventNode(const DeviceTraceEventNode&) override;
   void LogHostTraceEventNode(const HostTraceEventNode&) override;
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
-  void LogExtraInfo(const std::unordered_map<std::string, std::string>);
+  TEST_API void LogExtraInfo(
+      const std::unordered_map<std::string, std::string>);
   void LogMemTraceEventNode(const MemTraceEventNode&) override;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void LogDeviceProperty(
       const std::map<uint32_t, gpuDeviceProp>& device_property_map);
 #endif
-  void LogMetaInfo(const std::string& version, uint32_t span_indx);
+  TEST_API void LogMetaInfo(const std::string& version, uint32_t span_indx);
 
  private:
   void OpenFile();
