@@ -1,14 +1,8 @@
 paddle_test(memory_stats_test SRCS memory_stats_test.cc)
 paddle_test(stats_test SRCS stats_test.cc)
 
-cc_test(
-  naive_best_fit_allocator_test
-  SRCS naive_best_fit_allocator_test.cc
-  DEPS allocator)
-cc_test(
-  buffered_allocator_test
-  SRCS buffered_allocator_test.cc
-  DEPS allocator)
+paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc)
+paddle_test(buffered_allocator_test SRCS buffered_allocator_test.cc)
 
 if(WITH_GPU)
   nv_test(

@@ -121,19 +121,21 @@ class Stat : public StatBase {
 // performance than the macro function xxx_MEMORY_STAT_CURRENT_VALUE,
 // xxx_MEMORY_STAT_PEAK_VALUE, and xxx_MEMORY_STAT_UPDATE. Try to use the macro
 // functions where ultra-low performance overhead is required.
-int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
-int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id);
-void DeviceMemoryStatUpdate(const std::string& stat_type,
-                            int dev_id,
-                            int64_t increment);
+TEST_API int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type,
+                                              int dev_id);
+TEST_API int64_t DeviceMemoryStatPeakValue(const std::string& stat_type,
+                                           int dev_id);
+TEST_API void DeviceMemoryStatUpdate(const std::string& stat_type,
+                                     int dev_id,
+                                     int64_t increment);
 
 TEST_API int64_t HostMemoryStatCurrentValue(const std::string& stat_type,
                                             int dev_id);
 TEST_API int64_t HostMemoryStatPeakValue(const std::string& stat_type,
                                          int dev_id);
-void HostMemoryStatUpdate(const std::string& stat_type,
-                          int dev_id,
-                          int64_t increment);
+TEST_API void HostMemoryStatUpdate(const std::string& stat_type,
+                                   int dev_id,
+                                   int64_t increment);
 
 void LogDeviceMemoryStats(const platform::Place& place,
                           const std::string& op_name);
