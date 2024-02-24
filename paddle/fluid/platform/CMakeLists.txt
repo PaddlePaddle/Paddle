@@ -3,11 +3,6 @@ cc_library(
   SRCS denormal.cc
   DEPS)
 
-cc_test(
-  errors_test
-  SRCS errors_test.cc
-  DEPS phi common enforce)
-
 set(enforce_deps phi)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
@@ -18,28 +13,11 @@ cc_library(
   SRCS enforce.cc
   DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
-cc_test(
-  enforce_test
-  SRCS enforce_test.cc
-  DEPS enforce common)
-
-cc_test(
-  cpu_info_test
-  SRCS cpu_info_test.cc
-  DEPS phi common)
-cc_test(
-  os_info_test
-  SRCS os_info_test.cc
-  DEPS phi common)
 
 cc_library(
   place
   SRCS place.cc
   DEPS enforce phi common)
-cc_test(
-  place_test
-  SRCS place_test.cc
-  DEPS place glog phi common)
 
 if(WITH_MKLDNN)
   set(MKLDNN_CTX_DEPS mkldnn)
@@ -54,10 +32,6 @@ cc_library(
   cpu_helper
   SRCS cpu_helper.cc
   DEPS cblas enforce common)
-cc_test(
-  cpu_helper_test
-  SRCS cpu_helper_test.cc
-  DEPS cpu_helper)
 
 set(dgc_deps "")
 if(WITH_DGC)
