@@ -42,7 +42,7 @@ void *dlsym(void *handle, const char *symbol_name);
 
 void *dlopen(const char *filename, int flag);
 
-TEST_API int gettimeofday(struct timeval *tp, void *tzp);
+int gettimeofday(struct timeval *tp, void *tzp);
 #endif  // !_WIN32
 
 void ExecShellCommand(const std::string &cmd, std::string *message);
