@@ -1,11 +1,5 @@
-cc_test(
-  memory_stats_test
-  SRCS memory_stats_test.cc
-  DEPS)
-cc_test(
-  stats_test
-  SRCS stats_test.cc
-  DEPS)
+paddle_test(memory_stats_test SRCS memory_stats_test.cc)
+paddle_test(stats_test SRCS stats_test.cc)
 
 cc_test(
   naive_best_fit_allocator_test

@@ -127,8 +127,10 @@ void DeviceMemoryStatUpdate(const std::string& stat_type,
                             int dev_id,
                             int64_t increment);
 
-int64_t HostMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
-int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id);
+TEST_API int64_t HostMemoryStatCurrentValue(const std::string& stat_type,
+                                            int dev_id);
+TEST_API int64_t HostMemoryStatPeakValue(const std::string& stat_type,
+                                         int dev_id);
 void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
