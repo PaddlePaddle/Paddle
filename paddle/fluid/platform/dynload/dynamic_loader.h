@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace platform {
@@ -27,7 +28,7 @@ namespace dynload {
 
 void* GetCublasDsoHandle();
 void* GetCublasLtDsoHandle();
-void* GetCUDNNDsoHandle();
+TEST_API void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetNvjpegDsoHandle();

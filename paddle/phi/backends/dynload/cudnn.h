@@ -24,11 +24,11 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-extern std::once_flag cudnn_dso_flag;
-extern void* cudnn_dso_handle;
+TEST_API extern std::once_flag cudnn_dso_flag;
+TEST_API extern void* cudnn_dso_handle;
 extern bool HasCUDNN();
 
-extern void EnforceCUDNNLoaded(const char* fn_name);
+TEST_API extern void EnforceCUDNNLoaded(const char* fn_name);
 #define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                      \
   struct DynLoad__##__name {                                         \
     template <typename... Args>                                      \
