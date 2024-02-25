@@ -14,9 +14,6 @@ if(NOT CINN_ONLY)
   cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
                   ${cinn_transforms_deps})
 
-endif()
-
-if(WITH_CINN)
   cc_library(
     add_cinn_pass
     SRCS add_cinn_pass.cc

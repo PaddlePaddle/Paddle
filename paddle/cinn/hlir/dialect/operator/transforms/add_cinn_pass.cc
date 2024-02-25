@@ -23,7 +23,6 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
-#ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
@@ -44,7 +43,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#endif
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(check_infer_symbolic);
@@ -73,7 +72,6 @@ bool HasDynamicShape(const pir::Program &program) {
 
 void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
                  pir::Program &program) {                          // NOLINT
-#ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
@@ -134,11 +132,6 @@ void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "Currently we only support CINN Pass for Pir under @to_static, please "
-      "compile PaddlePaddle with CINN"));
-#endif
 }
 
 }  // namespace cinn::dialect::ir
