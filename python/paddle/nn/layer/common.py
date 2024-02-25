@@ -419,6 +419,10 @@ class Upsample(Layer):
                 self.data_format = 'NCHW'
             elif dim_size == 5:
                 self.data_format = 'NCDHW'
+            else:
+                raise ValueError(
+                    f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+                )
         out = F.interpolate(
             x,
             size=self.size,

@@ -389,6 +389,10 @@ def interpolate(
             data_format = 'NCHW'
         elif dim_size == 5:
             data_format = 'NCDHW'
+        else:
+            raise ValueError(
+                f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+            )
     data_format = data_format.upper()
     resample = mode.upper()
     resample_type = mode.lower()
