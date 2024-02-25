@@ -1982,7 +1982,7 @@ class CublasFusedMLP {
                              const uint64_t cublas_row,
                              const uint64_t cublas_col) {
     cudaDataType_t mat_type = CUDA_R_32F;
-    if (std::is_same<T, paddle::phi::float16>::value) {
+    if (std::is_same<T, phi::float16>::value) {
       mat_type = CUDA_R_16F;
     }
     if (std::is_same<T, phi::bfloat16>::value) {
