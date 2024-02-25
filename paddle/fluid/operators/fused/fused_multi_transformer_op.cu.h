@@ -1883,7 +1883,7 @@ class CublasFusedMLP {
     cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     cudaStream_t stream = dev_ctx_.stream();
-    memory::allocation::AllocationPtr workspace = memory::Alloc(
+    phi::Allocator::AllocationPtr workspace = phi::memory_utils::Alloc(
         dev_ctx_.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
