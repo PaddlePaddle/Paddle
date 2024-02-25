@@ -285,7 +285,7 @@ class TestPrimSwiglu1(TestPrimTwo):
         self.dtype_x = "float32"
         self.dtype_y = "float32"
         self.init_x_shape = [None, None]
-        self.init_y_shape = [300, 4096]
+        self.init_y_shape = [None, None]
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = swiglu_net1
