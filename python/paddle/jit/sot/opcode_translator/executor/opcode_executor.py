@@ -2007,8 +2007,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             pycode_gen.extend_instrs(origin_instrs[loop_body_end_idx:])
             # the resume_fn contains return code, so we don't need set output here
             # global vars are updated correctly, and need local vars will return
-            loop_body_fn = pycode_gen.create_function()
-            return loop_body_fn
+            after_loop_fn = pycode_gen.create_function()
+            return after_loop_fn
 
         after_loop_fn = create_after_loop_fn()
 
