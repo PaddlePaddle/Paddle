@@ -496,4 +496,4 @@ REGISTER_PASS_CAPABILITY(trt_embedding_eltwise_layernorm_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("lookup_table", 1)
             .LE("lookup_table_v2", 1)
-            .LE("elementweise_add", 1));
+            .LE("elementwise_add", 1));
