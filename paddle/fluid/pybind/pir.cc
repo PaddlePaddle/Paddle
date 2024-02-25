@@ -750,6 +750,12 @@ void BindValue(py::module *m) {
             } else if (auto data_op =
                            self.defining_op<paddle::dialect::DataOp>()) {
               return data_op.attribute<pir::StrAttribute>("name").AsString();
+            } else if (auto block_arg = self.dyn_cast<BlockArgument>()) {
+              if (block_arg.is_kwarg()) {
+                return block_arg.keyword();
+              } else {
+                return "arg_" + std::to_string(block_arg.index());
+              }
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
@@ -1218,28 +1224,34 @@ SplitedResult SplitForwardBackward(
 
   // counter = 0;
   if (has_backward) {
-    VLOG(4) << "start create backward inputs, inserting pd.data ops.";
-    VLOG(4) << "Create pd.data for backward program: fo, start with input_"
-            << counter;
+    VLOG(4) << "start create backward inputs, creating keyword argument.";
+    VLOG(4)
+        << "Create keyword argument for backward program: fo, start with input_"
+        << counter;
     std::for_each(
         forward_outputs.begin(), forward_outputs.end(), create_kwarg_fn);
-    VLOG(4) << "Create pd.data for backward program: fx, start with input_"
-            << counter;
+    VLOG(4)
+        << "Create keyword argument for backward program: fx, start with input_"
+        << counter;
     std::for_each(
         forward_inputs.begin(), forward_inputs.end(), create_kwarg_fn);
-    VLOG(4) << "Create pd.data for backward program: fp, start with input_"
-            << counter;
+    VLOG(4)
+        << "Create keyword argument for backward program: fp, start with input_"
+        << counter;
     std::for_each(
         forward_params.begin(), forward_params.end(), create_kwarg_fn);
-    VLOG(4) << "Create pd.data for backward program: fm, start with input_"
-            << counter;
+    VLOG(4)
+        << "Create keyword argument for backward program: fm, start with input_"
+        << counter;
     std::for_each(middle_values.begin(), middle_values.end(), create_kwarg_fn);
-    VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
+    VLOG(4) << "Create keyword argument for backward program: fo_g, start with "
+               "input_"
             << counter;
     std::for_each(forward_outputs_grads.begin(),
                   forward_outputs_grads.end(),
                   create_kwarg_fn);
-    VLOG(4) << "Create pd.data for backward program end. input_" << counter;
+    VLOG(4) << "Create keyword argument for backward program end. input_"
+            << counter;
   }
 
   // counter = 0;

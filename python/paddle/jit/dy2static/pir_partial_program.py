@@ -804,7 +804,7 @@ class PartialProgramLayer:
                     if forward_end_op is not None:
                         for idx, op in enumerate(program.global_block().ops):
                             if op == forward_end_op:
-                                forward_end_idx = idx
+                                forward_end_idx = idx + 1
                                 break
 
             if self._hooker:

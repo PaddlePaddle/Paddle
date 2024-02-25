@@ -216,6 +216,16 @@ void IrPrinter::PrintRegion(const Region& region) {
 void IrPrinter::PrintBlock(const Block& block) {
   os << indentation() << "{\n";
   AddIndentation();
+  if (!block.kwargs_empty()) {
+    os << indentation() << "^kw:";
+    auto cur = block.kwargs_begin(), end = block.kwargs_end();
+    PrintValue(cur->second);
+    while (++cur != end) {
+      os << ", ";
+      PrintValue(cur->second);
+    }
+    os << "\n";
+  }
   for (auto& item : block) {
     PrintOperation(&item);
     os << "\n";
@@ -241,10 +251,11 @@ void IrPrinter::PrintValue(Value v) {
     aliases_[key] = new_name;
     os << new_name;
   } else {
-    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
-    cur_block_argument_number_++;
-    aliases_[key] = new_name;
-    os << new_name;
+    auto arg = v.dyn_cast<BlockArgument>();
+    os << (aliases_[key] =
+               arg.is_kwarg()
+                   ? "%kwarg_" + arg.keyword()
+                   : "%arg_" + std::to_string(cur_block_argument_number_++));
   }
 }
 
