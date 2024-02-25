@@ -255,6 +255,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "conv2d")
+    {
+      return false;
+    }
+
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "fused_conv2d_add_act" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
