@@ -1653,6 +1653,76 @@ TEST(UnsqueezeGradInferSpmd, Ctor) {
       PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
 }
 
+TEST(ScatterGradInferSpmd, Ctor) {
+  std::vector<int64_t> index_shape = {16};
+  std::vector<int64_t> updates_shape = {32, 32, 48};
+  std::vector<int64_t> out_grad_shape = {64, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr index_dist_attr = TensorDistAttr();
+  index_dist_attr.set_process_mesh(process_mesh);
+  TensorDistAttr updates_dist_attr = TensorDistAttr();
+  updates_dist_attr.set_process_mesh(process_mesh);
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+
+  // [0], [-1, -1, 1], [0, -1, 1] -->
+  // inputs: [-1], [-1, -1, 1], [-1, -1, 1]
+  // x_grad: [-1, -1, 1], updates_grad: [-1, -1, 1]
+  index_dist_attr.set_dims_mapping({0});
+  updates_dist_attr.set_dims_mapping({-1, -1, 1});
+  out_grad_dist_attr.set_dims_mapping({0, -1, 1});
+  phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
+                                         index_dist_attr);
+  phi::distributed::DistMetaTensor updates(phi::make_ddim(updates_shape),
+                                           updates_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+  auto spmdinfo = ScatterGradInferSpmd(index, updates, out_grad, false);
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({-1, -1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, -1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({-1, -1, 1}));
+
+  // [0], [0, -1, 1], [-1, 0, 1] -->
+  // inputs: [-1], [0, -1, 1], [-1, 0, 1]
+  // x_grad: [-1, 0, 1], updates_grad: [-1, 0, 1]
+  index_dist_attr.set_dims_mapping({0});
+  updates_dist_attr.set_dims_mapping({0, -1, 1});
+  out_grad_dist_attr.set_dims_mapping({-1, 0, 1});
+  phi::distributed::DistMetaTensor index(phi::make_ddim(index_shape),
+                                         index_dist_attr);
+  phi::distributed::DistMetaTensor updates(phi::make_ddim(updates_shape),
+                                           updates_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+  auto spmdinfo = ScatterGradInferSpmd(index, updates, out_grad, false);
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, 0, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 0, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({-1, 0, 1}));
+}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
