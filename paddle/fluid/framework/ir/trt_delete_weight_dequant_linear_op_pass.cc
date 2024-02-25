@@ -201,7 +201,7 @@ TrtDeleteWeightQuantDequantLinearOpPass::
 void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     ir::Graph* graph) const {
   const std::string pattern_name =
-      "delete_weight_quantdequant_linear_op_pattern";
+      "delete_weight_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
