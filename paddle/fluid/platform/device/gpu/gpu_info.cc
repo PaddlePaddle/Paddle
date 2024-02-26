@@ -35,6 +35,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/phi/backends/gpu/gpu_graph.h"
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_graph.h"
