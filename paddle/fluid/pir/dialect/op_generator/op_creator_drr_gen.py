@@ -26,6 +26,9 @@ CPP_FILE_TEMPLATE = """
 
 {op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
 namespace paddle {{
 namespace drr {{
