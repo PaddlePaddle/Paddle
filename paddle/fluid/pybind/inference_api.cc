@@ -974,19 +974,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
-      .def("enable_cinn", &AnalysisConfig::EnableCINN, R"DOC(
-            Enable CINN in the execution process of inference
-            Returns:
-                None.
-
-            Examples:
-                .. code-block:: python
-
-                    >>> from paddle.inference import Config
-
-                    >>> config = Config("")
-                    >>> config.enable_cinn()
-            )DOC")
+      .def("enable_cinn", &AnalysisConfig::EnableCINN)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
       .def("cpu_math_library_num_threads",
