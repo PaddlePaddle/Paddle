@@ -45,6 +45,7 @@ static std::unordered_map<std::string, std::string> kCustomTypeMap = {
     {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
     {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
     {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -69,6 +70,30 @@ struct CombineOpInferSymbolicShapeInterfaceModel
   }
 
   CombineOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct ConstantOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    IR_ENFORCE(op->result(0).type().dyn_cast<DenseTensorType>(),
+               "Currently InferSymbolicShape of ConstantOp only support "
+               "DenseTensorType result.");
+
+    const std::vector<int64_t> result_dims = common::vectorize(
+        op->result(0).type().dyn_cast<pir::DenseTensorType>().dims());
+    std::vector<symbol::DimExpr> out_dims{result_dims};
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+    return true;
+  }
+
+  ConstantOpInferSymbolicShapeInterfaceModel()
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
