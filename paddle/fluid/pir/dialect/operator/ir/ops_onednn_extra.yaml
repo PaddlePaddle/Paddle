@@ -184,16 +184,18 @@
 
 - op : nearest_interp
 
-# - op : pad
+- op : pad
 
 - op : pad3d
   extra_args :
   data_format_tensors : x
   dynamic_fallback : True
 
-# - op : pool2d
+- op : pool2d
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
 
-# - op : pool2d_grad
+- op : pool2d_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
 
 - op : prelu
   extra_args : bool is_test=false, str mkldnn_data_type="float32"

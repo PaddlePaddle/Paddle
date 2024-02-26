@@ -428,11 +428,13 @@ class TestPool2D_Op_Mixin:
                 check_dygraph=(not self.use_mkldnn),
                 check_cinn=True,
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         else:
             self.check_output(
                 check_dygraph=(not self.use_mkldnn),
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
     def test_check_grad(self):
@@ -448,6 +450,7 @@ class TestPool2D_Op_Mixin:
                 check_dygraph=(not self.use_mkldnn),
                 check_cinn=True,
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         elif self.pool_type != "max":
             self.check_grad(
@@ -456,6 +459,7 @@ class TestPool2D_Op_Mixin:
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
     def init_data_format(self):
@@ -599,6 +603,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                         place,
                         check_dygraph=(not self.use_mkldnn),
                         check_cinn=True,
+                        check_pir_onednn=self.check_pir_onednn,
                     )
 
         def test_check_grad(self):
@@ -615,6 +620,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     'Out',
                     check_dygraph=(not self.use_mkldnn),
                     check_cinn=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16Op")
@@ -640,6 +646,7 @@ def create_test_fp16_class(parent, check_grad=True):
                         place,
                         check_dygraph=(not self.use_mkldnn),
                         check_cinn=True,
+                        check_pir_onednn=self.check_pir_onednn,
                     )
 
         def test_check_grad(self):
@@ -656,6 +663,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     'Out',
                     check_dygraph=(not self.use_mkldnn),
                     check_cinn=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16Op")
@@ -679,6 +687,7 @@ def create_test_bf16_class(parent, check_grad=True):
                     place,
                     check_dygraph=(not self.use_mkldnn),
                     check_cinn=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
         def test_check_grad(self):
@@ -690,6 +699,7 @@ def create_test_bf16_class(parent, check_grad=True):
                     'Out',
                     check_dygraph=(not self.use_mkldnn),
                     check_cinn=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
@@ -1025,6 +1035,7 @@ class TestCase5_Max(TestCase2):
                 max_relative_error=1.00,
                 check_cinn=True,
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         elif self.pool_type == "max":
             self.check_grad(
@@ -1033,6 +1044,7 @@ class TestCase5_Max(TestCase2):
                 max_relative_error=1.00,
                 check_cinn=True,
                 check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
 
