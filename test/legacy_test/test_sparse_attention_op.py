@@ -438,7 +438,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_key = paddle.to_tensor(key, place=self.place)
         paddle_value = paddle.to_tensor(value, place=self.place)
         paddle_offset = paddle.to_tensor(offset, place=self.place)
-        paddle_colunmns = paddle.to_tensor(columns, place=self.place)
+        paddle_columns = paddle.to_tensor(columns, place=self.place)
         paddle_kp_mask = paddle.to_tensor(key_padding_mask, place=self.place)
         paddle_attn_mask = paddle.to_tensor(attn_mask, place=self.place)
 
@@ -448,7 +448,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 paddle_key,
                 paddle_value,
                 paddle_offset,
-                paddle_colunmns,
+                paddle_columns,
                 key_padding_mask=paddle_kp_mask,
                 attn_mask=paddle_attn_mask,
             )
@@ -469,7 +469,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 paddle_key,
                 paddle_value,
                 paddle_offset,
-                paddle_colunmns,
+                paddle_columns,
             )
 
             numpy_result, __, __ = ref_batch_sparse_attention(
