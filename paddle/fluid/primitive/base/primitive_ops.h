@@ -92,6 +92,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "builtin.slice",
       "builtin.split",
       "pd_op.feed",
+      "pd_op.fetch",
       "builtin.set_parameter",
       "builtin.parameter",
       "builtin.constant",
@@ -100,6 +101,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       /* skip some special ops */
       "pd_op.squeeze",
       "pd_op.unsqueeze",
+      "pd_op.select_input",
       "pd_op.top_p_sampling",
       "pd_op.tril",
       "cf.yield",
