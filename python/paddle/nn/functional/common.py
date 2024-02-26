@@ -189,8 +189,9 @@ def interpolate(
 
     This API resizes a batch of images.
 
-    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    The input must be be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -324,7 +325,7 @@ def interpolate(
     Parameters:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
              specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
-             be presumed according to its dimension. See details in attr:`data_format`.
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -357,9 +358,7 @@ def interpolate(
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
 
     Examples:
@@ -745,7 +744,8 @@ def upsample(
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -878,7 +878,7 @@ def upsample(
     Parameters:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
              specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
-             be presumed according to its dimension. See details in attr:`data_format`.
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -913,9 +913,7 @@ def upsample(
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
     Examples:
         .. code-block:: python
