@@ -1622,7 +1622,7 @@ void ApplyCinnLowerPass(Program *program, pir::IrContext *ctx) {
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   }
 
-  pass_manager.AddPass(cinn::dialect::ir::CreatejLowerCinnFusionOpPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
 
   pass_manager.Run(program);
 }
