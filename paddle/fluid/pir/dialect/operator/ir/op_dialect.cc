@@ -125,10 +125,23 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct YieldOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    // Since YieldOp has no output, just return true
+    return true;
+  }
+
+  YieldOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
   info.AttachInterface(std::move(
       pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
@@ -148,6 +161,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
       std::move(pir::InterfaceValue::Get<
                 InferSymbolicShapeInterface,
                 ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               YieldOpInferSymbolicShapeInterfaceModel>()));
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {

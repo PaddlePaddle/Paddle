@@ -25,12 +25,6 @@ void YieldOp::Build(Builder &builder,
   argument.AddInputs(inputs);
 }
 
-bool YieldOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // YieldOp has no output, just return true
-  return true;
-}
-
 void TuplePushOp::Build(Builder &builder,             // NOLINT
                         OperationArgument &argument,  // NOLINT
                         Value inlet,
