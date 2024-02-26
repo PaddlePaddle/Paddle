@@ -408,6 +408,7 @@
     func : DistributedFusedLambInitInferMeta
   kernel :
     func : distributed_fused_lamb_init
+  optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
 
 - op : distributed_lookup_table
   args : (Tensor[] ids, Tensor w, int table_id = 0, bool is_distributed = false, str lookup_table_version = "lookup_table", int64_t padding_idx = -1, DataType dtype = DataType::FLOAT32, bool is_test = false)
