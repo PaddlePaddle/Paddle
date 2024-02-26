@@ -1753,7 +1753,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 2. create true_fn and false_fn
         def create_if_branch_fn(start_idx, input_var_names):
-            if self._instructions[start_idx].opname in RETURN:
+            if self._instructions[start_idx].opname == "RETURE_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1885,7 +1885,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
 
         def create_resume_fn():
-            if self._instructions[next_index].opname in RETURN:
+            if self._instructions[next_index].opname == "RETURE_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -2031,7 +2031,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
 
         def create_after_loop_fn():
-            if self._instructions[loop_body_end_idx].opname in RETURN:
+            if self._instructions[loop_body_end_idx].opname == "RETURE_VALUE":
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
