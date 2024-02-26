@@ -555,7 +555,7 @@ def append_backward_ops(
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
     # [op2 , builtin.split] (op2's inputs are not vectorType, one output is vectorType)
-    # [builtin.combine , op3 , buitin.split] (op3's one input and one output are vectorType)
+    # [builtin.combine , op3 , builtin.split] (op3's one input and one output are vectorType)
     # [op4] (op4's inputs and outputs are not vectorType)
 
     # -----------------only for control flow-----------------#

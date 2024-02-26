@@ -366,7 +366,7 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
 
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
-    VLOG(3) << "Ecoding output names:" << out->Name() << "(" << out
+    VLOG(3) << "Encoding output names:" << out->Name() << "(" << out
             << "), id:" << id;
     if (var_ids.find(out) == var_ids.end()) {
       var_ids[out] = id++;
