@@ -436,6 +436,10 @@ def launch():
         # max_search_time
         max_search_time = tuner_cfg.get("max_search_time", None)
 
+        # buffer and memory
+        buffer = tuner_cfg.get("buffer", None)
+        max_mem_usage = tuner_cfg.get("max_mem_usage", None)
+
         is_first_task = True
         # build history recorder
         recorder = HistoryRecorder(tuner_cfg)
@@ -681,6 +685,8 @@ def launch():
                 cur_best_cfgs, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if not err:
                     ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -781,6 +787,8 @@ def launch():
                         direction=tuner_cfg['metric_cfg'][
                             'OptimizationDirection'
                         ],
+                        buffer=buffer,
+                        max_mem_usage=max_mem_usage,
                     )
                     if not err:
                         ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1158,7 +1166,8 @@ def launch():
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                mode=mode,
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1206,7 +1215,8 @@ def launch():
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                    mode=mode,
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if err:
                     raise ValueError(
@@ -1232,7 +1242,8 @@ def launch():
             best_cfg, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                mode=mode,
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if err:
                 raise ValueError(
@@ -1255,9 +1266,13 @@ def launch():
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg: {best_cfg}")
         logger.info(f"Launch best cfg: {best_cfg}")
-        ctx.args.log_dir = ctx.args.log_dir = os.path.join(
-            os.path.dirname(ctx.args.auto_tuner_json), "best_cfg"
-        )
+
+        if tuner_cfg.get("best_cfg_dir", None):
+            ctx.args.log_dir = tuner_cfg["best_cfg_dir"]
+        else:
+            ctx.args.log_dir = os.path.join(
+                os.path.dirname(ctx.args.auto_tuner_json), "best_cfg"
+            )
         # run best cfg
         c = controllers.init(ctx)
         c.run()
