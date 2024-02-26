@@ -89,7 +89,7 @@ def get_gpus(selected_gpus):
                 for x in selected_gpus.split(',')
             ]
             logger.info(
-                f"Change selected_gpus into reletive values. --ips:{selected_gpus} "
+                f"Change selected_gpus into relative values. --ips:{selected_gpus} "
                 f"will change into relative_ips:{gpus} according to your "
                 f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
@@ -200,7 +200,7 @@ class JobServer:
         return f"{self.endpoint}"
 
     def __eq__(self, j):
-        return self.endpint == j.endpoint
+        return self.endpoint == j.endpoint
 
     def __ne__(self, j):
         return not self == j

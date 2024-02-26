@@ -45,7 +45,7 @@ class ConditionalOpEagerDeletionPass : public Pass {
     }
 
     // NOTE(Aurelius84): In case of @to_static, after we finish executing
-    // forward graph, some necessaray variable in step_scope of controlflow_op
+    // forward graph, some necessary variable in step_scope of controlflow_op
     // should be kept for backward graph.
     if (graph->IsConstructedByPartialProgram()) {
       PADDLE_ENFORCE_LE(target_ops.size(),

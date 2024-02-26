@@ -56,7 +56,7 @@ TEST(CustomOp, Ctor) {
   std::vector<CustomSpmdInferAttrArg> attrs = {axis};
 
   auto infered_dist_attrs = forward_spmd_func(infer_inputs, attrs);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
@@ -77,8 +77,8 @@ TEST(CustomOp, Ctor) {
 }
 
 TEST(CustomOp, Register) {
-  OpMetaInfoBuilder builder("test_custom_op_smpd", 0);
-  auto iter = OpMetaInfoMap::Instance().GetMap().find("test_custom_op_smpd");
+  OpMetaInfoBuilder builder("test_custom_op_spmd", 0);
+  auto iter = OpMetaInfoMap::Instance().GetMap().find("test_custom_op_spmd");
   EXPECT_TRUE(iter != OpMetaInfoMap::Instance().GetMap().end());
   EXPECT_TRUE(OpMetaInfoHelper::GetInferSpmdFn(iter->second[0]) == nullptr);
   builder.SetInferSpmdFn(PD_INFER_SPMD_RULE(phi::distributed::ConcatInferSpmd));

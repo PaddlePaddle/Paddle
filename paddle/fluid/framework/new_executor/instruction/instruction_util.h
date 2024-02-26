@@ -66,5 +66,10 @@ void InsertInplacedExternalInputsToOuts(
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
 bool GetCondData(const phi::DenseTensor& cond);
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope);
+
 }  // namespace framework
 }  // namespace paddle

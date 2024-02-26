@@ -210,7 +210,7 @@ class ContinuousBernoulli(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of Continuous Bernoulli distribuion.
+        """Mean of Continuous Bernoulli distribution.
 
         Returns:
             Tensor: mean value.
