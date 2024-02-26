@@ -123,19 +123,6 @@ PADDLE_API void ParseCommandLineFlags(int* argc, char*** argv);
 PADDLE_API void AllowUndefinedFlags();
 
 /**
- * @brief Set flags from environment variables.
- *
- * It recieves a list of flags name, and will find the corresponding environment
- * variables named "FLAGS_name", if found, it will set the environment variable
- * values to the flags. If error_fatal is true, the program will exit when the
- * environment variable is not set or the flag is not defined, that is the same
- * effect as using commandline argument "--fromenv=var_name1,var_name2,...".
- * Otherwise, the errors above will be ignored, that is the same effect as using
- * commandline argument "--tryfromenv=var_name1,var_name2,...".
- */
-void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal);
-
-/**
  * @brief Set Single flag value, return true if success.
  */
 bool SetFlagValue(const std::string& name, const std::string& value);
