@@ -95,7 +95,7 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
       : gloo::rendezvous::Context(rank, size, base) {}
   virtual ~ParallelConnectContext() {}
   // in gloo::rendezvous::Context wait&get one by one,
-  // slowly in case big size, especialy in HdfsStore
+  // slowly in case big size, especially in HdfsStore
   void connectFullMesh(Store& store,                              // NOLINT
                        std::shared_ptr<transport::Device>& dev);  // NOLINT
   struct Impl {

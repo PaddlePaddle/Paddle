@@ -90,7 +90,7 @@ class TestSvdOp(OpTest):
 
 
 class TestSvdCheckGrad2(TestSvdOp):
-    # NOTE(xiongkun03): because we want to construct some full rank matrics,
+    # NOTE(xiongkun03): because we want to construct some full rank matrices,
     #                   so we can't specifize matrices which numel() > 100
 
     no_need_check_grad = True

@@ -28,7 +28,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Clear usless Build Interface.
+// TODO(Aurelius84): Clear useless Build Interface.
 std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
@@ -213,8 +213,8 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   };
 
   for (auto& op : *program.block()) {
-    for (auto oprand : op.operands()) {
-      create_var(oprand.source());
+    for (auto operand : op.operands()) {
+      create_var(operand.source());
     }
 
     for (auto result : op.results()) {

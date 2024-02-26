@@ -2936,9 +2936,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
+  proto::VarType::Type data_type = default_data_type;
 
   for (auto* name : ctx.InNameList()) {
     if (ctx.InputSize(*name) == 1UL) {
@@ -2949,7 +2949,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   }
   PADDLE_ENFORCE_NE(
       data_type,
-      dafault_data_type,
+      default_data_type,
       platform::errors::NotFound(
           "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
@@ -2957,9 +2957,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
 
 proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     const ExecutionContext& ctx, const std::string& name) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
+  proto::VarType::Type data_type = default_data_type;
   if (ctx.InputSize(name) == 1UL) {
     ParseInputDataType(ctx.InputVar(name), name, &data_type);
   } else {
@@ -2967,7 +2967,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   }
   PADDLE_ENFORCE_NE(
       data_type,
-      dafault_data_type,
+      default_data_type,
       platform::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
           "data type is empty or not phi::DenseTensor or SelectedRows or "

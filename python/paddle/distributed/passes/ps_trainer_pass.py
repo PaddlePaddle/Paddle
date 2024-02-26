@@ -890,8 +890,8 @@ class SplitHeterWorkerOpsPass(PassBase):
         #         joint_var.0_1 -> slice -> reshape -> origin_var
         #         origin_var -> origin_program
         #         reshape -> concat -> joint_var.1_2
-        #     d) copy send op from origin program for var@grad which loacted in current heter block
-        #     e) re-check every op in current blcok if its device is not current heter devie
+        #     d) copy send op from origin program for var@grad which located in current heter block
+        #     e) re-check every op in current block if its device is not current heter device
         # 2. Create send op for step counter in last heter-block
         # 3. Create Listen&Serv OP and Send&Recv OP for distributed training
         # 4. update CompileTimeStrategy for heter_program

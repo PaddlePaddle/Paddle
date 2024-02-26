@@ -24,6 +24,7 @@ from dygraph_to_static_utils import (
     test_ast_only,
     test_legacy_and_pt_and_pir,
     test_legacy_only,
+    test_pir_only,
 )
 from ifelse_simple_func import (
     NetWithControlFlowIf,
@@ -580,6 +581,55 @@ class TestDy2StIfElseBackward(Dy2StTestBase):
         np.testing.assert_allclose(
             (b + net.param).numpy(), out.numpy(), rtol=1e-05
         )
+
+
+def ifelse_temp_local_var(x):
+    if x:
+        y = x + 1
+    else:
+        tmp = x + 2
+        y = tmp * 2
+    return y
+
+
+def ifelse_use_undefined_var(x):
+    if x:
+        y = x + 1
+    else:
+        tmp = x + 2
+        y = tmp * 2
+    return tmp + 1
+
+
+class TestIfElseMaybeUnbound(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
+    def test_maybe_unbound(self):
+        truethy = paddle.to_tensor(1)
+        falsy = paddle.to_tensor(0)
+
+        dygraph_out = ifelse_temp_local_var(truethy)
+        static_fn = paddle.jit.to_static(ifelse_temp_local_var)
+        static_out = static_fn(truethy)
+        np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
+
+        dygraph_out = ifelse_temp_local_var(falsy)
+        static_fn = paddle.jit.to_static(ifelse_temp_local_var)
+        static_out = static_fn(falsy)
+        np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
+
+    @test_ast_only
+    @test_pir_only
+    def test_use_undefined_var(self):
+        truethy = paddle.to_tensor(1)
+        falsy = paddle.to_tensor(0)
+
+        static_fn = paddle.jit.to_static(ifelse_use_undefined_var)
+        with self.assertRaises(TypeError):
+            static_fn(truethy)
+
+        static_fn = paddle.jit.to_static(ifelse_use_undefined_var)
+        with self.assertRaises(TypeError):
+            static_fn(falsy)
 
 
 if __name__ == '__main__':

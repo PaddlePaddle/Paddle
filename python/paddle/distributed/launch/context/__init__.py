@@ -91,7 +91,7 @@ class Context:
         logger.addHandler(ch)
         return logger
 
-    def continous_log(self) -> bool:
+    def continuous_log(self) -> bool:
         if self.args.log_level.upper() in ['DEBUG', 'ERROR']:
             return True
         else:
@@ -102,6 +102,6 @@ class Context:
             attr, attr_type = v
             if k in self.envs:
                 print(
-                    f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
+                    f"LAUNCH WARNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                 )
                 setattr(self.args, attr, attr_type(self.envs[k]))

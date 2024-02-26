@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/common/integer_set.h"
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"

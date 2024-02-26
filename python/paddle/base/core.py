@@ -249,7 +249,7 @@ def less_than_ver(a, b):
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
-# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (1) the number of dynamic shared libraries (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.

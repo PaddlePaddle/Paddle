@@ -44,8 +44,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
-    FusedGemmEpilogueOp::name(),
-    FusedGemmEpilogueGradOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -82,7 +80,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::MultiGruOp::name(),
 #endif
     CReduceMinOp::name(),
-    PushSparseV2Op::name()};
+    PushSparseV2Op::name(),
+    PartialSendOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,

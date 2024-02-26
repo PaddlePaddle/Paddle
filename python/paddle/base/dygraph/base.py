@@ -16,14 +16,12 @@ import sys
 import warnings
 
 import decorator
-import numpy as np
 
 import paddle
 from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
 
-from ..data_feeder import convert_dtype
 from ..framework import _get_paddle_place
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from .tracer import Tracer
@@ -837,122 +835,3 @@ def grad(
         allow_unused,
         no_grad_vars,
     )
-
-
-@framework.dygraph_only
-def to_variable(value, name=None, zero_copy=None, dtype=None):
-    r"""
-    :api_attr: imperative
-
-    The API will create a ``Variable`` object from
-    tuple, list, numpy\.ndarray or Variable object.
-
-    Parameters:
-        value(tuple|list|ndarray|Variable|Tensor): Initial data.
-            Can be a list, tuple, NumPy ndarray, Variable, Tensor.
-            The shape can be multi-dimensional. The data type is one of
-            numpy\.{float16, float32, float64, int16, int32, int64,
-            uint8, uint16, complex64, complex128}.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name` .
-        zero_copy(bool, optional): Whether to share memory with the input numpy
-            array. This parameter only works with CPUPlace and will be set to
-            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
-        dtype(str, optional): The desired data type of returned ``Variable`` .
-            Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' ,
-            'int32' , 'int64' , 'uint8' . Default: None.
-
-    Returns:
-        Variable : If ``value`` is a tuple/list/numpy\.ndarray object,
-            return ``Tensor`` created from the corresponding numpy\.ndarray object, which has
-            same data type and shape with ``value``.
-
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import numpy as np
-            >>> import paddle.base as base
-
-            >>> with base.dygraph.guard(base.CPUPlace()):
-            ...     x = np.ones([2, 2], np.float32)
-            ...     y = base.dygraph.to_variable(x, zero_copy=False)
-            ...     x[0][0] = -1
-            ...     print(y[0][0].numpy())
-            ...     y = base.dygraph.to_variable(x)
-            ...     x[0][0] = 0
-            ...     print(y[0][0].numpy())
-            ...     c = np.array([2+1j, 2])
-            ...     z = base.dygraph.to_variable(c)
-            ...     print(z.numpy())
-            ...     print(z.dtype)
-            ...
-            ...     y = base.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
-            ...     print(y.shape)
-            ...
-            ...     y = base.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
-            ...     print(y.shape)
-            1
-            -1
-            [2.+1.j, 2.+0.j]
-            paddle.complex128
-            [3, 2]
-            [3, 2]
-    """
-    support_type = (
-        list,
-        tuple,
-        np.ndarray,
-        core.eager.Tensor,
-        framework.Variable,
-        core.Tensor,
-        core.LoDTensor,
-    )
-    if not isinstance(value, support_type):
-        raise TypeError(
-            "The type of 'value' in base.dygraph.to_variable must be {}, but received {}.".format(
-                support_type, type(value)
-            )
-        )
-    if isinstance(value, (core.eager.Tensor, framework.Variable)):
-        return value
-    elif isinstance(value, (core.Tensor, core.LoDTensor)):
-        return core.eager.Tensor(value)
-    else:
-        if isinstance(
-            framework._current_expected_place(), framework.core.CPUPlace
-        ):
-            # TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
-            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy.
-            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
-            # (2): when used in flask framework, it may result in hang.
-            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
-            # So, we temporally diable the zero_copy strategy.
-            if zero_copy is True:
-                warnings.warn(
-                    "Currently, zero_copy is not supported, and it will be discarded."
-                )
-                zero_copy = False
-        else:
-            assert (
-                not zero_copy
-            ), "zero_copy mode can only be used with CPUPlace"
-
-        if not isinstance(value, np.ndarray):
-            value = np.array(value)
-
-        if dtype is not None:
-            dtype = convert_dtype(dtype)
-            if value.dtype != dtype:
-                value = value.astype(dtype)
-
-        return core.eager.Tensor(
-            value,
-            framework._current_expected_place(),
-            False,
-            zero_copy,
-            name if name else None,
-            True,
-        )

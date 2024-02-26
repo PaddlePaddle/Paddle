@@ -217,7 +217,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # pipeline: communication across nodes, and therefore should insert in update segment,
         #           conduct just once per global step.
         dp_mode = None
-        # dp here is the pure dp as the outest parallelism
+        # dp here is the pure dp as the outermost parallelism
         if self.hybrid_dp:
             if self.pp_degree > 1:
                 dp_mode = "pp_hybrid_dp"
@@ -598,8 +598,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         rings = [self.mp_ring_id, self.pp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
-        gradientclip_helper = GradientClipHelper(None)
-        gradientclip_helper.sync_global_norm(
+        gradient_clip_helper = GradientClipHelper(None)
+        gradient_clip_helper.sync_global_norm(
             main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank
         )
 
@@ -996,8 +996,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         4. prune optimizer op + param + gradient
 
         """
-        weightdecay_helper = WeightDecayHelper()
-        weightdecay_helper.prune_weight_decay(block, shard)
+        weight_decay_helper = WeightDecayHelper()
+        weight_decay_helper.prune_weight_decay(block, shard)
 
         # FIXME(wangxi): mp should prune duplicated param_grads
         # NOTE (JZ-LIANG) the sync of FoundInfinite should among one entire Model Parallelism
@@ -1006,8 +1006,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         FP16Utils.prune_fp16(block, shard, self._reduced_grads_to_param, rings)
 
         # clipbyglobalnorm should only use the Model parallelism group (mp-sharding-pp)
-        gradientclip_helper = GradientClipHelper(None)
-        gradientclip_helper.prune_gradient_clip(block, shard, rings)
+        gradient_clip_helper = GradientClipHelper(None)
+        gradient_clip_helper.prune_gradient_clip(block, shard, rings)
 
         # build prog deps
         reduced_grads = []
@@ -1645,7 +1645,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # global group
         # use for gen_nccl_comm_sync, amp check nan inf, clip by global norm
-        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be devided by dp_degree
+        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be divided by dp_degree
         self.global_ring_id = 3
 
         logger.info(f"global word size: {self.global_word_size}")
@@ -1727,7 +1727,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _initialization_broadcast(self):
         """
-        this funtion is to ensure the initialization between dp group to be
+        this function is to ensure the initialization between dp group to be
         identical when hybrid-dp is used, and the initialization of
         not distributed param between mp group to be identical.
         """

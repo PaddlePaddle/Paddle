@@ -40,12 +40,12 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
         MoE not supported till MoE is supported in auto parallel mode.
 
     Args:
-        path_prefix: path prefix to save. If `path_preifx` ends with path sepreator,
+        path_prefix: path prefix to save. If `path_prefix` ends with path separator,
             the path is processed as a directory and parameters will be saved in it,
-            automatically named saved_parameters. Otherwisw, the parameters will be saved with name
-            path_preifx_dist{global_rank}.pdparams and path_preifx_dist{global_rank}.pdattrs.
+            automatically named saved_parameters. Otherwise, the parameters will be saved with name
+            path_prefix_dist{global_rank}.pdparams and path_prefix_dist{global_rank}.pdattrs.
         dist_model: model in distributed model.
-        cvt2cpu: wheather to move parameters to CPU when using sharding stage 3.
+        cvt2cpu: whether to move parameters to CPU when using sharding stage 3.
             The var is invalid if not using sharding stage 3.
 
     Returns:

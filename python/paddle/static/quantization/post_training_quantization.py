@@ -25,7 +25,7 @@ except:
 
 from paddle.base.framework import IrGraph, _get_var
 
-from ... import io, static
+from ... import static
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -311,10 +311,6 @@ class PostTrainingQuantization:
         # Check inputs
         assert executor is not None, "The executor cannot be None."
         assert data_loader is not None, "data_loader cannot be None."
-
-        assert isinstance(
-            data_loader, io.DataLoader
-        ), "data_loader only accepts `paddle.io.DataLoader`."
 
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert (

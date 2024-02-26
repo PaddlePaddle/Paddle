@@ -241,7 +241,7 @@ class TestOutVarWithNoneErrMsg(unittest.TestCase):
 
 
 class TestTracedLayerSaveInferenceModel(unittest.TestCase):
-    """test save_inference_model will automaticlly create non-exist dir"""
+    """test save_inference_model will automatically create non-exist dir"""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

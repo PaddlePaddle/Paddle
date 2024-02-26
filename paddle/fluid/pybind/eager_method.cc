@@ -1404,14 +1404,14 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   if (pos_of_new_dim != 0) {
     std::vector<int> perm(out.shape().size(), 0);
-    int tmp1 = pos_of_new_dim, tmp2 = 0,
+    int tmp1 = rank_of_new_dim, tmp2 = 0,
         tmp3 = pos_of_new_dim + rank_of_new_dim;
     for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
-      if (i < rank_of_new_dim) {
+      if (i < pos_of_new_dim) {
         perm[i] =
-            tmp1++;  // range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim)
-      } else if (i >= rank_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
-        perm[i] = tmp2++;  // range(0, pos_of_new_dim)
+            tmp1++;  // range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim)
+      } else if (i >= pos_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;  // range(0, rank_of_new_dim)
       } else {
         perm[i] = tmp3++;  // range(pos_of_new_dim + rank_of_new_dim, out.ndim)
       }
@@ -1783,13 +1783,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
               new SetValueWithTensorGradNode(1, 2));  // NOLINT
-          grad_node->SetAttributestarts(slice_starts);
-          grad_node->SetAttributeends(slice_ends);
-          grad_node->SetAttributesteps(slice_strides);
-          grad_node->SetAttributeaxes(slice_axes);
-          grad_node->SetAttributedecrease_axes(decrease_axis);
-          grad_node->SetAttributenone_axes(none_axes);
-          grad_node->SetTensorWrappervalues(values_tmp);
+          grad_node->SetAttribute_starts(slice_starts);
+          grad_node->SetAttribute_ends(slice_ends);
+          grad_node->SetAttribute_steps(slice_strides);
+          grad_node->SetAttribute_axes(slice_axes);
+          grad_node->SetAttribute_decrease_axes(decrease_axis);
+          grad_node->SetAttribute_none_axes(none_axes);
+          grad_node->SetTensorWrapper_values(values_tmp);
 
           paddle::memory::LogDeviceMemoryStats(
               egr::Controller::Instance().GetExpectedPlace(),
@@ -2208,7 +2208,7 @@ Note:
 Returns the indices of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2252,7 +2252,7 @@ Note:
 Returns the values of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2305,7 +2305,7 @@ Note:
 Returns the compressed row index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2349,7 +2349,7 @@ Note:
 Returns the column index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 

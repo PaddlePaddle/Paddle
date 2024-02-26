@@ -199,6 +199,10 @@ PD_DEFINE_string(cinn_pass_visualize_dir,
                  "Specify the directory path of pass visualize file of graph, "
                  "which is used for debug.");
 
+PD_DEFINE_bool(cinn_runtime_display_debug_info,
+               false,
+               "Whether to display debug information in runtime");
+
 PD_DEFINE_bool(enable_auto_tuner,
                BoolFromEnv("FLAGS_enable_auto_tuner", false),
                "Whether enable auto tuner.");

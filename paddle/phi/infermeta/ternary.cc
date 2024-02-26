@@ -946,7 +946,7 @@ void NllLossRawInferMeta(const MetaTensor& input,
     PADDLE_ENFORCE_EQ(label_dims.size(),
                       3,
                       phi::errors::InvalidArgument(
-                          "Expected Input(Lable) dimensions=3, received %d.",
+                          "Expected Input(Label) dimensions=3, received %d.",
                           label_dims.size()));
     auto input0 = x_dims[0];
     auto input2 = x_dims[2];

@@ -74,7 +74,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
       });
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
-  // normlize dim
+  // normalize dim
   auto dim = axis < 0 ? ndim + axis : axis;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
@@ -138,7 +138,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   auto dim = axis.to<int64_t>();
-  // normlize dim
+  // normalize dim
   dim = dim < 0 ? ndim + dim : dim;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(

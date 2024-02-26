@@ -30,7 +30,7 @@ class Lexer {
   Token ConsumeToken();
   Token PeekToken();
   std::unique_ptr<Token> LexIdentifier();
-  std::unique_ptr<Token> LexNumberOrArraow();
+  std::unique_ptr<Token> LexNumberOrArrow();
   std::unique_ptr<Token> LexEndTagOrNullVal();
   std::unique_ptr<Token> LexValueId();
   std::unique_ptr<Token> LexEOF();

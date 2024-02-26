@@ -324,9 +324,9 @@ class TestAddMMOp5(unittest.TestCase):
         np_y = np.random.random((6, 30)).astype(np.float32)
 
         with base.dygraph.guard():
-            input = base.dygraph.to_variable(np_input)
-            x = base.dygraph.to_variable(np_x)
-            y = base.dygraph.to_variable(np_y)
+            input = paddle.to_tensor(np_input)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
             out = paddle.tensor.addmm(input, x, y)
             np.testing.assert_allclose(
                 np_input + np.dot(np_x, np_y), out.numpy(), rtol=1e-5, atol=1e-8

@@ -56,13 +56,13 @@ isl::union_set isl_sets_to_union_set(const std::vector<isl::set>& sets);
 std::string isl_map_get_statement_repr(__isl_keep isl_map* map,
                                        isl_dim_type type);
 
-isl_set* __isl_give isl_get_precending_axis(isl_set* set,
-                                            int level,
-                                            bool with_tuple_name);
+isl_set* __isl_give isl_get_preceding_axis(isl_set* set,
+                                           int level,
+                                           bool with_tuple_name);
 
 //! If the min and max bounds of the axis are same, isl will remove this axis
 //! after ast_build. Counts the removed axes before the given axis.
-int isl_get_precending_removed_axes_counts(isl_set __isl_keep* a, int level);
+int isl_get_preceding_removed_axes_counts(isl_set __isl_keep* a, int level);
 
 //! Get the original level from the level after removing axes.
 int isl_get_original_axes_from_optimized_level(isl_set __isl_keep* a,

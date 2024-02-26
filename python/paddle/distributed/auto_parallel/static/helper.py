@@ -211,8 +211,8 @@ class ProgramHelper:
 
     def __init__(self, layer, loss_func, metrics, inputs_spec, labels_spec):
         # original model config information
-        # TODO(Aurelius84): Implenet append_backward and optimizer in ProxyLayer
-        # after distribute engine satisify basic condition.
+        # TODO(Aurelius84): Implement append_backward and optimizer in ProxyLayer
+        # after distribute engine satisfy basic condition.
         self.proxy_layer = ProxyLayer(layer, loss_func, metrics)
         self.inputs_spec = inputs_spec
         self.labels_spec = labels_spec

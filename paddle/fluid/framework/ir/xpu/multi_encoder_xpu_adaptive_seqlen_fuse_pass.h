@@ -40,7 +40,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
   /*
   adaptive seqlen V1, before:
 
-      inpu_var*     mask_var*
+      input_var*     mask_var*
           |             |
           |             |
     embedding_xpu     matmul
@@ -59,7 +59,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
 
   after:
 
-        inpu_var*    mask_var*
+        input_var*    mask_var*
           \             /
            \           /
           embedding_xpu
@@ -81,7 +81,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
   /*
   adaptive seqlen V2, before:
 
-      inpu_var*          mask_var*
+      input_var*          mask_var*
           |                 |
           |                 |
     embedding_xpu        not_equal
@@ -115,7 +115,7 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
 
   after:
 
-        inpu_var*    mask_var*
+        input_var*    mask_var*
           \             /
            \           /
           embedding_xpu

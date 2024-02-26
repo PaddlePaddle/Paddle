@@ -298,7 +298,11 @@ class MaxNet(paddle.nn.Layer):
         out = paddle.max(x, -2)
 
         # keepdim=True
-        # out = paddle.max(x, 0, True)
+        out = paddle.max(x, keepdim=True)
+        out = paddle.max(x, 0, keepdim=True)
+        out = paddle.max(x, 1, keepdim=True)
+        out = paddle.max(x, -1, keepdim=True)
+        out = paddle.max(x, -2, keepdim=True)
 
         return out
 
@@ -314,7 +318,12 @@ class TestMaxOpInferSymbolicShape(TestBase):
                 'shape[S0], data[NULL]',
                 'shape[S0], data[NULL]',
                 'shape[S1], data[NULL]',
-                # 'shape[1, S1], data[NULL]',
+                # keepdim=True
+                'shape[1, 1], data[NULL]',
+                'shape[1, S1], data[NULL]',
+                'shape[S0, 1], data[NULL]',
+                'shape[S0, 1], data[NULL]',
+                'shape[1, S1], data[NULL]',
             ]
         ]
 
@@ -334,6 +343,108 @@ class TestMaxOpInferSymbolicShape(TestBase):
             # check the infer result
             sym_shape_str_list = get_sym_shape_str_for_op(
                 net, input_spec, 'pd_op.max'
+            )
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
+class TransposeNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.transpose(x, perm=[1, 0, 2])
+
+        x = x.reshape([2, 3, 2, 2])
+        shape = paddle.shape(x)
+        out = shape.transpose(perm=(0,))
+
+        return out
+
+
+class TestTransposeOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(2, 3, 4)]
+
+        self.expected = [
+            ['shape[S1, S0, S2], data[NULL]', 'shape[4], data[2, 3, 2, 2]']
+        ]
+
+    def test_eval_symbolic(self):
+        net = TransposeNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.transpose'
+            )
+            np.testing.assert_equal(
+                len(sym_shape_str_list), len(self.expected[i])
+            )
+            for j in range(len(sym_shape_str_list)):
+                np.testing.assert_equal(
+                    sym_shape_str_list[j].find(self.expected[i][j]),
+                    0,
+                    f'in case i,j = {i},{j}: output shape ({sym_shape_str_list[0]}) is not expected {(self.expected[i][j])}',
+                )
+
+        return True
+
+
+class TrilNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.tril(x)
+
+        return out
+
+
+class TestTrilOpInferSymbolicShape(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(2, 3, 4)]
+
+        self.expected = [
+            [
+                'shape[S0, S1, S2], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = TrilNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            sym_shape_str_list = get_sym_shape_str_for_op(
+                net, input_spec, 'pd_op.tril'
             )
             np.testing.assert_equal(
                 len(sym_shape_str_list), len(self.expected[i])

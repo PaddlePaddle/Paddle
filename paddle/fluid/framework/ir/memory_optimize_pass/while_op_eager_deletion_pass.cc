@@ -55,7 +55,7 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       }
     }
     if (graph->IsConstructedByPartialProgram()) {
-      VLOG(4) << "Is Paritial Program";
+      VLOG(4) << "Is Partial Program";
       PADDLE_ENFORCE_LE(
           target_ops.size(),
           1,

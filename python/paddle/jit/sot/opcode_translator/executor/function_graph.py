@@ -39,6 +39,7 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
+    SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -138,6 +139,20 @@ def get_params_and_non_param_symbol(*args, **kwargs):
             non_params.add(value.get_symbol())
 
     return params, non_params
+
+
+class VariableLoader:
+    def __init__(self, store_var_info, pycode_gen):
+        self._store_var_info = store_var_info
+        self._pycode_gen: PyCodeGen = pycode_gen
+
+    def load(self, var):
+        if var is SotUndefinedVar():
+            self._pycode_gen.gen_load_const(SotUndefinedVar())
+        elif isinstance(var, NullVariable):
+            var.reconstruct(self._pycode_gen)
+        else:
+            self._pycode_gen.gen_load(self._store_var_info[var.id])
 
 
 class FunctionGraph:
@@ -281,17 +296,6 @@ class FunctionGraph:
             return make_guard(guards)
 
     def _restore_origin_opcode(self, stack_vars, store_var_info, instr_idx):
-        class VariableLoader:
-            def __init__(self, store_var_info, pycode_gen):
-                self._store_var_info = store_var_info
-                self._pycode_gen: PyCodeGen = pycode_gen
-
-            def load(self, var):
-                if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
-                    return
-                self._pycode_gen.gen_load(self._store_var_info[var.id])
-
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
         is_precall = origin_instrs[instr_idx].opname == "PRECALL"
         current_idx = instr_idx
@@ -308,7 +312,7 @@ class FunctionGraph:
             restore_instr_names = restore_instr_names[:-1]
 
         self.pycode_gen.extend_instrs(restore_instrs)
-        nop = self.pycode_gen._add_instr("NOP")
+        nop = self.pycode_gen.add_instr("NOP")
 
         for instr in origin_instrs:
             if instr.jump_to == origin_instrs[current_idx]:
@@ -324,26 +328,21 @@ class FunctionGraph:
 
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
+        # here is not update changed values, it just give names to stack vars
+        # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
-            store_var_info[var.id] = name_gen.next()
-            self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            if store_var_info[var.id] is None:
+                store_var_info[var.id] = name_gen.next()
+                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            else:
+                self.pycode_gen.gen_store(
+                    store_var_info[var.id], self.pycode_gen._origin_code
+                )
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
-    def _build_compile_fn_with_name_store(self, to_store_vars):
-        class VariableLoader:
-            def __init__(self, index_for_load, pycode_gen):
-                self._index_for_load = index_for_load
-                self._pycode_gen: PyCodeGen = pycode_gen
-
-            def load(self, var, allow_push_null=True):
-                if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
-                    return
-                self._pycode_gen.gen_load(self._index_for_load[var.id])
-
+    def _build_compile_fn_with_name_store(self, to_store_vars, store_var_info):
         # var_id -> local_name mapping
-        index_for_load = {}
         to_store_vars = list(
             filter(lambda x: not isinstance(x, NullVariable), to_store_vars)
         )
@@ -351,19 +350,15 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_")
 
         for var in to_store_vars[::-1]:
-            index_for_load[var.id] = name_gen.next()
-
-            def _log_fn():
-                print(
-                    f"[StartCompile] saved var: {index_for_load[var.id]} = ",
-                    var,
+            if store_var_info[var.id] is None:
+                store_var_info[var.id] = name_gen.next()
+                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            else:
+                self.pycode_gen.gen_store(
+                    store_var_info[var.id], self.pycode_gen._origin_code
                 )
 
-            log_do(4, _log_fn)
-
-            self.pycode_gen.gen_store_fast(index_for_load[var.id])
-
-        return VariableLoader(index_for_load, self.pycode_gen)
+        return VariableLoader(store_var_info, self.pycode_gen)
 
     def get_compiled_fn(self, *ret_vars):
         ret_items = [

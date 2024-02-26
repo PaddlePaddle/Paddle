@@ -115,8 +115,9 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
       auto weight_grad_dims =
           pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
       auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      auto weight_grad_use_count = match_ctx.Tensor("weight_grad").use_count();
       return (weight_grad_dims == dweight_dims && x_trans == false &&
-              y_trans == false);
+              y_trans == false && weight_grad_use_count == 1);
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
@@ -143,6 +144,73 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
          &res.Tensor("dweight"),
          &res.InputNoneTensor()},
         {&res.Tensor("add_out"), &res.Tensor("dbias_out")});
+  }
+};
+
+// matmul + reshape + reshape + matmul + reshape + add_ -> matmul +
+// fused_liner_param_gard_add
+class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override {
+    return "FusedMatmulReshapeMatmulAddPattern";
+  }
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &full_int_array1 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name());
+    const auto &reshape1 = pat.Op(paddle::dialect::ReshapeOp::name());
+    reshape1({&pat.Tensor("x"), &full_int_array1()},
+             {&pat.Tensor("reshape_x"), &pat.Tensor("reshape_x_xshape")});
+
+    const auto &full_int_array2 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name());
+    const auto &reshape2 = pat.Op(paddle::dialect::ReshapeOp::name());
+    reshape2({&pat.Tensor("dy"), &full_int_array2()},
+             {&pat.Tensor("reshape_dy"), &pat.Tensor("reshape_dy_xshape")});
+
+    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
+                                {{"transpose_x", pat.Attr("trans_x")},
+                                 {"transpose_y", pat.Attr("trans_y")}});
+    pat.Tensor("matmul_out") =
+        matmul(pat.Tensor("reshape_x"), pat.Tensor("reshape_dy"));
+
+    const auto &full_int_array3 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name());
+    const auto &reshape3 = pat.Op(paddle::dialect::ReshapeOp::name());
+    reshape3({&pat.Tensor("matmul_out"), &full_int_array3()},
+             {&pat.Tensor("w_grad"), &pat.Tensor("w_grad_xshape")});
+
+    const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
+    pat.Tensor("dweight_inplace") =
+        add_(pat.Tensor("dweight"), pat.Tensor("w_grad"));
+
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      const auto &x_trans = match_ctx.Attr<bool>("trans_x");
+      const auto &y_trans = match_ctx.Attr<bool>("trans_y");
+      auto w_grad_dims = pir::GetShapeFromValue(match_ctx.Tensor("w_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      return (w_grad_dims == dweight_dims && x_trans == true &&
+              y_trans == false);
+    });
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &muti_precision_attr =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("w_grad")));
+        });
+
+    const auto &fused_linear_param_grad_add =
+        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
+               {{{"multi_precision", muti_precision_attr},
+                 {"has_bias", res.BoolAttr(false)}}});
+
+    fused_linear_param_grad_add(
+        {&res.Tensor("x"),
+         &res.Tensor("dy"),
+         &res.Tensor("dweight"),
+         &res.InputNoneTensor()},
+        {&res.Tensor("dweight_inplace"), &res.Tensor("dbias_out")});
   }
 };
 
@@ -362,6 +430,7 @@ class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<FusedMatmulAddbPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddaPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddbPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulReshapeMatmulAddPattern>(context));
 
     return ps;
   }

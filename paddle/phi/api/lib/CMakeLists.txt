@@ -237,7 +237,7 @@ else()
 endif()
 
 # generate tensor and tensor operants file
-message("create or copy auto-geneated tensor files")
+message("create or copy auto-generated tensor files")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
   COMMAND

@@ -189,7 +189,7 @@ class Graph : public cinn::common::Graph {
                        SharedGroupHasher,
                        SharedGroupComparator>
         producer_groups_;
-    // output grous
+    // output groups
     std::unordered_set<std::shared_ptr<Group>,
                        SharedGroupHasher,
                        SharedGroupComparator>
@@ -271,7 +271,7 @@ class Graph : public cinn::common::Graph {
       const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
-   * \brief Genereate the python test code for group test
+   * \brief Generate the python test code for group test
    */
   std::string GenerateGroupPythonCode(
       const std::vector<Node*>& group,

@@ -38,10 +38,7 @@ if(WITH_LITE)
   set(INFER_IR_PASSES
       ${INFER_IR_PASSES} lite_subgraph_pass
       CACHE INTERNAL "")
-  cc_test(
-    lite_subgraph_pass_tester
-    SRCS lite_subgraph_pass_tester.cc
-    DEPS lite_subgraph_pass gtest glog)
+  paddle_test(lite_subgraph_pass_tester SRCS lite_subgraph_pass_tester.cc)
 endif()
 
 message("WITH_DLNNE:${WITH_DLNNE}")

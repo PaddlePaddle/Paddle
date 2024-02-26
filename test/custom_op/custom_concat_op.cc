@@ -97,7 +97,7 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
   CHECK_INPUT(axis_t);
   CHECK_INPUT(grad_out);
 
-  // compate axis
+  // compute axis
   int64_t rank = static_cast<int64_t>(inputs[0].shape().size());
   int64_t axis = axis_t.data<int64_t>()[0];
   axis = ComputeAxis(axis, rank);
@@ -182,7 +182,7 @@ std::vector<paddle::Tensor> ConcatBackwardStaticAxis(
   }
   CHECK_INPUT(grad_out);
 
-  // compate axis
+  // compute axis
   int64_t rank = static_cast<int64_t>(inputs[0].shape().size());
   auto final_axis = ComputeAxis(axis, rank);
 

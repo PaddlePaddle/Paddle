@@ -35,6 +35,16 @@ Tensor full<Tensor>(const IntArray& shape,
   }
 }
 
+template <>
+Tensor arange_with_tensor<Tensor>(const Tensor& start,
+                                  const Tensor& end,
+                                  const Tensor& step,
+                                  DataType dtype,
+                                  Place place) {
+  VLOG(4) << "Eager Prim API arange_ad_func call";
+  return ::arange_ad_func(start, end, step, dtype, place);
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

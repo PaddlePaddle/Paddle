@@ -349,7 +349,7 @@ void SplitOp::Build(Builder &builder,
 }
 
 void SplitOp::PassStopGradients(OperationArgument &argument) {
-  std::vector<bool> defaut_stop_gradients(argument.output_types.size(), true);
+  std::vector<bool> default_stop_gradients(argument.output_types.size(), true);
   if (auto input = argument.inputs[0]) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
@@ -364,7 +364,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
             defining_op->operand_source(i).attribute<pir::BoolAttribute>(
                 kStopGradientAttrName);
         if (attr) {
-          defaut_stop_gradients[i] = attr.data();
+          default_stop_gradients[i] = attr.data();
         }
       }
     } else if (defining_op &&
@@ -374,13 +374,14 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
                                .at(0)
                                .dyn_cast<pir::BoolAttribute>()
                                .data();
-      defaut_stop_gradients.assign(defaut_stop_gradients.size(), stop_gradient);
+      default_stop_gradients.assign(default_stop_gradients.size(),
+                                    stop_gradient);
     }
   }
 
   std::vector<pir::Attribute> outs_stop_gradient;
   outs_stop_gradient.reserve(argument.output_types.size());
-  for (auto stop_gradient : defaut_stop_gradients) {
+  for (auto stop_gradient : default_stop_gradients) {
     outs_stop_gradient.push_back(
         pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
   }
@@ -476,7 +477,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 void ConstantTensorOp::VerifySig() const {
   ConstantOp::VerifySig();
   IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
-             "Type of value must be strattribute");
+             "Type of value must be str attribute");
 }
 
 ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {

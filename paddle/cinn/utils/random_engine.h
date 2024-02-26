@@ -34,7 +34,7 @@ namespace utils {
 class LinearRandomEngine {
  public:
   using StateType = int64_t;
-  // the type name "resule_type" is needed by std::xxx_distribution
+  // the type name "result_type" is needed by std::xxx_distribution
   using result_type = uint32_t;
 
   // The minimum possible value of random state

@@ -110,7 +110,7 @@ class XavierInitializer(Initializer):
             if (isinstance(var, framework.EagerParamBase) and var.is_dist())
             else var.shape
         )
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype == core.VarDesc.VarType.FP16 or (
             var.dtype == core.VarDesc.VarType.BF16 and not self._uniform
         ):

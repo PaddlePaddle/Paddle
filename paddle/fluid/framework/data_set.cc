@@ -752,7 +752,7 @@ void MultiSlotDataset::TDMSample(const std::string tree_name,
                                  const std::string tree_path,
                                  const std::vector<uint16_t> tdm_layer_counts,
                                  const uint16_t start_sample_layer,
-                                 const bool with_hierachy,
+                                 const bool with_hierarchy,
                                  const uint16_t seed_,
                                  const uint16_t sample_slot) {
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)

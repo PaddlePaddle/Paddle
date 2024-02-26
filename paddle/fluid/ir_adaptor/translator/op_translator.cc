@@ -556,7 +556,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
-      // if src type is Vector<Tesnor> , need an additional `CombineOp` to
+      // if src type is Vector<Tensor> , need an additional `CombineOp` to
       // assemble them.
     } else {
       auto* combine_op = InsertCombineOperationForTarget(
@@ -654,7 +654,7 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
       arg_to_idx[var_name] = {cur_output_idx, 0};
       op_output_types.push_back(translated_var_type);
 
-      // if src type is Vector<Tesnor>
+      // if src type is Vector<Tensor>
     } else {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " :"

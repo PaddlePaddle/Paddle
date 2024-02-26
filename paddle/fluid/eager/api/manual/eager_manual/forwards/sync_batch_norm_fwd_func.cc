@@ -235,16 +235,16 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
     // SetAttributes if needed
-    grad_node->SetAttributemomentum(momentum);
-    grad_node->SetAttributeepsilon(epsilon);
-    grad_node->SetAttributedata_layout(data_layout);
-    grad_node->SetAttributeis_test(is_test);
-    grad_node->SetAttributeuse_global_stats(use_global_stats);
-    grad_node->SetAttributetrainable_statistics(trainable_statistics);
+    grad_node->SetAttribute_momentum(momentum);
+    grad_node->SetAttribute_epsilon(epsilon);
+    grad_node->SetAttribute_data_layout(data_layout);
+    grad_node->SetAttribute_is_test(is_test);
+    grad_node->SetAttribute_use_global_stats(use_global_stats);
+    grad_node->SetAttribute_trainable_statistics(trainable_statistics);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    grad_node->SetTensorWrapperscale(scale);
-    grad_node->SetTensorWrapperbias(bias);
+    grad_node->SetTensorWrapper_x(x);
+    grad_node->SetTensorWrapper_scale(scale);
+    grad_node->SetTensorWrapper_bias(bias);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(scale, 3);
@@ -293,9 +293,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     grad_node->SetGradInMeta(saved_variance, 4);
     grad_node->SetGradInMeta(reserve_space, 5);
     // Set TensorWrappers for Forward Outputs if needed
-    grad_node->SetTensorWrappersaved_mean(saved_mean);
-    grad_node->SetTensorWrappersaved_variance(saved_variance);
-    grad_node->SetTensorWrapperreserve_space(reserve_space);
+    grad_node->SetTensorWrapper_saved_mean(saved_mean);
+    grad_node->SetTensorWrapper_saved_variance(saved_variance);
+    grad_node->SetTensorWrapper_reserve_space(reserve_space);
   }
 
   VLOG(4) << "Finish AD API: sync_batch_norm_";
@@ -571,16 +571,16 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
         new SyncBatchNormGradNode(6, 5));
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
     // SetAttributes if needed
-    grad_node->SetAttributemomentum(momentum);
-    grad_node->SetAttributeepsilon(epsilon);
-    grad_node->SetAttributedata_layout(data_layout);
-    grad_node->SetAttributeis_test(is_test);
-    grad_node->SetAttributeuse_global_stats(use_global_stats);
-    grad_node->SetAttributetrainable_statistics(trainable_statistics);
+    grad_node->SetAttribute_momentum(momentum);
+    grad_node->SetAttribute_epsilon(epsilon);
+    grad_node->SetAttribute_data_layout(data_layout);
+    grad_node->SetAttribute_is_test(is_test);
+    grad_node->SetAttribute_use_global_stats(use_global_stats);
+    grad_node->SetAttribute_trainable_statistics(trainable_statistics);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    grad_node->SetTensorWrapperscale(scale);
-    grad_node->SetTensorWrapperbias(bias);
+    grad_node->SetTensorWrapper_x(x);
+    grad_node->SetTensorWrapper_scale(scale);
+    grad_node->SetTensorWrapper_bias(bias);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(scale, 3);
@@ -629,9 +629,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     grad_node->SetGradInMeta(saved_variance, 4);
     grad_node->SetGradInMeta(reserve_space, 5);
     // Set TensorWrappers for Forward Outputs if needed
-    grad_node->SetTensorWrappersaved_mean(saved_mean);
-    grad_node->SetTensorWrappersaved_variance(saved_variance);
-    grad_node->SetTensorWrapperreserve_space(reserve_space);
+    grad_node->SetTensorWrapper_saved_mean(saved_mean);
+    grad_node->SetTensorWrapper_saved_variance(saved_variance);
+    grad_node->SetTensorWrapper_reserve_space(reserve_space);
   }
 
   VLOG(4) << "Finish AD API: sync_batch_norm_";

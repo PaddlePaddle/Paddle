@@ -32,11 +32,13 @@ class WhileExpSub(nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        loop_count = 0
-        while loop_count < 1:
-            y = paddle.exp(x)
-            x = y - x
+        loop_count = paddle.full([1], 0)
+        while x.sum() > paddle.full([1], 0) and loop_count < paddle.full(
+            [1], 1
+        ):
+            x = paddle.exp(x) - x
             loop_count += 1
+        x = paddle.exp(x)
         return x
 
 

@@ -31,7 +31,7 @@ std::string GetStreamCnt(const T& x);
  * Construct a formatted string with arguments.
  * @param fmt_str The format.
  * @param ... The parameters of the format.
- * @return The formated string.
+ * @return The formatted string.
  */
 std::string StringFormat(const std::string& fmt_str, ...);
 

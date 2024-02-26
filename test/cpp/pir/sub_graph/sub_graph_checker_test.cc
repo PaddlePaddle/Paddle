@@ -145,7 +145,7 @@ std::shared_ptr<::pir::Program> BuildDropOutPhiProgram() {
   return program;
 }
 
-TEST(sub_grah_checker, test_softmax) {
+TEST(sub_graph_checker, test_softmax) {
   auto basic_program = BuildBasicProgram();
   auto prim_program = BuildPrimProgram();
 
@@ -156,7 +156,7 @@ TEST(sub_grah_checker, test_softmax) {
   ASSERT_EQ(speed_data.size(), 2u);
 }
 
-TEST(sub_grah_checker, test_dropout) {
+TEST(sub_graph_checker, test_dropout) {
   auto basic_program = BuildDropOutPhiProgram();
   auto prim_program = BuildDropOutPrimProgram();
 

@@ -110,3 +110,11 @@
 	path = third_party/cccl
 	url = https://github.com/NVIDIA/cccl.git
 	ignore = dirty
+[submodule "third_party/cryptopp"]
+	path = third_party/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+	ignore = dirty
+[submodule "third_party/cryptopp-cmake"]
+	path = third_party/cryptopp-cmake
+	url = https://github.com/noloader/cryptopp-cmake.git
+	ignore = dirty

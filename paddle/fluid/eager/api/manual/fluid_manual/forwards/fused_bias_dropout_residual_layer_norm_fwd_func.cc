@@ -193,15 +193,16 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
       // Set Tensor Wrappers
-      grad_node->SetTensorWrapperBias(Bias);
-      grad_node->SetTensorWrapperBiasDropoutResidualOut(BiasDropoutResidualOut);
-      grad_node->SetTensorWrapperDropoutMaskOut(DropoutMaskOut);
-      grad_node->SetTensorWrapperLnBias(LnBias);
-      grad_node->SetTensorWrapperLnMean(LnMean);
-      grad_node->SetTensorWrapperLnScale(LnScale);
-      grad_node->SetTensorWrapperLnVariance(LnVariance);
-      grad_node->SetTensorWrapperResidual(Residual);
-      grad_node->SetTensorWrapperX(X);
+      grad_node->SetTensorWrapper_Bias(Bias);
+      grad_node->SetTensorWrapper_BiasDropoutResidualOut(
+          BiasDropoutResidualOut);
+      grad_node->SetTensorWrapper_DropoutMaskOut(DropoutMaskOut);
+      grad_node->SetTensorWrapper_LnBias(LnBias);
+      grad_node->SetTensorWrapper_LnMean(LnMean);
+      grad_node->SetTensorWrapper_LnScale(LnScale);
+      grad_node->SetTensorWrapper_LnVariance(LnVariance);
+      grad_node->SetTensorWrapper_Residual(Residual);
+      grad_node->SetTensorWrapper_X(X);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Residual, 1);

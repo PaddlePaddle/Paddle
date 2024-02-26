@@ -288,7 +288,7 @@ void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
-  if (op_attributes.count("op_name ")) {
+  if (op_attributes.count("op_name")) {
     op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }

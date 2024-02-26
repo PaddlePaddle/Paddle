@@ -436,7 +436,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
     str_ += " ";
     IrPrinter::Visit(op->symbol);
     vectorized_tensor_names_.insert(utils::GetStreamCnt(op->symbol));
-    // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not
+    // skip "=0" in "half8 temp = 0;" since the operator= of half8 may not
     // overloaded.
     if (op->body.As<ir::IntImm>() && op->body.As<ir::IntImm>()->value == 0) {
       return;

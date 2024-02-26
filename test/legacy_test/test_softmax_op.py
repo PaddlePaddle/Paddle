@@ -59,7 +59,7 @@ class TestSoftmaxOp(OpTest):
         self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -142,7 +142,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
 
@@ -190,7 +190,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.prim_op_type = "comp"
         self.use_cudnn = True
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
         np.random.seed(0)

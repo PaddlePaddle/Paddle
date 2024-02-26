@@ -30,6 +30,8 @@
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace ir {
 

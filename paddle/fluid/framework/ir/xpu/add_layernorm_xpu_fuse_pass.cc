@@ -59,7 +59,7 @@ After the pass is applied:
    scale---- add_layernorm_fusion ---- bias
                 /     |    \     \
                /      |     \     \
-          variance    |      meam  z_add
+          variance    |      mean  z_add
                     Output
 */
 struct AddLayernormXPUPattern : public PatternBase {

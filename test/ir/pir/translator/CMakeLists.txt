@@ -9,6 +9,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_min_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_allreduce_prod_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_lookup_table_translate)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INTERP_CASES ${DISTRIBUTED_OP_TRANSLATOR_TEST})

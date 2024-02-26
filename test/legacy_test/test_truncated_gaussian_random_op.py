@@ -22,7 +22,7 @@ from paddle.base import core
 from paddle.base.executor import Executor
 
 
-class TestTrunctedGaussianRandomOp(unittest.TestCase):
+class TestTruncatedGaussianRandomOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "truncated_gaussian_random"
         self.inputs = {}

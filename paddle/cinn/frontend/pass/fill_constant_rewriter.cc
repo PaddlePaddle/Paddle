@@ -168,7 +168,7 @@ class FillConstantRewriterPass : public ProgramPass {
     VLOG(3) << "FillConstantRewriterPass Remove " << remove_instr.size()
             << " instruction";
 
-    NetBuilder builder("reshape_rewritter_builder");
+    NetBuilder builder("reshape_rewriter_builder");
     for (auto& var : program->GetInputs()) {
       builder.CreateInput(var);
     }

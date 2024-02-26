@@ -177,9 +177,9 @@ class AdamW(Optimizer):
         assert epsilon is not None
         if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
             raise ValueError("Invalid value of beta1, expect beta1 in [0,1).")
-        if not isinstance(beta1, Value) and not 0 <= beta2 < 1:
+        if not isinstance(beta2, Value) and not 0 <= beta2 < 1:
             raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
-        if not isinstance(beta1, Value) and not 0 <= epsilon:
+        if not isinstance(epsilon, Value) and not 0 <= epsilon:
             raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
             weight_decay, (framework.Variable, Value)

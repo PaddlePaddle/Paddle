@@ -56,7 +56,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
 
         attrs = [
             {
-                "data_fromat": 'NCHW',
+                "data_format": 'NCHW',
                 "dilations": [1, 2],
                 "padding_algorithm": 'EXPLICIT',
                 "groups": 1,

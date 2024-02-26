@@ -26,7 +26,7 @@ namespace distributed {
 using phi::distributed::auto_parallel::str_join;
 
 ////////////////// Utils Functions //////////////////
-std::vector<int64_t> GetDefaultDataParallelDimsmapping(
+std::vector<int64_t> GetDefaultDataParallelDimsMapping(
     const int64_t batch_axis_dim, const int ndim) {
   std::vector<int64_t> dims_mapping(ndim, -1);
   dims_mapping[0] = batch_axis_dim;
@@ -61,7 +61,7 @@ SpmdInfo DefaultDataParallelInferSpmd(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[0]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -73,7 +73,7 @@ SpmdInfo DefaultDataParallelInferSpmd(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -124,7 +124,7 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(outs[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -136,7 +136,7 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }

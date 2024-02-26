@@ -32,7 +32,7 @@ void ComputeInlineTactic::Init(ScheduleContext* context) {
 
 void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
-  // TODO(LiuYang): Compute of ops will be rewrited so that we
+  // TODO(LiuYang): Compute of ops will be rewritten so that we
   // don't use it in dynamic group_schedule rules temporarily.
   // if (IsProhibitScheduleExternCallBlock(node->Block())) {
   //    return;

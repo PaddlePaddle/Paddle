@@ -51,7 +51,7 @@ void test_parameterless_type_helper() {
                                    (test_parameterless_type<IR_TYPE>(), 0)...};
 }
 
-TEST(TypeConverterTest, paramterless_type) {
+TEST(TypeConverterTest, parameterless_type) {
   test_parameterless_type_helper<pir::UInt8Type,
                                  pir::Int8Type,
                                  pir::BFloat16Type,

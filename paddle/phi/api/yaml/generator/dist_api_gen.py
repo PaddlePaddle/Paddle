@@ -36,7 +36,7 @@ PADDLE_API {} {}({}) {{
   // Kernel Dispatch Body{}
 }}
 """
-DIPATCH_END_GUARD_TEMPLATE = """
+DISPATCH_END_GUARD_TEMPLATE = """
 PADDLE_THROW(phi::errors::Unimplemented(
           "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
 """
@@ -1899,7 +1899,7 @@ class DistForwardAPI(ForwardAPI):
                 self.get_define_args(inplace_flag),
                 self.gene_kernel_select(),
                 kernel_dispatch_code
-                + DIPATCH_END_GUARD_TEMPLATE.format(self.api),
+                + DISPATCH_END_GUARD_TEMPLATE.format(self.api),
             )
         else:
             dist_branch_code = ""
@@ -1947,7 +1947,7 @@ def generate_api(
         if is_fused_ops_yaml is True
         else "paddle/phi/api/include/api.h"
     )
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
             api

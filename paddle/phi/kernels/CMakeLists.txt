@@ -55,36 +55,6 @@ endif()
 
 if(WITH_CUTLASS)
   execute_process(
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated_tmp"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
-  set(generated_tmp_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp
-  )
-  set(generated_dir
-      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated)
-  file(GLOB con2d_generated_files ${generated_tmp_dir}/*.cu)
-
-  if(EXISTS ${generated_dir})
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                              "${gen_file}" "${now_file}")
-    endforeach()
-    message("copy if different ${generated_dir}")
-  else()
-    foreach(gen_file ${con2d_generated_files})
-      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
-                              "${now_file}")
-    endforeach()
-    message("copy ${generated_dir}")
-  endif()
-
-  execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
@@ -204,8 +174,6 @@ if(WITH_CUTLASS)
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/conv2d/generated/*.cu"
-    "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"

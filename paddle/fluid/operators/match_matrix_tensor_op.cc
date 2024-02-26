@@ -165,7 +165,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
         x_desc->GetLoDLevel(),
         1,
         platform::errors::InvalidArgument("The LoD level of Input(X) should be "
-                                          "greater than 1, but reviced %d.",
+                                          "greater than 1, but received %d.",
                                           x_desc->GetLoDLevel()));
     framework::VarDesc* y_desc =
         PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
@@ -173,7 +173,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
         y_desc->GetLoDLevel(),
         1,
         platform::errors::InvalidArgument("The LoD level of Input(Y) should be "
-                                          "greater than 1, but reviced %d.",
+                                          "greater than 1, but received %d.",
                                           y_desc->GetLoDLevel()));
     ctx->ShareLoD("X", "Out");
   }

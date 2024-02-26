@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/include/core/block.h"
@@ -23,7 +24,7 @@
 namespace paddle {
 namespace dialect {
 
-class IfOp : public pir::Op<IfOp, VjpInterface> {
+class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.if"; }
@@ -55,6 +56,8 @@ class IfOp : public pir::Op<IfOp, VjpInterface> {
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class PyLayerOp : public pir::Op<PyLayerOp> {
@@ -94,7 +97,8 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
 ///      cond, outputs = body(outputs)
 ///   }
 ///
-class WhileOp : public pir::Op<WhileOp, VjpInterface> {
+class WhileOp
+    : public pir::Op<WhileOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.while"; }
@@ -118,6 +122,7 @@ class WhileOp : public pir::Op<WhileOp, VjpInterface> {
       const std::vector<std::vector<pir::Value>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 struct TuplePushOpVjpInterfaceModel : public VjpInterface::Concept {

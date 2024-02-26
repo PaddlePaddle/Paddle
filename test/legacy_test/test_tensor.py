@@ -339,7 +339,7 @@ class TestTensor(unittest.TestCase):
             print(tensor)
             self.assertTrue(isinstance(str(tensor), str))
 
-    def test_tensor_poiter(self):
+    def test_tensor_pointer(self):
         place = core.CPUPlace()
         scope = core.Scope()
         var = scope.var("test_tensor")

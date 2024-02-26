@@ -71,7 +71,7 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }

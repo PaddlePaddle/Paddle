@@ -533,17 +533,16 @@ void add_double_grad(const Tensor& y,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx + ddy
-    Tensor ddout = full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype());
     if (!grad_x_grad && !grad_y_grad) {
+      Tensor ddout =
+          full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype());
       set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad && !grad_y_grad) {
+      set_output<T>(grad_x_grad.get(), grad_out_grad);
+    } else if (grad_y_grad && !grad_x_grad) {
+      set_output<T>(grad_y_grad.get(), grad_out_grad);
     } else {
-      if (grad_x_grad) {
-        ddout = ddout + grad_x_grad.get();
-      }
-      if (grad_y_grad) {
-        ddout = ddout + grad_y_grad.get();
-      }
-      set_output<T>(ddout, grad_out_grad);
+      set_output<T>(grad_x_grad.get() + grad_y_grad.get(), grad_out_grad);
     }
   }
 }

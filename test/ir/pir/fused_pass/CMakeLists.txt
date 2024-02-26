@@ -8,10 +8,6 @@ if(NOT WITH_CUTLASS)
   list(REMOVE_ITEM TEST_INTERP_CASES ${CUTLASS_TEST_CASES})
 endif()
 
-if(WITH_COVERAGE)
-  list(REMOVE_ITEM TEST_INTERP_CASES test_fused_gemm_epilogue_pass)
-endif()
-
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()

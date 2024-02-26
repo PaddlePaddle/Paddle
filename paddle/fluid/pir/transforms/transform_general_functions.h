@@ -24,7 +24,7 @@
 namespace pir {
 
 /**
- * @brief Get the name of pararmeter from a value.
+ * @brief Get the name of parameter from a value.
  *
  * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *

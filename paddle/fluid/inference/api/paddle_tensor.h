@@ -78,7 +78,7 @@ enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 /// to device,
 /// eliminating additional CPU copy. Tensor is only used in the
 /// AnalysisPredictor.
-/// It is obtained through PaddlePredictor::GetinputTensor()
+/// It is obtained through PaddlePredictor::GetInputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 class PD_INFER_DECL Tensor {
  public:

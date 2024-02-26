@@ -68,7 +68,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
     Note:
         currently only support dygraph mode.
     Note:
-        any argument passed through configs will be overrided by default setting.
+        any argument passed through configs will be overridden by default setting.
     Args:
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
@@ -76,7 +76,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
-        **configs(dict, optional): compatible argument to paddle.save, but will be overrided by default setting.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
         .. code-block:: python
             :name: code-example-1
@@ -98,7 +98,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         )
     if len(configs) > 0:
         warnings.warn(
-            "configs are not supported in async mode, will be overided by default settings."
+            "configs are not supported in async mode, will be overridden by default settings."
         )
 
     # TODO: make this part async
@@ -596,13 +596,13 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1,
-    # and all tuple(name, ndarry) are converted to tensor.
+    # tuple(name, ndarray) was converted from varbase of paddle2.1,
+    # and all tuple(name, ndarray) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(
             obj, _transformed_from_varbase, tuple_to_tensor
         )
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
+    # If there is no tuple(name, ndarray), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(

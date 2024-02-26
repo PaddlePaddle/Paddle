@@ -342,6 +342,6 @@ def cvt_to_device(x, dev_id, blocking=True):
         place = paddle.XPUPlace(dev_id)
     else:
         raise OSError(
-            "Only supported compiled paddle with gpu/rocm and xpu , but current verison is compiled with cpu."
+            "Only supported compiled paddle with gpu/rocm and xpu, but current version is compiled with cpu."
         )
     return x._copy_to(place, blocking)

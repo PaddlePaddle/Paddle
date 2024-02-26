@@ -180,5 +180,13 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   }
 }
 
+static bool has_dynamic_shape(const std::vector<int64_t>& vec) {
+  if (std::find(vec.begin(), vec.end(), -1) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace primitive
 }  // namespace paddle

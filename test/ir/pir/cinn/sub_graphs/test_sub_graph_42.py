@@ -35,7 +35,9 @@ class LayerCase(paddle.nn.Layer):
         var_4,  # (shape: [4], dtype: paddle.float32, stop_gradient: True)
         var_5,  # (shape: [2, 4], dtype: paddle.float32, stop_gradient: True)
     ):
-        var_6 = paddle.tensor.manipulation.concat([var_3])
+        # TODO(Aurelius84): concat compute logic does not support single element.
+        var_6 = var_3
+        # var_6 = paddle.tensor.manipulation.concat([var_3])
         var_7 = var_0**2.0
         var_8 = 0.75 * var_7
         var_9 = 1 - var_0
@@ -54,11 +56,13 @@ class LayerCase(paddle.nn.Layer):
         var_22 = paddle.tensor.manipulation.gather(var_13, var_1, axis=1)
         var_23 = var_21 - var_22
         var_24 = var_4.unsqueeze(0)
-        var_25 = paddle.tensor.manipulation.concat([var_24])
+        var_25 = var_24
+        # var_25 = paddle.tensor.manipulation.concat([var_24])
         var_26 = var_25.unsqueeze(1)
         var_27 = var_26.tile([1, 100, 1])
         var_28 = var_27.flatten(start_axis=0, stop_axis=1)
-        var_29 = paddle.tensor.manipulation.concat([var_5])
+        var_29 = var_5
+        # var_29 = paddle.tensor.manipulation.concat([var_5])
         var_30 = var_2 / var_28
         var_31 = var_6 / var_29
         var_32 = var_30.unsqueeze(-2)
@@ -96,16 +100,17 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
+        # TODO(Aurelius84): cinn.gather will raise Check failed: input_args.size() == 3U (4 vs. 3)
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

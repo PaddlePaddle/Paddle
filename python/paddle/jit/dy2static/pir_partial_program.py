@@ -134,6 +134,8 @@ class RunableProgram:
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
         ret[fake_value()] = "FakeVar"
+        for keyword, arg in program.global_block().kwargs().items():
+            ret[arg] = keyword
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]

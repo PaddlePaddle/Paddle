@@ -22,6 +22,7 @@ from paddle.autograd.backward_utils import (
     ValueDict,
     ValueSet,
     _as_list,
+    all_output_grad_none,
     all_stop_gradient_true,
     argument_to_value,
     check_type,
@@ -554,7 +555,7 @@ def append_backward_ops(
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
     # [op2 , builtin.split] (op2's inputs are not vectorType, one output is vectorType)
-    # [builtin.combine , op3 , buitin.split] (op3's one input and one output are vectorType)
+    # [builtin.combine , op3 , builtin.split] (op3's one input and one output are vectorType)
     # [op4] (op4's inputs and outputs are not vectorType)
 
     # -----------------only for control flow-----------------#
@@ -630,7 +631,9 @@ def append_backward_ops(
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
                     if (
-                        len(output_grads) == 0 or all(zero_flag)
+                        len(output_grads) == 0
+                        or all(zero_flag)
+                        or all_output_grad_none(output_grads)
                     ) and op.name() not in [
                         "pd_op.while",
                         "pd_op.if",

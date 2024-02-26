@@ -1498,7 +1498,7 @@ class DistributedStrategy:
             This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
             Only enable when sharding_segment_strategy = segment_broadcast_MB. Default is 32.0 .
 
-            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation.
+            segment_anchors(list): list of anchors used to segment the program, which allows a finer control of program segmentation.
             this strategy is experimental by now. Only enable when sharding_segment_strategy = segment_anchors.
 
             sharding_degree(int, optional): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.

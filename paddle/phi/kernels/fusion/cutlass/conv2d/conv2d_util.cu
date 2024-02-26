@@ -16,8 +16,6 @@
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
@@ -274,33 +272,38 @@ int ProfileToGetBestConfig(
     }
 
     cudaEvent_t beg, end;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
+    (cudaEventCreate(&beg));
+    (cudaEventCreate(&end));
+    (cudaEventRecord(beg));
     for (int ii = 0; ii < REPEAT; ii++) {
       status = func(params);
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
+    (cudaEventRecord(end));
+    (cudaEventSynchronize(end));
     float elapsed_time;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
+    (cudaEventElapsedTime(&elapsed_time, beg, end));
     if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
       min_time = elapsed_time;
       min_time_index = i;
       // debug code
-      VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
-              << conv2d_diff_gpu(params, op_type) << " compared with baseline,"
-              << "cost_time: " << elapsed_time << "ms.";
+      std::cout << OpType2String(op_type) << ": tactic " << i
+                << " has max diff " << conv2d_diff_gpu(params, op_type)
+                << " compared with baseline,"
+                << "cost_time: " << elapsed_time << "ms." << std::endl;
     }
   }
 
   if (min_time_index < 0) {
-    PADDLE_THROW(
-        phi::errors::NotFound("Can't find any cutlass config for this %s op.",
-                              OpType2String(op_type).c_str()));
+    std::cout << "Can't find any cutlass config for " << OpType2String(op_type)
+              << std::endl;
   }
   return min_time_index;
+}
+
+__attribute__((dllexport)) int HelloFromCutlassConv2d(int a, int b) {
+  std::cout << "welcom using Cutlass Conv2d" << std::endl;
+  return 1;
 }
 
 }  // namespace cutlass_internal

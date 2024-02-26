@@ -58,6 +58,40 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
   }
 };
 
+class CombineOpPattern : public pir::OpRewritePattern<pir::CombineOp> {
+ public:
+  using pir::OpRewritePattern<pir::CombineOp>::OpRewritePattern;
+
+  bool Match(pir::CombineOp op) const override {
+    auto out_type = op.result(0).type().dyn_cast<pir::VectorType>();
+    for (auto type : out_type.data()) {
+      if (HasZeroDim(type)) return true;
+    }
+    return false;
+  }
+
+  void Rewrite(pir::CombineOp op,
+               pir::PatternRewriter &rewriter) const override {
+    pir::Builder builder(rewriter.ir_context());
+
+    const std::vector<pir::Type> inputs_type = [&]() {
+      std::vector<pir::Type> types;
+      for (auto value : op->operands_source()) {
+        types.push_back(value.type());
+      }
+      return types;
+    }();
+    op.result(0).set_type(builder.vec_type(inputs_type));
+  }
+
+ private:
+  bool HasZeroDim(pir::Type type) const {
+    if (!type) return false;
+    const auto dense_tensor_type = type.dyn_cast<pir::DenseTensorType>();
+    return dense_tensor_type && (dense_tensor_type.dims().size() == 0U);
+  }
+};
+
 class Convert0DTo1DPass : public pir::PatternRewritePass {
  public:
   Convert0DTo1DPass() : pir::PatternRewritePass("convert_0D_to_1D", 1) {}
@@ -65,6 +99,7 @@ class Convert0DTo1DPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<FullOpPattern>(context);
+    ps.Add<CombineOpPattern>(context);
 
     return ps;
   }

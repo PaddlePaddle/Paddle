@@ -622,7 +622,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -902,7 +902,7 @@ Node* GetMasterToComputeAt(
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<Node*> visited;
     std::queue<Node*> candidates;
     candidates.push(node);

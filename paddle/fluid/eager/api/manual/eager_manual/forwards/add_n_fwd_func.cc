@@ -94,7 +94,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     // SetAttributes if needed
 
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
+    grad_node->SetTensorWrapper_x(x);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     // SetOutRank & SetHistory & SetGradInMeta & RetainGrad

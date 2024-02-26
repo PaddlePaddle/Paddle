@@ -141,7 +141,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   PADDLE_ENFORCE_EQ(read_status,
                     0,
                     paddle::platform::errors::Fatal(
-                        "HdfsStore::get, path read faied: " + path));
+                        "HdfsStore::get, path read failed: " + path));
 #endif
   return result;
 }

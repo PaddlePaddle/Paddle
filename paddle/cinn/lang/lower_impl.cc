@@ -30,6 +30,8 @@
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace lang {
 namespace detail {
@@ -106,7 +108,7 @@ Expr LowerGroup(const poly::ScheduleGroup& group,
   // poly::IslAstNodeToCinnExpr(ast, &e);
   poly::IslAstNodeToCinnExpr(ast, gen.domain(), &e);
   // now we get a workable expression, but the statement are something like
-  // `B(((16 * po0) + po1), po2)`, we need to transform this to some realworld
+  // `B(((16 * po0) + po1), po2)`, we need to transform this to some real world
   // statement in CINN.
 
   VLOG(1) << "ast to expr: \n" << e << std::endl;

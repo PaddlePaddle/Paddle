@@ -111,8 +111,8 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
       // Set Tensor Wrappers
-      grad_node->SetTensorWrapperX(X);
-      grad_node->SetTensorWrapperY(Y);
+      grad_node->SetTensorWrapper_X(X);
+      grad_node->SetTensorWrapper_Y(Y);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Y, 1);

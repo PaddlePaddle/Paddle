@@ -126,16 +126,16 @@ Conv2dGradNodeFinal::operator()(
     auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
         new Conv2dDoubleGradNodeFinal(2, 3));
     // SetAttributes if needed
-    grad_node->SetAttributestrides(strides);
-    grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepadding_algorithm(padding_algorithm);
-    grad_node->SetAttributegroups(groups);
-    grad_node->SetAttributedilations(dilations);
-    grad_node->SetAttributedata_format(data_format);
+    grad_node->SetAttribute_strides(strides);
+    grad_node->SetAttribute_paddings(paddings);
+    grad_node->SetAttribute_padding_algorithm(padding_algorithm);
+    grad_node->SetAttribute_groups(groups);
+    grad_node->SetAttribute_dilations(dilations);
+    grad_node->SetAttribute_data_format(data_format);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperinput(input);
-    grad_node->SetTensorWrapperfilter(filter);
-    grad_node->SetTensorWrappergrad_out(grad_out);
+    grad_node->SetTensorWrapper_input(input);
+    grad_node->SetTensorWrapper_filter(filter);
+    grad_node->SetTensorWrapper_grad_out(grad_out);
     // SetGradOutMeta & SetEdges
     if (grad_filter_autograd_meta) {
       grad_node->SetGradOutMeta(input, 0);

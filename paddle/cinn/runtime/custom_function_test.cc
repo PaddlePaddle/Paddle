@@ -132,7 +132,7 @@ TEST(CinnAssertTrue, test_true) {
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
-  // set inpute value true
+  // set input value true
   bool input_h = true;
   auto* input = x.mutable_data<bool>(target);
 
@@ -170,7 +170,7 @@ TEST(CinnAssertTrue, test_false_only_warning) {
 
   CinnBufferAllocHelper x(cinn_x86_device, cinn_bool_t(), {1});
 
-  // set inpute value false
+  // set input value false
   bool input_h = false;
   auto* input = x.mutable_data<bool>(target);
 

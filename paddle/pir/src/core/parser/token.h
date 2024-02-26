@@ -23,7 +23,7 @@ enum Token_type {
   ENDTAG = 3,
   VALUEID = 4,
   STRING = 5,
-  ARRAOW = 6,
+  ARROW = 6,
   NULL_ = 7,
 };
 

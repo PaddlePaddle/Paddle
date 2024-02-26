@@ -86,7 +86,7 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout"};
+      "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "matmul"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
