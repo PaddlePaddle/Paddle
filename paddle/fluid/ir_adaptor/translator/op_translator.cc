@@ -1357,10 +1357,13 @@ struct AddNOpTranscriber : public OpTranscriber {
                            const OpDesc& op_desc) override {
     auto prefix = GetPrefix(ctx, op_desc);
     std::string target_op_name;
+#ifdef PADDLE_WITH_DNNL
     if (prefix == kOneDNNTargetDialectPrefix) {
       target_op_name = std::string(kOneDNNTargetDialectPrefix) + "add_n_onednn";
-    } else {
-      std::string target_op_name =
+    } else  // NOLINT
+#endif
+    {
+      target_op_name =
           GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
       if (IsInplace(op_desc)) {
         target_op_name += "_";
