@@ -169,13 +169,13 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
 
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {}, "{}");"""
 
 RESHARD_VECTOR_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
 
 NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
     // API `{}` does not need to reshard output."""
@@ -321,13 +321,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 if self.outputs['types'][0] == 'Tensor':
                     reshard_output_code += (
                         RESHARD_SINGLE_OUTPUT_TEMPLATE.format(
-                            self.outputs['names'][0]
+                            self.outputs['names'][0], self.outputs['names'][0]
                         )
                     )
                 elif self.outputs['types'][0] == 'std::vector<Tensor>':
                     reshard_output_code += (
                         RESHARD_VECTOR_OUTPUT_TEMPLATE.format(
-                            self.outputs['names'][0]
+                            self.outputs['names'][0], self.outputs['names'][0]
                         )
                     )
                 else:
@@ -337,7 +337,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     if out_type == 'Tensor':
                         reshard_output_code += (
                             RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
-                                i, self.outputs['names'][i]
+                                i,
+                                self.outputs['names'][i],
+                                self.outputs['names'][i],
                             )
                         )
                     else:
@@ -491,7 +493,7 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api

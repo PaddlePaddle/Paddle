@@ -37,7 +37,7 @@ static AllocatorStrategy GetStrategyFromFlag() {
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(
-      "Unsupported allocator strategy: %s, condicates are naive_best_fit, "
+      "Unsupported allocator strategy: %s, candidates are naive_best_fit, "
       "auto_growth or thread_local.",
       FLAGS_allocator_strategy));
 }

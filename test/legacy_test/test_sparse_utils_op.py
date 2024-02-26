@@ -338,7 +338,7 @@ class TestSparseConvert(unittest.TestCase):
         dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)
         verify(dense_x)
 
-        # test batchs=1
+        # test batches=1
         shape[0] = 1
         dense_x = paddle.randn(shape)
         dense_x = paddle.nn.functional.dropout(dense_x, p=0.5)

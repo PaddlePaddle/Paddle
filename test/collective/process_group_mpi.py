@@ -171,7 +171,7 @@ def test_broadcast(pg, shape, dtype):
     print("test broadcast api ok")
 
 
-def test_barrair(pg):
+def test_barrier(pg):
     # rank 0
     if pg.rank() == 0:
         dist.barrier()
@@ -462,7 +462,7 @@ class TestProcessGroup(unittest.TestCase):
         test_broadcast(pg, self.shape, self.dtype)
 
         # test barrier
-        test_barrair(pg)
+        test_barrier(pg)
 
         # test allgather
         test_allgather(pg, self.shape, self.dtype)
