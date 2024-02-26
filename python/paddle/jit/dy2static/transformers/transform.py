@@ -23,7 +23,6 @@ from .. import logging_utils
 from ..utils import ast_to_source_code
 from .assert_transformer import AssertTransformer
 from .base import BaseTransformer
-from .basic_api_transformer import BasicApiTransformer, NameloadJstTransformer
 from .break_continue_transformer import (
     BreakContinueTransformer,
     BreakTransformOptimizer,
@@ -36,6 +35,10 @@ from .early_return_transformer import EarlyReturnTransformer
 from .ifelse_transformer import IfElseTransformer
 from .logical_transformer import LogicalTransformer
 from .loop_transformer import LoopTransformer
+from .name_load_transformer import (
+    AttributeJstTransformer,
+    NameloadJstTransformer,
+)
 from .return_transformer import ReturnTransformer
 from .tensor_shape_transformer import TensorShapeTransformer
 from .tensorhook_transformer import RegisterHookTransformer
@@ -91,7 +94,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             RegisterHookTransformer,
             EarlyReturnTransformer,
-            BasicApiTransformer,  # Basic Api
+            AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions

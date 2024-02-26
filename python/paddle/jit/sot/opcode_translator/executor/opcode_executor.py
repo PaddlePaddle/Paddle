@@ -2100,6 +2100,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
+            next_instr = self._instructions[self._lasti]
+            self._lasti += int(next_instr.opname == 'END_FOR')
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
