@@ -1358,7 +1358,7 @@ struct AddNOpTranscriber : public OpTranscriber {
     auto prefix = GetPrefix(ctx, op_desc);
     std::string target_op_name;
     if (prefix == kOneDNNTargetDialectPrefix) {
-      target_op_name = kOneDNNTargetDialectPrefix + "add_n_onednn";
+      target_op_name = std::string(kOneDNNTargetDialectPrefix) + "add_n_onednn";
     } else {
       std::string target_op_name =
           GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
