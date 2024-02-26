@@ -47,7 +47,7 @@ def test_slice_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="float32"))
 
     if x.numpy()[0] > 0:
         a[0] = x
@@ -116,7 +116,7 @@ class TestSliceBase(Dy2StTestBase):
         self.dygraph_func = None
 
     def init_input(self):
-        self.input = np.random.random(3).astype('int32')
+        self.input = np.random.random(3).astype('float32')
 
     def init_dygraph_func(self):
         raise NotImplementedError(
@@ -155,6 +155,7 @@ class TestSliceInIf(TestSliceBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         static_res = self.run_static_mode()
@@ -178,14 +179,6 @@ class TestSetValue(TestSliceInIf):
 
     def init_dygraph_func(self):
         self.dygraph_func = test_set_value
-
-    # TODO(pir-control-flow): Delete this code after supporting control flow
-    @test_legacy_and_pt_and_pir
-    def test_transformed_static_result(self):
-        self.init_dygraph_func()
-        static_res = self.run_static_mode()
-        dygraph_res = self.run_dygraph_mode()
-        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestSetValueWithLayerAndSave(Dy2StTestBase):

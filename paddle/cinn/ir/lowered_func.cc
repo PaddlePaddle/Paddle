@@ -30,6 +30,8 @@
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
+
 namespace cinn {
 namespace ir {
 
@@ -110,10 +112,10 @@ void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
     const ir::For* for_expr = expr.As<ir::For>();
     if (for_expr->for_type() == ir::ForType::GPUBlock) {
       cuda_axis_info.set_grid_dim(for_expr->bind_info().offset,
-                                  for_expr->extent.as_int32());
+                                  for_expr->extent);
     } else if (for_expr->for_type() == ir::ForType::GPUThread) {
       cuda_axis_info.set_block_dim(for_expr->bind_info().offset,
-                                   for_expr->extent.as_int32());
+                                   for_expr->extent);
     }
   }
   device_api = ir::DeviceAPI::GPU;
@@ -184,7 +186,7 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
 std::vector<Expr> _LoweredFunc_::CudaPrepareAllocTempBufferExprs() const {
   std::vector<Expr> alloc_output_buffer_exprs;
   for (auto temp_buf : temp_bufs) {
-    if (utils::Startswith(temp_buf->name, "_")) {
+    if (utils::StartsWith(temp_buf->name, "_")) {
       temp_buf->name = temp_buf->name.substr(1);
     }
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {
@@ -513,38 +515,40 @@ std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x) {
   return os;
 }
 
-void CudaAxisInfo::set_grid_dim(int offset, int x) {
+void CudaAxisInfo::set_grid_dim(int offset, int64_t x) {
+  valid_ = true;
+  CHECK_LT(offset, 3);
+  grid_dims_[offset] = ir::Expr(x);
+}
+
+void CudaAxisInfo::set_block_dim(int offset, int64_t x) {
+  valid_ = true;
+  CHECK_LT(offset, 3);
+  block_dims_[offset] = ir::Expr(x);
+}
+
+void CudaAxisInfo::set_grid_dim(int offset, ir::Expr x) {
   valid_ = true;
   CHECK_LT(offset, 3);
   grid_dims_[offset] = x;
 }
-void CudaAxisInfo::set_block_dim(int offset, int x) {
+
+void CudaAxisInfo::set_block_dim(int offset, ir::Expr x) {
   valid_ = true;
   CHECK_LT(offset, 3);
   block_dims_[offset] = x;
 }
-int CudaAxisInfo::grid_dim(int offset) const {
+
+ir::Expr CudaAxisInfo::grid_dim(int offset) const {
   CHECK(valid_);
   CHECK_LT(offset, 3);
   return grid_dims_[offset];
 }
-int CudaAxisInfo::block_dim(int offset) const {
+
+ir::Expr CudaAxisInfo::block_dim(int offset) const {
   CHECK(valid_);
   CHECK_LT(offset, 3);
   return block_dims_[offset];
-}
-void CudaAxisInfo::ExtendWith(const CudaAxisInfo& other) {
-  set_valid(true);
-  for (int i = 0; i < 3; i++) {
-    grid_dims_[i] = std::max(grid_dims_[i], other.grid_dims_[i]);
-    block_dims_[i] = std::max(block_dims_[i], other.block_dims_[i]);
-  }
-}
-void CudaAxisInfo::CopyGridDimsTo(std::vector<int>* dest) const {
-  dest->insert(dest->begin(), grid_dims_.begin(), grid_dims_.end());
-}
-void CudaAxisInfo::CopyBlockDimsTo(std::vector<int>* dest) const {
-  dest->insert(dest->begin(), block_dims_.begin(), block_dims_.end());
 }
 
 }  // namespace ir

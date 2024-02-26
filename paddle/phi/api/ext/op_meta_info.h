@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/utils/any.h"
@@ -1035,6 +1035,10 @@ class PADDLE_API OpMetaInfo {
 
   // format: PD_INFER_SPMD_RULE(...)
   OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
+
+  bool IsGradOp() const;
+
+  bool IsDoubleGradOp() const;
 
 #ifdef PADDLE_WITH_TENSORRT
   // format: PD_TRT_INFER_SHAPE(...)

@@ -31,8 +31,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct.DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
@@ -44,13 +44,14 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct->DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
 
-InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
+InterpreterCoreEventGarbageCollector::
+    ~InterpreterCoreEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 
@@ -149,7 +150,7 @@ void InterpreterCoreEventGarbageCollector::Free(
     platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
-  event->SetFininshed();  // Only for CPU Event
+  event->SetFinished();  // Only for CPU Event
   queue_->AddTask([container = garbage, event = event]() {
     while (!event->Query()) {
 #if defined(_WIN32)
@@ -165,7 +166,7 @@ void InterpreterCoreEventGarbageCollector::Free(
 void InterpreterCoreEventGarbageCollector::FreeGarbages() {
   for (auto& vals : events_) {
     vals.second->Record(vals.first);
-    vals.second->SetFininshed();  // Only for CPU Event
+    vals.second->SetFinished();  // Only for CPU Event
   }
   queue_->AddTask(
       [container = std::move(*garbages_), events = std::move(events_)]() {

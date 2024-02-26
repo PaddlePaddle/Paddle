@@ -105,7 +105,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
 
   std::vector<ir::Tensor> ret;
 
-  // Using set instead of vector/stack in order to get fix alaphbeta order topo
+  // Using set instead of vector/stack in order to get fix alpha-beta order topo
   std::set<std::string> node_set;
   for (const auto& name_tensor : name_to_tensor_) {
     if (!in_degree.count(name_tensor.first)) {
@@ -152,7 +152,7 @@ void TensorGroup::CtrlDepend(const ir::Tensor& tensor,
   }
 }
 
-std::set<ir::Tensor> TensorGroup::GetCrtlDepTensors(
+std::set<ir::Tensor> TensorGroup::GetCtrlDepTensors(
     const std::string& tensor_name) {
   if (!ctrl_dep_.count(tensor_name)) {
     return {};
@@ -244,7 +244,7 @@ TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map) {
     if (iter->second->has_expression()) {
       const std::string& tensor_name = iter->first;
       stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
-      if (utils::Endswith(tensor_name, "_reshape")) {
+      if (utils::EndsWith(tensor_name, "_reshape")) {
         reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
       }
     }

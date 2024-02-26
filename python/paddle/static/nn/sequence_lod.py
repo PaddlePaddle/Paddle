@@ -69,7 +69,7 @@ def sequence_conv(
                 down_pad_len = max(0, filter_size + padding_start - 1) = 1
 
                 The output of the input sequence after padding is:
-                data_aftet_padding = [[0, 0, 1, 1, 2, 2],
+                data_after_padding = [[0, 0, 1, 1, 2, 2],
                                       [1, 1, 2, 2, 3, 3],
                                       [2, 2, 3, 3, 0, 0],
                                       [0, 0, 4, 4, 0, 0]]
@@ -314,7 +314,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     Args:
         input (variable): Tensor with lod_level no more than 2. The data type should be float32 or float64.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
-        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
+        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tensor maxIndex is
             created to record the index information corresponding to the maximum value, which is used for backward
             gradient calculation in the training phase. Default: False.
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
@@ -968,7 +968,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     Args:
         x (Tensor): Input 1-level Tensor with dims ``[M, K]``. The batch \
-            size is described by lod infor (the number of sequences ). \
+            size is described by lod info (the number of sequences ). \
             The data type should be float32, float64, int8, int32 or int64.
         pad_value (Tensor): Padding value. It can be a scalar or a 1D tensor \
             with length ``K``. If it's a scalar, it will be automatically broadcasted \
@@ -984,7 +984,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Returns:
             tuple, A Python tuple (Out, Length): the 1st is a 0 level Tensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
-            sequences length infor ``Length``, which should be a 0-level 1D Tensor. \
+            sequences length info ``Length``, which should be a 0-level 1D Tensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
 
     Examples:

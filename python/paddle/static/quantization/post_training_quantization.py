@@ -25,7 +25,7 @@ except:
 
 from paddle.base.framework import IrGraph, _get_var
 
-from ... import io, static
+from ... import static
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -311,10 +311,6 @@ class PostTrainingQuantization:
         # Check inputs
         assert executor is not None, "The executor cannot be None."
         assert data_loader is not None, "data_loader cannot be None."
-
-        assert isinstance(
-            data_loader, io.DataLoader
-        ), "data_loader only accepts `paddle.io.DataLoader`."
 
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert (
@@ -1116,10 +1112,10 @@ class PostTrainingQuantization:
             if var_name not in self._sampling_act_histogram:
                 min_val = self._sampling_act_abs_min_max[var_name][0]
                 max_val = self._sampling_act_abs_min_max[var_name][1]
-                hist, hist_edeges = np.histogram(
+                hist, hist_edges = np.histogram(
                     [], bins=self._histogram_bins, range=(min_val, max_val)
                 )
-                self._sampling_act_histogram[var_name] = [hist, hist_edeges]
+                self._sampling_act_histogram[var_name] = [hist, hist_edges]
 
     def _calculate_kl_hist_threshold(self):
         '''
@@ -1155,16 +1151,16 @@ class PostTrainingQuantization:
                 var_name not in self._sampling_act_histogram
             ):
                 continue
-            hist, hist_edeges = self._sampling_act_histogram[var_name]
+            hist, hist_edges = self._sampling_act_histogram[var_name]
             if self._algo == "KL":
-                bin_width = hist_edeges[1] - hist_edeges[0]
+                bin_width = hist_edges[1] - hist_edges[0]
                 self._quantized_var_threshold[var_name] = cal_kl_threshold(
                     hist, bin_width, self._activation_bits
                 )
             elif self._algo == "hist":
                 self._quantized_var_threshold[
                     var_name
-                ] = self._get_hist_scaling_factor(hist, hist_edeges)
+                ] = self._get_hist_scaling_factor(hist, hist_edges)
 
     def _update_program(self):
         '''
@@ -1995,7 +1991,7 @@ class WeightQuantization:
 
     def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
         input_abs = np.abs(input)
-        hist, hist_edeges = np.histogram(
+        hist, hist_edges = np.histogram(
             input_abs, bins=histogram_bins, range=(0, np.max(input_abs))
         )
         hist = hist / float(sum(hist))
@@ -2006,5 +2002,5 @@ class WeightQuantization:
             if hist_sum >= 1.0 - threshold_rate:
                 hist_index = i + 1
                 break
-        bin_width = hist_edeges[1] - hist_edeges[0]
+        bin_width = hist_edges[1] - hist_edges[0]
         return hist_index * bin_width

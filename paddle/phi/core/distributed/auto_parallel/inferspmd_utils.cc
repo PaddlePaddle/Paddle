@@ -144,7 +144,7 @@ bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
 }
 
 int SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
-  spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
+  spmd_rule_map_.insert({std::move(kernel_name), rule});
   return 0;
 }
 

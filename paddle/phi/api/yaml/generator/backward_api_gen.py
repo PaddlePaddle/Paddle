@@ -273,7 +273,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -290,7 +290,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -345,7 +345,7 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api

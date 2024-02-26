@@ -285,7 +285,7 @@ def measure_program_real_op_cost(
     )
     if run_iters == 1:
         warnings.warn(
-            'run_iters was set to 1, profiling results might be inaccurate due to outilers.'
+            'run_iters was set to 1, profiling results might be inaccurate due to outliers.'
         )
 
     logger = get_logger(log_level=logging.INFO)

@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
@@ -39,6 +39,8 @@ int getSMVersion() {
 
 class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
@@ -48,8 +50,7 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
         src.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", src.Attr("matmul_transpose_x")},
                 {"transpose_y", src.Attr("matmul_transpose_y")}});
-    const auto &parameter = src.Op(
-        pir::ParameterOp::name(), {{"parameter_name", src.Attr("param_name")}});
+    const auto &parameter = src.Op(pir::ParameterOp::name());
     src.Tensor("w") = parameter();
     src.Tensor("matmul_out") = matmul(src.Tensor("x"), src.Tensor("w"));
     const auto &add = src.Op(paddle::dialect::AddOp::name());
@@ -108,8 +109,6 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
                         &res.Tensor("weight_scale_tensor")},
                        {&res.Tensor("add_out")});
   }
-
-  std::string name() const override { return "FusedWeightOnlyLinearPattern"; }
 };
 
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
@@ -119,7 +118,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(FusedWeightOnlyLinearPattern().Build(context));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearPattern>(context));
     return ps;
   }
 

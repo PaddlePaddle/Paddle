@@ -88,25 +88,12 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         _out_shape = (
             out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
         theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
-    elif in_dynamic_mode():
-        _out_shape = (
-            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
-        )
-        return _legacy_C_ops.affine_grid(
-            theta,
-            "output_shape",
-            _out_shape,
-            "align_corners",
-            align_corners,
-            "use_cudnn",
-            use_cudnn,
-        )
     elif in_pir_mode():
         return _C_ops.affine_grid(
             theta,
@@ -161,7 +148,7 @@ def grid_sample(
     indexing the 5th dimension (in width dimension) of input data x, y is
     indexing the 4th dimension (in height dimension) and z is indexing the
     3rd dimension (in depth dimension) finally results is the bilinear
-    interpolation or nearest value of 8 nearest cornerpoints. The output
+    interpolation or nearest value of 8 nearest corner points. The output
     tensor shape will be [N, C, D, H, W].
 
 
@@ -311,18 +298,6 @@ def grid_sample(
 
     if in_dynamic_or_pir_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
-    elif in_dynamic_mode():
-        attrs = (
-            'mode',
-            mode,
-            'padding_mode',
-            padding_mode,
-            'align_corners',
-            align_corners,
-            'use_cudnn',
-            use_cudnn,
-        )
-        out = _legacy_C_ops.grid_sampler(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')

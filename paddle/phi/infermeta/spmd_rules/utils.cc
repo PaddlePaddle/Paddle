@@ -27,7 +27,7 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet) {
   PADDLE_ENFORCE_GE(
@@ -38,15 +38,15 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
           alphabet.size(),
           broadcast_ndim));
   PADDLE_ENFORCE_GE(broadcast_ndim,
-                    tenosr_ndim,
+                    tensor_ndim,
                     phi::errors::InvalidArgument(
-                        "The broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        "The broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
-                        tenosr_ndim));
-  if (tenosr_ndim <= 0) {
+                        tensor_ndim));
+  if (tensor_ndim <= 0) {
     return std::string();
   }
-  return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+  return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
 // Rule1: A repicated dimension could be merged by any sharded dimension.
@@ -407,7 +407,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (auto pair : partial_dim_to_type) {
       placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
     }
-    new_input_attrs.emplace_back(FromPlacements(e, placements));
+    new_input_attrs.emplace_back(FromPlacements(e, placements));  // NOLINT
   }
   std::swap(input_attrs, new_input_attrs);
 }

@@ -45,14 +45,14 @@ limitations under the License. */
 #include "paddle/phi/capi/include/c_meta_tensor.h"
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/flags.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace framework {
@@ -545,7 +545,7 @@ static void RunInferShapeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutputs(out_name)) {
         auto in_name = inplace_reverse_map.at(out_name);
@@ -796,7 +796,7 @@ static void RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       auto in_name = inplace_reverse_map.at(out_name);
       // make sure ctx has valid inplace optional outputs
       if (ctx->HasOutput(out_name)) {
@@ -1293,7 +1293,8 @@ void RegisterOperatorWithMetaInfoMap(
       continue;
     }
     for (const auto& meta_info : pair.second) {
-      LOG(INFO) << "register pir custom op :" << pair.first;
+      LOG(INFO) << "register pir custom op :"
+                << OpMetaInfoHelper::GetOpName(meta_info);
       custom_dialect->RegisterCustomOp(meta_info);
     }
 

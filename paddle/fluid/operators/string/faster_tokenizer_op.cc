@@ -365,7 +365,7 @@ int BertTokenizer::Encode(
   vector<int64_t> token_type_ids;
   CreateTokenTypeIdsFromSequences(&token_type_ids, ids, pair_ids);
 
-  // Build output dictionnary
+  // Build output dictionary
   encoded_inputs->emplace("input_ids", sequence);
   encoded_inputs->emplace("token_type_ids", token_type_ids);
   // Check lengths

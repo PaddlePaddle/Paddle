@@ -43,6 +43,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -53,6 +54,7 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
@@ -60,18 +62,16 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
-PHI_DECLARE_bool(set_to_1d);
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(set_to_1d);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {
@@ -112,8 +112,9 @@ phi::DenseTensor ReshardXToReplicated(
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
     dist_attr.clean_partial_status();
-
     // reshard to replicate dist tensor
+    VLOG(4) << "Reshard tensor: "
+            << paddle::experimental::ReshardDebugInfo(*dist_tensor, dist_attr);
     auto* func =
         phi::distributed::ChooseProperReshardFunction(*dist_tensor, dist_attr);
     auto* dev_ctx =
@@ -179,34 +180,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
-  if (py_rank == 0) {
-    Py_ssize_t args_num = PyTuple_Size(args);
-    // true by default
-    bool set_to_1d = FLAGS_set_to_1d;
-    if (args_num == (Py_ssize_t)1) {
-      PyObject* obj = PyTuple_GET_ITEM(args, 0);
-      if (obj == Py_False) {
-        set_to_1d = false;
-      }
-    }
-    if (set_to_1d) {
-      // 0D Tensor hack process to 1D numpy, will remove in release 2.6
-      VLOG(0)
-          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
-             "order to avoid this problem, "
-             "0D Tensor will be changed to 1D numpy currently, but it's not "
-             "correct and will be "
-             "removed in release 2.6. For Tensor contain only one element, "
-             "Please "
-             "modify "
-             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
-             "possible, "
-             "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
-      py_rank = 1;
-      py_dims[0] = 1;
-      py_strides[0] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
-    }
-  } else if (self->tensor.is_dense_tensor()) {
+  if (self->tensor.is_dense_tensor()) {
     auto tensor_stride = self->tensor.strides();
 
     for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
@@ -1430,14 +1404,14 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   if (pos_of_new_dim != 0) {
     std::vector<int> perm(out.shape().size(), 0);
-    int tmp1 = pos_of_new_dim, tmp2 = 0,
+    int tmp1 = rank_of_new_dim, tmp2 = 0,
         tmp3 = pos_of_new_dim + rank_of_new_dim;
     for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
-      if (i < rank_of_new_dim) {
+      if (i < pos_of_new_dim) {
         perm[i] =
-            tmp1++;  // range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim)
-      } else if (i >= rank_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
-        perm[i] = tmp2++;  // range(0, pos_of_new_dim)
+            tmp1++;  // range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim)
+      } else if (i >= pos_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;  // range(0, rank_of_new_dim)
       } else {
         perm[i] = tmp3++;  // range(pos_of_new_dim + rank_of_new_dim, out.ndim)
       }
@@ -1809,13 +1783,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
               new SetValueWithTensorGradNode(1, 2));  // NOLINT
-          grad_node->SetAttributestarts(slice_starts);
-          grad_node->SetAttributeends(slice_ends);
-          grad_node->SetAttributesteps(slice_strides);
-          grad_node->SetAttributeaxes(slice_axes);
-          grad_node->SetAttributedecrease_axes(decrease_axis);
-          grad_node->SetAttributenone_axes(none_axes);
-          grad_node->SetTensorWrappervalues(values_tmp);
+          grad_node->SetAttribute_starts(slice_starts);
+          grad_node->SetAttribute_ends(slice_ends);
+          grad_node->SetAttribute_steps(slice_strides);
+          grad_node->SetAttribute_axes(slice_axes);
+          grad_node->SetAttribute_decrease_axes(decrease_axis);
+          grad_node->SetAttribute_none_axes(none_axes);
+          grad_node->SetTensorWrapper_values(values_tmp);
 
           paddle::memory::LogDeviceMemoryStats(
               egr::Controller::Instance().GetExpectedPlace(),
@@ -2234,7 +2208,7 @@ Note:
 Returns the indices of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2278,7 +2252,7 @@ Note:
 Returns the values of non zero elements in input SparseCooTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2331,7 +2305,7 @@ Note:
 Returns the compressed row index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -2375,7 +2349,7 @@ Note:
 Returns the column index of non zero elements in input SparseCsrTensor.
 
 Returns:
-    DenseTesnor
+    DenseTensor
 
 Examples:
 
@@ -3163,7 +3137,8 @@ static PyObject* tensor_method__uva(TensorObject* self,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
-  int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+  int device_id =
+      pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);  // NOLINT
   phi::DenseTensor* dense_tensor = nullptr;
   if (self->tensor.is_dist_tensor()) {
     dense_tensor =

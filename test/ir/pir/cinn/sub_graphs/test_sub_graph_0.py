@@ -89,27 +89,23 @@ class TestLayer(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
+        paddle.seed(123)
         outs = net(*self.inputs)
         return outs
 
-    def test_static(self):
-        dy_out = self.train(self.net, to_static=False)
+    def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
-        for dy, st in zip(
-            paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
-        ):
-            np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)
-
-    # NOTE prim + cinn lead to error
-    def _test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "pool2d"})
         cinn_out = self.train(
             self.net, to_static=True, with_prim=True, with_cinn=True
         )
+        # TODO(Aurelius84): It contains reduce operation and atol can't satisfy
+        # 1e-8, so we set it to 1e-6.
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

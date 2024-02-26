@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -24,9 +25,8 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {
@@ -52,7 +52,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
@@ -157,25 +157,25 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
     // SetAttributes if needed
-    grad_node->SetAttributeaxis(-1);
+    grad_node->SetAttribute_axis(-1);
     if (paddle::platform::is_gpu_place(x.place())) {
       if (x_autograd_meta != nullptr && x_autograd_meta->StopGradient() &&
           y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {
-        grad_node->SetTensorWrapperx(x);
-        grad_node->SetTensorWrapperNoNeedBuffery(y);
+        grad_node->SetTensorWrapper_x(x);
+        grad_node->SetTensorWrapperNoNeedBuffer_y(y);
       } else if (x_autograd_meta != nullptr &&
                  !x_autograd_meta->StopGradient() &&
                  y_autograd_meta != nullptr &&
                  y_autograd_meta->StopGradient()) {
-        grad_node->SetTensorWrapperNoNeedBufferx(x);
-        grad_node->SetTensorWrappery(y);
+        grad_node->SetTensorWrapperNoNeedBuffer_x(x);
+        grad_node->SetTensorWrapper_y(y);
       } else {
-        grad_node->SetTensorWrapperx(x);
-        grad_node->SetTensorWrappery(y);
+        grad_node->SetTensorWrapper_x(x);
+        grad_node->SetTensorWrapper_y(y);
       }
     } else {
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
+      grad_node->SetTensorWrapper_x(x);
+      grad_node->SetTensorWrapper_y(y);
     }
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
@@ -300,11 +300,11 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
     // SetAttributes if needed
-    grad_node->SetAttributeaxis(-1);
+    grad_node->SetAttribute_axis(-1);
     // Set TensorWrappers for Forward Inputs if needed
     auto x_clone = paddle::experimental::assign(x);
-    grad_node->SetTensorWrapperx(x_clone);
-    grad_node->SetTensorWrappery(y);
+    grad_node->SetTensorWrapper_x(x_clone);
+    grad_node->SetTensorWrapper_y(y);
   }
 
   // Forward API Call
@@ -399,7 +399,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
@@ -505,8 +505,8 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     // SetAttributes if needed
 
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
-    grad_node->SetTensorWrappery(y);
+    grad_node->SetTensorWrapper_x(x);
+    grad_node->SetTensorWrapper_y(y);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);

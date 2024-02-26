@@ -51,7 +51,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-namespace py = pybind11;
+namespace py = pybind11;  // NOLINT
 
 namespace pybind11 {
 namespace detail {
@@ -861,6 +861,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("use_optimized_model",
+           &AnalysisConfig::UseOptimizedModel,
+           py::arg("x") = true)
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
@@ -1268,8 +1271,8 @@ void BindPaddleInferTensor(py::module *m) {
 void BindPredictorPool(py::module *m) {
   py::class_<paddle_infer::services::PredictorPool>(*m, "PredictorPool")
       .def(py::init<const paddle_infer::Config &, size_t>())
-      .def("retrive",
-           &paddle_infer::services::PredictorPool::Retrive,
+      .def("retrieve",
+           &paddle_infer::services::PredictorPool::Retrieve,
            py::return_value_policy::reference);
 }
 

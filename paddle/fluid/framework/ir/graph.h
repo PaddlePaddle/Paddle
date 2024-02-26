@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/utils/any.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
 PD_DECLARE_bool(all_blocks_convert_trt);
@@ -86,7 +86,7 @@ namespace ir {
 class Graph {
  public:
   // Construct a main_graph with some sub_graphs
-  explicit Graph(const ProgramDesc &program);
+  TEST_API explicit Graph(const ProgramDesc &program);
 
   // Construct a main_graph with some sub_graphs, and the 1st sub_graph is
   // constructed with ops[start_op_index, end_op_index)

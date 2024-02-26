@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/common/ddim.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace hlir {
@@ -111,6 +111,35 @@ class PrettyNamer {
  private:
   std::unordered_map<::pir::Value, std::string> pretty_names_;
   ::cinn::common::NameGenerator name_generator_;
+};
+
+enum class ScheduleAlignType : int {
+  kNone = 0,       //! No need to align
+  kBroadcast = 1,  //! Using Broadcast schedule to align
+};
+
+struct ScheduleInfoNode {
+  // TOOD(phlrain): update align type by new loop alignment
+  ScheduleAlignType type{ScheduleAlignType::kNone};
+
+  std::vector<int64_t> axis_info;
+  std::vector<int64_t> factor_info;
+
+  std::string DebugStr() {
+    std::stringstream ss;
+
+    ss << "type  " << static_cast<int>(type) << "| axis info ";
+    for (auto d : axis_info) {
+      ss << " " << d;
+    }
+    ss << " | factor info ";
+    for (auto f : factor_info) {
+      ss << " " << f;
+    }
+    ss << "\n";
+
+    return ss.str();
+  }
 };
 
 }  // namespace pir

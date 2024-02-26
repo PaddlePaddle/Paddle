@@ -90,7 +90,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   }
 
   // generate new shape
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     std::vector<int64_t> new_out_shape;
     std::vector<int64_t> new_out_stride;
     for (size_t i = 0; i < decrease_axis.size(); ++i) {

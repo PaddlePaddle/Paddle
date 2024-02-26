@@ -194,7 +194,7 @@ class PsBaseService : public PsService {
                                  const char *err_msg) {
     response.set_err_msg(err_msg);
     response.set_err_code(err_code);
-    LOG(WARNING) << "Resonse err_code:" << err_code << " msg:" << err_msg;
+    LOG(WARNING) << "Response err_code:" << err_code << " msg:" << err_msg;
   }
 
   virtual int32_t Initialize() = 0;

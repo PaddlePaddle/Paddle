@@ -49,7 +49,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_gemm_epilogue_dygraph_function(
           NEW_X, NEW_Y, NEW_Bias, attr_map);
@@ -111,8 +111,8 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
       // Set Tensor Wrappers
-      grad_node->SetTensorWrapperX(X);
-      grad_node->SetTensorWrapperY(Y);
+      grad_node->SetTensorWrapper_X(X);
+      grad_node->SetTensorWrapper_Y(Y);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Y, 1);
