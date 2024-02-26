@@ -1555,6 +1555,7 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
+#ifdef PADDLE_WITH_CINN
 void ApplyCinnPreprocessPass(Program *program, pir::IrContext *ctx) {
   bool has_dynamic_shape = HasDynamicShape(*program);
 
@@ -1636,6 +1637,7 @@ void ApplyCinnPostProcessPass(Program *program, pir::IrContext *ctx) {
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
   pass_manager.Run(program);
 }
+#ifdef PADDLE_WITH_CINN
 
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
