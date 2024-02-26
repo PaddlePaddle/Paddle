@@ -20,11 +20,11 @@ from api_gen import NAMESPACE_TEMPLATE, CodeGen
 CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
 
-#include "paddle/fluid/pybind/static_op_function.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
 #include "paddle/fluid/pybind/manual_static_op_function.h"
+#include "paddle/fluid/pybind/static_op_function.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 {body}
 
@@ -156,6 +156,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_min_',
     'push_sparse_v2',
     'push_sparse_v2_',
+    'partial_send',
 ]
 
 

@@ -196,7 +196,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
 
     if (!fwd_out_tensor.initialized()) {
       if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
-          !phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
+          phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
         VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
                 << " and needs computation clip for pipeline parallel."
                 << " Still SetGradInMeta for it.";

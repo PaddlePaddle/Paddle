@@ -339,12 +339,12 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug(f"terminate process id:{p.proc.pid}")
 
-    # wait all process terminiated
+    # wait all process terminated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:
-            if p.proc.poll() is None:  # not termniate
+            if p.proc.poll() is None:  # not terminate
                 os.kill(p.proc.pid, signal.SIGKILL)
                 alive = True
 
@@ -414,7 +414,7 @@ def find_free_ports(num):
         step += 1
         if step > 400:
             print(
-                "can't find avilable port and use the specified static port now!"
+                "can't find available port and use the specified static port now!"
             )
             return None
 
@@ -705,7 +705,7 @@ def get_gpus(gpus):
                 for x in gpus.split(',')
             ]
             logger.info(
-                f"Change selected_gpus into reletive values. --ips:{gpus} "
+                f"Change selected_gpus into relative values. --ips:{gpus} "
                 f"will change into relative_ips:{res_gpus} according to your "
                 f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
@@ -736,7 +736,7 @@ def get_xpus(xpus):
                 for x in xpus.split(',')
             ]
             logger.info(
-                f"Change selected_xpus into reletive values. --ips:{xpus} "
+                f"Change selected_xpus into relative values. --ips:{xpus} "
                 f"will change into relative_ips:{res_xpus} according to your "
                 f"XPU_VISIBLE_DEVICES:{xpu_visible_devices_list}"
             )
@@ -859,9 +859,9 @@ def get_custom_endpoints(origin_endpoints, offset=0):
 #    assert paddle_pserver_endpoints != None
 #
 #    # hard code for paddlecloud custom-framework
-#    avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
+#    available_ports = os.getenv("TRAINER_PORTS", "").split(",")
 #    assert len(
-#        avilable_ports
+#        available_ports
 #    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
 #
 #    # hard code for paddlecloud custom-framework
