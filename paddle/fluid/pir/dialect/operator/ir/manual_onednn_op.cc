@@ -17,12 +17,12 @@ paddle::onednn::dialect::ExpandOp
 #else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
-#include "/data/Eager/Paddle/build/paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
