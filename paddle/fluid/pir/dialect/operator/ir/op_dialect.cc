@@ -31,6 +31,9 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -289,6 +292,12 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+#ifdef PADDLE_WITH_DNNL
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
+      >();
+#endif
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
