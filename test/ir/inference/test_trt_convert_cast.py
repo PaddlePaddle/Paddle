@@ -118,6 +118,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                             )
                         },
                         outputs=["cast_output_data1"],
+                        no_cast_list=["input_data"],
                     )
 
                     yield program_config
