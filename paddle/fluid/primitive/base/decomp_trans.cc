@@ -132,12 +132,12 @@ void DecompProgram::check_ops() {
   if (!undecomposed_set.empty()) {
     std::string decomposed_ops_stream;
     for (const auto& item : undecomposed_set) {
-      decomposed_ops_stream.append(", ");
+      decomposed_ops_stream.append(" ");
       decomposed_ops_stream.append(item);
     }
     PADDLE_THROW(phi::errors::InvalidArgument(
         "[Prim] Currently, decomposed program "
-        "should not contain none primitive ops %s.",
+        "should not contain none primitive ops: %s .",
         decomposed_ops_stream));
   }
   return;
