@@ -31,6 +31,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
+                         int rotary_emb_base,
                          bool use_neox_rotary_style,
                          bool time_major,
                          DenseTensor* dq,
@@ -86,7 +87,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   }
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType div_c = static_cast<MPType>(1.0f / head_dim);
+  // MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   bool flag_sin_cos = false;
   if (sin.get_ptr() && cos.get_ptr()) {
@@ -124,6 +125,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
+                                            rotary_emb_base,
                                             flag_sin_cos,
                                             sign,
                                             batch_size,
@@ -133,8 +135,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             batch_stride,
                                             seq_stride,
                                             outs_data,
-                                            num_inputs,
-                                            div_c);
+                                            num_inputs);
 
   } else {
     // rotary position embedding Q
@@ -145,6 +146,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
+                                            rotary_emb_base,
                                             flag_sin_cos,
                                             sign,
                                             batch_size,
@@ -154,8 +156,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             batch_stride_q,
                                             seq_stride_q,
                                             outs_data,
-                                            1,
-                                            div_c);
+                                            1);
 
     // rotary position embedding K,V
     int64_t batch_stride_kv = time_major
@@ -170,6 +171,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
                                             sin_cos_data,
                                             position_ids_data,
+                                            rotary_emb_base,
                                             flag_sin_cos,
                                             sign,
                                             batch_size,
@@ -179,8 +181,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             batch_stride_kv,
                                             seq_stride_kv,
                                             out_kv,
-                                            num_inputs - 1,
-                                            div_c);
+                                            num_inputs - 1);
   }
 }
 
