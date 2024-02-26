@@ -36,8 +36,8 @@ namespace egr {
  * TODO(yangzhanlue): GradNodeBase will also in charge of get the correct input
  * from GradOpDescMaker to GradNodeBase.
  *
- * NOTE: GradNodeBase has a method named run, this method should be overrided by
- * the specific derived class, it will prepare backward inputs and double
+ * NOTE: GradNodeBase has a method named run, this method should be overridden
+ *by the specific derived class, it will prepare backward inputs and double
  * backward's depends. Then, it will call C++ API of backward kernel functions
  * to finish backward computation.
  *
@@ -203,7 +203,7 @@ class GradNodeBase {
 
   /**
    * operator() designed to contain the real backward execution logic, it should
-   * be overrided by derived class defined for each operator. It accepts a
+   * be overridden by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector

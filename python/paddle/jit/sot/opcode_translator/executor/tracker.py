@@ -393,7 +393,7 @@ class GetIterTracker(Tracker):
 
     def gen_instructions(self, codegen: PyCodeGen):
         self.iter_source.tracker.gen_instructions(codegen)
-        codegen._add_instr("GET_ITER")
+        codegen.add_instr("GET_ITER")
 
     def trace_value_from_frame(self):
         iter_source_tracer = self.iter_source.tracker.trace_value_from_frame()

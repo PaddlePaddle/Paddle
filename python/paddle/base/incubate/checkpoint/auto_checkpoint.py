@@ -293,7 +293,7 @@ class TrainEpochRange(SerializableBase):
             self._save_checkpoint_inter = self._checker.save_checkpoint_inter
         assert (
             self._save_checkpoint_inter >= 0
-        ), f"checkpointer:{self._save_checkpoint_inter} must >=0"
+        ), f"checkpoint inter:{self._save_checkpoint_inter} must >=0"
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None

@@ -118,7 +118,7 @@ def ReadFwdFile(filepath):
     # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if filepath.endswith("fused_ops.yaml") is True:
         new_apis = [
             api
@@ -134,7 +134,7 @@ def ReadBwdFile(filepath, bw_ops=None):
     f = open(filepath, 'r')
     if bw_ops is None:
         contents = yaml.load(f, Loader=yaml.FullLoader)
-        # not all fused ops supoort dygraph
+        # not all fused ops support dygraph
         if filepath.endswith("fused_backward.yaml") is True:
             new_apis = [
                 api

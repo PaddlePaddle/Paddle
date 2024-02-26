@@ -82,7 +82,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;

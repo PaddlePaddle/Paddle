@@ -908,8 +908,8 @@ def _getitem_static(x, indices):
 
         if pos_of_new_dim != 0:
             perm = (
-                list(range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim))
-                + list(range(0, pos_of_new_dim))
+                list(range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim))
+                + list(range(0, rank_of_new_dim))
                 + list(range(pos_of_new_dim + rank_of_new_dim, out.ndim))
             )
             out = out.transpose(perm)

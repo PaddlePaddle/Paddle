@@ -278,7 +278,7 @@ class HeterComm {
       h_push_fea_sizes.resize(node_size * node_size);
     }
   };
-  // pull parition shard key by devices
+  // pull partition shard key by devices
   struct PullResource {
     size_t h_recv_fea_num = 0;
     uint32_t* d_restore_keys_idx = nullptr;

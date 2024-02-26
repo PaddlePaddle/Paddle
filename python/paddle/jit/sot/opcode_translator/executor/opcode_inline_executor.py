@@ -299,16 +299,6 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             "OpcodeInlineExecutor want break graph when simulate `if`."
         )
 
-    def _create_resume_fn(self, index: int, stack_size: int = 0):
-        """
-        Helper method to create a resume function for the executor.
-
-        Args:
-            index (int): The index of the instruction to resume execution from.
-            stack_size (int, optional): The size of the stack. Defaults to 0.
-        """
-        raise BreakGraphError("_create_resume_fn.")
-
     def FOR_ITER(self, instr: Instruction):
         iterator = self.stack.top
         assert isinstance(iterator, IterVariable)

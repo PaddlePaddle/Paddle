@@ -382,7 +382,7 @@ FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if(require_any_grad) {{
   }}
 """
 
-HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if(trace_backward) {{
+HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if(trace_backward) {{
 {}
     // Node Construction
 {}
@@ -1254,7 +1254,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
         else:
             self.node_creation_str = (
-                HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
+                HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
                     node_creation_event_str,
                     node_construction_str,
                     set_attributes_str,
@@ -2266,7 +2266,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
-        need_gen_trace_backard_for_inplace = False
+        need_gen_trace_backward_for_inplace = False
 
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
@@ -2519,7 +2519,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }} else {{
     {inplace_str}
   }}"""
-                        need_gen_trace_backard_for_inplace = True
+                        need_gen_trace_backward_for_inplace = True
                     else:
                         inplace_for_grad_outs_str += inplace_str
 
@@ -2623,7 +2623,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if (
             len(next_grad_node_creation_str) > 0
             or is_invoke_forward_api
-            or need_gen_trace_backard_for_inplace
+            or need_gen_trace_backward_for_inplace
         ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 

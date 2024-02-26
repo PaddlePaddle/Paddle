@@ -44,7 +44,7 @@
 #
 #   nv_library(example SRCS example.cu)
 #
-# To specify that a library new_example.a depends on other libraies:
+# To specify that a library new_example.a depends on other libraries:
 #
 #   cc_library(new_example SRCS new_example.cc DEPS example)
 #
@@ -72,7 +72,7 @@
 #   nv_test(example_test SRCS example_test.cu DEPS example)
 #
 # It is pretty often that executable and test binaries depend on
-# pre-defined external libaries like glog and gflags defined in
+# pre-defined external libraries like glog and gflags defined in
 # /cmake/external/*.cmake:
 #
 #   cc_test(example_test SRCS example_test.cc DEPS example glog gflags)
@@ -257,7 +257,7 @@ function(merge_static_libs TARGET_NAME)
     COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
     DEPENDS ${libs})
 
-  # Generate dummy staic lib
+  # Generate dummy static lib
   generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS}
                             GENERATOR "generic.cmake:merge_static_libs")
   target_link_libraries(${TARGET_NAME} ${libs_deps})
@@ -310,7 +310,7 @@ function(merge_static_libs TARGET_NAME)
     foreach(lib ${libs})
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
-    # msvc compiler will put libarary in directory of "/Release/xxxlib" by default
+    # msvc compiler will put library in directory of "/Release/xxxlib" by default
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
@@ -530,7 +530,7 @@ function(cc_test TARGET_NAME)
                           "${multiValueArgs}" ${ARGN})
     if(WIN32)
       # NOTE(zhiqiu): on windows platform, the symbols should be exported
-      # explicitly by __declspec(dllexport), however, there are serveral
+      # explicitly by __declspec(dllexport), however, there are several
       # symbols not exported, and link error occurs.
       # so, the tests are not built against dynamic libraries now.
       cc_test_old(
@@ -577,7 +577,7 @@ function(cc_test_old TARGET_NAME)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
-    # we dont test hcom op, because it need complex configuration
+    # we donot test hcom op, because it need complex configuration
     # with more than one machine
     cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
@@ -809,7 +809,7 @@ function(hip_binary TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_binary "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
+    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is required for .cc files
     hip_add_executable(${TARGET_NAME} ${hip_binary_SRCS})
     if(hip_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
@@ -826,7 +826,7 @@ function(hip_test TARGET_NAME)
     cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     # FindHIP.cmake defined hip_add_executable,
-    # HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
+    # HIP_SOURCE_PROPERTY_FORMAT is required for .cc files
     hip_add_executable(${TARGET_NAME} ${hip_test_SRCS})
     # "-pthread -ldl -lrt" is defined in CMAKE_CXX_LINK_EXECUTABLE
     target_link_options(${TARGET_NAME} PRIVATE -pthread -ldl -lrt)
@@ -1231,7 +1231,7 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
-  # FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # FIXME(putcn): the following line is supposed to generate *.pb.h and cc, but
   # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
   paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")

@@ -46,7 +46,7 @@ void PrintGraphPass(Graph* src) {
 
 CINN_REGISTER_PASS(PrintGraph)
     .describe(
-        "This pass just save the visulization Graph to "
+        "This pass just save the visualization Graph to "
         "g.attrs[\"print_graph\"].")
     .set_change_structure(false)
     .provide_graph_attr("print_graph")

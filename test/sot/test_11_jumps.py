@@ -114,5 +114,17 @@ class TestExecutor(TestCaseBase):
         self.assert_results(pop_jump_if_not_none, true_tensor, a)
 
 
+def new_var_in_if():
+    x = paddle.to_tensor(1)
+    if x > 0:
+        y = 1
+    return y
+
+
+class TestCreateVarInIf(TestCaseBase):
+    def test_case(self):
+        self.assert_results(new_var_in_if)
+
+
 if __name__ == "__main__":
     unittest.main()

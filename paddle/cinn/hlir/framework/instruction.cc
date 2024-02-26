@@ -168,9 +168,9 @@ void Instruction::Run(
                                         pod_args[2],
                                         static_cast<cudaStream_t>(stream));
   } else {
-    VLOG(3) << "Runing extern function " << function_name_;
+    VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-      VLOG(3) << "Runing func name: " << fn_names_[idx];
+      VLOG(3) << "Running func name: " << fn_names_[idx];
       auto& pod_args = args_cached_[idx];
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
@@ -184,7 +184,7 @@ void Instruction::Run(
         }
       }
     }
-    VLOG(3) << "Done Runing extern function " << function_name_;
+    VLOG(3) << "Done Running extern function " << function_name_;
   }
 #elif defined(CINN_WITH_CUDNN)
   auto& pod_args = args_cached_[0];
@@ -315,9 +315,9 @@ void Instruction::Run(
                                         pod_args[2],
                                         static_cast<cudaStream_t>(stream));
   } else {
-    VLOG(3) << "Runing extern function " << function_name_;
+    VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-      VLOG(3) << "Runing func name: " << fn_names_[idx];
+      VLOG(3) << "Running func name: " << fn_names_[idx];
       auto& pod_args = args_cached_[idx];
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
@@ -331,12 +331,12 @@ void Instruction::Run(
         }
       }
     }
-    VLOG(3) << "Done Runing extern function " << function_name_;
+    VLOG(3) << "Done Running extern function " << function_name_;
   }
 #else
-  VLOG(3) << "Runing extern function " << function_name_;
+  VLOG(3) << "Running extern function " << function_name_;
   for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-    VLOG(3) << "Runing func name: " << fn_names_[idx];
+    VLOG(3) << "Running func name: " << fn_names_[idx];
     auto& pod_args = args_cached_[idx];
     CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                             "calling SetLoweredFunc method";
@@ -350,7 +350,7 @@ void Instruction::Run(
       }
     }
   }
-  VLOG(3) << "Done Runing extern function " << function_name_;
+  VLOG(3) << "Done Running extern function " << function_name_;
 #endif
 
   if (!cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_self_check_accuracy)) {

@@ -133,6 +133,53 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             matmul_grad_op = ops[matmul_grad_id]
             allreduce_op = ops[allreduce_id]
 
+            # NOTE(Sonder): Why move those operations to the back of matmul_v2?
+            # When using amp_master_grad, the cast operation is inserted after matmul_grad.
+            # However, when employing allreduce_matmul_grad_overlapping, the matmul_grad is
+            # split into two matmul operations. In this case, some operations would access
+            # uninitialized tensors. Therefore, we move the cast operation to the back of the
+            # second matmul operation to avoid this problem.
+            skip_overlapping = False
+            moved_ops_idx = []
+            moved_ops_output = []
+            matmul_grad_output = matmul_grad_op.output('Y@GRAD')[0]
+
+            for idx in range(matmul_grad_id + 1, allreduce_id):
+                if matmul_grad_output in ops[idx].desc.input_arg_names():
+                    moved_ops_idx.append(idx)
+                    moved_ops_output.extend(ops[idx].desc.output_arg_names())
+                else:
+                    for input_name in ops[idx].desc.input_arg_names():
+                        if input_name in moved_ops_output:
+                            skip_overlapping = True
+
+            if skip_overlapping:
+                continue
+
+            for i, idx in enumerate(moved_ops_idx):
+                op = ops[idx]
+                dist_attr = self.dist_context.get_op_dist_attr_for_program(op)
+
+                op_inputs = op.desc.input_names()
+                op_outputs = op.desc.output_names()
+
+                op_inputs = {name: op.input(name) for name in op_inputs}
+                op_outputs = {name: op.output(name) for name in op_outputs}
+
+                op = block._insert_op_without_sync(
+                    index=allreduce_id + 1 + i,
+                    type=op.type,
+                    inputs=op_inputs,
+                    outputs=op_outputs,
+                    attrs=op.all_attrs(),
+                )
+
+                self.dist_context.set_op_dist_attr_for_program(op, dist_attr)
+
+            for i, idx in enumerate(moved_ops_idx):
+                block._remove_op(idx - i, sync=False)
+                allreduce_id -= 1
+
             tran_x = matmul_grad_op.attr("trans_x")
             assert (
                 not tran_x

@@ -90,6 +90,8 @@ def find_related_local_opcodes(instrs, code_options):
             if len(stack) > 0 and stack[-1] is not None:
                 opcode_pairs.append((stack[-1], instr))
             stack.pop()
+        elif "ROT" in instr.opname:
+            return []
         else:
             try:
                 pop_n, push_n = StackAnalyser().stack_effect(instr)
