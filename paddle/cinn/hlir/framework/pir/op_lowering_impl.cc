@@ -288,13 +288,47 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   ir_sch.MergeExprs();
   std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
+
+  std::unordered_set<::pir::Value> inner_genevalue;
+  std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
+  for (auto* op : ops) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      inner_genevalue.insert(op->result(i));
+    }
+  }
+
+  BuildBroadcastInfo(group);
+
+  for (auto& op : group->output_ops) {
+    direct_output_var_names.insert(ValueName(op->result(0)));
+
+    // collect all output tensor.
+    if (op->name() == "cinn_op.store") {
+      auto input_var_name = ValueName(op->operand_source(0));
+      if (broadcast_info.count(input_var_name)) {
+        auto base_info = broadcast_info[input_var_name];
+        base_info.with_constrain = true;
+        broadcast_info[ValueName(op->result(0))] = base_info;
+      }
+    }
+
+    for (auto opresult : op->results()) {
+      if (tensor_map.count(opresult) == 0) {
+        continue;
+      }
+
+      direct_output_var_names.insert(ValueName(opresult));
+    }
+  }
+
   if (apply_group_schedule) {
     std::unordered_set<std::string> output_tensor_names;
     for (auto value : group->GetGroupOutputValues()) {
       output_tensor_names.insert(ValueName(value));
     }
 
-    std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info;
+    std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info =
+        GetGroupTileInfo(group);
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,

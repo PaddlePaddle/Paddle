@@ -243,8 +243,8 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                     i) != reduce_axis_position.end()) {
         continue;
       }
-      if (!FLAGS_group_schedule_tiling_first && !FLAGS_cinn_bucket_compile &&
-          shape[i] == Expr(1)) {
+      if (!FLAGS_group_schedule_tiling_first /*&& !FLAGS_cinn_bucket_compile*/
+          && shape[i] == Expr(1)) {
         continue;
       }
       ir::Var loop_var = axis[i];

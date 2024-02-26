@@ -25,6 +25,8 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 
+PD_DECLARE_bool(cinn_bucket_compile);
+
 namespace cinn {
 namespace ir {
 
@@ -122,28 +124,30 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  // for (BucketContext& bucket_context : bucket_contexts_) {
-  //   VLOG(4) << "===========================Apply tactics on Bucket ["
-  //           << bucket_context.predicate << "]==========================";
-  //   ApplyTactics(&bucket_context);
-  // }
+  if (FLAGS_cinn_bucket_compile) {
+    for (BucketContext& bucket_context : bucket_contexts_) {
+      VLOG(4) << "===========================Apply tactics on Bucket ["
+              << bucket_context.predicate << "]==========================";
+      ApplyTactics(&bucket_context);
+    }
+  } else {
+    ScheduleContext schedule_context{OutputTensorNames(),
+                                     target_,
+                                     IterativeSpaceInfo(),
+                                     BucketInfo(),
+                                     group_tile_info_};
+    LoopReorderAlignmentTactic loop_reorder_tactic;
+    loop_reorder_tactic.Init(&schedule_context);
+    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
+      loop_reorder_tactic.Apply(ir_sch_, node->id());
+    });
 
-  ScheduleContext schedule_context{OutputTensorNames(),
-                                   target_,
-                                   IterativeSpaceInfo(),
-                                   BucketInfo(),
-                                   group_tile_info_};
-  LoopReorderAlignmentTactic loop_reorder_tactic;
-  loop_reorder_tactic.Init(&schedule_context);
-  schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
-    loop_reorder_tactic.Apply(ir_sch_, node->id());
-  });
-
-  TileFirstGeneralTactic tile_first_general_tactic;
-  tile_first_general_tactic.Init(&schedule_context);
-  schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
-    tile_first_general_tactic.Apply(ir_sch_, node->id());
-  });
+    TileFirstGeneralTactic tile_first_general_tactic;
+    tile_first_general_tactic.Init(&schedule_context);
+    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
+      tile_first_general_tactic.Apply(ir_sch_, node->id());
+    });
+  }
 }
 
 void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {
