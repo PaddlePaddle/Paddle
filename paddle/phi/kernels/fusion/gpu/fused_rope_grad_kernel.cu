@@ -87,7 +87,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   }
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  // MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   bool flag_sin_cos = false;
   if (sin.get_ptr() && cos.get_ptr()) {
