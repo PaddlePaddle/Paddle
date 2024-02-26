@@ -2108,6 +2108,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             for_iter, direction=JumpDirection.BACKWARD
         )
         nop = self._graph.pycode_gen.add_instr("NOP")
+        if sys.version_info >= (3, 12):
+            self._graph.pycode_gen.add_instr("END_FOR")
+
         for_iter.jump_to = nop
         jump_if_break.jump_to = nop
 
@@ -2179,6 +2182,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
 
             nop_for_break = pycode_gen.add_instr("NOP")
+            if sys.version_info >= (3, 12):
+                pycode_gen.add_instr("END_FOR")
 
             # 2.4. relocate jumps
             for instr in pycode_gen._instructions:
