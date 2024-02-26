@@ -85,7 +85,7 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
       std::vector<symbol::DimExpr> dims;
       const std::vector<int64_t> result_dims = common::vectorize(
           op->result(0).type().dyn_cast<pir::DenseTensorType>().dims());
-      for (int i = 0; i < result_dims.size(); i++) {
+      for (size_t i = 0; i < result_dims.size(); i++) {
         dims.emplace_back(result_dims[i]);
       }
       return dims;
