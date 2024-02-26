@@ -24,22 +24,7 @@ namespace inference {
 namespace analysis {
 
 void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
-  std::string model_opt_cache_dir = argument->optim_cache_dir();
-  if (!model_opt_cache_dir.empty()) {
-    if (!PathExists(model_opt_cache_dir)) {
-      PADDLE_ENFORCE_NE(
-          MKDIR(model_opt_cache_dir.c_str()),
-          -1,
-          platform::errors::PreconditionNotMet(
-              "Can not create optimize cache directory: %s, Make sure you "
-              "have permission to write",
-              model_opt_cache_dir));
-    }
-  } else {
-    model_opt_cache_dir = argument->Has("model_dir")
-                              ? argument->model_dir()
-                              : GetDirRoot(argument->model_program_path());
-  }
+  std::string model_opt_cache_dir = argument->optimized_model_save_path();
 
   auto& scope = argument->scope();
   auto* graph = argument->main_graph_ptr();
@@ -51,6 +36,14 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   optimized_program_desc.CopyFrom(*argument->main_program().Proto());
 
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
+
+  // Some vars may be deleted by pass, so we need to remove them in block
+  framework::BlockDesc* block = optimized_program_desc.MutableBlock(0);
+  for (auto& var_desc : block->AllVars()) {
+    if (var_desc->Persistable() && !scope.FindVar(var_desc->Name())) {
+      block->RemoveVar(var_desc->Name());
+    }
+  }
 
   auto IsPersistable = [](const framework::VarDesc* var) {
     if (var->Persistable() &&
@@ -81,7 +74,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
       }
     }
 
-    std::string save_params_path = path + "/" + "_optimized.pdiparams";
+    std::string save_params_path = path + ".pdiparams";
     std::vector<std::string> save_var_list(save_var_set.begin(),
                                            save_var_set.end());
     std::sort(save_var_list.begin(), save_var_list.end());
@@ -112,7 +105,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
         }
       }
     }
-    std::string save_model_path = path + "/" + "_optimized.pdmodel";
+    std::string save_model_path = path + ".pdmodel";
     auto str = optimized_program_desc.Proto()->SerializeAsString();
     std::ofstream file(save_model_path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());  // NOLINT

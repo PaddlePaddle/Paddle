@@ -22,7 +22,11 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename DeviceContext, typename T, typename D, int bits>
+template <typename DeviceContext,
+          typename T,
+          typename D,
+          int bits,
+          typename ScaleT = T>
 void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
@@ -48,7 +52,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   DDim dims = {num};
   const T* x_data = x.data<T>();
   D* out_data = out->data<D>();
-  T* scale_data = scale->data<T>();
+  ScaleT* scale_data = scale->data<ScaleT>();
 
   DenseTensor x_int(out->type());
 
@@ -121,11 +125,16 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<T>(scale);
-  if (algo == "weight_only_int8" || algo == "llm.int8") {
+  if (algo == "weight_only_int8") {
+    dev_ctx.template Alloc<T>(scale);
     quant_compute<Context, T, int8_t, 8>(
         dev_ctx, x, out, scale, algo, arch, group_size);
+  } else if (algo == "llm.int8") {
+    dev_ctx.template Alloc<float>(scale);
+    quant_compute<Context, T, int8_t, 8, float>(
+        dev_ctx, x, out, scale, algo, arch, group_size);
   } else if (algo == "weight_only_int4") {
+    dev_ctx.template Alloc<T>(scale);
     quant_compute<Context, T, int8_t, 4>(
         dev_ctx, x, out, scale, algo, arch, group_size);
   } else {
