@@ -556,7 +556,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
-      // if src type is Vector<Tesnor> , need an additional `CombineOp` to
+      // if src type is Vector<Tensor> , need an additional `CombineOp` to
       // assemble them.
     } else {
       auto* combine_op = InsertCombineOperationForTarget(
@@ -654,7 +654,7 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
       arg_to_idx[var_name] = {cur_output_idx, 0};
       op_output_types.push_back(translated_var_type);
 
-      // if src type is Vector<Tesnor>
+      // if src type is Vector<Tensor>
     } else {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " :"
@@ -1451,6 +1451,19 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 }
 
 struct MulOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulOp::name();
@@ -1605,6 +1618,19 @@ struct MulOpTranscriber : public OpTranscriber {
 };
 
 struct MulGradOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulGradOp::name();

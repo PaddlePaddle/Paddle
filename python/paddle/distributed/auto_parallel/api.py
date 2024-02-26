@@ -551,6 +551,35 @@ def shard_layer(
         )
 
 
+def get_placement_with_sharding(param):
+    shard_axis = -1
+    for placement in param.placements:
+        if isinstance(placement, dist.Shard):
+            # the parameter can't be shard twice on different mesh now
+            # assert here in case
+            assert (
+                shard_axis == -1
+            ), "The parameter can't be shard twich even in different mesh now."
+            shard_axis = placement.get_dim()
+
+    placement_with_sharding = None
+    for dim in range(param.ndim):
+        if dim != shard_axis:
+            placement_with_sharding = dist.Shard(dim)
+
+    new_placements = param.placements
+    for mesh_axis, placement in enumerate(param.placements):
+        # we need to keep the placement replicate if the it is out of tensor's dim
+        if (
+            isinstance(placement, dist.Replicate)
+            and placement_with_sharding is not None
+        ):
+            new_placements[mesh_axis] = placement_with_sharding
+            break
+
+    return new_placements
+
+
 class _ShardOptimizer:
     def __init__(self, optimizer, shard_fn=None):
         assert (
@@ -575,6 +604,13 @@ class _ShardOptimizer:
             self._shard_clip = True
         self._inner_opt = optimizer
         self._shard_fn = shard_fn
+
+        # Invoke shard_fn if it is not None to shard parameters
+        if self._shard_fn is not None and isinstance(
+            self._shard_fn, ShardingStage3
+        ):
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._shard_parameter(param)
 
     def _shard_accumulator(self, param):
         # create the accumulators
@@ -731,6 +767,134 @@ class _ShardOptimizer:
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
+
+
+class ShardingStage1:
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 1.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage1())
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = get_placement_with_sharding(param)
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
+
+
+class ShardingStage3:
+    """
+    A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 3.
+
+    Args:
+        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt, dist.ShardingStage3(mesh))
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+    """
+
+    def __init__(self, mesh):
+        self._mesh = mesh
+
+    def _shard_parameter(self, param):
+        # TODO(liyurui): remove this trick dense to dist convert after adding
+        # dense_tensor.to_dist method.
+        if param.is_dense():
+            zero_dense = paddle.zeros(param.shape)
+            placements = []
+            for _ in range(len(self._mesh.shape)):
+                placements.append(dist.Replicate())
+            zero_dist = dist.shard_tensor(zero_dense, self._mesh, placements)
+            res = param + zero_dist
+
+        new_placements = get_placement_with_sharding(param)
+        shard_param = dist.reshard(param, param.process_mesh, new_placements)
+        # change the holder of param to new shard_param
+        param.get_tensor()._share_data_with(shard_param.get_tensor())
+
+    def __call__(self, key, param, accumulator):
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = param.placements
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                accumulator,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return accumulator
 
 
 def shard_optimizer(optimizer, shard_fn=None):

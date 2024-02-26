@@ -188,7 +188,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
         Expr temp = arg_pack[i];
-        // TODO(zhhsplendid): old reducetion schedule assumes all length-1
+        // TODO(zhhsplendid): old reduction schedule assumes all length-1
         // for loops are simplified, but it is not after we add length-1
         // back. Reduction schedule is complex and we haven't changed it to
         // support the length-1 for loop yet. So we simplify here. The todo
@@ -651,16 +651,16 @@ std::vector<std::vector<std::string>> InferLayoutForBnOptimize(
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(reduce_ops) {
-#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_stragegy__, dtype__)       \
+#define CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, dtype__)       \
   CINN_REGISTER_OP(op__)                                                       \
       .describe(#op__ " function")                                             \
       .set_num_inputs(1)                                                       \
       .set_num_outputs(1)                                                      \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)          \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)          \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(              \
           "CINNStrategySymbolic",                                              \
-          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)                \
+          cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)                \
       .set_attr("infershape",                                                  \
                 MakeOpFunction(cinn::hlir::op::InferShapeForReduction))        \
       .set_attr(                                                               \
@@ -674,8 +674,8 @@ CINN_REGISTER_HELPER(reduce_ops) {
           "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction)       \
       .set_support_level(4);
 
-#define CINN_REGISTER_REDUCTION(op__, op_stragegy__) \
-  CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_stragegy__, )
+#define CINN_REGISTER_REDUCTION(op__, op_strategy__) \
+  CINN_REGISTER_REDUCTION_WITH_DTYPE(op__, op_strategy__, )
 
   CINN_REGISTER_REDUCTION(reduce_sum, ReduceSum);
   CINN_REGISTER_REDUCTION(reduce_prod, ReduceProd);
