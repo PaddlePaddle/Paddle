@@ -1,1 +1,3 @@
-# Note(Liyulingyue): create an empty cmake file to avoid conflict
+if(WITH_CUSTOM_DEVICE)
+  paddle_test(custom_device_test SRCS custom_device_test.cc)
+endif()

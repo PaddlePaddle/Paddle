@@ -37,9 +37,11 @@
 - op : clip_grad
   extra_args : str mkldnn_data_type="float32"
 
-# - op : concat
+- op : concat
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
-# - op : concat_grad
+- op : concat_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
 - op : conv2d
   extra_args : bool is_test=false
@@ -75,9 +77,11 @@
 
 - op : exp_grad
 
-# - op : expand
+- op : expand
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : expand_grad
+- op : expand_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : fc
   extra_args : bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE=true, bool use_quantizer=false, str mkldnn_data_type="float32", float scale_in=1.0, float[] scale_weights={1.0f}, float scale_out=1.0, bool force_fp32_output=false
@@ -156,9 +160,11 @@
   extra_args : str mkldnn_data_type="float32"
   data_format_tensors : x, y, out_grad
 
-# - op : matmul_with_flatten
+- op : matmul_with_flatten
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : matmul_with_flatten_grad
+- op : matmul_with_flatten_grad
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
 - op : max
   dynamic_fallback : True

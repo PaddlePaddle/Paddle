@@ -436,6 +436,10 @@ def launch():
         # max_search_time
         max_search_time = tuner_cfg.get("max_search_time", None)
 
+        # buffer and memory
+        buffer = tuner_cfg.get("buffer", None)
+        max_mem_usage = tuner_cfg.get("max_mem_usage", None)
+
         is_first_task = True
         # build history recorder
         recorder = HistoryRecorder(tuner_cfg)
@@ -457,9 +461,16 @@ def launch():
 
             gbs_cur_cfg = gbs_tuner.search_once()
             best_gbs = None
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "gbs_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
             while gbs_cur_cfg:
                 ctx = copy.deepcopy(raw_ctx)
-                log_dir = "GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS{}_Recompute_{}_granularity_{}".format(
+                log_dir = "Job{}_GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS{}_Recompute_{}_granularity_{}".format(
+                    job_id,
                     gbs_cur_cfg["global_batch_size"],
                     gbs_cur_cfg["dp_degree"],
                     gbs_cur_cfg["mp_degree"],
@@ -471,11 +482,6 @@ def launch():
                     gbs_cur_cfg["recompute_granularity"],
                 )
                 ctx.args.log_dir = log_dir
-
-                # every task has own job id
-                job_id += 1
-                task_job_id = "gbs_tuner_" + str(job_id)
-                ctx.args.job_id = task_job_id
 
                 # generate script args of task
                 gbs_new_args = gen_new_args(
@@ -616,8 +622,15 @@ def launch():
             )
             cur_cfg["acc_steps"] = acc_steps
             cur_cfg["global_batch_size"] = global_batch_size
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "auto_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
             if "sharding_overlap" in cur_cfg:
-                log_dir = "GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
+                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}_Overlap_{}".format(
+                    job_id,
                     global_batch_size,
                     cur_cfg["dp_degree"],
                     cur_cfg["mp_degree"],
@@ -632,7 +645,8 @@ def launch():
                     cur_cfg["sharding_overlap"],
                 )
             else:
-                log_dir = "GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
+                log_dir = "Job{}_GBS{}_DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccStep{}".format(
+                    job_id,
                     global_batch_size,
                     cur_cfg["dp_degree"],
                     cur_cfg["mp_degree"],
@@ -648,11 +662,6 @@ def launch():
             ctx.args.log_dir = os.path.join(
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )
-
-            # every task has own job id
-            job_id += 1
-            task_job_id = "auto_tuner_" + str(job_id)
-            ctx.args.job_id = task_job_id
 
             # generate script args of task
             new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
@@ -681,6 +690,8 @@ def launch():
                 cur_best_cfgs, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if not err:
                     ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -781,6 +792,8 @@ def launch():
                         direction=tuner_cfg['metric_cfg'][
                             'OptimizationDirection'
                         ],
+                        buffer=buffer,
+                        max_mem_usage=max_mem_usage,
                     )
                     if not err:
                         ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1158,7 +1171,8 @@ def launch():
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                mode=mode,
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
@@ -1190,10 +1204,36 @@ def launch():
                     os.system("kill -9 " + pid)
             time.sleep(3)
             end_time = time.time()
+
+            # keep cluster exit consistency
+            path = f"auto_tuner/exit/{job_id}/{ip}"
             if max_search_time and (end_time - start_time) > int(
                 max_search_time
             ):
-                break
+                if nnodes > 1:
+                    while not client.put(path, "error".encode('latin-1')):
+                        time.sleep(1)
+                else:
+                    break
+            else:
+                if nnodes > 1:
+                    while not client.put(path, "ok".encode('latin-1')):
+                        time.sleep(1)
+
+            if nnodes > 1:
+                result = list(client.get_prefix(f"auto_tuner/exit/{job_id}"))
+                size = len(result)
+                while size != nnodes:
+                    time.sleep(1)
+                    result = list(
+                        client.get_prefix(f"auto_tuner/exit/{job_id}/")
+                    )
+                    size = len(result)
+                status = [i[0].decode() for i in result]
+
+                if "error" in status:
+                    break
+
         recorder.store_history(history_file_path)
 
         # get best config to run
@@ -1206,7 +1246,8 @@ def launch():
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                    mode=mode,
+                    buffer=buffer,
+                    max_mem_usage=max_mem_usage,
                 )
                 if err:
                     raise ValueError(
@@ -1232,7 +1273,8 @@ def launch():
             best_cfg, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
-                mode=mode,
+                buffer=buffer,
+                max_mem_usage=max_mem_usage,
             )
             if err:
                 raise ValueError(
@@ -1255,9 +1297,13 @@ def launch():
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg: {best_cfg}")
         logger.info(f"Launch best cfg: {best_cfg}")
-        ctx.args.log_dir = ctx.args.log_dir = os.path.join(
-            os.path.dirname(ctx.args.auto_tuner_json), "best_cfg"
-        )
+
+        if tuner_cfg.get("best_cfg_dir", None):
+            ctx.args.log_dir = tuner_cfg["best_cfg_dir"]
+        else:
+            ctx.args.log_dir = os.path.join(
+                os.path.dirname(ctx.args.auto_tuner_json), "best_cfg"
+            )
         # run best cfg
         c = controllers.init(ctx)
         c.run()

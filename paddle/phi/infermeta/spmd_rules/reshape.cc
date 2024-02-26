@@ -44,8 +44,8 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     }
   }
 
-  int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+  int64_t product =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
@@ -72,7 +72,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
+      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
@@ -120,7 +120,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
     }
 
-    if (tgt_splitted_shape.size() > 0) {
+    if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];
