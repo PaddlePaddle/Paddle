@@ -1552,24 +1552,6 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
-static bool HasDynamicShape(const Program &program) {
-  for (const auto &op : *program.block()) {
-    if (op.isa<pir::CombineOp>()) {
-      continue;
-    }
-    for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i).type()) {
-        auto shape_type =
-            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
-        if (shape_type && shape_type.IsDynamicShape()) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
                  Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
@@ -1578,7 +1560,7 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
-  bool has_dynamic_shape = HasDynamicShape(program);
+  bool has_dynamic_shape = pir::shape::HasDynamicShape(program);
 
   if (FLAGS_print_ir) {
     pass_manager->EnableIRPrinting();
@@ -1641,11 +1623,12 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 }
 
 void InferSymbolicShapePass(
-    std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-    Program &program) {                          // NOLINT
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (pir::shape::HasDynamicShape(program) &&
+      FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

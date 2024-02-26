@@ -125,6 +125,7 @@
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
@@ -873,6 +874,12 @@ bool AnalysisPredictor::PrepareExecutor() {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
+
+        auto shape_pm = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
+        VLOG(4) << "#####run AddShapeOptimizationPass";
+        shape_pm->Run(pir_program_.get());
       }
 
       if (config_.use_gpu()) {
