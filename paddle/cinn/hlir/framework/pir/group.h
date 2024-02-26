@@ -203,7 +203,7 @@ struct Group {
     return group_outputs;
   }
 
-  std::vector<::pir::Value> GetGroupOutputValues() const {
+  const std::vector<::pir::Value>& GetGroupOutputValues() const {
     return this->output_values;
   }
 
