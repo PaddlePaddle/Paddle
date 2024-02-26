@@ -27,8 +27,6 @@ namespace framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
-  CheckDefaultInferShapeDtype(
-      infershape_func_, inferdtype_func_, *custom_op_meta_);
   auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
   // check inplace
   for (auto const& pair : op_inplace_map) {
@@ -449,57 +447,6 @@ void CustomKernelInstruction::UpdateOutputMeta(
   }
 }
 
-void CheckDefaultInferShapeDtype(paddle::InferShapeFunc infershape_func,
-                                 paddle::InferDtypeFunc inferdtype_func,
-                                 const paddle::OpMetaInfo& custom_op_meta) {
-  if (infershape_func && inferdtype_func) {
-    return;
-  }
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetInputs(custom_op_meta).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple inputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple outputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-  } else {  // inplace case
-    PADDLE_ENFORCE_EQ(
-        inplace_map.size(),
-        OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        phi::errors::Unavailable(
-            "Your custom operator uses `SetInplaceMap` without setting the "
-            "InferShapeFn/InferDtypeFn. However, `Outputs` size = %d does not "
-            "match the "
-            "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
-            "the InferShapeFn/InferDtypeFn of custom operator by "
-            ".SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))",
-            OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-            inplace_map.size()));
-  }
-}
-
 void CustomKernelInstruction::BuildShapeDtype() {
   input_shapes_.clear();
   input_dtypes_.clear();
@@ -525,116 +472,6 @@ void CustomKernelInstruction::BuildShapeDtype() {
     }
     vec_input_shapes_.push_back(input_shapes);
     vec_input_dtypes_.push_back(input_dtypes);
-  }
-}
-
-std::vector<std::vector<int64_t>> RunDefaultInferShape(
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map) {
-  std::vector<std::vector<int64_t>> output_shapes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-    if (input_shapes.size() == 1) {
-      output_shapes = input_shapes;
-    } else if (vec_input_shapes.size() == 1) {
-      output_shapes = vec_input_shapes[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferShapeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
-        auto input_shape = vec_input_shapes[input_index];
-        output_shapes.insert(
-            output_shapes.end(), input_shape.begin(), input_shape.end());
-      } else {
-        int input_index = input_name2id_map.at(pair.first);
-        auto input_shape = input_shapes[input_index];
-        output_shapes.push_back(input_shape);
-      }
-    }
-  }
-  return output_shapes;
-}
-
-std::vector<DataType> RunDefaultInferDtype(
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<DataType>& input_dtypes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<DataType>>& vec_input_dtypes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map) {
-  std::vector<DataType> output_dtypes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
-    if (input_dtypes.size() == 1) {
-      output_dtypes = input_dtypes;
-    } else if (vec_input_dtypes.size() == 1) {
-      output_dtypes = vec_input_dtypes[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferDtypeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
-        auto input_dtype = vec_input_dtypes[input_index];
-        output_dtypes.insert(
-            output_dtypes.end(), input_dtype.begin(), input_dtype.end());
-      } else {
-        int input_index = input_name2id_map.at(pair.first);
-        auto input_dtype = input_dtypes[input_index];
-        output_dtypes.push_back(input_dtype);
-      }
-    }
-  }
-  return output_dtypes;
-}
-
-std::vector<std::vector<int64_t>> RunInferShape(
-    paddle::InferShapeFunc infershape_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs) {
-  if (infershape_func) {
-    return infershape_func(input_shapes, vec_input_shapes, custom_attrs);
-  } else {
-    return RunDefaultInferShape(custom_op_meta,
-                                input_shapes,
-                                input_name2id_map,
-                                vec_input_shapes,
-                                vec_input_name2id_map);
-  }
-}
-
-std::vector<DataType> RunInferDtype(
-    paddle::InferDtypeFunc inferdtype_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<DataType>& input_dtypes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<DataType>>& vec_input_dtypes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs) {
-  if (inferdtype_func) {
-    return inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
-  } else {
-    return RunDefaultInferDtype(custom_op_meta,
-                                input_dtypes,
-                                input_name2id_map,
-                                vec_input_dtypes,
-                                vec_input_name2id_map);
   }
 }
 

@@ -231,7 +231,7 @@ struct KronGradOpFunctor {
                                 ndims);
     for_range(func);
 
-// reduce_sum along aixs 1
+// reduce_sum along axis 1
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {

@@ -68,11 +68,11 @@ black_ops_list = [
 # original kernel and its derivative kernel can be deleted when composite_grad
 # kernel performs same to it.
 prim_white_list = [
-    "matmul_double_grad",  # ==> matmul_grad
-    # "subtract_double_grad",  # ==> substract_grad
-    # "add_triple_grad",  # ==> add_double_grad, add_grad
-    "silu_double_grad",  # ==> silu_grad
-    # "tanh_triple_grad",  # ==> tanh_grad, tanh_double_grad
+    "matmul_double_grad",
+    "subtract_double_grad",
+    "add_triple_grad",
+    "silu_double_grad",
+    "tanh_triple_grad",
 ]
 
 # white ops list whose kernel can automaically do type promotion.
@@ -135,12 +135,12 @@ def ParseArguments():
 ######################
 # Code Gen Templates #
 ######################
-SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const paddle::Tensor& {}) {{
+SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper_{}(const paddle::Tensor& {}) {{
     {} = egr::TensorWrapper({}, {});
   }}
 """
 
-SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const std::vector<paddle::Tensor>& {}) {{
+SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper_{}(const std::vector<paddle::Tensor>& {}) {{
     for(const auto& eager_tensor : {}) {{
       {}.emplace_back(egr::TensorWrapper(eager_tensor, {}));
     }};
@@ -161,7 +161,7 @@ CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE = """    for (auto& tw : {}) {{
     }}
 """
 
-SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute{}({} {}) {{
+SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute_{}({} {}) {{
     {} = {};
   }}
 """
@@ -382,7 +382,7 @@ FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if (require_any_grad) {{
   }}
 """
 
-HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if (trace_backward) {{
+HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if (trace_backward) {{
 {}
     // Node Construction
 {}
@@ -520,7 +520,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
     {}
     {}
     {{
-      paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAMPState(), paddle::imperative::AmpLevel::O0);
+      paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
       {}
     }}
   }}
@@ -1060,10 +1060,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         for name, _, default_val_attr, _ in backward_attrs_list:
             if name in forward_attrs_name_set:
                 set_attributes = (
-                    f"{indent}grad_node->SetAttribute{name}({name});"
+                    f"{indent}grad_node->SetAttribute_{name}({name});"
                 )
             else:
-                set_attributes = f"{indent}grad_node->SetAttribute{name}({default_val_attr});"
+                set_attributes = f"{indent}grad_node->SetAttribute_{name}({default_val_attr});"
             set_attributes_list.append(set_attributes)
         set_attributes_str = "\n".join(set_attributes_list)
 
@@ -1085,7 +1085,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     if is_inplace_input:
                         set_tensor_wrappers = """{indent}if ({name}) {
                                                             auto {name}_clone = paddle::experimental::assign({name});
-                                                            grad_node->SetTensorWrapper{name}(*{name}_clone);}""".format_map(
+                                                            grad_node->SetTensorWrapper_{name}(*{name}_clone);}""".format_map(
                             {"indent": indent, "name": name}
                         )
                     else:
@@ -1096,16 +1096,16 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or (name in self.optional_inputs)
                         ):
                             if for_backward is False:
-                                set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                                set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper_{name}(*{name});"
                             else:
-                                set_tensor_wrappers = f"{indent}if ({name}_optional) grad_node->SetTensorWrapper{name}(*{name}_optional);"
+                                set_tensor_wrappers = f"{indent}if ({name}_optional) grad_node->SetTensorWrapper_{name}(*{name}_optional);"
 
                         else:
                             need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
+                            set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper_{name}(*{name}_tmp);"
                 else:
                     if is_inplace_input:
-                        set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper{name}({name}_clone);"
+                        set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper_{name}({name}_clone);"
                     else:
                         if (
                             (forward_api_name in strided_op_list)
@@ -1113,10 +1113,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or IsVectorTensorType(atype)
                             or (name in self.optional_inputs)
                         ):
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                         else:
                             need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}_tmp);"
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name}_tmp);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:  # Forwad's output as backward's input
                 if num_fwd_outputs > 1:
@@ -1126,7 +1126,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     )
 
                 set_tensor_wrappers = (
-                    f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                    f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                 )
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
@@ -1250,7 +1250,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
         else:
             self.node_creation_str = (
-                HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
+                HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
                     node_creation_event_str,
                     node_construction_str,
                     set_attributes_str,
@@ -2260,7 +2260,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
-        need_gen_trace_backard_for_inplace = False
+        need_gen_trace_backward_for_inplace = False
 
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
@@ -2513,7 +2513,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }} else {{
     {inplace_str}
   }}"""
-                        need_gen_trace_backard_for_inplace = True
+                        need_gen_trace_backward_for_inplace = True
                     else:
                         inplace_for_grad_outs_str += "  " + inplace_str
 
@@ -2666,7 +2666,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if (
             len(next_grad_node_creation_str) > 0
             or is_invoke_forward_api
-            or need_gen_trace_backard_for_inplace
+            or need_gen_trace_backward_for_inplace
         ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 

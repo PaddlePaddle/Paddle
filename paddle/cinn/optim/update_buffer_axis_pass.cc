@@ -30,20 +30,20 @@ namespace optim {
 
 bool ExprMathEqual(const Expr& expr1, const Expr& expr2) {
   ir::Expr cmp_expr = common::AutoSimplify(ir::Sub::Make(expr1, expr2));
-  // This is ugry code since AutoSimplify is not powerful enough. Modify it
+  // This is ugly code since AutoSimplify is not powerful enough. Modify it
   // after we make auto simplify better
-  ir::Expr simplied = common::AutoSimplify(cmp_expr);
+  ir::Expr simplified = common::AutoSimplify(cmp_expr);
   int count = 0;
-  while (simplied != cmp_expr) {
-    cmp_expr = simplied;
-    simplied = common::AutoSimplify(cmp_expr);
+  while (simplified != cmp_expr) {
+    cmp_expr = simplified;
+    simplified = common::AutoSimplify(cmp_expr);
     ++count;
     // Control dead loop
     if (count >= 5) {
       break;
     }
   }
-  return simplied.is_constant() && simplied.get_constant() == 0;
+  return simplified.is_constant() && simplified.get_constant() == 0;
 }
 
 void FormalizeSingleIndex(const ir::Tensor& tensor,
@@ -126,7 +126,7 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
     if (!buffer_name_access_same_index_expr.count(buffer_name)) {
       for (int i = 0; i < indices.size(); ++i) {
         if (tensor->buffer->memory_type == ir::MemoryType::GPUShared) {
-          // In GPUShared case, the thread vars cannot be simplied
+          // In GPUShared case, the thread vars cannot be simplified
           std::set<ir::Expr> var_nodes =
               ir::ir_utils::CollectIRNodesWithoutTensor(
                   indices[i], [&](const Expr* x) {
@@ -219,7 +219,7 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
       for (auto p : buffer_name_access_same_index_expr_.at(buffer_name)) {
         int r = p.first;
         // After optimization, some load indice may be removed, so we need this
-        // conditioin
+        // condition
         if (indices->size() > r) {
           ir::ir_utils::IrReplace(
               &(indices->at(r)), indices->at(r), ir::Expr(0));

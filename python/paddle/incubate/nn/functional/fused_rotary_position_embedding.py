@@ -26,18 +26,20 @@ def fused_rotary_position_embedding(
     cos=None,
     position_ids=None,
     use_neox_rotary_style=True,
+    time_major=False,
 ):
     r"""
     Fused rotary position embedding.
 
     Args:
-        q (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of q must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
-        k (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of k must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
-        v (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of v must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
+        q (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of q must be [batch_size, seq_len, num_heads, head_dim] or [seq_len, batch_size, num_heads, head_dim] and head_dim must be a multiple of 2.
+        k (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of k must be [batch_size, seq_len, num_heads, head_dim] or [seq_len, batch_size, num_heads, head_dim] and head_dim must be a multiple of 2.
+        v (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of v must be [batch_size, seq_len, num_heads, head_dim] or [seq_len, batch_size, num_heads, head_dim] and head_dim must be a multiple of 2.
         sin (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of sin must be [seq_len, head_dim] or [1, seq_len, 1, head_dim] and head_dim must be a multiple of 2.
         cos (Tensor, optional): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape of cos must be [seq_len, head_dim] or [1, seq_len, 1, head_dim] and head_dim must be a multiple of 2.
         position_ids (Tensor, optional): The input tensor. The data type is int64. The shape of position_ids must be [batch_size, seq_len].
         use_neox_rotary_style(optional|bool): When the use_neox_rotary_style is True, every two adjacent numbers are calculated. When the use_neox_rotary_style is False, the numbers corresponding to the positions of the front half and back half segments are calculated. Default True.
+        time_major(optional|bool): Whether the first dimension of the q, k, v input means the time steps. If time_major is True, the shape of Tensor is [seq_len, batch_size, num_heads, head_dim], otherwise [batch_size, seq_len, num_heads, head_dime]. Defaults to False. `time_steps` means the length of input sequence.
 
     Returns:
         out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
@@ -89,7 +91,7 @@ def fused_rotary_position_embedding(
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_rotary_position_embedding(
-            q, k, v, sin, cos, position_ids, use_neox_rotary_style
+            q, k, v, sin, cos, position_ids, use_neox_rotary_style, time_major
         )
 
     helper = LayerHelper('fused_rotary_position_embedding', **locals())
@@ -120,6 +122,7 @@ def fused_rotary_position_embedding(
         outputs=outputs,
         attrs={
             'use_neox_rotary_style': use_neox_rotary_style,
+            'time_major': time_major,
         },
     )
 
