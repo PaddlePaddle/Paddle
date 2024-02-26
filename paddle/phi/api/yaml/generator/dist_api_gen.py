@@ -36,7 +36,7 @@ PADDLE_API {} {}({}) {{
   // Kernel Dispatch Body{}
 }}
 """
-DIPATCH_END_GUARD_TEMPLATE = """
+DISPATCH_END_GUARD_TEMPLATE = """
 PADDLE_THROW(phi::errors::Unimplemented(
           "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
 """
@@ -311,9 +311,9 @@ KERNEL_SELECTION_TEMPLATE = """
 # Both Tensor, std::vector<Tensor>, paddle::optional<Tensor> and
 # paddle::optional<std::vector<Tensor>> use the same template
 INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{name} = ReshardApiInputToKernelInput(dev_ctx, {name}, spmd_info.first[{idx}]);"""
+      auto dist_input_{name} = ReshardApiInputToKernelInput(dev_ctx, {name}, spmd_info.first[{idx}], "{name}");"""
 GENERAL_INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{name} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {name}, spmd_info.first[{idx}]);"""
+      auto dist_input_{name} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {name}, spmd_info.first[{idx}], "{name}");"""
 UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
       // API `{}` does not need to support ReshardInput at this time
 """
@@ -1899,7 +1899,7 @@ class DistForwardAPI(ForwardAPI):
                 self.get_define_args(inplace_flag),
                 self.gene_kernel_select(),
                 kernel_dispatch_code
-                + DIPATCH_END_GUARD_TEMPLATE.format(self.api),
+                + DISPATCH_END_GUARD_TEMPLATE.format(self.api),
             )
         else:
             dist_branch_code = ""
@@ -1947,7 +1947,7 @@ def generate_api(
         if is_fused_ops_yaml is True
         else "paddle/phi/api/include/api.h"
     )
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
             api

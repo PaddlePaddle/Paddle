@@ -88,7 +88,7 @@ void CRFDecoding(const int seq_len,
       /* Calculate the offset of transition_weights.*/
       int trans_offset = state_trans_base_idx * tag_num + j_offset;
       for (int i = 0; i < tag_num; ++i) {
-/* Initalize the content of alpha variable with related offset.*/
+/* Initialize the content of alpha variable with related offset.*/
 #ifdef __AVX512F__
         __m512 alpha_content = _mm512_set1_ps(*(alpha + seq_offset + i));
         /* Obtain the content of weights from un-aligned address.*/

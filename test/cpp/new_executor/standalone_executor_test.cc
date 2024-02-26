@@ -62,7 +62,6 @@ USE_OP_ITSELF(sgd);
 USE_OP_ITSELF(squared_l2_norm);
 USE_OP_ITSELF(memcpy_h2d);
 USE_OP_ITSELF(memcpy_d2h);
-USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform_raw, GPU, ALL_LAYOUT);
@@ -75,7 +74,6 @@ PD_DECLARE_KERNEL(concat_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_raw, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(divide, KPS, ALL_LAYOUT);
@@ -116,7 +114,7 @@ ProgramDesc load_from_file(const std::string& file_name) {
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   ProgramDesc program_desc(buffer);
   return program_desc;

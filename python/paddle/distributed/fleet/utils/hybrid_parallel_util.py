@@ -263,7 +263,7 @@ def fused_allreduce_gradients(parameter_list, hcg):
 
 
 def broadcast_sharding_parameters(model, hcg):
-    # TODO TO save memory, use un-fused broadcast to avoid potentional OOM
+    # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("sharding start init parameters sync")
     sharding_parallel_group = hcg.get_sharding_parallel_group()
     src_rank = hcg.get_sharding_parallel_group_src_rank()
@@ -273,7 +273,7 @@ def broadcast_sharding_parameters(model, hcg):
 
 
 def broadcast_sep_parameters(model, hcg):
-    # TODO TO save memory, use un-fused broadcast to avoid potentional OOM
+    # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("sep start init parameters sync")
     sep_group = hcg.get_sep_parallel_group()
     src_rank = hcg.get_sep_parallel_group_src_rank()

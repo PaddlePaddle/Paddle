@@ -114,7 +114,8 @@
 
 # - op : fused_transpose
 
-# - op : fusion_gru
+- op : fusion_gru
+  extra_args : str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0f}
 
 # - op : fusion_lstm
 
@@ -130,7 +131,8 @@
 
 - op : hardswish_grad
 
-# - op : layer_norm
+- op : layer_norm
+  extra_args : str mkldnn_data_type="float32", bool is_test=false
 
 - op : leaky_relu
 
@@ -146,31 +148,35 @@
   extra_args : bool is_test=false
   data_format_tensors : x, out, mid_out, out_grad
 
-# - op : matmul
-#   extra_args : str mkldnn_data_type="float32"
-#   layout_transform :
-#     arg_name: cur_paddle_data_layout
-#     tensors: x, y
+- op : matmul
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y
 
-# - op : matmul_grad
+- op : matmul_grad
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y, out_grad
 
 # - op : matmul_with_flatten
 
 # - op : matmul_with_flatten_grad
 
 - op : max
+  dynamic_fallback : True
 
 - op : mean
+  dynamic_fallback : True
 
 - op : mean_grad
+  dynamic_fallback : True
 
 - op : min
+  dynamic_fallback : True
 
 - op : mish
 
 - op : mish_grad
 
-# - op : multi_gru
+- op : multi_gru
 
 - op : multiply
 
@@ -224,8 +230,8 @@
 
 # - op : sgd_dense_param_sparse_grad
 
-# - op : shape
-#   extra_args : str mkldnn_data_type="float32"
+- op : shape
+  extra_args : str mkldnn_data_type="float32"
 
 - op : shuffle_channel
 
@@ -268,8 +274,10 @@
 - op : subtract_grad
 
 - op : sum
+  dynamic_fallback : True
 
 - op : sum_grad
+  dynamic_fallback : True
 
 - op : swish
   extra_args : float beta=1.0

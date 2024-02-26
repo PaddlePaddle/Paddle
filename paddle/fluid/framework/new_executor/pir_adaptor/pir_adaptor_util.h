@@ -45,10 +45,12 @@ namespace framework {
 
 class IfInstruction;
 class WhileInstruction;
+class PyLayerInstruction;
 class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class PyLayerInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
@@ -188,7 +190,7 @@ void BuildPhiContext(pir::Operation* op,
         InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
 
@@ -439,7 +441,7 @@ void BuildPhiContext(pir::Operation* op,
         OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 
