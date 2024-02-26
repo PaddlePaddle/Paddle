@@ -918,7 +918,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         state,
         ValueDict(),
     )
-    print(paddle.pir.core.default_main_program())
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
