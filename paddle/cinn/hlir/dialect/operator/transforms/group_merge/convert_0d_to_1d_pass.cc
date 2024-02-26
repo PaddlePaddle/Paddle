@@ -61,7 +61,7 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
 };
 
 template <typename ReduceOpT>
-class ReduceOpPattern : public pir::OpRewritePattern<ReduceOpT> {
+class SumOpPattern : public pir::OpRewritePattern<ReduceOpT> {
  public:
   using pir::OpRewritePattern<ReduceOpT>::OpRewritePattern;
 
@@ -73,7 +73,10 @@ class ReduceOpPattern : public pir::OpRewritePattern<ReduceOpT> {
 
   void Rewrite(ReduceOpT op, pir::PatternRewriter& rewriter) const override {
     std::vector<int64_t> axis{};
-    const auto& dtype = phi::DataType::FLOAT32;
+    const auto& dtype =
+        op->attribute("dtype")
+            .template dyn_cast<paddle::dialect::DataTypeAttribute>()
+            .data();
     auto new_reduce_op = rewriter.Build<ReduceOpT>(
         op.operand_source(0), axis, dtype, /*keepdim=*/true);
     auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
@@ -180,7 +183,7 @@ class Convert0DTo1DPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
     ps.Add<FullOpPattern>(context);
     ps.Add<CombineOpPattern>(context);
-    ps.Add<ReduceOpPattern<paddle::dialect::SumOp>>(context);
+    ps.Add<SumOpPattern<paddle::dialect::SumOp>>(context);
     ps.Add<WhileOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -189,7 +192,7 @@ class Convert0DTo1DPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       ApplyPatternOnOperation(op->region(i));
-      for (auto& block : op->region(i)) {
+      for (const auto& block : op->region(i)) {
         ConvertBlock0DTo1D(block);
       }
     }
@@ -208,7 +211,7 @@ class Convert0DTo1DPass : public pir::Pass {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 
-  void ConvertOperation0DTo1D(pir::Operation& op) {  // NOLINT
+  void ConvertOperation0DTo1D(const pir::Operation& op) {  // NOLINT
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
       ConvertValue0DTo1D(op.operand_source(i));
     }
