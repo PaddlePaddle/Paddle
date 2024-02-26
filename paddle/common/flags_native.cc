@@ -373,7 +373,6 @@ bool GetValueFromEnv(const std::string& name, std::string* value) {
  * Otherwise, the errors above will be ignored, that is the same effect as using
  * commandline argument "--tryfromenv=var_name1,var_name2,...".
  */
-void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal);
 
 void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal) {
   bool success = true;
