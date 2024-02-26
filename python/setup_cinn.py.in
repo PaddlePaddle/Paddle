@@ -63,7 +63,7 @@ def get_cudnn_version():
     else:
         return 'False'
 
-def is_taged():
+def is_tagged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="${PROJECT_SOURCE_DIR}").communicate()[0].strip()
@@ -85,7 +85,7 @@ minor           = '%(minor)d'
 patch           = '%(patch)s'
 cuda_version    = '%(cuda)s'
 cudnn_version   = '%(cudnn)s'
-istaged         = %(istaged)s
+is_tagged         = %(is_tagged)s
 commit          = '%(commit)s'
 with_mkl        = '%(with_mkl)s'
 '''
@@ -108,7 +108,7 @@ with_mkl        = '%(with_mkl)s'
             'cuda': get_cuda_version(),
             'cudnn': get_cudnn_version(),
             'commit': commit,
-            'istaged': is_taged(),
+            'is_tagged': is_tagged(),
             'with_mkl': '${WITH_MKL}'})
 
 write_version_py(filename='${CMAKE_BINARY_DIR}/python/cinn/version/info.py')
