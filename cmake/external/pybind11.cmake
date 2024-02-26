@@ -28,7 +28,7 @@ if(NOT WIN32)
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch
        native_dst)
   # Note: [Why calling some `git` commands before `patch`?]
-  # Paddle's CI uses cache to accelarate the make process. However, error might raise when patch codes in two scenarios:
+  # Paddle's CI uses cache to accelerate the make process. However, error might raise when patch codes in two scenarios:
   # 1. Patch to the wrong version: the tag version of CI's cache falls behind PYBIND_TAG, use `git checkout ${PYBIND_TAG}` to solve this.
   # 2. Patch twice: the tag version of cache == PYBIND_TAG, but patch has already applied to cache.
   set(PYBIND_PATCH_COMMAND
