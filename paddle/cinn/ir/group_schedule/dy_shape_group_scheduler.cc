@@ -122,6 +122,16 @@ void DynamicShapeGroupScheduler::Schedule() {
             << bucket_context.predicate << "]==========================";
     ApplyTactics(&bucket_context);
   }
+  // std::cerr << "dy shape schedule\n";
+  // LoopReorderAligment();
+  // std::cerr << "after reorder\n";
+  // Tiling();
+
+  // BindCudaInfo();
+
+  // VariableTypeAssignment();
+  // Unroll();
+  // SetReduceType();
 }
 
 void DynamicShapeGroupScheduler::ApplyTactics(BucketContext* bucket_context) {

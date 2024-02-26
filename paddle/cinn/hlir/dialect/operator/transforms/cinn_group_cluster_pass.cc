@@ -398,7 +398,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
@@ -531,7 +537,10 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
     sch_node->axis_info =
         cinn::dialect::ir::GetVectorAttr(op, "broadcast_axes");
     sch_node->factor_info = cinn::dialect::ir::GetVectorAttr(op, "out_shape");
+  } else if (op->name() == "cinn_op.generate_shape") {
+    // do nothing for now
   } else {
+    std::cerr << "cluster type " << cluster_node->group_kind << std::endl;
     PADDLE_THROW(phi::errors::Unimplemented(
         "only support elementwise, broadcast, reduce type"));
   }

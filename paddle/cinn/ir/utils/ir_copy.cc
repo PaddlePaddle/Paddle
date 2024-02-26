@@ -405,6 +405,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     Expr res = ir::ScheduleBlock::Make(
         iter_vars, read_buffers, write_buffers, op->name, Visit(&op->body));
     res.As<ScheduleBlock>()->attrs = op->attrs;
+    res.As<ScheduleBlock>()->reduce_type = op->reduce_type;
     return res;
   }
 
