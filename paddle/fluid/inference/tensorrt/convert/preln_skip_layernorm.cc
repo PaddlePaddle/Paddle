@@ -100,7 +100,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "preln_skip_layernorm", {output_names}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
