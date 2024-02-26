@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_graph.h"
 #endif
 
