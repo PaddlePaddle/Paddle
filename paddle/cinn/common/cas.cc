@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -1155,8 +1155,8 @@ inline bool IsVarNonnegative(
 // Return if the var is binded with thread or block in cuda(which implies it is
 // non-negative).
 inline bool IsVarBinded(const std::string& var_name) {
-  return utils::Startswith(var_name, "threadIdx") ||
-         utils::Startswith(var_name, "blockIdx");
+  return utils::StartsWith(var_name, "threadIdx") ||
+         utils::StartsWith(var_name, "blockIdx");
 }
 
 /**

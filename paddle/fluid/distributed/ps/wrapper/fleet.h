@@ -288,7 +288,7 @@ class FleetWrapper {
 
   std::string GetDistDesc() const {
     CHECK(is_initialized_ == true)
-        << "fleetwrapper should be initialized first!!!";
+        << "FleetWrapper should be initialized first!!!";
     return dist_desc_;
   }
 

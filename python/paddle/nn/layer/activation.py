@@ -134,8 +134,8 @@ class GLU(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input: Tensor which the size of the given aixs is even.
-        - output: Tensor which the size of the given aixs is halved.
+        - input: Tensor which the size of the given axis is even.
+        - output: Tensor which the size of the given axis is halved.
 
     Examples:
         .. code-block:: python
@@ -799,7 +799,7 @@ class LeakyReLU(Layer):
 
 class Sigmoid(Layer):
     r"""
-    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
+    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calculate the `sigmoid` of input x.
 
     .. math::
 
@@ -842,8 +842,8 @@ class Sigmoid(Layer):
 
 class Hardsigmoid(Layer):
     r"""
-    ``Hardsigmoid`` Activiation Layers, Construct a callable object of
-    the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
+    ``Hardsigmoid`` Activation Layers, Construct a callable object of
+    the ``Hardsigmoid`` class. This layer calculate the `hardsigmoid` of input x.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.

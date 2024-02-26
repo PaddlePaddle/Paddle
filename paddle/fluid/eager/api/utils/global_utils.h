@@ -91,8 +91,8 @@ class Controller {
     VLOG(6) << "Set current tracer for Controller: " << tracer_;
   }
 
-  const std::shared_ptr<paddle::imperative::AMPState>& GetCurrentAMPState() {
-    return paddle::imperative::GetCurrentAMPState();
+  const std::shared_ptr<paddle::imperative::AmpAttrs>& GetCurrentAmpAttrs() {
+    return paddle::imperative::GetCurrentAmpAttrs();
   }
 
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&

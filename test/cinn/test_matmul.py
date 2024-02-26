@@ -22,7 +22,7 @@ from cinn import Target, ir, lang, runtime, utils
 from cinn.poly import create_stages
 
 
-class TestMamul(unittest.TestCase):
+class TestMatmul(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.target = Target()

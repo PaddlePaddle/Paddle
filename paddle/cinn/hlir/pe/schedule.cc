@@ -220,7 +220,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
   int packed_last_dim = packedB->shape[packedB_dims - 1].as_int32();
   int packedB_split_factor =
       GetBetterSplitFactor(packed_last_dim, basic_split_factor);
-  // tempory solution for indivisible case
+  // temporary solution for indivisible case
   if (packedB_split_factor >= 8 &&
       packed_last_dim % packedB_split_factor == 0) {
     stages[packedB]->Vectorize(packedB_dims - 1, packedB_split_factor);
@@ -243,7 +243,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
   std::vector<poly::Iterator> all_axes_inner;
   bool is_m_splited = false;
   bool is_n_splited = false;
-  // tempory solution for isl for1 wrong elimination
+  // temporary solution for isl for1 wrong elimination
   if (bm >= 4 && M != bm) {
     auto axes = stages[output]->Split(i_axis, bm);
     all_axes_outer.push_back(std::get<0>(axes));
@@ -305,7 +305,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
     std::swap(all_axes[out_axis_dims - 1], all_axes[out_axis_dims - 2]);
   }
   stages[output]->Reorder(all_axes);
-  // vectorize output's last dimemsion
+  // vectorize output's last dimension
   auto out_domain = stages[output]->transformed_domain();
   auto range =
       poly::isl_set_get_axis_range(out_domain.get(), out_axis_dims - 1);
@@ -315,7 +315,7 @@ void MatmulScheduleCPU(poly::StageMap stages,
   int out_last_dim = max.get_num_si() + 1;
   int output_split_factor =
       GetBetterSplitFactor(out_last_dim, basic_split_factor);
-  // tempory solution for indivisible case
+  // temporary solution for indivisible case
   if (output_split_factor >= 8 && packed_last_dim % output_split_factor == 0) {
     stages[output]->Vectorize(out_axis_dims - 1, output_split_factor);
   }
@@ -945,7 +945,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
   // oh_inner, ow, oc_inner, ic, kh, kw]
   stages[CC]->ComputeAt2(stages[packed_out], 0);
   VLOG(3) << "cache write shape: " << utils::Join(CC->shape, ", ");
-  // tempory solution because reorder may be wrong before ComputeAt
+  // temporary solution because reorder may be wrong before ComputeAt
   // reorder: [batch_oc_outer_oh_outer_fused, oh_inner, ow_outer, ow_inner,
   // oc_inner] -> [batch_oc_outer_oh_outer_fused, ow_outer, oh_inner, ow_inner,
   // oc_inner]
@@ -1082,7 +1082,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
           << stages[packed_out]->transformed_domain();
   VLOG(3) << "stages[CC]->transformed_domain()"
           << stages[CC]->transformed_domain();
-  // tempory solution because reordering before computeAt may be wrong
+  // temporary solution because reordering before computeAt may be wrong
   // reorder: [batch, oc_outer, oh_outer, oh_inner, ow_outer, ow_inner,
   // oc_inner] -> [batch, oc_outer, oh_outer, ow_outer, oh_inner, ow_inner,
   // oc_inner]
@@ -2700,7 +2700,7 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
   // the first bind position from tail
   int bind_idx = stage->n_out_dims() - 1;
   // it will add a new dim by split before vectorize, but the new dim will
-  // be eleminated when vectorizng, so the bind_idx does't need to increase
+  // be eliminated when vectorizing, so the bind_idx does't need to increase
   if (vector_width > 1) {
     stage->Split(bind_idx, vector_width);
   }

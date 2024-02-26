@@ -55,7 +55,7 @@ void TopkGradKernel(const Context& dev_ctx,
   int pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
 
-  // calcluate the block and grid num
+  // calculate the block and grid num
   auto ComputeBlockSize = [](int col) {
     if (col > 512)
       return 1024;
