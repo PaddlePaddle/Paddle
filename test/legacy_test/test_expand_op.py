@@ -16,8 +16,11 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from utils import static_guard
 
+import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -199,6 +202,16 @@ class TestExpandOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
+
+
+class TestExpandVarShape(unittest.TestCase):
+    @test_with_pir_api
+    def test_var_shape(self):
+        with static_guard():
+            x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
+            shape1 = paddle.static.data('shape1', [], 'int32')
+            x = paddle.expand(x, shape=[shape1, 1, -1, -1])
+            np.testing.assert_equal(x.shape, (-1, 1, -1, -1))
 
 
 if __name__ == "__main__":
