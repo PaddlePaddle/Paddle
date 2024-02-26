@@ -36,6 +36,16 @@
   kernel :
     func : all
 
+- op : add_n_with_kernel
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
+
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
