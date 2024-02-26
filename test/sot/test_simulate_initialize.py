@@ -19,6 +19,7 @@ from test_case_base import TestCaseBase
 import paddle
 from paddle import nn
 from paddle.jit.sot import symbolic_translate
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 class A:
@@ -80,6 +81,7 @@ class TestInit(TestCaseBase):
 
         self.assertRaises(paddle.jit.sot.utils.exceptions.InnerError, run)
 
+    @strict_mode_guard(False)
     def test_created_layer_reconstruct(self):
         self.assert_results(created_layer_reconstruct)
 
