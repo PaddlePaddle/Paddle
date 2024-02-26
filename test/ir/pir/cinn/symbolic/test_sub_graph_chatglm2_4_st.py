@@ -46,12 +46,7 @@ class LayerCase(paddle.nn.Layer):
         var_4 = paddle.tensor.creation.tril(var_3)
         var_5 = var_4.astype('bool')
         var_6 = paddle.tensor.creation.ones(
-            (
-                4,
-                1,
-                1024,
-                1024,
-            ),
+            (4, 1, 1024, 1024),
             dtype='bool',
         )
         var_7 = var_6.astype('bool')
@@ -66,12 +61,7 @@ class LayerCase(paddle.nn.Layer):
         var_16 = paddle.tensor.ops.cos(var_15)
         var_17 = paddle.tensor.ops.sin(var_15)
         var_18 = paddle.tensor.manipulation.stack([var_16, var_17], axis=-1)
-        var_19 = var_18[
-            (
-                None,
-                slice(None, 1024, None),
-            )
-        ]
+        var_19 = var_18[(None, slice(None, 1024, None))]
         var_20 = var_19.transpose([1, 0, 2, 3])
         return var_2, var_8, var_20
 

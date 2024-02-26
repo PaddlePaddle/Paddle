@@ -41,18 +41,8 @@ class LayerCase(paddle.nn.Layer):
         var_1 = paddle.nn.functional.common.linear(
             x=var_0, weight=self.parameter_1, bias=None, name=None
         )
-        var_2 = var_1[
-            (
-                ...,
-                slice(None, 1024, None),
-            )
-        ]
-        var_3 = var_1[
-            (
-                ...,
-                slice(1024, None, None),
-            )
-        ]
+        var_2 = var_1[(..., slice(None, 1024, None))]
+        var_3 = var_1[(..., slice(1024, None, None))]
         var_4 = paddle.nn.functional.activation.silu(var_2)
         var_5 = var_4 * var_3
         var_6 = paddle.nn.functional.common.linear(

@@ -75,124 +75,41 @@ class LayerCase(paddle.nn.Layer):
         var_15 = var_12.reshape([1024, 4, 4, 8])
         var_16 = var_13.reshape([1024, 4, -1, 8])
         var_17 = var_14.reshape([1024, 4, -1, 8])
-        var_18 = var_15[
-            (
-                ...,
-                slice(None, 4, None),
-            )
-        ]
-        var_19 = var_15[
-            (
-                ...,
-                slice(4, None, None),
-            )
-        ]
+        var_18 = var_15[(..., slice(None, 4, None))]
+        var_19 = var_15[(..., slice(4, None, None))]
         var_20 = var_2[slice(None, 1024, None)]
         var_21 = var_18.reshape([1024, -1, 4, 2, 2])
         var_22 = var_20.reshape([1024, -1, 1, 2, 2])
-        var_23 = var_21[
-            (
-                ...,
-                0,
-            )
-        ]
-        var_24 = var_22[
-            (
-                ...,
-                0,
-            )
-        ]
+        var_23 = var_21[(..., 0)]
+        var_24 = var_22[(..., 0)]
         var_25 = var_23 * var_24
-        var_26 = var_21[
-            (
-                ...,
-                1,
-            )
-        ]
-        var_27 = var_22[
-            (
-                ...,
-                1,
-            )
-        ]
+        var_26 = var_21[(..., 1)]
+        var_27 = var_22[(..., 1)]
         var_28 = var_26 * var_27
         var_29 = var_25 - var_28
-        var_30 = var_21[
-            (
-                ...,
-                1,
-            )
-        ]
-        var_31 = var_22[
-            (
-                ...,
-                0,
-            )
-        ]
+        var_30 = var_21[(..., 1)]
+        var_31 = var_22[(..., 0)]
         var_32 = var_30 * var_31
-        var_33 = var_21[
-            (
-                ...,
-                0,
-            )
-        ]
-        var_34 = var_22[
-            (
-                ...,
-                1,
-            )
-        ]
+        var_33 = var_21[(..., 0)]
+        var_34 = var_22[(..., 1)]
         var_35 = var_33 * var_34
         var_36 = var_32 + var_35
         var_37 = paddle.tensor.manipulation.stack([var_29, var_36], -1)
         var_38 = var_37.flatten(3)
         var_39 = paddle.tensor.manipulation.concat(
-            (
-                var_38,
-                var_19,
-            ),
+            (var_38, var_19),
             axis=-1,
         )
-        var_40 = var_16[
-            (
-                ...,
-                slice(None, 4, None),
-            )
-        ]
-        var_41 = var_16[
-            (
-                ...,
-                slice(4, None, None),
-            )
-        ]
+        var_40 = var_16[(..., slice(None, 4, None))]
+        var_41 = var_16[(..., slice(4, None, None))]
         var_42 = var_2[slice(None, 1024, None)]
         var_43 = var_40.reshape([1024, -1, 2, 2, 2])
         var_44 = var_42.reshape([1024, -1, 1, 2, 2])
-        var_45 = var_43[
-            (
-                ...,
-                0,
-            )
-        ]
-        var_46 = var_44[
-            (
-                ...,
-                0,
-            )
-        ]
+        var_45 = var_43[(..., 0)]
+        var_46 = var_44[(..., 0)]
         var_47 = var_45 * var_46
-        var_48 = var_43[
-            (
-                ...,
-                1,
-            )
-        ]
-        var_49 = var_44[
-            (
-                ...,
-                1,
-            )
-        ]
+        var_48 = var_43[(..., 1)]
+        var_49 = var_44[(..., 1)]
         var_50 = var_48 * var_49
         var_51 = var_47 - var_50
         var_52 = var_43[
@@ -201,34 +118,16 @@ class LayerCase(paddle.nn.Layer):
                 1,
             )
         ]
-        var_53 = var_44[
-            (
-                ...,
-                0,
-            )
-        ]
+        var_53 = var_44[(..., 0)]
         var_54 = var_52 * var_53
-        var_55 = var_43[
-            (
-                ...,
-                0,
-            )
-        ]
-        var_56 = var_44[
-            (
-                ...,
-                1,
-            )
-        ]
+        var_55 = var_43[(..., 0)]
+        var_56 = var_44[(..., 1)]
         var_57 = var_55 * var_56
         var_58 = var_54 + var_57
         var_59 = paddle.tensor.manipulation.stack([var_51, var_58], -1)
         var_60 = var_59.flatten(3)
         var_61 = paddle.tensor.manipulation.concat(
-            (
-                var_60,
-                var_41,
-            ),
+            (var_60, var_41),
             axis=-1,
         )
         var_62 = var_61.unsqueeze(-2)
@@ -243,14 +142,7 @@ class LayerCase(paddle.nn.Layer):
         var_71 = var_69.transpose([1, 2, 0])
         var_72 = paddle.tensor.linalg.bmm(var_70, var_71)
         var_73 = var_72 * 0.01860807318911967
-        var_74 = var_73.reshape(
-            (
-                4,
-                4,
-                1024,
-                1024,
-            )
-        )
+        var_74 = var_73.reshape((4, 4, 1024, 1024))
         var_75 = var_74.astype('float32')
         var_76 = var_75 * 19
         var_77 = var_76 + var_1
@@ -269,14 +161,7 @@ class LayerCase(paddle.nn.Layer):
         var_83 = var_81.reshape([16, 1024, -1])
         var_84 = var_82.transpose([1, 0, 2])
         var_85 = paddle.tensor.linalg.bmm(var_83, var_84)
-        var_86 = var_85.reshape(
-            (
-                4,
-                4,
-                1024,
-                8,
-            )
-        )
+        var_86 = var_85.reshape((4, 4, 1024, 8))
         var_87 = var_86.transpose([2, 0, 1, 3])
         var_88 = var_87.reshape([1024, 4, 32])
         var_89 = paddle.nn.functional.common.linear(
@@ -297,18 +182,8 @@ class LayerCase(paddle.nn.Layer):
         var_100 = paddle.nn.functional.common.linear(
             x=var_99, weight=self.parameter_3, bias=None, name=None
         )
-        var_101 = var_100[
-            (
-                ...,
-                slice(None, 1024, None),
-            )
-        ]
-        var_102 = var_100[
-            (
-                ...,
-                slice(1024, None, None),
-            )
-        ]
+        var_101 = var_100[(..., slice(None, 1024, None))]
+        var_102 = var_100[(..., slice(1024, None, None))]
         var_103 = paddle.nn.functional.activation.silu(var_101)
         var_104 = var_103 * var_102
         var_105 = paddle.nn.functional.common.linear(

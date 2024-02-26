@@ -39,14 +39,7 @@ class LayerCase(paddle.nn.Layer):
         var_7 = var_5.transpose([1, 2, 0])
         var_8 = paddle.tensor.linalg.bmm(var_6, var_7)
         var_9 = var_8 * 0.027196414661021056
-        var_10 = var_9.reshape(
-            (
-                4,
-                4,
-                1024,
-                1024,
-            )
-        )
+        var_10 = var_9.reshape((4, 4, 1024, 1024))
         var_11 = var_10.astype('float32')
         var_12 = var_11 * 13
         var_13 = var_12 + var_3
@@ -65,14 +58,7 @@ class LayerCase(paddle.nn.Layer):
         var_19 = var_17.reshape([16, 1024, -1])
         var_20 = var_18.transpose([1, 0, 2])
         var_21 = paddle.tensor.linalg.bmm(var_19, var_20)
-        var_22 = var_21.reshape(
-            (
-                4,
-                4,
-                1024,
-                8,
-            )
-        )
+        var_22 = var_21.reshape((4, 4, 1024, 8))
         var_23 = var_22.transpose([2, 0, 1, 3])
         var_24 = var_23.reshape([1024, 4, 32])
         return var_24
