@@ -304,7 +304,6 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator
                           ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
-
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
