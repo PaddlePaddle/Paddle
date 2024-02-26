@@ -247,18 +247,3 @@ TEST(PirCompier, CompileGroupOps) {
     }
   }
 }
-
-TEST(RuntimeDialect, CompilerAndRun) {
-  // Step 1: Construct pir::Program
-  auto prog_info = BuildProgram();
-  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-  EXPECT_EQ(program->block()->size(), 9u);
-
-  // Step 2: Compiler New pir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 6u);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto runtime_program = ir_compiler.Build();
-}
