@@ -767,6 +767,9 @@ class OpcodeExecutorBase:
         var = self._locals[instr.argval]
         self.stack.push(var)
 
+    def LOAD_FAST_CHECK(self, instr: Instruction):
+        self.LOAD_FAST(instr)
+
     def DELETE_FAST(self, instr: Instruction):
         varname = self._code.co_varnames[instr.arg]
         del self._locals[varname]
@@ -1493,6 +1496,10 @@ class OpcodeExecutorBase:
             )
         )
 
+    def END_FOR(self, instr: Instruction):
+        # breakpoint()
+        pass
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -1811,6 +1818,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pycode_gen.extend_instrs(origin_instrs[start:end])
 
         # break should jump to this nop
+        # if sys.version_info >= (3,12):
+        # nop_for_break = pycode_gen._add_instr("END_FOR")
+        # else:
         nop_for_break = pycode_gen._add_instr("NOP")
 
         # need do additional operates when break
@@ -1971,6 +1981,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             for_iter, direction=JumpDirection.BACKWARD
         )
         nop = self._graph.pycode_gen._add_instr("NOP")
+        # if sys.version_info >= (3,12):
+        # for_iter.jump_to = self._graph.pycode_gen._add_instr("END_FOR")
+        # else:
         for_iter.jump_to = nop
         jump_if_break.jump_to = nop
 
@@ -2006,6 +2019,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start_idx = self.indexof(for_iter)
         end_idx = self.indexof(for_iter.jump_to)
 
+        # breakpoint()
+
         all_used_vars = analysis_used_names_with_space(
             origin_instrs, start_idx, end_idx
         )
@@ -2020,7 +2035,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pycode_gen.gen_load_fast(iterator.id)
 
         # 2. copy main logic
-        pycode_gen.extend_instrs(origin_instrs[start_idx:end_idx])
+        pycode_gen.extend_instrs(origin_instrs[start_idx : end_idx + 1])
 
         # 3. add break, continue marker and relocate jump
         for_iter_instr = origin_instrs[start_idx]
