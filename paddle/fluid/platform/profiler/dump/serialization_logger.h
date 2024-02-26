@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace platform {
