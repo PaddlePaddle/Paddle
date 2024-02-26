@@ -552,13 +552,17 @@ class PartialProgramLayer:
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
+                # common pass
                 pm = paddle.base.libpaddle.pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
                     pm, forward_program
                 )
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
                 pm.run(forward_program)
+
+                # if-else pass
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
@@ -574,18 +578,9 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                fwd_pm = paddle.base.libpaddle.pir.PassManager()
-                bwd_pm = paddle.base.libpaddle.pir.PassManager()
-
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        fwd_pm, forward_program
-                    )
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        bwd_pm, backward_program
-                    )
-                    fwd_pm.run(forward_program)
-                    bwd_pm.run(backward_program)
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                    paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
