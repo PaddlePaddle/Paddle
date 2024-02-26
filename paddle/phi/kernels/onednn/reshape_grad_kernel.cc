@@ -14,7 +14,7 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
@@ -40,9 +40,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  auto x_grad_dims = slice_ddim(xshape.dims(), 1, xshape.dims().size());
-  x_grad->Resize(x_grad_dims);
-  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_grad_dims));
+  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_grad->dims()));
 }
 
 }  // namespace phi
