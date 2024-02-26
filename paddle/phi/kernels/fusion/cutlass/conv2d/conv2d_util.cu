@@ -310,15 +310,14 @@ int ProfileToGetBestConfig(
       min_time = elapsed_time;
       min_time_index = i;
 
-      if (1) {
+      if (params.data_type == Conv2dDataType::fp16) {
         // debug code
         std::cout << OpType2String(op_type) << ": tactic " << i
                   << " has max diff "
                   << conv2d_diff_gpu(params, op_type, (half)(1.0))
                   << " compared with baseline,"
                   << "cost_time: " << elapsed_time << "ms." << std::endl;
-      } else {
-        if (0) {
+      } else if (params.data_type == Conv2dDataType::bf16) {
           // debug code
           std::cout << OpType2String(op_type) << ": tactic " << i
                     << " has max diff "
@@ -326,7 +325,6 @@ int ProfileToGetBestConfig(
                            params, op_type, static_cast<float>(1.0))
                     << " compared with baseline,"
                     << "cost_time: " << elapsed_time << "ms." << std::endl;
-        }
       }
     }
   }

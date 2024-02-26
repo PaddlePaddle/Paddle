@@ -228,4 +228,5 @@ PD_REGISTER_KERNEL(fused_conv2d_add_act,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::FusedConv2dAddActKernel,
                    float,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
