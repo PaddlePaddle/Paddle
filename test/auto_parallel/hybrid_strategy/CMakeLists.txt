@@ -58,3 +58,10 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_semi_auto_parallel_hybrid_sharding_strategy
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_global_mesh_reshard MODULES test_global_mesh_reshard ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_global_mesh_reshard PROPERTIES TIMEOUT "120" LABELS
+                                                           "RUN_TYPE=HYBRID")
+endif()
