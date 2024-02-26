@@ -478,6 +478,42 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
+namespace {
+
+pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                                const std::vector<pir::Value>& outputs) {
+  // Regard last op as insert position if there are no downstream ops between in
+  // group_ops.
+  pir::Operation* insert_point_op = group_ops.back();
+  auto begin = group_ops.front()->operator Block::ConstIterator();
+  auto end = ++(group_ops.back()->operator Block::ConstIterator());
+  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
+                                                   outputs.end());
+  const std::unordered_set<const pir::Operation*> group_ops_set(
+      group_ops.begin(), group_ops.end());
+
+  const auto IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+    if (group_ops_set.find(op) != group_ops_set.end()) return false;
+
+    auto values = op->operands_source();
+    for (auto& value : values) {
+      if (outputs_set.find(value) != outputs_set.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Find first downstream op as final insert position.
+  for (; begin != end; ++begin) {
+    if (IsDownstreamOp(begin)) {
+      insert_point_op = begin;
+      break;
+    }
+  }
+  return insert_point_op;
+}
+}  // namespace
+
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -486,13 +522,14 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
-  // step 1: Ensure the insert point and create GroupOp here.
-  auto* first_op = group_ops.front();
-  builder.SetInsertionPointAfter(first_op);
-  VLOG(6) << "Insert GroupOp after " << first_op->name();
+  const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+
+  // step 1: Analysis and insert group op before insert_point.
+  auto* insert_point = FindInsertPoint(group_ops, outputs);
+  builder.set_insertion_point(insert_point);
+  VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
   // step 2: Replace the old op with GroupOp.
-  const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
   const auto& CreateGroupOp = [&]() -> cinn::dialect::GroupOp {
     std::vector<pir::Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
