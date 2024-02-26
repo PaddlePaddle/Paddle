@@ -83,7 +83,7 @@ DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
 DECLARE_TYPE_FOR_GPU(gpuMemPool_t, cudaMemPool_t, hipMemPool_t);
-
+DECLARE_TYPE_FOR_GPU(gpuIpcMemHandle_t, cudaIpcMemHandle_t, hipIpcMemHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
@@ -114,6 +114,9 @@ DECLARE_CONSTANT_FOR_GPU(gpuEventDisableTiming,
 DECLARE_CONSTANT_FOR_GPU(gpuStreamNonBlocking,
                          cudaStreamNonBlocking,
                          hipStreamNonBlocking);
+DECLARE_CONSTANT_FOR_GPU(gpuIpcMemLazyEnablePeerAccess,
+                         cudaIpcMemLazyEnablePeerAccess,
+                         hipIpcMemLazyEnablePeerAccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 
@@ -146,6 +149,15 @@ DECLARE_FUNCTION_FOR_GPU(gpuEventQuery, cudaEventQuery, hipEventQuery);
 DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
                          cudaEventSynchronize,
                          hipEventSynchronize);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamSynchronize,
+                         cudaStreamSynchronize,
+                         hipStreamSynchronize);
+DECLARE_FUNCTION_FOR_GPU(gpuIpcOpenMemHandle,
+                         cudaIpcOpenMemHandle,
+                         hipIpcOpenMemHandle);
+DECLARE_FUNCTION_FOR_GPU(gpuIpcCloseMemHandle,
+                         cudaIpcCloseMemHandle,
+                         hipIpcCloseMemHandle);
 
 #undef DECLARE_FUNCTION_FOR_GPU
 

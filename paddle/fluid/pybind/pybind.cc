@@ -78,7 +78,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
@@ -971,7 +971,7 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {

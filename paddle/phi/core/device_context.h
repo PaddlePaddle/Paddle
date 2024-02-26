@@ -115,7 +115,7 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetPinnedAllocator() const;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
    * @brief Set the CUDA graph Allocator object.
    *

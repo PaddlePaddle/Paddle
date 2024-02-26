@@ -111,7 +111,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CUDAGraphAllocator
     : public Allocator,
       public std::enable_shared_from_this<CUDAGraphAllocator> {
@@ -162,7 +162,7 @@ class CUDAGraphAllocator
 #endif
 
 static bool IsCUDAGraphCapturing() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
 #else
   return false;
@@ -332,7 +332,7 @@ class AllocatorFacadePrivate {
 
     CheckAllocThreadSafe();
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
     if (!is_stream_safe_cuda_allocator_used_ &&
         UNLIKELY(IsCUDAGraphCapturing())) {
@@ -1123,7 +1123,7 @@ class AllocatorFacadePrivate {
     allocator = std::make_shared<StatAllocator>(allocator);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void WrapCUDAGraphAllocator() {
     for (auto& item : allocators_) {
       auto& allocator = item.second;
@@ -1509,7 +1509,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 }
 
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // if we use cuda_malloc_async_allocator, we don't need to open a private pool
   // for each graph
   if (UNLIKELY(IsCUDAGraphCapturing()) &&
@@ -1700,7 +1700,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,

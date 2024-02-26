@@ -23,7 +23,7 @@ namespace paddle {
 namespace platform {
 
 // NOTE: These APIs are not thread-safe.
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAGraph = phi::backends::gpu::CUDAGraph;
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
@@ -33,7 +33,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
 inline phi::GPUPlace CUDAGraphCapturingPlace() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return CUDAGraph::CapturingPlace();
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
@@ -52,8 +52,8 @@ class SkipCUDAGraphCaptureGuard {
 
  public:
   SkipCUDAGraphCaptureGuard() {
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10010
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::EndSegmentCapture();
     }
@@ -62,8 +62,8 @@ class SkipCUDAGraphCaptureGuard {
   }
 
   ~SkipCUDAGraphCaptureGuard() {
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10010
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::BeginSegmentCapture();
     }

@@ -45,6 +45,8 @@ limitations under the License. */
 #if CUDA_VERSION >= 10020
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #endif
+#else  // PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/rocm_driver.h"
 #endif
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -460,6 +462,27 @@ class RecordedGpuMallocHelper {
   }
 
 #endif
+#else  // PADDLE_WITH_HIP
+  hipError_t MemCreate(hipMemGenericAllocationHandle_t *handle,
+                       size_t size,
+                       const hipMemAllocationProp *prop,
+                       unsigned long long flags) {  // NOLINT
+    auto result =
+        paddle::platform::dynload::hipMemCreate(handle, size, prop, flags);
+    if (result == hipSuccess) {
+      cur_size_.fetch_add(size);
+    }
+    return result;
+  }
+
+  hipError_t MemRelease(hipMemGenericAllocationHandle_t handle, size_t size) {
+    auto result = paddle::platform::dynload::hipMemRelease(handle);
+    if (result == hipSuccess) {
+      cur_size_.fetch_sub(size);
+    }
+    return result;
+  }
+
 #endif
 
  private:
@@ -523,6 +546,21 @@ CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
   return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
 }
 #endif
+#else  // PADDLE_WITH_HIP
+hipError_t RecordedGpuMemCreate(hipMemGenericAllocationHandle_t *handle,
+                                size_t size,
+                                const hipMemAllocationProp *prop,
+                                unsigned long long flags,  // NOLINT
+                                int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
+      handle, size, prop, flags);
+}
+
+hipError_t RecordedGpuMemRelease(hipMemGenericAllocationHandle_t handle,
+                                 size_t size,
+                                 int dev_id) {
+  return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
+}
 #endif
 
 bool RecordedGpuMemGetInfo(size_t *avail,

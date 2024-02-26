@@ -16,14 +16,14 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
 namespace paddle {
 namespace operators {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CUDAGraphWithInOuts {
  public:
   template <typename Callable>

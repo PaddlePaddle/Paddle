@@ -34,7 +34,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
 #include "paddle/common/flags.h"
@@ -182,7 +182,7 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
     const std::string &mode) {
   if (mode == "global") {
@@ -211,7 +211,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
@@ -408,7 +408,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
