@@ -353,7 +353,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
   if (auto input = argument.inputs[0]) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE(argument.output_types.size(),
+      IR_ENFORCE(!argument.output_types.empty(),
                  defining_op->num_operands(),
                  "Required SplitOp.output.size() == CombineOp.input.size(), "
                  "but received %d != %d",
