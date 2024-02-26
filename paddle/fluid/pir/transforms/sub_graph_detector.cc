@@ -492,11 +492,9 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
   const std::unordered_set<const pir::Operation*> group_ops_set(
       group_ops.begin(), group_ops.end());
 
-  const auto IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
     if (group_ops_set.find(op) != group_ops_set.end()) return false;
-
-    auto values = op->operands_source();
-    for (auto& value : values) {
+    for (auto& value : op->operands_source()) {
       if (outputs_set.find(value) != outputs_set.end()) {
         return true;
       }
