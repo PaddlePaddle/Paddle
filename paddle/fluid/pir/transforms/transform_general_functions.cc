@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/parameter.h"
@@ -116,7 +117,7 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(
   auto result = op->result(index);
   std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-    use_ops.push_back(std::make_pair(it->owner(), it->index()));
+    use_ops.emplace_back(it->owner(), it->index());
   }
   return use_ops;
 }
@@ -136,6 +137,23 @@ std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
     GetUsedExternalValueImpl(defined_values, used_values, op);
   }
   return used_values;
+}
+
+bool ValueIsPersitable(pir::Value value) {
+  if (value.defining_op()->num_operands() > 0) {
+    for (const auto& source_value : value.defining_op()->operands_source()) {
+      if (!ValueIsPersitable(source_value)) {
+        return false;
+      }
+    }
+  } else {
+    if (!value.defining_op()->isa<pir::ParameterOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullOp>() &&
+        !value.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace pir
