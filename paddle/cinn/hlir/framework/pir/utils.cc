@@ -57,7 +57,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.squeeze", "reshape"},
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
-    // {"pd_op.expand", "broadcast_to"},
+    {"pd_op.expand", "broadcast_to"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -218,7 +218,7 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
 }
 
 bool IsSupportForCinn(const ::pir::Operation& op) {
-  if (!AllInputDenseTensor(op) || HaveZeroDimInput(op) || UnimplementOps(op)) {
+  if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     // if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(4) << "Found " << op.name()
             << " HaveZeroDimInput or UnimplementOps or NotAllInputDenseTensor. "
@@ -434,7 +434,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
   if (op_name == "generate_shape" || op_name == "store") {
-    return hlir::framework::kNonFusible;
+    return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));

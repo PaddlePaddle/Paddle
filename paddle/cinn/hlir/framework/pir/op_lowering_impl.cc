@@ -585,7 +585,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         1,
         phi::errors::Unimplemented("only suppopt one transform yet"));
 
-    if (it->second[0].type == ScheduleAlignType::Broadcast) {
+    if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
       auto broadcast_axes = it->second[0].axis_info;
       auto output_shape = it->second[0].factor_info;
