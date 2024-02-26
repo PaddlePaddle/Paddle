@@ -453,7 +453,7 @@ class TestSetStateDictErr(unittest.TestCase):
         error_message = str(new_exception)
 
         self.assertIn(
-            "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'.",
+            "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'.",
             error_message,
         )
 
