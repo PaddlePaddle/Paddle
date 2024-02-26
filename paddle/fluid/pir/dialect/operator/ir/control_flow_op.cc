@@ -989,6 +989,48 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
+bool SelectInputOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto GetSymExprForValue =
+      [shape_analysis](pir::Value val) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(val);
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  };
+
+  const auto &input1_dims = GetSymExprForValue(operand_source(0));
+  const auto &input2_dims = GetSymExprForValue(operand_source(1));
+
+  std::vector<symbol::DimExpr> out_dims = input1_dims;
+  // merge shape for input1 and input2, since we don't know which will be
+  // selected in compile time, the strategy is same with IfOp, see IfOp's
+  // comments for details and examples
+  if (input2_dims.size() != 0) {
+    // now only support input1 and input2 have same rank.
+    PADDLE_ENFORCE_EQ(input1_dims.size(),
+                      input2_dims.size(),
+                      phi::errors::PreconditionNotMet(
+                          "The true and false block should have same rank, "
+                          "but got true_rank(%d) and false_rank(%d)",
+                          input1_dims.size(),
+                          input2_dims.size()));
+    for (size_t i = 0; i < input1_dims.size(); i++) {
+      if (input1_dims[i] != input2_dims[i]) {
+        out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+      }
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
 void SelectOutputOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SelectOutputOp.";
   VLOG(4) << "Verifying inputs:";

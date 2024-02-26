@@ -1451,6 +1451,19 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 }
 
 struct MulOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulOp::name();
@@ -1605,6 +1618,19 @@ struct MulOpTranscriber : public OpTranscriber {
 };
 
 struct MulGradOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulGradOp::name();

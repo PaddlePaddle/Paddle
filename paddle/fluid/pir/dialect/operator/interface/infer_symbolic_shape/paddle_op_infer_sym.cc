@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/paddle_op_infer_sym.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
@@ -1005,8 +1006,9 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
   return true;
 }
 
@@ -1017,7 +1019,21 @@ bool Where_OpInferSymbolicShape(
 
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // This Op has NO InferMeta in yaml, just return true
+  const common::DDim &result_dims =
+      op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+  std::vector<symbol::DimExpr> out_dims;
+  for (int i = 0; i < result_dims.size(); i++) {
+    if (result_dims[i] == -1) {
+      out_dims.emplace_back(shape_analysis->GetNextSymName());
+    } else {
+      out_dims.emplace_back(result_dims[i]);
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
   return true;
 }
 
@@ -1025,6 +1041,26 @@ bool TopPSamplingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+
+  const auto &x_dims = [op, shape_analysis] {
+    const auto &shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  }();
+
+  // all the result have the same shape
+  for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+    const std::vector<symbol::DimExpr> out_dims{x_dims[0], 1};
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(rst_idx),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_dims)});
+  }
+
   return true;
 }
 
