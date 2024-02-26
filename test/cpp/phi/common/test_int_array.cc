@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
