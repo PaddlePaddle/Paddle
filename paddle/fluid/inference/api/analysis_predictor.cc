@@ -3473,7 +3473,13 @@ void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
 #endif
 }
 void InternalUtils::SyncStream(cudaStream_t stream) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
+  paddle::gpuStreamSynchronize(stream);
+#endif
+}
+
+void InternalUtils::SyncStream(hipStream_t stream) {
+#if defined(PADDLE_WITH_HIP)
   paddle::gpuStreamSynchronize(stream);
 #endif
 }

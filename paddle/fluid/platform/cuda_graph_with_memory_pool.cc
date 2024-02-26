@@ -82,7 +82,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
 }
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
-                           cudaStreamCaptureMode mode,
+                           gpuStreamCaptureMode mode,
                            int64_t pool_id) {
   auto* mutable_dev_ctx = SelectCUDAGraphDeviceContext(place, &pool_id);
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);

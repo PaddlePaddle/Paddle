@@ -182,7 +182,7 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
 static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
     const std::string &mode) {
   if (mode == "global") {
@@ -191,6 +191,20 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
     return cudaStreamCaptureModeThreadLocal;
   } else if (mode == "relaxed") {
     return cudaStreamCaptureModeRelaxed;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupported CUDA Graph capture mode %s", mode));
+  }
+}
+#else  // PADDLE_WITH_HIP
+static hipStreamCaptureMode StringToCUDAGraphCaptureMode(
+    const std::string &mode) {
+  if (mode == "global") {
+    return hipStreamCaptureModeGlobal;
+  } else if (mode == "thread_local") {
+    return hipStreamCaptureModeThreadLocal;
+  } else if (mode == "relaxed") {
+    return hipStreamCaptureModeRelaxed;
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported CUDA Graph capture mode %s", mode));

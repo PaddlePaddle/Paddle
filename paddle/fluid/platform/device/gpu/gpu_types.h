@@ -85,6 +85,9 @@ DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
 DECLARE_TYPE_FOR_GPU(gpuMemPool_t, cudaMemPool_t, hipMemPool_t);
 DECLARE_TYPE_FOR_GPU(gpuIpcMemHandle_t, cudaIpcMemHandle_t, hipIpcMemHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
+DECLARE_TYPE_FOR_GPU(gpuStreamCaptureMode,
+                     cudaStreamCaptureMode,
+                     hipStreamCaptureMode);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.

@@ -976,7 +976,7 @@ PYBIND11_MODULE(libpaddle, m) {
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
-                        place, static_cast<cudaStreamCaptureMode>(mode));
+                        place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",

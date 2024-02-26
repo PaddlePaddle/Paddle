@@ -30,7 +30,7 @@ class CUDAGraphWithInOuts {
   CUDAGraphWithInOuts(Callable &&callable,
                       platform::CUDAPlace place,
                       const std::vector<const phi::DenseTensor *> &in_ptrs,
-                      cudaStreamCaptureMode mode,
+                      gpuStreamCaptureMode mode,
                       int64_t pool_id) {
     in_indices_.resize(in_ptrs.size());
     ins_.reserve(in_ptrs.size());
@@ -102,7 +102,7 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
     const framework::ExecutionContext &ctx,
     const std::vector<std::string> &input_names,
     const std::vector<std::string> &output_names,
-    cudaStreamCaptureMode mode,
+    gpuStreamCaptureMode mode,
     int64_t pool_id) {
   std::vector<const phi::DenseTensor *> inputs;
   for (const auto &name : input_names) {
