@@ -1626,6 +1626,92 @@ void group_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void put_along_axis_grad(const Tensor& x,
+                         const Tensor& index,
+                         const Tensor& value,
+                         const Tensor& out,
+                         const Tensor& out_grad,
+                         int axis,
+                         const std::stringZ& reduce,
+                         bool include_self,
+                         Tensor* x_grad,
+                         Tensor* value_grad) {
+  const auto& index_type = index.dtype();
+  Tensor one_tensor = full<T>(common::vectorize(x.dims()), 1.0, x.dtype());
+  Tensor zero_tensor = full<T>(common::vectorize(x.dims()), 0, x.dtype());
+  if (x_grad) {
+    Tensor x_grad_tmp;
+    if (include_self == false || reduce == "assign") {
+      // 如果没有特殊说明，要替换的位置全部指在x这个tensor上的对应位置
+      // 对应位置的计算见文件paddle\phi\kernels\funcs\gather_scatter_functor.cc的L293-L319
+      // 将要替换的位置全部赋值为0
+      x_grad_tmp = put_along_axis<T>(x, index, zero_tensor, axis);
+    } else if (reduce == "multiply" || reduce == "mul") {
+      // 首先用一个vector称为num，维度等于x的dim，默认全0用于记录原tensor在对应位置上被索引的次数
+      /* 如果是multiply和mul
+       * 在要替换的位置做：out_grad * out / x
+       */
+      auto out_tmp = put_along_axis<T>(one_tensor, index, out, axis);
+      auto x_tmp = put_along_axis<T>(one_tensor, index, x, axis);
+      x_grad_tmp = out_grad * out_tmp / x_tmp;
+    } else if (reduce == "amin" || reduce == "amax") {
+      /*
+       * 假设当前在x上要替换的位置称为index_grad,
+       * 替换的值对应value中的位置为index_value
+       * 如果out[index_grad]和x[index_grad]的值不相等，那么就设置他的x_grad[index_grad]为0
+       * 否则，当out[index_grad]和value[index_value]相等时
+       * num[index_grad] += 1
+       * x_grad_tmp =  out_grad / (num+1)
+       */
+    } else if (reduce == "mean") {
+      // 继续使用vector num
+      /*
+       * 记录每个要替换的位置被索引的次数到num中
+       * 如果num的位置不为0，就设置x_grad_tmp = out_grad / (num+1)
+       */
+    }
+  }
+  if (value_grad) {
+    // 默认为全0
+    Tensor value_grad_tmp = zero_tensor;
+    /*
+     * 假设当前在x上要替换的位置称为index_self,
+     * 替换的值对应value中的位置为index_grad
+     * 具体计算方式见文件：paddle\phi\kernels\funcs\gather_scatter_functor.cc的L457-L494
+     */
+    if (reduce == "assign") {
+      // 设置一个vector称为is_self_grad_used，全为false，维度和x的dim相同
+      // 用于记录value对应的索引位置是否被使用
+      // 如果index_self是第一次被使用，value_grad_tmp[index_grad] =
+      // out_grad[index_self] 并且is_self_grad_used[index_self] = true
+    } else if (reduce == "add") {
+      // value_grad_tmp[index_grad] = self_data[index_self]
+      else if (reduce == "mean") {
+        /* 设置一个vector称为num，如果include_self
+         * =true则全为1，否则全为0，维度和x的dim相同
+         * 记录index_self被索引的次数到num中
+         * 计算value_grad_tmp[index_grad] = out_grad[index_self] / num
+         */
+      }
+    } else if (reduce == "mul" || reduce == "multiply") {
+      /*
+       * 计算value_grad_tmp[index_grad] = out_grad[index_self] *
+       * (out[index_self] / x[index_self])
+       */
+    } else if (reduce == "amin" || reduce == "amax") {
+      /* 设置一个vector称为num，全为0，维度和x的dim相同
+       * 如果out[index_self] == value[index_grad], 则num[index_self] += 1
+       * 计算好num后
+       * 条件1：out[index_self] == value[index_grad]
+       * 条件2：out[index_self] == x[index_self]
+       * 同时满足条件1,2时，value_grad_tmp[index_grad] = out_grad[index_self] / (num+1)
+       * 满足条件1不满足条件2时，value_grad_tmp[index_grad] = out_grad[index_self] / num
+       */
+    }
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
