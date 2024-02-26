@@ -370,7 +370,7 @@ class CUDAGraphCaptureModeGuard {
   explicit CUDAGraphCaptureModeGuard(
       gpuStreamCaptureMode mode = gpuStreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(hipThreadExchangeStreamCaptureMode(&mode));
@@ -384,7 +384,7 @@ class CUDAGraphCaptureModeGuard {
   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
           cudaThreadExchangeStreamCaptureMode(&old_mode_));
 #else
           hipThreadExchangeStreamCaptureMode(&old_mode_));

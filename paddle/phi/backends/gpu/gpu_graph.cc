@@ -266,7 +266,7 @@ bool CUDAGraph::IsValidCapturing() {
   if (!IsCapturing()) return false;
   gpuStreamCaptureStatus status;
   CUDAGraphID id;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamGetCaptureInfo(capturing_graph_->stream_, &status, &id));
 #else  // PADDLE_WITH_HIP
