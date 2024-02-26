@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -120,7 +121,7 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
 };
 

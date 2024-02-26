@@ -1555,70 +1555,100 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
-void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
-                 Program &program) {                          // NOLINT
+void ApplyCinnPreprocessPass(Program *program, pir::IrContext *ctx) {
+  bool has_dynamic_shape = HasDynamicShape(*program);
+
+  PassManager pass_manager(ctx);
+
+  if (FLAGS_print_ir) {
+    pass_manager.EnableIRPrinting();
+  }
+
+  pass_manager.AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
+  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
+    pass_manager.AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager.AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
+  }
+  pass_manager.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
+
+  if (has_dynamic_shape) {
+    pass_manager.AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager.AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
+    pass_manager.AddPass(
+        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
+    pass_manager.AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    pass_manager.AddPass(pir::CreateShapeOptimizationPass());
+    pass_manager.AddPass(
+        cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
+    pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
+    pass_manager.AddPass(pir::CreateShapeOptimizationPass());
+  }
+
+  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateDeleteUselessBroadcastPass());
+
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
+
+  pass_manager.Run(program);
+}
+
+void ApplyCinnLowerPass(Program *program, pir::IrContext *ctx) {
+  PassManager pass_manager(ctx);
+  if (FLAGS_print_ir) {
+    pass_manager.EnableIRPrinting();
+  }
+
+  bool has_dynamic_shape = HasDynamicShape(*program);
+
+  bool force_static_shape = false;
+  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
+    pass_manager.AddPass(std::move(pass.value()));
+    force_static_shape = true;
+  }
+  if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
+    pass_manager.AddPass(std::move(pass.value()));
+  }
+
+  if (has_dynamic_shape && !force_static_shape) {
+    pass_manager.AddPass(
+        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+  }
+
+  pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+
+  pass_manager.Run(program);
+}
+
+void ApplyCinnPostProcessPass(Program *program, pir::IrContext *ctx) {
+  PassManager pass_manager(ctx);
+  if (FLAGS_print_ir) {
+    pass_manager.EnableIRPrinting();
+  }
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
+  pass_manager.Run(program);
+}
+
+void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
-  bool has_dynamic_shape = HasDynamicShape(program);
+  ApplyCinnPreprocessPass(&program, ctx);
+  ApplyCinnLowerPass(&program, ctx);
+  ApplyCinnPostProcessPass(&program, ctx);
 
-  if (FLAGS_print_ir) {
-    pass_manager->EnableIRPrinting();
-  }
-
-  pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
-  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
-  }
-  pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
-    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
-
-  pass_manager->AddPass(pir::CreateBuildCinnPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDeleteUselessBroadcastPass());
-
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-
-  bool force_static_shape = false;
-  if (auto pass = cinn::dialect::ir::CreateConvertDynamicToStaticDimPass()) {
-    pass_manager->AddPass(std::move(pass.value()));
-    force_static_shape = true;
-  }
-  if (auto pass = cinn::dialect::ir::CreateConvertStaticDimToDynamicPass()) {
-    pass_manager->AddPass(std::move(pass.value()));
-  }
-
-  if (has_dynamic_shape && !force_static_shape) {
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
-  }
-  pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1637,7 +1667,7 @@ void InferSymbolicShapePass(
 }
 
 void BindIrPass(pybind11::module *m) {
-  m->def("add_cinn_pass", AddCinnPass);
+  m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,

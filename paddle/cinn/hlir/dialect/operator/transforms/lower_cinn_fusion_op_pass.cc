@@ -619,6 +619,35 @@ CreateGroupShapeOrDataExprs(
   return value2shape;
 }
 
+// std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) {
+//   auto group = std::make_shared<Group>();
+//   group->op_pattern_kind =
+//   cinn::hlir::framework::OpPatternKind::kElementWise;
+
+//   // Rebuild ops of the group
+//   for (auto op : fusion_op.GetOperators()) {
+//     if (!op->isa<::pir::YieldOp>()) {
+//       group->ops.push_back(op);
+//       group->ops_set.insert(op);
+//       group->op_pattern_kind =
+//           static_cast<int>(CompatibleInfo::OpKind(*op)) >
+//                   static_cast<int>(group->op_pattern_kind)
+//               ? CompatibleInfo::OpKind(*op)
+//               : group->op_pattern_kind;
+//     }
+//   }
+
+//   // Rebuild output_ops and input_ops of the group
+//   auto yield_op = fusion_op.GetOperators().back();
+//   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+//     group->output_ops.insert(yield_op->operand_source(i).defining_op());
+//   }
+
+//   // Rebuild other informations
+//   // TODO(zhangyuqin1998): Do we need group.master_ops?
+//   return group;
+// }
+
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   explicit FusionOpPattern(::pir::IrContext* context)
@@ -751,6 +780,117 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
+
+// class LowerCinnFusionOpPass : public pir::Pass {
+//  public:
+//   LowerCinnFusionOpPass()
+//       : pir::Pass("lower_cinn_fusion_op", /*opt_level=*/1) {}
+
+//   void Run(pir::Operation* op) override {
+//     CHECK(op->isa<cinn::dialect::FusionOp>());
+//     pir::PatternRewriter rewriter(context_);
+//     rewriter.SetInsertionPointAfter(op);
+//     MatchAndRewrite(op->dyn_cast<cinn::dialect::FusionOp>(), rewriter);
+//   }
+
+//   bool Initialize(pir::IrContext* context) override {
+//     context_ = context;
+//     return true;
+//   }
+
+//   bool CanApplyOn(pir::Operation* op) const override {
+//     if (op->isa<cinn::dialect::FusionOp>()) {
+//       VLOG(0) << "######  " << op->name() << " @" << op << " : " <<
+//       op->dyn_cast<cinn::dialect::FusionOp>().block()->size();
+//     }
+//     return op->isa<cinn::dialect::FusionOp>() && op->num_regions() > 0;
+//   }
+
+//  protected:
+//   virtual pir::Operation* ProcessGroup(
+//       const GroupPtr& group,
+//       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+//       const std::shared_ptr<cinn::hlir::framework::PirCompiler>&
+//       pir_compiler, pir::PatternRewriter& rewriter) const {  // NOLINT
+//     auto group_inputs = GetBlockOutsideInput(group->ops);
+//     // compile group to jit_kernel_op
+//     auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
+//     std::vector<pir::Type> output_types;
+//     const auto& group_output_values = group->output_values;
+//     for (size_t i = 0; i < group_output_values.size(); ++i) {
+//       output_types.push_back(group_output_values[i].type());
+//     }
+//     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
+//         group_inputs, op_attr_map.at(group), output_types);
+//     return jit_kernel_op;
+//   }
+
+//  private:
+//   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
+//                        pir::PatternRewriter& rewriter) const {
+//     auto target = cinn::common::DefaultNVGPUTarget();
+//     // TODO(Aurelius84): Remove scope after cleaning PirCompiler useless
+//     Build
+//     // Interface
+//     auto scope = std::make_shared<cinn::hlir::framework::Scope>();
+//     auto* program = fusion_op->GetParentProgram();
+//     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
+//         *program, target, scope);
+//     auto group = RebuildGroup(fusion_op);
+//     // Because the group is rebuilt, the order of group.output_values
+//     generated
+//     // by BuildCUDAJITInfo may not be same with the order bound in the yield
+//     op,
+//     // so a mapping is required.
+
+//     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+//         fusion_op->GetParentProgram());
+//     group->set_value_to_shape_or_data_exprs(
+//         CreateGroupShapeOrDataExprs(group, shape_analysis));
+//     if (FLAGS_cinn_enable_map_expr) {
+//       cinn::adt::TryGenerateMapExprFromGroup(group);
+//     }
+
+//     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
+//     pir::Operation* compiled_op =
+//         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
+
+//     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+//       rewriter.ReplaceAllUsesWith(fusion_op.result(i),
+//       compiled_op->result(i)); if
+//       (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
+//         shape_analysis.SetShapeOrDataForValue(
+//             compiled_op->result(i),
+//             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
+//       } else {
+//         LOG(WARNING) << "No shape_data for "
+//                      << fusion_op.result(i).defining_op()->name() <<
+//                      "_result_"
+//                      << i;
+//       }
+//     }
+
+//     rewriter.EraseOp(fusion_op);
+//     return true;
+//   }
+
+//   pir::IrContext* context_ = nullptr;
+// };
+
+// class LowerCinnDyShapeFusionOpPass : public LowerCinnFusionOpPass {
+//  public:
+//   LowerCinnDyShapeFusionOpPass() = default;
+//  protected:
+//   pir::Operation* ProcessGroup (
+//       const GroupPtr& group,
+//       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+//       const std::shared_ptr<cinn::hlir::framework::PirCompiler>&
+//       pir_compiler, pir::PatternRewriter& rewriter) const override {  //
+//       NOLINT
+//     return ProcessDyShapeGroup(group, shape_analysis, pir_compiler,
+//     rewriter);
+//   }
+// };
 
 class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
  public:

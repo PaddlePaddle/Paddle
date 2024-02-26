@@ -178,7 +178,7 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
 }
 
 bool IsTempDenySpecialOp(const ::pir::Operation& op) {
-  if (op->isa<cinn::dialect::GenerateShapeOp>()) {
+  if (op.name() == "cinn_op.generate_shape") {
     return false;
   }
 
