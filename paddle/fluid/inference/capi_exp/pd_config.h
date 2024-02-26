@@ -46,7 +46,7 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Config* PD_ConfigCreate();
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigDestroy(__pd_take PD_Config* pd_config);
 ///
-/// \brief Set the combined model with two specific pathes for program and
+/// \brief Set the combined model with two specific paths for program and
 /// parameters.
 ///
 /// \param[in] pd_config config
@@ -169,7 +169,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONNXRuntime(
 PADDLE_CAPI_EXPORT extern void PD_ConfigDisableONNXRuntime(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief A boolean state telling whether the ONNXRutnime is turned on.
+/// \brief A boolean state telling whether the ONNXRuntime is turned on.
 ///
 /// \return Whether the ONNXRuntime is turned on.
 ///
@@ -238,11 +238,11 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGpuDeviceId(
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
-/// \brief Turn on custome device.
+/// \brief Turn on custom device.
 ///
 /// \param[in] pd_config config
 /// \param[in] device_type device type
-/// \param[in] device_id device_id the custome device card to use.
+/// \param[in] device_id device_id the custom device card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
     __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
@@ -306,13 +306,13 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigCudnnEnabled(
 /// If turned off, the AnalysisConfig will act just like a NativeConfig.
 ///
 /// \param[in] pd_config config
-/// \param[in] x Whether the ir graph optimization is actived.
+/// \param[in] x Whether the ir graph optimization is activated.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrOptim(
     __pd_keep PD_Config* pd_config, PD_Bool x);
 ///
 /// \brief A boolean state telling whether the ir graph optimization is
-/// actived.
+/// activated.
 ///
 /// \param[in] pd_config config
 /// \return Whether to use ir graph optimization.
@@ -321,7 +321,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Turn on the TensorRT engine.
-/// The TensorRT engine will accelerate some subgraphes in the original Fluid
+/// The TensorRT engine will accelerate some subgraphs in the original Fluid
 /// computation graph. In some models such as resnet50, GoogleNet and so on,
 /// it gains significant performance acceleration.
 ///
@@ -330,7 +330,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 /// workspace.
 /// \param[in] max_batch_size The maximum batch size of this prediction task,
 /// better set as small as possible for less performance loss.
-/// \param[in] min_subgrpah_size The minimum TensorRT subgraph size needed, if a
+/// \param[in] min_subgraph_size The minimum TensorRT subgraph size needed, if a
 /// subgraph is smaller than this, it will not be transferred to TensorRT
 /// engine.
 /// \param[in] precision The precision used in TensorRT.
@@ -490,7 +490,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDlaEnabled(
 /// \brief Turn on the usage of Lite sub-graph engine.
 ///
 /// \param[in] pd_config config
-/// \param[in] precision Precion used in Lite sub-graph engine.
+/// \param[in] precision Precision used in Lite sub-graph engine.
 /// \param[in] zero_copy whether use zero copy.
 /// \param[in] passes_filter_num The number of passes used in Lite sub-graph
 /// engine.

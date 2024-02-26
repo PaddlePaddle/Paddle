@@ -1,1 +1,2 @@
 add_subdirectory(fusion_group)
+add_subdirectory(memory_optimize_pass)

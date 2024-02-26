@@ -69,6 +69,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.cos",
       "pd_op.where",
       "pd_op.split",
+      "pd_op.split_with_num",
       "pd_op.reshape",
       "pd_op.erf",
       "pd_op.tanh",
@@ -79,6 +80,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.shape",
       "pd_op.full",
       "pd_op.full_int_array",
+      "pd_op.full_with_tensor",
       "pd_op.if",
       "pd_op.while",
       /* basic ops by PIR*/
