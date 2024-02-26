@@ -116,7 +116,7 @@ void ConvertValue0DTo1D(pir::Value operand) {
     }();
     operand.set_type(builder.vec_type(inputs_type));
   } else {
-    LOG(FATAL) << "Unsupported operand type: " << operand.type();
+    VLOG(4) << "Unsupported operand type: " << operand.type();
   }
 }
 
