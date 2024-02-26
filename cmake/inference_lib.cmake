@@ -237,9 +237,9 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 
 if(WIN32)
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common\\.*)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/common\.*)
 else()
-  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon\\.*)
+  set(paddle_common_lib ${PADDLE_BINARY_DIR}/paddle/common/libcommon\.*)
 endif()
 copy(
   inference_lib_dist
@@ -250,7 +250,7 @@ if(WIN32)
   if(WITH_STATIC_LIB)
     set(paddle_inference_lib
         $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
-        $<TARGET_FILE_DIR:paddle_inference>/paddle_inference\\.*)
+        $<TARGET_FILE_DIR:paddle_inference>/paddle_inference\.*)
   else()
     set(paddle_inference_lib
         $<TARGET_FILE_DIR:paddle_inference_shared>/paddle_inference.dll
@@ -264,14 +264,14 @@ if(WIN32)
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 else()
   set(paddle_inference_lib
-      ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_inference\\.*)
+      ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_inference\.*)
   copy(
     inference_lib_dist
     SRCS ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   if(WITH_SHARED_PHI)
-    set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi\\.*)
+    set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi\.*)
     copy(
       inference_lib_dist
       SRCS ${paddle_phi_lib}
@@ -383,10 +383,10 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
   set(paddle_inference_c_lib
-      $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c\\.*)
+      $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c\.*)
 else()
   set(paddle_inference_c_lib
-      ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c\\.*
+      ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c\.*
   )
 endif()
 
