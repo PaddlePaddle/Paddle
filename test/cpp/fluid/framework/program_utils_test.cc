@@ -203,8 +203,8 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   ASSERT_EQ(5UL, inner_inputs.size());
   ASSERT_EQ(2UL, inner_outputs.size());
 
-  // varible "Less_than_2_Out" is the input of cond_op, it also is the output of
-  // less_than_op.
+  // variable "Less_than_2_Out" is the input of cond_op, it also is the output
+  // of less_than_op.
   std::set<std::string> inner_inputs_{"Less_than_2_Out",
                                       "Less_than_2_X",
                                       "Less_than_2_Y",

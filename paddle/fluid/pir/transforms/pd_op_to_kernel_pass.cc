@@ -2541,8 +2541,8 @@ void ProcessBlock(
     auto new_arg = new_block->AddKwarg(keyword, arg.type());
     (*map_value_pair)[arg] = new_arg;
     if (auto dense_tensor_type = arg.type().dyn_cast<DenseTensorType>()) {
-      new_arg.set_type(AllocatedDenseTensorType::get(
-          ctx, phi::CPUPlace(), dense_tensor_type));
+      new_arg.set_type(
+          AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
   }
   if (platform::is_gpu_place(place)) {
