@@ -1037,6 +1037,15 @@ bool FeedOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FetchOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
+
+  return true;
+}
+
 bool TopPSamplingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
