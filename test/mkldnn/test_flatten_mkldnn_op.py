@@ -38,10 +38,17 @@ class TestFlattenOneDNNOp(OpTest):
         self.op_type = "flatten"
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=(self.op_type == "flatten2")
+        )
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            check_pir_onednn=(self.op_type == "flatten2"),
+        )
 
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
@@ -93,7 +100,9 @@ def create_flatten_bf16_test_classes(parent):
 
         def test_check_output(self):
             self.check_output_with_place(
-                core.CPUPlace(), no_check_set=["XShape"]
+                core.CPUPlace(),
+                no_check_set=["XShape"],
+                check_pir_onednn=(self.op_type == "flatten2"),
             )
 
         def test_check_grad(self):
@@ -104,6 +113,7 @@ def create_flatten_bf16_test_classes(parent):
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[self.dout],
+                check_pir_onednn=(self.op_type == "flatten2"),
             )
 
     cls_name = "{}_{}".format(parent.__name__, "Flatten2_BF16")
@@ -129,7 +139,9 @@ def create_flatten_bf16_test_classes(parent):
             self.dx = np.reshape(self.dout, self.ori_shape)
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(
+                core.CPUPlace(), check_pir_onednn=(self.op_type == "flatten2")
+            )
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -139,6 +151,7 @@ def create_flatten_bf16_test_classes(parent):
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                check_pir_onednn=(self.op_type == "flatten2"),
             )
 
     cls_name = "{}_{}".format(parent.__name__, "Flatten_BF16")
