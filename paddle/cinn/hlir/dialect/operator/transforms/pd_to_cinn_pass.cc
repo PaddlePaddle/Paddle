@@ -481,8 +481,8 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
           result.push_back(
               section_attr[i].dyn_cast<::pir::Int64Attribute>().data());
         }
-        return result;
       }
+      return result;
     }();
 
     const int axis = [&]() -> int {
@@ -536,9 +536,9 @@ class SplitWithNumOpPattern
 
   void Rewrite(paddle::dialect::SplitWithNumOp op,
                pir::PatternRewriter &rewriter) const override {
-    auto input_ele = op->operand_source(0)
-                         .type()
-                         .dyn_cast<paddle::dialect::DenseTensorType>();
+    const auto input_ele = op->operand_source(0)
+                               .type()
+                               .dyn_cast<paddle::dialect::DenseTensorType>();
 
     const int axis = [&]() -> int {
       auto axis_gen_op = op->operand_source(1).defining_op();
@@ -583,7 +583,6 @@ class SplitWithNumOpPattern
                      << downstream_op->name();
       }
     }
-
     rewriter.EraseOp(op);
   }
 };
