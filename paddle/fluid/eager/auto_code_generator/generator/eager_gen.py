@@ -554,8 +554,10 @@ LAYOUT_LOGIC_TEMPLATE = """
   }}
 """
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = """
-  paddle::optional<paddle::Tensor> {}_optional;
-  if({}.initialized()) {}_optional = paddle::make_optional<paddle::Tensor>({});
+  paddle::optional<paddle::Tensor> {name}_optional;
+  if({name}.initialized() ||
+     ({name}.defined() && {name}.is_dist_tensor() &&
+      phi::distributed::NeedComputationClipForPP({name}.impl()))) {name}_optional = paddle::make_optional<paddle::Tensor>({name});
 """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = """
@@ -2434,10 +2436,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     get_tensor_str += (
                         "\n"
                         + CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE.format(
-                            transformed_tensor_name,
-                            transformed_tensor_name,
-                            transformed_tensor_name,
-                            transformed_tensor_name,
+                            name=transformed_tensor_name
                         )
                     )
                     grad_api_args[
