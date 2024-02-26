@@ -31,16 +31,14 @@ void DivideGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void DivideDoubleGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& out,
-                            const paddle::optional<DenseTensor>& grad_x,
-                            const DenseTensor& grad_out,
+                            const DenseTensor& dx,
                             const paddle::optional<DenseTensor>& ddx,
                             const paddle::optional<DenseTensor>& ddy,
                             int axis,
-                            DenseTensor* dx,
                             DenseTensor* dy,
+                            DenseTensor* dout,
                             DenseTensor* ddout);
 
 }  // namespace phi
