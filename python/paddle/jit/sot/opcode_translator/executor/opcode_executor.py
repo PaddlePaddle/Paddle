@@ -62,6 +62,7 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     FORMAT_VALUE_FLAG as FV,
     MAKE_FUNCTION_FLAG as MF,
+    IntrinsicsUnaryFunctions,
 )
 from .pycode_generator import PyCodeGen
 from .tracker import (
@@ -1544,6 +1545,19 @@ class OpcodeExecutorBase:
                 DummyTracker([list_value]),
             )
         )
+
+    def CALL_INTRINSIC_1(self, instr: Instruction):
+        intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
+        if intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
+            raise RuntimeError("invalid intrinsic function")
+        elif (
+            intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
+        ):
+            self.UNARY_POSITIVE(instr)
+        elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+            self.LIST_TO_TUPLE(instr)
+        else:
+            raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
 
 class OpcodeExecutor(OpcodeExecutorBase):
