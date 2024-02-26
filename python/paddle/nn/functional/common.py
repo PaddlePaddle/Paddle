@@ -347,7 +347,7 @@ def interpolate(
              the output will be consistent with that of the input. An optional string from:`"NCW"`,
              `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
              When :attr:`data_format` is not specified, it will be automatically inferred from the
-             input shape of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
              set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
              `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
              When it is `"NCHW"`, the data should be stored in the order of:
@@ -902,7 +902,7 @@ def upsample(
              the output will be consistent with that of the input. An optional string from:`"NCW"`,
              `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
              When :attr:`data_format` is not specified, it will be automatically inferred from the
-             input shape of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
              set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
              `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
              When it is `"NCHW"`, the data should be stored in the order of:
