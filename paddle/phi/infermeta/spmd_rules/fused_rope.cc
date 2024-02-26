@@ -80,7 +80,9 @@ void check_k_or_v(const DistMetaTensor& k_or_v,
 void check_sin_cos(const DistMetaTensor& sin,
                    const DistMetaTensor& cos,
                    const DistMetaTensor& position_ids,
-                   const std::vector<int64_t>& q_shape,
+                   const int64_t batch_size,
+                   const int64_t seq_len,
+                   const int64_t head_dim,
                    bool time_major) {
   PADDLE_ENFORCE_EQ(sin.dims(),
                     cos.dims(),
@@ -97,13 +99,6 @@ void check_sin_cos(const DistMetaTensor& sin,
       true,
       phi::errors::InvalidArgument(
           "The Tensor sin/cos's ndim must be 2 or 4. but given [%d]", ndim));
-
-  const int kBatchDimIndex = time_major ? 1 : 0;
-  const int kSeqlenDimIndex = time_major ? 0 : 1;
-
-  int batch_size = q_shape[kBatchDimIndex];
-  int seq_len = q_shape[kSeqlenDimIndex];
-  int head_dim = q_shape[kHeadDimIndex];
 
   int seq_len_dim_index = ndim == 2 ? 0 : 1;
   int head_dim_index = ndim == 2 ? 1 : 3;
@@ -143,9 +138,10 @@ void check_sin_cos(const DistMetaTensor& sin,
         phi::errors::InvalidArgument(
             "The batch_size and seq_len of position_ids must be the same as "
             "those of q. But received position_ids's "
-            "shape is {%s}, q's shape is {%s}.",
+            "shape is {%s}, q's batch_size is {%d}, q's seq_len is {%d}.",
             str_join(position_ids_shape),
-            str_join(q_shape)));
+            batch_size,
+            seq_len));
   } else {
     PADDLE_ENFORCE_EQ(
         (shape[seq_len_dim_index] == seq_len &&
@@ -162,8 +158,10 @@ void check_sin_cos(const DistMetaTensor& sin,
 void infer_sin_cos(const DistMetaTensor& sin,
                    const DistMetaTensor& cos,
                    const DistMetaTensor& position_ids,
+                   const TensorDistAttr& q_dist_attr_dst,
                    const std::vector<int64_t>& q_shape,
                    bool time_major,
+                   bool enable_shard_on_seqlen,
                    TensorDistAttr* sin_dist_attr_dst,
                    TensorDistAttr* cos_dist_attr_dst) {
   const TensorDistAttr& sin_dist_attr_src = sin.dist_attr();
@@ -178,13 +176,45 @@ void infer_sin_cos(const DistMetaTensor& sin,
   // if one of sin cos is empty, they are all useless in kernel
   if (!IsEmpty(sin_shape) && !IsEmpty(cos_shape)) {
     // check sin, cos, position_ids's shape
-    check_sin_cos(sin, cos, position_ids, q_shape, time_major);
+    const int kBatchDimIndex = time_major ? 1 : 0;
+    const int kSeqlenDimIndex = time_major ? 0 : 1;
+    int batch_size = q_shape[kBatchDimIndex];
+    int seq_len = q_shape[kSeqlenDimIndex];
+    int head_dim = q_shape[kHeadDimIndex];
+
+    int seq_len_dim_index = sin_shape.size() == 4 ? 1 : 0;
+    int head_dim_index = sin_shape.size() == 4 ? 3 : 1;
+
+    check_sin_cos(
+        sin, cos, position_ids, batch_size, seq_len, head_dim, time_major);
     if (sin_shape.size() == 4) {
-      *sin_dist_attr_dst = UnShardTensorDims(sin_dist_attr_src, {1, 3});
-      *cos_dist_attr_dst = UnShardTensorDims(cos_dist_attr_src, {1, 3});
+      *sin_dist_attr_dst =
+          enable_shard_on_seqlen
+              ? UnShardTensorDims(sin_dist_attr_src, {head_dim_index})
+              : UnShardTensorDims(sin_dist_attr_src,
+                                  {seq_len_dim_index, head_dim_index});
+      *cos_dist_attr_dst =
+          enable_shard_on_seqlen
+              ? UnShardTensorDims(sin_dist_attr_src, {head_dim_index})
+              : UnShardTensorDims(cos_dist_attr_src,
+                                  {seq_len_dim_index, head_dim_index});
     } else {
-      *sin_dist_attr_dst = UnShardTensorDims(sin_dist_attr_src, {0, 1});
-      *cos_dist_attr_dst = UnShardTensorDims(cos_dist_attr_src, {0, 1});
+      *sin_dist_attr_dst = UnShardTensorDims(
+          sin_dist_attr_src, {seq_len_dim_index, head_dim_index});
+      *cos_dist_attr_dst = UnShardTensorDims(
+          cos_dist_attr_src, {seq_len_dim_index, head_dim_index});
+    }
+
+    if (enable_shard_on_seqlen) {
+      std::vector<int64_t> sin_dims_mapping = sin_dist_attr_dst->dims_mapping();
+      sin_dims_mapping[seq_len_dim_index] =
+          q_dist_attr_dst.dims_mapping()[kSeqlenDimIndex];
+      sin_dist_attr_dst->set_dims_mapping(sin_dims_mapping);
+
+      std::vector<int64_t> cos_dims_mapping = cos_dist_attr_dst->dims_mapping();
+      cos_dims_mapping[seq_len_dim_index] =
+          q_dist_attr_dst.dims_mapping()[kSeqlenDimIndex];
+      cos_dist_attr_dst->set_dims_mapping(cos_dims_mapping);
     }
   }
 }
@@ -238,9 +268,23 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
       GetDimsMappingForAxes(qkv_axes, axis_to_dim_map);
   TensorDistAttr q_dist_attr_dst = CopyTensorDistAttrForOutput(q_dist_attr_src);
   q_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+
   const int kSeqlenDimIndex = time_major ? 0 : 1;
-  q_dist_attr_dst =
-      UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  // if one of sin cos is empty, they are all useless in kernel
+  bool is_sin_cos_none = IsEmpty(common::vectorize(sin.dims())) ||
+                         IsEmpty(common::vectorize(cos.dims()));
+
+  // Enable shard on seq_len dimension only if sin/cos is not None and
+  // position_ids is None
+  bool enable_shard_on_seqlen = !is_sin_cos_none && is_ids_none &&
+                                IsDimSharded(q_dist_attr_dst, kSeqlenDimIndex);
+  if (enable_shard_on_seqlen) {
+    // Sharded along seq_len dim
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {kHeadDimIndex});
+  } else {
+    q_dist_attr_dst =
+        UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  }
 
   TensorDistAttr k_dist_attr_dst = CopyTensorDistAttrForOutput(k_dist_attr_src);
   k_dist_attr_dst.set_process_mesh(q_dist_attr_dst.process_mesh());
@@ -259,8 +303,10 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   infer_sin_cos(sin,
                 cos,
                 position_ids,
+                q_dist_attr_dst,
                 q_shape,
                 time_major,
+                enable_shard_on_seqlen,
                 &sin_dist_attr_dst,
                 &cos_dist_attr_dst);
 
@@ -333,8 +379,23 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   q_dist_attr_dst.set_dims_mapping(dims_mapping);
 
   const int kSeqlenDimIndex = time_major ? 0 : 1;
-  q_dist_attr_dst =
-      UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  // if one of sin cos is empty, they are all useless in kernel
+  bool is_sin_cos_none = IsEmpty(common::vectorize(sin.dims())) ||
+                         IsEmpty(common::vectorize(cos.dims()));
+  bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
+
+  // Enable shard on seq_len dimension only if sin/cos is not None and
+  // position_ids is None
+  bool enable_shard_on_seqlen = !is_sin_cos_none && is_ids_none &&
+                                IsDimSharded(q_dist_attr_dst, kSeqlenDimIndex);
+  if (enable_shard_on_seqlen) {
+    // Sharded along seq_len dim
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {kHeadDimIndex});
+  } else {
+    q_dist_attr_dst =
+        UnShardTensorDims(q_dist_attr_dst, {kSeqlenDimIndex, kHeadDimIndex});
+  }
+
   TensorDistAttr out_q_dist_attr_dst = q_dist_attr_dst;
 
   TensorDistAttr k_dist_attr_dst = CopyTensorDistAttrForOutput(k.dist_attr());
@@ -358,8 +419,10 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   infer_sin_cos(sin,
                 cos,
                 position_ids,
+                out_q_dist_attr_dst,
                 out_q_shape,
                 time_major,
+                enable_shard_on_seqlen,
                 &sin_dist_attr_dst,
                 &cos_dist_attr_dst);
 
@@ -369,7 +432,6 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   TensorDistAttr position_ids_dist_attr_dst =
       CopyTensorDistAttrForOutput(position_ids.dist_attr());
 
-  bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
   if (!is_ids_none) {
     position_ids_dist_attr_dst.set_dims_mapping(position_ids_dims_mapping);
     position_ids_dist_attr_dst =
