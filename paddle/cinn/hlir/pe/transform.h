@@ -154,7 +154,7 @@ ir::Tensor Reverse(const ir::Tensor& input,
 /**
  * @brief Perform meta op Transpose
  * @param input The input tensor
- * @param axis tranpsoe axis
+ * @param axis transpose axis
  * @param output_name the name of the output tensor
  */
 ir::Tensor Transpose(
@@ -197,8 +197,8 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
  * @param input The input tensor
  * @param assign The assign tensor
  * @param axis select axis
- * @param starts select reigon starts
- * @param strides select reigon strides
+ * @param starts select region starts
+ * @param strides select region strides
  * @param output_name the name of the output tensor
  */
 ir::Tensor SliceAssign(

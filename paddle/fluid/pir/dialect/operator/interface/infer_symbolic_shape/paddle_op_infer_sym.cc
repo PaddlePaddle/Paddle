@@ -80,16 +80,6 @@ bool ShapeSrOpInferSymbolicShape(
   return ShapeOpInferSymbolicShape(op, shape_analysis);
 }
 
-void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
-    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
-    int axis) {
-  for (size_t i = 1; i < shape_data_list.size(); ++i) {
-    shape_analysis->CreateDimExprBuilder().CstrEq(
-        shape_data_list[0].shape()[axis], shape_data_list[i].shape()[axis]);
-  }
-}
-
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -119,7 +109,8 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
     } else {
       for (int i = 0; i < rank; ++i) {
         if (i == axis) continue;
-        BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
+        details::BuildCstrEqForTensorListAlongAxis(
+            shape_analysis, shape_data_list, i);
       }
       shape_dim_exprs.insert(shape_dim_exprs.begin() + axis,
                              static_cast<std::int64_t>(shape_data_list.size()));
@@ -194,31 +185,42 @@ bool ReshapeOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source_shape);
 
+  const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      if (Filter(dim_expr)) {
+        product = product * dim_expr;
+      }
+    }
+    return product;
+  };
+
+  const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+    if (dim_expr.isa<int64_t>()) {
+      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+    }
+    return true;
+  };
+
   const std::vector<symbol::DimExpr> out_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    out_dims = operand_shape_or_data.data().value();
-
-    symbol::DimExpr product = symbol::DimExpr(1);
-    symbol::DimExpr numel = symbol::DimExpr(1);
-
     const auto &original_shape =
         shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
-    for (auto &dim_expr : original_shape) {
-      numel = numel * dim_expr;
-    }
 
-    for (size_t i = 0; i < out_dims.size(); i++) {
-      if (out_dims[i].isa<int64_t>()) {
-        if (out_dims[i].dyn_cast<int64_t>() != static_cast<int64_t>(-1)) {
-          product = product * out_dims[i];
-        } else if (i == out_dims.size() - 1) {
-          out_dims[i] = numel / product;
-        } else {
-          // doing nothing
-        }
-      } else {
-        product = product * out_dims[i];
-      }
+    const auto &numel =
+        GetProduct(original_shape, [](const auto &) { return true; });
+
+    const auto &product_exclude_minus_one =
+        GetProduct(operand_shape_or_data.data().value(), IsNotMinusOne);
+
+    const auto &input_dims = operand_shape_or_data.data().value();
+
+    std::vector<symbol::DimExpr> out_dims;
+    out_dims.reserve(input_dims.size());
+    for (const auto &dim_expr : input_dims) {
+      const auto &out_dim_expr = IsNotMinusOne(dim_expr)
+                                     ? dim_expr
+                                     : (numel / product_exclude_minus_one);
+      out_dims.emplace_back(out_dim_expr);
     }
 
     return out_dims;
@@ -352,15 +354,20 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
       int64_t axis = axes[i];
       auto end =
           IsMaxInt(dim_expr_ends[i]) ? out_shape[axis] : dim_expr_ends[i];
-      if ((starts[i] >= 0 && ends[i] >= 0) ||
-          (starts[i] <= 0 && ends[i] <= 0)) {  // both negtive or positive.
+
+      bool both_negative_or_positive =
+          (starts[i] >= 0 && ends[i] >= 0) || (starts[i] <= 0 && ends[i] <= 0);
+      bool start_negative_end_positive = starts[i] <= 0 && ends[i] >= 0;
+      bool start_positive_end_negative = starts[i] >= 0 && ends[i] <= 0;
+
+      if (both_negative_or_positive) {
         out_shape[axis] = end - dim_expr_starts[i];
-      } else if (starts[i] <= 0 &&
-                 ends[i] >= 0) {  // negtive start, positive end
+      } else if (start_negative_end_positive) {
         out_shape[axis] = end - dim_expr_starts[i] - out_shape[axis];
-      } else if (starts[i] >= 0 &&
-                 ends[i] <= 0) {  // positive start, negtive end
+      } else if (start_positive_end_negative) {
         out_shape[axis] = out_shape[axis] - dim_expr_starts[i] + end;
+      } else {
+        LOG(FATAL) << "Dead code";
       }
     }
 
@@ -429,14 +436,14 @@ bool ConcatOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
-    for (size_t i = 1; i < shape_data_list.size(); ++i) {
-      for (size_t j = 0; j < rank; ++j) {
-        if (j != static_cast<size_t>(axis)) {
-          // This func have bug
-          BuildCstrEqForTensorListAlongAxis(shape_analysis, shape_data_list, i);
-          continue;
-        }
-        out_dims[axis] = out_dims[axis] + shape_data_list[i].shape()[axis];
+    for (size_t i = 0; i < rank; ++i) {
+      if (i != static_cast<size_t>(axis)) {
+        details::BuildCstrEqForTensorListAlongAxis(
+            shape_analysis, shape_data_list, i);
+        continue;
+      }
+      for (size_t j = 1; j < shape_data_list.size(); ++j) {
+        out_dims[axis] = out_dims[axis] + shape_data_list[j].shape()[axis];
       }
     }
     return out_dims;

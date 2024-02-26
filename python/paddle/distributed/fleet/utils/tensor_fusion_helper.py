@@ -783,7 +783,7 @@ def fused_parameters(
     :param fuse_param: fuse param or not
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
-    :param apply_decay_param_fun: the funtion to filter decay param
+    :param apply_decay_param_fun: the function to filter decay param
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:

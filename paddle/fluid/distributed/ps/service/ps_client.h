@@ -197,7 +197,7 @@ class PSClient {
   // server优雅退出
   virtual std::future<int32_t> StopServer() = 0;
 
-  // server profilera
+  // server profiler
   virtual std::future<int32_t> StartProfiler() = 0;
   virtual std::future<int32_t> StopProfiler() = 0;
 

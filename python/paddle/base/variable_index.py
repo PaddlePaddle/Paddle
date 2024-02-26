@@ -173,12 +173,12 @@ def deal_advanced_index(
     Transpose origin Tensor and advanced indices to the front.
 
     Returns:
-        transed_tensor (Tensor): transposed tensor, corresbonding with advanced indices
-        transed_index (List): advanced indices transed to the front
+        transed_tensor (Tensor): transposed tensor, corresponding with advanced indices
+        transed_index (List): advanced indices transposed to the front
         trans_back_dim (List): order of axes to transpose back to original order. Only used in __setitem__.
         pos_of_new_dim (int):  axis of new dim in the result. Only used in __getitem__.
         rank_of_new_dim (int): rank of new dim in the result. Only used in __getitem__.
-        transed_value_tensor (Tensor): value tensor transed to the front. Only used in __setitem__.
+        transed_value_tensor (Tensor): value tensor transposed to the front. Only used in __setitem__.
     """
     transed_dim = []
     transed_index = []
@@ -771,7 +771,7 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
-                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+                # TODO(zoooo0820): support strided_slice_array until PIR API is ready
 
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
@@ -883,7 +883,7 @@ def _getitem_static(x, indices):
             _,
         ) = deal_advanced_index(out, advanced_index, False, None)
 
-        # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
+        # TODO(zooooo0820): Replacing gather_nd to another advanced OP for handling of mixed indexes more efficiently
         if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
             0
         ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
@@ -919,7 +919,7 @@ def _getitem_static(x, indices):
 
 def parse_bool_and_broadcast_indices(indices):
     # deal with multiple Tensors and translating bool tensor to int tensor.
-    # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
+    # In static mode, bool-tensor cannot be broadcasted since its corresponding int tensor's shape cannot be infered.
     for i, indice in enumerate(indices):
         if (
             indice.dtype == paddle.bool
