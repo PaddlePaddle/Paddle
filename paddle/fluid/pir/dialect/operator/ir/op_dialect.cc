@@ -81,9 +81,15 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
                "Currently InferSymbolicShape of ConstantOp only support "
                "DenseTensorType result.");
 
-    const std::vector<int64_t> result_dims = common::vectorize(
-        op->result(0).type().dyn_cast<pir::DenseTensorType>().dims());
-    std::vector<symbol::DimExpr> out_dims{result_dims};
+    const std::vector<symbol::DimExpr> out_dims = [op] {
+      std::vector<symbol::DimExpr> dims;
+      const std::vector<int64_t> result_dims = common::vectorize(
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims());
+      for (int i = 0; i < result_dims.size(); i++) {
+        dims.emplace_back(result_dims[i]);
+      }
+      return dims;
+    }();
 
     shape_analysis->SetShapeOrDataForValue(
         op->result(0),
