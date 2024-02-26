@@ -46,8 +46,24 @@ def check_close(
     numerical_jvps_np = numerical_jvps_np[0].reshape([-1])
     tangents = tangents[0].reshape([-1])
     cotangents = cotangents[0].reshape([-1])
-    print(np.dot(cotangents, numerical_jvps_np))
-    print(np.dot(eager_vjps_np, tangents))
+    dtype = eager_vjps_np.dtype
+    atol = atol if atol else default_gradient_tolerance[dtype]
+    rtol = rtol if rtol else default_gradient_tolerance[dtype]
+    np.testing.assert_allclose(
+        eager_vjps_np,
+        static_vjps_np,
+        atol=atol,
+        rtol=rtol,
+        err_msg="The grad of the eager is not equal to the static",
+    )
+    inner_dot_ret = np.dot(eager_vjps_np, tangents)
+    inner_dot_ret_expect = np.dot(cotangents, numerical_jvps_np)
+    np.testing.assert_allclose(
+        inner_dot_ret,
+        inner_dot_ret_expect,
+        rtol=rtol,
+        err_msg="The grad of analytical is not equal to the numerical",
+    )
 
 
 # Use the existing vjp method to calculate n order, provided that n-1 order is correct
