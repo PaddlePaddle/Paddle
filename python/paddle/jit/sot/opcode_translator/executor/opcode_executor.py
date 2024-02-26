@@ -47,7 +47,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -1644,8 +1644,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 
@@ -1751,7 +1753,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 2. create true_fn and false_fn
         def create_if_branch_fn(start_idx, input_var_names):
-            if self._instructions[start_idx].opname == "RETURN_VALUE":
+            if self._instructions[start_idx].opname in RETURN:
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -1883,7 +1885,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
 
         def create_resume_fn():
-            if self._instructions[next_index].opname == "RETURN_VALUE":
+            if self._instructions[next_index].opname in RETURN:
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
@@ -2029,7 +2031,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         )
 
         def create_after_loop_fn():
-            if self._instructions[loop_body_end_idx].opname == "RETURN_VALUE":
+            if self._instructions[loop_body_end_idx].opname in RETURN:
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
