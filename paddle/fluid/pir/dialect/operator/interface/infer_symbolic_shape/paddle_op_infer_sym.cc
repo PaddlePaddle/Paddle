@@ -1007,7 +1007,8 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   shape_analysis->SetShapeOrDataForValue(
-      result(0), shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
+      op->result(0),
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
   return true;
 }
 

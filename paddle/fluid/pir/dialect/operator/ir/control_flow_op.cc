@@ -991,10 +991,9 @@ void SelectInputOp::VerifySig() {
 
 bool SelectInputOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto GetSymExprForResult =
-      [shape_analysis](uint32_t idx) -> const std::vector<symbol::DimExpr> & {
-    const auto &shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(operand_source(idx));
+  auto GetSymExprForValue =
+      [shape_analysis](pir::Value val) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(val);
     if (shape_or_data.data().has_value()) {
       return shape_or_data.data().value();
     } else {
@@ -1002,8 +1001,8 @@ bool SelectInputOp::InferSymbolicShape(
     }
   };
 
-  const auto &input1_dims = GetSymExprForResult(1);
-  const auto &input2_dims = GetSymExprForResult(2);
+  const auto &input1_dims = GetSymExprForValue(operand_source(0));
+  const auto &input2_dims = GetSymExprForValue(operand_source(1));
 
   std::vector<symbol::DimExpr> out_dims = input1_dims;
   // merge shape for input1 and input2, since we don't know which will be
