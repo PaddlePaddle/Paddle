@@ -861,6 +861,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("use_optimized_model",
+           &AnalysisConfig::UseOptimizedModel,
+           py::arg("x") = true)
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
