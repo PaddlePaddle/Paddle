@@ -428,7 +428,7 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     bool continue_run = true;
 
     for (auto *node : subgraph) {
-      for (auto tmp_name : node->outputs) {
+      for (const auto tmp_name : node->outputs) {
         if (std::find(trt_exclude_var_names_.begin(),
                       trt_exclude_var_names_.end(),
                       tmp_name->Name()) != trt_exclude_var_names_.end()) {

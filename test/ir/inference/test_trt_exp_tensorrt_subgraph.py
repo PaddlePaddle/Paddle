@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,10 +30,10 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         config = paddle_infer.Config()
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
-        config.disable_tensorrt_subgraph(["input_data"])
+        config.exp_tensorrt_subgraph(["input_data"])
         config.set_optim_cache_dir(self.cache_dir)
         if use_trt:
-            config.switch_ir_debug(True)
+            config.switch_ir_debug()
             config.enable_tensorrt_engine(
                 max_batch_size=self.trt_param.max_batch_size,
                 workspace_size=self.trt_param.workspace_size,
