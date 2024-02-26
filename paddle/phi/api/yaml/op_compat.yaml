@@ -771,6 +771,10 @@
     {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -2552,6 +2556,10 @@
     {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 

@@ -109,6 +109,10 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'multi_gru',
     'moving_average_abs_max_scale',
     'moving_average_abs_max_scale_',
+    'quantize_linear',
+    'quantize_linear_',
+    'dequantize_linear',
+    'dequantize_linear_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
