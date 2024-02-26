@@ -57,6 +57,7 @@ class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
                     Value inlet,
                     std::initializer_list<Value> element_list);
   void VerifySig();
+  void VerifyRegion();
 
   Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
@@ -84,6 +85,7 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
                     OperationArgument &argument,  // NOLINT
                     Value outlet);
   void VerifySig();
+  void VerifyRegion();
 
   Value container() { return container_interface().container(); }
   Value inlet() { return container_interface().inlet(); }
