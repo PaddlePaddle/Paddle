@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -59,6 +60,90 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
   }
 };
 
+template <typename ReduceOpT>
+class ReduceOpPattern : public pir::OpRewritePattern<ReduceOpT> {
+ public:
+  using pir::OpRewritePattern<ReduceOpT>::OpRewritePattern;
+
+  bool Match(ReduceOpT op) const override {
+    const auto& tensor_type =
+        op.result(0).type().template dyn_cast<pir::DenseTensorType>();
+    return tensor_type.dims().size() == 0;
+  }
+
+  void Rewrite(ReduceOpT op, pir::PatternRewriter& rewriter) const override {
+    std::vector<int64_t> axis{};
+    const auto& dtype = phi::DataType::FLOAT32;
+    auto new_reduce_op = rewriter.Build<ReduceOpT>(
+        op.operand_source(0), axis, dtype, /*keepdim=*/true);
+    auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
+        new_reduce_op.result(0), /*shape=*/std::vector<int64_t>({1}));
+    rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
+    rewriter.EraseOp(op);
+  }
+};
+
+pir::DenseTensorType Make1DTensorType(const pir::DenseTensorType& tensor_type) {
+  return pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                   tensor_type.dtype(),
+                                   {1},
+                                   tensor_type.data_layout(),
+                                   tensor_type.lod(),
+                                   tensor_type.offset());
+}
+
+void ConvertValue0DTo1D(pir::Value operand) {
+  if (const auto& tensor_type =
+          operand.type().dyn_cast<pir::DenseTensorType>()) {
+    if (tensor_type.dims().size() == 0) {
+      operand.set_type(Make1DTensorType(tensor_type));
+    }
+  } else if (const auto& vector_tensor_type =
+                 operand.type().dyn_cast<pir::VectorType>()) {
+    pir::Builder builder(pir::IrContext::Instance());
+
+    const std::vector<pir::Type> inputs_type = [&]() {
+      std::vector<pir::Type> types;
+      for (std::size_t i = 0; i < vector_tensor_type.size(); ++i) {
+        CHECK(vector_tensor_type[i].isa<pir::DenseTensorType>());
+        const auto& dense_type =
+            vector_tensor_type[i].dyn_cast<pir::DenseTensorType>();
+        types.push_back(dense_type.dims().size() == 0
+                            ? Make1DTensorType(dense_type)
+                            : vector_tensor_type[i]);
+      }
+      return types;
+    }();
+    operand.set_type(builder.vec_type(inputs_type));
+  } else {
+    LOG(FATAL) << "Unsupported operand type: " << operand.type();
+  }
+}
+
+class WhileOpPattern : public pir::OpRewritePattern<paddle::dialect::WhileOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::WhileOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::WhileOp op) const override {
+    for (const auto& value : op.block_args()) {
+      if (const auto& tensor_type =
+              value.type().template dyn_cast<pir::DenseTensorType>()) {
+        if (tensor_type.dims().size() == 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void Rewrite(paddle::dialect::WhileOp op,
+               pir::PatternRewriter& rewriter) const override {
+    for (pir::Value value : op.block_args()) {
+      ConvertValue0DTo1D(value);
+    }
+  }
+};
+
 class CombineOpPattern : public pir::OpRewritePattern<pir::CombineOp> {
  public:
   using pir::OpRewritePattern<pir::CombineOp>::OpRewritePattern;
@@ -95,71 +180,35 @@ class Convert0DTo1DPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
     ps.Add<FullOpPattern>(context);
     ps.Add<CombineOpPattern>(context);
+    ps.Add<ReduceOpPattern<paddle::dialect::SumOp>>(context);
+    ps.Add<WhileOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
   void Run(pir::Operation* op) override {
+    for (uint32_t i = 0; i < op->num_regions(); ++i) {
+      ApplyPatternOnOperation(op->region(i));
+      for (auto& block : op->region(i)) {
+        ConvertBlock0DTo1D(block);
+      }
+    }
+  }
+
+  void ApplyPatternOnOperation(pir::Region& region) {  // NOLINT
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      for (auto& block : op->region(i)) {
-        ConvertBlock0DTo1D(block);
-        for (auto& op : block) {
-          if (op.isa<paddle::dialect::FullOp>() || op.isa<pir::CombineOp>()) {
-            const auto& [_, num_rewrites] =
-                pir::ApplyPatternsGreedily(&op, patterns_, cfg);
-            AddStatistics(num_rewrites);
-          }
-        }
-      }
-    }
+    const auto& [_, num_rewrites] =
+        pir::ApplyPatternsGreedily(region, patterns_, cfg);
+    AddStatistics(num_rewrites);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 
-  pir::DenseTensorType Make1DTensorType(
-      const pir::DenseTensorType& tensor_type) {
-    return pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                     tensor_type.dtype(),
-                                     {1},
-                                     tensor_type.data_layout(),
-                                     tensor_type.lod(),
-                                     tensor_type.offset());
-  }
-
-  void ConvertValue0DTo1D(pir::Value operand) {
-    if (const auto& tensor_type =
-            operand.type().dyn_cast<pir::DenseTensorType>()) {
-      if (tensor_type.dims().size() == 1) {
-        operand.set_type(Make1DTensorType(tensor_type));
-      }
-    } else if (const auto& vector_tensor_type =
-                   operand.type().dyn_cast<pir::VectorType>()) {
-      pir::Builder builder(pir::IrContext::Instance());
-
-      const std::vector<pir::Type> inputs_type = [&]() {
-        std::vector<pir::Type> types;
-        for (std::size_t i = 0; i < vector_tensor_type.size(); ++i) {
-          CHECK(vector_tensor_type[i].isa<pir::DenseTensorType>());
-          const auto& dense_type =
-              vector_tensor_type[i].dyn_cast<pir::DenseTensorType>();
-          types.push_back(dense_type.dims().size() == 1
-                              ? Make1DTensorType(dense_type)
-                              : vector_tensor_type[i]);
-        }
-        return types;
-      }();
-      operand.set_type(builder.vec_type(inputs_type));
-    } else {
-      LOG(FATAL) << "Unsupported operand type: " << operand.type();
-    }
-  }
-
-  void ConvertOperation0DTo1D(const pir::Operation& op) {
+  void ConvertOperation0DTo1D(pir::Operation& op) {  // NOLINT
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
       ConvertValue0DTo1D(op.operand_source(i));
     }
@@ -172,6 +221,7 @@ class Convert0DTo1DPass : public pir::Pass {
     for (auto& op : block) {
       ConvertOperation0DTo1D(op);
       for (std::size_t i = 0; i < op.num_regions(); ++i) {
+        ApplyPatternOnOperation(op.region(i));
         for (auto& inner_block : op.region(i)) {
           ConvertBlock0DTo1D(inner_block);
         }

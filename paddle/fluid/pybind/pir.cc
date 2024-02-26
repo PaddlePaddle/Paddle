@@ -1581,11 +1581,13 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
