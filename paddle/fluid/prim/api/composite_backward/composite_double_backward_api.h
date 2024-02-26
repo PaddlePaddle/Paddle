@@ -34,6 +34,164 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  differentiation
 
 template <typename T>
+void abs_double_grad(const Tensor& x,
+                     const Tensor& grad_x_grad,
+                     Tensor* grad_out_grad) {
+  // abs grad grad : ddout = ddx * sign(x)
+
+  if (grad_out_grad) {
+    auto sign_tmp = sign<T>(x);
+    set_output<T>(grad_x_grad * sign_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void cos_double_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // cos grad grad : ddout = - sinx * ddx, dx = -dy * cosx * ddx
+  if (x_grad) {
+    if (grad_out) {
+      auto x_grad_tmp = -(grad_out.get() * cos<T>(x) * grad_x_grad);
+      set_output<T>(x_grad_tmp, x_grad);
+    } else {
+      auto x_grad_tmp = 0 * x;
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = -sin<T>(x) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void sin_double_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // sin grad grad : ddout = cosx * ddx, dx = -dy * sinx * ddx
+  if (x_grad) {
+    if (grad_out) {
+      auto x_grad_tmp = -(grad_out.get() * sin<T>(x) * grad_x_grad);
+      set_output<T>(x_grad_tmp, x_grad);
+    } else {
+      auto x_grad_tmp = 0 * x;
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+  }
+
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = cos<T>(x) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void gather_double_grad(const Tensor& index,
+                        const Tensor& grad_x_grad,
+                        const Scalar& axis,
+                        Tensor* grad_out_grad) {
+  // gather grad grad : ddout = gather(ddx, index, axis)
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = gather<T>(grad_x_grad, index, axis);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void pow_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     const Scalar& y,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // pow grad grad : ddout = y * pow(x, y-1) * ddx, dx = y * (y-1) * pow(x, y-2)
+  // * dout * ddx
+  auto y_value = y.to<float>();
+  std::vector<int64_t> empty_shape;
+  if (grad_out_grad) {
+    auto y_minus1_tensor = full<T>(empty_shape, y_value - 1.0, x.dtype());
+    auto grad_out_grad_tmp =
+        y_value * elementwise_pow<T>(x, y_minus1_tensor) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+
+  if (x_grad) {
+    auto y_minus2_tensor = full<T>(empty_shape, y_value - 2.0, x.dtype());
+    auto x_grad_tmp = y_value * (y_value - 1.0) *
+                      elementwise_pow<T>(x, y_minus2_tensor) * grad_out *
+                      grad_x_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void exp_double_grad(const Tensor& out,
+                     const Tensor& grad_x_forward,
+                     const Tensor& grad_x_grad,
+                     Tensor* grad_out_grad,
+                     Tensor* grad_x) {
+  if (grad_x) {
+    if (out.dtype() == phi::DataType::FLOAT16 ||
+        out.dtype() == phi::DataType::BFLOAT16) {
+      Tensor grad_x_grad_promote = cast<T>(grad_x_grad, phi::DataType::FLOAT32);
+      Tensor grad_x_forward_promote =
+          cast<T>(grad_x_forward, phi::DataType::FLOAT32);
+      set_output<T>(
+          cast<T>(grad_x_forward_promote * grad_x_grad_promote, out.dtype()),
+          grad_x);
+    } else {
+      set_output<T>(grad_x_forward * grad_x_grad, grad_x);
+    }
+  }
+
+  if (grad_out_grad) {
+    if (out.dtype() == phi::DataType::FLOAT16 ||
+        out.dtype() == phi::DataType::BFLOAT16) {
+      Tensor out_promote = cast<T>(out, phi::DataType::FLOAT32);
+      Tensor grad_x_grad_promote = cast<T>(grad_x_grad, phi::DataType::FLOAT32);
+      set_output<T>(cast<T>(out_promote * grad_x_grad_promote, out.dtype()),
+                    grad_out_grad);
+    } else {
+      set_output<T>(out * grad_x_grad, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
+void minimum_double_grad(const Tensor& x,
+                         const Tensor& y,
+                         const Tensor& grad_x_grad,
+                         const Tensor& grad_y_grad,
+                         Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    auto x_tmp = cast<T>(less_than<T>(x, y), grad_x_grad.dtype());
+    auto y_tmp = cast<T>(greater_equal<T>(x, y), grad_y_grad.dtype());
+    auto ddout_res = grad_x_grad * x_tmp + grad_y_grad * y_tmp;
+    set_output<T>(ddout_res, grad_out_grad);
+  }
+}
+
+template <typename T>
+void maximum_double_grad(const Tensor& x,
+                         const Tensor& y,
+                         const Tensor& grad_x_grad,
+                         const Tensor& grad_y_grad,
+                         Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    auto x_tmp = cast<T>(greater_than<T>(x, y), grad_x_grad.dtype());
+    auto y_tmp = cast<T>(less_equal<T>(x, y), grad_y_grad.dtype());
+    auto ddout_res = grad_x_grad * x_tmp + grad_y_grad * y_tmp;
+    set_output<T>(ddout_res, grad_out_grad);
+  }
+}
+
+template <typename T>
 void tanh_double_grad(const Tensor& out,
                       const Tensor& grad_out,
                       const Tensor& grad_x_grad,

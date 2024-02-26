@@ -13,6 +13,7 @@
   kernel :
     func : abs_double_grad
     data_type : grad_x_grad
+  composite : abs_double_grad(x, grad_x_grad, grad_out_grad)
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
@@ -435,6 +436,7 @@
     func : cos_double_grad
   optional: grad_out
   backward : cos_triple_grad
+  composite : cos_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : cos_grad
@@ -983,6 +985,7 @@
   kernel :
     data_type: out_grad
     func : gather_grad
+  backward : gather_double_grad
   composite : gather_grad(x, index, out_grad, axis, x_grad)
   no_need_buffer : x
 
@@ -1771,6 +1774,7 @@
     func : pow_double_grad
     data_type : x
   backward : pow_triple_grad
+  composite: pow_double_grad(x, grad_out, grad_x_grad, y, x_grad, grad_out_grad)
   inplace : (grad_x_grad -> x_grad)
 
 - backward_op : pow_grad
@@ -1785,6 +1789,7 @@
     func : pow_grad
     data_type : out_grad
   backward: pow_double_grad
+  composite: pow_grad(x, out_grad, y, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : pow_triple_grad
@@ -2156,6 +2161,7 @@
     func : sin_double_grad
   optional: grad_out
   backward : sin_triple_grad
+  composite : sin_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : sin_grad
@@ -2696,6 +2702,14 @@
   kernel :
     func : yolo_loss_grad
   optional : gt_score
+
+- backward_op: gather_double_grad
+  forward: gather_grad(Tensor x, Tensor index, Tensor grad_out, Scalar axis=0) -> Tensor(grad_x)
+  args: (Tensor index, Tensor grad_x_grad, Scalar axis=0)
+  output: Tensor(grad_out_grad)
+  composite: gather_double_grad(index, grad_x_grad, axis, grad_out_grad)
+  # infer_meta :
+  #   func : GatherInferMeta
 
 - backward_op: silu_double_grad
   forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)
