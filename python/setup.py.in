@@ -94,7 +94,7 @@ def get_xpu_xhpc_version():
     else:
         return 'False'
 
-def is_taged():
+def is_tagged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
@@ -125,7 +125,7 @@ cudnn_version    = '%(cudnn)s'
 xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
-istaged          = %(istaged)s
+is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
@@ -195,7 +195,7 @@ def show():
             >>> # doctest: -SKIP
 
     """
-    if istaged:
+    if is_tagged:
         print('full_version:', full_version)
         print('major:', major)
         print('minor:', minor)
@@ -344,7 +344,7 @@ def cinn():
             'xpu_xccl': get_xpu_xccl_version(),
             'xpu_xhpc': get_xpu_xhpc_version(),
             'commit': commit,
-            'istaged': is_taged(),
+            'is_tagged': is_tagged(),
             'with_mkl': '@WITH_MKL@',
             'cinn': get_cinn_version()})
 
@@ -828,7 +828,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
-        # The sw_64 not suppot patchelf, so we just disable that.
+        # The sw_64 not support patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
                 if os.system(command) != 0:

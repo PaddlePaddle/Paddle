@@ -21,46 +21,6 @@ from .base import BaseTransformer
 __all__ = []
 
 
-class BasicApiTransformer(BaseTransformer):
-    """
-    Class to transform basic API from dygraph to static graph.
-    """
-
-    def __init__(self, root):
-        self.root = root
-
-    def transform(self):
-        to_tensor_transformer = ToTensorTransformer(self.root)
-        to_tensor_transformer.transform()
-        attribute_transformer = AttributeJstTransformer(self.root)
-        attribute_transformer.transform()
-        self.visit(self.root)
-        return self.root
-
-
-class ToTensorTransformer(BaseTransformer):
-    """
-    Class to transform paddle.to_tensor and paddle.to_variable to paddle.assign
-    """
-
-    def __init__(self, node):
-        assert isinstance(
-            node, gast.AST
-        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.root = node
-
-    def transform(self):
-        self.visit(self.root)
-        return self.root
-
-    def visit_Call(self, node):
-        assert isinstance(node, gast.Call)
-        if is_to_variable(node):
-            node = to_assign_node(node)
-        self.generic_visit(node)
-        return node
-
-
 class NameloadJstTransformer(BaseTransformer):
     """
     change name and attribute load to __jst.Ld(name) pattern.
@@ -168,34 +128,3 @@ class AttributeJstTransformer(BaseTransformer):
             )
         self.generic_visit(node)
         return node
-
-
-def is_to_variable(node):
-    assert isinstance(node, gast.Call)
-    api_name = ast_to_source_code(node.func).strip()
-
-    return api_name.split(".")[-1] == "to_variable"
-
-
-def to_assign_node(node):
-    # Transform dygraph api `base.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
-    # NOTE:
-    #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
-    #   but api `assign` only supports {float32, float64, int32, int64, bool};
-    #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
-
-    assert isinstance(node, gast.Call)
-    assign_api = gast.parse('paddle.assign').body[0].value
-    node.func = assign_api
-
-    if node.args:
-        node.args = [node.args[0]]
-        node.keywords = []
-    else:
-        for idx, kw in enumerate(node.keywords):
-            if kw.arg == 'value' or kw.arg == 'data':
-                node.keywords[idx].arg = 'x'
-                node.keywords = [node.keywords[idx]]
-                node.args = []
-                break
-    return node
