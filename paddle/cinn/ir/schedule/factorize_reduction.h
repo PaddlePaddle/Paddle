@@ -215,6 +215,26 @@ class ReduceBlockCreater {
   Expr new_init_block_realize_;
 };
 
+class LoadReplacer : public ir::IRMutator<> {
+ public:
+  explicit LoadReplacer(const std::string& src_load_tensor_name,
+                        const ir::Expr& target)
+      : src_load_tensor_name_(src_load_tensor_name), target_(target) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Load* expr, Expr* op) override {
+    if (expr->tensor.as_tensor()->name == src_load_tensor_name_) {
+      *op = target_;
+    }
+  }
+
+ private:
+  std::string src_load_tensor_name_;
+  ir::Expr target_;
+};
+
 // Implement class for building Reduction-Factorized block,
 // only used for FactorizeReduction schedule primitive.
 class RFBlockCreater : public ReduceBlockCreater {
@@ -331,26 +351,12 @@ class RFBlockCreater : public ReduceBlockCreater {
     rf_tensor_access_indices_.insert(
         rf_tensor_access_indices_.begin() + rf_axis_, rf_var_);
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
+    std::string original_store_name =
+        original_update_stmt_.As<ir::Store>()->tensor.as_tensor()->name;
     Expr new_store_body = ir_utils::IRCopy(original_store_body);
-#define REPLACE_RF_TENSOR(Op)                                    \
-  if (new_store_body.As<Op>()) {                                 \
-    auto* node = new_store_body.As<Op>();                        \
-    CHECK(node);                                                 \
-    auto& operand = node->a();                                   \
-    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
-  }
-
-    REPLACE_RF_TENSOR(Add)
-    REPLACE_RF_TENSOR(Mul)
-    REPLACE_RF_TENSOR(Max)
-    REPLACE_RF_TENSOR(Min)
-    REPLACE_RF_TENSOR(And)
-    REPLACE_RF_TENSOR(Or)
-    REPLACE_RF_TENSOR(LT)
-    REPLACE_RF_TENSOR(LE)
-    REPLACE_RF_TENSOR(GT)
-    REPLACE_RF_TENSOR(GE)
-#undef REPLACE_RF_TENSOR
+    LoadReplacer load_replacer(
+        original_store_name, Load::Make(rf_tensor_, rf_tensor_access_indices_));
+    load_replacer(&new_store_body);
 
     new_update_stmt_ =
         ir::Store::Make(rf_tensor_, new_store_body, rf_tensor_access_indices_);
@@ -433,25 +439,11 @@ class RBBlockCreater : public ReduceBlockCreater {
   void CreateUpdateStmt() override {
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
     Expr new_store_body = ir_utils::IRCopy(original_store_body);
-#define REPLACE_RF_TENSOR(Op)                                    \
-  if (new_store_body.As<Op>()) {                                 \
-    auto* node = new_store_body.As<Op>();                        \
-    CHECK(node);                                                 \
-    auto& operand = node->b();                                   \
-    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
-  }
-
-    REPLACE_RF_TENSOR(Add)
-    REPLACE_RF_TENSOR(Mul)
-    REPLACE_RF_TENSOR(Max)
-    REPLACE_RF_TENSOR(Min)
-    REPLACE_RF_TENSOR(And)
-    REPLACE_RF_TENSOR(Or)
-    REPLACE_RF_TENSOR(LT)
-    REPLACE_RF_TENSOR(LE)
-    REPLACE_RF_TENSOR(GT)
-    REPLACE_RF_TENSOR(GE)
-#undef REPLACE_RF_TENSOR
+    std::string original_store_name =
+        original_update_stmt_.As<ir::Store>()->tensor.as_tensor()->name;
+    LoadReplacer load_replacer(
+        original_store_name, Load::Make(rf_tensor_, rf_tensor_access_indices_));
+    load_replacer(&new_store_body);
 
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
     std::vector<Expr> original_store_indices =
