@@ -50,7 +50,7 @@ def check_close(
     print(np.dot(eager_vjps_np, tangents))
 
 
-# 利用已有的vjp方法计算n阶，前提是n-1阶是正确的
+# Use the existing vjp method to calculate n order, provided that n-1 order is correct
 def f_vjp_wrapper(func):
     def inner_wrapper(args):
         out, vjp_result = paddle.incubate.autograd.vjp(func, args)
@@ -222,16 +222,14 @@ def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
         t = paddle.randn(arg.shape, arg.dtype)
         tangents.append(t)
 
-    # shape like args, [tensor, tensor]
+    # shape like args, [pd.tensor, pd.tensor]
     eager_vjps, cotangents = get_eager_vjp(func, args, order=order)
     # shape like args, [np.array, np.array]
     eager_vjps_np = []
     for eager_vjp in eager_vjps:
         eager_vjps_np.append(eager_vjp.numpy())
-        static_vjps_np = get_static_vjp(func, args, cotangents, order=order)
-        numerical_jvps = numerical_jvp(
-            func, args, tangents, order=order, eps=eps
-        )
+    static_vjps_np = get_static_vjp(func, args, cotangents, order=order)
+    numerical_jvps = numerical_jvp(func, args, tangents, order=order, eps=eps)
     numerical_jvps_np = []
     for num_jvp in numerical_jvps:
         numerical_jvps_np.append(num_jvp.numpy())
