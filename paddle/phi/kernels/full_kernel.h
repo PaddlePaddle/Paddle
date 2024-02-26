@@ -69,14 +69,7 @@ void Full(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const IntArray& shape,
-                 const Scalar& val) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  DataType dtype = phi::CppTypeToDataType<T>::Type();
-  CreateInferMeta(shape, dtype, &meta_out);
-  FullKernel<T, Context>(dev_ctx, shape, val, dtype, &dense_out);
-  return dense_out;
-}
+                 const Scalar& val);
 
 template <typename T, typename Context>
 DenseTensor FullLike(const Context& dev_ctx,
