@@ -1404,14 +1404,14 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   if (pos_of_new_dim != 0) {
     std::vector<int> perm(out.shape().size(), 0);
-    int tmp1 = pos_of_new_dim, tmp2 = 0,
+    int tmp1 = rank_of_new_dim, tmp2 = 0,
         tmp3 = pos_of_new_dim + rank_of_new_dim;
     for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
-      if (i < rank_of_new_dim) {
+      if (i < pos_of_new_dim) {
         perm[i] =
-            tmp1++;  // range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim)
-      } else if (i >= rank_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
-        perm[i] = tmp2++;  // range(0, pos_of_new_dim)
+            tmp1++;  // range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim)
+      } else if (i >= pos_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;  // range(0, rank_of_new_dim)
       } else {
         perm[i] = tmp3++;  // range(pos_of_new_dim + rank_of_new_dim, out.ndim)
       }
