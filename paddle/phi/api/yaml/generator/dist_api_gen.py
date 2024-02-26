@@ -596,6 +596,7 @@ class DistForwardAPI(ForwardAPI):
     def need_to_generate_code_for_inplace_impl(self, i):
         return (
             self.inplace_flag
+            and self.kernel['func'][0] != 'full'
             and self.inplace_map is not None
             and self.outputs['names'][i] in self.inplace_map
         )
@@ -1023,7 +1024,11 @@ class DistForwardAPI(ForwardAPI):
         output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
         if output_num == 1:
             # api output generate
-            if self.need_to_generate_code_for_inplace_impl(0):
+            if (
+                self.inplace_flag
+                and self.inplace_map is not None
+                and self.outputs['names'][0] in self.inplace_map
+            ):
                 inplace_assign_code = (
                     " = " + self.inplace_map[self.outputs['names'][0]]
                 )
