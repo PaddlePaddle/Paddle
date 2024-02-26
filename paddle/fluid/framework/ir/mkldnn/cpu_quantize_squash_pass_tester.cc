@@ -1018,7 +1018,7 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
 
 // a->Concat1->b
 // b->Concat2
-// b->Quatize1(Scale)->c
+// b->Quantize1(Scale)->c
 // c->Fc1
 // c->Fc2
 TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
