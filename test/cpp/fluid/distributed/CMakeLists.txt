@@ -84,10 +84,7 @@ cc_test(
 
 set_source_files_properties(
   sparse_sgd_rule_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
-  sparse_sgd_rule_test
-  SRCS sparse_sgd_rule_test.cc
-  DEPS ${COMMON_DEPS} table)
+paddle_test(sparse_sgd_rule_test SRCS sparse_sgd_rule_test.cc)
 
 set_source_files_properties(
   ctr_accessor_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
