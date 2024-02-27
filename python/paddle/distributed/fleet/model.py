@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import paddle
 from paddle.distributed import fleet
 
@@ -28,11 +26,6 @@ from .meta_parallel import (
 )
 
 _grad_scalar = None
-
-# NOTE(shenliang03): It's just for compatibility with old version. It will be removed in the next version.
-g_unbalance_bsz_1f1b_pipeline = int(
-    os.environ.get("FLAGS_unbalance_bsz_1f1b_pipeline", 1)
-)
 
 
 def distributed_model(model):
@@ -174,32 +167,18 @@ def distributed_model(model):
         else:
             accumulate_steps = strategy.pipeline_configs['accumulate_steps']
             pp_degree = fleet_env._hcg.get_pipe_parallel_world_size()
-            if g_unbalance_bsz_1f1b_pipeline:
-                if accumulate_steps >= 2 * pp_degree:
-                    # interleave pipeline
-                    model = PipelineParallelWithInterleave(
-                        model, fleet_env._hcg, strategy=strategy
-                    )
-                elif pp_degree <= accumulate_steps < 2 * pp_degree:
-                    model = PipelineParallelWithInterleaveFthenB(
-                        model, fleet_env._hcg, strategy=strategy
-                    )
-                else:
-                    raise ValueError(
-                        f"The accumulate_steps({accumulate_steps}) should be greater than or equal to pp_degree({pp_degree})"
-                    )
+            if (
+                accumulate_steps > pp_degree
+                and accumulate_steps % pp_degree == 0
+            ):
+                # interleave pipeline
+                model = PipelineParallelWithInterleave(
+                    model, fleet_env._hcg, strategy=strategy
+                )
             else:
-                if (
-                    accumulate_steps > pp_degree
-                    and accumulate_steps % pp_degree == 0
-                ):
-                    # interleave pipeline
-                    model = PipelineParallelWithInterleave(
-                        model, fleet_env._hcg, strategy=strategy
-                    )
-                else:
-                    model = PipelineParallelWithInterleaveFthenB(
-                        model, fleet_env._hcg, strategy=strategy
-                    )
+                # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
+                model = PipelineParallelWithInterleaveFthenB(
+                    model, fleet_env._hcg, strategy=strategy
+                )
 
     return model
