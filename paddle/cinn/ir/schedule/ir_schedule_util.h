@@ -128,7 +128,7 @@ void ReplaceExpr(Expr* source,
  * and change -1 to positive integer.
  * @param factors The original factors.
  * @param total_extent The extent of the loop to be splitted.
- * @return return The valiated factors.
+ * @return return The validated factors.
  */
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
@@ -312,7 +312,7 @@ IterRange RangeUnion(const IterRange& range1, const IterRange& range2);
  * block
  * \param is_store_provided Whether Store nodes of the block provide the
  * tensor, true means it is in compute_at case, otherwise false means in
- * reverse_compuate_at case
+ * reverse_compute_at case
  * \return Each index's range and can_keep_loop flag of block's tensor.
  * Indicating the buffer region being required.
  */

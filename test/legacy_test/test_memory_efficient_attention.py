@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import random
 import re
@@ -376,6 +377,123 @@ class TestMemEffAPIMask3(TestMemEffAttentionAPI):
         self.training = True
         self.scale = 1.0 / np.sqrt(self.shape[-1])
         self.seed = 2023
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
+class TestMemEffAttentionAPIWithStopGradient(unittest.TestCase):
+    def setUp(self):
+        self.name = "MemEffAttnQKV_FFF"
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 128, 8, 16)
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.training = True
+        self.attention_bias = None
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+        self.seed = 2023
+        self.q_grad_stop_gradient = True
+        self.k_grad_stop_gradient = False
+        self.v_grad_stop_gradient = False
+
+    def test_all(self):
+        logging.info(
+            f"Test All case shape {self.shape} dtype {self.dtype} name {self.name}"
+        )
+
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.q_grad_stop_gradient,
+        )
+        q_ = paddle.to_tensor(
+            query,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.q_grad_stop_gradient,
+        )
+        key = np.random.random(self.shape)
+        k = paddle.to_tensor(
+            key,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.k_grad_stop_gradient,
+        )
+        k_ = paddle.to_tensor(
+            key,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.k_grad_stop_gradient,
+        )
+        value = np.random.random(self.shape)
+        v = paddle.to_tensor(
+            value,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.v_grad_stop_gradient,
+        )
+        v_ = paddle.to_tensor(
+            value,
+            place=self.place,
+            dtype=self.dtype,
+            stop_gradient=self.v_grad_stop_gradient,
+        )
+
+        out_ = attention_naive(
+            q_, k_, v_, self.attention_bias, self.dropout, self.scale, self.seed
+        )
+
+        paddle.seed(self.seed)
+        out = memory_efficient_attention(
+            q,
+            k,
+            v,
+            self.attention_bias,
+            self.dropout,
+            self.scale,
+            self.training,
+        )
+
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+        out.backward()
+        out_.backward()
+
+        if q.stop_gradient is not True:
+            np.testing.assert_allclose(
+                q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+            )
+
+        if k.stop_gradient is not True:
+            np.testing.assert_allclose(
+                k.grad.numpy(), k.grad.numpy(), rtol=5e-03, atol=1e-03
+            )
+        if v.stop_gradient is not True:
+            np.testing.assert_allclose(
+                v.grad.numpy(), v_.grad.numpy(), rtol=5e-03, atol=1e-03
+            )
+
+
+class TestQKVFTT(TestMemEffAttentionAPIWithStopGradient):
+    def setUp(self):
+        self.name = "MemEffAttnQKV_TTT"
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 128, 8, 16)
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.training = True
+        self.attention_bias = None
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+        self.seed = 2023
+        self.q_grad_stop_gradient = False
+        self.k_grad_stop_gradient = True
+        self.v_grad_stop_gradient = True
 
 
 if __name__ == '__main__':

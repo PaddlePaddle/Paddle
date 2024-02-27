@@ -118,7 +118,7 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
 
   for (int axis : unsqz_dims) {
     int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
-    // Vaildity Check: the axis bound
+    // Validity Check: the axis bound
     PADDLE_ENFORCE_GE(
         cur,
         0,

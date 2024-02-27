@@ -15,6 +15,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 #include "glog/logging.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
@@ -135,6 +136,9 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
       // 2. reshard from replicated to other state
+      VLOG(4) << "Reshard tensor: "
+              << paddle::experimental::ReshardDebugInfo(replicated_tensor,
+                                                        dist_attr);
       auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr);
       auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
       func->Eval(dev_ctx, replicated_tensor, dist_attr, this);
@@ -201,6 +205,9 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
         DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
         // 2. reshard from replicated to other state
+        VLOG(4) << "Reshard tensor: "
+                << paddle::experimental::ReshardDebugInfo(replicated_tensor,
+                                                          dist_attr_);
         auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr_);
         auto* dev_ctx =
             DeviceContextPool::Instance().Get(global_value->place());
@@ -232,7 +239,7 @@ DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
 
 void DistTensor::unsafe_set_dims(const DDim& dims) {
   if (this->initialized()) {
-    VLOG(3) << "You try to set an initialized DistTensor's global dims. "
+    VLOG(6) << "You try to set an initialized DistTensor's global dims. "
                "Make sure you are aware of where you change its dims.";
   }
   global_dims_ = dims;
@@ -240,7 +247,7 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
 
 void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
   if (this->initialized()) {
-    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+    VLOG(6) << "You try to set an initialized DistTensor's dist attr. "
                "Make sure you are aware of where you change its dist attr.";
   }
   dist_attr_ = dist_attr;

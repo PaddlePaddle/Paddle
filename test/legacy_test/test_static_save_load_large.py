@@ -49,7 +49,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
-                    # make sure all the paramerter or optimizer var have been update
+                    # make sure all the parameter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             temp_dir = tempfile.TemporaryDirectory()

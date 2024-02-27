@@ -58,7 +58,7 @@ void SliceStridedKernel(const Context& ctx,
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     for (auto axis : decrease_axis) {
       decrease_flag[axis] = 1;
     }
