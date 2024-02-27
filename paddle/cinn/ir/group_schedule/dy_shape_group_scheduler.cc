@@ -18,10 +18,14 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace ir {
@@ -32,12 +36,14 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  tactics_.emplace_back(new AlignIterSpaceTactic());
-  tactics_.emplace_back(new ComputeInlineTactic());
-  tactics_.emplace_back(new TileTactic());
-  tactics_.emplace_back(new OptimizeReductionTactic());
-  tactics_.emplace_back(new BindCudaTactic());
-  tactics_.emplace_back(new ArrangeStorageTactic());
+  // tactics_.emplace_back(new AlignIterSpaceTactic());
+  // tactics_.emplace_back(new ComputeInlineTactic());
+  // tactics_.emplace_back(new TileTactic());
+  // tactics_.emplace_back(new OptimizeReductionTactic());
+  // tactics_.emplace_back(new BindCudaTactic());
+  // tactics_.emplace_back(new ArrangeStorageTactic());
+  tactics_.emplace_back(new LoopReorderAlignmentTactic());
+  tactics_.emplace_back(new TileFirstGeneralTactic());
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -85,7 +91,8 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
-                                     std::move(bucket_info)};
+                                     std::move(bucket_info),
+                                     group_tile_info_};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
@@ -117,10 +124,29 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
-  for (BucketContext& bucket_context : bucket_contexts_) {
-    VLOG(4) << "===========================Apply tactics on Bucket ["
-            << bucket_context.predicate << "]==========================";
-    ApplyTactics(&bucket_context);
+  if (FLAGS_cinn_bucket_compile) {
+    for (BucketContext& bucket_context : bucket_contexts_) {
+      VLOG(4) << "===========================Apply tactics on Bucket ["
+              << bucket_context.predicate << "]==========================";
+      ApplyTactics(&bucket_context);
+    }
+  } else {
+    ScheduleContext schedule_context{OutputTensorNames(),
+                                     target_,
+                                     IterativeSpaceInfo(),
+                                     BucketInfo(),
+                                     group_tile_info_};
+    LoopReorderAlignmentTactic loop_reorder_tactic;
+    loop_reorder_tactic.Init(&schedule_context);
+    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
+      loop_reorder_tactic.Apply(ir_sch_, node->id());
+    });
+
+    TileFirstGeneralTactic tile_first_general_tactic;
+    tile_first_general_tactic.Init(&schedule_context);
+    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
+      tile_first_general_tactic.Apply(ir_sch_, node->id());
+    });
   }
 }
 

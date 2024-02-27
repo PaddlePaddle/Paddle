@@ -113,8 +113,13 @@ class PrettyNamer {
   ::cinn::common::NameGenerator name_generator_;
 };
 
+enum class ScheduleAlignType : int {
+  None = 0,       //! No need to align
+  Broadcast = 1,  //! Using Broadcast schedule to align
+};
+
 struct ScheduleInfoNode {
-  std::string type;
+  ScheduleAlignType type{ScheduleAlignType::None};
 
   std::vector<int64_t> axis_info;
   std::vector<int64_t> factor_info;
@@ -122,7 +127,7 @@ struct ScheduleInfoNode {
   std::string DebugStr() {
     std::stringstream ss;
 
-    ss << "type  " << type << "| axis info ";
+    ss << "type  " << static_cast<int>(type) << "| axis info ";
     for (auto d : axis_info) {
       ss << " " << d;
     }
