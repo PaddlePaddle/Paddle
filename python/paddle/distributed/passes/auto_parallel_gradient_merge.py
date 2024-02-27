@@ -275,6 +275,7 @@ def _move_reduce_to_optimizer_ops_block(main_program, optimize_ops_block):
                 len(removed_op_idx)
             )
             new_op_desc.copy_from(op.desc)
+            new_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
             removed_op_idx.append(idx)
 
             if op.type == "c_allreduce_sum":
@@ -285,6 +286,7 @@ def _move_reduce_to_optimizer_ops_block(main_program, optimize_ops_block):
                             len(removed_op_idx)
                         )
                         new_op_desc.copy_from(main_block.ops[scale_index].desc)
+                        new_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
                         removed_op_idx.append(scale_index)
                         break
                     scale_index += 1
