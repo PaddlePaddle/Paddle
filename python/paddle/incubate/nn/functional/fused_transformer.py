@@ -1152,7 +1152,7 @@ def fused_multi_transformer(
     )  # semantic transfer
 
     if in_dynamic_mode():
-        cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer(
+        cache_kv_out, final_out = _C_ops.fused_multi_transformer(
             x,
             ln_scales,
             ln_biases,
@@ -1172,24 +1172,14 @@ def fused_multi_transformer(
             ffn1_biases,
             ffn2_weights,
             ffn2_biases,
-            cache_kvs,
-            'pre_layer_norm',
             pre_layer_norm,
-            'epsilon',
             epsilon,
-            'dropout_rate',
             dropout_rate,
-            'rotary_emb_dims',
             rotary_emb_dims,
-            'is_test',
             not training,
-            'dropout_implementation',
             mode,
-            'act_method',
             activation,
-            'trans_qkvw',
             trans_qkvw,
-            'ring_id',
             ring_id,
         )
         if cache_kvs is not None:
