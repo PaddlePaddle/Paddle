@@ -542,10 +542,10 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   while (!delete_ops_que.empty()) {
     pir::Operation* op = delete_ops_que.front();
     delete_ops_que.pop();
+    UpdateDeleteOps(op, &delete_ops_que);
     VLOG(6) << "Delete (" << op->name() << " @" << op
             << ") in source_pattern_graph.";
     rewriter.EraseOp(op);
-    UpdateDeleteOps(op, &delete_ops_que);
   }
 }
 
