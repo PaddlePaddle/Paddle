@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.amp.auto_cast import _update_list
 from paddle.base import core
 
 
@@ -48,22 +47,11 @@ class TestPirAMPProgram(unittest.TestCase):
             with paddle.static.program_guard(main, startup):
                 x = paddle.static.data('x', [3, 4], 'float32')
                 linear = paddle.nn.Linear(4, 5)
-
-                amp_attrs = core._get_amp_attrs()
-                amp_attrs._use_promote = True
-                amp_attrs._amp_level = core.AmpLevel.O1
-                amp_attrs._amp_dtype = 'float16'
-                (
-                    original_white_list,
-                    original_black_list,
-                ) = core._get_amp_op_list()
-                _white_list, _black_list = _update_list(
-                    None, None, 'O1', 'float16'
-                )
-                core._set_amp_op_list(_white_list, _black_list)
-
-                out1 = linear(x)
-                out2 = paddle.mean(out1)
+                with paddle.amp.auto_cast(
+                    level='O1', dtype='float16', use_promote=True
+                ):
+                    out1 = linear(x)
+                    out2 = paddle.mean(out1)
 
             cast_op_count = 0
             for op in main.global_block().ops:
@@ -72,11 +60,6 @@ class TestPirAMPProgram(unittest.TestCase):
             np.testing.assert_equal(out1.dtype, core.DataType.FLOAT32)
             np.testing.assert_equal(out2.dtype, core.DataType.FLOAT32)
             np.testing.assert_equal(cast_op_count, 3)
-
-            amp_attrs._use_promote = False
-            amp_attrs._amp_level = core.AmpLevel.O0
-            amp_attrs._amp_dtype = 'float32'
-            core._set_amp_op_list(original_white_list, original_black_list)
             _white_list, _black_list = core._get_amp_op_list()
             np.testing.assert_equal(len(_white_list), 0)
             np.testing.assert_equal(len(_black_list), 0)
