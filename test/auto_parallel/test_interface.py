@@ -269,7 +269,8 @@ class TestAutoParallelAPI(unittest.TestCase):
             first_pp_mesh.process_ids, list(arr.transpose([1, 0, 2]).flatten())
         )
 
-        pp_stage_0_mesh = first_pp_mesh[0]
+        pp_stage_0_mesh = auto.get_mesh().get_mesh_with_dim("pp", 0)
+        self.assertEqual(pp_stage_0_mesh, first_pp_mesh[0])
         self.assertEqual(pp_stage_0_mesh.shape, [2, 4])
         self.assertEqual(
             pp_stage_0_mesh.process_ids, [0, 1, 2, 3, 16, 17, 18, 19]
