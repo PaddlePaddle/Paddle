@@ -1,5 +1,5 @@
 diff --git a/cub/cub/util_device.cuh b/cub/cub/util_device.cuh
-index c7e15cafe..988cb9746 100644
+index c7e15cafe..756336914 100644
 --- a/cub/cub/util_device.cuh
 +++ b/cub/cub/util_device.cuh
 @@ -278,7 +278,7 @@ public:
@@ -11,6 +11,15 @@ index c7e15cafe..988cb9746 100644
  {
      // Instantiate `EmptyKernel<void>` in both host and device code to ensure
      // it can be called.
+@@ -375,7 +375,7 @@ __host__ inline cudaError_t PtxVersion(int& ptx_version, int device)
+  *
+  * \note This function is thread safe.
+  */
+-CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersion(int &ptx_version)
++CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t PtxVersion(int &ptx_version)
+ {
+   cudaError_t result = cudaErrorUnknown;
+   NV_IF_TARGET(
 @@ -593,7 +593,7 @@ CUB_RUNTIME_FUNCTION inline cudaError_t HasUVA(bool& has_uva)
   *
   */
