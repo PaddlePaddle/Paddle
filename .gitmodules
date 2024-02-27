@@ -78,10 +78,6 @@
 	path = third_party/flashattn
 	url = https://github.com/PaddlePaddle/flash-attention.git
 	ignore = dirty
-[submodule "third_party/flashattn_hip"]
-	path = third_party/flashattn_hip
-	url = https://github.com/yuguo-Jack/flash-attention-hip.git
-	ignore = dirty
 [submodule "third_party/gtest"]
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
