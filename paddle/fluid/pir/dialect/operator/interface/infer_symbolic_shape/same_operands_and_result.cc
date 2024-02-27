@@ -66,6 +66,15 @@ bool Exp_OpInferSymbolicShape(pir::Operation *op,
   return SameOperandsAndResultShape(op, shape_analysis);
 }
 
+bool FetchOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
+
+  return true;
+}
+
 bool IncrementOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
