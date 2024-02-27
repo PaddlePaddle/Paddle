@@ -33,7 +33,6 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -55,8 +54,6 @@
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "test/cpp/inference/api/tester_helper.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -87,12 +84,12 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
 }
