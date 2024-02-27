@@ -33,6 +33,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    param : [x, y]
   kernel :
     func : fused_elementwise_add
 
@@ -41,6 +42,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    param : [x, y]
   kernel :
     func : fused_elementwise_div
 
@@ -49,6 +51,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    param : [x, y]
   kernel :
     func : fused_elementwise_mul
 
@@ -57,6 +60,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    param : [x, y]
   kernel :
     func : fused_elementwise_sub
 
