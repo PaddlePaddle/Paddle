@@ -3192,7 +3192,7 @@ def sigmoid_focal_loss(
 
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
-        one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
+        one = _C_ops.full(paddle.shape(logit), 1.0, logit.dtype, place)
 
         loss = _C_ops.sigmoid_cross_entropy_with_logits(
             logit, label, None, False, -100
