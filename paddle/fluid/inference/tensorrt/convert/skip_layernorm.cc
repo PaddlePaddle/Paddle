@@ -257,7 +257,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
       }
     }
-    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
   }
 };
 

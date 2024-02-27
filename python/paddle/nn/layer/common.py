@@ -199,7 +199,8 @@ class Upsample(Layer):
     This op resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -338,8 +339,7 @@ class Upsample(Layer):
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -358,18 +358,21 @@ class Upsample(Layer):
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A callable object of Upsample.
 
     Examples:
         .. code-block:: python
@@ -392,7 +395,7 @@ class Upsample(Layer):
         mode='nearest',
         align_corners=False,
         align_mode=0,
-        data_format='NCHW',
+        data_format=None,
         name=None,
     ):
         super().__init__()
@@ -405,6 +408,18 @@ class Upsample(Layer):
         self.name = name
 
     def forward(self, x):
+        if self.data_format is None:
+            dim_size = len(x.shape)
+            if dim_size == 3:
+                self.data_format = 'NCW'
+            elif dim_size == 4:
+                self.data_format = 'NCHW'
+            elif dim_size == 5:
+                self.data_format = 'NCDHW'
+            else:
+                raise ValueError(
+                    f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+                )
         out = F.interpolate(
             x,
             size=self.size,

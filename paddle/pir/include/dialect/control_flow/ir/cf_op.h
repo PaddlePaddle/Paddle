@@ -14,16 +14,13 @@
 
 #pragma once
 #include <functional>
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_interface.h"
 
 namespace pir {
-class IR_API YieldOp : public Op<YieldOp,
-                                 SideEffectTrait,
-                                 paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API YieldOp : public Op<YieldOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "cf.yield"; }
@@ -34,8 +31,6 @@ class IR_API YieldOp : public Op<YieldOp,
                     OperationArgument &argument,  // NOLINT
                     const std::vector<Value> &Value);
   void VerifySig() {}
-
-  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 ///

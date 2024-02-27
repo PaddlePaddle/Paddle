@@ -87,7 +87,7 @@ StackPattern::StackPattern(PDPattern* pattern, const std::string& name_scope)
 /*
 "stack" can be replaced by "unsqueeze" if:
 1. "stack inputs" are the same。
-1. "stack output" is "elementwise_add input" or "fused_multi_transformer
+2. "stack output" is "elementwise_add input" or "fused_multi_transformer
 src_mask input".
 */
 class StackFusePass : public FusePassBase {

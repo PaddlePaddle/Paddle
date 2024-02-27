@@ -55,7 +55,7 @@ class TanhshrinkOpConverter : public OpConverter {
                                  *(tanh->getOutput(0)),
                                  nvinfer1::ElementWiseOperation::kSUB);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "tanh_shrink", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "tanh_shrink", {output_name}, test_mode);
   }
 };
 

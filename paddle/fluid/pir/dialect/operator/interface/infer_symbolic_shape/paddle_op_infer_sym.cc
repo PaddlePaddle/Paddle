@@ -181,6 +181,17 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
 
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  if (shape_analysis->GetShapeOrDataForValue(operand_source)
+          .data()
+          .has_value()) {
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(operand_source);
+    shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                           operand_shape_or_data);
+    return true;
+  }
+
   pir::Value operand_source_shape = op->operand_source(1);
 
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
@@ -325,7 +336,16 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     const std::vector<symbol::DimExpr> out_data = [&] {
       std::vector<symbol::DimExpr> out_data;
-      for (int64_t i = starts[0]; i < ends[0]; i++) {
+      const int64_t start =
+          starts[0] < 0
+              ? starts[0] + operand_shape_or_data.data().value().size()
+              : starts[0];
+      const int64_t end =
+          static_cast<int64_t>(std::numeric_limits<int>::max()) == ends[0]
+              ? operand_shape_or_data.data().value().size()
+              : ends[0];
+
+      for (int64_t i = start; i < end; i++) {
         out_data.push_back(operand_shape_or_data.data().value()[i]);
       }
       return out_data;
@@ -352,7 +372,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
                  static_cast<int64_t>(std::numeric_limits<int>::max());
     };
     for (size_t i = 0; i < axes.size(); ++i) {
-      int64_t axis = axes[i];
+      const int64_t axis = axes[i];
       auto end =
           IsMaxInt(dim_expr_ends[i]) ? out_shape[axis] : dim_expr_ends[i];
 
@@ -434,6 +454,21 @@ bool ConcatOpInferSymbolicShape(
                      .to<int64_t>();
   size_t rank = shape_data_list[0].shape().size();
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+
+  if (shape_data_list[0].data().has_value()) {
+    std::vector<symbol::DimExpr> data;
+    data.reserve(shape_data_list.size());
+    for (auto &data_elem : shape_data_list) {
+      data.push_back(data_elem.data().value()[0]);
+    }
+    const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(shape, data)};
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
+    return true;
+  }
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();

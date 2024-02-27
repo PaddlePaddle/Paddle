@@ -165,7 +165,7 @@ class CustomPluginCreater : public OpConverter {
         output_names.push_back(arg_name);
     }
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+    ReplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
   }
 };
 
@@ -248,7 +248,7 @@ class GenericPluginCreater : public OpConverter {
         new plugin::GenericPlugin(op, in_out_info, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+    ReplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
   }
 };
 
@@ -334,7 +334,7 @@ class CustomGenericPluginCreater : public OpConverter {
         inputs.data(), inputs.size(), (plugin::DynamicPluginTensorRT *)plugin);
     CHECK(layer);
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), outputs, test_mode);
+    ReplenishLayerAndOutput(layer, op_desc.Type(), outputs, test_mode);
   }
 };
 

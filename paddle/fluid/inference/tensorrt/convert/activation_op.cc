@@ -112,7 +112,7 @@ class ActivationOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
 
  protected:

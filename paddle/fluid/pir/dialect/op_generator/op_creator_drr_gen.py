@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 
 import yaml
 from op_gen import (
@@ -198,6 +199,10 @@ class OpCreatorCodeGen:
                             params_no_mutable_attr
                         ),
                     )
+
+        directory_path = os.path.dirname(cpp_file_path)
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path, exist_ok=True)
 
         with open(cpp_file_path, 'w') as f:
             f.write(
