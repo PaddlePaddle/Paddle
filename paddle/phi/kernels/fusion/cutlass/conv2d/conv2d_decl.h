@@ -21,10 +21,10 @@ namespace fusion {
 namespace cutlass_internal {
 
 typedef enum {
-  fp32,  // This servers for conv_elementwise_add_fuse_pass
-  fp16,  // This servers for conv_elementwise_add2_act_fuse_pass
-  bf16,  // This servers for conv2d_fusion_cutlass_elementwise
-} Conv2dDataType;
+  fp32,  
+  fp16,  
+  bf16,  
+} ;
 
 typedef struct {
   const void *input;
