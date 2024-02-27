@@ -36,8 +36,7 @@ function(header_path_compat TARGET_PATH)
 endfunction()
 
 header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle)
-header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
+header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
 header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api)
 header_path_compat(

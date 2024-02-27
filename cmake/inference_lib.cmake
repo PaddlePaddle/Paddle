@@ -356,7 +356,7 @@ copy(
 
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/*
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir)
 copy(
   inference_lib_dist
