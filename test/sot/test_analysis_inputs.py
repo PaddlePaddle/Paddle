@@ -144,7 +144,11 @@ def case8(x):
     return x
 
 
-case9_offset = -9 if sys.version_info >= (3, 11) else -7
+# NOTE(SigureMo): The offset should be between index of CALL instruction of assert_inputs_equals
+# and the index of the CALL instruction of breakgraph_api
+case9_offset = -7
+case9_offset = -9 if sys.version_info >= (3, 11) else case9_offset
+case9_offset = -6 if sys.version_info >= (3, 12) else case9_offset
 
 
 def case9(x):
