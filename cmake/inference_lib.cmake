@@ -50,10 +50,18 @@ function(copy TARGET)
       file(MAKE_DIRECTORY ${dst})
     endif()
     if(IS_DIRECTORY ${src})
-      file(COPY ${src} DESTINATION ${dst})
+      add_custom_command(
+        TARGET ${TARGET}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${src} ${dst}
+        COMMENT "copying ${src} -> ${dst}")
     else()
       file(GLOB MATCHED_FILES ${src})
-      file(COPY ${MATCHED_FILES} DESTINATION ${dst})
+      add_custom_command(
+        TARGET ${TARGET}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${MATCHED_FILES} ${dst}
+        COMMENT "copying ${src} -> ${dst}")
     endif()
   endforeach()
 endfunction()
