@@ -74,6 +74,7 @@ namespace phi {
                     "Kernel's Input should appear before Attributes."); \
       static_assert(out_idx == 0,                                       \
                     "Kernel's Input should appear before Outputs.");    \
+      std::cout << __FILE__ << "0000:" << __LINE__ << std::endl;             \
       const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);     \
       const tensor_type& arg = ctx->InputAt<tensor_type>(range.first);  \
       KernelCallHelper<Tail...>::                                       \
@@ -95,8 +96,11 @@ namespace phi {
                     "Kernel's Input should appear before Attributes.");    \
       static_assert(out_idx == 0,                                          \
                     "Kernel's Input should appear before Outputs.");       \
+      std::cout << __FILE__ << "111:" << __LINE__ << std::endl;                \
       const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);        \
+      std::cout << __FILE__ << "222:" << range.first << std::endl;               \
       auto arg = ctx->OptionalInputAt<tensor_type>(range.first);           \
+      std::cout << __FILE__ << "333:" << __LINE__ << std::endl;               \
       KernelCallHelper<Tail...>::                                          \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
               ctx, pargs..., arg);                                         \
@@ -195,6 +199,7 @@ namespace phi {
               typename... PreviousArgs>                                  \
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {    \
       const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);    \
+      std::cout << "out_idx" << out_idx << std::endl;\
       tensor_type* arg = ctx->MutableOutputAt<tensor_type>(range.first); \
       KernelCallHelper<Tail...>::                                        \
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
@@ -388,6 +393,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
     static void Compute(KernelContext* ctx UNUSED,
                         DevCtx dev_ctx,
                         Args&... args) {
+      
+      std::cout << "KernelCallHelper<T>::Comput 最后调去这里！not implemented." << std::endl;
+
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       return kernel_fn(dev_ctx, args...);

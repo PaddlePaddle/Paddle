@@ -47,6 +47,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
                              float fuse_alpha,
                              DenseTensor* output,
                              std::vector<DenseTensor*> outputs) {
+                              std::cout << "说两句话都发了多少" << std::endl;
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
@@ -62,6 +63,8 @@ void FusedConv2dAddActKernel(const Context& ctx,
   const int ic = in_dims[3];
   const int ih = in_dims[1];
   const int iw = in_dims[2];
+
+  std::cout << ic << " " << ih << iw << std::endl;
 
   CHECK_EQ(ic == groups * filter_dims[3], true);
   int pad_h0 = 0;
@@ -159,7 +162,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
 
   // below: fused_conv2d_add_act && groups == 1
   CHECK_EQ(groups == 1, true);
-  if (residual) {
+  std::cout << "identity" <<  std::endl;
+  std::cout << "identity" << activation <<  std::endl;
+  if (residual && 0) {
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
       conv_func = (func)(dlsym(dlhandler, "Conv2dBiasAddRelu"));
@@ -172,6 +177,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
   } else if (activation == "swish") {
     conv_func = (func)(dlsym(dlhandler, "Conv2dBiasSilu"));
   } else if (activation == "identity") {
+    
+    std::cout << "identity" << std::endl;
+
     conv_func = (func)(dlsym(dlhandler, "Conv2dBias"));
   } else if (activation == "leaky_relu") {
     conv_func = (func)(dlsym(dlhandler, "Conv2dBiasLeakyRelu"));

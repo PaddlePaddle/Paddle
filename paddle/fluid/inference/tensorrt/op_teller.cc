@@ -258,6 +258,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "fused_conv2d_add_act" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
+
+      return false;
+      
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";

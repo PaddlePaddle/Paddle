@@ -113,9 +113,15 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetInput("Bias", {bias_name});
     new_op_desc.SetInput("ResidualData", {});
     new_op_desc.SetAttr("activation", act_type);
+    float fuse_alpha = 1.f;
+    new_op_desc.SetAttr("fuse_alpha", fuse_alpha);
+    auto split_channel = std::vector<int>{};
+    new_op_desc.SetAttr("split_channels", split_channel);
     new_op_desc.SetOutput("Output", {output_name});
+    new_op_desc.SetOutput("Outputs", {});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", true);
+    //new_op_desc.SetAttr("data_format", std::string{"NHWC"});
 
     bool is_fp16_precision =
         static_cast<phi::DataType>(Get<int>("model_precision")) ==

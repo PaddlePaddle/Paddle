@@ -184,6 +184,10 @@ class GenericPluginCreater : public OpConverter {
     nvinfer1::ILayer *layer = nullptr;
     std::vector<nvinfer1::ITensor *> inputs;
 
+
+std::cout << "op_desc.Type() = " << op_desc.Type() << std::endl;
+std::cout << "op_desc.Type() = " << op_desc.Type() << std::endl;
+
     phi::KernelSignature phi_kernel_signature;
     if (phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_desc.Type())) {
       const phi::ArgumentMappingFn *argument_mapping_func =
@@ -194,7 +198,9 @@ class GenericPluginCreater : public OpConverter {
       phi_kernel_signature =
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
-    VLOG(3) << phi_kernel_signature;
+    
+    std::cout << phi_kernel_signature << std::endl;
+
     PADDLE_ENFORCE_EQ(
         phi_kernel_signature.input_names.empty() ||
             phi_kernel_signature.output_names.empty(),
@@ -205,10 +211,16 @@ class GenericPluginCreater : public OpConverter {
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
+std::cout << "op_desc.Type()1111 = " << op_desc.Type() << std::endl;
+std::cout << "op_desc.Type()2222 = " << op_desc.Type() << std::endl;
+
     plugin::GenericPlugin::InputOutPutVarInfo in_out_info;
     using paddle::inference::tensorrt::plugin::
         ProtoTypeToGeneratePluginDataType;
     for (auto &param_name : phi_kernel_signature.input_names) {
+      
+      std::cout << "param_name = " << param_name << std::endl;
+
       for (auto &arg_name : op_desc.Input(param_name)) {
         inputs.push_back(engine_->GetITensor(arg_name));
         auto *var = block_desc.FindVar(arg_name);
@@ -228,6 +240,7 @@ class GenericPluginCreater : public OpConverter {
 
     std::vector<std::string> output_names;
     for (auto &param_name : phi_kernel_signature.output_names) {
+      std::cout << "param_name = " << param_name << std::endl;
       for (auto &arg_name : op_desc.Output(param_name)) {
         output_names.push_back(arg_name);
         auto *var = block_desc.FindVar(arg_name);

@@ -91,6 +91,7 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
     auto* attr_ptr = attr_reader.GetAttr(attr_name);
     if (attr_ptr) {
       switch (attr_defs[k].type_index) {
+        std::cout << attr_name << kernel_context->AttrsSize() << std::endl;
         case phi::AttributeType::SCALAR: {
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
@@ -235,8 +236,12 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
               kernel_context->EmplaceBackAttr(data_type);
             } break;
             case phi::AttributeType::STRING:
-              kernel_context->EmplaceBackAttr(
+              if (PADDLE_GET_CONST(std::string, attr) == "NCHW") {
+                kernel_context->EmplaceBackAttr(std::string("NHWC"));
+              } else  {
+                kernel_context->EmplaceBackAttr(
                   PADDLE_GET_CONST(std::string, attr));
+              }
               break;
             case phi::AttributeType::INT64S:
               switch (AttrTypeID(attr)) {
@@ -450,6 +455,18 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "fused_conv2d_add_act") {
+    // input, weight, bias
+    if (pos == 0 || pos == 1) 
+      return in_out[pos].type == nvinfer1::DataType::kHALF &&
+             in_out[pos].format == nvinfer1::TensorFormat::kHWC8;
+    if (pos == 2)
+        return in_out[pos].type == nvinfer1::DataType::kHALF &&
+                    in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // output
+    if (pos == 3)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -476,6 +493,8 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
 
 int GenericPlugin::initialize() TRT_NOEXCEPT {
   std::string op_type = op_desc_.Type();
+  
+  std::cout << "op_type: " << op_type << std::endl;
 
   phi::KernelSignature phi_kernel_signature;
   if (phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_type)) {
@@ -611,8 +630,19 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     auto const& input_dims = input_desc[i].dims;
 
     std::vector<int> input_shape;
-    for (int j = 0; j < input_dims.nbDims; j++)
-      input_shape.push_back(input_dims.d[j]);
+    for (int j = 0; j < input_dims.nbDims; j++) {
+      if (input_desc[i].format == nvinfer1::TensorFormat::kHWC8) {
+        if (j == 0) input_shape.push_back(input_dims.d[0]);
+        if (j == 1) input_shape.push_back(input_dims.d[2]);
+        if (j == 2) input_shape.push_back(input_dims.d[3]);
+        if (j == 3) input_shape.push_back(input_dims.d[1]);
+      } else  {
+        input_shape.push_back(input_dims.d[j]);
+      }
+      std::cout << input_shape[j] << " ";
+    }
+
+    std::cout << std::endl;
 
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
@@ -633,8 +663,18 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     auto const& output_dims = output_desc[i].dims;
 
     std::vector<int> output_shape;
-    for (int j = 0; j < output_dims.nbDims; j++)
-      output_shape.push_back(output_dims.d[j]);
+    for (int j = 0; j < output_dims.nbDims; j++) {
+      if (output_desc[i].format == nvinfer1::TensorFormat::kHWC8) {
+        if (j == 0) output_shape.push_back(output_dims.d[0]);
+        if (j == 1) output_shape.push_back(output_dims.d[2]);
+        if (j == 2) output_shape.push_back(output_dims.d[3]);
+        if (j == 3) output_shape.push_back(output_dims.d[1]);
+      } else  {
+        output_shape.push_back(output_dims.d[j]);
+      }
+      std::cout << output_shape[j] << " ";
+    }
+    std::cout << std::endl;
 
     int output_numel = 1;
     for (int k = 0; k < output_shape.size(); k++)
@@ -654,9 +694,17 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     phi_kernel_contexts_[data_type]->EmplaceBackOutput(
         &((*dense_tensor_outputs_)[i]));
   }
-
-  CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
+  if (op_desc_.Type() == "fused_conv2d_add_act") {
+    while (phi_kernel_contexts_[data_type]->InputsSize() < 4) {
+      phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
+    }
+  }
+  // 对于一些可选的输入其实下面这两个check未必会满足的！
+  //CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
+
+  std::cout << "phi_kernel_contexts_[data_type]->InputsSize() = " << std::endl;
+
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
   if (op_desc_.Type() == "argsort") {
