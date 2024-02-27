@@ -20,8 +20,11 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -62,11 +65,16 @@ static void RunAndCheckResult(::pir::Program* program,
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pm.EnableIRPrinting();
   CHECK_EQ(pm.Run(program), true);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -592,7 +600,7 @@ std::shared_ptr<::pir::Program> BuildSplitProgram() {
                .result(0);
 
   auto out_arr =
-      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, -1).result(0);
+      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, 1).result(0);
   auto out = builder.Build<pir::SliceOp>(out_arr, 0).result(0);
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;

@@ -398,7 +398,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
@@ -563,7 +569,7 @@ bool CanOpMergeNode(
   }
 
   // TODO(phlrain): need update here
-  // different loop range can merge, like [128, 128, 1], with [128, 128]
+  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
        cinn::hlir::framework::kBroadcast) &&
       (op_path_info.at(cur_op).loop_ranges !=
@@ -584,7 +590,7 @@ bool ShouldOutputPreNode(
   }
 
   // TODO(phlrain): need update here
-  // different loop range can merge, like [128, 128, 1], with [128, 128]
+  // diffrent loop range can merge, like [128, 128, 1], with [128, 128]
   if ((cinn::hlir::framework::pir::CompatibleInfo::OpKind(*cur_op) !=
        cinn::hlir::framework::kBroadcast) &&
       (op_path_info.at(cur_op).loop_ranges !=
@@ -599,7 +605,7 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
     const std::vector<GroupClusterNode>& first_stage_output) {
   // stage 2 merge
   // for now we merge node in same pass
-  // only for vertical fuse
+  // only for vertial fuse
   std::vector<GroupClusterNode> second_stage_output = first_stage_output;
   while (true) {
     bool fused = false;
