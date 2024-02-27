@@ -2072,9 +2072,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 sys.version_info >= (3, 12)
                 and origin_instrs[loop_body_end_idx].opname == "END_FOR"
             ):
-                pycode_gen.add_instr("NOP")
                 resume_fn_end_idx += 1
-                # origin_instrs[loop_body_end_idx] = self._graph.pycode_gen.add_instr("NOP")
 
             pycode_gen.set_function_inputs(
                 after_loop_fn_inputs, stack_size=len(self.stack) - 1
@@ -2083,8 +2081,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
             # the resume_fn contains return code, so we don't need set output here
             # global vars are updated correctly, and need local vars will return
             after_loop_fn = pycode_gen.create_function()
-            # 在这里去除 resume 后的 END_FOR
-            # breakpoint()
             return after_loop_fn
 
         after_loop_fn = create_after_loop_fn()

@@ -67,7 +67,7 @@ def find_loaded_once_local_vars(instrs, code_options):
     """
     loaded_vars = {}
     for instr in instrs:
-        if instr.opname == "LOAD_FAST":
+        if instr.opname == "LOAD_FAST" or instr.opname == "LOAD_FAST_CHECK":
             if instr.argval in loaded_vars:
                 loaded_vars[instr.argval] += 1
             else:
@@ -79,12 +79,12 @@ def find_loaded_once_local_vars(instrs, code_options):
 
 def find_related_local_opcodes(instrs, code_options):
     """
-    find out the opcode pairs consist with LOAD_FAST and STORE_FAST
+    find out the opcode pairs consist with LOAD_FAST and STORE_FAST and LOAD_FAST_CHECK
     """
     stack = []
     opcode_pairs = []
     for instr in instrs:
-        if instr.opname == "LOAD_FAST":
+        if instr.opname == "LOAD_FAST" or instr.opname == "LOAD_FAST_CHECK":
             stack.append(instr)
         elif instr.opname == "STORE_FAST":
             if len(stack) > 0 and stack[-1] is not None:
@@ -158,7 +158,8 @@ def remove_load_store_pass(instrs, code_options):
                 if a_name != b_name:
                     for instr in instrs:
                         if (
-                            instr.opname in ("LOAD_FAST", "STORE_FAST")
+                            instr.opname
+                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
                             and instr.argval == b_name
                         ):
                             instr.argval = a_name
@@ -211,7 +212,13 @@ def remove_load_store_pass(instrs, code_options):
                 code_range = instrs[last_store_idx : instrs.index(store_b)]
                 if (
                     not code_exist("STORE_FAST", b_name, code_range)
+                    and not code_exist("LOAD_FAST_CHECK", b_name, code_range)
                     and not code_exist("LOAD_FAST", b_name, code_range)
+                    and not code_exist(
+                        "LOAD_FAST_CHECK",
+                        a_name,
+                        instrs[instrs.index(store_b) :],
+                    )
                     and not code_exist(
                         "LOAD_FAST", a_name, instrs[instrs.index(store_b) :]
                     )
@@ -222,7 +229,8 @@ def remove_load_store_pass(instrs, code_options):
                     instrs.remove(store_b)
                     for instr in instrs[last_store_idx:]:
                         if (
-                            instr.opname in ("LOAD_FAST", "STORE_FAST")
+                            instr.opname
+                            in ("LOAD_FAST_CHECK", "LOAD_FAST", "STORE_FAST")
                             and instr.argval == a_name
                         ):
                             instr.argval = b_name
@@ -245,6 +253,7 @@ def remove_load_store_pass(instrs, code_options):
                 and opcode2 not in jump_target
                 and opcode1.opname == "STORE_FAST"
                 and opcode2.opname == "LOAD_FAST"
+                and opcode2.opname == "LOAD_FAST_CHECK"
                 and opcode1.argval == opcode2.argval
                 and opcode1.argval in loaded_once
             ):
