@@ -2208,7 +2208,7 @@ static void Interpolate1DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2340,7 +2340,7 @@ static void Interpolate2DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2493,7 +2493,7 @@ static void Interpolate3DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
