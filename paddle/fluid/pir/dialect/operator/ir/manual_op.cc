@@ -3574,7 +3574,6 @@ std::vector<pir::Type> ExpandOp::InferMeta(
 
   VLOG(4) << "Builder construction outputs";
   bool is_from_tensor = false;
-  (void)is_from_tensor;
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
