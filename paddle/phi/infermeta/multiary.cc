@@ -2208,7 +2208,7 @@ static void Interpolate1DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2340,7 +2340,7 @@ static void Interpolate2DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2493,7 +2493,7 @@ static void Interpolate3DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -3535,7 +3535,8 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_max_bound,
                       const float quant_min_bound,
                       MetaTensor* out,
-                      MetaTensor* residual_out) {
+                      MetaTensor* residual_out,
+                      MetaTensor* inv_var) {
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
@@ -3544,6 +3545,10 @@ void RmsNormInferMeta(const MetaTensor& x,
     normalized_dims *= x_dims_vec[i];
   }
 
+  std::vector<int64_t> inv_var_dims;
+  for (size_t i = size_t(0); i < static_cast<size_t>(begin_norm_axis); i++) {
+    inv_var_dims.push_back(x_dims_vec[i]);
+  }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
                     phi::errors::InvalidArgument(
@@ -3565,10 +3570,31 @@ void RmsNormInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
   out->share_lod(x);
 
+  if (inv_var != nullptr) {
+    inv_var->set_dtype(phi::DataType::FLOAT32);
+    inv_var->set_dims(common::make_ddim(inv_var_dims));
+    inv_var->set_layout(x.layout());
+  }
+
   residual_out->set_dims(out_dims);
   residual_out->set_dtype(x.dtype());
   residual_out->set_layout(x.layout());
   residual_out->share_lod(x);
+}
+
+void RmsNormGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& norm_weight,
+                          MetaTensor* x_grad,
+                          MetaTensor* norm_weight_grad) {
+  x_grad->set_dtype(x.dtype());
+  x_grad->set_layout(x.layout());
+  x_grad->share_lod(x);
+  x_grad->set_dims(x.dims());
+
+  norm_weight_grad->set_dtype(norm_weight.dtype());
+  norm_weight_grad->set_layout(norm_weight.layout());
+  norm_weight_grad->share_lod(norm_weight);
+  norm_weight_grad->set_dims(norm_weight.dims());
 }
 
 void RmspropInferMeta(const MetaTensor& param,

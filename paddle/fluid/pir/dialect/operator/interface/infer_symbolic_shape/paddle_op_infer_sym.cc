@@ -181,6 +181,17 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
 
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  if (shape_analysis->GetShapeOrDataForValue(operand_source)
+          .data()
+          .has_value()) {
+    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(operand_source);
+    shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                           operand_shape_or_data);
+    return true;
+  }
+
   pir::Value operand_source_shape = op->operand_source(1);
 
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
@@ -443,6 +454,21 @@ bool ConcatOpInferSymbolicShape(
                      .to<int64_t>();
   size_t rank = shape_data_list[0].shape().size();
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+
+  if (shape_data_list[0].data().has_value()) {
+    std::vector<symbol::DimExpr> data;
+    data.reserve(shape_data_list.size());
+    for (auto &data_elem : shape_data_list) {
+      data.push_back(data_elem.data().value()[0]);
+    }
+    const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(shape, data)};
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
+    return true;
+  }
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = shape_data_list[0].shape();
