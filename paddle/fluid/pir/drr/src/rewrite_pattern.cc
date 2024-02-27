@@ -527,7 +527,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   const auto& UpdateDeleteOps = [&](const pir::Operation* op) -> void {
     const std::vector<pir::Value> inputs = op->operands_source();
     for (const auto& input : inputs) {
-      bool use_empty =
+      const bool use_empty =
           (input && input.defining_op() && input.defining_op()->use_empty());
       if (use_empty && delete_ops_set.count(input.defining_op()) == 0U) {
         delete_ops_set.insert(input.defining_op());
