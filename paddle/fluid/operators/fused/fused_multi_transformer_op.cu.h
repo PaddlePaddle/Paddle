@@ -39,13 +39,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
-// #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-// #include "paddle/fluid/distributed/collective/process_group.h"
-// #include "paddle/fluid/platform/collective_helper.h"
-// #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-// #include "paddle/phi/core/distributed/nccl_comm_context.h"
-// COMMON_DECLARE_bool(dynamic_static_unified_comm);
-// #endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
@@ -55,80 +55,78 @@ namespace fusion {
 // for debug
 // #define _DEBUG_FUSED_MULTI_TRANSFORMER
 
-// template <typename T>
-// static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
-//                       const int ring_id,
-//                       const int count,
-//                       const phi::GPUContext &ctx) {
-//   if (ring_id == -1) return;
-// #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-//   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+template <typename T>
+static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
+                      const int ring_id,
+                      const int count,
+                      const phi::GPUContext &ctx) {
+  if (ring_id == -1) return;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
 
-//   if (map->has(ring_id)) {
-//     paddle::distributed::ProcessGroup *pg = map->get(ring_id);
-//     std::vector<phi::DenseTensor> in_tensor;
-//     std::vector<phi::DenseTensor> out_tensor;
-//     in_tensor.push_back(tensor);
-//     out_tensor.push_back(tensor);
-//     paddle::distributed::AllreduceOptions opts;
-//     opts.reduce_op = distributed::ReduceOp::SUM;
-//     auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-//     task->Wait();
-//   } else {
-//     auto dtype = platform::ToNCCLDataType(
-//         framework::TransToProtoVarType(tensor.dtype()));
-//     int64_t numel = tensor.numel();
-//     const void *sendbuff = tensor.data<T>();
-//     auto place = ctx.GetPlace();
-//     void *recvbuff = tensor.mutable_data<T>(place);
-//     gpuStream_t stream = nullptr;
-//     platform::NCCLComm *comm = nullptr;
-//     phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+  if (map->has(ring_id)) {
+    paddle::distributed::ProcessGroup *pg = map->get(ring_id);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    auto dtype = phi::ToNCCLDataType(tensor.dtype());
+    int64_t numel = tensor.numel();
+    const void *sendbuff = tensor.data<T>();
+    auto place = ctx.GetPlace();
+    void *recvbuff = tensor.mutable_data<T>(place);
+    gpuStream_t stream = nullptr;
+    paddle::platform::NCCLComm *comm = nullptr;
+    phi::distributed::NCCLCommContext *comm_ctx = nullptr;
 
-//     const auto &comm_context_manager =
-//         phi::distributed::CommContextManager::GetInstance();
+    const auto &comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
 
-//     if (FLAGS_dynamic_static_unified_comm) {
-//       // Use New Communication Library
-//       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-//                         true,
-//                         platform::errors::InvalidArgument(
-//                             "You choose to use new communication library by "
-//                             "setting environment "
-//                             "variable FLAGS_dynamic_static_unified_comm True.
-//                             " "But ring_id(%d) is " "not found in
-//                             comm_context_manager.",
-//                             std::to_string(ring_id)));
-//       comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-//           comm_context_manager.Get(std::to_string(ring_id)));
-//       PADDLE_ENFORCE_NE(comm_ctx,
-//                         nullptr,
-//                         platform::errors::Unavailable(
-//                             "NCCLCommContext is nullptr, collective op should
-//                             " "has ring_id attr."));
+    if (FLAGS_dynamic_static_unified_comm) {
+      // Use New Communication Library
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        phi::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
 
-//       stream = comm_ctx->GetStream();
+      stream = comm_ctx->GetStream();
 
-//       VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
-//     } else {
-//       comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-
-//       stream = ctx.stream();
-//       VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
-//     }
-//     if (comm_ctx) {
-//       comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
-//     } else {
-//       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-//           sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
-//     }
-//   }
-// #else
-//   PADDLE_THROW(platform::errors::Unimplemented(
-//       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
-//       "parallel op."));
-// #endif
-// }
+      VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
+    } else {
+      comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
+      stream = ctx.stream();
+      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+    }
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+          sendbuff, recvbuff, count, dtype, ncclSum, comm->comm(), stream));
+    }
+  }
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
+      "parallel op."));
+#endif
+}
 
 namespace {  // NOLINT
 

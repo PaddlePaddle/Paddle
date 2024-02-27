@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-#include "paddle/fluid/operators/fused/fused_attention_utils.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 
