@@ -51,7 +51,7 @@ set(PYBIND_DEPS
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
-                  sub_graph_checker)
+                  sub_graph_checker add_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
