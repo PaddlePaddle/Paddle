@@ -113,19 +113,14 @@ void pow_double_grad(const Tensor& x,
   // pow grad grad : ddout = y * pow(x, y-1) * ddx, dx = y * (y-1) * pow(x, y-2)
   // * dout * ddx
   auto y_value = y.to<float>();
-  std::vector<int64_t> empty_shape;
   if (grad_out_grad) {
-    auto y_minus1_tensor = full<T>(empty_shape, y_value - 1.0, x.dtype());
-    auto grad_out_grad_tmp =
-        y_value * elementwise_pow<T>(x, y_minus1_tensor) * grad_x_grad;
+    auto grad_out_grad_tmp = y_value * x.pow(y_value - 1.0) * grad_x_grad;
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 
   if (x_grad) {
-    auto y_minus2_tensor = full<T>(empty_shape, y_value - 2.0, x.dtype());
-    auto x_grad_tmp = y_value * (y_value - 1.0) *
-                      elementwise_pow<T>(x, y_minus2_tensor) * grad_out *
-                      grad_x_grad;
+    auto x_grad_tmp = y_value * (y_value - 1.0) * x.pow(y_value - 2.0) *
+                      grad_out * grad_x_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -166,28 +161,44 @@ void exp_double_grad(const Tensor& out,
 template <typename T>
 void minimum_double_grad(const Tensor& x,
                          const Tensor& y,
-                         const Tensor& grad_x_grad,
-                         const Tensor& grad_y_grad,
+                         const paddle::optional<Tensor>& grad_x_grad,
+                         const paddle::optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    auto x_tmp = cast<T>(less_than<T>(x, y), grad_x_grad.dtype());
-    auto y_tmp = cast<T>(greater_equal<T>(x, y), grad_y_grad.dtype());
-    auto ddout_res = grad_x_grad * x_tmp + grad_y_grad * y_tmp;
-    set_output<T>(ddout_res, grad_out_grad);
+    auto out_dims =
+        paddle::operators::details::BroadcastTwoDims(x.dims(), y.dims());
+    Tensor ddout_tmp = full<T>(common::vectorize(out_dims), 0.0, x.dtype());
+    if (grad_x_grad) {
+      auto x_tmp = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
+      ddout_tmp = ddout_tmp + grad_x_grad.get() * x_tmp;
+    }
+    if (grad_y_grad) {
+      auto y_tmp = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
+      ddout_tmp = ddout_tmp + grad_y_grad.get() * y_tmp;
+    }
+    set_output<T>(ddout_tmp, grad_out_grad);
   }
 }
 
 template <typename T>
 void maximum_double_grad(const Tensor& x,
                          const Tensor& y,
-                         const Tensor& grad_x_grad,
-                         const Tensor& grad_y_grad,
+                         const paddle::optional<Tensor>& grad_x_grad,
+                         const paddle::optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    auto x_tmp = cast<T>(greater_than<T>(x, y), grad_x_grad.dtype());
-    auto y_tmp = cast<T>(less_equal<T>(x, y), grad_y_grad.dtype());
-    auto ddout_res = grad_x_grad * x_tmp + grad_y_grad * y_tmp;
-    set_output<T>(ddout_res, grad_out_grad);
+    auto out_dims =
+        paddle::operators::details::BroadcastTwoDims(x.dims(), y.dims());
+    Tensor ddout_tmp = full<T>(common::vectorize(out_dims), 0.0, x.dtype());
+    if (grad_x_grad) {
+      auto x_tmp = cast<T>(greater_than<T>(x, y), grad_x_grad.get().dtype());
+      ddout_tmp = ddout_tmp + grad_x_grad.get() * x_tmp;
+    }
+    if (grad_y_grad) {
+      auto y_tmp = cast<T>(less_equal<T>(x, y), grad_y_grad.get().dtype());
+      ddout_tmp = ddout_tmp + grad_y_grad.get() * y_tmp;
+    }
+    set_output<T>(ddout_tmp, grad_out_grad);
   }
 }
 
