@@ -16,6 +16,7 @@
 
 set -x
 PADDLE_ROOT=$1
+export PADDLE_SOURCE_DIR=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
