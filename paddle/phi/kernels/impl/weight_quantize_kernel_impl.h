@@ -42,9 +42,9 @@ inline T xabs(const T x) {
   return x < static_cast<T>(0.0) ? -x : x;
 }
 
-template <typename T>
+template <typename T, typename ScaleT>
 void per_channel_scale(
-    T* scale, const T* input, size_t m, size_t n, float bound) {
+    ScaleT* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
     float max = static_cast<float>(input[i]);
     for (size_t j = 0; j < m; ++j) {
@@ -52,12 +52,12 @@ void per_channel_scale(
                 ? static_cast<float>(xabs(input[j * n + i]))
                 : max;
     }
-    scale[i] = static_cast<T>(max / bound);
+    scale[i] = static_cast<ScaleT>(max / bound);
   }
 }
 
-template <typename T>
-void group_wise_scale(T* scale,
+template <typename T, typename ScaleT>
+void group_wise_scale(ScaleT* scale,
                       const T* input,
                       size_t m,
                       size_t n,
@@ -72,15 +72,15 @@ void group_wise_scale(T* scale,
                   : max;
       }
       scale[static_cast<int>(j / group_size) * n + i] =
-          static_cast<T>(max / bound);
+          static_cast<ScaleT>(max / bound);
     }
   }
 }
 
-template <typename T, int quant_bit = 8>
+template <typename T, int quant_bit = 8, typename ScaleT>
 void per_channel_quant(int8_t* output,
                        const T* input,
-                       const T* scale,
+                       const ScaleT* scale,
                        size_t num_rows,
                        size_t num_cols) {
   size_t bytes_per_out_col = num_cols * quant_bit / 8;
@@ -123,10 +123,10 @@ void per_channel_quant(int8_t* output,
   }
 }
 
-template <typename T, int quant_bit = 8>
+template <typename T, int quant_bit = 8, typename ScaleT>
 void group_wise_quant(int8_t* output,
                       const T* input,
-                      const T* scale,
+                      const ScaleT* scale,
                       size_t num_rows,
                       size_t num_cols,
                       const int group_size) {

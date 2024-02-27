@@ -73,8 +73,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
-    producers.insert(source_op);
+    if (auto* source_op = operand.source().defining_op()) {
+      producers.insert(source_op);
+    }
   }
   return producers;
 }

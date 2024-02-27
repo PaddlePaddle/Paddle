@@ -193,7 +193,7 @@ void MessageBus::ListenPort() {
   int interval = 100;
   while (server_.Start(ip_for_brpc, &options) != 0) {
     ++retry_times;
-    LOG(INFO) << "Message bus is retring for starting brpc for " << retry_times
+    LOG(INFO) << "Message bus is retrying for starting brpc for " << retry_times
               << " times. And will retry after " << interval / 1000
               << " seconds.";
     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
