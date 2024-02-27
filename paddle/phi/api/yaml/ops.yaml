@@ -1696,7 +1696,7 @@
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
-    func : LogicalNotInfermeta
+    func : LogicalNotInferMeta
   kernel :
     func : logical_not
     data_type : x
