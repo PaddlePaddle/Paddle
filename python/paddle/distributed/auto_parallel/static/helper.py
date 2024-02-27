@@ -416,15 +416,23 @@ class ProgramHelper:
                     "process_group": var_dist_attr.process_mesh.process_ids,
                 }
                 if amp_dtype == "float16":
-                    sliced_param = Converter.slice_with_dist_attr(
-                        np.float16(param.numpy()), dist_attr
-                    )
+                    if param.is_dist():
+                        sliced_param = np.float16(param._local_value().numpy())
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            np.float16(param.numpy()), dist_attr
+                        )
                     scope_tensor.set(sliced_param, place)
                 elif amp_dtype == "bfloat16":
-                    sliced_param = Converter.slice_with_dist_attr(
-                        _convert_float_to_bfloat16(place, param.numpy()),
-                        dist_attr,
-                    )
+                    if param.is_dist():
+                        sliced_param = _convert_float_to_bfloat16(
+                            place, param._local_value().numpy()
+                        )
+                    else:
+                        sliced_param = Converter.slice_with_dist_attr(
+                            _convert_float_to_bfloat16(place, param.numpy()),
+                            dist_attr,
+                        )
                     scope_tensor.set(
                         sliced_param,
                         place,
