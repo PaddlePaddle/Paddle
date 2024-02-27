@@ -127,6 +127,9 @@ bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
   if (lhs.process_ids() != rhs.process_ids()) {
     return false;
   }
+  if (lhs.dim_names() != rhs.dim_names()) {
+    return false;
+  }
   return true;
 }
 
