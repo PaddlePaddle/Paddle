@@ -73,7 +73,7 @@ class InstanceNormOpConverter : public OpConverter {
         instance_norm_inputs.data(), instance_norm_inputs.size(), *plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
   }
 };
 
