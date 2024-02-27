@@ -48,7 +48,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd, kRedAvg };
 
 class CAllReduceOp : public framework::OperatorWithKernel {
  public:
@@ -412,6 +412,12 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       case kRedProd:
         nccl_red_type = ncclProd;
         break;
+
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+      case kRedAvg:
+        nccl_red_type = ncclAvg;
+        break;
+#endif
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(

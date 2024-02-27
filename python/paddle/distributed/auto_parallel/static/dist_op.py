@@ -130,6 +130,8 @@ class DistributedOperator:
             f", process_mesh ({annotated_str}): {self.dist_attr.process_mesh}"
         )
 
+        str += f" , execution_stream: {self.dist_attr.execution_stream}"
+
         for arg_name in self.serial_op.desc.input_arg_names():
             try:
                 dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
