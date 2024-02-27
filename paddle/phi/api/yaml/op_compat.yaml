@@ -1354,6 +1354,30 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
+- op : fused_elementwise_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_div
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_mul
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_sub
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
 - op : fused_embedding_eltwise_layernorm
   inputs :
     ids : Ids
