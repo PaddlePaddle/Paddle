@@ -293,6 +293,11 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
+  softmax->set_dtype(q.dtype());
+  softmax_lse->set_dtype(q.dtype());
+  if (seed_offset) {
+    seed_offset->set_dtype(phi::DataType::INT64);
+  }
 }
 
 void ArangeTensorInferMeta(const MetaTensor& start,
@@ -889,6 +894,26 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
   index->set_dtype(DataType::INT32);
   nms_rois_num->set_dims(common::make_ddim({-1}));
   nms_rois_num->set_dtype(DataType::INT32);
+}
+
+void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
+                                       const MetaTensor& in_accum,
+                                       const MetaTensor& in_state,
+                                       MetaTensor* out,
+                                       MetaTensor* out_scale,
+                                       MetaTensor* out_state,
+                                       MetaTensor* out_accum) {
+  if (out) {
+    out->set_dims(x.dims());
+    out->share_lod(x);
+    out_scale->set_dims({1});
+  }
+  if (out_state) {
+    out_state->set_dims(in_state.dims());
+  }
+  if (out_accum) {
+    out_accum->set_dims(in_accum.dims());
+  }
 }
 
 void NllLossRawInferMeta(const MetaTensor& input,

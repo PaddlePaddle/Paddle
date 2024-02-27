@@ -49,8 +49,7 @@ class TakeAlongAxisOpConverter : public OpConverter {
                                       nvinfer1::GatherMode::kELEMENT);
     layer->setGatherAxis(axis);
 
-    RreplenishLayerAndOutput(
-        layer, "take_along_axis", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "take_along_axis", {output_name}, test_mode);
 #endif
   }
 };

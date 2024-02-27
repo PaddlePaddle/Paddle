@@ -253,7 +253,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           auto* reshape_before_matrix =
@@ -757,7 +757,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // return
           layer = reshape_after_mha_layer;
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           PADDLE_ENFORCE_EQ(
@@ -867,7 +867,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               new plugin::QkvToContextPluginDynamic(
                   hidden_in, head_number, head_size, scale, with_fp16);
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               layer, "multihead_matmul", {output_name}, test_mode);
         }
       }

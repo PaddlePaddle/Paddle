@@ -118,9 +118,9 @@ TEST_API int GetCallStackLevel();
 TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
 template <typename StrType>
-static std::string GetErrorSumaryString(StrType&& what,
-                                        const char* file,
-                                        int line) {
+static std::string GetErrorSummaryString(StrType&& what,
+                                         const char* file,
+                                         int line) {
   std::ostringstream sout;
   if (GetCallStackLevel() > 1) {
     sout << "\n----------------------\nError Message "
@@ -139,9 +139,9 @@ static std::string GetTraceBackString(StrType&& what,
   if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
     return ::common::enforce::GetCurrentTraceBackString() +
-           GetErrorSumaryString(what, file, line);
+           GetErrorSummaryString(what, file, line);
   } else {
-    return GetErrorSumaryString(what, file, line);
+    return GetErrorSummaryString(what, file, line);
   }
 }
 

@@ -66,8 +66,7 @@ class RecoverPadding : public OpConverter {
     plugin::RecoverPaddingPlugin* plugin = new plugin::RecoverPaddingPlugin();
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(plugin_inputs.data(), input_num, plugin);
-    RreplenishLayerAndOutput(
-        layer, "recover_padding", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "recover_padding", {output_name}, test_mode);
   }
 };
 

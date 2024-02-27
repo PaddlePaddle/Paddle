@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/global_and_sub_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
@@ -75,6 +76,8 @@ REGISTER_RESHARD_FUNC(RToXExpandReshardFunction);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
 REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);
+REGISTER_RESHARD_FUNC(GlobalToSubMeshReshardFunction);
+REGISTER_RESHARD_FUNC(SubMeshToGlobalReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

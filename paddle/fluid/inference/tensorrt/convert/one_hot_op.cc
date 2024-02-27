@@ -79,7 +79,7 @@ class OneHotOpConverter : public OpConverter {
         engine_, OneHot, *indices_tensor, *values_tensor, *depth_tensor, -1);
 
     auto output_name = op_desc.Output("Out").front();
-    RreplenishLayerAndOutput(layer, "one_hot", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "one_hot", {output_name}, test_mode);
 #else
     VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
 #endif
