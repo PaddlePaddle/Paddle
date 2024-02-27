@@ -318,13 +318,13 @@ int ProfileToGetBestConfig(
                   << " compared with baseline,"
                   << "cost_time: " << elapsed_time << "ms." << std::endl;
       } else if (params.data_type == Conv2dDataType::bf16) {
-          // debug code
-          std::cout << OpType2String(op_type) << ": tactic " << i
-                    << " has max diff "
-                    << conv2d_diff_gpu<float>(
-                           params, op_type, static_cast<float>(1.0))
-                    << " compared with baseline,"
-                    << "cost_time: " << elapsed_time << "ms." << std::endl;
+        // debug code
+        std::cout << OpType2String(op_type) << ": tactic " << i
+                  << " has max diff "
+                  << conv2d_diff_gpu<float>(
+                         params, op_type, static_cast<float>(1.0))
+                  << " compared with baseline,"
+                  << "cost_time: " << elapsed_time << "ms." << std::endl;
       }
     }
   }
