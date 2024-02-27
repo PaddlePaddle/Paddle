@@ -64,8 +64,9 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
       FLAGS_prim_all=true FLAGS_cinn_bucket_compile=false
-      FLAGS_pir_apply_shape_optimization_pass=0 FLAGS_enable_pir_api=1
-      ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_if_dy.py
+      FLAGS_pir_apply_shape_optimization_pass=true FLAGS_enable_pir_api=true
+      FLAGS_prim_enable_dynamic=true ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_llama_if_dy.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_llama_if_dy PROPERTIES LABELS "RUN_TYPE=CINN")
 

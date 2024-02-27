@@ -51,7 +51,7 @@ set(PYBIND_DEPS
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
-                  sub_graph_checker)
+                  sub_graph_checker add_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
@@ -296,7 +296,7 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(NOT WITH_ARM)
+  if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
