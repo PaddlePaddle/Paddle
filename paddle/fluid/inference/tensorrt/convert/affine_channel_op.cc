@@ -72,7 +72,7 @@ class AffineChannelOpConverter : public OpConverter {
                                       power_weights.get(),
                                       channel_axis);
 
-    RreplenishLayerAndOutput(layer, "affine_channel", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "affine_channel", {output_name}, test_mode);
   }
 };
 

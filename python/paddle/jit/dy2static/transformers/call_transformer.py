@@ -69,7 +69,7 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
 
-        # NOTE(liym27): Don't convert `pad.set_trace` even if the convertion doesn't work finally, because
+        # NOTE(liym27): Don't convert `pad.set_trace` even if the conversion doesn't work finally, because
         # it is clearer to see where it is called from.
         if PDB_SET in func_str:
             return node

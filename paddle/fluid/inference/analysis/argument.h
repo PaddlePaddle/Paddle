@@ -165,6 +165,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
+  DECL_ARGUMENT_FIELD(optimized_model_save_path,
+                      OptimizedModelSavePath,
+                      std::string);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 

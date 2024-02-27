@@ -139,7 +139,7 @@ def distributed_scaler(scaler):
         self._found_inf = self._found_inf.cast("int32")
 
         # TODO(shenliang03) Since dp allreduce in the optimizer is
-        # after the gradscaler, check_finite needs to synchronize global
+        # after the grad scaler, check_finite needs to synchronize global
         # information. In the future, we should use check_group to speed.
         paddle.distributed.all_reduce(
             self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None

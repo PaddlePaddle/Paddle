@@ -50,7 +50,7 @@ class PadOpConverter : public OpConverter {
                             platform::errors::External(
                                 "add padding layer to tensorrt engine error"));
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
   }
 };
 

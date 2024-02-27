@@ -2208,7 +2208,7 @@ static void Interpolate1DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2340,7 +2340,7 @@ static void Interpolate2DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -2493,7 +2493,7 @@ static void Interpolate3DInferShapeCheck(
         dim_x[i],
         0,
         phi::errors::InvalidArgument("The shape of input(x) should be larger "
-                                     "than 0, bug received shape[%d] is %d ",
+                                     "than 0, but received shape[%d] is %d ",
                                      i,
                                      dim_x[i]));
   }
@@ -3495,6 +3495,32 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
+}
+
+void QuantizeLinearInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& in_accum,
+                             const MetaTensor& in_state,
+                             int quant_axis,
+                             MetaTensor* y,
+                             MetaTensor* out_scale,
+                             MetaTensor* out_accum,
+                             MetaTensor* out_state) {
+  y->set_dims(x.dims());
+  y->share_lod(x);
+  if (out_scale) {
+    if (quant_axis < 0) {
+      out_scale->set_dims(scale.dims());
+    } else {
+      out_scale->set_dims({x.dims()[quant_axis]});
+    }
+  }
+  if (out_accum) {
+    out_accum->set_dims(in_accum.dims());
+  }
+  if (out_state) {
+    out_state->set_dims(in_state.dims());
+  }
 }
 
 void RmsNormInferMeta(const MetaTensor& x,
@@ -4501,6 +4527,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& cos,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
+                        bool time_major,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4511,17 +4538,23 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
-  if (q) {
-    out_q->set_dims(q.dims());
-    out_q->set_dtype(q.dtype());
-  }
+  out_q->set_dims(q.dims());
+  out_q->set_dtype(q.dtype());
   if (k) {
     out_k->set_dims(k.dims());
     out_k->set_dtype(k.dtype());
+  } else {
+    if (out_k) {
+      out_k->set_dtype(q.dtype());
+    }
   }
   if (v) {
     out_v->set_dims(v.dims());
     out_v->set_dtype(v.dtype());
+  } else {
+    if (out_v) {
+      out_v->set_dtype(q.dtype());
+    }
   }
 }
 

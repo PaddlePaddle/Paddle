@@ -210,7 +210,7 @@ static void BufferMallocWithCallback(void* args, int num_args) {
   for (int i = 0; i < num_args; ++i) {
     cinn_buffer_t* buffer = static_cast<cinn_buffer_t*>(pod_args[i]);
     CHECK(buffer->external_malloc)
-        << "external_malloc is nullptr at " << i << "-th argumemnts";
+        << "external_malloc is nullptr at " << i << "-th arguments";
     buffer->external_malloc->operator()(nullptr, buffer);
   }
 }
@@ -282,7 +282,7 @@ void GraphCompiler::InsertBufferHandlers(
                                         malloc_var_names,
                                         std::vector<std::string>({}),
                                         function_name);
-      VLOG(4) << "seting malloc function " << function_name << " for var "
+      VLOG(4) << "setting malloc function " << function_name << " for var "
               << cinn::utils::Join(malloc_var_names, ", ");
       malloc_instr->SetLoweredFunc(
           reinterpret_cast<void*>(BufferMallocWithCallback), function_name);

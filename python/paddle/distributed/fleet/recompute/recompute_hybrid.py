@@ -22,7 +22,7 @@ from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
     detach_variable,
-    swith_rng_state_tracker,
+    switch_rng_state_tracker,
 )
 
 __all__ = []
@@ -198,7 +198,7 @@ class _HPRecomputeFunction(PyLayer):
             tracer._has_grad = True
 
             # need restore auto_cast state as well as w/b list
-            with swith_rng_state_tracker(
+            with switch_rng_state_tracker(
                 ctx.fwd_rng_state, ctx.fwd_rng_state_tracker
             ):
                 if ctx.is_fw_autocast:

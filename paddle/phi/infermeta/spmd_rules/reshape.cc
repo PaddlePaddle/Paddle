@@ -44,8 +44,8 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     }
   }
 
-  int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+  int64_t product =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
@@ -59,7 +59,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     PADDLE_ENFORCE_EQ(len % infer_size,
                       0,
                       phi::errors::InvalidArgument(
-                          "The total is not diviable by infer_size."));
+                          "The total is not divisible by infer_size."));
     new_shape[infer_idx] = infer_size;
     return new_shape;
   }
@@ -72,7 +72,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
+      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
@@ -120,7 +120,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
     }
 
-    if (tgt_splitted_shape.size() > 0) {
+    if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];
@@ -267,7 +267,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 
   // The out_shape may contain '-1', which will cause error
   // when inferring the transformation from out_shape to
-  // x_shape, so infer the '-1' value before inferrng DimTrans
+  // x_shape, so infer the '-1' value before inferring DimTrans
   int64_t nelm = std::accumulate(
       x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
   out_shape = InferTargetShape(out_shape, nelm);

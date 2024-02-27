@@ -20,6 +20,9 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
+// Split One GroupOp to multi small GroupOp
+// Each small GroupOp can Generate one kernel by CINN backend
+
 IR_API std::unique_ptr<pir::Pass> CreateCinnGroupClusterPass();
 
 }  // namespace ir

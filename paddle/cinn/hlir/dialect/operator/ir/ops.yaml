@@ -7,6 +7,7 @@
   kernel :
     func : expand
     param : [x, broadcast_axes]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isclose
   args : (Tensor x, Tensor y, float rtol=1e-5, float atol=1e-8,  bool equal_nan=false)

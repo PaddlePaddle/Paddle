@@ -17,7 +17,7 @@ import paddle
 
 class LayerInfo:
     """
-    Store the argnames of the inputs and outputs.
+    Store the arg names of the inputs and outputs.
     """
 
     def __init__(self, layer, input_names, weight_names, output_names):
