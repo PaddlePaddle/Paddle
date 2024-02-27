@@ -2642,7 +2642,6 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                     # composite && !has_higher_order_node && in_prim_white_list
                     # call composite anyway
                     grad_function_call_str = f"""
-  auto need_skip = false;
   bool original_global_grad = egr::Controller::Instance().HasGrad();
   if (!create_graph) {{
   {indent}egr::Controller::Instance().SetHasGrad(create_graph);
