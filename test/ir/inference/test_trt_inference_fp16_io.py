@@ -106,9 +106,8 @@ class TestEnableLowPrecisionIOWithTRTAllGraph(
             use_static=False,
             use_calib_mode=False,
         )
-        config.enable_tensorrt_memory_optim(True, 1)
         config.enable_tuned_tensorrt_dynamic_shape()
-        config.enable_new_executor()
+        config.enable_memory_optim()
         config.enable_low_precision_io(low_precision_io)
         config.disable_glog_info()
         predictor = create_predictor(config)
@@ -132,9 +131,8 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
             use_static=False,
             use_calib_mode=False,
         )
-        config.enable_tensorrt_memory_optim(True, 1)
         config.enable_tuned_tensorrt_dynamic_shape()
-        config.enable_new_executor()
+        config.enable_memory_optim()
         config.enable_low_precision_io(low_precision_io)
         config.exp_disable_tensorrt_ops(["flatten_contiguous_range"])
         config.disable_glog_info()
