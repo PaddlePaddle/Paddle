@@ -300,7 +300,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # So, don't set these flags here.
 set(CMAKE_CUDA_STANDARD 17)
 
-# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
+# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
 # So replace /W[1-4] with /W0
 if(WIN32)
   string(REGEX REPLACE "/W[1-4]" " /W0 " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")

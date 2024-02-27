@@ -31,6 +31,9 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -125,10 +128,23 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct YieldOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    // Since YieldOp has no output, just return true
+    return true;
+  }
+
+  YieldOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
   info.AttachInterface(std::move(
       pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
@@ -148,6 +164,11 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
       std::move(pir::InterfaceValue::Get<
                 InferSymbolicShapeInterface,
                 ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+
+  info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
+  info.AttachInterface(std::move(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               YieldOpInferSymbolicShapeInterfaceModel>()));
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
@@ -258,6 +279,12 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+#ifdef PADDLE_WITH_DNNL
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
+      >();
+#endif
   RegisterInterfaces<ParameterConvertInterface>();
 }
 

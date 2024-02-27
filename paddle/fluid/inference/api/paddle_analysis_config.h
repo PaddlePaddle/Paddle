@@ -606,7 +606,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use ir graph optimization.
   ///
   bool ir_optim() const { return enable_ir_optim_; }
-
   ///
   /// \brief INTERNAL Determine whether to use the feed and fetch operators.
   /// Just for internal development, not stable yet.
@@ -880,6 +879,13 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
 
   bool new_executor_enabled() const { return use_new_executor_; }
+
+  ///
+  /// \brief Control whether to use optimized model to inference.
+  ///
+  /// \param x whether to use optimized model.
+  ///
+  void UseOptimizedModel(bool x = true) { use_optimized_model_ = x; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1315,6 +1321,8 @@ struct PD_INFER_DECL AnalysisConfig {
 
   bool enable_ir_optim_{true};
   bool ir_debug_{false};
+
+  bool use_optimized_model_{false};
 
   bool use_new_executor_{false};
 

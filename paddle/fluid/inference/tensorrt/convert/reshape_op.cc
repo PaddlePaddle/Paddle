@@ -73,7 +73,7 @@ class ReshapeOpConverter : public OpConverter {
             "reshape2 op into "
             "Paddle-TRT."));
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
   }
 };
 

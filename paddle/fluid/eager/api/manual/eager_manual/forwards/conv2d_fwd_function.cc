@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
@@ -44,12 +43,13 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{input}, {filter}};
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
+    auto amp_dst_dtype =
+        paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
     auto new_input =
-        egr::EagerAmpAutoCast("input", input, amp_dst_dtype, op_name);
-    auto new_filter =
-        egr::EagerAmpAutoCast("filter", filter, amp_dst_dtype, op_name);
+        paddle::imperative::AmpAutoCast("input", input, amp_dst_dtype, op_name);
+    auto new_filter = paddle::imperative::AmpAutoCast(
+        "filter", filter, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(

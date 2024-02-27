@@ -636,6 +636,16 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         float spatial_scale,
                         MetaTensor* out);
 
+void QuantizeLinearInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& in_accum,
+                             const MetaTensor& in_state,
+                             int quant_axis,
+                             MetaTensor* y,
+                             MetaTensor* out_scale,
+                             MetaTensor* out_accum,
+                             MetaTensor* out_state);
+
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& bias,
                       const MetaTensor& residual,
