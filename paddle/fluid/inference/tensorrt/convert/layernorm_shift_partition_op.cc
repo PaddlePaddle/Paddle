@@ -96,7 +96,7 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layernorm_layer, "layernorm_shift_partition", {output_name}, test_mode);
   }
 };

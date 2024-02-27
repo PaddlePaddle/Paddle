@@ -57,7 +57,7 @@ class CastOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "cast", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "cast", {output_name}, test_mode);
   }
 };
 

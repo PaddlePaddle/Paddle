@@ -2081,7 +2081,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
     }
     if (fallback_to_cpu) {
-      [[maybe_unused]] auto released_kernel = phi_kernel_.release();
+      phi_kernel_.reset();
     }
   }
 

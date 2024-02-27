@@ -249,7 +249,7 @@ class SetValueConverter : public OpConverter {
 
       layer->setAxis(axes);
 
-      RreplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "static shape mode not supported in set value yet"));

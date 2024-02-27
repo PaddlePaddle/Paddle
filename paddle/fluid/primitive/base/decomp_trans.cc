@@ -53,18 +53,6 @@ static bool has_dynamic_shape(const phi::DDim& dims) {
   }
 }
 
-static void check_ops(const std::string& op_name) {
-  auto primitives_set = GetPrimitiveOpNames();
-  auto it = primitives_set.find(op_name);
-  if (it == primitives_set.end()) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("[Prim] Currently, decomposed program "
-                                     "should not contain none primitive op %s.",
-                                     op_name));
-  }
-  return;
-}
-
 static const phi::DDim GetValueDims(pir::Value value) {
   pir::Type origin_type = value.type();
   if (!origin_type) {
@@ -130,6 +118,29 @@ bool has_decomp_rule(const pir::Operation& op) {
       op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
   if (decomp_interface_impl == nullptr) return false;
   return true;
+}
+
+void DecompProgram::check_ops() {
+  auto primitives_set = GetPrimitiveOpNames();
+  std::set<std::string> undecomposed_set;
+  for (const auto& element : decomposed_prog_ops_set_) {
+    auto iter = primitives_set.find(element);
+    if (iter == primitives_set.end()) {
+      undecomposed_set.insert(element);
+    }
+  }
+  if (!undecomposed_set.empty()) {
+    std::string decomposed_ops_stream;
+    for (const auto& item : undecomposed_set) {
+      decomposed_ops_stream.append(" ");
+      decomposed_ops_stream.append(item);
+    }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[Prim] Currently, decomposed program "
+        "should not contain none primitive ops: %s .",
+        decomposed_ops_stream));
+  }
+  return;
 }
 
 bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
@@ -347,9 +358,7 @@ void DecompProgram::decomp_program() {
               << decomp_prog_stream.str() << std::endl;
   }
   if (FLAGS_prim_check_ops) {
-    for (auto& op : *block) {
-      check_ops(op.name());
-    }
+    check_ops();
   }
   dst_vars_ = tar_vars;
   return;
@@ -410,6 +419,11 @@ void DecompProgram::decomp_block(
         auto op_iter = std::find(block->begin(), block->end(), *op);
         block->erase(op_iter);
       }
+    }
+  }
+  if (FLAGS_prim_check_ops) {
+    for (auto& op : *block) {
+      decomposed_prog_ops_set_.insert(op.name());
     }
   }
   for (size_t i = 0; i < tar_vars.size(); i++) {

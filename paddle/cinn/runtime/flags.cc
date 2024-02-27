@@ -97,7 +97,7 @@ PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
 
 PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
                BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
-               "It controls whether to display datail tensor index");
+               "It controls whether to display detail tensor index");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
@@ -116,7 +116,7 @@ PD_DEFINE_string(cinn_check_fusion_accuracy_pass,
 
 PD_DEFINE_bool(cinn_use_cuda_vectorize,
                BoolFromEnv("FLAGS_cinn_use_cuda_vectorize", false),
-               "Whether use cuda vectroize on schedule config");
+               "Whether use cuda vectorize on schedule config");
 
 PD_DEFINE_bool(use_reduce_split_pass,
                BoolFromEnv("FLAGS_use_reduce_split_pass", false),
@@ -141,7 +141,7 @@ PD_DEFINE_bool(
     BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
     "Whether nvrtc enables fmad when compile to cubin. This flag only works "
     "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
-    "technique which contract fp mulitplication and addition/subtraction into "
+    "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
 // FLAGS for performance analysis and accuracy debug
