@@ -452,7 +452,7 @@ bool ConcatOpInferSymbolicShape(
     for (auto &data_elem : shape_data_list) {
       data.push_back(data_elem.data().value()[0]);
     }
-    -const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
+    const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(shape, data)};
     pir::Value res = op->result(0);
