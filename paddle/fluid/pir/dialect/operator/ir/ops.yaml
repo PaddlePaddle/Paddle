@@ -28,6 +28,13 @@
     support_trans_dtype : x, y
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+# this add_n is only for ops_api_gen.py
+- op : add_n
+  args : (Tensor[] inputs)
+  output : Tensor
+  invoke : add_n_impl(inputs)
+  backward : add_n_grad
+
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -1697,10 +1704,3 @@
     func: sparse_momentum
     data_type: param
   optional: master_param, master_param_out
-
-# this add_n is only for ops_api_gen.py
-op : add_n
-  args : (Tensor[] inputs)
-  output : Tensor
-  invoke : add_n_impl(inputs)
-  backward : add_n_grad
