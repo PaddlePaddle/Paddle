@@ -72,12 +72,24 @@ def flatten_dense_tensors(
     _param2align = {}
     _param2offset = {}
     dtype = parameters[0].dtype
+    default_device = "gpu"
+    if parameters[0].place.is_custom_place():
+        default_device = parameters[0].place.custom_device_type()
 
     for param in parameters:
         assert param.trainable, "param must be trainable..."
+        param_device = "gpu"
+        if param.place.is_custom_place():
+            param_device = param.place.custom_device_type()
+        if param_device in core.get_all_custom_device_type():
+            device_alignment = core.libpaddle._get_device_min_chunk_size(
+                param_device
+            )
+        else:
+            device_alignment = alignment[param_device]
         size = np.prod(param.shape) * align[dtype]
-        remaining = size % alignment["gpu"]
-        ali = 0 if remaining == 0 else alignment["gpu"] - remaining
+        remaining = size % device_alignment
+        ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[dtype]
         _param2offset[param.name] = _buffer_size
         _buffer_size += np.prod(param.shape) + align_
@@ -88,7 +100,7 @@ def flatten_dense_tensors(
 
     if fuse_param:
         param_storage = ParamStorage(
-            size=_buffer_size, dtype=dtype, device="gpu"
+            size=_buffer_size, dtype=dtype, device=default_device
         )
         param_storage.add_rank_params(parameters, _param2align)
 
@@ -97,7 +109,7 @@ def flatten_dense_tensors(
     grad_storage = GradStorage(
         size=_buffer_size,
         dtype=grad_dtype,
-        device="gpu",
+        device=default_device,
         destination="0",
         parm2align=_param2align,
     )
