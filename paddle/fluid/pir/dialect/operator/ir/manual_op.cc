@@ -54,6 +54,43 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 namespace paddle {
 namespace dialect {
 
+std::vector<std::vector<pir::Value>> AddNOp::Decomp(pir::Operation *op) {
+  VLOG(4) << "Decomp call add_n's decomp interface begin";
+
+  AddNOp op_obj = op->dyn_cast<AddNOp>();
+  (void)op_obj;
+
+  FLAGS_tensor_operants_mode = "static";
+
+  VLOG(6) << "Decomp Prepare inputs of add_n";
+
+  pir::CombineOp combine_op_obj_inputs =
+      op_obj.inputs().defining_op()->dyn_cast<pir::CombineOp>();
+  std::vector<Tensor> inputs;
+  for (size_t idx = 0; idx < combine_op_obj_inputs.inputs().size(); idx++) {
+    inputs.emplace_back(std::make_shared<primitive::LazyTensor>(
+        combine_op_obj_inputs.inputs()[idx]));
+  }
+
+  VLOG(6) << "Decomp prepare attributes of add_n";
+
+  VLOG(6) << "Decomp call add_n's forward composite rule prepare";
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::Value>> res(org_res.size());
+
+  VLOG(6) << "Decomp call add_n's forward composite rule begin";
+  Tensor op_res =
+      paddle::primitive::details::add_n_decomp<primitive::LazyTensor>(inputs);
+  VLOG(6) << "Decomp call add_n's forward composite rule end";
+
+  res[0].push_back(
+      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())->value());
+
+  VLOG(4) << "Decomp call add_n's decomp interface end";
+  return res;
+}
+
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
