@@ -864,7 +864,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::Exp_tensorrt_subgraph(
+void AnalysisConfig::Exp_DisableTensorRtSubgraph(
     const std::vector<std::string> &var_name_not_trt) {
   trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
                                 var_name_not_trt.begin(),

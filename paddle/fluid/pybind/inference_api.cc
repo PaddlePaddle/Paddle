@@ -929,7 +929,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("trt_allow_build_at_runtime",
            &AnalysisConfig::trt_allow_build_at_runtime)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
-      .def("exp_tensorrt_subgraph", &AnalysisConfig::Exp_tensorrt_subgraph)
+      .def("exp_disable_tensorrt_subgraph",
+           &AnalysisConfig::Exp_DisableTensorRtSubgraph)
       .def("enable_tensorrt_dla",
            &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)

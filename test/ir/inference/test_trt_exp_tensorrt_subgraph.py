@@ -30,7 +30,7 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         config = paddle_infer.Config()
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
-        config.exp_tensorrt_subgraph(["input_data"])
+        config.exp_disable_tensorrt_subgraph(["input_data"])
         config.set_optim_cache_dir(self.cache_dir)
         if use_trt:
             config.switch_ir_debug()

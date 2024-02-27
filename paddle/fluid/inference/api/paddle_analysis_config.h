@@ -811,7 +811,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
-  void Exp_tensorrt_subgraph(const std::vector<std::string>& var_name_not_trt);
+  void Exp_DisableTensorRtSubgraph(
+      const std::vector<std::string>& var_name_not_trt);
 
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(

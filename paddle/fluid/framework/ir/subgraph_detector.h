@@ -71,7 +71,7 @@ class SubGraphFuser {
   SubGraphFuser(Graph *graph,
                 const NodeInsideSubgraphTeller &teller,
                 int min_subgraph_size,
-                const std::vector<std::string> trt_exclude_var_names = {},
+                const std::vector<std::string> &trt_exclude_var_names = {},
                 std::string name = "tensorrt_engine")
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
