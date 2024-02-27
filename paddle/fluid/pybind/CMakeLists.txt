@@ -298,12 +298,16 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  if(WIN32)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
                           ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
+
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_legacy_op_function_generator
                         ${os_dependency_modules})
