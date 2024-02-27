@@ -27,7 +27,7 @@ from paddle.static import InputSpec
 from paddle.vision.models import resnet50
 
 
-class ConvertMixedPrecison(unittest.TestCase):
+class ConvertMixedPrecision(unittest.TestCase):
     def test(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         model = resnet50(True)

@@ -142,7 +142,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
                            &softmax_out_axes_dst,
                            support_shard_softmax_dim);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes_src, x_dims_mapping_src},
@@ -189,8 +189,8 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdBase(const DistMetaTensor& x,
   // todo if softmax_normalize axis is sharded, notify downstream phi api to
   // select c_softmax_with_entropy_kernel.
 
-  // according to the phi api implemetation, the softmax_out tensor will alway
-  // be genereated not matter the value of use_softmax.
+  // according to the phi api implementation, the softmax_out tensor will alway
+  // be generated not matter the value of use_softmax.
   return {{x_dist_attr_dst, label_dist_attr_dst},
           {softmax_out_dist_attr_dst, loss_dist_attr_dst}};
 }
@@ -290,7 +290,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
                            &softmax_out_axes_dst,
                            true);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1 merge output dims mappings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{loss_axes, loss_dims_mapping_src},
@@ -363,8 +363,8 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
           << str_join(x_dims_mapping) << "]\nLabel dims_mapping: ["
           << str_join(label_dims_mapping) << "]\n\n";
 
-  // according to the phi api implemetation, the softmax_out tensor will alway
-  // be genereated not matter the value of use_softmax.
+  // according to the phi api implementation, the softmax_out tensor will alway
+  // be generated not matter the value of use_softmax.
   return {{x_dist_attr, label_dist_attr},
           {s_out_dist_attr_dst, loss_dist_attr_dst}};
 }

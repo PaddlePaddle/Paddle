@@ -4527,6 +4527,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& cos,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
+                        bool time_major,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4537,17 +4538,23 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
-  if (q) {
-    out_q->set_dims(q.dims());
-    out_q->set_dtype(q.dtype());
-  }
+  out_q->set_dims(q.dims());
+  out_q->set_dtype(q.dtype());
   if (k) {
     out_k->set_dims(k.dims());
     out_k->set_dtype(k.dtype());
+  } else {
+    if (out_k) {
+      out_k->set_dtype(q.dtype());
+    }
   }
   if (v) {
     out_v->set_dims(v.dims());
     out_v->set_dtype(v.dtype());
+  } else {
+    if (out_v) {
+      out_v->set_dtype(q.dtype());
+    }
   }
 }
 

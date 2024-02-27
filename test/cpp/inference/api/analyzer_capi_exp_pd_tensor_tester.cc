@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <fstream>
 #include <iostream>
@@ -69,7 +69,7 @@ void PD_run() {
   int32_t out_num = std::accumulate(output_shape->data,
                                     output_shape->data + output_shape->size,
                                     1,
-                                    std::multiplies<int32_t>());
+                                    std::multiplies<>());
   out_data.resize(out_num);
   PD_TensorCopyToCpuFloat(output_tensor, out_data.data());
   LOG(INFO) << "Output tensor name is: " << PD_TensorGetName(output_tensor);

@@ -309,7 +309,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -494,6 +494,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
+  std::string GetOptimizedModelPath();
+  void ClearExtraParams();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
