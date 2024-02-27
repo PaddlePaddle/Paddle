@@ -127,6 +127,10 @@ create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_cuda(),
+    "core is compiled with CUDA and not support the float16",
+)
 class TestPadOpError(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
