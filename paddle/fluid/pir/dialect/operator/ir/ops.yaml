@@ -1004,6 +1004,15 @@
   backward : multiply_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : nop
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : nop
+  inplace: (x -> out)
+
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
   output : Tensor(out), Tensor(norm)
