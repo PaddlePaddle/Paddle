@@ -771,6 +771,12 @@ class OpcodeExecutorBase:
             )(obj, attr_name_var)
         )
 
+    @call_break_graph_decorator(push_n=1)
+    def LOAD_SUPER_ATTR(self, instr: Instruction):
+        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
+        # We align it's behavior with Python 3.11-.
+        raise BreakGraphError("call super is not supported")
+
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
         self.stack.push(var)
