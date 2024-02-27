@@ -33,13 +33,14 @@ ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
       {ReduceOp::MAX, ncclMax},
       {ReduceOp::SUM, ncclSum},
       {ReduceOp::PRODUCT, ncclProd},
+      {ReduceOp::AVG, ncclAvg},
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
                     phi::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
+                        "ncclProd | ncclSum | ncclAvg."));
   return it->second;
 }
 
