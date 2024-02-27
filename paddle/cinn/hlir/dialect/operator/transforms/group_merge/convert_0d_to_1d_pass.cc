@@ -60,24 +60,23 @@ class FullOpPattern : public pir::OpRewritePattern<paddle::dialect::FullOp> {
   }
 };
 
-template <typename ReduceOpT>
-class SumOpPattern : public pir::OpRewritePattern<ReduceOpT> {
+class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
  public:
-  using pir::OpRewritePattern<ReduceOpT>::OpRewritePattern;
+  using pir::OpRewritePattern<paddle::dialect::SumOp>::OpRewritePattern;
 
-  bool Match(ReduceOpT op) const override {
+  bool Match(paddle::dialect::SumOp op) const override {
     const auto& tensor_type =
-        op.result(0).type().template dyn_cast<pir::DenseTensorType>();
+        op.result(0).type().dyn_cast<pir::DenseTensorType>();
     return tensor_type.dims().size() == 0;
   }
 
-  void Rewrite(ReduceOpT op, pir::PatternRewriter& rewriter) const override {
+  void Rewrite(paddle::dialect::SumOp op,
+               pir::PatternRewriter& rewriter) const override {
     std::vector<int64_t> axis{};
-    const auto& dtype =
-        op->attribute("dtype")
-            .template dyn_cast<paddle::dialect::DataTypeAttribute>()
-            .data();
-    auto new_reduce_op = rewriter.Build<ReduceOpT>(
+    const auto& dtype = op->attribute("dtype")
+                            .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                            .data();
+    auto new_reduce_op = rewriter.Build<paddle::dialect::SumOp>(
         op.operand_source(0), axis, dtype, /*keepdim=*/true);
     auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
         new_reduce_op.result(0), /*shape=*/std::vector<int64_t>({1}));
@@ -183,7 +182,7 @@ class Convert0DTo1DPass : public pir::Pass {
     pir::RewritePatternSet ps(context);
     ps.Add<FullOpPattern>(context);
     ps.Add<CombineOpPattern>(context);
-    ps.Add<SumOpPattern<paddle::dialect::SumOp>>(context);
+    ps.Add<SumOpPattern>(context);
     ps.Add<WhileOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
