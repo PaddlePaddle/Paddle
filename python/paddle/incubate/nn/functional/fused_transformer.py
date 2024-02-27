@@ -413,34 +413,49 @@ def fused_bias_dropout_residual_layer_norm(
             x.shape[len(x.shape) - 1] == ln_bias.shape[0]
         ), "The dim of ln_bias must equal to the last dim of x."
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        (
-            _,
-            _,
-            _,
-            _,
-            final_out,
-        ) = _legacy_C_ops.fused_bias_dropout_residual_layer_norm(
-            x,
-            residual,
-            bias,
-            ln_scale,
-            ln_bias,
-            'dropout_rate',
-            dropout_rate,
-            'ln_epsilon',
-            ln_epsilon,
-            'is_test',
-            not training,
-            'dropout_fix_seed',
-            seed is not None,
-            'dropout_seed',
-            seed if seed is not None else 0,
-            'dropout_implementation',
-            mode,
-        )
+        if in_dynamic_mode():
+            (
+                _,
+                _,
+                _,
+                _,
+                final_out,
+            ) = _legacy_C_ops.fused_bias_dropout_residual_layer_norm(
+                x,
+                residual,
+                bias,
+                ln_scale,
+                ln_bias,
+                'dropout_rate',
+                dropout_rate,
+                'ln_epsilon',
+                ln_epsilon,
+                'is_test',
+                not training,
+                'dropout_fix_seed',
+                seed is not None,
+                'dropout_seed',
+                seed if seed is not None else 0,
+                'dropout_implementation',
+                mode,
+            )
+        else:
+            final_out = _C_ops.fused_bias_dropout_residual_layer_norm(
+                x,
+                residual,
+                bias,
+                ln_scale,
+                ln_bias,
+                dropout_rate,
+                not training,
+                seed is not None,
+                seed if seed is not None else 0,
+                mode,
+                ln_epsilon,
+            )
         return final_out
     else:
         helper = LayerHelper(
@@ -1151,7 +1166,7 @@ def fused_multi_transformer(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         cache_kv_out, final_out = _C_ops.fused_multi_transformer(
             x,
             ln_scales,
