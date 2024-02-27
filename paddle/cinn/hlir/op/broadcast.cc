@@ -574,6 +574,9 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .set_num_outputs(1)                                                  \
       .set_attr<cinn::hlir::framework::StrategyFunction>(                  \
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(          \
+          "CINNStrategySymbolic",                                          \
+          cinn::hlir::op::StrategyFor##op_stragegy__##Symbolic)            \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))    \
       .set_attr("inferdtype",                                              \
