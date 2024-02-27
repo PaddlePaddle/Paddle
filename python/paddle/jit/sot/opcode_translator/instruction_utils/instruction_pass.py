@@ -272,3 +272,6 @@ def check_precall_followed_by_call(instrs, code_options):
             raise InnerError(
                 f"PRECALL is not followed by CALL in {code_options['co_name']}"
             )
+
+
+# TODO(gouzil): 检查END_FOR, 看到这个别LGTM

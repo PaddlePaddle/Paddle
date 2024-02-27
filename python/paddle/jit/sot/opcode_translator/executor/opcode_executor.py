@@ -1549,8 +1549,11 @@ class OpcodeExecutorBase:
         )
 
     def END_FOR(self, instr: Instruction):
-        # breakpoint()
+        # 我们不应该跑到这个字节码
         pass
+        # breakpoint()
+        # self.POP_TOP(instr)
+        # self.POP_TOP(instr)
 
 
 class OpcodeExecutor(OpcodeExecutorBase):
@@ -2040,13 +2043,26 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 return None
             pycode_gen = PyCodeGen(self._frame)
             origin_instrs = get_instructions(pycode_gen._origin_code)
+            resume_fn_end_idx = loop_body_end_idx
+
+            # skip END_FOR in python3.12
+            if (
+                sys.version_info >= (3, 12)
+                and origin_instrs[loop_body_end_idx].opname == "END_FOR"
+            ):
+                pycode_gen.add_instr("NOP")
+                resume_fn_end_idx += 1
+                # origin_instrs[loop_body_end_idx] = self._graph.pycode_gen.add_instr("NOP")
+
             pycode_gen.set_function_inputs(
                 after_loop_fn_inputs, stack_size=len(self.stack) - 1
             )
-            pycode_gen.extend_instrs(origin_instrs[loop_body_end_idx:])
+            pycode_gen.extend_instrs(origin_instrs[resume_fn_end_idx:])
             # the resume_fn contains return code, so we don't need set output here
             # global vars are updated correctly, and need local vars will return
             after_loop_fn = pycode_gen.create_function()
+            # 在这里去除 resume 后的 END_FOR
+            # breakpoint()
             return after_loop_fn
 
         after_loop_fn = create_after_loop_fn()
@@ -2112,7 +2128,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._graph.pycode_gen.add_instr("END_FOR")
 
         for_iter.jump_to = nop
-        jump_if_break.jump_to = nop
+        jump_if_break.jump_to = self._graph.pycode_gen.add_instr("NOP")
 
         # 9. prepare inputs and call after_loop_fn
         if after_loop_fn is not None:
