@@ -104,6 +104,7 @@ class TestLlamaPostProcess(unittest.TestCase):
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
+        # paddle.jit.save(net, sys.path.join(dirname(__file__), "post_model"))
         out = net(self.logits, self.input_ids)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
