@@ -59,7 +59,7 @@ class RangeOpConverter : public OpConverter {
     layer->setInput(1, *start1);
     layer->setInput(2, *step);
 
-    RreplenishLayerAndOutput(layer, "range", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "range", {output_name}, test_mode);
   }
 };
 

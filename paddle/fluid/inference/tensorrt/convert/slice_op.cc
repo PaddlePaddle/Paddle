@@ -217,7 +217,7 @@ class SliceOpConverter : public OpConverter {
         layer = static_cast<nvinfer1::ILayer*>(reshape_layer);
       }
     }
-    RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }
 };
 
