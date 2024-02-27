@@ -33,7 +33,7 @@ namespace ir {
 
 /*
 step1: fuse single ops to single_encoder_xpu
-step2: fuse mutitl single_encoder_xpu to multi_encoder_xpu
+step2: fuse multi single_encoder_xpu to multi_encoder_xpu
 
 1. step1
 Origin subgraph:
@@ -144,7 +144,7 @@ class MultiEncoderXPUFusePass : public FusePassBase {
                                 bool norm_before,
                                 bool with_q_scale,
                                 bool with_mask,
-                                bool is_smooth_qunat) const;
+                                bool is_smooth_quant) const;
 
   bool ApplyMultiEncoderXPUFuse(ir::Graph* graph) const;
 

@@ -96,7 +96,7 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
       err,
       cudaSuccess,
       platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
-  VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
+  VLOG(0) << "update gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "use_rate=" << (total - avail) / static_cast<double>(total)

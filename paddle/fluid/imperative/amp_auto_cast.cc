@@ -162,8 +162,6 @@ AmpOperators::AmpOperators()
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() = default;
-
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;
   return instance;

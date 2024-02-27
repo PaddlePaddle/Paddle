@@ -302,7 +302,7 @@ class LayerObjectHelper(LayerHelperBase):
             )
 
 
-class LayerOpsRecoder:
+class LayerOpsRecorder:
     """
     Record generated operators information in nn.Layer.
     """
@@ -405,7 +405,7 @@ class Layer:
         self._loaddict_holder = collections.OrderedDict()
 
         # Record generated op_descs in this layer
-        self._op_recorder = LayerOpsRecoder(ops=[], hooks=[])
+        self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
         self._forward_pre_hooks = collections.OrderedDict()
@@ -636,7 +636,7 @@ class Layer:
 
                 >>> # the forward_post_hook change the output of the layer: output = output * 2
                 >>> def forward_post_hook(layer, input, output):
-                ...     # user can use layer, input and output for information statistis tasks
+                ...     # user can use layer, input and output for information statistics tasks
                 ...
                 ...     # change the output
                 ...     return output * 2
@@ -690,7 +690,7 @@ class Layer:
 
                 >>> # the forward_pre_hook change the input of the layer: input = input * 2
                 >>> def forward_pre_hook(layer, input):
-                ...     # user can use layer and input for information statistis tasks
+                ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
                 ...     input_return = (input[0] * 2)
@@ -998,7 +998,7 @@ class Layer:
             return self
         else:
             raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
                 + str(dtype)
             )
 
@@ -1951,7 +1951,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1988,7 +1988,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -2049,7 +2049,7 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        f"{key} receieves the length of {len(state)}, "
+                        f"{key} receives the length of {len(state)}, "
                         f"but the expected shape is {len(param)}"
                     )
                 else:
@@ -2126,7 +2126,7 @@ class Layer:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
-                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
         return missing_keys, unexpected_keys
@@ -2230,7 +2230,7 @@ class Layer:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
             size_dtype = core.size_of_dtype(dtype)
-            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
@@ -2345,7 +2345,7 @@ class Layer:
 
     def _startup_program(self):
         """
-        Return starup program containing initialization operations of all parameters.
+        Return startup program containing initialization operations of all parameters.
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """

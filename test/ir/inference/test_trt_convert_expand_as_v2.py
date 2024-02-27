@@ -247,7 +247,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        # fill_constant will be folded by constnt folding pass!
+        # fill_constant will be folded by constant folding pass!
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)

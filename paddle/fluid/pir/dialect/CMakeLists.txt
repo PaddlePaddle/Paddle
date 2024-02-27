@@ -250,8 +250,9 @@ set(op_dialect_srcs
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
 
 if(WITH_MKLDNN)
-  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
-                      ${op_onednn_info_file})
+  set(op_dialect_srcs
+      ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
 set(op_dialect_deps phi common pir type_info string_helper)
