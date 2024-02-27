@@ -25,6 +25,8 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
       context_->group_tile_info->flatten_inner_num > 1 ? 2 : 1;
   auto vec_axis = context_->group_tile_info->reduce_axis_;
   // reduce axis have be re-order to last
+  vec_flatten_axis_.clear();
+  vec_reduce_axis_.clear();
   int32_t reduce_start_idx =
       context_->group_tile_info->data_rank - vec_axis.size();
   for (int32_t i = 0; i < context_->group_tile_info->data_rank; ++i) {
@@ -33,6 +35,16 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
     } else {
       vec_flatten_axis_.push_back(i);
     }
+  }
+
+  std::cerr << "reduce aixs " << vec_reduce_axis_.size();
+  for (auto& d : vec_reduce_axis_) {
+    std::cerr << "reduce d " << d << std::endl;
+  }
+
+  std::cerr << "flatten aixs " << vec_flatten_axis_.size();
+  for (auto& d : vec_flatten_axis_) {
+    std::cerr << "flatten d " << d << std::endl;
   }
 }
 

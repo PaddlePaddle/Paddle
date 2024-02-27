@@ -281,6 +281,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                &tensor_map,
                &tmp_tensor_info);
 
+  for (size_t i = 0; i < func_bodies.size(); ++i) {
+    std::cerr << "!!!!!!!!!!!!!!!!!!!!!!   " << i << std::endl;
+    std::cerr << func_bodies[i] << std::endl;
+  }
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
@@ -619,7 +623,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         1,
         phi::errors::Unimplemented("only suppopt one transform yet"));
 
-    if (it->second[0].type == ScheduleAlignType::Broadcast) {
+    if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
       auto broadcast_axes = it->second[0].axis_info;
       auto output_shape = it->second[0].factor_info;

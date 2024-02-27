@@ -1582,7 +1582,6 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
   bool has_dynamic_shape = HasDynamicShape(program);
-  has_dynamic_shape = false;
 
   if (FLAGS_print_ir) {
     pass_manager->EnableIRPrinting();
@@ -1622,10 +1621,12 @@ void AddCinnPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+
+  pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+
   pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
 
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
