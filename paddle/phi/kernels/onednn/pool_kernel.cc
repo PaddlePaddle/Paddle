@@ -19,12 +19,18 @@
 
 namespace phi {
 bool Pad2dCheckIfOneDNNSupport(const KernelContext* ctx) {
-  // only constant mode and non-blocked layouts are supported for oneDNN
-  if (ctx->AttrAt<std::string>(1) == "constant" &&
-      ctx->InputAt<phi::DenseTensor>(0).mem_desc().get_inner_nblks() == 0) {
+  if (ctx->AttrAt<bool>(8) == false) {
+    // adaptive
     return true;
   }
-  return false;
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = common::vectorize(ctx->InputAt<phi::DenseTensor>(0).dims());
+  const TensorRef& kernel_size_tmp = ctx->AttrAt<TensorRef>(0);
+  IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
+  std::vector<int> kernel_size = kernel_size_array.GetData();
+  // Fast but not exhaustive check
+  return ((src_tz[src_tz.size() - 1] % kernel_size[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % kernel_size[0] == 0));
 }
 
 template <typename T, typename Context>
