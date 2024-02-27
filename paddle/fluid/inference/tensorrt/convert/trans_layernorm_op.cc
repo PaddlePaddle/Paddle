@@ -77,10 +77,10 @@ class TransLayerNormOpConverter : public OpConverter {
 
     auto output_layernorm_name = op_desc.Output("Out_layernorm").front();
     auto output_reshape_name = op_desc.Output("Out_reshape").front();
-    RreplenishLayerAndOutput(layernorm_layer,
-                             "trans_layernorm",
-                             {output_layernorm_name, output_reshape_name},
-                             test_mode);
+    ReplenishLayerAndOutput(layernorm_layer,
+                            "trans_layernorm",
+                            {output_layernorm_name, output_reshape_name},
+                            test_mode);
   }
 };
 

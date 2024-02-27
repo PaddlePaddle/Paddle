@@ -452,8 +452,6 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/eager/amp_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
@@ -461,6 +459,8 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
 #include "paddle/phi/common/type_promotion.h"
+#include "paddle/fluid/imperative/amp_utils.h"
+
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
 {}
@@ -1523,7 +1523,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_tensors_vector_optional_list.append(
                         f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
@@ -1540,13 +1540,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
                     else:
                         arg_str = f"const paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
@@ -1567,7 +1567,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_autotune_optional_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
@@ -1583,7 +1583,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"const std::vector<paddle::Tensor>& {name}"
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
@@ -1817,7 +1817,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list
         )
-        amp_get_dst_dtype_str = "auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str = "auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = (
             "    ".join(amp_autocast_list)
             + "    "

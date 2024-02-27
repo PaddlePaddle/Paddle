@@ -19,7 +19,13 @@ import dataclasses
 from paddle.jit.utils import OrderedSet
 
 from .instruction_utils import Instruction
-from .opcode_info import ALL_JUMP, HAS_FREE, HAS_LOCAL, UNCONDITIONAL_JUMP
+from .opcode_info import (
+    ALL_JUMP,
+    HAS_FREE,
+    HAS_LOCAL,
+    RETURN,
+    UNCONDITIONAL_JUMP,
+)
 
 
 @dataclasses.dataclass
@@ -122,7 +128,7 @@ def analysis_used_names(
                     else State(OrderedSet(), OrderedSet(), OrderedSet())
                 )
                 return jump_branch | not_jump_branch
-            elif instr.opname == "RETURN_VALUE":
+            elif instr.opname in RETURN:
                 return state
         return state
 

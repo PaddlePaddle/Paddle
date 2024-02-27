@@ -193,7 +193,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };

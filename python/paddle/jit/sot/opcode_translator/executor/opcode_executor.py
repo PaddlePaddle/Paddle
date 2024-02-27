@@ -47,7 +47,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -62,6 +62,7 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     FORMAT_VALUE_FLAG as FV,
     MAKE_FUNCTION_FLAG as MF,
+    IntrinsicsUnaryFunctions,
 )
 from .pycode_generator import PyCodeGen
 from .tracker import (
@@ -696,6 +697,21 @@ class OpcodeExecutorBase:
     def BINARY_SUBSCR(self, instr: Instruction):
         key = self.stack.pop()
         container = self.stack.pop()
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    @call_break_graph_decorator(push_n=1)
+    def BINARY_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.binary_subscr_operation(key, container, instr.opname)
+
+    def binary_subscr_operation(self, key, container, opname):
         assert isinstance(key, VariableBase)
         # TODO(xiongkun): getitem / getattr support key and attr as variable.
         if isinstance(key, TensorVariable) and isinstance(
@@ -710,7 +726,7 @@ class OpcodeExecutorBase:
 
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in BINARY_SUBSCR, {container}[{key}]"
+                f"Key is a TensorVariable in {opname}, {container}[{key}]"
             )
 
         result = BuiltinVariable(
@@ -754,6 +770,12 @@ class OpcodeExecutorBase:
                 getattr, graph=self._graph, tracker=DanglingTracker()
             )(obj, attr_name_var)
         )
+
+    @call_break_graph_decorator(push_n=1)
+    def LOAD_SUPER_ATTR(self, instr: Instruction):
+        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
+        # We align it's behavior with Python 3.11-.
+        raise BreakGraphError("call super is not supported")
 
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
@@ -884,11 +906,28 @@ class OpcodeExecutorBase:
         key = self.stack.pop()
         container = self.stack.pop()
         value = self.stack.pop()
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    @call_break_graph_decorator(push_n=0)
+    def STORE_SLICE(self, instr: Instruction):
+        end = self.stack.pop()
+        start = self.stack.pop()
+        container = self.stack.pop()
+        value = self.stack.pop()
+
+        key = SliceVariable(
+            slice(start, end),
+            graph=self._graph,
+            tracker=DummyTracker([start, end]),
+        )
+        self.store_subscr_operation(key, container, value, instr.opname)
+
+    def store_subscr_operation(self, key, container, value, opname):
         assert isinstance(key, VariableBase)
         self._graph.add_global_guarded_variable(key)
         if isinstance(key, TensorVariable):
             raise BreakGraphError(
-                f"Key is a TensorVariable in STORE_SUBSCR, {container}[{key}] = {value}"
+                f"Key is a TensorVariable in {opname}, {container}[{key}] = {value}"
             )
         # TODO(xiongkun): support tensor[tensor] = tensor, dy2static is not the same with dygraph.
         container[key.get_py_value()] = value
@@ -1513,6 +1552,19 @@ class OpcodeExecutorBase:
             )
         )
 
+    def CALL_INTRINSIC_1(self, instr: Instruction):
+        intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
+        if intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
+            raise RuntimeError("invalid intrinsic function")
+        elif (
+            intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
+        ):
+            self.UNARY_POSITIVE(instr)
+        elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+            self.LIST_TO_TUPLE(instr)
+        else:
+            raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -1612,8 +1664,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 
