@@ -36,6 +36,18 @@ function(header_path_compat TARGET_PATH)
 endfunction()
 
 header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/include)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/common)
+phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core)
 header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core)
 header_path_compat(

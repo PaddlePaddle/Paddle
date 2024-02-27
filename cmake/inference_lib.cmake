@@ -89,12 +89,12 @@ function(copy_part_of_third_party TARGET DST)
         ${TARGET}
         SRCS ${CBLAS_INSTALL_DIR}/lib ${OPENBLAS_SHARED_LIB}
              ${CBLAS_INSTALL_DIR}/include
-        DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+        DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir})
     else()
       copy(
         ${TARGET}
         SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-        DSTS ${dst_dir}/lib ${dst_dir})
+        DSTS ${dst_dir} ${dst_dir})
     endif()
 
     if(WITH_SPARSELT)
