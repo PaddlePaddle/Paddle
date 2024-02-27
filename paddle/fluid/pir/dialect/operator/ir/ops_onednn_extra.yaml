@@ -193,9 +193,13 @@
 
 - op : pool2d
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
+  dynamic_fallback : True
 
 - op : pool2d_grad
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x, out, out_grad
+  dynamic_fallback : True
 
 - op : prelu
   extra_args : bool is_test=false, str mkldnn_data_type="float32"

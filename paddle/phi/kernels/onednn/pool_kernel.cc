@@ -18,6 +18,15 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+bool Pad2dCheckIfOneDNNSupport(const KernelContext* ctx) {
+  // only constant mode and non-blocked layouts are supported for oneDNN
+  if (ctx->AttrAt<std::string>(1) == "constant" &&
+      ctx->InputAt<phi::DenseTensor>(0).mem_desc().get_inner_nblks() == 0) {
+    return true;
+  }
+  return false;
+}
+
 template <typename T, typename Context>
 void Pool2dKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -104,4 +113,5 @@ PD_REGISTER_KERNEL(pool2d,
                    uint8_t,
                    phi::dtype::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGetKernelTypeForVar;
+  kernel->check_if_onednn_kernel_support_ = phi::Pad2dCheckIfOneDNNSupport;
 }
