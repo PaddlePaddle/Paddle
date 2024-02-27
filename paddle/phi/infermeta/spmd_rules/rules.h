@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/numel.h"
+#include "paddle/phi/infermeta/spmd_rules/one_hot.h"
 #include "paddle/phi/infermeta/spmd_rules/optimizer.h"
 #include "paddle/phi/infermeta/spmd_rules/pow.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
