@@ -2710,7 +2710,9 @@ class TestReluAPI(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.relu, 1)
                 # The input dtype must be float16, float32, float64.
