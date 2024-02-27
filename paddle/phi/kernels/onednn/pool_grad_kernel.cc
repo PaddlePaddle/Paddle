@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-bool Pool2dCheckIfOneDNNSupport(const KernelContext* ctx) {
+bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* ctx) {
   if (ctx->AttrAt<bool>(8) == false) {
     // adaptive
     return true;
