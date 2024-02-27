@@ -1633,7 +1633,7 @@ void put_along_axis_grad(const Tensor& x,
                          const Tensor& out,
                          const Tensor& out_grad,
                          int axis,
-                         const std::stringZ& reduce,
+                         const std::string& reduce,
                          bool include_self,
                          Tensor* x_grad,
                          Tensor* value_grad) {
