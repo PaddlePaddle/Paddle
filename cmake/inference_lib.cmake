@@ -75,12 +75,12 @@ function(copy_part_of_third_party TARGET DST)
         SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
              ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
         DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-             ${dst_dir})
+             ${dst_dir}/include)
     else()
       copy(
         ${TARGET}
         SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
-        DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+        DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/include)
       if(WITH_STRIP)
         add_custom_command(
           TARGET ${TARGET}
@@ -97,12 +97,12 @@ function(copy_part_of_third_party TARGET DST)
         ${TARGET}
         SRCS ${CBLAS_INSTALL_DIR}/lib ${OPENBLAS_SHARED_LIB}
              ${CBLAS_INSTALL_DIR}/include
-        DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir})
+        DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/include)
     else()
       copy(
         ${TARGET}
         SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-        DSTS ${dst_dir} ${dst_dir})
+        DSTS ${dst_dir}/lib ${dst_dir}/include)
     endif()
 
     if(WITH_SPARSELT)
@@ -110,7 +110,7 @@ function(copy_part_of_third_party TARGET DST)
       copy(
         ${TARGET}
         SRCS ${CUSPARSELT_INC_DIR} ${CUSPARSELT_LIB_DIR}
-        DSTS ${dst_dir} ${dst_dir})
+        DSTS ${dst_dir}/include ${dst_dir}/lib)
     endif()
   endif()
 
@@ -120,12 +120,12 @@ function(copy_part_of_third_party TARGET DST)
       copy(
         ${TARGET}
         SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
-        DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+        DSTS ${dst_dir}/include ${dst_dir}/lib ${dst_dir}/lib)
     else()
       copy(
         ${TARGET}
         SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-        DSTS ${dst_dir} ${dst_dir}/lib)
+        DSTS ${dst_dir}/include ${dst_dir}/lib)
       if(WITH_STRIP)
         add_custom_command(
           TARGET ${TARGET}
@@ -141,53 +141,53 @@ function(copy_part_of_third_party TARGET DST)
     copy(
       ${TARGET}
       SRCS ${ONNXRUNTIME_INC_DIR} ${ONNXRUNTIME_LIB_DIR}
-      DSTS ${dst_dir} ${dst_dir})
+      DSTS ${dst_dir}/include ${dst_dir}/lib)
 
     set(dst_dir "${DST}/third_party/install/paddle2onnx")
     copy(
       ${TARGET}
       SRCS ${PADDLE2ONNX_INC_DIR}/paddle2onnx ${PADDLE2ONNX_LIB_DIR}
-      DSTS ${dst_dir}/include ${dst_dir})
+      DSTS ${dst_dir}/include ${dst_dir}/lib)
   endif()
 
   set(dst_dir "${DST}/third_party/install/gflags")
   copy(
     ${TARGET}
     SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir}/include ${dst_dir}/lib)
 
   set(dst_dir "${DST}/third_party/install/glog")
   copy(
     ${TARGET}
     SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir}/include ${dst_dir}/lib)
 
   set(dst_dir "${DST}/third_party/install/utf8proc")
   copy(
     ${TARGET}
     SRCS ${UTF8PROC_INSTALL_DIR}/include ${UTF8PROC_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir}/include ${dst_dir}/lib)
 
   if(WITH_CRYPTO)
     set(dst_dir "${DST}/third_party/install/cryptopp")
     copy(
       ${TARGET}
       SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
-      DSTS ${dst_dir} ${dst_dir}/lib)
+      DSTS ${dst_dir}/include ${dst_dir}/lib)
   endif()
 
   set(dst_dir "${DST}/third_party/install/xxhash")
   copy(
     ${TARGET}
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+    DSTS ${dst_dir}/include ${dst_dir}/lib)
 
   if(NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${DST}/third_party/install/protobuf")
     copy(
       ${TARGET}
       SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
-      DSTS ${dst_dir} ${dst_dir}/lib)
+      DSTS ${dst_dir}/include ${dst_dir}/lib)
   endif()
 
   if(LITE_BINARY_DIR)
@@ -216,7 +216,7 @@ if(WITH_GPU)
   copy(
     inference_lib_dist
     SRCS ${externalError_INCLUDE_DIR}
-    DSTS ${dst_dir})
+    DSTS ${dst_dir}/include)
 endif()
 
 if(WITH_XPU)
@@ -224,7 +224,7 @@ if(WITH_XPU)
   copy(
     inference_lib_dist
     SRCS ${XPU_INC_DIR} ${XPU_LIB_DIR}
-    DSTS ${dst_dir} ${dst_dir})
+    DSTS ${dst_dir}/include ${dst_dir}/lib)
 endif()
 
 # CMakeCache Info
