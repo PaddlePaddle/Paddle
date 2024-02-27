@@ -108,7 +108,7 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.Upsample(size=[12, 12])
         self.assertEqual(
             str(module),
-            'Upsample(size=[12, 12], mode=nearest, align_corners=False, align_mode=0, data_format=NCHW)',
+            'Upsample(size=[12, 12], mode=nearest, align_corners=False, align_mode=0, data_format=None)',
         )
 
         module = nn.UpsamplingNearest2D(size=[12, 12])

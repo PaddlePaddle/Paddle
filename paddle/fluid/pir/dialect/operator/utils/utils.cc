@@ -72,6 +72,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
+    MovingAverageAbsMaxScaleOp::name(),
+    MovingAverageAbsMaxScale_Op::name(),
+    QuantizeLinearOp::name(),
+    QuantizeLinear_Op::name(),
+    DequantizeLinearOp::name(),
+    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
@@ -181,7 +187,7 @@ static std::unordered_map<
         {AttrType::ARRAY,
          [](const pir::Attribute& attr) {
            auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
-           if (attr_vec.size() == 0) {
+           if (attr_vec.empty()) {
              return VariantType{std::vector<int>()};
            }
            AttrType element_type = GetAttributeType(attr_vec[0]);

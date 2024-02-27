@@ -151,7 +151,7 @@ class MultiClassNMSOpConverter : public OpConverter {
     int axis_index = engine_->with_dynamic_shape() ? 1 : 0;
     nms_concat_layer->setAxis(axis_index + 1);
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         nms_concat_layer, "multiclass_nms", {output_name}, test_mode);
   }
 };

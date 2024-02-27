@@ -168,7 +168,7 @@ class Pad3dOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
+    ReplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
 
 #else
     VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
