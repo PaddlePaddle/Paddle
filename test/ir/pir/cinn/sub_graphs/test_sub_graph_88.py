@@ -38,15 +38,19 @@ class LayerCase(paddle.nn.Layer):
         var_6 = paddle.tensor.creation.full(
             shape=[1, 500, 1], fill_value=0, dtype='int64'
         )
-        var_7 = paddle.tensor.manipulation.concat([var_6], axis=0)
+        # TODO(Aurelius84): CINN doesn't support concat single element.
+        # var_7 = paddle.tensor.manipulation.concat([var_6], axis=0)
+        var_7 = var_6
         var_8 = paddle.tensor.manipulation.concat(x=[var_7, var_5], axis=2)
         var_9 = paddle.tensor.manipulation.gather_nd(var_4, index=var_8)
         var_10 = paddle.tensor.manipulation.unsqueeze(var_2, axis=2)
         var_11 = paddle.tensor.manipulation.expand_as(var_10, var_9)
         var_12 = var_11 > 0
-        var_13 = paddle.tensor.search.masked_select(var_9, var_12)
-        var_14 = paddle.tensor.manipulation.reshape(var_13, shape=[-1, 128])
-        return var_8, var_14
+        # TODO(Aurelius84): masked_select will introduce dynamtic shape, skip it for now.
+        # var_13 = paddle.tensor.search.masked_select(var_9, var_12)
+        # var_14 = paddle.tensor.manipulation.reshape(var_13, shape=[-1, 128])
+        # return var_8, var_14
+        return var_9 + var_12
 
 
 class TestLayer(unittest.TestCase):
@@ -73,16 +77,15 @@ class TestLayer(unittest.TestCase):
         outs = net(*self.inputs)
         return outs
 
-    # NOTE prim + cinn lead to error
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=True
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

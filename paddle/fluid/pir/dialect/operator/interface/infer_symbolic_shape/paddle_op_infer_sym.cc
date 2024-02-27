@@ -422,15 +422,8 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
     return shape;
   }();
 
-  // Keep shape info always with `int64_t` type.
-  int64_t value = attributes.at("value")
-                      .dyn_cast<paddle::dialect::ScalarAttribute>()
-                      .data()
-                      .to<int64_t>();
-  std::vector<symbol::DimExpr> data{symbol::DimExpr(value)};
-
   symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(shape, data)};
+      symbol::TensorShapeOrDataDimExprs(shape)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
