@@ -363,7 +363,7 @@ void RefreshOpStopgradients(Operation *op) {
 }
 
 void BindBlock(py::module *m) {
-  py::class_<Block> block(*m, "Block", R"DOC(
+  py::class_<Block> block(*m, "Block", py::dynamic_attr(), R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
 
     Notes:
@@ -449,26 +449,6 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
-      .def("all_parameters",
-           [](Block &self) -> py::list {
-             py::list param_list;
-             for (auto &op : self) {
-               if (op.name() == "builtin.parameter" &&
-                   op.HasAttribute(kAttrIsPersistable)) {
-                 auto attrs = op.attribute(kAttrIsPersistable)
-                                  .dyn_cast<pir::ArrayAttribute>()
-                                  .AsVector();
-                 for (uint32_t i = 0; i < attrs.size(); i++) {
-                   bool is_persistable =
-                       attrs[i].dyn_cast<pir::BoolAttribute>().data();
-                   if (is_persistable) {
-                     param_list.append(static_cast<pir::Value>(op.result(i)));
-                   }
-                 }
-               }
-             }
-             return param_list;
-           })
       .def("refresh_stopgradient", [](Block &self) {
         for (auto &op : self) {
           RefreshOpStopgradients(&op);

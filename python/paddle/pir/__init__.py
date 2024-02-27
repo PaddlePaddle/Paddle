@@ -36,6 +36,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
 )
 
 from . import core  # noqa: F401
+from .block_patch import monkey_patch_block  # noqa: F401
 from .math_op_patch import monkey_patch_value  # noqa: F401
 from .program_patch import monkey_patch_program  # noqa: F401
 
