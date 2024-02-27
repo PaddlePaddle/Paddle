@@ -771,6 +771,10 @@
     {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -2197,6 +2201,12 @@
   outputs :
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
+- op : moving_average_abs_max_scale
+  inputs :
+    {x : X, in_accum : InAccum, in_state : InState}
+  outputs :
+    {out : Out, out_scale : OutScale, out_state : OutState, out_accum : OutAccum}
+
 - op : multi_dot
   backward : multi_dot_grad
   inputs :
@@ -2546,6 +2556,10 @@
     {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 

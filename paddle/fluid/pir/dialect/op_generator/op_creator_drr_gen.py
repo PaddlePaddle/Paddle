@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 
 import yaml
 from op_gen import (
@@ -26,6 +27,9 @@ CPP_FILE_TEMPLATE = """
 
 {op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
 namespace paddle {{
 namespace drr {{
@@ -195,6 +199,10 @@ class OpCreatorCodeGen:
                             params_no_mutable_attr
                         ),
                     )
+
+        directory_path = os.path.dirname(cpp_file_path)
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path, exist_ok=True)
 
         with open(cpp_file_path, 'w') as f:
             f.write(
