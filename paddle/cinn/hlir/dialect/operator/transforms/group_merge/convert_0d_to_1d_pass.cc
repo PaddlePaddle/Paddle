@@ -95,6 +95,20 @@ pir::DenseTensorType Make1DTensorType(const pir::DenseTensorType& tensor_type) {
 }
 
 void ConvertValue0DTo1D(pir::Value operand) {
+  auto ConvertVectorType0DTo1D =
+      [](const pir::VectorType& vector_tensor_type) -> std::vector<pir::Type> {
+    std::vector<pir::Type> types;
+    for (std::size_t i = 0; i < vector_tensor_type.size(); ++i) {
+      CHECK(vector_tensor_type[i].isa<pir::DenseTensorType>());
+      const auto& dense_type =
+          vector_tensor_type[i].dyn_cast<pir::DenseTensorType>();
+      types.push_back(dense_type.dims().size() == 0
+                          ? Make1DTensorType(dense_type)
+                          : vector_tensor_type[i]);
+    }
+    return types;
+  };
+
   if (const auto& tensor_type =
           operand.type().dyn_cast<pir::DenseTensorType>()) {
     if (tensor_type.dims().size() == 0) {
@@ -103,19 +117,8 @@ void ConvertValue0DTo1D(pir::Value operand) {
   } else if (const auto& vector_tensor_type =
                  operand.type().dyn_cast<pir::VectorType>()) {
     pir::Builder builder(pir::IrContext::Instance());
-
-    const std::vector<pir::Type> inputs_type = [&]() {
-      std::vector<pir::Type> types;
-      for (std::size_t i = 0; i < vector_tensor_type.size(); ++i) {
-        CHECK(vector_tensor_type[i].isa<pir::DenseTensorType>());
-        const auto& dense_type =
-            vector_tensor_type[i].dyn_cast<pir::DenseTensorType>();
-        types.push_back(dense_type.dims().size() == 0
-                            ? Make1DTensorType(dense_type)
-                            : vector_tensor_type[i]);
-      }
-      return types;
-    }();
+    std::vector<pir::Type> inputs_type =
+        ConvertVectorType0DTo1D(vector_tensor_type);
     operand.set_type(builder.vec_type(inputs_type));
   } else {
     VLOG(4) << "Unsupported operand type: " << operand.type();
