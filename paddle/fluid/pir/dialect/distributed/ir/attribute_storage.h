@@ -114,5 +114,55 @@ struct TensorDistAttrStorage : public pir::AttributeStorage {
   flat_hash_map<int64_t, phi::ReduceType> partial_status;
 };
 
+struct OperationDistAttrStorage : public pir::AttributeStorage {
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey = std::tuple<ProcessMeshAttribute,
+                              std::vector<TensorDistAttribute>,
+                              std::vector<TensorDistAttribute>>;
+  OperationDistAttrStorage(ParamKey&& param)  // NOLINT
+      : process_mesh(std::get<0>(param)),
+        inputs(std::get<1>(param)),
+        outputs(std::get<2>(param)) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static OperationDistAttrStorage* Construct(ParamKey&& key) {
+    return new OperationDistAttrStorage(std::move(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    auto hash_value = std::hash<pir::Attribute>()(std::get<0>(key));
+    for (auto &iter: std::get<1>(key)) {
+        auto tmp_value = std::hash<pir::Attribute>()(iter);
+        hash_value = pir::detail::hash_combine(hash_value, tmp_value);
+    }
+    for (auto &iter: std::get<2>(key)) {
+        auto tmp_value = std::hash<pir::Attribute>()(iter);
+        hash_value = pir::detail::hash_combine(hash_value, tmp_value);
+    }
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return process_mesh == std::get<0>(key) &&
+           inputs == std::get<1>(key) &&
+           outputs == std::get<2>(key);
+  }
+
+  ProcessMeshAttribute process_mesh;
+  std::vector<TensorDistAttribute> inputs;
+  std::vector<TensorDistAttribute> outputs;
+};
+
 }  // namespace dialect
 }  // namespace paddle

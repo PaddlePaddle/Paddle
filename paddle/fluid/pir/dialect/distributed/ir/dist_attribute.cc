@@ -67,7 +67,29 @@ TensorDistAttribute TensorDistAttribute::get(
   return Base::get(ctx, mesh, dims_mapping, partial_status);
 }
 
+///
+/// \brief OperationDistAttribute interface.
+///
+ProcessMeshAttribute OperationDistAttribute::mesh_attr() const {
+  return storage()->process_mesh;
+}
+const std::vector<TensorDistAttribute>& OperationDistAttribute::inputs() const {
+  return storage()->inputs;
+}
+const std::vector<TensorDistAttribute>& OperationDistAttribute::outputs()
+    const {
+  return storage()->outputs;
+}
+OperationDistAttribute OperationDistAttribute::get(
+    pir::IrContext* ctx,
+    ProcessMeshAttribute mesh,
+    const std::vector<TensorDistAttribute>& inputs,
+    const std::vector<TensorDistAttribute>& outputs) {
+  return Base::get(ctx, mesh, inputs, outputs);
+}
+
 }  // namespace dialect
 }  // namespace paddle
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ProcessMeshAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorDistAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperationDistAttribute)

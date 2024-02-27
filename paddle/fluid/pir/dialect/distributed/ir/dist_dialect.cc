@@ -44,9 +44,6 @@ void DistDialect::PrintType(pir::Type type, std::ostream &os) const {
 void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
   if (auto process_mesh_attr = attr.dyn_cast<ProcessMeshAttribute>()) {
     os << process_mesh_attr.process_mesh();
-  } else if (auto tensor_dist_attr = attr.dyn_cast<TensorDistAttribute>()) {
-    // Todo: Design the tensor dist attr print format.
-    os << tensor_dist_attr.process_mesh();
   } else {
     os << "error_attribute_type";
   }

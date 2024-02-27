@@ -25,6 +25,7 @@ namespace paddle {
 namespace dialect {
 class ProcessMeshAttrStorage;
 class TensorDistAttrStorage;
+class OperationDistAttrStorage;
 
 class ProcessMeshAttribute : public pir::AttrBase<ProcessMeshAttribute,
                                                   pir::Attribute,
@@ -94,8 +95,38 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
   }
 };
 
+class OperationDistAttribute
+    : public pir::AttrBase<OperationDistAttribute,
+                           pir::Attribute,
+                           OperationDistAttrStorage> {
+ public:
+  using Base::Base;
+  ProcessMeshAttribute mesh_attr() const;
+  const std::vector<TensorDistAttribute>& inputs() const;
+  const std::vector<TensorDistAttribute>& outputs() const;
+
+  const phi::distributed::ProcessMesh& process_mesh() const {
+    return mesh_attr().process_mesh();
+  }
+
+  static OperationDistAttribute get(
+      pir::IrContext* ctx,
+      ProcessMeshAttribute mesh,
+      const std::vector<TensorDistAttribute>& inputs,
+      const std::vector<TensorDistAttribute>& outputs);
+
+  static OperationDistAttribute get(
+      pir::IrContext* ctx,
+      const phi::distributed::ProcessMesh& mesh,
+      const std::vector<TensorDistAttribute>& inputs,
+      const std::vector<TensorDistAttribute>& outputs) {
+    return get(ctx, ProcessMeshAttribute::get(ctx, mesh), inputs, outputs);
+  }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ProcessMeshAttribute)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorDistAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OperationDistAttribute)
