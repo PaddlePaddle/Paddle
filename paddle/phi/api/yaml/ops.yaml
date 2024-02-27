@@ -541,6 +541,7 @@
   kernel :
     func : coalesce_tensor
     data_type : dtype
+  inplace: (input -> output)
 
 - op : complex
   args : (Tensor real, Tensor imag)
