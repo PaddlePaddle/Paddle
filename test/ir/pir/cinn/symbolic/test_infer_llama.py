@@ -89,7 +89,7 @@ class TestLlamaPostProcess(unittest.TestCase):
     def prepare_data(self):
         self.shape = [1, 2048, 768]
         self.logits = paddle.randn([1, 256, 3200], dtype="float32")
-        self.input_ids = paddle.randn([1, 32], dtype="int64")
+        self.input_ids = paddle.randint(0, 512, [1, 32], dtype="int64")
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -104,7 +104,7 @@ class TestLlamaPostProcess(unittest.TestCase):
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.hidden_states)
+        out = net(self.logits, self.input_ids)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
