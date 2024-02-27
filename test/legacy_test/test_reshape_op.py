@@ -737,13 +737,19 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 class TestReshapePirValueListShape(unittest.TestCase):
     def test_value_list_shape(self):
         with paddle.pir_utils.IrGuard():
-            x = paddle.static.data(
-                'x',
-                [3],
-            )
+            x = paddle.static.data('x', [3])
             shape = [1, paddle.full([], 3)]
             out = paddle.reshape(x, shape)
             self.assertEqual(out.shape, [1, -1])
+
+
+class TestReshapePirTensorWithZeroShape(unittest.TestCase):
+    def test_tensor_with_zero_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [10, -1])
+            shape = [0, paddle.shape(x)[1]]
+            out = paddle.reshape(x, shape)
+            self.assertEqual(out.shape, [10, -1])
 
 
 if __name__ == "__main__":
