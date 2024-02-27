@@ -18,8 +18,6 @@ template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  std::cout << "out_grad.dims() = " << out_grad.dims() << std::endl;
-  std::cout << "x_grad.dims() = " << x_grad->dims() << std::endl;
   auto out_grad_vec_dims = out_grad.dims().size() != 0
                                ? common::vectorize(out_grad.dims())
                                : std::vector<int64_t>{1};
