@@ -3501,6 +3501,12 @@
   outputs :
     out: Out
 
+- op: c_reduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_min
   inputs :
     x : X

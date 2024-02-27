@@ -159,6 +159,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'soft_relu',
     'uniform_random_batch_size_like',
     'match_matrix_tensor',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'c_reduce_min',
     'c_reduce_min_',
     'push_sparse_v2',
