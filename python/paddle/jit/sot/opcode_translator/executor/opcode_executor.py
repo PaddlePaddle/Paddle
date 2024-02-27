@@ -47,7 +47,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -1664,8 +1664,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 
