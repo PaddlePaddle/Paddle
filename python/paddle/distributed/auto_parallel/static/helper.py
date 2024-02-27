@@ -400,6 +400,9 @@ class ProgramHelper:
                 # The parameter is not in this rank.
                 if not scope_var:
                     continue
+                # The parameter do not need to transform
+                if param.dtype in [paddle.float16, paddle.bfloat16]:
+                    continue
                 assert (
                     scope_var and scope_tensor._is_initialized()
                 ), f"Parameter: {param.name} is not put into global_scope or not initialized."
