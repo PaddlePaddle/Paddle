@@ -1597,6 +1597,8 @@ void ApplyCinnPreprocessPass(Program *program, pir::IrContext *ctx) {
   pass_manager.AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager.AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
   pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
   pass_manager.Run(program);
 }
@@ -1628,15 +1630,6 @@ void ApplyCinnLowerPass(Program *program, pir::IrContext *ctx) {
   pass_manager.Run(program);
 }
 
-void ApplyCinnPostProcessPass(Program *program, pir::IrContext *ctx) {
-  PassManager pass_manager(ctx);
-  if (FLAGS_print_ir) {
-    pass_manager.EnableIRPrinting();
-  }
-  pass_manager.AddPass(
-      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-  pass_manager.Run(program);
-}
 #endif
 
 void ApplyCinnPass(Program &program) {  // NOLINT
@@ -1648,7 +1641,6 @@ void ApplyCinnPass(Program &program) {  // NOLINT
 
   ApplyCinnPreprocessPass(&program, ctx);
   ApplyCinnLowerPass(&program, ctx);
-  ApplyCinnPostProcessPass(&program, ctx);
 
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
