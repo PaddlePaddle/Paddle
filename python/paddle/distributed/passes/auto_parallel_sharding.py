@@ -1097,7 +1097,7 @@ class ShardingPass(PassBase):
                     group.coalesce_var,
                     ref_dist_attr.dims_mapping,
                     ref_dist_attr.process_mesh,
-                    ref_dist_attr.chunk_id,
+                    chunk_id=ref_dist_attr.chunk_id,
                 )
                 coalesce_op_map[group.coalesce_op_idx] = group
                 last_reduce_op_idx = group.reduce_op_indices.pop()
