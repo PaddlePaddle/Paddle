@@ -18,6 +18,8 @@ template <typename T, typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  std::cout << "out_grad.dims() = " << out_grad.dims() << std::endl;
+  std::cout << "x_grad.dims() = " << x_grad->dims() << std::endl;
   auto out_grad_vec_dims = out_grad.dims().size() != 0
                                ? common::vectorize(out_grad.dims())
                                : std::vector<int64_t>{1};
@@ -40,7 +42,10 @@ void ReshapeGradKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
-  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_grad->dims()));
+  auto grad_shape = x_grad->dims().size() == 0
+                        ? std::vector<int64_t>{1}
+                        : phi::vectorize<int64_t>(x_grad->dims());
+  reorder_dst_memory_p->get_desc().reshape(grad_shape);
 }
 
 }  // namespace phi
