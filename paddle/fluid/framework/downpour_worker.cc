@@ -334,8 +334,9 @@ void DownpourWorker::AdjustInsWeight() {
     }
     float ins_weight = 1.0;
     if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
-      ins_weight = log(M_E + (nid_adjw_threshold - nid_show) /
-                                 nid_adjw_threshold * nid_adjw_ratio);
+      ins_weight = static_cast<float>(
+          log(M_E + (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
+                        nid_adjw_ratio));
       // count nid adjw insnum and weight
       ++nid_adjw_num;
       nid_adjw_weight += ins_weight;

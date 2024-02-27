@@ -423,13 +423,14 @@ TensorDistAttr FromPlacements(
     auto& placement = placements[mesh_dim];
     if (placement->is_shard()) {
       auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
-      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+      dims_mapping[shard_placement->get_axis()] =
+          static_cast<int64_t>(mesh_dim);
     }
     if (placement->is_partial()) {
       auto partial_placement =
           std::dynamic_pointer_cast<PartialStatus>(placement);
       auto reduce_type = partial_placement->get_reduce_type();
-      partial_status[mesh_dim] = reduce_type;
+      partial_status[mesh_dim] = reduce_type;  // NOLINT
     }
   }
   dst_dist_attr.set_dims_mapping(dims_mapping);
@@ -470,7 +471,7 @@ std::vector<int64_t> GetLocalShape(
   for (size_t i = 0; i < n_placement; i++) {
     auto& placement = placements.at(i);
     if (placement->is_shard()) {
-      auto mesh_dim_size = mesh.dim_size(i);
+      auto mesh_dim_size = mesh.dim_size(i);  // NOLINT
       auto shard_dim =
           std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
       auto split_size =

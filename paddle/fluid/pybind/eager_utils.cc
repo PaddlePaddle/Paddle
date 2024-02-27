@@ -518,7 +518,7 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -566,7 +566,7 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {PyLong_AsSize_t(obj)};
+    return {PyLong_AsSize_t(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -614,7 +614,7 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
-    return {static_cast<float>(PyFloat_AsDouble(obj))};
+    return {static_cast<float>(PyFloat_AsDouble(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "

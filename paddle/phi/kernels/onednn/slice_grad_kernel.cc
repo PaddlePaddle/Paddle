@@ -60,7 +60,7 @@ void SliceGradKernel(const Context& dev_ctx,
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       input_grad,
       dx_dims,
-      funcs::GetPlainOneDNNFormat(dx_dims.size()),
+      funcs::GetPlainOneDNNFormat(static_cast<int>(dx_dims.size())),
       dev_ctx.GetPlace());
   memset(input_grad->data<T>(), 0, reorder_dst_memory_p->get_desc().get_size());
 

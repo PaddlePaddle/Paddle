@@ -166,8 +166,8 @@ void ArrayReadInferMeta(const MetaTensor& array,
     out->set_dims({-1});
   } else {
     double index = i.to<int64_t>();
-    out->set_dims(array.dims(index));
-    out->share_lod(array, index);
+    out->set_dims(array.dims(index));  // NOLINT
+    out->share_lod(array, index);      // NOLINT
   }
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
@@ -3557,8 +3557,8 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
   }
-  int n = x.dims()[1];
-  int k = x.dims()[0];
+  int n = static_cast<int>(x.dims()[1]);
+  int k = static_cast<int>(x.dims()[0]);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }

@@ -301,7 +301,7 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
   WuaucRecord record;
   record.uid_ = uid;
   record.label_ = label;
-  record.pred_ = pred;
+  record.pred_ = static_cast<float>(pred);
   wuauc_records_.emplace_back(std::move(record));
 }
 

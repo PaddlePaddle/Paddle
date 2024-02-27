@@ -528,7 +528,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     size_t offset = 0;
     size_t numel = out_tensor->numel() / size_;
     for (auto i = 0; i < size_; i++) {
-      partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
+      partial_tensors.push_back(GetPartialTensor(*out_tensor,
+                                                 static_cast<int64_t>(offset),
+                                                 static_cast<int64_t>(numel)));
       offset += numel;
     }
   }

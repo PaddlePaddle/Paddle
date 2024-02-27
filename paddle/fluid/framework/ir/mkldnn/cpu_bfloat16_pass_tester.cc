@@ -73,9 +73,9 @@ void MainTest(const ProgramDesc& prog,
   auto graph = std::make_unique<ir::Graph>(prog);
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
 
-  int original_nodes_num = graph->Nodes().size();
+  int original_nodes_num = static_cast<int>(graph->Nodes().size());
   graph.reset(pass->Apply(graph.release()));
-  int current_nodes_num = graph->Nodes().size();
+  int current_nodes_num = static_cast<int>(graph->Nodes().size());
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;

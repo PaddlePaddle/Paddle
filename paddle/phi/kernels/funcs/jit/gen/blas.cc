@@ -104,7 +104,7 @@ void VXXJitCode::genCode() {
     } else {
       vmovss(ptr[param3 + offset], xmm_dst);
     }
-    offset += sizeof(float) * block;
+    offset += sizeof(float) * block;  // NOLINT
     rest -= block;
   }
   ret();

@@ -410,7 +410,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();
