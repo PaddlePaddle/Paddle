@@ -76,6 +76,8 @@ class PipelinePassBase(PassBase):
         )
 
         for type in type_to_program.keys():
+            print("translate ", type, flush=True)
+            print(type_to_program[type], flush=True)
             if enable_pir_in_executor:
                 type_to_program[type] = paddle.pir.translate_to_pir(
                     type_to_program[type].desc
