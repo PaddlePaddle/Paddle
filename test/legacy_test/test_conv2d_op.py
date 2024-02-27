@@ -20,7 +20,8 @@ from testsuite import create_op
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def conv2d_forward_naive(
@@ -103,8 +104,8 @@ def conv2d_forward_naive(
     )
     out = np.zeros((out_n, out_c, out_h, out_w))
 
-    d_bolck_h = dilation[0] * (f_h - 1) + 1
-    d_bolck_w = dilation[1] * (f_w - 1) + 1
+    d_block_h = dilation[0] * (f_h - 1) + 1
+    d_block_w = dilation[1] * (f_w - 1) + 1
 
     input_pad = np.pad(
         input,
@@ -113,9 +114,9 @@ def conv2d_forward_naive(
         constant_values=0,
     )
 
-    filter_dilation = np.zeros((f_n, f_c, d_bolck_h, d_bolck_w))
+    filter_dilation = np.zeros((f_n, f_c, d_block_h, d_block_w))
     filter_dilation[
-        :, :, 0 : d_bolck_h : dilation[0], 0 : d_bolck_w : dilation[1]
+        :, :, 0 : d_block_h : dilation[0], 0 : d_block_w : dilation[1]
     ] = filter
 
     for i in range(out_h):
@@ -124,8 +125,8 @@ def conv2d_forward_naive(
                 input_pad_masked = input_pad[
                     :,
                     g * f_c : (g + 1) * f_c,
-                    i * stride[0] : i * stride[0] + d_bolck_h,
-                    j * stride[1] : j * stride[1] + d_bolck_w,
+                    i * stride[0] : i * stride[0] + d_block_h,
+                    j * stride[1] : j * stride[1] + d_block_w,
                 ]
 
                 f_sub = filter_dilation[
@@ -726,8 +727,11 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of conv2d must be Variable.

@@ -39,7 +39,7 @@ constexpr int64_t kCurProgramVersion = 0;
 // paddle in 2.4.2 and before does not support Scalar in op attributes
 // and no op in program of 2.4.2 or earlier versions has attributes of type
 // `Scalar` This version number is used for converting program to a legacy
-// format to indentifiy their version id See Also
+// format to identify their version id. See Also
 // paddle/fluid/framework/op_version_proto.cc
 constexpr int64_t kLegacyProgramVersion = 2004002L;
 

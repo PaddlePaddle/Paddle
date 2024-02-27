@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -73,7 +73,7 @@ int gcd(int a, int b) {
 }
 
 //////// All the following symbolic computation methods are implemented
-/// referencing to the book <Computer Algegra and
+/// referencing to the book <Computer Algebra and
 /// Symbolic Computation - Joel S. Cohen>
 
 template <typename T>
@@ -1155,8 +1155,8 @@ inline bool IsVarNonnegative(
 // Return if the var is binded with thread or block in cuda(which implies it is
 // non-negative).
 inline bool IsVarBinded(const std::string& var_name) {
-  return utils::Startswith(var_name, "threadIdx") ||
-         utils::Startswith(var_name, "blockIdx");
+  return utils::StartsWith(var_name, "threadIdx") ||
+         utils::StartsWith(var_name, "blockIdx");
 }
 
 /**
@@ -1180,7 +1180,7 @@ inline bool IsVarAllNonnegative(
 }
 
 Expr CasSimplifyMutator::SimplifyMod(Expr u) {
-  VLOG(4) << "SimplifyMod:" << u;
+  VLOG(6) << "SimplifyMod:" << u;
   auto* node = u.As<Mod>();
   CHECK(node);
 
@@ -1229,11 +1229,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
 
   // (x % 16) % 4 = x % 4
   if (a_mod && b_i) {
-    VLOG(4) << "Simplify sequential mod";
+    VLOG(6) << "Simplify sequential mod";
     auto* a_b_i = a_mod->b().As<IntImm>();
     if (a_b_i->value != 0 && a_b_i->value % b_i->value == 0) {
       auto e = SimplifyMod(Mod::Make(a_mod->a(), b_i));
-      VLOG(4) << "Reduce Mod from " << u << " to " << e;
+      VLOG(6) << "Reduce Mod from " << u << " to " << e;
       return e;
     }
   }
@@ -1260,11 +1260,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   // (4*x + k*y)%2 = (k*y) %2
   // (2x+y+z) % 2 = (y+z) % 2
   if (a_sum && b_i) {
-    VLOG(4) << "A SUM ";
+    VLOG(6) << "A SUM ";
     std::vector<Expr> sum_args;
     for (auto& v : a_sum->operands()) {
       if (!IsDivisible(v, b_i->value)) {
-        VLOG(4) << v;
+        VLOG(6) << v;
         sum_args.push_back(v);
       }
     }
@@ -1284,7 +1284,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
         all_nonnegative_int =
             all_nonnegative_int && arg_int && arg_int->value >= 0;
       }
-      VLOG(4) << all_nonnegative_var << " " << all_nonnegative_int;
+      VLOG(6) << all_nonnegative_var << " " << all_nonnegative_int;
       if (all_nonnegative_var)
         return SimplifyMod(Mod::Make(Sum::Make(sum_args), b));
       if (all_nonnegative_int) {
@@ -1348,7 +1348,7 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
           return const_operand;
         }
       }
-      // not unfold var for var may be eliminated in the caculation
+      // not unfold var for var may be eliminated in the calculation
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, false)) {
         // if non_const_operand's lower_bound is larger than const_operand, then
         // non_const_operand must be larger than const_operand
@@ -1448,10 +1448,10 @@ Expr CasSimplifyMutator::SimplifyCmp(Expr u) {
 }
 
 /**
- * deal with index's div-mod add simplification, tempory solution, not cover all
- * situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2: (m /
- * n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is
- * int)
+ * deal with index's div-mod add simplification, temporary solution, not cover
+ * all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2:
+ * (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type
+ * is int)
  */
 Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   auto sum = tmp.As<Sum>();
@@ -1546,11 +1546,11 @@ Expr CasSimplifyMutator::operator()(Expr u) {
 
   if (u.As<Sum>()) {
     auto tmp = detail::SumOrProductGetSingleElementsRec(SimplifySum(u));
-    // deal with index's div-mod add simplification, tempory solution, not cover
-    // all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case
-    // 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2,
-    // n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 = n1 * n2
-    // (m, n1, n2, n3's type is int)
+    // deal with index's div-mod add simplification, temporary solution, not
+    // cover all situations. case 1: (m / n) * n + m % n = m (m, n's type is
+    // int) case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m,
+    // n1, n2, n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 =
+    // n1 * n2 (m, n1, n2, n3's type is int)
     return SimplifySpecificSum(tmp);
   }
 

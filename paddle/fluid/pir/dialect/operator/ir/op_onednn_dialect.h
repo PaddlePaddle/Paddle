@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/include/core/dialect.h"
 
 namespace paddle {
 namespace dialect {
@@ -31,8 +31,7 @@ class OneDNNOperatorDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;
 
  private:
   void initialize();

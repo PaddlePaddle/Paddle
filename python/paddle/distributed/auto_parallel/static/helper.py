@@ -211,8 +211,8 @@ class ProgramHelper:
 
     def __init__(self, layer, loss_func, metrics, inputs_spec, labels_spec):
         # original model config information
-        # TODO(Aurelius84): Implenet append_backward and optimizer in ProxyLayer
-        # after distribute engine satisify basic condition.
+        # TODO(Aurelius84): Implement append_backward and optimizer in ProxyLayer
+        # after distribute engine satisfy basic condition.
         self.proxy_layer = ProxyLayer(layer, loss_func, metrics)
         self.inputs_spec = inputs_spec
         self.labels_spec = labels_spec
@@ -267,9 +267,11 @@ class ProgramHelper:
         """
         Create and Sync parameters into startup program.
         """
-        if len(self.startup_program.global_block().ops) > 1:
+        startup_program = self.startup_program
+        if len(startup_program.global_block().ops) > 1:
             self.lazy_init = True
             return
+
         for param in self.concrete_program.parameters:
             Parameter(
                 name=param.name,
@@ -278,7 +280,7 @@ class ProgramHelper:
                 shape=param.shape,
                 dtype=param.dtype,
                 stop_gradient=param.stop_gradient,
-                block=self.startup_program.global_block(),
+                block=startup_program.global_block(),
             )
 
     def apply_optimizer(self, optimizer):
@@ -409,7 +411,9 @@ class ProgramHelper:
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
-            self._logger.warning("`lazy init` failed.")
+            self._logger.warning(
+                "The startup_program is not built by `lazy init`."
+            )
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err

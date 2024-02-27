@@ -206,7 +206,7 @@ class TEST_API TensorDistAttr {
   std::map<std::string, bool> annotated_;
   int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
-  // iterate operation (copy and comparision) would more frequency than random
+  // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
 };

@@ -17,22 +17,8 @@ from collections import defaultdict
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
-    FOR_ITER_INDEX_PREFIX,
-    FOR_ITER_ITERATOR_PREFIX,
-    FOR_ITER_TARGET_PREFIX,
-    FOR_ITER_TUPLE_INDEX_PREFIX,
-    FOR_ITER_TUPLE_PREFIX,
-    FOR_ITER_VAR_LEN_PREFIX,
-    FOR_ITER_VAR_NAME_PREFIX,
-    FOR_ITER_ZIP_TO_LIST_PREFIX,
-    FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
-    create_funcDef_node,
-    create_get_args_node,
-    create_name_str,
-    create_nonlocal_stmt_nodes,
-    create_set_args_node,
 )
 
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
@@ -41,8 +27,25 @@ from paddle.jit.dy2static.utils import (
 # See details in https://github.com/serge-sans-paille/gast/
 from paddle.utils import gast
 
-from ..utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
 from .base import BaseTransformer
+from .utils import (
+    FALSE_FUNC_PREFIX,
+    FOR_ITER_INDEX_PREFIX,
+    FOR_ITER_ITERATOR_PREFIX,
+    FOR_ITER_TARGET_PREFIX,
+    FOR_ITER_TUPLE_INDEX_PREFIX,
+    FOR_ITER_TUPLE_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_VAR_NAME_PREFIX,
+    FOR_ITER_ZIP_TO_LIST_PREFIX,
+    TRUE_FUNC_PREFIX,
+    FunctionNameLivenessAnalysis,
+    create_function_def_node,
+    create_get_args_node,
+    create_name_str,
+    create_nonlocal_stmt_nodes,
+    create_set_args_node,
+)
 
 __all__ = []
 
@@ -228,7 +231,7 @@ class NameVisitor(gast.NodeVisitor):
     def visit_FunctionDef(self, node):
         # NOTE: We skip to visit names of get_args and set_args, because they contains
         # nonlocal statement such as 'nonlocal x, self' where 'self' should not be
-        # parsed as returned value in contron flow.
+        # parsed as returned value in control flow.
         if (
             GET_ARGS_FUNC_PREFIX in node.name
             or SET_ARGS_FUNC_PREFIX in node.name
@@ -340,7 +343,7 @@ def transform_if_else(node, root):
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
 
     # TODO(dev): Need a better way to deal this.
-    # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
+    # LoopTransformer will create some special vars, which is not visible by users. so we can sure it's safe to remove them.
     filter_names = [
         ARGS_NAME,
         FOR_ITER_INDEX_PREFIX,
@@ -374,13 +377,13 @@ def transform_if_else(node, root):
         defaults=[],
     )
 
-    true_func_node = create_funcDef_node(
+    true_func_node = create_function_def_node(
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
         return_name_ids=[],
     )
-    false_func_node = create_funcDef_node(
+    false_func_node = create_function_def_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,

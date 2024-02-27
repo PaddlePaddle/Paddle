@@ -166,6 +166,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
+  py_test_modules(test_semi_auto_parallel_sharding_strategy MODULES
+                  test_semi_auto_parallel_sharding_strategy)
+  set_tests_properties(test_semi_auto_parallel_sharding_strategy
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_semi_auto_parallel_lazy_init MODULES
                   test_semi_auto_parallel_lazy_init)
   set_tests_properties(test_semi_auto_parallel_lazy_init

@@ -535,6 +535,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
+    @test_with_pir_api
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -567,8 +568,11 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype1)
 
+    @test_with_pir_api
     def test_error2(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')
@@ -586,6 +590,7 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_index_type)
 
+    @test_with_pir_api
     def test_error3(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -616,8 +621,7 @@ class TestCheckOutType(unittest.TestCase):
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
         self.assertTrue(
-            out.dtype == core.VarDesc.VarType.INT64
-            or out.dtype == core.DataType.INT64
+            out.dtype == paddle.int64 or out.dtype == core.DataType.INT64
         )
 
     def test_pir_out_type(self):

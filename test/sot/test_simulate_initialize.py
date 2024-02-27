@@ -19,6 +19,7 @@ from test_case_base import TestCaseBase
 import paddle
 from paddle import nn
 from paddle.jit.sot import symbolic_translate
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 class A:
@@ -43,6 +44,20 @@ def error_foo(x):
     return t(x)
 
 
+class NopLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = None
+
+
+def created_layer_reconstruct():
+    x = paddle.to_tensor([1, 2], dtype="float32")
+    weight = NopLayer().weight
+    if weight is not None:
+        x += 1
+    return x
+
+
 def bar(x):
     a = A(x)
     t = paddle.to_tensor(x)
@@ -65,6 +80,10 @@ class TestInit(TestCaseBase):
             symbolic_translate(error_foo)(inputs)
 
         self.assertRaises(paddle.jit.sot.utils.exceptions.InnerError, run)
+
+    @strict_mode_guard(False)
+    def test_created_layer_reconstruct(self):
+        self.assert_results(created_layer_reconstruct)
 
 
 if __name__ == "__main__":

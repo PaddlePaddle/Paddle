@@ -21,11 +21,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -43,32 +43,34 @@ pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
-  if (op->operand_source(0).defining_op()->isa<paddle::dialect::ExpandOp>() &&
-      op->operand_source(1).defining_op()->isa<paddle::dialect::ExpandOp>()) {
-    return false;
-  }
   pir::Value x = op->operand_source(0);
   pir::Value y = op->operand_source(1);
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   const auto& x_shape = shape_analysis.GetShapeOrDataForValue(x);
   const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
-  if (x_shape.shape() == y_shape.shape() && x_shape.data() == y_shape.data()) {
-    return false;
-  }
+  const auto& out_shape = shape_analysis.GetShapeOrDataForValue(op->result(0));
+
+  bool has_insert_broadcast = false;
 
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
-  {
+  if (x_shape.shape() != out_shape.shape() ||
+      x_shape.data() != out_shape.data()) {
+    has_insert_broadcast = true;
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
+    shape_analysis.SetShapeOrDataForValue(broadcasted_x, out_shape);
   }
-  {
+  if (y_shape.shape() != out_shape.shape() ||
+      y_shape.data() != out_shape.data()) {
+    has_insert_broadcast = true;
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
+    shape_analysis.SetShapeOrDataForValue(broadcasted_y, out_shape);
   }
-  return true;
+  return has_insert_broadcast;
 }
 
 }  // namespace

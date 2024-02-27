@@ -16,7 +16,7 @@
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/diagonal_kernel.h"
@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -46,11 +47,11 @@ inline static void ValidationCheck(const std::string& equation) {
   size_t pos;
   auto trimed_equ = equation;
   if ((pos = trimed_equ.find("->", 0)) != std::string::npos) {
-    trimed_equ.replace(pos, 2, ".");
+    trimed_equ.replace(pos, 2, "");
   }
   auto is_valid_char = [](char c) {
     if (c >= 'a' && c <= 'z') return true;
-    if (c == '.' || c == ',') return true;
+    if (c == ',') return true;
     return false;
   };
   for (auto c : trimed_equ) {
@@ -81,16 +82,14 @@ class LabelMap {
  public:
   explicit LabelMap(int default_value = 0) {
     this->default_value = default_value;
-    for (int i = 0; i < N; ++i) map[i] = default_value;
+    for (size_t i = 0; i < N; ++i) map[i] = default_value;
   }
   int& operator[](int label) {
     int i = label - 'a';
-    if (label == '.') i = N - 1;
     return map[i];
   }
   int operator[](int label) const {
     int i = label - 'a';
-    if (label == '.') i = N - 1;
     return map[i];
   }
   bool exist(char label) { return !is_default(label); }
@@ -111,17 +110,6 @@ inline std::string label_to_string(const std::vector<char>& all_labels,
     str += ss.str();
   }
   return str;
-}
-
-inline static void ReplaceEllipsis(std::string& s) {  // NOLINT
-  size_t pos;
-  if ((pos = s.find("...", 0)) != std::string::npos) {
-    s.replace(pos, 3, ".");
-  }
-  // remove all the space in the expression
-  while ((pos = s.find(" ", 0)) != std::string::npos) {
-    s.replace(pos, 1, "");
-  }
 }
 
 template <typename CharIterable1, typename CharIterable2>
@@ -191,8 +179,6 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
     if ((*label2type)[c] == LabelType::BO) (*label2type)[c] = LabelType::AO;
   }
 
-  (*label2type)['.'] = LabelType::Batch;
-
   if (sorted_labels->size()) {
     std::set<char> exist(all.begin(), all.end());
     all.clear();
@@ -210,107 +196,61 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
                                          LabelType::Contraction,
                                          LabelType::Reduction});
 
-  if (counter[static_cast<int>('.')] > 0) {
-    std::vector<char> tmp;
-    tmp.push_back('.');
-    // push '.' in the front
-    *sorted_labels = union_labels(tmp, *sorted_labels);
-  }
   VLOG(5) << "GlobalInfo: sorted_labels after: "
           << paddle::string::join_strings(*sorted_labels, ",");
 }
 
-inline static void InferLabelShape(const std::vector<std::string>& op_labels,
-                                   const std::vector<DDim>& inputs,
-                                   LabelMap* labelshape,
-                                   std::vector<std::vector<int>>* ellipsis_dims,
-                                   std::vector<int>* broadcast_dims) {
+inline static void InferLabelShape(
+    const std::vector<std::string>& op_labels,
+    const std::vector<DDim>& inputs,
+    LabelMap* labelshape,
+    std::vector<std::vector<int>>* broadcast_shapes) {
   VLOG(5) << "Start InferLabelShape";
-  int n_broadcast_dims = 0;
-  for (size_t i = 0; i < op_labels.size(); ++i) {
-    VLOG(5) << "oplabels: " << op_labels[i];
-    int valid_indices = std::count_if(op_labels[i].begin(),
-                                      op_labels[i].end(),
-                                      [](char c) { return c != '.'; });
-    int n_ellipsis = inputs[i].size() - valid_indices;
-    VLOG(5) << "valid indices and n_ellipsis: " << valid_indices << " "
-            << n_ellipsis;
-    ellipsis_dims->at(i).resize(n_ellipsis);
-    n_broadcast_dims = std::max(n_broadcast_dims, n_ellipsis);
-  }
-  VLOG(5) << "InferLabelShape: Broadcast ndims:" << n_broadcast_dims;
-  *broadcast_dims = std::vector<int>(n_broadcast_dims, 1);
-
   for (size_t i = 0; i < op_labels.size(); ++i) {
     auto& op_str = op_labels[i];
     auto& op_dim = inputs[i];
     int dim_ptr = 0;
-    for (int c : op_str) {
-      if (c == '.') {
-        for (auto& v : ellipsis_dims->at(i)) {
-          v = op_dim[dim_ptr];
-          dim_ptr++;
-        }
-      } else if (!labelshape->exist(c) || (*labelshape)[c] == -1) {
-        (*labelshape)[c] = op_dim[dim_ptr];
-        dim_ptr++;
-      } else if (op_dim[dim_ptr] != -1) {
+    for (auto& c : op_str) {
+      if (!labelshape->exist(c) || abs((*labelshape)[c]) == 1) {
+        (*labelshape)[c] = static_cast<int>(op_dim[dim_ptr]);
+      } else if (abs(op_dim[dim_ptr]) != 1) {
         PADDLE_ENFORCE_EQ(
             (*labelshape)[c],
             op_dim[dim_ptr],
             phi::errors::InvalidArgument(
                 "Same label have different shapes for label: `%c`", c));
-        dim_ptr++;
       }
+      dim_ptr++;
     }
   }
   for (size_t i = 0; i < op_labels.size(); ++i) {
-    VLOG(5) << "InferLabelShape: Ellipsis ndims:"
-            << paddle::string::join_strings(ellipsis_dims->at(i), ",");
-    int idx = n_broadcast_dims - ellipsis_dims->at(i).size();
-    for (auto v : ellipsis_dims->at(i)) {
-      PADDLE_ENFORCE_EQ(
-          v == 1 || broadcast_dims->at(idx) == 1 ||
-              broadcast_dims->at(idx) == v,
-          true,
-          phi::errors::InvalidArgument(
-              "Ellipsis dims can't broadcasts. Please Check you operands."));
-      broadcast_dims->at(idx) = std::max(v, broadcast_dims->at(idx));
-      idx += 1;
+    for (auto& c : op_labels[i]) {
+      (*broadcast_shapes)[i].push_back((*labelshape)[c]);
     }
   }
-  VLOG(5) << "InferLabelShape: Broadcast dims:"
-          << paddle::string::join_strings(*broadcast_dims, ",");
+  for (size_t i = 0; i < op_labels.size(); ++i) {
+    VLOG(5) << "InferLabelShape: After broadcast shape is:"
+            << paddle::string::join_strings((*broadcast_shapes)[i], ",");
+  }
 }
 
 template <class CharIterable>
 inline static void InferLabelPerm(const CharIterable& op,
-                                  int n_broadcast,
                                   LabelMap* label2perm) {
   int cur = 0;
   for (int c : op) {
     if (!label2perm->exist(
             c))  // can appear repeatedly. we just record the first position.
       (*label2perm)[c] = cur;
-    if (c == '.') {
-      cur += n_broadcast;
-    } else {
-      cur += 1;
-    }
+    cur += 1;
   }
 }
 
 inline static void InferOutputDims(const std::string& right,
-                                   const std::vector<int>& broadcast_dims,
                                    const LabelMap& labelshape,
                                    std::vector<int>* output_dims) {
   for (int c : right) {
-    if (c == '.') {
-      output_dims->insert(
-          output_dims->end(), broadcast_dims.begin(), broadcast_dims.end());
-    } else {
-      output_dims->push_back(labelshape[c]);
-    }
+    output_dims->push_back(labelshape[c]);
   }
 }
 //
@@ -321,31 +261,26 @@ inline static void ParseEinsumEquation(
     LabelMap* labeltype,
     std::vector<char>* all_labels,
     std::vector<LabelMap>* label2perms,
-    std::vector<std::vector<int>>* ellipsis_dims,
-    std::vector<int>* broadcast_dims,
+    std::vector<std::vector<int>>* broadcast_shapes,
     std::vector<int>* output_dims,
     std::string* right,
     std::vector<std::string>* input_strs) {
   VLOG(5) << "Start ParseEinsumEquation " << equation;
   auto results = paddle::string::split_string(equation, "->");
   auto left = results[0];
-  ReplaceEllipsis(left);
   *right = results[1];
-  ReplaceEllipsis(*right);
   auto op_labels = paddle::string::split_string(left, ",");
   // split_string("i,") -> ["i", ""], we push back a "".
   // split_string("->") -> [], we push back a "".
-  if (op_labels.size() == 0) op_labels.push_back("");
-  std::for_each(op_labels.begin(), op_labels.end(), ReplaceEllipsis);
+  if (op_labels.empty()) op_labels.emplace_back("");
   GlobalInfo(op_labels, *right, labeltype, all_labels);
-  InferLabelShape(op_labels, inputs, labelshape, ellipsis_dims, broadcast_dims);
+  InferLabelShape(op_labels, inputs, labelshape, broadcast_shapes);
   VLOG(5) << "Einsum Infershape: right:" << *right;
   VLOG(5) << "Einsum Infershape: left :"
           << paddle::string::join_strings(op_labels, '\n');
-  InferOutputDims(*right, *broadcast_dims, *labelshape, output_dims);
+  InferOutputDims(*right, *labelshape, output_dims);
   for (size_t i = 0; i < inputs.size(); ++i) {
-    InferLabelPerm(
-        op_labels[i], ellipsis_dims->at(i).size(), &((*label2perms)[i]));
+    InferLabelPerm(op_labels[i], &((*label2perms)[i]));
     (*input_strs).push_back(std::move(op_labels[i]));
   }
 }
@@ -354,16 +289,11 @@ template <typename T>
 std::vector<T> GetLabelIndexByType(const std::vector<char>& all_labels,
                                    const LabelMap& type,
                                    const LabelMap& perm,
-                                   const std::vector<int>& ellipsis,
                                    LabelType filter) {
   std::vector<T> res;
   for (T c : all_labels) {
     if ((filter == LabelType::ALL_TYPE || type[c] == filter) && perm[c] != -1) {
-      if (c == '.') {
-        for (size_t i = 0; i < ellipsis.size(); ++i) res.push_back(perm[c] + i);
-      } else {
-        res.push_back(perm[c]);
-      }
+      res.push_back(perm[c]);
     }
   }
   return res;
@@ -374,17 +304,13 @@ std::vector<T> GetShapeByType(const std::vector<char>& all_labels,
                               const LabelMap& type,
                               const LabelMap& perm,
                               const LabelMap& label2shape,
-                              const std::vector<int>& ellipsis,
                               std::set<LabelType> filter) {
   std::vector<T> res;
   for (T c : all_labels) {
     if ((filter.count(LabelType::ALL_TYPE) ||
          filter.count(LabelType(type[c]))) &&
         perm[c] != -1) {
-      if (c == '.')
-        res.insert(res.end(), ellipsis.begin(), ellipsis.end());
-      else
-        res.push_back(label2shape[c]);
+      res.push_back(label2shape[c]);
     }
   }
   return res;
@@ -443,29 +369,23 @@ DenseTensor Undiagonal(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor PerformUndiagonal(const Context& dev_ctx,
                               const DenseTensor& tensor,
-                              int n_broadcast,
                               const std::string& equ) {
   //  if the equ is 'iijjkij', then the tensor must be 'ijk', so we have enough
   //  information to do un-diagonal with equ.
   auto res = tensor;
   LabelMap label2perm(-1);
-  InferLabelPerm(equ, n_broadcast, &label2perm);
+  InferLabelPerm(equ, &label2perm);
   // Un-Diagonal
-  int tot =
-      equ.size() + n_broadcast + (equ.find(".") != std::string::npos ? -1 : 0);
+  int tot = equ.size();
   int cur = tot - 1;
   for (auto it = equ.rbegin(); it != equ.rend(); ++it) {
     char c = *it;
-    if (c == '.') {
-      cur -= n_broadcast;
-    } else {
-      if (cur != label2perm[c]) {
-        // do diagonal, followed by movedim().
-        auto insert_pos = cur - tot + res.dims().size() + 1;
-        res = Undiagonal<T, Context>(dev_ctx, res, insert_pos, label2perm[c]);
-      }
-      --cur;
+    if (cur != label2perm[c]) {
+      // do diagonal, followed by movedim().
+      auto insert_pos = cur - tot + res.dims().size() + 1;
+      res = Undiagonal<T, Context>(dev_ctx, res, insert_pos, label2perm[c]);
     }
+    --cur;
   }
   return res;
 }
@@ -476,37 +396,47 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
                                         const std::string& equ,
                                         const LabelMap& label2perm,
                                         const std::vector<char>& all_labels,
-                                        const std::vector<int>& ellipsis,
+                                        const std::vector<int>& broadcast_shape,
                                         const LabelMap& label2type) {
   auto res = tensor;
+  int tot = equ.size();
+  // tiling tensor for broadcast
+  std::vector<int> repeat_times;
+  auto tensor_origin_shape = common::vectorize(tensor.dims());
+  for (size_t i = 0; i < tensor_origin_shape.size(); ++i) {
+    VLOG(4) << "broadcast shape is " << broadcast_shape[i]
+            << ", tensor shape is " << tensor_origin_shape[i];
+    repeat_times.push_back(broadcast_shape[i] / tensor_origin_shape[i]);
+  }
+  DenseTensor after_tile;
+  bool is_all_ones = std::all_of(
+      repeat_times.begin(), repeat_times.end(), [](int x) { return x == 1; });
+  if (!is_all_ones) {
+    TileKernel<T, Context>(dev_ctx, res, repeat_times, &after_tile);
+    res = after_tile;
+  }
   // Diagonal
-  int tot = equ.size() + ellipsis.size() +
-            (equ.find(".") != std::string::npos ? -1 : 0);
   int cur = tot - 1;
   for (auto it = equ.rbegin(); it != equ.rend(); ++it) {
     char c = *it;
-    if (c == '.') {
-      cur -= ellipsis.size();
-    } else {
-      if (cur != label2perm[c]) {
-        // do diagonal, followed by movedim().
-        VLOG(5) << "Do diagonal with shape="
-                << paddle::string::join_strings(
-                       common::vectorize<int>(res.dims()), ',')
-                << ", axis1=" << cur << ", axis2=" << label2perm[c];
-        res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
-        res = Transpose<T, Context>(
-            dev_ctx, res, perm_moveto(res.dims().size(), -1, label2perm[c]));
-      }
-      --cur;
+    if (cur != label2perm[c]) {
+      // do diagonal, followed by movedim().
+      VLOG(5) << "Do diagonal with shape="
+              << paddle::string::join_strings(
+                     common::vectorize<int>(res.dims()), ',')
+              << ", axis1=" << cur << ", axis2=" << label2perm[c];
+      res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
+      res = Transpose<T, Context>(
+          dev_ctx, res, perm_moveto(res.dims().size(), -1, label2perm[c]));
     }
+    --cur;
   }
   // reduction
   auto indices = GetLabelIndexByType<int64_t>(
-      all_labels, label2type, label2perm, ellipsis, LabelType::Reduction);
+      all_labels, label2type, label2perm, LabelType::Reduction);
   VLOG(5) << "call PerformDiagonalAndReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
-  if (indices.size() == 0) return res;
+  if (indices.empty()) return res;
   return Sum<T, Context>(
       dev_ctx, res, phi::IntArray(indices), res.dtype(), true);
 }
@@ -523,10 +453,9 @@ DenseTensor PerformTranspose(const Context& dev_ctx,
                              const DenseTensor& tensor,
                              const LabelMap& label2perm,
                              const std::vector<char>& all_labels,
-                             const std::vector<int>& ellipsis,
                              const LabelMap& label2type) {
   auto axis = GetLabelIndexByType<int>(
-      all_labels, label2type, label2perm, ellipsis, LabelType::ALL_TYPE);
+      all_labels, label2type, label2perm, LabelType::ALL_TYPE);
   VLOG(5) << "PerformTranspose: " << paddle::string::join_strings(axis, ",");
   if (is_no_need_transpose(axis)) {
     return tensor;
@@ -545,35 +474,24 @@ DenseTensor PerformContraction(
     const std::vector<char>& all_labels,
     const LabelMap& label2type,
     const LabelMap& label2shape,
-    const std::vector<std::vector<int>>& ellipsis_dims,
-    const std::vector<int>& broadcast_dims,
+    const std::vector<std::vector<int>>& broadcast_shapes,
     std::vector<DenseTensor*> cache,
     bool use_cache) {
-  // Get All the Batches, so perm is
   auto all_valid = LabelMap(1);
-  auto recover_dim = GetShapeByType<int>(all_labels,
-                                         label2type,
-                                         all_valid,
-                                         label2shape,
-                                         broadcast_dims,
-                                         {LabelType::Batch});
+  auto recover_dim = GetShapeByType<int>(
+      all_labels, label2type, all_valid, label2shape, {LabelType::Batch});
   auto preprocess = [&](const DenseTensor& t,
                         const LabelMap& perm,
-                        const std::vector<int>& ellipsis,
+                        const std::vector<int>& broadcast,
                         int operand_idx) -> DenseTensor {
     // reshape
     auto frees = GetShapeByType<int>(all_labels,
                                      label2type,
                                      perm,
                                      label2shape,
-                                     ellipsis,
                                      {LabelType::AO, LabelType::BO});
-    auto conts = GetShapeByType<int>(all_labels,
-                                     label2type,
-                                     perm,
-                                     label2shape,
-                                     ellipsis,
-                                     {LabelType::Contraction});
+    auto conts = GetShapeByType<int>(
+        all_labels, label2type, perm, label2shape, {LabelType::Contraction});
     std::vector<char> reordered_all_labels = all_labels;
     if (operand_idx == 1) {
       reordered_all_labels = TransformLabelsOrder(all_labels,
@@ -597,19 +515,15 @@ DenseTensor PerformContraction(
                                                   input_strs[operand_idx],
                                                   perm,
                                                   all_labels,
-                                                  ellipsis,
+                                                  broadcast_shapes[operand_idx],
                                                   label2type);
       trans_t = PerformTranspose<T, Context>(
-          dev_ctx, reduct_t, perm, reordered_all_labels, ellipsis, label2type);
+          dev_ctx, reduct_t, perm, reordered_all_labels, label2type);
       if (cache[operand_idx] != nullptr)
         cache[operand_idx]->ShareBufferWith(trans_t);
     }
-    auto mul_dims = GetShapeByType<int>(all_labels,
-                                        label2type,
-                                        perm,
-                                        label2shape,
-                                        ellipsis,
-                                        {LabelType::Batch});
+    auto mul_dims = GetShapeByType<int>(
+        all_labels, label2type, perm, label2shape, {LabelType::Batch});
     recover_dim.insert(recover_dim.end(), frees.begin(), frees.end());
     if (operand_idx == 0) {
       mul_dims.push_back(std::accumulate(
@@ -632,16 +546,16 @@ DenseTensor PerformContraction(
   DenseTensor after_contraction;
   if (operands.size() == 2) {
     auto trans_a =
-        preprocess(*(operands[0]), label2perm[0], ellipsis_dims[0], 0);
+        preprocess(*(operands[0]), label2perm[0], broadcast_shapes[0], 0);
     auto trans_b =
-        preprocess(*(operands[1]), label2perm[1], ellipsis_dims[1], 1);
+        preprocess(*(operands[1]), label2perm[1], broadcast_shapes[1], 1);
     after_contraction =
         Matmul<T, Context>(dev_ctx, trans_a, trans_b, false, false);
   } else if (operands.size() == 1) {
     after_contraction =
-        preprocess(*(operands[0]), label2perm[0], ellipsis_dims[0], 0);
+        preprocess(*(operands[0]), label2perm[0], broadcast_shapes[0], 0);
   }
-  if (recover_dim.size() == 0) recover_dim.push_back(1);
+  if (recover_dim.empty()) recover_dim.push_back(1);
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
   after_contraction.Resize(common::make_ddim(recover_dim));
@@ -652,31 +566,24 @@ template <typename T, typename Context>
 DenseTensor TransposeToOutput(const Context& dev_ctx,
                               const DenseTensor& to_trans,
                               const std::vector<char>& right,
-                              const std::vector<char>& all_labels,
-                              int n_broadcast_dims) {
+                              const std::vector<char>& all_labels) {
   std::vector<int> axis;
-  int offset = 0;
-  if (std::find(all_labels.begin(), all_labels.end(), '.') !=
-      all_labels.end()) {
-    offset = n_broadcast_dims - 1;
-  }
   for (char c : right) {
-    if (c == '.') {
-      for (int i = 0; i < n_broadcast_dims; ++i) axis.push_back(i);
-    } else {
-      auto it = std::find(all_labels.begin(), all_labels.end(), c);
-      PADDLE_ENFORCE_NE(it,
-                        all_labels.end(),
-                        phi::errors::InvalidArgument("Must in all_labels."));
-      axis.push_back(it - all_labels.begin() + offset);
-    }
+    auto it = std::find(all_labels.begin(), all_labels.end(), c);
+    PADDLE_ENFORCE_NE(it,
+                      all_labels.end(),
+                      phi::errors::InvalidArgument("Must in all_labels."));
+    axis.push_back(it - all_labels.begin());
   }
   if (is_no_need_transpose(axis)) {
     return to_trans;
   }
   VLOG(5) << "call TransposeToOutput: with axis: "
-          << paddle::string::join_strings(axis, ",");
-  return Transpose<T, Context>(dev_ctx, to_trans, axis);
+          << paddle::string::join_strings(axis, ",")
+          << "  to trans dims is: " << to_trans.dims();
+  auto output = Transpose<T, Context>(dev_ctx, to_trans, axis);
+  VLOG(5) << "After Transpose.";
+  return output;
 }
 
 template <typename T, typename Context>
@@ -687,15 +594,17 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       DenseTensor* out,
                       std::vector<DenseTensor*> cache,
                       bool is_forward = true) {
-  VLOG(5) << "Start EinsumKernelImpl";
+  VLOG(5) << "Start EinsumKernelImpl with inputs(" << inputs.size() << "): ";
+  for (auto& i : inputs) {
+    VLOG(5) << "      inputs [ " << i << " ].shape=" << i->dims();
+  }
   ValidationCheck(equation);
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;  // order: ABO, AO, BO, AB, Reduce
-  std::vector<std::vector<int>> ellipsis_dims(2);
-  std::vector<int> broadcast_dims;
+  std::vector<std::vector<int>> broadcast_shapes(2);
   std::vector<int> output_dims;
 
   std::vector<DDim> input_dims;
@@ -713,8 +622,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       &labeltype,
                       &all_labels,
                       &label2perms,
-                      &ellipsis_dims,
-                      &broadcast_dims,
+                      &broadcast_shapes,
                       &output_dims,
                       &right,
                       &input_strs);
@@ -730,17 +638,12 @@ void EinsumKernelImpl(const Context& dev_ctx,
                                                           all_labels,
                                                           labeltype,
                                                           labelshape,
-                                                          ellipsis_dims,
-                                                          broadcast_dims,
+                                                          broadcast_shapes,
                                                           cache,
                                                           !is_forward);
-  *out = TransposeToOutput<T, Context>(dev_ctx,
-                                       after_contraction,
-                                       unique_labels(right),
-                                       all_labels,
-                                       broadcast_dims.size());
-  *out = PerformUndiagonal<T, Context>(
-      dev_ctx, *out, broadcast_dims.size(), right);
+  *out = TransposeToOutput<T, Context>(
+      dev_ctx, after_contraction, unique_labels(right), all_labels);
+  *out = PerformUndiagonal<T, Context>(dev_ctx, *out, right);
   out->Resize(common::make_ddim(output_dims));
 }
 

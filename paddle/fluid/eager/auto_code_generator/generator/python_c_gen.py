@@ -193,8 +193,6 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/pybind/eager_custom_python_api.h"
 #include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/eager/amp_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
 namespace paddle {{
 namespace pybind {{
@@ -325,7 +323,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Generated Results
         self.python_c_function_str = ""
         self.python_c_function_reg_str = ""
-        self.python_c_funcion_declare_str = ""
+        self.python_c_function_declare_str = ""
 
     def CollectIsForwardOnly(self):
         forward_api_contents = self.forward_api_contents
@@ -515,7 +513,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_str,
         )
 
-        # Generate Python-C Function Definetion
+        # Generate Python-C Function Definition
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name,
             pythonc_record_event_str,
@@ -526,7 +524,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             noamp_dygraph_function_str,
             return_str,
         )
-        self.python_c_funcion_declare_str = (
+        self.python_c_function_declare_str = (
             PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=forward_api_name)
         )
 
@@ -572,7 +570,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 "    return ToPyObject(out, args, inplace_var_idx_map);"
             )
 
-            # Generate Python-C Function Definetion
+            # Generate Python-C Function Definition
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name,
                 pythonc_record_event_str,
@@ -584,7 +582,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 return_str,
             )
 
-            python_c_funcion_declare_str = (
+            python_c_function_declare_str = (
                 PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(
                     name=inplaced_forward_api_name
                 )
@@ -603,13 +601,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             # self.forward_api_name ending with '_' means it only has inplace api
             if self.forward_api_name[-1] == '_':
                 self.python_c_function_str = python_c_inplace_func_str
-                self.python_c_funcion_declare_str = python_c_funcion_declare_str
+                self.python_c_function_declare_str = (
+                    python_c_function_declare_str
+                )
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str = python_c_inplace_func_reg_str
             else:
                 self.python_c_function_str += python_c_inplace_func_str
-                self.python_c_funcion_declare_str += (
-                    python_c_funcion_declare_str
+                self.python_c_function_declare_str += (
+                    python_c_function_declare_str
                 )
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
@@ -652,7 +652,7 @@ class PythonCGenerator(GeneratorBase):
         # Generated Result
         self.python_c_functions_str = ""
         self.python_c_functions_reg_str = ""
-        self.python_c_funcion_declare_str = ""
+        self.python_c_function_declare_str = ""
 
     def GeneratePythonCFunctions(self):
         namespace = self.namespace
@@ -671,8 +671,8 @@ class PythonCGenerator(GeneratorBase):
                 self.python_c_functions_reg_str += (
                     f_generator.python_c_function_reg_str
                 )
-                self.python_c_funcion_declare_str += (
-                    f_generator.python_c_funcion_declare_str
+                self.python_c_function_declare_str += (
+                    f_generator.python_c_function_declare_str
                 )
 
     def AttachNamespace(self):
@@ -685,9 +685,9 @@ class PythonCGenerator(GeneratorBase):
             self.python_c_functions_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, python_c_functions_str
             )
-            self.python_c_funcion_declare_str = (
+            self.python_c_function_declare_str = (
                 NAMESPACE_WRAPPER_TEMPLATE.format(
-                    namespace, self.python_c_funcion_declare_str
+                    namespace, self.python_c_function_declare_str
                 )
             )
 
@@ -766,20 +766,20 @@ if __name__ == "__main__":
             py_c_generator.python_c_functions_reg_str
         )
         generated_python_c_functions_header += (
-            py_c_generator.python_c_funcion_declare_str
+            py_c_generator.python_c_function_declare_str
         )
 
     python_c_str = GeneratePythonCWrappers(
         generated_python_c_functions, generated_python_c_registration
     )
 
-    soucre_path = args.source_path
+    source_path = args.source_path
     header_path = args.header_path
-    for path in [soucre_path, header_path]:
+    for path in [source_path, header_path]:
         if os.path.exists(path):
             os.remove(path)
 
-    GeneratePythonCFile(soucre_path, python_c_str)
+    GeneratePythonCFile(source_path, python_c_str)
     GeneratePythonCFile(
         header_path,
         PYTHON_C_H_TEMPLATE.format(body=generated_python_c_functions_header),

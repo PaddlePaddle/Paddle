@@ -51,33 +51,53 @@ class HistoryRecorder:
                 reverse=False,
             )
 
-    def get_best(self, metric, direction, mode=None) -> Tuple[dict, bool]:
+    def get_best(
+        self, metric, direction, buffer=None, max_mem_usage=None
+    ) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
-            return (self.history[0], True)
-        if mode == "SFT" or mode == "LoRA":
-            best_cfg = self.history[0]
-            if (
-                isinstance(best_cfg["max_mem_usage"], str)
-                or best_cfg["time"] == -1
-            ):
-                return (best_cfg, True)
-            first_few = 1
+            return (None, True)
+
+        best_cfg = self.history[0]
+        if isinstance(best_cfg["max_mem_usage"], str) or best_cfg["time"] == -1:
+            return (best_cfg, True)
+
+        if buffer is not None:
+            if buffer < 0:
+                raise ValueError("The buffer should be not less than 0.")
+            assert (
+                max_mem_usage is not None
+            ), "max_mem_usage cannot be None when buffer is greater than 0."
+            if max_mem_usage <= 0:
+                raise ValueError("max_mem_usage should be greater than 0.")
+
             for cfg in self.history:
                 if (
+                    not best_cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"]
+                    and not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+                    continue
+
+                if (
                     not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
                     and cfg["max_mem_usage"] < best_cfg["max_mem_usage"]
                     and cfg["time"] != -1
                 ):
                     best_cfg = cfg
-                first_few += 1
-                if first_few >= 5:
+
+                if (
+                    not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"] < max_mem_usage - buffer
+                    and cfg["time"] != -1
+                ):
                     break
             return (best_cfg, False)
-        if isinstance(self.history[0]["max_mem_usage"], str) or (
-            "time" in self.history[0] and self.history[0]["time"] == -1
-        ):
-            return (self.history[0], True)
+
         return (self.history[0], False)
 
     def _store_history_impl(self, data, path="./history.csv"):

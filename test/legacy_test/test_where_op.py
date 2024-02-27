@@ -66,7 +66,7 @@ class TestWhereFP16OP(TestWhereOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestWhereBF16OP(OpTest):
     def setUp(self):
@@ -319,7 +319,7 @@ class TestWhereAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out[0], expect)
 
     def __test_where_with_type_promotion(
-        self, x_dtype, y_dtype, expeced_dtype=None
+        self, x_dtype, y_dtype, expected_dtype=None
     ):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -367,7 +367,7 @@ class TestWhereAPI(unittest.TestCase):
                     )
                     expect = np.where(cond_data, x_data_convert, y_data_convert)
                     np.testing.assert_array_equal(out[0], expect)
-                    self.assertEqual(out[0].dtype.__str__(), expeced_dtype)
+                    self.assertEqual(out[0].dtype.__str__(), expected_dtype)
                 else:
                     expect = np.where(cond_data, x_data, y_data)
                     np.testing.assert_array_equal(out[0], expect)
@@ -493,9 +493,9 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float64')
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype('float64')
             cond_i = np.array([False, False, True, True]).astype('bool')
-            x = base.dygraph.to_variable(x_i)
-            y = base.dygraph.to_variable(y_i)
-            cond = base.dygraph.to_variable(cond_i)
+            x = paddle.to_tensor(x_i)
+            y = paddle.to_tensor(y_i)
+            cond = paddle.to_tensor(cond_i)
             out = paddle.where(cond, x, y)
             np.testing.assert_array_equal(
                 out.numpy(), np.where(cond_i, x_i, y_i)
@@ -506,7 +506,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond_i = np.array([False, False, True, True]).astype('bool')
             x = 1.0
             y = 2.0
-            cond = base.dygraph.to_variable(cond_i)
+            cond = paddle.to_tensor(cond_i)
             out = paddle.where(cond, x, y)
             np.testing.assert_array_equal(out.numpy(), np.where(cond_i, x, y))
 

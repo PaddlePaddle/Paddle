@@ -37,7 +37,7 @@ using runtime::cuda::CUDAModule;
  *
  * @param shape: a non-empty shape for the created cuda memory
  * @param data: the data to initialize the cuda memory. Function doesn't
- *     initailize if it is nullptr
+ *     initialize if it is nullptr
  * @return the CUdeviceptr pointing to the created memory
  */
 template <typename T>

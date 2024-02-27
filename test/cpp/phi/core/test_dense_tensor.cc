@@ -55,7 +55,7 @@ TEST(dense_tensor, meta) {
   CHECK(meta_4.lod == lod);
   CHECK(meta_4.valid());
 
-  DenseTensorMeta meta_5(std::move(meta_4));
+  DenseTensorMeta meta_5(meta_4);
   CHECK(meta_5.dtype == dtype);
   CHECK(meta_5.dims == dims);
   CHECK(meta_5.layout == layout);
@@ -142,7 +142,7 @@ TEST(dense_tensor, storage_properties) {
   bool caught_exception = false;
   try {
     tensor.storage_properties<OneDNNStorageProperties>();
-  } catch (phi::enforce::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     caught_exception = true;
   }
   EXPECT_TRUE(caught_exception);

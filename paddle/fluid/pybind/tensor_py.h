@@ -548,7 +548,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
                     true,
                     platform::errors::InvalidArgument(
                         "Expect the dtype of numpy array is string or "
-                        "unicode, but recevie dtype %s",
+                        "unicode, but receive dtype %s",
                         array.dtype()));
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
@@ -741,7 +741,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
       platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
-                                   "shound be in the range of [0, %d).",
+                                   "should be in the range of [0, %d).",
                                    dim,
                                    srcDDim.size()));
 
@@ -763,7 +763,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
     PADDLE_ENFORCE(
         std::abs(start) < srcDDim[dim],
         platform::errors::OutOfRange("The start %d of slice is out of bounds, "
-                                     "it shound be in the range of (%d, %d).",
+                                     "it should be in the range of (%d, %d).",
                                      start,
                                      -srcDDim[dim],
                                      srcDDim[dim]));
@@ -1080,7 +1080,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_custom_device_tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    // TODO(qili93): temporary for ascned npu performance to be removed along
+    // TODO(qili93): temporary for ascend npu performance to be removed along
     // with npu_identity op
     paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
     if (tensor.storage_properties_initialized()) {

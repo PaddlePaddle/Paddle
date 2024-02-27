@@ -34,8 +34,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;
@@ -68,20 +69,24 @@ ProgramInfo BuildProgram() {
   auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
   auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
 
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_x.result(0)});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_y.result(0)});
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op_y.result(0)});
+
   std::vector<GroupPtr> groups;
   groups.emplace_back(
       std::make_shared<Group>(std::initializer_list<::pir::Operation*>(
           {full_op_x.operation()})));  // For coverage
-  groups[0]->output_ops.insert(groups[0]->ops.back());
+  groups[0]->output_values.push_back(groups[0]->ops.back()->result(0));
   groups.emplace_back(std::make_shared<Group>(
       std::initializer_list<::pir::Operation*>({full_op_y.operation()})));
-  groups[1]->output_ops.insert(groups[1]->ops.back());
+  groups[1]->output_values.push_back(groups[1]->ops.back()->result(0));
   groups.emplace_back(std::make_shared<Group>(
       std::vector<::pir::Operation*>({tan_op_x.operation(),
                                       relu_op_x.operation(),
                                       tan_op_y.operation(),
                                       relu_op_y.operation()})));
-  groups[2]->output_ops.insert(groups[2]->ops.back());
+  groups[2]->output_values.push_back(groups[2]->ops.back()->result(0));
 
   return {program, groups};
 }
@@ -119,6 +124,7 @@ ProgramInfo BuildSoftmax() {
           .result(0);
   auto divide =
       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
+  auto yield_op = builder.Build<pir::YieldOp>(std::vector<pir::Value>{divide});
 
   std::vector<GroupPtr> groups;
   groups.emplace_back(std::make_shared<Group>(
@@ -129,8 +135,7 @@ ProgramInfo BuildSoftmax() {
                                                 sum.defining_op(),
                                                 broadcast_2.defining_op(),
                                                 divide.defining_op()})));
-  groups[0]->output_ops.insert(groups[0]->ops.back());
-
+  groups[0]->output_values.push_back(groups[0]->ops.back()->result(0));
   groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
 
   return {program, groups};
@@ -148,7 +153,7 @@ TEST(PirCompier, CompileSoftmax) {
   auto prog_info = BuildSoftmax();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-  EXPECT_EQ(program->block()->size(), 8u);
+  EXPECT_EQ(program->block()->size(), 9u);
   LOG(INFO) << program->block()->size();
 
   std::stringstream ss;
@@ -211,43 +216,12 @@ TEST(PirCompier, CompileSoftmax) {
   EXPECT_EQ(res0, true);
 }
 
-TEST(PirCompier, CompilerAndRun) {
-  // Step 1: Construct pir::Program
-  auto prog_info = BuildProgram();
-  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
-  LOG(INFO) << program->block()->size();
-
-  std::stringstream ss;
-  program->Print(ss);
-  LOG(INFO) << ss.str();
-
-  // Step 2: Compiler New pir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 6);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto runtime_program = ir_compiler.Build();
-
-  // Step 3: Execute Runtime Instruction and check Scope.
-  ASSERT_NO_THROW(runtime_program->Execute());
-  for (auto& var_name : scope->var_names()) {
-    std::string name = {var_name.begin(), var_name.end()};
-    std::vector<float> data =
-        cinn::GetTensorData<float>(scope->GetTensor(name), target);
-    for (int i = 0; i < 1; ++i) {
-      LOG_FIRST_N(INFO, 10) << "data: " << data[i];
-    }
-  }
-}
-
 TEST(PirCompier, CompileGroupOps) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
+  EXPECT_EQ(program->block()->size(), 9u);
   LOG(INFO) << program->block()->size();
 
   std::stringstream ss;
@@ -272,19 +246,4 @@ TEST(PirCompier, CompileGroupOps) {
       LOG_FIRST_N(INFO, 10) << "data: " << data[i];
     }
   }
-}
-
-TEST(RuntimeDialect, CompilerAndRun) {
-  // Step 1: Construct pir::Program
-  auto prog_info = BuildProgram();
-  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-  EXPECT_EQ(program->block()->size(), 6u);
-
-  // Step 2: Compiler New pir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 6u);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto runtime_program = ir_compiler.Build();
 }

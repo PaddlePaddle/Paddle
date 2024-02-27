@@ -81,7 +81,7 @@ class LayerNormOpConverter : public OpConverter {
       if(FLAGS_force_layer_norm_run_fp32) {
         layer->setPrecision(nvinfer1::DataType::kFLOAT);
       }
-      RreplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
 #endif
 #if IS_TRT_VERSION_LT(8600)
       // For dynamic shape & trt<8.6,
@@ -124,7 +124,7 @@ class LayerNormOpConverter : public OpConverter {
               variance_shape,
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layernorm_layer, "layer_norm", {output_name}, test_mode);
 #endif
     } else {
@@ -171,7 +171,7 @@ class LayerNormOpConverter : public OpConverter {
           with_fp16);
       auto* layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layernorm_layer, "layer_norm", {output_name}, test_mode);
     }
   }

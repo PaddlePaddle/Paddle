@@ -296,7 +296,7 @@ struct Program {
    * Concat tensors.
    * @param input_vars The input tensors.
    * @param axis The axis specified to do the concat operation.
-   * @return The concated output tensor.
+   * @return The concatenated output tensor.
    */
   Variable concat(const std::vector<Variable>& input_vars, int axis = 0);
 
@@ -410,7 +410,7 @@ struct Program {
 
   /**
    * Apply Rectified Linear Unit on input Variable.
-   * Actually apply: outupt = max(input,0)
+   * Actually apply: output = max(input,0)
    *
    * @param a The first variable.
    * @return The result.

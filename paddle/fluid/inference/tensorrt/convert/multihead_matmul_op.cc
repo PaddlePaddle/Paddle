@@ -253,7 +253,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               max_seqlen_tensor);  // max_seqlen, eval_placeholder_3
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               plugin_layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           auto* reshape_before_matrix =
@@ -479,14 +479,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
         }
       } else {
-        auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+        auto transpose_weight = [](const float* src, float* dst, int m, int n) {
           for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
               dst[j * m + i] = src[i * n + j];
             }
           }
         };
-        tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+        transpose_weight(weight_data_tmp.data(), weight_data, m, n);
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
             engine_->precision() != phi::DataType::FLOAT32 &&
             platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
@@ -757,7 +757,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // return
           layer = reshape_after_mha_layer;
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           PADDLE_ENFORCE_EQ(
@@ -867,7 +867,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               new plugin::QkvToContextPluginDynamic(
                   hidden_in, head_number, head_size, scale, with_fp16);
           layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               layer, "multihead_matmul", {output_name}, test_mode);
         }
       }

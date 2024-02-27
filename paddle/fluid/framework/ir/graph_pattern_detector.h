@@ -1613,8 +1613,8 @@ struct ConvElementwiseaddAct : public PatternBase {
 };
 
 // Conv + ElementwiseAdd + ElementwiseAdd + Activation
-struct ConvElementwiseadd2Act : public PatternBase {
-  ConvElementwiseadd2Act(PDPattern* pattern, const std::string& name_scope)
+struct ConvElementwiseAdd2Act : public PatternBase {
+  ConvElementwiseAdd2Act(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
@@ -1638,7 +1638,7 @@ struct ConvElementwiseadd2Act : public PatternBase {
 };
 
 // Conv + ElementwiseAdd
-// This pattern should be used after ConvElementwiseadd2Act or
+// This pattern should be used after ConvElementwiseAdd2Act or
 // ConvElementwiseadd pass
 struct ConvElementwiseadd : public PatternBase {
   ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)
@@ -2059,12 +2059,12 @@ struct FusionLSTM : public PatternBase {
   // declare op
   PATTERN_DECL_NODE(op);
 
-  // declate inputs
+  // declare inputs
   PATTERN_DECL_NODE(x);
   PATTERN_DECL_NODE(weight_h);
   PATTERN_DECL_NODE(weight_x);
 
-  // decalre outputs
+  // declare outputs
   PATTERN_DECL_NODE(hidden);
   PATTERN_DECL_NODE(cell);
 };
@@ -2245,7 +2245,7 @@ struct ReverseRollPattern : public PatternBase {
   PATTERN_DECL_NODE(roll_40_op);
   PATTERN_DECL_NODE(roll_40_out);
   PATTERN_DECL_NODE(reshape2_50_op);
-  PATTERN_DECL_NODE(reshaep2_50_out);
+  PATTERN_DECL_NODE(reshape2_50_out);
 };
 
 // pattern for merge_layernorm

@@ -103,7 +103,7 @@ class TileOpConverter : public OpConverter {
       layer->setInput(2, *output_shape_tensor);
       layer->setInput(3, *stride_tensor);
       layer->setMode(nvinfer1::SliceMode::kWRAP);
-      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 
     } else {
       std::vector<int> repeat_times =
@@ -134,7 +134,7 @@ class TileOpConverter : public OpConverter {
       auto layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, input_shape, output_dim, output_stride);
       layer->setMode(nvinfer1::SliceMode::kWRAP);
-      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 
 #endif

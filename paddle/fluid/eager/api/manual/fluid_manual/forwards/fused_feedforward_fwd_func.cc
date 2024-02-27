@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
@@ -67,8 +67,8 @@ fused_feedforward_dygraph_function(
     if (Ln2Scale.initialized()) amp_tensors_vector.push_back({Ln2Scale});
     if (Ln2Bias.initialized()) amp_tensors_vector.push_back({Ln2Bias});
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_feedforward", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_feedforward", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast("X", X, amp_dst_dtype, "fused_feedforward");
     auto NEW_Linear1Weight = egr::AmpAutoCast(
@@ -122,7 +122,7 @@ fused_feedforward_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_feedforward_dygraph_function(NEW_X,
                                                 NEW_Dropout1Seed,
@@ -323,15 +323,15 @@ fused_feedforward_dygraph_function(
       grad_node->SetAttrMap(std::move(attrs));
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
-      grad_node->SetTensorWrapperX(X);
-      grad_node->SetTensorWrapperLinear1Weight(Linear1Weight);
-      grad_node->SetTensorWrapperLinear1Bias(Linear1Bias);
-      grad_node->SetTensorWrapperLinear2Weight(Linear2Weight);
-      grad_node->SetTensorWrapperDropout1Mask(Dropout1Mask);
-      grad_node->SetTensorWrapperDropout2Mask(Dropout2Mask);
-      grad_node->SetTensorWrapperLinear1Out(Linear1Out);
-      grad_node->SetTensorWrapperDropout1Out(Dropout1Out);
-      grad_node->SetTensorWrapperDropout2Out(Dropout2Out);
+      grad_node->SetTensorWrapper_X(X);
+      grad_node->SetTensorWrapper_Linear1Weight(Linear1Weight);
+      grad_node->SetTensorWrapper_Linear1Bias(Linear1Bias);
+      grad_node->SetTensorWrapper_Linear2Weight(Linear2Weight);
+      grad_node->SetTensorWrapper_Dropout1Mask(Dropout1Mask);
+      grad_node->SetTensorWrapper_Dropout2Mask(Dropout2Mask);
+      grad_node->SetTensorWrapper_Linear1Out(Linear1Out);
+      grad_node->SetTensorWrapper_Dropout1Out(Dropout1Out);
+      grad_node->SetTensorWrapper_Dropout2Out(Dropout2Out);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Linear1Weight, 3);
@@ -339,24 +339,24 @@ fused_feedforward_dygraph_function(
       grad_node->SetGradOutMeta(Linear2Weight, 5);
 
       if (pre_layer_norm) {
-        grad_node->SetTensorWrapperLn1Scale(Ln1Scale);
-        grad_node->SetTensorWrapperLn1Bias(Ln1Bias);
-        grad_node->SetTensorWrapperLn1Out(Ln1Out);
-        grad_node->SetTensorWrapperLn1Mean(Ln1Mean);
-        grad_node->SetTensorWrapperLn1Variance(Ln1Variance);
+        grad_node->SetTensorWrapper_Ln1Scale(Ln1Scale);
+        grad_node->SetTensorWrapper_Ln1Bias(Ln1Bias);
+        grad_node->SetTensorWrapper_Ln1Out(Ln1Out);
+        grad_node->SetTensorWrapper_Ln1Mean(Ln1Mean);
+        grad_node->SetTensorWrapper_Ln1Variance(Ln1Variance);
         grad_node->SetGradOutMeta(Ln1Scale, 7);
         grad_node->SetGradOutMeta(Ln1Bias, 8);
       } else {
-        grad_node->SetTensorWrapperLn2Scale(Ln2Scale);
+        grad_node->SetTensorWrapper_Ln2Scale(Ln2Scale);
         grad_node->SetGradOutMeta(Ln2Scale, 9);
-        grad_node->SetTensorWrapperLn2Bias(Ln2Bias);
+        grad_node->SetTensorWrapper_Ln2Bias(Ln2Bias);
         grad_node->SetGradOutMeta(Ln2Bias, 10);
-        grad_node->SetTensorWrapperLn2Mean(Ln2Mean);
-        grad_node->SetTensorWrapperLn2Variance(Ln2Variance);
+        grad_node->SetTensorWrapper_Ln2Mean(Ln2Mean);
+        grad_node->SetTensorWrapper_Ln2Variance(Ln2Variance);
       }
 
       if (Linear2Bias.initialized()) {
-        grad_node->SetTensorWrapperLinear2Bias(Linear2Bias);
+        grad_node->SetTensorWrapper_Linear2Bias(Linear2Bias);
         grad_node->SetGradOutMeta(Linear2Bias, 6);
       }
 

@@ -47,7 +47,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call PToSReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
@@ -57,7 +57,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
 
-  DenseTensor in_reduce_scatter = in.value();
+  DenseTensor in_reduce_scatter;
   std::vector<int> axis;
   if (out_split_axis != 0) {
     for (size_t i = 0; i < common::vectorize(logical_ddim).size(); ++i) {
@@ -66,6 +66,8 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
     std::swap(axis[0], axis[out_split_axis]);
     RESHARD_FUNCTOR(
         dev_ctx, Transpose, dtype, in.value(), axis, &in_reduce_scatter);
+  } else {
+    in_reduce_scatter.ShareDataWith(in.value());
   }
 
   DenseTensor out_reduce_scatter;
@@ -112,7 +114,7 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call PToSReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
 
   DistTensor tmp_result;

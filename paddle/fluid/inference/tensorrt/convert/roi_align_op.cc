@@ -65,7 +65,7 @@ class RoiAlignOpConverter : public OpConverter {
     layer = roi_align_layer;
 
     std::vector<std::string> output_names{output_name};
-    RreplenishLayerAndOutput(layer, "roi_align", output_names, test_mode);
+    ReplenishLayerAndOutput(layer, "roi_align", output_names, test_mode);
   }
 };
 

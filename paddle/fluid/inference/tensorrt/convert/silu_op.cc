@@ -56,7 +56,7 @@ class SiluOpConverter : public OpConverter {
                                  nvinfer1::ElementWiseOperation::kPROD);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "silu", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "silu", {output_name}, test_mode);
   }
 };
 

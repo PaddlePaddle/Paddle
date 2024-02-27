@@ -134,6 +134,8 @@ class RunableProgram:
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
         ret[fake_value()] = "FakeVar"
+        for keyword, arg in program.global_block().kwargs().items():
+            ret[arg] = keyword
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
@@ -665,7 +667,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -689,7 +691,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -700,9 +702,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.global_block().create_var(
@@ -712,13 +714,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for _, op in finded_ops:
+            for _, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.global_block()._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -744,6 +746,9 @@ class PartialProgramLayer:
         params = train_runnable_program.param_values
         combined_inputs = list(itertools.chain(inputs, params))
         forward_end_idx = len(program.global_block().ops)
+        forward_end_op = None
+        if forward_end_idx > 0:
+            forward_end_op = program.global_block().ops[-1]
         grad_info_map = [None] * len(combined_inputs)
         with backend_guard(self._backend):
             check_type(
@@ -796,6 +801,11 @@ class PartialProgramLayer:
                             )
                         ),
                     )
+                    if forward_end_op is not None:
+                        for idx, op in enumerate(program.global_block().ops):
+                            if op == forward_end_op:
+                                forward_end_idx = idx + 1
+                                break
 
             if self._hooker:
                 (
@@ -1044,7 +1054,7 @@ class PartialProgramLayer:
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(

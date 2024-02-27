@@ -35,21 +35,21 @@ namespace ir {
 namespace fusion_group {
 
 // relu
-inline float relu(float x) { return x > 0 ? x : 0.; }
+inline float relu(float x) { return x > 0 ? x : 0.; }  // NOLINT
 
 inline float relu_grad_dx(float x, float out, float dout) {
   return out > 0 ? dout : 0;
 }
 
 // sigmoid
-inline float sigmoid(float x) { return 1.0 / (1.0 + std::exp(-x)); }
+inline float sigmoid(float x) { return (1.0f) / (1.0 + std::exp(-x)); }
 
 inline float sigmoid_grad_dx(float x, float out, float dout) {
   return dout * out * (1 - out);
 }
 
 // tanh
-inline float tanh(float x) { return 2.0 / (1.0 + std::exp(-2 * x)) - 1.0; }
+inline float tanh(float x) { return (2.0f) / (1.0 + std::exp(-2 * x)) - 1.0; }
 
 inline float tanh_grad_dx(float x, float out, float dout) {
   return dout * (1.0 - out * out);

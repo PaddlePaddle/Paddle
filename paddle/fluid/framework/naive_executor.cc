@@ -482,7 +482,7 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
+void NaiveExecutor::CloneLiteEngine(int num, void *stream) {
 #ifdef PADDLE_WITH_LITE
   for (auto &op : ops_) {
     if (op->Type() == "lite_engine") {

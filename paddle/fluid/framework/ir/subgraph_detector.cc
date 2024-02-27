@@ -301,7 +301,7 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
     node_map[n->id()] = n;
   }
 
-  // create breif node map
+  // create brief node map
   for (auto &itr : brief_node_map) {
     for (Node *node : itr.second->node->inputs) {
       if (!valid_node_ids.count(node->id())) {
@@ -439,39 +439,19 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
 
-  
-    auto var_names_into_trt = paddle::string::Split(FLAGS_specified_names_enter_into_trt, ',');
-
-    bool continue_run = false;
-
-    if (var_names_into_trt.size() == 0) {
-      continue_run = true;
-    }
+    bool continue_run = true;
 
     for (auto *node : subgraph) {
-      for(auto tmp_name : node->outputs) {
-        for (auto name : var_names_into_trt) {
-          if (tmp_name->Name() == name) continue_run = true;
+      for (const auto tmp_name : node->outputs) {
+        if (std::find(trt_exclude_var_names_.begin(),
+                      trt_exclude_var_names_.end(),
+                      tmp_name->Name()) != trt_exclude_var_names_.end()) {
+          continue_run = false;
         }
       }
     }
 
-    if(continue_run == false) continue;
-
-    auto var_names_not_trt = paddle::string::Split(FLAGS_specified_names_not_into_trt, ',');
-
-    continue_run = true;
-
-    for (auto *node : subgraph) {
-      for(auto tmp_name : node->outputs) {
-        for (auto name : var_names_not_trt) {
-          if (tmp_name->Name() == name) continue_run = false;
-        }
-      }
-    }
-
-    if(continue_run == false) continue;
-
+    if (continue_run == false) continue;
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph

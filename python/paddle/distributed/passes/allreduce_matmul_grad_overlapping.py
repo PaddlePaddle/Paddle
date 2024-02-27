@@ -29,7 +29,7 @@ logger = get_logger(logging.INFO)
 #   dX, dY = matmul_grad(X, Y, dOut)
 #   dX = c_allreduce_sum(dX)
 # Split matmul_grad to 2 matmul:
-#   dX = mutmul(dOut, Y^T)
+#   dX = matmul(dOut, Y^T)
 #   dX = c_allreduce_sum(dX)
 #   dY = matmul(X^T, dOut)
 #
@@ -119,7 +119,6 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             ctx=self.dist_context,
             chunk_id=x_dist_attr.chunk_id,
         )
-        block._sync_with_cpp()
 
         return out
 
@@ -133,6 +132,53 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
         ):
             matmul_grad_op = ops[matmul_grad_id]
             allreduce_op = ops[allreduce_id]
+
+            # NOTE(Sonder): Why move those operations to the back of matmul_v2?
+            # When using amp_master_grad, the cast operation is inserted after matmul_grad.
+            # However, when employing allreduce_matmul_grad_overlapping, the matmul_grad is
+            # split into two matmul operations. In this case, some operations would access
+            # uninitialized tensors. Therefore, we move the cast operation to the back of the
+            # second matmul operation to avoid this problem.
+            skip_overlapping = False
+            moved_ops_idx = []
+            moved_ops_output = []
+            matmul_grad_output = matmul_grad_op.output('Y@GRAD')[0]
+
+            for idx in range(matmul_grad_id + 1, allreduce_id):
+                if matmul_grad_output in ops[idx].desc.input_arg_names():
+                    moved_ops_idx.append(idx)
+                    moved_ops_output.extend(ops[idx].desc.output_arg_names())
+                else:
+                    for input_name in ops[idx].desc.input_arg_names():
+                        if input_name in moved_ops_output:
+                            skip_overlapping = True
+
+            if skip_overlapping:
+                continue
+
+            for i, idx in enumerate(moved_ops_idx):
+                op = ops[idx]
+                dist_attr = self.dist_context.get_op_dist_attr_for_program(op)
+
+                op_inputs = op.desc.input_names()
+                op_outputs = op.desc.output_names()
+
+                op_inputs = {name: op.input(name) for name in op_inputs}
+                op_outputs = {name: op.output(name) for name in op_outputs}
+
+                op = block._insert_op_without_sync(
+                    index=allreduce_id + 1 + i,
+                    type=op.type,
+                    inputs=op_inputs,
+                    outputs=op_outputs,
+                    attrs=op.all_attrs(),
+                )
+
+                self.dist_context.set_op_dist_attr_for_program(op, dist_attr)
+
+            for i, idx in enumerate(moved_ops_idx):
+                block._remove_op(idx - i, sync=False)
+                allreduce_id -= 1
 
             tran_x = matmul_grad_op.attr("trans_x")
             assert (
@@ -154,7 +200,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             y_grad = matmul_grad_op.output("Y@GRAD")
             op_role = matmul_grad_op.attr("op_role")
 
-            # NOTE(Ruibiao): Required OP scheduling order: mutmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
+            # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
             # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
             # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
@@ -242,5 +288,5 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 matmul_op, matmul_grad_dist_attr
             )
 
-            block._remove_op(matmul_grad_id)
-            block._sync_with_cpp()
+            block._remove_op(matmul_grad_id, sync=False)
+        block._sync_with_cpp()

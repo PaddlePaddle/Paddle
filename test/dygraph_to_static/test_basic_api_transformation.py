@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
 import unittest
 
 import numpy as np
@@ -22,33 +21,11 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle import base, to_tensor
-from paddle.base import dygraph
-from paddle.base.dygraph import to_variable
+from paddle import to_tensor
 from paddle.jit.api import to_static
-from paddle.jit.dy2static.utils import is_dygraph_api
-from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
-
-# TODO(zhhsplendid): This test is old so that use a static graph style
-# mark it as TODO, to refactoring the code of this file.
-
-
-def dyfunc_to_variable(x):
-    res = base.dygraph.to_variable(x, name=None, zero_copy=None)
-    return res
-
-
-def dyfunc_to_variable_2(x):
-    res = dygraph.to_variable(value=np.zeros(shape=(1), dtype=np.int32))
-    return res
-
-
-def dyfunc_to_variable_3(x):
-    res = to_variable(x, name=None, zero_copy=None)
-    return res
 
 
 def dyfunc_to_tensor(x):
@@ -79,15 +56,7 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             dyfunc_bool_to_tensor,
             dyfunc_int_to_tensor,
             dyfunc_float_to_tensor,
-            dyfunc_to_variable,
-            dyfunc_to_variable_2,
-            dyfunc_to_variable_3,
         ]
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
 
     def get_dygraph_output(self):
         res = self.dygraph_func(self.input).numpy()
@@ -107,11 +76,11 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-# 1. test Apis that inherit from layers.Layer
-def dyfunc_BilinearTensorProduct(bilinearTensorProduct, layer1, layer2):
+# test Apis that inherit from layers.Layer
+def dyfunc_BilinearTensorProduct(bilinearTensorProduct, x1, x2):
     res = bilinearTensorProduct(
-        base.dygraph.base.to_variable(layer1),
-        base.dygraph.base.to_variable(layer2),
+        paddle.to_tensor(x1),
+        paddle.to_tensor(x2),
     )
     return res
 
@@ -462,32 +431,6 @@ class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
         paddle.seed(SEED)
         res = self.dygraph_func()
         return res
-
-
-def _dygraph_fn():
-    from paddle import base
-
-    x = np.random.random((1, 3)).astype('float32')
-    with base.dygraph.guard():
-        base.dygraph.to_variable(x)
-        np.random.random(1)
-
-
-class TestDygraphApiRecognition(Dy2StTestBase):
-    def setUp(self):
-        self.src = inspect.getsource(_dygraph_fn)
-        self.root = gast.parse(self.src)
-
-    def _get_dygraph_ast_node(self):
-        return self.root.body[0].body[2].body[0].value
-
-    def _get_static_ast_node(self):
-        return self.root.body[0].body[2].body[1].value
-
-    @test_default_and_pir
-    def test_dygraph_api(self):
-        self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
-        self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
 
 
 if __name__ == '__main__':

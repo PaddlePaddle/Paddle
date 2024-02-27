@@ -23,9 +23,9 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
@@ -127,7 +127,7 @@ inline bool elementwise_fuse_broadcast(
   return true;
 }
 
-inline bool honrizontal_elementwise_fuse_reduce(
+inline bool horizontal_elementwise_fuse_reduce(
     const std::shared_ptr<ir::Group>& first,
     const std::shared_ptr<ir::Group>& second) {
   std::shared_ptr<ir::Group> ele_group, reduce_group;
@@ -510,7 +510,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
 
       // auto broadcast_axes = absl::get<std::vector<int>>(
       //     broadcaster->attrs.attr_store.at("broadcast_axes"));
-      // TODO(phlrain) : suport here
+      // TODO(phlrain) : support here
       std::vector<int64_t> broadcaster_output_shape =
           GetVectorAttr(broadcaster, "out_shape");
       std::vector<int64_t> broadcast_axes =

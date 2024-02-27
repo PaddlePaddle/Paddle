@@ -138,6 +138,19 @@ void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);
 
+void ASGDInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& d,
+                   const MetaTensor& y,
+                   const MetaTensor& n,
+                   const MetaTensor& master_param,
+                   bool multi_precision,
+                   MetaTensor* param_out,
+                   MetaTensor* d_out,
+                   MetaTensor* y_out,
+                   MetaTensor* master_param_out);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -394,6 +407,18 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_roi_probs,
                                   MetaTensor* rpn_rois_num);
 
+void GraphKhopSamplerInferMeta(const MetaTensor& row,
+                               const MetaTensor& col_ptr,
+                               const MetaTensor& x,
+                               const MetaTensor& eids,
+                               const std::vector<int>& sample_sizes,
+                               bool return_eids,
+                               MetaTensor* out_src,
+                               MetaTensor* out_dst,
+                               MetaTensor* sample_index,
+                               MetaTensor* reindex_x,
+                               MetaTensor* out_eids);
+
 void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& neighbors,
                            const MetaTensor& count,
@@ -610,6 +635,16 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         int output_channels,
                         float spatial_scale,
                         MetaTensor* out);
+
+void QuantizeLinearInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& in_accum,
+                             const MetaTensor& in_state,
+                             int quant_axis,
+                             MetaTensor* y,
+                             MetaTensor* out_scale,
+                             MetaTensor* out_accum,
+                             MetaTensor* out_state);
 
 void RmsNormInferMeta(const MetaTensor& x,
                       const MetaTensor& bias,
@@ -862,6 +897,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& cos,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
+                        bool time_major,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);

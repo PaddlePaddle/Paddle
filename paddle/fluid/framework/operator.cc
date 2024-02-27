@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -39,10 +40,8 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/utils/flags.h"
 
 namespace phi {
 class DenseTensor;
@@ -63,10 +62,10 @@ class DenseTensor;
 #endif
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(enable_unused_var_check);
-PHI_DECLARE_bool(run_kp_kernel);
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(run_kp_kernel);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -1249,7 +1248,7 @@ bool OpSupportGPU(const std::string& op_type) {
 }
 
 struct OperatorWithKernel::CacheImpl {
-  static const char kNotAllowInferShapeCahce[];  // NOLINT
+  static const char kNotAllowInferShapeCache[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,
@@ -1296,7 +1295,7 @@ struct OperatorWithKernel::CacheImpl {
   std::vector<phi::DDim> last_ddims_;
 };
 const char  // NOLINT
-    OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+    OperatorWithKernel::CacheImpl::kNotAllowInferShapeCache[] =
         "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
@@ -2062,7 +2061,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             new phi::KernelContext(),
             new RuntimeInferShapeContext(*this, *runtime_ctx),
             tensors,
-            HasAttr(CacheImpl::kNotAllowInferShapeCahce));
+            HasAttr(CacheImpl::kNotAllowInferShapeCache));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
@@ -2082,7 +2081,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
     }
     if (fallback_to_cpu) {
-      [[maybe_unused]] auto released_kernel = phi_kernel_.release();
+      phi_kernel_.reset();
     }
   }
 
@@ -2937,9 +2936,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
+  proto::VarType::Type data_type = default_data_type;
 
   for (auto* name : ctx.InNameList()) {
     if (ctx.InputSize(*name) == 1UL) {
@@ -2950,7 +2949,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   }
   PADDLE_ENFORCE_NE(
       data_type,
-      dafault_data_type,
+      default_data_type,
       platform::errors::NotFound(
           "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
@@ -2958,9 +2957,9 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
 
 proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     const ExecutionContext& ctx, const std::string& name) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
+  proto::VarType::Type data_type = default_data_type;
   if (ctx.InputSize(name) == 1UL) {
     ParseInputDataType(ctx.InputVar(name), name, &data_type);
   } else {
@@ -2968,7 +2967,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   }
   PADDLE_ENFORCE_NE(
       data_type,
-      dafault_data_type,
+      default_data_type,
       platform::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
           "data type is empty or not phi::DenseTensor or SelectedRows or "

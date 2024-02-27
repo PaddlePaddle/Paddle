@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 import dis
 import sys
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ...utils import InnerError
@@ -38,7 +39,7 @@ class Instruction:
     jump_to: Instruction | None = None
     is_generated: bool = True
 
-    # for analys EXTENDED_ARG
+    # for analysis EXTENDED_ARG
     first_ex_arg: Instruction | None = None
     ex_arg_for: Instruction | None = None
 
@@ -109,7 +110,7 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
                 jump_offset += 1
 
             if origin_jump_target != jump_offset:
-                # copy infos from EXETENDED_ARG to other opcode
+                # copy infos from EXTENDED_ARG to other opcode
 
                 if instrs[origin_jump_target].is_jump_target:
                     instrs[jump_offset].is_jump_target = instrs[
@@ -410,3 +411,10 @@ def calc_stack_effect(instr: Instruction, *, jump: bool | None = None) -> int:
             assert instr.arg is not None
             return -instr.arg - 1
     return dis.stack_effect(instr.opcode, instr.arg, jump=jump)
+
+
+class Space(Enum):
+    locals = 1
+    globals = 2
+    cells = 3
+    not_found = 4
