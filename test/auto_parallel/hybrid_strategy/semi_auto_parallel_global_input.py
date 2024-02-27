@@ -136,11 +136,11 @@ class TestSemiAutoParallelGlobalInput:
         self.dist_dataloader = create_dataloader()
 
     def test_basic(self):
+        model = MlpModel()
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=model.parameters()
+        )
         if self._run_static:
-            model = MlpModel()
-            opt = paddle.optimizer.AdamW(
-                learning_rate=0.001, parameters=model.parameters()
-            )
             dist_model = dist.to_static(
                 model, self.dist_dataloader, loss_fn, opt
             )
@@ -148,12 +148,7 @@ class TestSemiAutoParallelGlobalInput:
             for step, (input, label) in enumerate(self.dist_dataloader()):
                 loss = dist_model(input, label)
         else:
-            model = MlpModel()
-            opt = paddle.optimizer.AdamW(
-                learning_rate=0.001, parameters=model.parameters()
-            )
             dist_opt = dist.shard_optimizer(opt)
-
             for step, (input, label) in enumerate(self.dist_dataloader()):
                 logits = model(input)
                 loss = loss_fn(logits, label)
@@ -162,6 +157,10 @@ class TestSemiAutoParallelGlobalInput:
                 dist_opt.clear_grad()
             loss = loss._local_value().numpy()
         cur_rank = paddle.distributed.get_rank()
+
+        # the loss in this 3D auto parallel is a partial
+        # the loss of single card is 4.539795 whcih is the sum of 2 partial results
+        # 4.539795 = 1.40145969 + 3.1383359
         if cur_rank == 5 or cur_rank == 4:
             np.testing.assert_allclose(
                 loss, 1.40145969, rtol=1e-06, verbose=True
