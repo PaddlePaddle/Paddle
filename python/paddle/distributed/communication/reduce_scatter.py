@@ -67,6 +67,7 @@ def reduce_scatter(
         tensor.scale_(1.0 / group.nranks)
         return stream.reduce_scatter(
             tensor,
+            tensor_list,
             op=ReduceOp.SUM,
             group=group,
             sync_op=sync_op,

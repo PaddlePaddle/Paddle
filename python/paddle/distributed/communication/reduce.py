@@ -133,13 +133,6 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             sync_op=sync_op,
             use_calc_stream=False,
         )
-        return stream.reduce(
-            tensor,
-            op=ReduceOp.SUM,
-            group=group,
-            sync_op=sync_op,
-            use_calc_stream=False,
-        )
     return stream.reduce(
         tensor,
         dst=dst,
