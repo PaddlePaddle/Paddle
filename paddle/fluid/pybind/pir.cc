@@ -1597,8 +1597,6 @@ void ApplyCinnPreprocessPass(Program *program, pir::IrContext *ctx) {
   pass_manager.AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager.AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
   pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager.AddPass(
-      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
   pass_manager.Run(program);
 }
@@ -1626,6 +1624,8 @@ void ApplyCinnLowerPass(Program *program, pir::IrContext *ctx) {
   }
 
   pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
   pass_manager.Run(program);
 }
