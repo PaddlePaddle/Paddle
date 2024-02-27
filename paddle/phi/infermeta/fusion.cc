@@ -216,7 +216,6 @@ void FusedMultiTransformerInferMeta(
                           c_dim[4]));  // head_size
   }
   out->set_dims(x.dims());
-  VLOG(1) << "finish infermeta";
 }
 
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
