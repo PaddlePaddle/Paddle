@@ -30,30 +30,43 @@ mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
 
 
 class MlpModel(paddle.nn.Layer):
-    def __init__(self):
+    def __init__(self, variable_initial_values, run_single_process=False):
         super().__init__()
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
-            mesh0,
-            [dist.Replicate(), dist.Shard(1)],
+        self.w0 = self.create_parameter(
+            shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+            default_initializer=paddle.nn.initializer.Assign(
+                variable_initial_values[0]
+            ),
         )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(shape=[HIDDLE_SIZE, HIDDLE_SIZE]),
-            mesh1,
-            [dist.Replicate(), dist.Shard(0)],
+        self.w1 = self.create_parameter(
+            shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+            default_initializer=paddle.nn.initializer.Assign(
+                variable_initial_values[1]
+            ),
         )
-
         self.global_input = paddle.uniform(
             shape=[SEQ_LEN, HIDDLE_SIZE],
             dtype=paddle.float32,
             min=-0.0001,
             max=0.0001,
         )
-        self.global_input = dist.shard_tensor(
-            self.global_input,
-            global_mesh,
-            [dist.Replicate(), dist.Replicate(), dist.Replicate()],
-        )
+        if run_single_process is False:
+            self.w0 = dist.shard_tensor(
+                self.w0,
+                mesh0,
+                [dist.Replicate(), dist.Shard(1)],
+            )
+            self.w1 = dist.shard_tensor(
+                self.w1,
+                mesh1,
+                [dist.Replicate(), dist.Shard(0)],
+            )
+            self.global_input = dist.shard_tensor(
+                self.global_input,
+                global_mesh,
+                [dist.Replicate(), dist.Replicate(), dist.Replicate()],
+            )
+        self.run_single_process = run_single_process
 
     def process_global_input(self, input):
         return input + 0.0001
@@ -62,17 +75,22 @@ class MlpModel(paddle.nn.Layer):
         # x: [bs, seq_len, hidden]
         # forward on mesh0
         global_input = self.process_global_input(self.global_input)
-
-        global_input1 = dist.reshard(
-            global_input, mesh0, [dist.Replicate(), dist.Replicate()]
-        )
+        if self.run_single_process is False:
+            global_input1 = dist.reshard(
+                global_input, mesh0, [dist.Replicate(), dist.Replicate()]
+            )
+        else:
+            global_input1 = global_input
         x = x + global_input1
         y = paddle.matmul(x, self.w0)
         # forward on mesh1
-        y = dist.reshard(y, mesh1, [dist.Shard(0), dist.Shard(2)])
-        global_input2 = dist.reshard(
-            global_input, mesh1, [dist.Replicate(), dist.Replicate()]
-        )
+        if self.run_single_process is False:
+            y = dist.reshard(y, mesh1, [dist.Shard(0), dist.Shard(2)])
+            global_input2 = dist.reshard(
+                global_input, mesh1, [dist.Replicate(), dist.Replicate()]
+            )
+        else:
+            global_input2 = global_input
 
         y = y + global_input2
         z = paddle.matmul(y, self.w1)
@@ -112,10 +130,21 @@ def create_dataloader():
         dataset,
         batch_sampler=sampler,
     )
-    dist_dataloader = dist.shard_dataloader(
-        dataloader=dataloader, meshes=[mesh0, mesh1], shard_dims="dp"
-    )
-    return dist_dataloader
+    return dataloader
+
+
+def get_variable_initial_value(var_num=2):
+    res = []
+    for i in range(var_num):
+        res.append(
+            paddle.uniform(
+                shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+                dtype=paddle.float32,
+                min=-0.0001,
+                max=0.0001,
+            )
+        )
+    return res
 
 
 def loss_fn(logits, label):
@@ -133,41 +162,56 @@ class TestSemiAutoParallelGlobalInput:
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         paddle.set_device(self._backend)
-        self.dist_dataloader = create_dataloader()
+        self.dataloader = create_dataloader()
+        self.variable_initial_values = get_variable_initial_value()
+        self.single_process_loss = self.get_single_process_loss()
 
-    def test_basic(self):
-        model = MlpModel()
+    def get_single_process_loss(self):
+        model = MlpModel(
+            variable_initial_values=self.variable_initial_values,
+            run_single_process=True,
+        )
         opt = paddle.optimizer.AdamW(
             learning_rate=0.001, parameters=model.parameters()
         )
-        if self._run_static:
-            dist_model = dist.to_static(
-                model, self.dist_dataloader, loss_fn, opt
-            )
+        for step, (input, label) in enumerate(self.dataloader()):
+            logits = model(input)
+            loss = loss_fn(logits, label)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        return loss.numpy()
 
-            for step, (input, label) in enumerate(self.dist_dataloader()):
+    def test_basic(self):
+        model = MlpModel(variable_initial_values=self.variable_initial_values)
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+        dist_dataloader = dist.shard_dataloader(
+            dataloader=self.dataloader, meshes=[mesh0, mesh1], shard_dims="dp"
+        )
+        cur_rank = paddle.distributed.get_rank()
+        if self._run_static:
+            dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+
+            for step, (input, label) in enumerate(dist_dataloader()):
                 loss = dist_model(input, label)
+
+            if cur_rank in [5, 7]:
+                loss = paddle.to_tensor(loss)
+                group = paddle.distributed.new_group([5, 7])
+                dist.all_reduce(loss, group=group)
         else:
             dist_opt = dist.shard_optimizer(opt)
-            for step, (input, label) in enumerate(self.dist_dataloader()):
+            for step, (input, label) in enumerate(dist_dataloader()):
                 logits = model(input)
                 loss = loss_fn(logits, label)
                 loss.backward()
                 dist_opt.step()
                 dist_opt.clear_grad()
-            loss = loss._local_value().numpy()
-        cur_rank = paddle.distributed.get_rank()
-
-        # the loss in this 3D auto parallel is a partial
-        # the loss of single card is 4.539795 whcih is the sum of 2 partial results
-        # 4.539795 = 1.40145969 + 3.1383359
-        if cur_rank == 5 or cur_rank == 4:
+        if cur_rank in [5, 7]:
             np.testing.assert_allclose(
-                loss, 1.40145969, rtol=1e-06, verbose=True
-            )
-        elif cur_rank == 6 or cur_rank == 7:
-            np.testing.assert_allclose(
-                loss, 3.1383359, rtol=1e-06, verbose=True
+                loss.numpy(), self.single_process_loss, rtol=1e-06, verbose=True
             )
 
     def run_test_case(self):
