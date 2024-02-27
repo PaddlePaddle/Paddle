@@ -441,9 +441,26 @@ class RBBlockCreater : public ReduceBlockCreater {
     Expr new_store_body = ir_utils::IRCopy(original_store_body);
     std::string original_store_name =
         original_update_stmt_.As<ir::Store>()->tensor.as_tensor()->name;
-    LoadReplacer load_replacer(
-        original_store_name, Load::Make(rf_tensor_, rf_tensor_access_indices_));
-    load_replacer(&new_store_body);
+
+#define REPLACE_RF_TENSOR(Op)                                    \
+  if (new_store_body.As<Op>()) {                                 \
+    auto* node = new_store_body.As<Op>();                        \
+    CHECK(node);                                                 \
+    auto& operand = node->b();                                   \
+    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
+  }
+
+    REPLACE_RF_TENSOR(Add)
+    REPLACE_RF_TENSOR(Mul)
+    REPLACE_RF_TENSOR(Max)
+    REPLACE_RF_TENSOR(Min)
+    REPLACE_RF_TENSOR(And)
+    REPLACE_RF_TENSOR(Or)
+    REPLACE_RF_TENSOR(LT)
+    REPLACE_RF_TENSOR(LE)
+    REPLACE_RF_TENSOR(GT)
+    REPLACE_RF_TENSOR(GE)
+#undef REPLACE_RF_TENSOR
 
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
     std::vector<Expr> original_store_indices =
