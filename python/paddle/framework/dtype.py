@@ -12,32 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..base import core
 from ..base.core import (
-    VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
 )
 from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
-dtype = VarDesc.VarType
+dtype = core.DataType
 dtype.__qualname__ = "dtype"
 dtype.__module__ = "paddle"
 
-uint8 = VarDesc.VarType.UINT8
-int8 = VarDesc.VarType.INT8
-int16 = VarDesc.VarType.INT16
-int32 = VarDesc.VarType.INT32
-int64 = VarDesc.VarType.INT64
+uint8 = core.DataType.UINT8
+int8 = core.DataType.INT8
+int16 = core.DataType.INT16
+int32 = core.DataType.INT32
+int64 = core.DataType.INT64
 
-float32 = VarDesc.VarType.FP32
-float64 = VarDesc.VarType.FP64
-float16 = VarDesc.VarType.FP16
-bfloat16 = VarDesc.VarType.BF16
+float32 = core.DataType.FLOAT32
+float64 = core.DataType.FLOAT64
+float16 = core.DataType.FLOAT16
+bfloat16 = core.DataType.BFLOAT16
 
-complex64 = VarDesc.VarType.COMPLEX64
-complex128 = VarDesc.VarType.COMPLEX128
+complex64 = core.DataType.COMPLEX64
+complex128 = core.DataType.COMPLEX128
 
-bool = VarDesc.VarType.BOOL
+bool = core.DataType.BOOL
 
 
 def iinfo(dtype):
