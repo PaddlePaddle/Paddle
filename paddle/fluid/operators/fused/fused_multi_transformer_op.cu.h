@@ -1257,20 +1257,13 @@ void fmha(const phi::GPUContext &dev_ctx,
           int timestep,
           int rotary_emb_dims,
           float inv_sqrt_dh) {
-  VLOG(1) << "aaaaaaaaa";
   Masked_multihead_attention_params<T> params;
   params.out = out_tensor->data<T>();
-  VLOG(1) << "params.out = out_tensor->data<T>();";
   params.qkv = qkv_tensor.data<T>();
-  VLOG(1) << "params.qkv = qkv_tensor.data<T>();";
   params.qkv_bias = qkv_bias_tensor.data<T>();
-  VLOG(1) << "params.qkv_bias = qkv_bias_tensor.data<T>();";
   params.attn_mask = src_mask_tensor.data<T>();
-  VLOG(1) << "params.attn_mask = src_mask_tensor.data<T>();";
   params.cache_kv = cache_kv_tensor->data<T>();
-  VLOG(1) << "params.cache_kv = cache_kv_tensor->data<T>();";
 
-  VLOG(1) << "bbbbbb";
   if (sequence_lengths_tensor) {
     params.sequence_lengths = sequence_lengths_tensor->data<int>();
   }
@@ -1288,7 +1281,6 @@ void fmha(const phi::GPUContext &dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  VLOG(1) << "cccccccc";
   switch (dim_head) {
     case 10:
       fmha_launch_kernel<T, 10, 32>(params, dev_ctx.stream());
