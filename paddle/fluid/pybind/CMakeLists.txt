@@ -119,8 +119,6 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ops_api.cc
-    static_op_function.cc
     control_flow_api.cc
     pir.cc
     graph.cc
@@ -298,7 +296,7 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(NOT WITH_ARM)
+  if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
@@ -509,6 +507,8 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS ops_api.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS static_op_function.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)

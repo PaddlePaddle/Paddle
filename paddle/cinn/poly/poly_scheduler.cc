@@ -124,7 +124,7 @@ std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
   }
 
   // NOTE DEBUG
-  // check there are same count of nodes both in the orginal graph and the
+  // check there are same count of nodes both in the original graph and the
   // groups.
   // @{
   int num_node_in_groups = 0;

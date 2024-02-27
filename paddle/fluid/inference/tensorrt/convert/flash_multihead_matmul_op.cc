@@ -239,7 +239,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     reshape_after_mha_layer->setName(
         ("shuffle_last_multihead_matmul(Output: " + output_name + ")").c_str());
     layer = reshape_after_mha_layer;
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "flash_multihead_matmul", {output_name}, test_mode);
   }
 
@@ -444,7 +444,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
          ")")
             .c_str());
     std::vector<std::string> output_names = {output_name};
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         reshape_after_attention_layer, op_desc.Type(), output_names, test_mode);
   }
 

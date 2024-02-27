@@ -349,6 +349,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
+      {},
       "dlnne_engine");
   fuser();
 

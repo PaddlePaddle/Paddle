@@ -236,7 +236,7 @@ class GeluOpConverter : public OpConverter {
 #endif  // if IS_TRT_VERSION_GE(7000)
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);
   }
 };
 

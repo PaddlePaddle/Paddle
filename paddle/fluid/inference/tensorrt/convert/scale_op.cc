@@ -218,7 +218,7 @@ class ScaleOpConverter : public OpConverter {
             ("Scale: Shuffle_reshape (Output: " + out_name + ")").c_str());
       }
     }
-    RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
   }
 };
 

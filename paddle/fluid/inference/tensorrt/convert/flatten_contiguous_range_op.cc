@@ -169,7 +169,7 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "flatten_contiguous_range", {output_name}, test_mode);
   }
 };
