@@ -27,7 +27,7 @@ bool Pad2dCheckIfOneDNNSupport(const KernelContext* ctx) {
   auto src_tz = common::vectorize(ctx->InputAt<phi::DenseTensor>(0).dims());
   const TensorRef& kernel_size_tmp = ctx->AttrAt<TensorRef>(0);
   IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
-  std::vector<int> kernel_size = kernel_size_array.GetData();
+  std::vector<int64> kernel_size = kernel_size_array.GetData();
   // Fast but not exhaustive check
   return ((src_tz[src_tz.size() - 1] % kernel_size[1] == 0) &&
           (src_tz[src_tz.size() - 2] % kernel_size[0] == 0));
