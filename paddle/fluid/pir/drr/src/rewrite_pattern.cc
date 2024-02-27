@@ -68,9 +68,8 @@ bool DrrRewritePattern::PatternGraphMatch(
     pir::Operation* op, MatchContextImpl* source_pattern_match_ctx) const {
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
   const OpCall* anchor = source_pattern_graph_->AnchorNode();
-  std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-      bind_map =
-          FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+  auto bind_map =
+      FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
   if (bind_map.empty()) {
     return false;
   }
@@ -136,15 +135,20 @@ DrrRewritePattern::FindCandidateIrOutputOp(
     return output_op_bind_map;
   }
   std::unordered_set<const OpCall*> drr_visited_ops{anchor};
-  DfsVisitor(
-      anchor, op, drr_output_op_set, &drr_visited_ops, &output_op_bind_map);
+  if (!DfsVisitor(anchor,
+                  op,
+                  drr_output_op_set,
+                  &drr_visited_ops,
+                  &output_op_bind_map)) {
+    return {};
+  }
   if (output_op_bind_map.size() != drr_output_op_set.size()) {
     return {};
   }
   return output_op_bind_map;
 }
 
-void DrrRewritePattern::DfsVisitor(
+bool DrrRewritePattern::DfsVisitor(
     const OpCall* drr_op,
     pir::Operation* ir_op,
     const std::unordered_set<const OpCall*>& drr_output_op_set,
@@ -154,19 +158,19 @@ void DrrRewritePattern::DfsVisitor(
   VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")"
           << "ir op(" << ir_op->name() << ")";
   if (drr_op->name() != ir_op->name()) {
-    return;
+    return false;
   }
   // check op input's size
   const auto& drr_op_input_tensors = drr_op->inputs();
   auto ir_op_input_value_size = ir_op->num_operands();
   if (drr_op_input_tensors.size() != ir_op_input_value_size) {
-    return;
+    return false;
   }
   // check op output's size
   const auto& drr_op_output_tensors = drr_op->outputs();
   auto ir_op_output_value_size = ir_op->num_results();
   if (drr_op_output_tensors.size() != ir_op_output_value_size) {
-    return;
+    return false;
   }
   // check producer op
   for (size_t i = 0; i < drr_op_input_tensors.size(); ++i) {
@@ -184,11 +188,13 @@ void DrrRewritePattern::DfsVisitor(
           auto* ir_bro_op = it.owner();
           if (drr_bro_op->name() == ir_bro_op->name()) {
             drr_visited_ops->insert(drr_bro_op);
-            DfsVisitor(drr_bro_op,
-                       ir_bro_op,
-                       drr_output_op_set,
-                       drr_visited_ops,
-                       output_op_bind_map);
+            if (!DfsVisitor(drr_bro_op,
+                            ir_bro_op,
+                            drr_output_op_set,
+                            drr_visited_ops,
+                            output_op_bind_map)) {
+              return false;
+            }
             drr_visited_ops->erase(drr_bro_op);
           }
         }
@@ -203,27 +209,29 @@ void DrrRewritePattern::DfsVisitor(
     auto ir_operand_value = ir_op->operand(i).source();
     if (drr_op_input_tensors[i]->consumers().size() !=
         ir_operand_value.use_count()) {
-      return;
+      return false;
     }
     auto* ir_producer_op = ir_operand_value.defining_op();
     drr_visited_ops->insert(drr_producer_op);
-    DfsVisitor(drr_producer_op,
-               ir_producer_op,
-               drr_output_op_set,
-               drr_visited_ops,
-               output_op_bind_map);
+    if (!DfsVisitor(drr_producer_op,
+                    ir_producer_op,
+                    drr_output_op_set,
+                    drr_visited_ops,
+                    output_op_bind_map)) {
+      return false;
+    }
     drr_visited_ops->erase(drr_producer_op);
   }
   if (drr_output_op_set.count(drr_op)) {
     (*output_op_bind_map)[drr_op].insert(ir_op);
-    return;
+    return true;
   }
   // check child ops
   for (size_t i = 0; i < drr_op_output_tensors.size(); ++i) {
     const auto& drr_child_ops = drr_op_output_tensors[i]->consumers();
     auto ir_output_value = ir_op->result(i);
     if (drr_child_ops.size() != ir_output_value.use_count()) {
-      return;
+      return false;
     }
     for (auto* drr_child_op : drr_child_ops) {
       for (auto it = ir_output_value.use_begin();
@@ -235,17 +243,19 @@ void DrrRewritePattern::DfsVisitor(
             continue;
           }
           drr_visited_ops->insert(drr_child_op);
-          DfsVisitor(drr_child_op,
-                     ir_child_op,
-                     drr_output_op_set,
-                     drr_visited_ops,
-                     output_op_bind_map);
+          if (!DfsVisitor(drr_child_op,
+                          ir_child_op,
+                          drr_output_op_set,
+                          drr_visited_ops,
+                          output_op_bind_map)) {
+            return false;
+          }
           drr_visited_ops->erase(drr_child_op);
         }
       }
     }
   }  // check child ops
-  return;
+  return true;
 }
 
 bool DrrRewritePattern::MatchFromOutputToInput(

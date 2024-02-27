@@ -59,7 +59,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                           const OpCall* anchor,
                           const SourcePatternGraph& source_pattern_graph) const;
 
-  void DfsVisitor(
+  bool DfsVisitor(
       const OpCall* drr_op,
       pir::Operation* ir_op,
       const std::unordered_set<const OpCall*>& drr_output_op_set,
