@@ -518,3 +518,10 @@ def get_grad_semantic_info(op):
     else:
         grad_semantic_info = op.get_input_grad_semantics()
     return grad_semantic_info
+
+
+def get_split_op(value):
+    for op in value.all_used_ops():
+        if op.name() == "builtin.split":
+            return op
+    return None

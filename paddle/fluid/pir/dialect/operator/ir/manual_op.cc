@@ -196,7 +196,7 @@ std::vector<pir::Type> AddNOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::AddNInferMeta(meta_x, &meta_out);
+  phi::AddNInferMeta(meta_x, &meta_out, phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -358,7 +358,7 @@ std::vector<pir::Type> AddN_Op::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::AddNInferMeta(meta_inputs, &meta_out);
+  phi::AddNInferMeta(meta_inputs, &meta_out, phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -548,7 +548,7 @@ std::vector<pir::Type> AddNWithKernelOp::InferMeta(
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::AddNInferMeta(meta_inputs, &meta_out);
+  phi::AddNInferMeta(meta_inputs, &meta_out, phi::MetaConfig(false, false));
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
