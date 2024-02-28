@@ -153,11 +153,11 @@ TEST(from_blob, GPU) {
   ASSERT_EQ(gpu_data, gpu_tensor_data);
 
   // 3.4 test other API
-  auto gpu_tesnor_pow = paddle::experimental::pow(gpu_tesnor, 2);
-  auto* gpu_tesnor_pow_data = gpu_tesnor_pow.template data<float>();
-  std::array<float, 6> gpu_tesnor_pow_data_cpu;
+  auto gpu_tensor_pow = paddle::experimental::pow(gpu_tensor, 2);
+  auto* gpu_tensor_pow_data = gpu_tensor_pow.template data<float>();
+  std::array<float, 6> gpu_tensor_pow_data_cpu;
   Copy(phi::CPUPlace(),
-       gpu_tesnor_pow_data_cpu.data(),
+       gpu_tensor_pow_data_cpu.data(),
        gpu0,
        gpu_tensor_pow_data,
        sizeof(cpu_data),
