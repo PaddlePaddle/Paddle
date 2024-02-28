@@ -424,8 +424,10 @@ bool AnalysisPredictor::Init(
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
-    std::string optimized_model = optimized_model_path + ".pdmodel";
-    std::string optimized_params = optimized_model_path + ".pdiparams";
+    std::string optimized_model =
+        optimized_model_path + "/" + "_optimized.pdmodel";
+    std::string optimized_params =
+        optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
       LOG(INFO) << "Load Optimized model from " << optimized_model_path;
@@ -434,6 +436,8 @@ bool AnalysisPredictor::Init(
           << "The optimized model is not found, fallback to original model. "
              "EnableSaveOptimModel will be turned on and the optimized model "
              "can be available next time.";
+      // UseOptimizedModel supports only the default path of shape_range_info
+      config_.shape_range_info_path_ = "";
       config_.EnableSaveOptimModel(true);
       config_.UseOptimizedModel(false);
     }
@@ -596,7 +600,7 @@ std::string AnalysisPredictor::GetOptimizedModelPath() {
             ? config_.model_dir()
             : inference::analysis::GetDirRoot(config_.prog_file());
   }
-  return model_opt_cache_dir + "/" + "_optimized";
+  return model_opt_cache_dir;
 }
 
 void AnalysisPredictor::ClearExtraParams() {
@@ -608,6 +612,16 @@ void AnalysisPredictor::ClearExtraParams() {
                                          op_desc->GetAttr("parameters"));
       trt_repetitive_params.insert(
           trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
+      // TODO(ming1753): This is a trick solution to the problem of possible
+      // absolute paths in the model_opt_cache_dir and shape_range_info_path
+      // attributes in tensorrt_engine op. Expect the issue to be completely
+      // resolved in PIR.
+      auto model_opt_cache_dir_from_model = PADDLE_GET_CONST(
+          std::string, op_desc->GetAttr("model_opt_cache_dir"));
+      auto model_opt_cache_dir = GetOptimizedModelPath();
+      op_desc->SetAttr("model_opt_cache_dir", model_opt_cache_dir);
+      op_desc->SetAttr("shape_range_info_path",
+                       model_opt_cache_dir + "/" + "shape_range_info.pbtxt");
     }
   }
 
