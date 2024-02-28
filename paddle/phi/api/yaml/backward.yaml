@@ -2377,6 +2377,16 @@
   no_need_buffer : x
   composite : stack_grad(x, out_grad, axis, x_grad)
 
+- backward_op : standard_gamma_grad
+  forward : standard_gamma (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : standard_gamma_grad
+
 - backward_op : stanh_grad
   forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float scale_a, float scale_b)
