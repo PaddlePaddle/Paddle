@@ -25,13 +25,14 @@ class CUDABackendAPI final : public BackendAPI {
   static CUDABackendAPI* Global();
   void set_device(int device_id) final;
   // void set_active_devices(std::vector<int> device_ids) final;
-  int get_device_property(DeviceProperty device_property,
+  std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id = std::nullopt) final;
   void* malloc(size_t numBytes) final;
   void free(void* data) final;
   void memset(void* data, int value, size_t numBytes) final;
   void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) final;
   void device_sync() final;
+  void stream_sync(void* stream) final;
  private:
   // now_device_id, change by set_device()
   int now_device_id = -1;

@@ -17,11 +17,14 @@ gather_srcs(
 
 if(WITH_CUDA)
   add_subdirectory(nvrtc)
-  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc codegen_cuda_util.cc)
+  list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc)
 endif()
 
 if (CINN_WITH_SYCL)
   add_subdirectory(sycl)
+endif()
+
+if(WITH_CUDA OR CINN_WITH_SYCL OR CINN_WITH_ROCM)
   list(APPEND srcs codegen_cuda_util.cc)
 endif()
 

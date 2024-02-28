@@ -1,5 +1,6 @@
 #include "paddle/cinn/runtime/cuda/cuda_backend_api.h"
 #include <glog/logging.h>
+
 namespace cinn {
 namespace runtime {
 namespace cuda {
@@ -13,47 +14,57 @@ void CUDABackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
-int CUDABackendAPI::get_device_property(DeviceProperty device_property,
+std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int index = device_id ? device_id.value() : this->now_device_id;
+  int dev_index = device_id ? device_id.value() : this->now_device_id;
+  std::variant<int, std::array<int, 3>> rv_variant;
   int rv = -1;
   switch (device_property) {
     case DeviceProperty::MaxBlockDims: {
-      LOG(FATAL) << "Not supported device property!";
+      cudaDeviceProp prop_;
+      CUDA_CALL(cudaGetDeviceProperties(&prop_, dev_index));
+      rv_variant = std::array<int, 3>{prop_.maxThreadsDim[0], prop_.maxThreadsDim[1], prop_.maxThreadsDim[2]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      LOG(FATAL) << "Not supported device property!";
+      cudaDeviceProp prop_;
+      CUDA_CALL(cudaGetDeviceProperties(&prop_, dev_index));
+      rv_variant = std::array<int, 3>{prop_.maxGridSize[0], prop_.maxGridSize[1], prop_.maxGridSize[2]};
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxSharedMemoryPerBlock, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxSharedMemoryPerBlock, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MaxThreadsPerBlock: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerBlock, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerBlock, dev_index));
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::MultiProcessorCount: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty:: MaxBlocksPerSM: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, dev_index));
+      rv_variant = rv;
       break;
     }
     case DeviceProperty::WarpSize: {
-      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrWarpSize, index));
+      CUDA_CALL(cudaDeviceGetAttribute(&rv, cudaDeviceAttr::cudaDevAttrWarpSize, dev_index));
+      rv_variant = rv;
       break;
     }
     default:
       LOG(FATAL) << "Not supported device property!";
   }
-  return rv;
+  return rv_variant;
 }
 
 void* CUDABackendAPI::malloc(size_t numBytes){
@@ -91,6 +102,10 @@ void CUDABackendAPI::memcpy(void* dest, const void* src, size_t numBytes, Memcpy
 
 void CUDABackendAPI::device_sync(){
   CUDA_CALL(cudaDeviceSynchronize());
+}
+
+void CUDABackendAPI::stream_sync(void* stream){
+  CUDA_CALL(cudaStreamSynchronize(static_cast<cudaStream_t>(stream)));
 }
 
 }  // namespace cuda

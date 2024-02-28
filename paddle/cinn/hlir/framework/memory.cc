@@ -44,21 +44,18 @@ class X86MemoryMng : public MemoryInterface {
   }
 };
 
-#ifdef CINN_WITH_CUDA
+
 class CudaMemoryMng : public MemoryInterface {
  public:
   void* malloc(size_t nbytes) override {
-    void* data;
-    CUDA_CALL(cudaMalloc(&data, nbytes));
-    return data;
+      return BackendAPI::get_backend(Target::Language::cuda)->malloc(nbytes);
+    }
+  void free(void* data) override { 
+    BackendAPI::get_backend(Target::Language::cuda)->free(data); 
   }
-
-  void free(void* data) override { CUDA_CALL(cudaFree(data)); }
 };
 
-#endif
 
-#ifdef CINN_WITH_SYCL
 class SYCLMemoryMng : public MemoryInterface {
   public:
     void* malloc(size_t nbytes) override {
@@ -68,19 +65,14 @@ class SYCLMemoryMng : public MemoryInterface {
       BackendAPI::get_backend(Target::Language::sycl)->free(data);
     }
 };
-#endif
 
 }  // namespace
 
 MemoryManager::MemoryManager() {
   Register(Target::Language::Unk, new X86MemoryMng);
   Register(Target::Language::llvm, new X86MemoryMng);
-#ifdef CINN_WITH_CUDA
   Register(Target::Language::cuda, new CudaMemoryMng);
-#endif
-#ifdef CINN_WITH_SYCL
   Register(Target::Language::sycl, new SYCLMemoryMng);
-#endif
 }
 
 }  // namespace framework

@@ -56,7 +56,7 @@ Expr Optimize(Expr e,
 
   VectorizeLoops(&copied, target);
   VLOG(4) << "After Optimize VectorizeLoops:" << copied;
-#ifdef CINN_WITH_CUDA
+if (target.arch_is_gpu()){
   if (copied.as_lowered_func()) {
     ir::SetCudaAxisInfo(&copied);
   }
@@ -64,7 +64,8 @@ Expr Optimize(Expr e,
     RemoveGpuForloopsAxis(&copied);
   }
   CudaSyncThreadsDropIfThenElse(&copied);
-#endif
+}
+
 
   SimplifyBlocks(&copied);
   VLOG(4) << "After SimplifyBlocks:" << copied;

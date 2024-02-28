@@ -90,17 +90,18 @@ void SYCLBackendAPI::set_device(int device_id) {
   this->now_device_id = device_id;
 }
 
-int SYCLBackendAPI::get_device_property(DeviceProperty device_property,
+std::variant<int, std::array<int, 3>> SYCLBackendAPI::get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id) {
-  int index = device_id ? device_id.value() : this->now_device_id;
-  int rv = -1;
+  int index = device_id.value_or(this->now_device_id);
+  std::variant<int, std::array<int, 3>> rv;
   switch (device_property) {
     case DeviceProperty::MaxBlockDims: {
-      LOG(FATAL) << "Not supported device property!";
+      sycl::id<3> max_work_item_sizes = this->devices[index].get_info<sycl::info::device::max_work_item_sizes<3>>();
+      rv = std::array<int, 3>{max_work_item_sizes[0], max_work_item_sizes[2], max_work_item_sizes[2]};
       break;
     }
     case DeviceProperty::MaxGridDims: {
-      LOG(FATAL) << "Not supported device property!";
+      LOG(FATAL) << "SYCL Not supported device property : MaxGridDims !";
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
@@ -189,6 +190,11 @@ void SYCLBackendAPI::device_sync() {
       SYCL_CALL(queue->wait_and_throw());
     }
   }
+}
+
+void SYCLBackendAPI::stream_sync(void* stream){
+  VLOG(3) << "sycl stream sync";
+  SYCL_CALL(static_cast<sycl::queue *>(stream)->wait_and_throw());
 }
 
 sycl::queue* SYCLBackendAPI::get_now_queue() {

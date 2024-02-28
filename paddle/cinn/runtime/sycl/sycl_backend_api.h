@@ -85,7 +85,7 @@ class SYCLBackendAPI final : public BackendAPI {
    */
   Target::Arch Init(Target::Arch arch);
   void set_device(int device_id) final;
-  int get_device_property(DeviceProperty device_property,
+  std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
                             std::optional<int> device_id = std::nullopt) final;
   void* malloc(size_t numBytes) final;
   // void set_active_devices(std::vector<int> device_ids) final;
@@ -93,6 +93,7 @@ class SYCLBackendAPI final : public BackendAPI {
   void memset(void* data, int value, size_t numBytes) final;
   void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) final;
   void device_sync() final;
+  void stream_sync(void* stream) final;
   sycl::queue* get_now_queue();
   std::string GetGpuVersion();
 

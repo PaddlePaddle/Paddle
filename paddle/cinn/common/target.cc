@@ -79,25 +79,38 @@ int Target::runtime_arch() const {
 int Target::max_num_threads() const {
   CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
       << "The target cannot get MaxThreadsPerBlock";
-  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerBlock);
+  return std::get<int>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerBlock));
+}
+
+int Target::get_warp_size() const {
+  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
+      << "The target cannot get MaxThreadsPerBlock";
+  return std::get<int>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::WarpSize));
 }
 
 int Target::get_multi_processor_count() const {
   CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
       << "The target cannot get multi processor count";
-  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MultiProcessorCount);
+  return std::get<int>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MultiProcessorCount));
 }
 
 int Target::get_max_threads_per_sm() const {
   CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
       << "The target cannot get max threads per stream processor";
-  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerSM);
+  return std::get<int>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxThreadsPerSM));
 }
 
 int Target::get_max_blocks_per_sm() const {
   CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch ==Arch::IntelGPU)
       << "The target cannot get max blocks per stream processor";
-  return BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxBlocksPerSM);
+  return std::get<int>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxBlocksPerSM));
+}
+
+std::array<int, 3> Target::get_max_grid_dims() const {
+  return std::get<std::array<int, 3>>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxGridDims));
+}
+std::array<int, 3> Target::get_max_block_dims() const {
+  return std::get<std::array<int, 3>>(BackendAPI::get_backend(language)->get_device_property(BackendAPI::DeviceProperty::MaxBlockDims));
 }
 
 std::vector<Target::Lib> Target::get_target_libs() const { return libs; }

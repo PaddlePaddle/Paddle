@@ -26,6 +26,7 @@
 #endif
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/timer.h"
+#include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn {
 namespace hlir {
@@ -109,16 +110,15 @@ class Instruction {
         auto& pod_args = args_cached_[idx];
         CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first "
                                 "by calling SetLoweredFunc method";
-        if (target_ == common::DefaultNVGPUTarget()) {
+        if (target_.arch_is_gpu()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+          using cinn::runtime::BackendAPI;
+          BackendAPI::get_backend(target_)->device_sync(); 
         } else {
           ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
                                             pod_args.size());
         }
-#ifdef CINN_WITH_CUDA
-        CUDA_CALL(cudaDeviceSynchronize());
-#endif
       }
     }
     if (flag >= 0) {

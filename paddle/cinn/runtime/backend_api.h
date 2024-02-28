@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/common/target.h"
 #include <optional>
+#include <variant>
 
 namespace cinn {
 namespace runtime {
@@ -59,13 +60,13 @@ class BackendAPI {
    * \param device_ids
    */
   //virtual void set_active_devices(std::vector<int> device_ids) =0;
-    /*!
+  /*!
    * \brief Get device property
    * \param device_property
    * \param device_id optional, default is now device which set by set_device.
    * \return result value
    */
-  virtual int get_device_property(
+  virtual std::variant<int, std::array<int, 3>> get_device_property(
       DeviceProperty device_property,
       std::optional<int> device_id = std::nullopt) = 0;
   /*!
@@ -89,9 +90,13 @@ class BackendAPI {
   virtual void memset(void* data, int value, size_t numBytes) =0;
   virtual void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) =0;
   /*!
-   * \brief synchronize the idth device
+   * \brief synchronize now device
    */
   virtual void device_sync() =0;
+  /*!
+   * \brief synchronize the stream
+   */
+  virtual void stream_sync(void* stream) =0;
 
 };
 }  // namespace runtime

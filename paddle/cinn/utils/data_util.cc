@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/cinn/runtime/backend_api.h"
 
 #include "iostream"
 
@@ -36,15 +37,14 @@ void SetRandInt(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<int>(target);
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
+  if(target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target)->memcpy(data,
                random_data.data(),
                num_ele * sizeof(int),
-               cudaMemcpyHostToDevice);
+               BackendAPI::MemcpyType::HostToDevice);
     return;
   }
-#endif
   CHECK(target == common::DefaultHostTarget());
   std::copy(random_data.begin(), random_data.end(), data);
 }
@@ -66,15 +66,14 @@ void SetRandData<int>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
+  if(target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target)->memcpy(data,
                random_data.data(),
                num_ele * sizeof(float),
-               cudaMemcpyHostToDevice);
+               BackendAPI::MemcpyType::HostToDevice);
     return;
   }
-#endif
   CHECK(target == common::DefaultHostTarget());
   std::copy(random_data.begin(), random_data.end(), data);
 }
@@ -96,21 +95,17 @@ void SetRandData<float>(hlir::framework::Tensor tensor,
   }
 
   auto* data = tensor->mutable_data<float>(target);
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data,
-               random_data.data(),
-               num_ele * sizeof(float),
-               cudaMemcpyHostToDevice);
-  } else if (target == common::DefaultHostTarget()) {
-    std::copy(random_data.begin(), random_data.end(), data);
-  } else {
-    CINN_NOT_IMPLEMENTED
+  if (target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target)->memcpy(
+        data,
+        random_data.data(),
+        num_ele * sizeof(float),
+        BackendAPI::MemcpyType::HostToDevice);
+    return;
   }
-#else
   CHECK(target == common::DefaultHostTarget());
   std::copy(random_data.begin(), random_data.end(), data);
-#endif
 }
 
 template <typename T>
@@ -118,21 +113,17 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
                              const common::Target& target) {
   auto size = tensor->shape().numel();
   std::vector<T> data(size);
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data.data(),
+  if (target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target)->memcpy(
+        data.data(),
                static_cast<const void*>(tensor->data<T>()),
                size * sizeof(T),
-               cudaMemcpyDeviceToHost);
-  } else if (target == common::DefaultHostTarget()) {
+        BackendAPI::MemcpyType::DeviceToHost);
+  }else{
+    CHECK(target == common::DefaultHostTarget());
     std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
-  } else {
-    CINN_NOT_IMPLEMENTED
   }
-#else
-  CHECK(target == common::DefaultHostTarget());
-  std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
-#endif
   return data;
 }
 

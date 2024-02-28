@@ -153,12 +153,10 @@ void BindModule(py::module *m) {
   builder.def(py::init<const std::string &, const common::Target &>())
       .def("add_function",
            [](ir::Module::Builder &self, ir::LoweredFunc func) {
-             if (self.GetTargetArch() == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
+             if (self.GetTargetArch() == Target::Arch::NVGPU || self.GetTargetArch() == Target::Arch::AMDGPU || self.GetTargetArch() == Target::Arch::IntelGPU) {
                auto func_expr = Expr(func);
                ir::SetCudaAxisInfo(&func_expr);
                optim::OptimizeExprGPU(&(func->body));
-#endif
              }
              self.AddFunction(func);
            })

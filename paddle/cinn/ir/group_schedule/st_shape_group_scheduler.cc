@@ -32,7 +32,7 @@ static const std::unordered_set<std::string>
     kProhibitScheduleExternalFuncNames = {
 #define CINN_NVGPU_FUNC2STRING(str) #str
 #define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
-  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
+  CINN_NVGPU_FUNC2STRING(cinn_cuda_##FUNC##TYPE)
 
 #define GEN_FUNC_NAME(_, impl) \
   _(impl, gt_num)              \
@@ -132,12 +132,12 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   OptimizeReduction();
 #endif
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   BindCudaAxis();
   AllocateStorage();
 #endif
@@ -145,7 +145,7 @@ void StaticShapeGroupScheduler::Schedule() {
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   AllocateStorage();
 #endif
 }
@@ -580,7 +580,7 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!target_.arch_is_gpu()) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -619,7 +619,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!target_.arch_is_gpu()) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 

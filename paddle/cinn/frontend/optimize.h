@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <optional>
 
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/frontend/syntax.h"
@@ -31,7 +32,7 @@ struct OptimizeOptions {
   std::vector<std::string> graph_passes;
 };
 
-OptimizeOptions DefaultTrainingOptimizeOptions();
+OptimizeOptions DefaultTrainingOptimizeOptions(common::Target target=common::DefaultNVGPUTarget());
 
 std::vector<std::string> DefaultOpFusionPasses();
 
@@ -39,7 +40,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,
     const std::unordered_set<std::string>& fetch_ids,
     common::Target target,
-    const OptimizeOptions& options = DefaultTrainingOptimizeOptions());
+    std::optional<OptimizeOptions> options_wrapper=std::nullopt);
 
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,

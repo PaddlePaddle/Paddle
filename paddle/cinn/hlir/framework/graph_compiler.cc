@@ -367,7 +367,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
     if (!temp.as_tensor_ref()->buffer.defined() ||
-        target != common::DefaultNVGPUTarget()) {
+        !target.arch_is_gpu()) {
       all_arg_tensors.push_back(temp.as_tensor_ref());
     }
   }
@@ -427,9 +427,9 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   CHECK_EQ(funcs_after_schedule.size(), expr_pack.size());
   std::vector<ir::LoweredFunc> res;
   for (int i = 0; i < funcs_after_schedule.size(); i++) {
-#ifdef CINN_WITH_CUDA
-    optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
-#endif
+    if(target.arch_is_gpu()){
+      optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
+    }
     auto temp_buffers = lang::GetTempBuffers(
         all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
 

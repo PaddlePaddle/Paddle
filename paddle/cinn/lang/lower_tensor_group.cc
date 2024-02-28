@@ -217,7 +217,7 @@ std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
           tensor->buffer.defined() &&
           (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
            tensor->buffer->memory_type == ir::MemoryType::GPULocal);
-      if (target_ == common::DefaultNVGPUTarget() && !gpu_local) {
+      if (target_.arch_is_gpu() && !gpu_local) {
         result.push_back(bodies.size() == 1 ? bodies[0]
                                             : ir::Block::Make(bodies));
         bodies.clear();

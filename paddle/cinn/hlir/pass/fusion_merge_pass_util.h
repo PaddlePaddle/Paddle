@@ -427,7 +427,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
       reduce_size *= reducer_input_shape[idx - 1];
     }
     // Check if the reduce size exceeds the hardware limit
-    if (helper->target_ == common::DefaultNVGPUTarget() &&
+    if (helper->target_.arch_is_gpu() &&
         reduce_size > helper->target_.max_num_threads()) {
       return false;
     }

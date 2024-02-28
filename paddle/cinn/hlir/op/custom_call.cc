@@ -99,8 +99,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
     std::vector<ir::Argument> arguments = {
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
-    // if target is nvgpu, add stream.
-    if (target == common::DefaultNVGPUTarget()) {
+    // if target is gpu, add stream.
+    if (target.arch_is_gpu()) {
       ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
 
       host_args.push_back(kernel_stream);

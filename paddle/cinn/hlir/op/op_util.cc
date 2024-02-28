@@ -95,8 +95,14 @@ std::string GetExternFuncName(const common::Target& target,
     func_proto_name.append("cinn_");
   }
   if (need_target) {
-    if (target.arch == common::Target::Arch::NVGPU) {
-      func_proto_name.append("nvgpu_");
+    if (target.language == common::Target::Language::cuda) {
+      func_proto_name.append("cuda_");
+    } else if (target.language == common::Target::Language::sycl) {
+      func_proto_name.append("sycl_");
+    } else if (target.language == common::Target::Language::hip) {
+      func_proto_name.append("hip_");
+    } else if (target.language == common::Target::Language::bangc) {
+      func_proto_name.append("bangc_");
     } else if (target.arch == common::Target::Arch::X86) {
       func_proto_name.append("host_");
     } else {

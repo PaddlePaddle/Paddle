@@ -29,7 +29,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 // float16
 #define REGISTER_EXTERN_FUNC_2_IN_1_FP16(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(        \
-      cinn_nvgpu_##func__##_fp16, target, float16, float16, float16);
+      cinn_cuda_##func__##_fp16, target, float16, float16, float16);
 
   REGISTER_EXTERN_FUNC_2_IN_1_FP16(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_FP16(mod)
@@ -38,7 +38,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_FP16(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(        \
-      cinn_nvgpu_##func__##_fp16, target, float16, float16);
+      cinn_cuda_##func__##_fp16, target, float16, float16);
 
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(ceil)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(floor)
@@ -71,7 +71,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                 \
-      cinn_nvgpu_##func__##_fp16, target, float16, bool);
+      cinn_cuda_##func__##_fp16, target, float16, bool);
 
   REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL(isnan)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL(isinf)
@@ -80,7 +80,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 #undef REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL
 
 #define REGISTER_CINN_NVGPU_GT_NUM(TYPE_SUFFIX, TYPE)                         \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_nvgpu_gt_num_##TYPE_SUFFIX, target) \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_cuda_gt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                      \
       .AddInputType<cinn_buffer_t *>()                                        \
       .AddInputType<int>()                                                    \
@@ -94,7 +94,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 #undef REGISTER_CINN_NVGPU_GT_NUM
 
 #define REGISTER_CINN_NVGPU_LT_NUM(TYPE_SUFFIX, TYPE)                         \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_nvgpu_lt_num_##TYPE_SUFFIX, target) \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_cuda_lt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                      \
       .AddInputType<cinn_buffer_t *>()                                        \
       .AddInputType<int>()                                                    \
@@ -108,7 +108,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 #undef REGISTER_CINN_NVGPU_LT_NUM
 
 #define REGISTER_CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                 \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_nvgpu_index_add_##TYPE_SUFFIX, \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_cuda_index_add_##TYPE_SUFFIX, \
                                      target)                             \
       .SetRetType<TYPE>()                                                \
       .AddInputType<TYPE>()                                              \

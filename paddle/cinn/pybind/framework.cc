@@ -28,8 +28,6 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/cinn/runtime/backend_api.h"
-using cinn::runtime::BackendAPI;
 
 namespace cinn::pybind {
 
@@ -121,26 +119,17 @@ void BindFramework(pybind11::module *m) {
                                              t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
-             if (target.language == Target::Language::sycl) {
+             if (target.arch == Target::Arch::X86) {
+               std::memcpy(mutable_data,
+                           t->data<void>(),
+                           t->shape().numel() * t->type().bytes());
+             } else if (target.arch_is_gpu()) {
+               using cinn::runtime::BackendAPI;
                BackendAPI::get_backend(target)->memcpy(
                    mutable_data,
                    reinterpret_cast<void *>(t->mutable_data(target, t->type())),
                    t->shape().numel() * t->type().bytes(),
                    BackendAPI::MemcpyType::DeviceToHost);
-             } else if (target.arch == Target::Arch::X86) {
-               std::memcpy(mutable_data,
-                           t->data<void>(),
-                           t->shape().numel() * t->type().bytes());
-             } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-               CUDA_CALL(cudaMemcpy(
-                   mutable_data,
-                   reinterpret_cast<void *>(t->mutable_data(target, t->type())),
-                   t->shape().numel() * t->type().bytes(),
-                   cudaMemcpyDeviceToHost));
-#else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
              } else {
                CINN_NOT_IMPLEMENTED
              }
@@ -169,25 +158,17 @@ void BindFramework(pybind11::module *m) {
                                             self->shape().data().end());
             py::array array(std::move(dt), std::move(shape));
             void *array_data = array.mutable_data();
-            if (target.language == Target::Language::sycl) {
+            if (target.arch == Target::Arch::X86) {
+              std::memcpy(array_data,
+                          self->data<void>(),
+                          self->shape().numel() * self->type().bytes());
+            } else if (target.arch_is_gpu()) {
+              using cinn::runtime::BackendAPI;
               BackendAPI::get_backend(target)->memcpy(
                   array_data,
                   self->data<void>(),
                   self->shape().numel() * self->type().bytes(),
                   BackendAPI::MemcpyType::DeviceToHost);
-            } else if (target.arch == Target::Arch::X86) {
-              std::memcpy(array_data,
-                          self->data<void>(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(array_data,
-                                   self->data<void>(),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyDeviceToHost));
-#else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
             } else {
               CINN_NOT_IMPLEMENTED
             }
@@ -209,25 +190,17 @@ void BindFramework(pybind11::module *m) {
                                 [](int32_t a, int32_t b) { return a * b; }),
                 self->shape().numel());
             auto *data = self->mutable_data(target, self->type());
-            if (target.language == Target::Language::sycl) {
+            if (target.arch == Target::Arch::X86) {
+              std::memcpy(data,
+                          array.data(),
+                          self->shape().numel() * self->type().bytes());
+            } else if (target.arch_is_gpu()) {
+              using cinn::runtime::BackendAPI;
               BackendAPI::get_backend(target)->memcpy(
                   reinterpret_cast<void *>(data),
                   reinterpret_cast<const void *>(array.data()),
                   self->shape().numel() * self->type().bytes(),
                   BackendAPI::MemcpyType::HostToDevice);
-            } else if (target.arch == Target::Arch::X86) {
-              std::memcpy(data,
-                          array.data(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                   reinterpret_cast<const void *>(array.data()),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyHostToDevice));
-#else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
             } else {
               CINN_NOT_IMPLEMENTED
             }

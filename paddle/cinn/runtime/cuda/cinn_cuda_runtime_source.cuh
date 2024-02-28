@@ -9,7 +9,7 @@ extern "C" {
 
 // *************************************************************** //
 // bool unary and binary operator
-#define FN_BOOL(func) cinn_nvgpu_##func##_bool
+#define FN_BOOL(func) cinn_cuda_##func##_bool
 __device__ inline bool FN_BOOL(bitwise_and)(bool a, bool b) { return a & b; }
 __device__ inline bool FN_BOOL(bitwise_or)(bool a, bool b) { return a | b; }
 __device__ inline bool FN_BOOL(bitwise_xor)(bool a, bool b) { return a ^ b; }
@@ -17,7 +17,7 @@ __device__ inline bool FN_BOOL(bitwise_not)(bool a) { return !a; }
 
 // *************************************************************** //
 // uint8 unary and binary operator
-#define FN_UINT8(func) cinn_nvgpu_##func##_uint8
+#define FN_UINT8(func) cinn_cuda_##func##_uint8
 __device__ inline uint8_t FN_UINT8(bitwise_and)(uint8_t a, uint8_t b) { return a & b; }
 __device__ inline uint8_t FN_UINT8(bitwise_or)(uint8_t a, uint8_t b) { return a | b; }
 __device__ inline uint8_t FN_UINT8(bitwise_xor)(uint8_t a, uint8_t b) { return a ^ b; }
@@ -26,7 +26,7 @@ __device__ inline uint8_t FN_UINT8(logical_right_shift)(uint8_t a, uint8_t b) { 
 
 // *************************************************************** //
 // int8 unary and binary operator
-#define FN_INT8(func) cinn_nvgpu_##func##_int8
+#define FN_INT8(func) cinn_cuda_##func##_int8
 __device__ inline int8_t FN_INT8(bitwise_and)(int8_t a, int8_t b) { return a & b; }
 __device__ inline int8_t FN_INT8(bitwise_or)(int8_t a, int8_t b) { return a | b; }
 __device__ inline int8_t FN_INT8(bitwise_xor)(int8_t a, int8_t b) { return a ^ b; }
@@ -35,7 +35,7 @@ __device__ inline int8_t FN_INT8(logical_right_shift)(int8_t a, int8_t b) { retu
 
 // *************************************************************** //
 // int16 unary and binary operator
-#define FN_INT16(func) cinn_nvgpu_##func##_int16
+#define FN_INT16(func) cinn_cuda_##func##_int16
 __device__ inline int16_t FN_INT16(bitwise_and)(int16_t a, int16_t b) { return a & b; }
 __device__ inline int16_t FN_INT16(bitwise_or)(int16_t a, int16_t b) { return a | b; }
 __device__ inline int16_t FN_INT16(bitwise_xor)(int16_t a, int16_t b) { return a ^ b; }
@@ -44,7 +44,7 @@ __device__ inline int16_t FN_INT16(logical_right_shift)(int16_t a, int16_t b) { 
 
 // *************************************************************** //
 // float32 unary and binary operator
-#define FN_FP32(func) cinn_nvgpu_##func##_fp32
+#define FN_FP32(func) cinn_cuda_##func##_fp32
 // NOTE Due to function override, we don't need to use type (such as '_fp32') as the suffix of function's name.
 __device__ inline float FN_FP32(sin)(float x) { return sin(x); }
 __device__ inline float FN_FP32(cos)(float x) { return cos(x); }
@@ -89,7 +89,7 @@ __device__ inline float FN_FP32(mod)(float a, float b) {
 
 // *************************************************************** //
 // float64 unary and binary operator
-#define FN_FP64(func) cinn_nvgpu_##func##_fp64
+#define FN_FP64(func) cinn_cuda_##func##_fp64
 
 __device__ inline double FN_FP64(sin)(double x) { return sin(x); }
 __device__ inline double FN_FP64(cos)(double x) { return cos(x); }
@@ -133,7 +133,7 @@ __device__ inline double FN_FP64(mod)(double a, double b) {
 
 // *************************************************************** //
 // int32 unary and binary operator
-#define FN_INT32(func) cinn_nvgpu_##func##_int32
+#define FN_INT32(func) cinn_cuda_##func##_int32
 
 __device__ inline int FN_INT32(pow)(int a, int b) {
   if (a == 0 && b < 0) {
@@ -166,7 +166,7 @@ __device__ inline int FN_INT32(mod)(int a, int b) {
 // *************************************************************** //
 
 // int64 unary and binary operator
-#define FN_INT64(func) cinn_nvgpu_##func##_int64
+#define FN_INT64(func) cinn_cuda_##func##_int64
 
 __device__ inline long long int FN_INT64(bitwise_and)(long long int a, long long int b) { return a & b; }
 __device__ inline long long int FN_INT64(bitwise_or)(long long int a, long long int b) { return a | b; }
@@ -191,7 +191,7 @@ __device__ inline long long int FN_INT64(pow)(long long int a, long long int b) 
 // bfloat16 unary and binary operator
 #ifdef CINN_CUDA_BF16
 
-#define FN_BF16(func) cinn_nvgpu_##func##_bf16
+#define FN_BF16(func) cinn_cuda_##func##_bf16
 
 __device__ inline bfloat16 FN_BF16(ceil)(bfloat16 x) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
@@ -317,7 +317,7 @@ __device__ inline bfloat16 FN_BF16(pow)(bfloat16 a, bfloat16 b) {
 // float16 unary and binary operator
 #ifdef CINN_CUDA_FP16
 
-#define FN_FP16(func) cinn_nvgpu_##func##_fp16
+#define FN_FP16(func) cinn_cuda_##func##_fp16
 
 __device__ inline float16 FN_FP16(ceil)(float16 x) { return float16(hceil(x.to_half())); }
 __device__ inline float16 FN_FP16(floor)(float16 x) { return float16(hfloor(x.to_half())); }
@@ -683,7 +683,7 @@ __device__ inline int cinn_cuda_find_float_nd(const float *buf, int size, float 
 
 #undef __cinn_cuda_find_kernel
 
-__device__ inline int cinn_nvgpu_next_smallest_int32(int *buf, int size, int num, int begin, int stride) {
+__device__ inline int cinn_cuda_next_smallest_int32(int *buf, int size, int num, int begin, int stride) {
   int id = -1;
   for (int i = begin; i < begin + size * stride; i += stride) {
     if (id == -1 || buf[i] < buf[id]) {
@@ -716,7 +716,7 @@ __device__ inline int cinn_cuda_find_float_from(const float *buf, int size, floa
 #undef __cinn_cuda_find_from_kernel
 
 #define CINN_NVGPU_LT_NUM(TYPE_SUFFIX, TYPE)                                                  \
-  __device__ inline int cinn_nvgpu_lt_num_##TYPE_SUFFIX(                                      \
+  __device__ inline int cinn_cuda_lt_num_##TYPE_SUFFIX(                                      \
       const TYPE *buf, const int size, const TYPE num, const int offset, const int stride) { \
     int out = 0;                                                                             \
     for (int i = (size - 1) * stride + offset; i >= offset; i -= stride) {                   \
@@ -738,7 +738,7 @@ CINN_NVGPU_LT_NUM(fp16, float16)
 #undef CINN_NVGPU_LT_NUM
 
 #define CINN_NVGPU_GT_NUM(TYPE_SUFFIX, TYPE)                                                 \
-  __device__ inline int cinn_nvgpu_gt_num_##TYPE_SUFFIX(                                     \
+  __device__ inline int cinn_cuda_gt_num_##TYPE_SUFFIX(                                     \
       const TYPE *buf, const int size, const TYPE num, const int offset, const int stride) { \
     int out = 0;                                                                             \
     for (int i = (size - 1) * stride + offset; i >= offset; i -= stride) {                   \
@@ -760,7 +760,7 @@ CINN_NVGPU_GT_NUM(fp16, float16)
 #undef CINN_NVGPU_GT_NUM
 
 #define CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                               \
-  __device__ inline TYPE cinn_nvgpu_index_add_##TYPE_SUFFIX(const TYPE x,     \
+  __device__ inline TYPE cinn_cuda_index_add_##TYPE_SUFFIX(const TYPE x,     \
                                             const int axis_indice,            \
                                             const TYPE *__restrict__ y,       \
                                             const int offset,                 \
@@ -840,10 +840,10 @@ __device__ int cinn_cuda_resize_bicubic(const int *buf,
   float scale_x = static_cast<float>(in_w) / out_w;
   float in_y    = (y + 0.5F) * scale_y - 0.5F;
   float in_x    = (x + 0.5F) * scale_x - 0.5F;
-  int in_y_int  = static_cast<int>(cinn_nvgpu_floor_fp32(in_y));
-  int in_x_int  = static_cast<int>(cinn_nvgpu_floor_fp32(in_x));
-  float y_fract = in_y - cinn_nvgpu_floor_fp32(in_y);
-  float x_fract = in_x - cinn_nvgpu_floor_fp32(in_x);
+  int in_y_int  = static_cast<int>(cinn_cuda_floor_fp32(in_y));
+  int in_x_int  = static_cast<int>(cinn_cuda_floor_fp32(in_x));
+  float y_fract = in_y - cinn_cuda_floor_fp32(in_y);
+  float x_fract = in_x - cinn_cuda_floor_fp32(in_x);
   float p[4][4];
 
   for (int i = 0; i < 4; ++i) {

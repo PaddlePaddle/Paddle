@@ -512,7 +512,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     group->output_names.push_back("fake_symbol2");
   }
 
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   optim::OptimizeExprGPU(&(func_body));
 #endif
 
@@ -624,7 +624,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != common::DefaultNVGPUTarget()) {
+        !this->target_.arch_is_gpu()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }

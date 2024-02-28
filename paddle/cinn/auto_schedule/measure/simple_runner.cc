@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/framework/buffer.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
+//#include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -94,19 +95,22 @@ static void InitTensorData(Tensor tensor,
                            bool init_with_zero) {
   int mem_size = tensor->shape().numel() * tensor->type().bytes();
   auto* tensor_data = tensor->mutable_data(target, tensor->type());
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
     if (init_with_zero) {
-      cudaMemset(tensor_data, 0, mem_size);
+      BackendAPI::get_backend(target)->memset(tensor_data, 0, mem_size);
     } else {
       void* tmp_buffer = malloc(mem_size);
       PopulateRandomValue(tensor->type(), tensor->shape().numel(), tmp_buffer);
-      cudaMemcpy(tensor_data, tmp_buffer, mem_size, cudaMemcpyHostToDevice);
+      BackendAPI::get_backend(target)->memcpy(
+          tensor_data,
+          tmp_buffer,
+          mem_size,
+          BackendAPI::MemcpyType::HostToDevice);
       free(tmp_buffer);
     }
   }
-#endif
-  if (target == common::DefaultHostTarget()) {
+  else if (target == common::DefaultHostTarget()) {
     if (init_with_zero) {
       memset(tensor_data, 0, mem_size);
     } else {
@@ -227,11 +231,10 @@ MeasureResult SimpleRunner::Run(const MeasureInput& input,
     for (int i = 0; i < repeat_times_; ++i) {
       instr->Run(&execution_args);
     }
-#ifdef CINN_WITH_CUDA
-    if (instr->target_ == common::DefaultNVGPUTarget()) {
-      CUDA_CALL(cudaDeviceSynchronize());
+    if (instr->target_.arch_is_gpu()) {
+      using cinn::runtime::BackendAPI;
+      BackendAPI::get_backend(instr->target_)->device_sync();
     }
-#endif
     auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - run_start);
     auto cost_avg = static_cast<double>(time_span.count()) / repeat_times_;

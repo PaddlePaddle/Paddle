@@ -243,7 +243,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
   }
 
   auto ir_module = builder.Build();
-  if (context->target == common::DefaultNVGPUTarget() && context->target.language == Target::Language::cuda) {
+  if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitDeviceAndHostModule(ir_module, context->target);
     auto hmodule = std::get<0>(splited_module);

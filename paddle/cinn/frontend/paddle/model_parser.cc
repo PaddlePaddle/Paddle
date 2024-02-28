@@ -23,6 +23,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/paddle/compatible_pb.h"
+#include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn::frontend::paddle {
 
@@ -94,8 +95,8 @@ void TensorFromStream(std::istream &is,
     }
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
-  } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
+  } else if (target.arch_is_gpu()){
+    using cinn::runtime::BackendAPI;
     if (desc.data_type() != Type::VarType_Type_FP32)
       LOG(FATAL) << "[CUDA] The type is not fp32!!";
     auto *data = tensor->mutable_data<float>(target);
@@ -103,13 +104,11 @@ void TensorFromStream(std::istream &is,
     std::vector<float> temp(tensor->shape().numel());
     // LOG(INFO) <<"[CUDA] The tensor's size is "<< tensor->shape().numel();
     is.read(reinterpret_cast<char *>(temp.data()), size);
-    CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                         temp.data(),
-                         tensor->shape().numel() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-#else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
+    BackendAPI::get_backend(target)->memcpy(
+        reinterpret_cast<void *>(data),
+        temp.data(),
+        tensor->shape().numel() * sizeof(float),
+        BackendAPI::MemcpyType::HostToDevice);
   } else {
     CINN_NOT_IMPLEMENTED
   }

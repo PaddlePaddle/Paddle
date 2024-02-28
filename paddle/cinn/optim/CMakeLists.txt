@@ -26,7 +26,7 @@ gather_srcs(
   remove_schedule_block.cc
   replace_cross_thread_reduction.cc)
 
-if(WITH_CUDA)
+if(WITH_CUDA OR CINN_WITH_SYCL OR CINN_WITH_ROCM)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()
 

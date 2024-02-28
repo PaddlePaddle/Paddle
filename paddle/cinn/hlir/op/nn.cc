@@ -901,7 +901,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         ir::ModuleExpr mod_expr(vec_ast);
         ir::IRSchedule ir_sch(mod_expr);
         ir_sch.MergeExprs();
-        if (target.arch == Target::Arch::NVGPU) {
+        if (target.arch_is_gpu()) {
           pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
         } else {
           CINN_NOT_IMPLEMENTED
@@ -1211,7 +1211,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
       CHECK(!vec_tensor.empty());
       Expr Out = vec_tensor[0];
       CHECK(Out.as_tensor());
@@ -1432,7 +1432,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
       pe::IRGlobalPoolScheduleGPU(ir_sch, target);
     } else {
       CINN_NOT_IMPLEMENTED
@@ -1511,7 +1511,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
       pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
     }
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -1522,11 +1522,13 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
 
   bool use_warp_reduce = false;
   if (global_pooling && data_format == "NCHW" &&
-      target.arch == Target::Arch::NVGPU) {
+      target.arch_is_gpu()) {
     // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or other
     // number
     //      we choose 32 to make sure all the threads in a warp has work to do,
-    if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >= 32) {
+    // warp size in other backend may be not 32
+    int warp_size = target.get_warp_size();
+    if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >= warp_size) {
       use_warp_reduce = true;
     }
   }
@@ -1741,7 +1743,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
       CHECK(!vec_tensor.empty());
       Expr Out = vec_tensor[0];
       CHECK(Out.as_tensor());
@@ -1942,7 +1944,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch_is_gpu()) {
       if (output_shapes[0].size() > 1) {
         auto all_blocks = ir_sch.GetAllBlocks();
         CHECK_EQ(all_blocks.size(), 3);

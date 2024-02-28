@@ -43,7 +43,7 @@ PD_DECLARE_bool(cinn_use_cutlass);
 namespace cinn {
 namespace frontend {
 
-OptimizeOptions DefaultTrainingOptimizeOptions() {
+OptimizeOptions DefaultTrainingOptimizeOptions(common::Target target) {
   OptimizeOptions options;
   options.program_passes.emplace_back("ExpandZeroDim");
   options.program_passes.emplace_back("AutoCast");
@@ -107,10 +107,9 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   } else {
     options.graph_passes.emplace_back("BuildNonFusedGroupsPass");
   }
-
-#ifdef CINN_WITH_CUDA
-  options.graph_passes.emplace_back("SingleGroupOptimizePass");
-#endif
+  if(target.arch_is_gpu()){
+    options.graph_passes.emplace_back("SingleGroupOptimizePass");
+  }
 
   // WARNING: the pass must be the last pass !!!
   if (!cinn::runtime::CheckStringFlagFalse(
@@ -135,7 +134,10 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,
     const std::unordered_set<std::string>& fetch_ids,
     common::Target target,
-    const OptimizeOptions& options) {
+    std::optional<OptimizeOptions> options_wrapper) {
+  
+  OptimizeOptions options = options_wrapper.value_or(DefaultTrainingOptimizeOptions(target));
+
   cinn::hlir::framework::PassPrinter::GetInstance()->Begin(fetch_ids);
   // Apply program passes
   VLOG(3) << "Before frontend::ProgramPass::Apply";
@@ -182,7 +184,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
     }
   } else {
     // if pass empty, default enable all pass
-    options = DefaultTrainingOptimizeOptions();
+    options = DefaultTrainingOptimizeOptions(target);
   }
 
   return Optimize(program, fetch_ids, target, options);

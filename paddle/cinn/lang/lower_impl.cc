@@ -609,7 +609,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
     std::unordered_set<std::string> buffer_name_set;
     // TODO(Superjomn) write buffer latter.
 
-    if (target_ == common::DefaultNVGPUTarget()) {
+    if (target_.arch_is_gpu()) {
       for (auto& t : new_temp_tensors) {
         if (!tensor_map.count(t->name)) continue;
         auto& tt = tensor_map.at(t->name);
@@ -630,7 +630,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
     }
 
     ir::LoweredFunc func;
-    if (target_ == common::DefaultNVGPUTarget()) {
+    if (target_ .arch_is_gpu()) {
       auto func_args2 =
           GenFuncArgForSplitKernel(func_iterator, new_temp_tensors);
       std::string new_fn_name = fn_name_;
@@ -795,7 +795,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
 
     if (group_expr.defined()) {
       cuda_axis_info_.emplace_back(std::move(temp_cuda_axis_info));
-      if (target_ == common::DefaultNVGPUTarget() && !all_temp_tensor) {
+      if (target_.arch_is_gpu() && !all_temp_tensor) {
         exprs.push_back(group_expr);
         Expr body = ir::Block::Make(exprs);
         result.push_back(body);

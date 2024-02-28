@@ -169,20 +169,18 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   }
 
   ir::Expr updated_body = ir_sch.GetModule().GetExprs()[0];
-#ifdef CINN_WITH_CUDA
-  optim::OptimizeExprGPU(&updated_body);
-#endif
+  if(target.arch_is_gpu()){
+    optim::OptimizeExprGPU(&updated_body);
+  }
 
   // Get new temp bufs by analyzing.
   std::vector<ir::Buffer> new_temp_bufs =
       lang::GetTempBuffers(old_func->args, updated_body);
   ir::LoweredFunc new_func = ir::_LoweredFunc_::Make(
       old_func->name, old_func->args, updated_body, new_temp_bufs);
-#ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target.arch_is_gpu()) {
     new_func->PrepareCudaAxisInfoFromBody();
   }
-#endif
   new_func =
       optim::Optimize(Expr(new_func), target, false).as_lowered_func_ref();
   new_func->PrepareBufferCastExprs(/*with_expr_gen_tensor = */ false);

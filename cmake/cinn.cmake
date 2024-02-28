@@ -78,6 +78,10 @@ if (CINN_WITH_ROCM)
     add_definitions(-DCINN_WITH_ROCM)
 endif()
 
+if (WITH_GPU OR CINN_WITH_SYCL OR CINN_WITH_ROCM)
+  add_definitions(-DCINN_WITH_GPU)
+endif()
+
 if(WITH_GPU)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)

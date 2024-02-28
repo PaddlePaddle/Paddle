@@ -46,6 +46,10 @@ ScheduleParam::ScheduleParam(common::Target::Arch arch) {
       param_data = CreateCudaParams();
       break;
     }
+    case common::Target::Arch::AMDGPU: {
+      param_data = CreateCudaParams();
+      break;
+    }
     default: {
       LOG(FATAL)
           << "Schedule params must be initialized with target x86 or nvgpu.";
@@ -2808,7 +2812,7 @@ void CudaSplitSchedule(common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  if (target.arch == Target::Arch::NVGPU) {
+  if (target.arch_is_gpu()) {
     if (fused_shape > target.max_num_threads()) {
       stages[last_output]->Split(0, target.max_num_threads());
       stages[last_output]->Bind(0, "blockIdx.x");
