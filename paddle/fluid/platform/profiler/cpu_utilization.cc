@@ -62,7 +62,7 @@ void CpuUtilization::RecordBeginTimeInfo() {
         fscanf(stat_file,
                "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-               temp_str,
+               temp_str.data(),
                &system_tms_start_.tms_utime,
                &nice_time_start_,
                &system_tms_start_.tms_stime,
@@ -107,7 +107,7 @@ void CpuUtilization::RecordEndTimeInfo() {
         fscanf(stat_file,
                "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-               temp_str,
+               temp_str.data(),
                &system_tms_end_.tms_utime,
                &nice_time_end_,
                &system_tms_end_.tms_stime,
