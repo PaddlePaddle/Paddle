@@ -52,29 +52,31 @@ class DynamicExpandOpPattern
       for (size_t i = 0; i < x_rank; ++i) {
         broadcast_axes[i] = i + index_gap;
       }
-      std::vector<int64_t> out_shape(out_rank, -1);
 
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-        VLOG(3) << "found shape dialect";
-        auto shape_info =
-            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+      std::vector<int64_t> out_shape(out_rank, -1);
+      const auto& UpdateOutputShapeByDimExpr = [&]() {
+        if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+          VLOG(3) << "found shape dialect";
+          auto shape_info =
+              shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
 
-        for (size_t i = 0; i < shape_info.size(); ++i) {
-          if (shape_info[i].isa<int64_t>()) {
-            out_shape[i] = shape_info[i].Get<int64_t>();
+          for (size_t i = 0; i < shape_info.size(); ++i) {
+            if (shape_info[i].isa<int64_t>()) {
+              out_shape[i] = shape_info[i].Get<int64_t>();
+            }
           }
         }
-      }
+      };
+
+      UpdateOutputShapeByDimExpr();
 
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);
     }();
 
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     CHECK(shape_analysis.HasShapeOrDataForValue(op.result(0)))
         << "Can't find DimExpr for output of reshape in shape_analysis.";
     shape_analysis.SetShapeOrDataForValue(
