@@ -2480,7 +2480,7 @@ class Executor:
 
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
-            and program._fleet_opt.get("use_ps_gpu", True)
+            and program._fleet_opt.get("use_ps_gpu", False)
         )
 
         if reused_trainer is False:
