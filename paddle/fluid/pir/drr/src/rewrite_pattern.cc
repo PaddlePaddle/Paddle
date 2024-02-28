@@ -298,8 +298,20 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
     // binding input_tensor of current_op
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
-                                            ir_node->operand(i).source());
+      if (source_pattern_match_ctx->tensor_map().count(
+              drr_input_tensors[i]->name()) != 0 &&
+          ir_node->operand(i).source() !=
+              source_pattern_match_ctx->tensor_map().at(
+                  drr_input_tensors[i]->name())) {
+        matched = false;
+        VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
+                << "] already exists,but value is different!";
+        break;
+      } else {
+        source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
+                                              ir_node->operand(i).source());
+      }
+
       if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
         VLOG(8) << "Match Attention! Found BlockArgument as input of "
                 << drr_node->name();
