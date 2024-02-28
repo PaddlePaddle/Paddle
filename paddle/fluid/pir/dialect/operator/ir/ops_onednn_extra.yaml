@@ -86,13 +86,11 @@
 - op : fc
   extra_args : bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE=true, bool use_quantizer=false, str mkldnn_data_type="float32", float scale_in=1.0, float[] scale_weights={1.0f}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : flatten
+- op : flatten
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : flatten_grad
-
-# - op : flatten2
-
-# - op : flatten2_grad
+- op : flatten_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : full
 
@@ -104,13 +102,13 @@
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
   data_format_tensors : input
 
-# - op : fused_elementwise_add
+- op : fused_elementwise_add
 
-# - op : fused_elementwise_div
+- op : fused_elementwise_div
 
-# - op : fused_elementwise_mul
+- op : fused_elementwise_mul
 
-# - op : fused_elementwise_sub
+- op : fused_elementwise_sub
 
 # - op : fused_matmul
 
@@ -190,16 +188,22 @@
 
 - op : nearest_interp
 
-# - op : pad
+- op : pad
 
 - op : pad3d
   extra_args :
   data_format_tensors : x
   dynamic_fallback : True
 
-# - op : pool2d
+- op : pool2d
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
+  dynamic_fallback : True
 
-# - op : pool2d_grad
+- op : pool2d_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x, out, out_grad
+  dynamic_fallback : True
 
 - op : prelu
   extra_args : bool is_test=false, str mkldnn_data_type="float32"
@@ -220,13 +224,11 @@
 - op : relu6_grad
   extra_args : float threshold=6.0
 
-# - op : reshape
+- op : reshape
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
-# - op : reshape_grad
-
-# - op : reshape_infer
-
-# - op : reshape2_grad
+- op : reshape_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
 - op : round
 
@@ -267,11 +269,11 @@
 
 - op : sqrt_grad
 
-# - op : squeeze
+- op : squeeze
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : squeeze_grad
-
-# - op : squeeze_infer
+- op : squeeze_grad
+  extra_args : str mkldnn_data_type="float32"
 
 # - op : stack
 

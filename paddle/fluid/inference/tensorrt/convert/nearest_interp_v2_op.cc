@@ -124,7 +124,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       layer->setScales(scales.data(), scales.size());
     }
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "nearest_interp_v2", {output_name}, test_mode);
   }
 };
