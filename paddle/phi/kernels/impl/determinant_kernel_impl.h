@@ -51,6 +51,20 @@ class EigenMatrix<double> {
   using MatrixType = Eigen::MatrixXd;
 };
 
+template <>
+class EigenMatrix<phi::dtype::complex<float>> {
+ public:
+  using MatrixType =
+      Eigen::Matrix<phi::dtype::complex<float>, Eigen::Dynamic, Eigen::Dynamic>;
+};
+
+template <>
+class EigenMatrix<phi::dtype::complex<double>> {
+ public:
+  using MatrixType = Eigen::
+      Matrix<phi::dtype::complex<double>, Eigen::Dynamic, Eigen::Dynamic>;
+};
+
 inline int64_t GetBatchCount(const DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();

@@ -657,6 +657,63 @@ struct CUBlas<phi::dtype::complex<float>> {
 #endif
   }
 
+  static void GETRF_BATCH(cublasHandle_t handle,
+                          int n,
+                          phi::dtype::complex<float> **A,
+                          int lda,
+                          int *ipiv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasCgetrfBatched(handle,
+                                          n,
+                                          reinterpret_cast<cuComplex **>(A),
+                                          lda,
+                                          ipiv,
+                                          info,
+                                          batch_size));
+  }
+
+  static void GETRI_BATCH(cublasHandle_t handle,
+                          int n,
+                          const phi::dtype::complex<float> **A,
+                          int lda,
+                          const int *ipiv,
+                          phi::dtype::complex<float> **A_inv,
+                          int lda_inv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCgetriBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuComplex **>(A),
+        lda,
+        ipiv,
+        reinterpret_cast<cuComplex **>(A_inv),
+        lda_inv,
+        info,
+        batch_size));
+  }
+
+  static void MATINV_BATCH(cublasHandle_t handle,
+                           int n,
+                           const phi::dtype::complex<float> **A,
+                           int lda,
+                           phi::dtype::complex<float> **A_inv,
+                           int lda_inv,
+                           int *info,
+                           int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCmatinvBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuComplex **>(A),
+        lda,
+        reinterpret_cast<cuComplex **>(A_inv),
+        lda_inv,
+        info,
+        batch_size));
+  }
+
   static void TRSM_BATCH(cublasHandle_t handle,
                          cublasSideMode_t side,
                          cublasFillMode_t uplo,
@@ -834,6 +891,63 @@ struct CUBlas<phi::dtype::complex<double>> {
         lda,
         reinterpret_cast<cuDoubleComplex *>(B),
         ldb));
+  }
+
+  static void GETRF_BATCH(cublasHandle_t handle,
+                          int n,
+                          phi::dtype::complex<double> **A,
+                          int lda,
+                          int *ipiv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgetrfBatched(
+        handle,
+        n,
+        reinterpret_cast<cuDoubleComplex **>(A),
+        lda,
+        ipiv,
+        info,
+        batch_size));
+  }
+
+  static void GETRI_BATCH(cublasHandle_t handle,
+                          int n,
+                          const phi::dtype::complex<double> **A,
+                          int lda,
+                          const int *ipiv,
+                          phi::dtype::complex<double> **A_inv,
+                          int lda_inv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgetriBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex **>(A),
+        lda,
+        ipiv,
+        reinterpret_cast<cuDoubleComplex **>(A_inv),
+        lda_inv,
+        info,
+        batch_size));
+  }
+
+  static void MATINV_BATCH(cublasHandle_t handle,
+                           int n,
+                           const phi::dtype::complex<double> **A,
+                           int lda,
+                           phi::dtype::complex<double> **A_inv,
+                           int lda_inv,
+                           int *info,
+                           int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZmatinvBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex **>(A),
+        lda,
+        reinterpret_cast<cuDoubleComplex **>(A_inv),
+        lda_inv,
+        info,
+        batch_size));
   }
 
   static void TRSM_BATCH(cublasHandle_t handle,
