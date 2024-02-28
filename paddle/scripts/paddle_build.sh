@@ -4223,6 +4223,9 @@ function main() {
         ;;
       test)
         parallel_test
+        if [ "${WITH_CINN}" == "ON" ] ; then
+            check_coverage
+        fi
         ;;
       single_test)
         single_test $2
