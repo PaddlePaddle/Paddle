@@ -25,6 +25,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
@@ -47,6 +48,7 @@
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(check_infer_symbolic);
+PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
 
@@ -105,9 +107,14 @@ void ApplyCinnPreprocessPass(
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+  if (FLAGS_group_schedule_tiling_first) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  } else {
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  }
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   pass_manager->Run(program);
