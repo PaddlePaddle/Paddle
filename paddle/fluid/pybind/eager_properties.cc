@@ -849,23 +849,22 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
   if (!self->tensor.defined()) {
     // be same to old dygraph
-    return ToPyObject(framework::proto::VarType::FP32);
+    return ToPyObject(phi::DataType::FLOAT32);
   }
   if (egr::IsVariableCompatTensor(self->tensor)) {
     auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
         self->tensor.impl().get());
     if (var_tensor->IsType<paddle::framework::Vocab>()) {
-      return ToPyObject(framework::proto::VarType::RAW);
+      return ToPyObject(phi::DataType::UNDEFINED);
     } else if (var_tensor->IsType<paddle::framework::Strings>()) {
-      return ToPyObject(framework::proto::VarType::STRING);
+      return ToPyObject(phi::DataType::PSTRING);
     } else {
       PADDLE_THROW(paddle::platform::errors::Unavailable(
           "VariableCompatTensor only support get shape from Vocab or "
           "Strings."));
     }
   } else {
-    return ToPyObject(
-        paddle::framework::TransToProtoVarType(self->tensor.type()));
+    return ToPyObject(self->tensor.type());
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
