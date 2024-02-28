@@ -164,6 +164,7 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
           after_op->Op()->Flush();
           IR_NODE_LINK_TO(useless_op_in, after_op);
         }
+
         GraphSafeRemoveNodes(graph, {useless_op, useless_op_out});
         found_count++;
       };
