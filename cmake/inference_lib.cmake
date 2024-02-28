@@ -57,11 +57,13 @@ function(copy TARGET)
         COMMENT "copying ${src} -> ${dst}")
     else()
       file(GLOB MATCHED_FILES ${src})
-      add_custom_command(
-        TARGET ${TARGET}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${MATCHED_FILES} ${dst}
-        COMMENT "copying ${src} -> ${dst}")
+      foreach(MATCHED_FILE ${MATCHED_FILES})
+        add_custom_command(
+          TARGET ${TARGET}
+          POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy ${MATCHED_FILE} ${dst}
+          COMMENT "copying ${MATCHED_FILE} -> ${dst}")
+      endforeach()
     endif()
   endforeach()
 endfunction()
@@ -216,7 +218,7 @@ if(WITH_GPU)
   copy(
     inference_lib_dist
     SRCS ${externalError_INCLUDE_DIR}
-    DSTS ${dst_dir}/include)
+    DSTS ${dst_dir})
 endif()
 
 if(WITH_XPU)
