@@ -465,10 +465,10 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       framework::TensorCopy(
           *softmax, context.GetPlace(), context.device_context(), logit_grad);
     }
-    const auto sofrmax_dims = softmax->dims();
-    const int axis = sofrmax_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, sofrmax_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, sofrmax_dims);
+    const auto softmax_dims = softmax->dims();
+    const int axis = softmax_dims.size() - 1;
+    const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
     const auto& label_type = labels->dtype();
 
     if (label_type == phi::DataType::INT32 ||
@@ -514,7 +514,7 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       logit_grad
           ->ShareDataWith(*reinterpret_cast<phi::DenseTensor*>(
               logits_grad_out_tensor2.impl().get()))
-          .Resize(sofrmax_dims);
+          .Resize(softmax_dims);
     } else {
       PADDLE_THROW(phi::errors::Unavailable(
           "CustomDevice c_softmax_with_cross_entropy_grad "
@@ -853,7 +853,7 @@ class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
-    // counter orderingly.
+    // counter orderly.
     auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
     auto numbers = context.Input<phi::DenseTensor>(
