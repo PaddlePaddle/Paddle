@@ -56,17 +56,6 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
-# SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
-#     "elementwise_add": ['X', 'Y'],
-#     "elementwise_add_grad": ['X', 'Y'],
-#     "elementwise_sub": ['X', 'Y'],
-#     "elementwise_sub_grad": ['X', 'Y'],
-#     "elementwise_mul": ['X', 'Y'],
-#     "elementwise_mul_grad": ['X', 'Y'],
-#     "where": ['X', 'Y'],
-#     "where_grad": ['X', 'Y'],
-# }
-
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_add": ['X', 'Y'],
     "elementwise_add_grad": ['X', 'Y'],

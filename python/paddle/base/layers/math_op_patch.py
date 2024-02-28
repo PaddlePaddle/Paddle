@@ -28,6 +28,11 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
 ]
+_supported_complex_dtype_ = [
+    core.VarDesc.VarType.COMPLEX64,
+    core.VarDesc.VarType.COMPLEX128,
+]
+
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
@@ -38,6 +43,20 @@ SUPPORT_PROMOTION_OPS = [
     "__rsub__",
     "__mul__",
     "__rmul__",
+    "__mod__",
+    "__div__",
+    "__rdiv__",
+    "__truediv__",
+    "__rtruediv__",
+    "__floordiv__",
+    "__pow__",
+    "__rpow__",
+    "__eq__",
+    "__ne__",
+    "__lt__",
+    "__le__",
+    "__gt__",
+    "__ge__",
 ]
 
 EXPRESSION_MAP = {
@@ -500,6 +519,12 @@ def monkey_patch_variable():
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
+            elif isinstance(other_var, complex):
+                if self.dtype not in _supported_complex_dtype_:
+                    self = astype(self, 'complex64')
+                    other_var = create_new_tmp_var(
+                        current_block(self), dtype='complex64'
+                    )
             else:
                 # do nothing
                 pass
@@ -533,7 +558,21 @@ def monkey_patch_variable():
 
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
-                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
+                    # for 0-d tensor, the logic same with Tensor + Scalar
+                    if len(other_var.shape) == 0:
+                        if core.is_common_dtype_for_scalar(
+                            lhs_dtype, rhs_dtype
+                        ):
+                            other_var = astype(other_var, lhs_dtype)
+                        else:
+                            promote_type = core.get_promote_dtype(
+                                op_type, lhs_dtype, rhs_dtype
+                            )
+                            if lhs_dtype != promote_type:
+                                self = astype(self, promote_type)
+                            if rhs_dtype != promote_type:
+                                other_var = astype(other_var, promote_type)
+                    elif core.need_type_promotion(lhs_dtype, rhs_dtype):
                         # only report warning here, real promotion deal in Executor
                         warnings.warn(
                             f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"
@@ -541,13 +580,10 @@ def monkey_patch_variable():
                         warnings.filterwarnings(
                             "ignore", message="The input dtypes of OP"
                         )
-                    else:
-                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
-                        # logic for compatibility reasons
-                        other_var = astype(other_var, lhs_dtype)
-
                 else:
-                    other_var = astype(other_var, lhs_dtype)
+                    raise TypeError(
+                        f"got different data type in {op_type} between {lhs_dtype} and {rhs_dtype}."
+                    )
 
             if reverse:
                 tmp = self
@@ -555,11 +591,12 @@ def monkey_patch_variable():
                 other_var = tmp
 
             if (
-                op_type == "divide" or op_type == "elementwise_div"
-            ) and self.dtype in _supported_int_dtype_:
+                (op_type == "divide" or op_type == "elementwise_div")
+                and self.dtype in _supported_int_dtype_
+                and self.dtype == other_var.dtype
+            ):
                 self = astype(self, 'float32')
                 other_var = astype(other_var, 'float32')
-
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")

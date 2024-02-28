@@ -228,16 +228,48 @@ static PyObject* tensor__add__method(TensorObject* self,
       ret = CallScalarFuction(self_tensor, other, "add");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
+
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref = self->tensor;
     auto& other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "add", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -265,36 +297,6 @@ static PyObject* tensor__add__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to add_ad_func
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype,
-  // rhs_dtype)) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
 
   // 4. calculation
   VLOG(6) << "Calling add_ad_func in tensor__add__method";
@@ -347,6 +349,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
 
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -357,6 +365,31 @@ static PyObject* tensor__sub__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "subtract", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -384,34 +417,6 @@ static PyObject* tensor__sub__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to subtract_ad_func
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype,
-  // rhs_dtype)) {
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
 
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
@@ -462,6 +467,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       ret = CallScalarFuction(self_tensor, other, "rsub");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -472,6 +483,31 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "subtract", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -499,34 +535,6 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to subtract_ad_func
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype,
-  // rhs_dtype)) {
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
 
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
@@ -578,6 +586,12 @@ static PyObject* tensor__mul__method(TensorObject* self,
       ret = CallScalarFuction(self_tensor, other, "mul");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -590,6 +604,31 @@ static PyObject* tensor__mul__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "multiply", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -623,36 +662,6 @@ static PyObject* tensor__mul__method(TensorObject* self,
 
   // 3. promote types or unify right var type to left var, float type promotion
   // mv to multiply_ad_func
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype,
-  // rhs_dtype)) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
 
   // 4. calculation
   VLOG(6) << "Calling multiply_ad_func in tensor__mul__method";
@@ -705,6 +714,12 @@ static PyObject* tensor__div__method(TensorObject* self,
       ret = CallScalarFuction(self_tensor, other, "div");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -715,6 +730,35 @@ static PyObject* tensor__div__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
+    } else if (is_support_int(self_tensor_ref.dtype()) &&
+               self_tensor_ref.dtype() == other_tensor_ref.dtype()) {
+      eager_gil_scoped_release guard;
+      self_tensor_ref = cast_ad_func(self_tensor_ref, DataType::FLOAT32);
+      other_tensor_ref = cast_ad_func(other_tensor_ref, DataType::FLOAT32);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -744,46 +788,8 @@ static PyObject* tensor__div__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
-  // if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //     _supported_int_dtype_.end()) {
-  //   eager_gil_scoped_release guard;
-  //   self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  // }
-  // if (_supported_int_dtype_.find(other_tensor.dtype()) !=
-  //     _supported_int_dtype_.end()) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to divide_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__div__method";
@@ -834,6 +840,12 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -854,6 +866,36 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
+    }
+    if (is_support_int(self_tensor_ref.dtype()) &&
+        self_tensor_ref.dtype() == other_tensor_ref.dtype()) {
+      eager_gil_scoped_release guard;
+      self_tensor_ref = cast_ad_func(self_tensor_ref, DataType::FLOAT32);
+      other_tensor_ref = cast_ad_func(other_tensor_ref, DataType::FLOAT32);
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -883,46 +925,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
-  // if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //     _supported_int_dtype_.end()) {
-  //   eager_gil_scoped_release guard;
-  //   self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  // }
-  // if (_supported_int_dtype_.find(other_tensor.dtype()) !=
-  //     _supported_int_dtype_.end()) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to divide_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";
@@ -971,6 +975,12 @@ static PyObject* tensor__gt__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__gt__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -991,6 +1001,31 @@ static PyObject* tensor__gt__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "greater_than", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1020,17 +1055,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to greater_than_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling greater_than_ad_func in tensor__gt__method";
@@ -1080,6 +1106,12 @@ static PyObject* tensor__ge__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__ge__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1100,6 +1132,31 @@ static PyObject* tensor__ge__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "greater_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1129,17 +1186,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to greater_equal_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling greater_equal_ad_func in tensor__ge__method";
@@ -1190,6 +1238,12 @@ static PyObject* tensor__mod__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1210,6 +1264,31 @@ static PyObject* tensor__mod__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "remainder", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1239,17 +1318,8 @@ static PyObject* tensor__mod__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The  dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to remainder_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling remainder_ad_func in tensor__mod__method";
@@ -1347,35 +1417,35 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype
-  //   if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
-  //       _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-  //     phi::DataType promote_dtype =
-  //         framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
-  //             framework::TransToProtoVarType(lhs_dtype),
-  //             framework::TransToProtoVarType(rhs_dtype)));
-  //     if (lhs_dtype != promote_dtype) {
-  //       // cast
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, promote_dtype);
-  //     }
-  //     if (rhs_dtype != promote_dtype) {
-  //       eager_gil_scoped_release guard;
-  //       other_tensor = cast_ad_func(other_tensor, promote_dtype);
-  //     }
-  //   } else {
-  //     VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //                "dtype is "
-  //             << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //             << ", the right dtype will convert to " << lhs_dtype;
-  //     eager_gil_scoped_release guard;
-  //     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  //   }
-  // }
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    // note: only op_type in _supported_promote_complex_types_ should promote
+    // dtype
+    if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
+        _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
+      phi::DataType promote_dtype =
+          framework::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
+              framework::TransToProtoVarType(lhs_dtype),
+              framework::TransToProtoVarType(rhs_dtype)));
+      if (lhs_dtype != promote_dtype) {
+        // cast
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, promote_dtype);
+      }
+      if (rhs_dtype != promote_dtype) {
+        eager_gil_scoped_release guard;
+        other_tensor = cast_ad_func(other_tensor, promote_dtype);
+      }
+    } else {
+      VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+                 "dtype is "
+              << lhs_dtype << ", but right dtype is " << rhs_dtype
+              << ", the right dtype will convert to " << lhs_dtype;
+      eager_gil_scoped_release guard;
+      other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    }
+  }
 
   // 4. calculation
   VLOG(6) << "Calling matmul_ad_func in tensor__matmul__method";
@@ -1424,6 +1494,12 @@ static PyObject* tensor__lt__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1444,6 +1520,31 @@ static PyObject* tensor__lt__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "less_than", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1473,17 +1574,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to less_than_ad_func
 
   // // 4. calculation
   VLOG(6) << "Calling less_than_ad_func in tensor__lt__method";
@@ -1533,6 +1625,12 @@ static PyObject* tensor__le__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1553,6 +1651,31 @@ static PyObject* tensor__le__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "less_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1582,17 +1705,8 @@ static PyObject* tensor__le__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to less_equal_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling less_equal_ad_func in tensor__le__method";
@@ -1643,6 +1757,12 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1663,6 +1783,31 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "floor_divide", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1690,21 +1835,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   // note: only op_type in _supported_promote_complex_types_ should promote
-  //   // dtype, floordiv is not in _supported_promote_complex_types_, will not
-  //   do
-  //   // promote dtype
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to floor_divide_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling floor_divide_ad_func in tensor__floordiv__method";
@@ -1756,6 +1888,12 @@ static PyObject* tensor__pow__method(TensorObject* self,
       ret = CallScalarFuction(self_tensor, other, "pow");
     }
     return ToPyObject(ret);
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1766,6 +1904,32 @@ static PyObject* tensor__pow__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype("elementwise_pow",
+                                                     self_tensor_ref.dtype(),
+                                                     other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1793,17 +1957,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to elementwise_pow_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling elementwise_pow_ad_func in tensor__pow__method";
@@ -1855,6 +2010,12 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1875,6 +2036,32 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype("elementwise_pow",
+                                                     self_tensor_ref.dtype(),
+                                                     other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -1904,17 +2091,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to elementwise_pow_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling elementwise_pow_ad_func in tensor__rpow__method";
@@ -1964,6 +2142,12 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__ne__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -1984,6 +2168,31 @@ static PyObject* tensor__ne__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "not_equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -2011,17 +2220,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to not_equal_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling not_equal_ad_func in tensor__ne__method";
@@ -2071,6 +2271,12 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_double = CastPyArg2Double(other_obj, "__eq__", 0);
       has_other_double = true;
     }
+  } else if (PyComplex_Check(other_obj)) {
+    if (is_support_complex(self_tensor.dtype()) == false) {
+      eager_gil_scoped_release guard;
+      self_tensor = cast_ad_func(
+          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+    }
   }
 
   // 2. create or get tensor for other_obj
@@ -2091,6 +2297,31 @@ static PyObject* tensor__eq__method(TensorObject* self,
     const phi::distributed::ProcessMesh* mesh = nullptr;
     if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
       ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
+    }
+    // got 0-d tensor, and need type promotion. The rules same with Tensor +
+    // Scalar.
+    if (other_tensor_ref.shape().size() == 0 &&
+        self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
+      // common major types follow with tensor: int32(tensor) + int64(scalar) =
+      // int32
+      if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
+                                     other_tensor_ref.dtype())) {
+        eager_gil_scoped_release guard;
+        other_tensor_ref =
+            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+      } else {
+        // different major types follow with rule.
+        phi::DataType promote_type = GetPromoteDtype(
+            "equal", self_tensor_ref.dtype(), other_tensor_ref.dtype());
+        if (self_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
+        }
+        if (other_tensor_ref.dtype() != promote_type) {
+          eager_gil_scoped_release guard;
+          other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
+        }
+      }
     }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
@@ -2118,17 +2349,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
-  // phi::DataType lhs_dtype = self_tensor.dtype();
-  // phi::DataType rhs_dtype = other_tensor.dtype();
-  // if (lhs_dtype != rhs_dtype) {
-  //   VLOG(6) << "The dtype of left and right Tensor are not the same, left "
-  //              "dtype is "
-  //           << lhs_dtype << ", but right dtype is " << rhs_dtype
-  //           << ", the right dtype will convert to " << lhs_dtype;
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = cast_ad_func(other_tensor, lhs_dtype);
-  // }
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to equal_ad_func
 
   // 4. calculation
   VLOG(6) << "Calling equal_ad_func in tensor__eq__method";

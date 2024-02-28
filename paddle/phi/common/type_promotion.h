@@ -99,27 +99,37 @@ inline bool is_support_complex(DataType dtype) {
   }
 }
 
-inline DataType ComplexToFloat(DataType dtype) {
-  if (dtype == DataType::COMPLEX64) {
-    return DataType::FLOAT32;
-  } else if (dtype == DataType::COMPLEX128) {
-    return DataType::FLOAT64;
+// only T+S support int type promotion
+inline bool is_support_int(DataType dtype) {
+  if (dtype == DataType::UINT8 || dtype == DataType::INT8 ||
+      dtype == DataType::INT16 || dtype == DataType::INT32 ||
+      dtype == DataType::INT64 || dtype == DataType::BOOL) {
+    return true;
   } else {
-    return dtype;
+    return false;
+  }
+}
+
+inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
+  if ((is_support_int(x) && is_support_int(y)) ||
+      (is_support_float(x) && is_support_float(y)) ||
+      (is_support_complex(x) && is_support_complex(y))) {
+    return true;
+  } else {
+    return false;
   }
 }
 
 inline phi::DataType GetPromoteDtype(const std::string& op_name,
                                      const DataType x,
                                      const DataType y) {
-  // complex will be cast to float
-  if (op_name == "l1_loss" || op_name == "smooth_l1_loss" ||
-      op_name == "mse_loss") {
-    return phi::promoteTypes(ComplexToFloat(x), ComplexToFloat(y));
-  } else {
-    // use default rule
-    return phi::promoteTypes(x, y);
+  if (op_name == "divide") {
+    // only T+S can run into this branch
+    if (is_support_int(x) && is_support_int(y)) {
+      return DataType::FLOAT32;
+    }
   }
+  return phi::promoteTypes(x, y);
 }
 
 inline bool NeedTypePromotion(const DataType x, const DataType y) {

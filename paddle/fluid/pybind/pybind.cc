@@ -925,7 +925,13 @@ PYBIND11_MODULE(libpaddle, m) {
                                    framework::TransToPhiDataType(type_x),
                                    framework::TransToPhiDataType(type_y)));
         });
-
+  m.def("is_common_dtype_for_scalar",
+        [](framework::proto::VarType::Type type_x,
+           framework::proto::VarType::Type type_y) {
+          return phi::is_common_dtype_for_scalar(
+              framework::TransToPhiDataType(type_x),
+              framework::TransToPhiDataType(type_y));
+        });
   m.def("disable_signal_handler", &DisableSignalHandler);
 
   m.def("clear_gradients",

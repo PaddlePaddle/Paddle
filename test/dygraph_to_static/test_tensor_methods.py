@@ -134,6 +134,7 @@ class TestTrueDiv(Dy2StTestBase):
         with enable_to_static_guard(False):
             dygraph_res = self._run()
         static_res = self._run()
+        print(dygraph_res, static_res)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
 
