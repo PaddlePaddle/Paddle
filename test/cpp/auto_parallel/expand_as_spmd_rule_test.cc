@@ -40,29 +40,29 @@ TEST(ExpandAsInferSpmd, Ctor) {
 
   phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor y(phi::make_ddim(y_shape), y_dist_attr);
-  
+
   // test info forward
   auto spmdinfo = ExpandAsInferSpmd(x, y, y_shape);
   EXPECT_EQ(spmdinfo.first.size(), 2UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_DOUBLE_EQ(
       PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
-  VLOG(4) << "Test ExpandAsInferSpmd" << std::endl
-          << std::endl
-          << std::endl;
-  
+  VLOG(4) << "Test ExpandAsInferSpmd" << std::endl << std::endl << std::endl;
+
   // test info reverse
   spmdinfo = ExpandAsInferSpmdReverse(x, y, y, y_shape);
   EXPECT_EQ(spmdinfo.first.size(), 2UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
@@ -71,22 +71,23 @@ TEST(ExpandAsInferSpmd, Ctor) {
       PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
   VLOG(4) << "Test ExpandAsInferSpmdReverse" << std::endl
           << std::endl
-          << std::endl;     
+          << std::endl;
 
   // test info grad
   spmdinfo = ExpandAsGradInferSpmd(x, y, y_shape);
   EXPECT_EQ(spmdinfo.first.size(), 2UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({-1, -1}));
-  check_partial_dims(spmdinfo.second[0], {0, 1});    
+  check_partial_dims(spmdinfo.second[0], {0, 1});
   VLOG(4) << "Test ExpandAsGradInferSpmd" << std::endl
           << std::endl
-          << std::endl;     
+          << std::endl;
 }
 
 }  // namespace auto_parallel
