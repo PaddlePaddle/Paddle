@@ -27,6 +27,7 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -240,12 +241,12 @@ class SplitGenerateShapeIntoShapeOps
         MakeGetterTensorDim4SymbolName(op);
     if (!TensorDim4SymbolName) return std::nullopt;
     CachedDimExprToValueConverter converter{TensorDim4SymbolName, rewriter};
-    return GetValueOfRewritedOps(dim_exprs, &converter);
+    return GetValueOfRewrittenOps(dim_exprs, &converter);
   }
 
   TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(
       cinn::dialect::GenerateShapeOp op) const {
-    std::unordered_map<std::string, TensorDim> symbol_name2tenso_dim{};
+    std::unordered_map<std::string, TensorDim> symbol_name2tensor_dim{};
     const auto& attr_map = op->attributes();
     const auto& iter = attr_map.find("symbol_bindings");
     PADDLE_ENFORCE((iter != attr_map.end()),
@@ -262,9 +263,9 @@ class SplitGenerateShapeIntoShapeOps
                                         "not be converted to symbol bindings",
                                         op->name()));
     for (const auto& symbol_binding : symbol_bindings.value()) {
-      InsertSymbolBinding(op, symbol_binding, &symbol_name2tenso_dim);
+      InsertSymbolBinding(op, symbol_binding, &symbol_name2tensor_dim);
     }
-    return [map = std::move(symbol_name2tenso_dim)](
+    return [map = std::move(symbol_name2tensor_dim)](
                const std::string& symbol_name) -> std::optional<TensorDim> {
       auto iter = map.find(symbol_name);
       if (iter == map.end()) return std::nullopt;
@@ -275,10 +276,11 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBinding(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::SymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
+      std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
+      const {
     return std::visit(
         [&](const auto& impl) {
-          return InsertSymbolBindingImpl(op, impl, symbol_name2tenso_dim);
+          return InsertSymbolBindingImpl(op, impl, symbol_name2tensor_dim);
         },
         symbol_binding);
   }
@@ -286,8 +288,9 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::DataSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
-    (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInData{
+      std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
+      const {
+    (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInData{
         .value = op.operand_source(symbol_binding.input_tensor_idx),
         .axis = symbol_binding.input_tensor_dim_idx};
   }
@@ -295,8 +298,9 @@ class SplitGenerateShapeIntoShapeOps
   void InsertSymbolBindingImpl(
       cinn::dialect::GenerateShapeOp op,
       const cinn::dialect::GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
-    (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInShape{
+      std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim)
+      const {
+    (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInShape{
         .value = op.operand_source(symbol_binding.input_tensor_idx),
         .axis = symbol_binding.input_tensor_dim_idx};
   }
@@ -328,18 +332,18 @@ class SplitGenerateShapeIntoShapeOps
     return ret;
   }
 
-  pir::Value GetValueOfRewritedOps(
+  pir::Value GetValueOfRewrittenOps(
       const std::vector<symbol::DimExpr>& dim_exprs,
       CachedDimExprToValueConverter* converter) const {
     const std::vector<pir::Value>& values_from_dim_exprs =
-        GetValuesOfRewritedOps(dim_exprs, converter);
+        GetValuesOfRewrittenOps(dim_exprs, converter);
     if (values_from_dim_exprs.size() == 1) return values_from_dim_exprs.at(0);
     pir::Value vec =
         converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs).out();
     return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
   }
 
-  std::vector<pir::Value> GetValuesOfRewritedOps(
+  std::vector<pir::Value> GetValuesOfRewrittenOps(
       const std::vector<symbol::DimExpr>& dim_exprs,
       CachedDimExprToValueConverter* converter) const {
     std::vector<pir::Value> ret;
@@ -352,18 +356,25 @@ class SplitGenerateShapeIntoShapeOps
   }
 };
 
-SplitGenerateShapeIntoShapeOpsPass::SplitGenerateShapeIntoShapeOpsPass()
-    : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {}
+class SplitGenerateShapeIntoShapeOpsPass : public pir::PatternRewritePass {
+ public:
+  SplitGenerateShapeIntoShapeOpsPass()
+      : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {
+  }
 
-pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  ps.Add<SplitGenerateShapeIntoShapeOps>(context);
-  return ps;
-}
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<SplitGenerateShapeIntoShapeOps>(context);
+    return ps;
+  }
 
-bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass() {
+  return std::make_unique<SplitGenerateShapeIntoShapeOpsPass>();
 }
 
 }  // namespace ir

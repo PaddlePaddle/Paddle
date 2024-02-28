@@ -151,7 +151,7 @@ float CpuUtilization::GetCpuUtilization() {
                     (system_tms_end_.tms_stime - system_tms_start_.tms_stime) +
                     (nice_time_end_ - nice_time_start_) +
                     (irq_end_ - irq_start_) + (softirq_end_ - softirq_start_) +
-                    (steal_end_ - steal_start_);
+                    (steal_end_ - steal_start_);  // NOLINT
   float idle_time = (idle_end_ - idle_start_) + (iowait_end_ - iowait_start_);
   if (busy_time + idle_time != 0) {
     cpu_utilization = busy_time / (busy_time + idle_time);
@@ -182,7 +182,7 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
 #elif defined(__linux__)
   float busy_time =
       (process_tms_end_.tms_utime - process_tms_start_.tms_utime) +
-      (process_tms_end_.tms_stime - process_tms_start_.tms_stime);
+      (process_tms_end_.tms_stime - process_tms_start_.tms_stime);  // NOLINT
   if (end_ - start_ != 0) {
     cpu_process_utilization = busy_time / (end_ - start_);
   }

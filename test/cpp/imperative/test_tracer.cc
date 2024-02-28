@@ -44,10 +44,6 @@ PD_DECLARE_KERNEL(matmul_with_flatten, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, GPU, ALL_LAYOUT);
 #endif
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-
 namespace paddle {
 namespace imperative {
 

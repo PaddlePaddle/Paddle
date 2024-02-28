@@ -432,10 +432,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
 
-    def test_backward_multi_mesh_dim_parital(self):
+    def test_backward_multi_mesh_dim_partial(self):
         # reduction on dim 1, 2, keep_dim = true, partial_dim=[1]
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1] (output --> input, output)
-        # output parital_dim: [1], input parital_dim: []
+        # output partial_dim: [1], input partial_dim: []
         out_shape = [96, 1, 1]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
 

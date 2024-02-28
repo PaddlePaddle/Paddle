@@ -28,10 +28,6 @@
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/layer.h"
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-
 namespace paddle {
 namespace imperative {
 

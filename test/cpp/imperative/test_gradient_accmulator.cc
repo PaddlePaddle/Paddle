@@ -23,9 +23,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 

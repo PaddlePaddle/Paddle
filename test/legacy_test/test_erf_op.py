@@ -118,7 +118,7 @@ class TestErfFP16OP(OpTest):
     or not paddle.base.core.is_bfloat16_supported(
         paddle.base.core.CUDAPlace(0)
     ),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestErfBF16OP(OpTest):
     def setUp(self):

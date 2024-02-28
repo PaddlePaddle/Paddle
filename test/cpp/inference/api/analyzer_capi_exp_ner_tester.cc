@@ -14,9 +14,9 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <string>
 #include <vector>

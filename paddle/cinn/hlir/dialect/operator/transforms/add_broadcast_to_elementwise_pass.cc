@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -172,54 +173,63 @@ class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
-AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
+class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
+ public:
+  AddBroadcastToElementwisePass()
+      : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
 
-pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  // elementwise ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    // elementwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(
+        context);
 
-  // compare ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
-      context);
+    // compare ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+        context);
 
-  // bitwise ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
-      context);
+    // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
+        context);
 
-  return ps;
-}
+    return ps;
+  }
 
-bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass() {
+  return std::make_unique<AddBroadcastToElementwisePass>();
 }
 
 }  // namespace ir

@@ -16,7 +16,7 @@
 #include <variant>
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/dll_decl.h"

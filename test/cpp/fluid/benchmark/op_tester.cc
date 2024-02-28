@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/pybind/pybind.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -181,7 +180,7 @@ void OpTester::CreateInputVarDesc() {
     PADDLE_ENFORCE_NOT_NULL(
         input,
         platform::errors::NotFound(
-            "The input %s of operator %s is not correctlly provided.",
+            "The input %s of operator %s is not correctly provided.",
             name,
             config_.op_type));
 

@@ -113,6 +113,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   BenchFunc<KernelTuple, Args...> benchmark;
   std::vector<std::pair<std::string, double>> infos;
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
+  infos.reserve(funcs.size());
   for (auto const& f : funcs) {
     infos.push_back(std::make_pair(f.first, benchmark(f.second, args...)));
   }

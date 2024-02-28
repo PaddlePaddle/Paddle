@@ -839,4 +839,19 @@ void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
 
+void MultiGruInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& weight_x,
+    const std::vector<const MetaTensor*>& weight_h,
+    const paddle::optional<std::vector<const MetaTensor*>>& bias,
+    const paddle::optional<std::vector<const MetaTensor*>>& scale_weights,
+    const std::string& activation,
+    const std::string& gate_activation,
+    int layers,
+    bool origin_mode,
+    const std::string& mkldnn_data_type,
+    float scale_data,
+    float shift_data,
+    bool force_fp32_output,
+    MetaTensor* hidden);
 }  // namespace phi

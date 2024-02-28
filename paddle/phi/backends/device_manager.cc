@@ -323,6 +323,7 @@ std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
+  devices.reserve(dev_impl_map.size());
   for (const auto& map_item : dev_impl_map) {
     devices.push_back(map_item.first);
   }

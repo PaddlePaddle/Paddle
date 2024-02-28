@@ -76,7 +76,7 @@ class AutoTuneBase {
     } else {
       bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
       if (use_autotune) {
-        // All avaliable kernels have ran while picking the best kernel,
+        // All available kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
         auto best_idx = PickBestKernel(ctx, args...);
         cache.Set(key, best_idx);

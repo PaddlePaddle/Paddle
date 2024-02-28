@@ -25,7 +25,7 @@ from .master import Master
 from .watcher import Watcher
 
 
-class ControleMode:
+class ControllerMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
@@ -95,7 +95,7 @@ class ControllerBase:
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            # if self.ctx.continous_log():
+            # if self.ctx.continuous_log():
             # default to print log
             self.pod.logs()
 

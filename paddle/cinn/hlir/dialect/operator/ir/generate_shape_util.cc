@@ -561,7 +561,7 @@ void GenerateSymbolBindings(
         dim_exprs.shape(), symbol_names, i, symbol_bindings);
     if (dim_exprs.data().has_value()) {
       AppendSymbolBindings<GenerateShapeOp::DataSymbolBinding>(
-          dim_exprs.shape(), symbol_names, i, symbol_bindings);
+          dim_exprs.data().value(), symbol_names, i, symbol_bindings);
     }
   }
 }

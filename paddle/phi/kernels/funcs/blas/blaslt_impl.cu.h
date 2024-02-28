@@ -557,7 +557,7 @@ struct CublasLtBase {
                                                 &returned_results));
     PADDLE_ENFORCE_GT(returned_results,
                       0,
-                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
+                      phi::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -748,7 +748,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                                 &returned_results));
     PADDLE_ENFORCE_GT(returned_results,
                       0,
-                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
+                      phi::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;

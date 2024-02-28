@@ -388,7 +388,7 @@ class TestQuantGegluFP16(TestQuantFP32):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFusedBiasActOpBF16(unittest.TestCase):
     def setUp(self):
@@ -443,7 +443,7 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestWithComTypeBF16(unittest.TestCase):
     def init_test_case(self):
@@ -454,7 +454,7 @@ class TestWithComTypeBF16(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestGegluBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
@@ -473,7 +473,7 @@ class TestGegluBF16(TestFusedBiasActOpBF16):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16 ",
+    "core is not compiled with CUDA and not support the bfloat16 ",
 )
 class TestSwigluBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
@@ -492,7 +492,7 @@ class TestSwigluBF16(TestFusedBiasActOpBF16):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantBF16(TestFusedBiasActOpBF16):
     def init_test_case(self):
@@ -562,7 +562,7 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantGegluBF16(TestQuantBF16):
     def init_test_case(self):
@@ -602,7 +602,7 @@ class TestQuantGegluBF16(TestQuantBF16):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestQuantSwigluBF16(TestQuantBF16):
     def init_test_case(self):

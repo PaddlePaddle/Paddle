@@ -18,7 +18,7 @@ import sys
 
 from paddle.distributed.launch.job.container import Container
 
-from .collective import CollectiveController, ControleMode
+from .collective import CollectiveController, ControllerMode
 
 
 class IPUController(CollectiveController):
@@ -26,7 +26,7 @@ class IPUController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.training_script == "ipu":
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.IPU
+            ctx.args.run_mode = ControllerMode.IPU
             return True
         else:
             return False

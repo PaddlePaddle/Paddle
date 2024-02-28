@@ -95,6 +95,7 @@ struct OpRunTimeInfo {
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
   std::vector<std::string> extra_args;
+  std::vector<std::string> skip_transform_inputs;
   pir::AttributeMap extra_args_default_value;
   std::vector<std::string> data_format_tensors;
   bool is_onednn_only;
@@ -109,6 +110,7 @@ struct OpRunTimeInfo {
                 const std::vector<std::pair<std::string, std::string>>& inplace,
                 const std::vector<std::pair<std::string, std::string>>& view,
                 const std::vector<std::string>& extra_args = {},
+                const std::vector<std::string>& skip_transform_inputs = {},
                 const pir::AttributeMap& extra_args_default_value = {{}},
                 const std::vector<std::string>& data_format_tensors = {},
                 bool is_onednn_only = false,
@@ -122,6 +124,7 @@ struct OpRunTimeInfo {
         inplace(inplace),
         view(view),
         extra_args(extra_args),
+        skip_transform_inputs(skip_transform_inputs),
         extra_args_default_value(extra_args_default_value),
         data_format_tensors(data_format_tensors),
         is_onednn_only(is_onednn_only),

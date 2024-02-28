@@ -73,7 +73,7 @@ class TestScatterFP16Op(TestScatterOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op(TestScatterOp):
     def _set_dtype(self):
@@ -149,7 +149,7 @@ class TestScatterFP16Op0(TestScatterOp0):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op0(TestScatterOp0):
     def _set_dtype(self):
@@ -228,7 +228,7 @@ class TestScatterFP16Op1(TestScatterOp1):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op1(TestScatterOp1):
     def _set_dtype(self):
@@ -314,7 +314,7 @@ class TestScatterFP16Op2(TestScatterOp2):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op2(TestScatterOp2):
     def _set_dtype(self):
@@ -387,7 +387,7 @@ class TestScatterFP16Op3(TestScatterOp3):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op3(TestScatterOp3):
     def _set_dtype(self):
@@ -445,7 +445,7 @@ class TestScatterFP16Op4(TestScatterOp4):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op4(TestScatterOp4):
     def _set_dtype(self):
@@ -531,7 +531,7 @@ class TestScatterFP16Op5(TestScatterOp5):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op5(TestScatterOp5):
     def _set_dtype(self):
@@ -589,7 +589,7 @@ class TestScatterFP16Op6(TestScatterOp6):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op6(TestScatterOp6):
     def if_enable_cinn(self):

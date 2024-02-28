@@ -22,7 +22,8 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape)
+set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape
+                            test_prim_flags_check_ops)
 
 if(WITH_CINN)
   foreach(target ${TEST_PRIM_PURE_PIR_CINN})
@@ -32,6 +33,7 @@ if(WITH_CINN)
       ${target}
       ENVS
       GLOG_v=1
+      FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
       FLAGS_cinn_bucket_compile=True

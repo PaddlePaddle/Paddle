@@ -220,29 +220,29 @@ def _convert_to_place(device):
             )
         place = core.IPUPlace()
     else:
-        avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
-        avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
-        if avaliable_gpu_device:
+        available_gpu_device = re.match(r'gpu:\d+', lower_device)
+        available_xpu_device = re.match(r'xpu:\d+', lower_device)
+        if available_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with CUDA".format(avaliable_gpu_device)
+                    "not compiled with CUDA".format(available_gpu_device)
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.CUDAPlace(device_id)
-        if avaliable_xpu_device:
+        if available_xpu_device:
             if not core.is_compiled_with_xpu():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with XPU".format(avaliable_xpu_device)
+                    "not compiled with XPU".format(available_xpu_device)
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
-        if not avaliable_gpu_device and not avaliable_xpu_device:
+        if not available_gpu_device and not available_xpu_device:
             device_info_list = device.split(':', 1)
             device_type = device_info_list[0]
             if device_type in core.get_all_custom_device_type():
@@ -299,8 +299,8 @@ def get_device():
 
     This function can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
-    set, it will return a string which is 'gpu:x' when cuda is avaliable or it
-    will return a string which is 'cpu' when cuda is not avaliable.
+    set, it will return a string which is 'gpu:x' when cuda is available or it
+    will return a string which is 'cpu' when cuda is not available.
 
     Examples:
 

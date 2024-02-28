@@ -725,7 +725,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     ++instance_cout;
     const char* str = line.c_str();
     char* endptr = const_cast<char*>(str);
-    int len = line.length();
+    int len = static_cast<int>(line.length());
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
@@ -1141,33 +1141,33 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     if (parse_ins_id_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->ins_id_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
     }
     if (parse_content_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->content_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "content " << instance->content_;
     }
     if (parse_logkey_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
@@ -1183,7 +1183,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->search_id = search_id;
       instance->cmatch = cmatch;
       instance->rank = rank;
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -1619,7 +1619,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(i);  // NOLINT
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;

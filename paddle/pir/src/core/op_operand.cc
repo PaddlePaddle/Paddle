@@ -26,7 +26,10 @@
   CHECK_NULL_IMPL(OpOpernad, func_name)
 
 namespace pir {
-OpOperand &OpOperand::operator=(const OpOperand &rhs) {
+OpOperand &OpOperand::operator=(const OpOperand &rhs) {  // NOLINT
+  if (this == &rhs) {
+    return *this;
+  }
   impl_ = rhs.impl_;
   return *this;
 }

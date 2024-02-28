@@ -160,7 +160,8 @@ hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
-bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
+bool CollectRewrittenReductionOpStmts(const OpStmt& op_stmt,
+                                      List<OpStmt>* ret) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
   CHECK(op.Has<const ::pir::Operation*>());
   if (GetOpPatternKind(op.Get<const ::pir::Operation*>()) ==
@@ -178,8 +179,8 @@ bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
   }
 }
 
-void CollectRewritedOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
-  if (CollectRewritedReductionOpStmts(op_stmt, ret)) {
+void CollectRewrittenOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
+  if (CollectRewrittenReductionOpStmts(op_stmt, ret)) {
     return;
   }
   (*ret)->emplace_back(op_stmt);
@@ -190,7 +191,7 @@ List<OpStmt> MakeOpStmts(
   List<OpStmt> ret{};
 
   VisitEachOpStmt(group, [&](const auto& op_stmt) {
-    CollectRewritedOpStmts(op_stmt, &ret);
+    CollectRewrittenOpStmts(op_stmt, &ret);
   });
 
   return ret;

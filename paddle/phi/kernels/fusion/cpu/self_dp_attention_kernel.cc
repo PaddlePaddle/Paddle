@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <assert.h>
 #include <immintrin.h>
-#include <math.h>
 #include <omp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <new>
 #include <string>
@@ -44,8 +44,8 @@ void arraycpy(T* dst, const Tt* src, int n) {
   }
 }
 
-// batchs x tokens x 3 x head x heads ->  3 x batchs x head x tokens x heads (2
-// 0 3 1 4)
+// batches x tokens x 3 x head x heads ->  3 x batches x head x tokens x heads
+// (2 0 3 1 4)
 template <typename T, typename Tt>
 void transpose_before_bmm1(const T* qkvBuffer,
                            Tt* qkvTransBuffer,
@@ -108,7 +108,7 @@ void transpose_before_bmm1(const T* qkvBuffer,
   }
 }
 
-// batchs x head x tokens x heads -> batchs x tokens x head x heads (0 2 1 3)
+// batches x head x tokens x heads -> batches x tokens x head x heads (0 2 1 3)
 template <typename T, typename Tt>
 void transpose_after_bmm2(T* Buffer,
                           Tt* TransBuffer,
@@ -472,9 +472,9 @@ void SelfDPAttenKernel(const Context& dev_ctx,
   auto input_dims = x.dims();
   // in shouble be (batch * seq * 3 * head_num * head_size)
   // out shouble be (batch * seq * head_num * head_size)
-  int batch_size = input_dims[0];
-  int seq_len = input_dims[1];
-  int head_size = input_dims[4];
+  int batch_size = static_cast<int>(input_dims[0]);
+  int seq_len = static_cast<int>(input_dims[1]);
+  int head_size = static_cast<int>(input_dims[4]);
 
   DenseTensor temp1, temp2;
   temp1.Resize(input_dims);

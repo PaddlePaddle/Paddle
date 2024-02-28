@@ -86,7 +86,7 @@ class OpTransInfo {
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
   std::unordered_set<std::string> default_deny_ops_{
-      "feed", "fetch", "conv2d", "conv2d_grad", "dropout"};
+      "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "matmul"};
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,
@@ -194,8 +194,8 @@ bool IsSupportForCinn(const ::pir::Operation& op) {
   }
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
-  VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
-  VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+  LOG_FIRST_N(INFO, 1) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
+  LOG_FIRST_N(INFO, 1) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(op);
 
@@ -243,7 +243,7 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
     return name;
   }
   auto cinn_op_name = name.substr(pos + 1);
-  VLOG(4) << "GetOpName: " << name << " -> " << cinn_op_name;
+  VLOG(7) << "GetOpName: " << name << " -> " << cinn_op_name;
   CHECK(cinn_op_name != "")
       << "Found empty cinn_op_name, maybe you should implement OpPattern for "
       << name;
@@ -276,7 +276,7 @@ std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
 std::vector<::pir::Value> CompatibleInfo::RealOperandSources(
     const ::pir::Operation& op) {
   if (OpMapper::Instance().has(op, MapperType::OPERAND)) {
-    return OpMapper::Instance().RealOprandSources(op);
+    return OpMapper::Instance().RealOperandSources(op);
   } else {
     return op.operands_source();
   }
@@ -406,7 +406,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
-    // element-wise. See fusion_hepler_base.h for detail.
+    // element-wise. See fusion_helper_base.h for detail.
     if (op_name != "broadcast_to") {
       kind = hlir::framework::kElementWise;
     }

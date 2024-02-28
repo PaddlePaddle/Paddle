@@ -75,14 +75,14 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> x_sharding_info(
       {x_axes, x_dims_mapping});
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({x_sharding_info});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
@@ -111,8 +111,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   // Step0: Verify input args based on transpose logic
   const std::vector<int64_t> x_shape = common::vectorize(x.dims());
   const std::vector<int64_t> out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -143,7 +143,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::pair<std::string, std::vector<int64_t>> out_sharding_info(
       {out_axes, out_dims_mapping});

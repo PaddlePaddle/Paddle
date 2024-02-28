@@ -122,7 +122,7 @@ void PaddleBuf::Free() {
 
 NativeConfig::NativeConfig() {
   LOG(WARNING) << "The paddle::NativeConfig interface is going to be "
-                  "deprecated in the next release, plase use the latest "
+                  "deprecated in the next release, please use the latest "
                   "paddle_infer::Config instead.";
 }
 

@@ -229,7 +229,7 @@ struct MatrixEighFunctor<CPUContext, T> {
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
 
     DenseTensor input_trans;
-    // lapack is a column-major storge, transpose make the input to
+    // lapack is a column-major storage, transpose make the input to
     // have a continuous memory layout
     input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();

@@ -88,7 +88,7 @@ class BeamSearchFunctor {
    *
    * @selected_ids: a [None, 1]-shaped tensor with LoD.
    *   In a machine translation model, it might be the candidate term id sets,
-   *   each set stored as a varience-length sequence.
+   *   each set stored as a variance-length sequence.
    *   The format might be described with a two-level LoD
    *   - [[0 1],
    *      [0 1 2]]

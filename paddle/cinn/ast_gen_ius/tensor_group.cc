@@ -244,7 +244,7 @@ TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map) {
     if (iter->second->has_expression()) {
       const std::string& tensor_name = iter->first;
       stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
-      if (utils::Endswith(tensor_name, "_reshape")) {
+      if (utils::EndsWith(tensor_name, "_reshape")) {
         reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
       }
     }

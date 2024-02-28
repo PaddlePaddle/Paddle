@@ -70,7 +70,7 @@ static int close_open_fds_internal() {
 
   for (;;) {
     int bytes = 0;
-    if ((bytes = syscall(SYS_getdents64,
+    if ((bytes = syscall(SYS_getdents64,  // NOLINT
                          dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {

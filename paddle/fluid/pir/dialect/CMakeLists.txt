@@ -222,6 +222,7 @@ file(
   op_dialect_srcs
   "${CMAKE_CURRENT_SOURCE_DIR}/kernel/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/infer_symbolic_shape/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/trait/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/transforms/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/operator/utils/*.cc")
@@ -245,11 +246,13 @@ set(op_dialect_srcs
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file}
-    ${api_source_file})
+    ${api_source_file}
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
 
 if(WITH_MKLDNN)
-  set(op_dialect_srcs ${op_dialect_srcs} ${onednn_op_source_file}
-                      ${op_onednn_info_file})
+  set(op_dialect_srcs
+      ${op_dialect_srcs} ${onednn_op_source_file} ${op_onednn_info_file}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
 set(op_dialect_deps phi common pir type_info string_helper)

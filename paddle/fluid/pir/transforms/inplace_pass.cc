@@ -451,7 +451,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
   }
   if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
-    for (auto i : inplace_ops) {
+    for (auto const& i : inplace_ops) {
       std::cout << i.second << std::endl;
     }
   }

@@ -113,7 +113,7 @@ class Gamma(exponential_family.ExponentialFamily):
 
     @property
     def mean(self):
-        """Mean of gamma distribuion.
+        """Mean of gamma distribution.
 
         Returns:
             Tensor: mean value.
@@ -130,7 +130,7 @@ class Gamma(exponential_family.ExponentialFamily):
         return self.concentration / self.rate.pow(2)
 
     def prob(self, value):
-        """Probability density funciotn evaluated at value
+        """Probability density function evaluated at value
 
         Args:
             value (float|Tensor): Value to be evaluated.

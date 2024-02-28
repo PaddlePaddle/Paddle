@@ -998,8 +998,6 @@ def _run_dygraph(instance, input, program_holder):
                     program_holder.backward_program.block(0),
                 )
             )
-    # Note(lvyongkang): Current PIR don't support save/load
-    attrs.extend(['in_pir_pt_mode', False])
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
