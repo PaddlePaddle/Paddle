@@ -511,25 +511,21 @@ bool ConcatOpInferSymbolicShape(
 
 bool GatherNdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  auto x_shape_or_data =
+  const auto &x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-  auto index_shape_or_data =
+  const auto &index_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
 
-  std::vector<symbol::DimExpr> x_sym_shape;
-  if (x_shape_or_data.data().has_value()) {
-    x_sym_shape = x_shape_or_data.data().value();
-  } else {
-    x_sym_shape = x_shape_or_data.shape();
-  }
-  int x_dims_size = x_sym_shape.size();
+  const std::vector<symbol::DimExpr> &x_sym_shape =
+      x_shape_or_data.data().has_value() ? x_shape_or_data.data().value()
+                                         : x_shape_or_data.shape();
 
-  std::vector<symbol::DimExpr> index_sym_shape;
-  if (index_shape_or_data.data().has_value()) {
-    index_sym_shape = index_shape_or_data.data().value();
-  } else {
-    index_sym_shape = index_shape_or_data.shape();
-  }
+  const std::vector<symbol::DimExpr> &index_sym_shape =
+      index_shape_or_data.data().has_value()
+          ? index_shape_or_data.data().value()
+          : index_shape_or_data.shape();
+
+  int x_dims_size = x_sym_shape.size();
   int index_dims_size = index_sym_shape.size();
 
   std::vector<symbol::DimExpr> result_sym_dims;
@@ -1248,8 +1244,53 @@ bool FminOpInferSymbolicShape(pir::Operation *op,
 }
 bool GatherOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &input_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &index_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &axis_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  const std::vector<symbol::DimExpr> &input_sym_shape =
+      input_shape_or_data.data().has_value()
+          ? input_shape_or_data.data().value()
+          : input_shape_or_data.shape();
+
+  const std::vector<symbol::DimExpr> &index_sym_shape =
+      index_shape_or_data.data().has_value()
+          ? index_shape_or_data.data().value()
+          : index_shape_or_data.shape();
+
+  int axis = static_cast<int>(axis_shape_or_data.shape()[0].Get<int64_t>());
+  if (axis < 0) axis += input_sym_shape.size();
+
+  std::vector<symbol::DimExpr> out_sym_shape;
+  if (index_sym_shape.size() == 0) {
+    if (input_sym_shape.size() == 1) {
+      out_sym_shape.push_back(symbol::DimExpr{0});
+    } else {
+      for (int i = 0; i < axis; ++i) {
+        out_sym_shape.push_back(input_sym_shape[i]);
+      }
+      for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
+        out_sym_shape.push_back(input_sym_shape[i]);
+      }
+    }
+  } else {
+    for (int i = 0; i < axis; i++) {
+      out_sym_shape.push_back(input_sym_shape[i]);
+    }
+    out_sym_shape.push_back(input_sym_shape[0]);
+    for (int i = axis + 1; i < input_sym_shape.size(); i++) {
+      out_sym_shape.push_back(input_sym_shape[i]);
+    }
+  }
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
+
+  pir::Value res = op->result(0);
+  shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
   return true;
 }
 
