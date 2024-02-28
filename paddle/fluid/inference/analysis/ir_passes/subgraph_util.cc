@@ -170,11 +170,6 @@ void RenameAndGetOutputs(
             RenameVarBeUnique(arg_value, std::to_string(var2id[arg_value]));
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
-          // if (op->Type() == "set_value") {
-          //   // set_value must be not the first op in subgraph!!!!!!!
-          //   PADDLE_THROW(platform::errors::InvalidArgument(
-          //     "set_value(Input %s) can not be the first op in subgraph, please to forbid it enter into Paddle-TRT.", arg_value.c_str()));
-          // }
           if (graph_var_map.count(arg_value)) {
             add_block_var(arg_value, arg_value);
           }
