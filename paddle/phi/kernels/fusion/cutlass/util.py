@@ -52,3 +52,12 @@ def parse_args():
     args = parser.parse_args()
 
     return args
+
+
+def write_kernel_to_file(kernel, file_name):
+    with open(
+        file_name,
+        "w",
+    ) as f:
+        f.write(kernel)
+        f.close()

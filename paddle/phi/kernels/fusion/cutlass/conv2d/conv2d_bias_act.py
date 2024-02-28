@@ -21,7 +21,7 @@ from conv2d_common import (
     CommonTail,
     GenerateFunctionForPhi,
 )
-from util import SubstituteTemplate, TileDesc, parse_args
+from util import SubstituteTemplate, TileDesc, parse_args, write_kernel_to_file
 
 # this is a file's header part
 
@@ -206,18 +206,17 @@ def generate_sm75_1688():
                             cba_kernel = cba_kernel_alpha
                         # sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
 
-                        with open(
+                        kernel_str = (
+                            cba_header
+                            + SubstituteTemplate(cba_kernel, kernel_dict)
+                            + CommonTail
+                        )
+                        file_name = (
                             "generated_tmp/"
                             + kernel_dict["kernel_func_name"]
-                            + ".cu",
-                            "w",
-                        ) as f:
-                            f.write(
-                                cba_header
-                                + SubstituteTemplate(cba_kernel, kernel_dict)
-                                + CommonTail
-                            )
-                            f.close()
+                            + ".cu"
+                        )
+                        write_kernel_to_file(kernel_str, file_name)
 
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
@@ -332,18 +331,17 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                             cba_kernel = cba_kernel_alpha
                         # sm80_code += SubstituteTemplate(cba_kernel, kernel_dict)
 
-                        with open(
+                        kernel_str = (
+                            cba_header
+                            + SubstituteTemplate(cba_kernel, kernel_dict)
+                            + CommonTail
+                        )
+                        file_name = (
                             "generated_tmp/"
                             + kernel_dict["kernel_func_name"]
-                            + ".cu",
-                            "w",
-                        ) as f:
-                            f.write(
-                                cba_header
-                                + SubstituteTemplate(cba_kernel, kernel_dict)
-                                + CommonTail
-                            )
-                            f.close()
+                            + ".cu"
+                        )
+                        write_kernel_to_file(kernel_str, file_name)
 
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"

@@ -21,7 +21,7 @@ from conv2d_common import (
     CommonTail,
     GenerateFunctionForPhi,
 )
-from util import SubstituteTemplate, TileDesc, parse_args
+from util import SubstituteTemplate, TileDesc, parse_args, write_kernel_to_file
 
 # this is a file's header part
 
@@ -158,6 +158,7 @@ def generate_sm75_1688():
         op_dict["enum_op_name"] = UnderScoreName[epi_res_block].upper()
         # for a op, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
+        all_kernel_declares = ""
         suffix = 0
         for iterator_algorithm in iterator_algorithms:
             for alignment in alignments:
@@ -194,26 +195,30 @@ def generate_sm75_1688():
 
                         # sm75_code += SubstituteTemplate(cbr_kernel, kernel_dict)
 
-                        with open(
+                        kernel_str = (
+                            cbr_header
+                            + SubstituteTemplate(cbr_kernel, kernel_dict)
+                            + CommonTail
+                        )
+                        file_name = (
                             "generated_tmp/"
                             + kernel_dict["kernel_func_name"]
-                            + ".cu",
-                            "w",
-                        ) as f:
-                            f.write(
-                                cbr_kernel
-                                + SubstituteTemplate(cbr_kernel, kernel_dict)
-                                + CommonTail
-                            )
-                            f.close()
+                            + ".cu"
+                        )
+                        write_kernel_to_file(kernel_str, file_name)
 
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
                         )
+                        all_kernel_declares += (
+                            "cutlass::Status "
+                            + kernel_dict["kernel_func_name"]
+                            + "(const ConvAllParams& params);"
+                        )
 
-        # Generate op code with sm_version
+        # Generate op code
+        op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
-        op_dict["kernel_func_declare"] = ";"
         sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
 
@@ -317,18 +322,17 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                         suffix += 1
 
                         # sm80_code += SubstituteTemplate(cbr_kernel, kernel_dict)
-                        with open(
+                        kernel_str = (
+                            cbr_header
+                            + SubstituteTemplate(cbr_kernel, kernel_dict)
+                            + CommonTail
+                        )
+                        file_name = (
                             "generated_tmp/"
                             + kernel_dict["kernel_func_name"]
-                            + ".cu",
-                            "w",
-                        ) as f:
-                            f.write(
-                                cbr_header
-                                + SubstituteTemplate(cbr_kernel, kernel_dict)
-                                + CommonTail
-                            )
-                            f.close()
+                            + ".cu"
+                        )
+                        write_kernel_to_file(kernel_str, file_name)
 
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
