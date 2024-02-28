@@ -2212,7 +2212,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> print("Dtype of current Var is: {}".format(new_variable.dtype))
                 Dtype of current Var is: paddle.float32
         """
-        return pir.core.vartype_to_datatype[self.desc.dtype()]
+        return self.desc.dtype()
 
     @property
     def lod_level(self):
