@@ -589,12 +589,6 @@ class LlamaModel(nn.Layer):
 
             has_gradient = not hidden_states.stop_gradient
 
-            print("#### hidden_states: ", hidden_states)
-            print("#### position_ids: ", position_ids)
-            print("#### attention_mask: ", attention_mask)
-            print("#### output_attentions: ", output_attentions)
-            print("#### past_key_value: ", past_key_value)
-            print("#### use_cache: ", use_cache)
             layer_outputs = decoder_layer(
                 hidden_states,
                 position_ids,
