@@ -17,8 +17,8 @@ import unittest
 import test_op_translator
 
 import paddle
+from paddle.base import unique_name
 from paddle.base.layer_helper import LayerHelper
-from paddle.fluid import unique_name
 
 
 class TestDistributedFusedLambInitOpTranslator(
