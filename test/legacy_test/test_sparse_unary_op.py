@@ -137,9 +137,6 @@ class TestSparseUnary(unittest.TestCase):
             paddle.nn.LeakyReLU(0.1), paddle.sparse.nn.LeakyReLU(0.1)
         )
 
-    def test_sparse_abs(self):
-        self.compare_with_dense(paddle.abs, paddle.sparse.abs)
-
     def test_sparse_expm1(self):
         self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
 

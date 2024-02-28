@@ -101,7 +101,8 @@ PD_REGISTER_KERNEL(abs_coo,
                    ALL_LAYOUT,
                    phi::sparse::AbsCooKernel,
                    float,
-                   double,phi::dtype::complex<float>,
+                   double,
+                   phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -111,7 +112,8 @@ PD_REGISTER_KERNEL(abs_csr,
                    ALL_LAYOUT,
                    phi::sparse::AbsCsrKernel,
                    float,
-                   double,phi::dtype::complex<float>,
+                   double,
+                   phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

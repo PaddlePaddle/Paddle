@@ -59,20 +59,22 @@ PD_REGISTER_KERNEL(abs_coo_grad,
                    ALL_LAYOUT,
                    phi::sparse::AbsCooGradKernel,
                    float,
-                   double,phi::dtype::complex<float>,
+                   double,
+                   phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-                   }
+}
 
 PD_REGISTER_KERNEL(abs_csr_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::AbsCsrGradKernel,
                    float,
-                   double,phi::dtype::complex<float>,
+                   double,
+                   phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-                   }
+}
 PD_REGISTER_KERNEL(cast_coo_grad,
                    CPU,
                    ALL_LAYOUT,
