@@ -52,7 +52,7 @@ std::vector<nvinfer1::ITensor*> inputs{value, sampling_locations, attention_weig
       nvinfer1::ILayer* layer =
           engine_->AddDynamicPlugin(inputs.data(), 5, plugin);
       auto output_name = op_desc.Output("out").front();
-      RreplenishLayerAndOutput(layer,
+      ReplenishLayerAndOutput(layer,
                                "ms_deform_attn",
                                {output_name},
                                test_mode);

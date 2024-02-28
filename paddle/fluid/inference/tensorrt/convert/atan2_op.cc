@@ -80,7 +80,7 @@ class Atan2OpConverter : public OpConverter {
                                       *other,
                                       nvinfer1::ElementWiseOperation::kSUB);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "atan2", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "atan2", {output_name}, test_mode);
   }
 };
 }  // namespace tensorrt

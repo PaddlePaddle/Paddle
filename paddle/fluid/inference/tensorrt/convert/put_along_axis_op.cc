@@ -51,7 +51,7 @@ class PutAlongAxisConverter : public OpConverter {
 
       layer->setAxis(axis);
 
-      RreplenishLayerAndOutput(layer, "put_along_axis", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "put_along_axis", {output_name}, test_mode);
      // std::cout << output_name << std::endl;
   }
 };
