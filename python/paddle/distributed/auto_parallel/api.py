@@ -551,15 +551,15 @@ def shard_layer(
         )
 
 
-def get_placement_with_sharding(param):
+def get_placement_with_sharding(param, sharding_mesh_axis):
     shard_axis = -1
     for placement in param.placements:
         if isinstance(placement, dist.Shard):
-            # the parameter can't be shard twice on different mesh now
-            # assert here in case
+            # the parameter can't be shard twice with sharding on different mesh now
+            # for example, [Shard(0), Shard(1)], assert here in case
             assert (
                 shard_axis == -1
-            ), "The parameter can't be shard twich even in different mesh now."
+            ), "The parameter can't be shard twice even in different mesh now."
             shard_axis = placement.get_dim()
 
     placement_with_sharding = None
@@ -568,14 +568,8 @@ def get_placement_with_sharding(param):
             placement_with_sharding = dist.Shard(dim)
 
     new_placements = param.placements
-    for mesh_axis, placement in enumerate(param.placements):
-        # we need to keep the placement replicate if the it is out of tensor's dim
-        if (
-            isinstance(placement, dist.Replicate)
-            and placement_with_sharding is not None
-        ):
-            new_placements[mesh_axis] = placement_with_sharding
-            break
+    if placement_with_sharding is not None:
+        new_placements[sharding_mesh_axis] = placement_with_sharding
 
     return new_placements
 
@@ -604,13 +598,60 @@ class _ShardOptimizer:
             self._shard_clip = True
         self._inner_opt = optimizer
         self._shard_fn = shard_fn
+        self._sharding_mesh_axis = None
+        self._sharding_degree = None
 
-        # Invoke shard_fn if it is not None to shard parameters
-        if self._shard_fn is not None and isinstance(
-            self._shard_fn, ShardingStage3
-        ):
+        if isinstance(self._shard_fn, (ShardingStage1, ShardingStage3)):
+            self._set_and_check_sharding_prop_from_param()
+            self._shard_fn._set_sharding_mesh_axis(self._sharding_mesh_axis)
+
+        # Invoke shard_parameter in sharding stage 3 strategy
+        if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
+
+    def _set_and_check_sharding_prop_from_param(self):
+        if len(self._shard_fn._mesh._shape) == 1:
+            self._sharding_degree = self._shard_fn._mesh.get_dim_size(0)
+            self._sharding_mesh_axis = 0
+        else:
+            param_list = self._inner_opt._parameter_list
+            for param in param_list:
+                if not param.is_dist():
+                    continue
+                mesh = param.process_mesh
+                placements = param.placements
+
+                if self._sharding_degree is None:
+                    # set the sharding degree if it has not been set
+                    if any(
+                        isinstance(placement, dist.Shard)
+                        for placement in placements
+                    ):
+                        for idx, placement in enumerate(placements):
+                            if isinstance(placement, dist.Replicate):
+                                self._sharding_degree = mesh.dim_size(idx)
+                                self._sharding_mesh_axis = idx
+                                break
+                else:
+                    # check the placement on sharding axis is Replicate
+                    assert isinstance(
+                        placements[self._sharding_mesh_axis], dist.Replicate
+                    ), "The placement on sharding_mesh_axis should be Replicate"
+                    # check the sharding degree since it has already been set
+                    if any(
+                        isinstance(placement, dist.Shard)
+                        for placement in placements
+                    ):
+                        for idx, placement in enumerate(placements):
+                            if isinstance(placement, dist.Replicate):
+                                assert (
+                                    mesh.dim_size(idx) == self._sharding_degree
+                                ), "The sharding degree of all parameters must be equal currently."
+
+        assert (
+            self._sharding_degree is not None
+        ), "The sharding degree is None in ShardOptimizer"
 
     def _shard_accumulator(self, param):
         # create the accumulators
@@ -804,11 +845,17 @@ class ShardingStage1:
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
+    def __init__(self, mesh):
+        self._mesh = mesh
+        self._sharding_mesh_axis = None
+
     def __call__(self, key, param, accumulator):
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
-                placements = get_placement_with_sharding(param)
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
             else:
                 placements = [
                     dist.Replicate()
@@ -820,6 +867,9 @@ class ShardingStage1:
                 placements=placements,
             )
         return accumulator
+
+    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
+        self._sharding_mesh_axis = sharding_mesh_axis
 
 
 class ShardingStage3:
@@ -862,6 +912,10 @@ class ShardingStage3:
 
     def __init__(self, mesh):
         self._mesh = mesh
+        self._sharding_mesh_axis = None
+
+    def _set_sharding_mesh_axis(self, sharding_mesh_axis):
+        self._sharding_mesh_axis = sharding_mesh_axis
 
     def _shard_parameter(self, param):
         if param.is_dense():
@@ -870,10 +924,20 @@ class ShardingStage3:
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
 
-        new_placements = get_placement_with_sharding(param)
+        new_placements = get_placement_with_sharding(
+            param, self._sharding_mesh_axis
+        )
         shard_param = dist.reshard(param, param.process_mesh, new_placements)
         # change the holder of param to new shard_param
         param.get_tensor()._share_data_with(shard_param.get_tensor())
+
+    def _unshard_parameter(self, param):
+        new_placements = param.placements
+        if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
+            new_placements[self._sharding_mesh_axis] = dist.Replicate()
+
+        new_param = dist.reshard(param, param.process_mesh, new_placements)
+        param.get_tensor()._share_data_with(new_param.get_tensor())
 
     def __call__(self, key, param, accumulator):
         if param.is_dist():
@@ -1893,7 +1957,34 @@ def to_static(
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
     if isinstance(optimizer, _ShardOptimizer):
+        shard_fn = optimizer._shard_fn
+        sharding_degree = optimizer._sharding_degree
         optimizer = optimizer._inner_opt
+
+        if shard_fn is not None:
+            strategy = dist.Strategy() if strategy is None else strategy
+
+            # Deduce sharding degree for static
+            # Note: Because limitation of architecture, we need to ensure that
+            # all parameters are sharded by the same mesh axis
+            assert (
+                sharding_degree is not None
+            ), "Sharding degree can not be None."
+
+            if isinstance(shard_fn, ShardingStage1):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 1
+                strategy.sharding.degree = sharding_degree
+            elif isinstance(shard_fn, ShardingStage3):
+                strategy.sharding.enable = True
+                strategy.sharding.stage = 3
+                strategy.sharding.degree = sharding_degree
+                for param in optimizer._parameter_list:
+                    shard_fn._unshard_parameter(param)
+            else:
+                raise NotImplementedError(
+                    "Only sharding stage 1 and 3 can to_static for now. User-defined shard_fn and sharding stage 2 will be supported later."
+                )
 
     dist_model = DistModel(layer, loader, loss, optimizer, strategy)
     return dist_model
