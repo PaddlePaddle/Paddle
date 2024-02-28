@@ -18,6 +18,7 @@ inference_base_test(
   SRCS
   zero_copy_tensor_test.cc
   DEPS
+  common
   paddle_inference_shared
   ARGS
   --dirname=${WORD2VEC_MODEL_DIR})
