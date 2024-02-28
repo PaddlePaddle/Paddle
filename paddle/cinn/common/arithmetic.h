@@ -13,20 +13,20 @@
 // limitations under the License.
 
 /**
- * This file includes some arithmatic utilities, such as simplifying/solving a
+ * This file includes some arithmetic utilities, such as simplifying/solving a
  * math equation/CINN expression.
  */
 #pragma once
 
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"  // NOLINT, Should be in front of other header files
 
-#include <ginac/ginac.h>
+#include <ginac/ginac.h>  // NOLINT
 
-#include <limits>
-#include <map>
-#include <set>
-#include <string>
-#include <tuple>
+#include <limits>  // NOLINT
+#include <map>     // NOLINT
+#include <set>     // NOLINT
+#include <string>  // NOLINT
+#include <tuple>   // NOLINT
 
 #ifdef As
 #undef As

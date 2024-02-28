@@ -144,7 +144,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   heter_server_ = distributed::HeterServer::GetInstance();
   heter_server_->SetEndPoint(endpoint);
-  heter_server_->SetFanin(fan_in);
+  heter_server_->SetFanIn(fan_in);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>("optimize_blocks");

@@ -25,13 +25,6 @@ void YieldOp::Build(Builder &builder,
   argument.AddInputs(inputs);
 }
 
-bool YieldOp::InferSymbolicShape(
-    pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(3) << "############ YieldOp::InferSymbolicShape start...";
-  // YieldOp has no output, just return true
-  return true;
-}
-
 void TuplePushOp::Build(Builder &builder,             // NOLINT
                         OperationArgument &argument,  // NOLINT
                         Value inlet,
@@ -54,14 +47,19 @@ void TuplePushOp::VerifySig() {
   IR_ENFORCE(num_operands() >= 1u, "The size of inputs must no less than 1.");
   IR_ENFORCE(operand_source(0).type().isa<InletType>(),
              "The first input of cf.tuple_push must be inlet_type.");
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The inlet value of cf.tuple_push can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
   VLOG(4) << "End Verifying for TuplePushOp.";
+}
+
+void TuplePushOp::VerifyRegion() {
+  // Note(winter-wang):Constraints on the number of uses can only can be placed
+  // in VerifyRegion, Otherwise cloning would fail.
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The inlet value of cf.tuple_push can only be used once.");
 }
 
 size_t TuplePushOp::tuple_size() {
@@ -96,12 +94,15 @@ void TuplePopOp::VerifySig() {
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
   IR_ENFORCE(operand_source(0).type().isa<OutletType>(),
              "The first input of cf.tuple_pop must be outlet_type.");
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The outlet value of cf.tuple_pop can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
+}
+
+void TuplePopOp::VerifyRegion() {
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The outlet value of cf.tuple_pop can only be used once.");
 
   // Verify stack validity:
   auto pop_op = container_interface().tuple_pop_op();

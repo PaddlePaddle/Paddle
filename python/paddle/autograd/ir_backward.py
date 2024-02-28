@@ -264,6 +264,7 @@ def append_backward_ops(
     backward_ops,
     state,
     bwd_value_to_block_argument_map=ValueDict(),
+    control_flow_value_to_copyvalue_map=ValueDict(),
 ):
     '''
     add grad_op in order of topological inverse sort
@@ -558,11 +559,6 @@ def append_backward_ops(
     # [builtin.combine , op3 , builtin.split] (op3's one input and one output are vectorType)
     # [op4] (op4's inputs and outputs are not vectorType)
 
-    # -----------------only for control flow-----------------#
-    # tuple_push value to pop value
-    control_flow_value_to_copyvalue_map = ValueDict()
-    control_flow_copyvalue_to_value_map = ValueDict()
-
     if (
         len(effective_forward_ops) > 1
         and effective_forward_ops[-1].name() == "cf.yield"
@@ -624,9 +620,6 @@ def append_backward_ops(
                         control_flow_value_to_copyvalue_map[
                             output[0]
                         ] = copy_output[0]
-                        control_flow_copyvalue_to_value_map[
-                            copy_output[0]
-                        ] = output[0]
                 else:
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
@@ -671,6 +664,9 @@ def append_backward_ops(
                                     )
 
                             sub_backward_ops = []
+                            sub_control_flow_value_to_copyvalue_map = (
+                                control_flow_value_to_copyvalue_map.copy()
+                            )
                             append_backward_ops(
                                 op,
                                 [input[0] for input in inputs[1:]],
@@ -681,6 +677,7 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
+                                control_flow_value_to_copyvalue_map=sub_control_flow_value_to_copyvalue_map,
                             )
                             for input_tuple in inputs_used_by_other_op:
                                 state.value_to_valuegrad[
@@ -747,6 +744,10 @@ def append_backward_ops(
                         sub_bwd_value_to_block_argument_map.update(
                             bwd_value_to_block_argument_map
                         )
+                        sub_control_flow_value_to_copyvalue_map = (
+                            control_flow_value_to_copyvalue_map.copy()
+                        )
+
                         while_grad_block = grad_op.as_while_op().body()
                         sub_backward_ops = []
                         append_backward_ops(
@@ -760,6 +761,7 @@ def append_backward_ops(
                             sub_backward_ops,
                             sub_state,
                             sub_bwd_value_to_block_argument_map,
+                            sub_control_flow_value_to_copyvalue_map,
                         )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
@@ -916,7 +918,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         state,
         ValueDict(),
     )
-
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state

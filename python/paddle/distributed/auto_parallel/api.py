@@ -864,15 +864,11 @@ class ShardingStage3:
         self._mesh = mesh
 
     def _shard_parameter(self, param):
-        # TODO(liyurui): remove this trick dense to dist convert after adding
-        # dense_tensor.to_dist method.
         if param.is_dense():
-            zero_dense = paddle.zeros(param.shape)
             placements = []
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
-            zero_dist = dist.shard_tensor(zero_dense, self._mesh, placements)
-            res = param + zero_dist
+            param._to_dist_(placements, self._mesh)
 
         new_placements = get_placement_with_sharding(param)
         shard_param = dist.reshard(param, param.process_mesh, new_placements)
