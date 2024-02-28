@@ -73,8 +73,8 @@ std::unordered_set<std::string> GetControlFlowVarNames(ir::Graph *graph) {
   return control_flow_var_names;
 }
 
-bool OutputUsedByControlFlow(ir::Node *node, ir::Graph *graph) {
-  auto cf_vars = GetControlFlowVarNames(graph);
+bool OutputUsedByControlFlow(ir::Node *node,
+                             const std::unordered_set<std::string> &cf_vars) {
   for (auto out_node : node->outputs) {
     if (cf_vars.count(out_node->Name())) {
       return true;
@@ -102,6 +102,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
                                      "save",
                                      "quantize_linear",
                                      "dequantize_linear"};
+  const auto cf_vars = GetControlFlowVarNames(graph);
   int folded_op_num = 0;
 
   auto op_node_sorted = framework::ir::TopologyVariantSort(
@@ -111,7 +112,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (std::find(blacklist.begin(), blacklist.end(), op_node->Name()) !=
         blacklist.end())
       continue;
-    if (OutputUsedByControlFlow(op_node, graph)) {
+    if (OutputUsedByControlFlow(op_node, cf_vars)) {
       continue;
     }
     bool input_persis = true;
