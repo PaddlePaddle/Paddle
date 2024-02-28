@@ -136,10 +136,10 @@ TEST(from_blob, GPU) {
   ASSERT_EQ(gpu_tensor.dtype(), DataType::FLOAT32);
 
   // 3.2 check tensor values
-  auto* gpu_tesnor_data = gpu_tesnor.template data<float>();
-  std::array<float, 6> gpu_tesnor_data_cpu;
+  auto* gpu_tensor_data = gpu_tensor.template data<float>();
+  std::array<float, 6> gpu_tensor_data_cpu;
   Copy(phi::CPUPlace(),
-       gpu_tesnor_data_cpu.data(),
+       gpu_tensor_data_cpu.data(),
        gpu0,
        gpu_tensor_data,
        sizeof(cpu_data),
