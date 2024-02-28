@@ -760,7 +760,7 @@ class OpConverter {
     return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
-  void RreplenishLayerAndOutput(
+  void ReplenishLayerAndOutput(
       nvinfer1::ILayer* layer,
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,

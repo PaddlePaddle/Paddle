@@ -320,6 +320,11 @@ PD_MANUAL_OP_LIST = {
     'assign_out_',
 }
 
+ONEDNN_MANUAL_OP_LIST = {
+    'split_grad',
+    'expand',
+}
+
 attr_types_map = {
     'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
     'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
@@ -1347,7 +1352,9 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
 
-            if op_name in PD_MANUAL_OP_LIST:
+            if dialect_name == "onednn_op" and op_name in ONEDNN_MANUAL_OP_LIST:
+                continue
+            elif dialect_name != "onednn_op" and op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:
                 func_list = [None]
