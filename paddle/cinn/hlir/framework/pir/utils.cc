@@ -186,7 +186,9 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
     int64_t numel = -1;
     if (value && value.type()) {
       auto type = value.type().dyn_cast<::pir::DenseTensorType>();
-      if (!::common::contain_unknown_dim(type.dims())) {
+      if (::common::contain_unknown_dim(type.dims())) {
+        numel = std::numeric_limits<int32_t>::max();
+      } else {
         numel = ::common::product(type.dims());
       }
     }
