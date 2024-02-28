@@ -2587,6 +2587,24 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 has_higher_order_node: bool,
                 indention: int,
             ):
+                """This function will generate code block for calling composite or
+                kernel grad api as shown below.
+
+                // Call grad_api function
+
+                XXX <-- Generated code by this function
+                XXX <-- Generated code by this function
+                ... <-- Generated code by this function
+                ... <-- Generated code by this function
+
+                // Check NaN and Inf id needed
+
+                Args:
+                    in_prim_white_list (bool): Whether current op in `prim_white_list`.
+                    has_kernel_impl (bool): Whether current op has kernel implementation.
+                    has_higher_order_node (bool): Whether current op has next grad op.
+                    indention (int): Number of single space for whole code block indention.
+                """
                 if in_prim_white_list:
                     code = f"""
 bool original_global_grad = egr::Controller::Instance().HasGrad();
@@ -2614,11 +2632,10 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
 {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
 {indent}if (!create_graph) {{
 {indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
-{indent}}}
-"""
+{indent}}}"""
                     if has_kernel_impl:
                         code = (
-                            f"{code}\n"
+                            code
                             + f"""
 }} else {{
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
@@ -2628,7 +2645,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                         )
                     else:
                         code = (
-                            f"{code}\n"
+                            code
                             + f"""
 }} else {{
   PADDLE_THROW(phi::errors::Unavailable(
@@ -2638,28 +2655,31 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                         )
                 # make indention for all line(s) in code
                 code = "\n".join(
-                    [f"{' ' * indention}{line}" for line in code.split("\n")]
+                    [
+                        (f"{' ' * indention}{line}" if len(line) else line)
+                        for line in code.split("\n")
+                    ]
                 )
 
-            if has_higher_order_node:
-                if (
-                    self.backward_api_name not in prim_white_list
-                    and not has_kernel_impl
-                ):
-                    if has_kernel_impl:
-                        grad_function_call_str = _gen_api_call_code_block(
-                            self.backward_api_name in prim_white_list,
-                            has_kernel_impl,
-                            has_higher_order_node,
-                            2,
-                        )
-                else:
-                    grad_function_call_str = _gen_api_call_code_block(
-                        self.backward_api_name in prim_white_list,
-                        has_kernel_impl,
-                        has_higher_order_node,
-                        2,
-                    )
+                return code
+
+            if (
+                self.backward_api_name not in prim_white_list
+                and not has_kernel_impl
+            ):
+                grad_function_call_str = _gen_api_call_code_block(
+                    self.backward_api_name in prim_white_list,
+                    has_kernel_impl,
+                    has_higher_order_node,
+                    0,
+                )
+            else:
+                grad_function_call_str = _gen_api_call_code_block(
+                    self.backward_api_name in prim_white_list,
+                    has_kernel_impl,
+                    has_higher_order_node,
+                    2,
+                )
         else:
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
