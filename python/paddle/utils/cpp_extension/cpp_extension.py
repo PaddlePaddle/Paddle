@@ -589,7 +589,7 @@ class BuildExtension(build_ext):
             finally:
                 self.compiler.spawn = original_spawn
 
-        def object_filenames_with_cuda(origina_func, build_directory):
+        def object_filenames_with_cuda(original_func, build_directory):
             """
             Decorated the function to add customized naming mechanism.
             Originally, both .cc/.cu will have .o object output that will
@@ -598,7 +598,7 @@ class BuildExtension(build_ext):
 
             def wrapper(source_filenames, strip_dir=0, output_dir=''):
                 try:
-                    objects = origina_func(
+                    objects = original_func(
                         source_filenames, strip_dir, output_dir
                     )
                     for i, source in enumerate(source_filenames):
@@ -618,7 +618,7 @@ class BuildExtension(build_ext):
                     # ensure to use abspath
                     objects = [os.path.abspath(obj) for obj in objects]
                 finally:
-                    self.compiler.object_filenames = origina_func
+                    self.compiler.object_filenames = original_func
 
                 return objects
 

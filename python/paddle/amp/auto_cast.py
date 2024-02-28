@@ -53,7 +53,7 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
-        self.already_classify_params_meshs = False  # For dist
+        self.already_classify_params_meshes = False  # For dist
         self.mesh2params = {}  # For dist
         self.amp_dtype = 'float32'
 
