@@ -1630,6 +1630,7 @@ class DistModel:
                 "fused_dropout_add_pass"
             )
 
+        inner_strategy.amp = copy.deepcopy(strategy.amp)
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)

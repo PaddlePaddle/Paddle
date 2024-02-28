@@ -3573,6 +3573,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
   pir::Value shape_ = input_values[1];
 
   VLOG(4) << "Builder construction outputs";
+  bool is_from_tensor = false;
   paddle::dialect::DenseTensorType x;
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -3591,29 +3592,70 @@ std::vector<pir::Type> ExpandOp::InferMeta(
         "paddle::dialect::AllocatedDenseTensorType"));
   }
 
-  phi::IntArray shape;
-  if (shape_.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    shape = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
-        shape_.defining_op()
-            ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-            .attribute("value"))));
-  } else if (shape_.type().isa<pir::VectorType>()) {
-    size_t shape_size = shape_.type().dyn_cast<pir::VectorType>().size();
-    // In ExpandInferMeta use -2 to represent the element in expand_shape is a
-    // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
-    shape.SetFromTensor(true);
-  } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
-    size_t shape_size = common::product(
-        shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
-    // In ExpandInferMeta use -2 to represent the element in expand_shape is a
-    // var.
-    shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
-    shape.SetFromTensor(true);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Only support VectorType or DenseTensorType"));
-  }
+  std::function<std::vector<int64_t>(const pir::Value &, bool *)>
+      ParseValueShape = [&](const pir::Value &shape,
+                            bool *is_from_tensor) -> std::vector<int64_t> {
+    std::vector<int64_t> vec_shape;
+    if (shape.isa<pir::OpResult>() &&
+        shape.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
+      vec_shape = paddle::dialect::GetInt64Vector(
+          shape.defining_op()
+              ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+              .attribute("value"));
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+      auto shape_item = shape.defining_op()
+                            ->dyn_cast<paddle::dialect::FullOp>()
+                            .attribute("value")
+                            .dyn_cast<pir::FloatAttribute>()
+                            .data();
+      vec_shape = {static_cast<int64_t>(shape_item)};
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::StackOp>()) {
+      std::vector<pir::Value> inputs = shape.defining_op()
+                                           ->operand_source(0)
+                                           .defining_op()
+                                           ->operands_source();
+      for (auto item : inputs) {
+        auto tmp = ParseValueShape(item, is_from_tensor);
+        vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
+      }
+    } else if (shape.type().isa<pir::VectorType>()) {
+      size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
+      vec_shape = std::vector<int64_t>(shape_size, -2);
+      *is_from_tensor = true;
+    } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      common::DDim shape_dim =
+          shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      size_t shape_size = common::product(shape_dim);
+      if (common::contain_unknown_dim(shape_dim)) {
+        shape_size = 1;
+      }
+      vec_shape = std::vector<int64_t>(shape_size, -2);
+      *is_from_tensor = true;
+    } else if (shape.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      common::DDim shape_dim =
+          shape.type()
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .dims();
+      size_t shape_size = common::product(shape_dim);
+      if (common::contain_unknown_dim(shape_dim)) {
+        shape_size = 1;
+      }
+      vec_shape = std::vector<int64_t>(shape_size, -2);
+      *is_from_tensor = true;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Only support VectorType or DenseTensorType "
+          "or AllocatedDenseTensorType"));
+    }
+    return vec_shape;
+  };
+
+  is_from_tensor = false;
+  phi::IntArray shape =
+      std::move(phi::IntArray(ParseValueShape(shape_, &is_from_tensor)));
+  if (is_from_tensor) shape.SetFromTensor(true);
 
   VLOG(4) << "Builder construction  dense_x";
   paddle::dialect::IrTensor ir_meta_tensor_x(
