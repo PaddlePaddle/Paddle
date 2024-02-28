@@ -250,7 +250,7 @@ fi
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
     echo "exit 9" > /tmp/paddle_coverage.result
-    if [ "$WITH_CINN" = "ON" ]; then
+    if [ "${WITH_CINN}" = "ON" ]; then
         echo "You must one RD(liuhongyu or lanxiang or zhenghuihuang or tianchao zhangliujie)to approval this PR."
     exit 9
 fi
