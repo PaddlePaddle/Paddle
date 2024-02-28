@@ -140,6 +140,9 @@ std::vector<pir::Value> GetUsedExternalValue(const pir::Block& block) {
 }
 
 bool ValueIsPersitable(pir::Value value) {
+  if (!value.defining_op()) {
+    return false;
+  }
   if (value.defining_op()->num_operands() > 0) {
     for (const auto& source_value : value.defining_op()->operands_source()) {
       if (!ValueIsPersitable(source_value)) {
