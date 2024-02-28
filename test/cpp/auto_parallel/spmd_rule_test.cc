@@ -256,7 +256,6 @@ TEST(LayerNormSPMDRule, Ctor) {
   bias_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
   bias_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
 
-  paddle::framework::AttributeMap attrs;
   float epsilon = 1e-5;
   int begin_norm_axis = 2;
 
@@ -912,7 +911,7 @@ TEST(ReduceMaxRule, Ctor) {
   t_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
       common::make_ddim({4, 6, 8}), t_dist_attr);
-  IntArray axis = {1};
+  phi::IntArray axis = {1};
   bool keep_dim = false;
   phi::distributed::SpmdInfo forward_info =
       phi::distributed::ReductionMaxInferSpmdDynamic(x, axis, keep_dim);
@@ -944,7 +943,7 @@ TEST(ReduceAllRule, Ctor) {
   t_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor x =
       phi::distributed::DistMetaTensor(phi::make_ddim({4, 6, 8}), t_dist_attr);
-  IntArray axis = {1};
+  phi::IntArray axis = {1};
   bool keep_dim = false;
   phi::distributed::SpmdInfo forward_info =
       phi::distributed::ReductionAllInferSpmdDynamic(x, axis, keep_dim);
