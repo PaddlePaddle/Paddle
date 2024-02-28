@@ -204,7 +204,10 @@ class TestTask(unittest.TestCase):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--file_path', default="llama.txt", help='input file', dest='file_path'
+        '--file_path',
+        default="simple_llama.config",
+        help='input file',
+        dest='file_path',
     )
     parser.add_argument('unittest_args', nargs='*')
     args = parser.parse_args()
