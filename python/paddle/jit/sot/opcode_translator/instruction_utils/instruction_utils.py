@@ -226,6 +226,7 @@ def relocate_jump_target(instructions: list[Instruction]) -> None:
             continue
 
         if instr.opname in ALL_JUMP:
+            breakpoint()
             assert instr.jump_to is not None
             assert instr.offset is not None
             # if jump target has extended_arg, should jump to the first extended_arg opcode
@@ -315,7 +316,7 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
     return modify_completed
 
 
-def modify_vars(instructions, code_options):
+def modify_vars(instructions: list[Instruction], code_options):
     co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
@@ -336,6 +337,11 @@ def modify_vars(instructions, code_options):
                     instrs.argval in namemap
                 ), f"`{instrs.argval}` not in {namemap}"
                 instrs.arg = namemap.index(instrs.argval)
+        # 可能是错的
+        elif instrs.opname == "FOR_ITER":
+            if sys.version_info >= (3, 12):
+                assert isinstance(instrs.jump_to, Instruction)
+                instrs.argval = instrs.jump_to.offset
 
 
 def calc_offset_from_bytecode_offset(

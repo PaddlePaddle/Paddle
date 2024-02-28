@@ -145,9 +145,11 @@ def gen_new_opcode(
         # Python deprecated co_lnotab in 3.10, use co_linetable instead
         # https://peps.python.org/pep-0626/
         code_options["co_linetable"] = linetable
+        code_options["co_lnotab"] = linetable
     else:
         code_options["co_lnotab"] = linetable
     code_options["co_code"] = bytecode
+    breakpoint()
     code_options["co_nlocals"] = len(code_options["co_varnames"])
     code_options["co_stacksize"] = stacksize(instrs)
     if sys.version_info >= (3, 11):
@@ -156,6 +158,8 @@ def gen_new_opcode(
     for key, val in code_options.items():
         if isinstance(val, list):
             code_options[key] = tuple(val)
+
+    breakpoint()
     # code_options is a dict, use keys to make sure the input order
     return types.CodeType(*[code_options[k] for k in keys])
 
@@ -191,6 +195,7 @@ def assemble(
         for _ in range(get_instruction_size(instr) // 2 - 1):
             code.extend((0, 0))
 
+    breakpoint()
     if sys.version_info >= (3, 11):
         # End hook for Python 3.11
         linetable.extend(calc_linetable(None, len(code)))
@@ -400,11 +405,12 @@ def stacksize(instructions: list[Instruction]) -> float:
             idx + 1 < len(instructions)
             and instr.opname not in UNCONDITIONAL_JUMP
         ):
-            stack_effect = calc_stack_effect(instr, jump=False)
+            stack_effect = calc_stack_effect(instr, jump1=False)
             update_stacksize(idx, idx + 1, stack_effect)
 
+
         if instr.opcode in opcode.hasjabs or instr.opcode in opcode.hasjrel:
-            stack_effect = calc_stack_effect(instr, jump=True)
+            stack_effect = calc_stack_effect(instr, jump1=True)
             target_idx = instructions.index(instr.jump_to)
             update_stacksize(idx, target_idx, stack_effect)
 
@@ -533,10 +539,15 @@ class PyCodeGen:
             hook()
         self.hooks.clear()
 
+        breakpoint()
         self.insert_prefix_instructions()
+        breakpoint()
         apply_instr_pass(self._instructions, self._code_options)
+        breakpoint()
         modify_instrs(self._instructions)
+        breakpoint()
         modify_vars(self._instructions, self._code_options)
+        breakpoint()
         new_code = gen_new_opcode(
             self._instructions, self._code_options, PYCODE_ATTRIBUTES
         )
