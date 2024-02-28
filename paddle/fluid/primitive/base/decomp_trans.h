@@ -45,6 +45,7 @@ class DecompProgram {
   void check_decomp_outputs(const std::string& op_name,
                             const std::vector<pir::Value>& orig_outs,
                             const std::vector<pir::Value>& decomp_outs);
+  void check_ops();
   std::vector<pir::Value> format_decomp_res(
       const std::string& op_name,
       const std::vector<pir::Value>& orig_outs,
@@ -72,7 +73,7 @@ class DecompProgram {
   std::vector<pir::Value> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
-  std::set<std::string> decomposed_ops_set;
+  std::set<std::string> decomposed_prog_ops_set_;
 };
 
 bool has_decomp_rule(const pir::Operation& op);

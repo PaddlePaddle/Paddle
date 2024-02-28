@@ -105,6 +105,10 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
@@ -415,6 +419,24 @@ bool AnalysisPredictor::Init(
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
+  // Use Optimized model to inference
+  if (config_.use_optimized_model_) {
+    std::string optimized_model_path = GetOptimizedModelPath();
+    std::string optimized_model = optimized_model_path + ".pdmodel";
+    std::string optimized_params = optimized_model_path + ".pdiparams";
+    if (FileExists(optimized_model) && FileExists(optimized_params)) {
+      config_.SetModel(optimized_model, optimized_params);
+      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
+    } else {
+      LOG(WARNING)
+          << "The optimized model is not found, fallback to original model. "
+             "EnableSaveOptimModel will be turned on and the optimized model "
+             "can be available next time.";
+      config_.EnableSaveOptimModel(true);
+      config_.UseOptimizedModel(false);
+    }
+  }
+
   if (!PrepareScope(parent_scope)) {
     return false;
   }
@@ -552,6 +574,55 @@ void AnalysisPredictor::InitPlace() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+}
+
+std::string AnalysisPredictor::GetOptimizedModelPath() {
+  std::string model_opt_cache_dir = config_.opt_cache_dir_;
+  if (!model_opt_cache_dir.empty()) {
+    if (!PathExists(model_opt_cache_dir)) {
+      PADDLE_ENFORCE_NE(
+          MKDIR(model_opt_cache_dir.c_str()),
+          -1,
+          platform::errors::PreconditionNotMet(
+              "Can not create optimize cache directory: %s, Make sure you "
+              "have permission to write",
+              model_opt_cache_dir));
+    }
+  } else {
+    model_opt_cache_dir =
+        !config_.model_dir().empty()
+            ? config_.model_dir()
+            : inference::analysis::GetDirRoot(config_.prog_file());
+  }
+  return model_opt_cache_dir + "/" + "_optimized";
+}
+
+void AnalysisPredictor::ClearExtraParams() {
+  auto var_names = scope_->LocalVarNames();
+  std::vector<std::string> trt_repetitive_params;
+  for (auto &op_desc : inference_program_->Block(0).AllOps()) {
+    if (op_desc->Type() == "tensorrt_engine") {
+      auto trt_params = PADDLE_GET_CONST(std::vector<std::string>,
+                                         op_desc->GetAttr("parameters"));
+      trt_repetitive_params.insert(
+          trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
+    }
+  }
+
+  std::vector<std::string> extra_params;
+  for (auto &var_desc : inference_program_->Block(0).AllVars()) {
+    if (var_desc->Persistable()) {
+      // Clear repetitive parameters in tensorrt
+      if (scope_->FindVar(var_desc->Name()) &&
+          std::count(trt_repetitive_params.begin(),
+                     trt_repetitive_params.end(),
+                     var_desc->Name())) {
+        extra_params.emplace_back(var_desc->Name());
+      }
+    }
+  }
+  scope_->EraseVars(extra_params);
+  VLOG(1) << "Clear " << extra_params.size() << " extra params.";
 }
 
 void AnalysisPredictor::InitResourceManager(void *stream) {
@@ -701,7 +772,17 @@ bool AnalysisPredictor::PrepareProgram(
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
-    OptimizeInferenceProgram();
+    if (config_.use_optimized_model_) {
+      LoadParameters();
+      ClearExtraParams();
+#ifdef PADDLE_WITH_CUDA
+      if (config_.use_gpu()) {
+        paddle::platform::EmptyCache();
+      }
+#endif
+    } else {
+      OptimizeInferenceProgram();
+    }
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
@@ -797,6 +878,21 @@ bool AnalysisPredictor::PrepareExecutor() {
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
       }
+#ifdef PADDLE_WITH_CINN
+      if (config_.cinn_enabled()) {
+        VLOG(4) << "[CINN] Begin AddCinnPass";
+        auto cinn_pm = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        cinn::dialect::ir::AddCinnPass(cinn_pm, *pir_program_.get());
+        if (!config_.glog_info_disabled()) {
+          cinn_pm->EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          cinn_pm->EnableIRPrinting();
+        }
+        cinn_pm->Run(pir_program_.get());
+      }
+#endif
 
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
@@ -827,13 +923,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
         params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
                                                     sub_scope_);
+        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
         constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-
-        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
         gpu_pm.AddPass(std::move(constant_folding_pass));
+
         gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
@@ -1600,6 +1696,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetModelProgramPath(config_.prog_file());
     argument_->SetModelParamsPath(config_.params_file());
   }
+  argument_->SetOptimizedModelSavePath(GetOptimizedModelPath());
   // For JITLayer
   argument_->SetSkipLoadParams(config_.skip_load_params_);
 
@@ -1624,6 +1721,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
+    argument_->SetTRTExcludeVarNames(config_.trt_exclude_var_names_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
@@ -1714,8 +1812,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
-  if (config_.use_cinn_compiler_) {
-    argument_->SetUseCinnCompiler(config_.use_cinn_compiler_);
+  if (config_.cinn_enabled()) {
+    argument_->SetUseCinnCompiler(true);
   }
 
 #ifdef PADDLE_WITH_DNNL
@@ -1790,7 +1888,7 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
-    if (!config_.use_cinn_compiler_) {
+    if (!config_.cinn_enabled()) {
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
         pass_builder->ClearPasses();

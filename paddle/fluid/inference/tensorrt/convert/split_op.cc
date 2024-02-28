@@ -127,7 +127,7 @@ class SplitOpConverter : public OpConverter {
         layer->setInput(3, *stride_tensor);
 
         auto output_name = op_desc.Output("Out")[i];
-        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
+        ReplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
       }
     } else {
       auto chw_input_dims = input->getDimensions();
@@ -151,7 +151,7 @@ class SplitOpConverter : public OpConverter {
                                      trt_size_dims,
                                      trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
-        RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
+        ReplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
       }
     }
 #else
@@ -172,7 +172,7 @@ class SplitOpConverter : public OpConverter {
     for (int i = 0; i < output_num; i++) {
       output_names.push_back(op_desc.Output("Out")[i]);
     }
-    RreplenishLayerAndOutput(layer, "split", output_names, test_mode);
+    ReplenishLayerAndOutput(layer, "split", output_names, test_mode);
 #endif
   }
 };

@@ -35,7 +35,7 @@ namespace ir {
   GET_IR_NODE(act_op);                 \
   GET_IR_NODE(act_out);
 
-// Inherient the basic information from `base_desc`, and modify some fields.
+// Inherit the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,
@@ -154,7 +154,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
   }
 
-  patterns::ConvElementwiseadd2Act pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::ConvElementwiseAdd2Act pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

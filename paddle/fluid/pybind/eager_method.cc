@@ -55,11 +55,10 @@ typedef SSIZE_T ssize_t;
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
@@ -974,6 +973,27 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__to_dist(TensorObject* self,
+                                 PyObject* args,
+                                 PyObject* kwargs) {
+  EAGER_TRY
+  const auto& placements =
+      CastPyArg2VectorOfPlacement(PyTuple_GET_ITEM(args, 0), 0);
+  const auto& mesh = CastPyArg2ProcessMesh(PyTuple_GET_ITEM(args, 1), 1);
+
+  if (self->tensor.is_dense_tensor()) {
+    const auto& dense_tensor_ptr =
+        std::static_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    auto dist_tensor_ptr = std::make_shared<phi::distributed::DistTensor>(
+        dense_tensor_ptr, mesh, placements);
+    self->tensor.set_impl(dist_tensor_ptr);
+  }
+
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__share_buffer_to(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1613,10 +1633,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("set_value", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "set_value");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "set_value");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {
@@ -1707,10 +1728,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
               tmps = {{self->tensor}, {value_tensor}};
-          auto amp_dtype = egr::GetAmpDestDtype("index_put", tmps);
-          self->tensor = egr::EagerAmpAutoCast(
+          auto amp_dtype =
+              paddle::imperative::GetAmpDestDtype("index_put", tmps);
+          self->tensor = paddle::imperative::AmpAutoCast(
               self->tensor.name(), self->tensor, amp_dtype, "index_put");
-          value_tensor = egr::EagerAmpAutoCast(
+          value_tensor = paddle::imperative::AmpAutoCast(
               value_tensor.name(), value_tensor, amp_dtype, "index_put");
         }
         if (self->tensor.dtype() != value_tensor.dtype()) {
@@ -3215,6 +3237,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      tensor_method_is_dist__doc__},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_to_dist_",
+     (PyCFunction)(void (*)())tensor__to_dist,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_share_buffer_to",

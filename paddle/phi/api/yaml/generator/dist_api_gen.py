@@ -596,6 +596,7 @@ class DistForwardAPI(ForwardAPI):
     def need_to_generate_code_for_inplace_impl(self, i):
         return (
             self.inplace_flag
+            and self.kernel['func'][0] != 'full'
             and self.inplace_map is not None
             and self.outputs['names'][i] in self.inplace_map
         )
@@ -1023,7 +1024,11 @@ class DistForwardAPI(ForwardAPI):
         output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
         if output_num == 1:
             # api output generate
-            if self.need_to_generate_code_for_inplace_impl(0):
+            if (
+                self.inplace_flag
+                and self.inplace_map is not None
+                and self.outputs['names'][0] in self.inplace_map
+            ):
                 inplace_assign_code = (
                     " = " + self.inplace_map[self.outputs['names'][0]]
                 )
@@ -1962,14 +1967,17 @@ def generate_api(
 
     for api in apis:
         dist_forward_api = DistForwardAPI(api)
-        if dist_forward_api.is_dygraph_api:
+        if dist_forward_api.is_dygraph_api and not is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
 
+        if dist_forward_api.is_dygraph_api and is_fused_ops_yaml:
+            dist_forward_api.is_dygraph_api = False
+            header_file.write(dist_forward_api.gene_api_declaration())
+            source_file.write(dist_forward_api.gene_api_code())
+            dist_forward_api.is_dygraph_api = True
+
         header_file.write(dist_forward_api.gene_api_declaration())
-        if is_fused_ops_yaml is True:
-            source_file.write(dist_forward_api.gene_api_code())
-        else:
-            source_file.write(dist_forward_api.gene_api_code())
+        source_file.write(dist_forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

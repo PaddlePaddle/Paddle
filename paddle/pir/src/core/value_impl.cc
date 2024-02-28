@@ -27,9 +27,9 @@ void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(first_use) + offset);
-  VLOG(10) << "The index of this value is " << offset
-           << ". Offset and set first use: " << first_use << " -> "
-           << first_use_offseted_by_kind_ << ".";
+  VLOG(10) << "The index of this value is: " << offset
+           << ". The address of this value is: " << this
+           << ". This value first use is: " << first_use << ".";
 }
 
 std::string ValueImpl::PrintUdChain() {
@@ -56,8 +56,7 @@ ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(nullptr) + kind);
   VLOG(10) << "Construct a ValueImpl whose's kind is " << kind
-           << ". The offset first_use address is: "
-           << first_use_offseted_by_kind_;
+           << ". The value_impl address is: " << this;
 }
 
 }  // namespace detail
