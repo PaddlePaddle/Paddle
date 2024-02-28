@@ -99,7 +99,7 @@ void AbsCooKernel(const Context& dev_ctx,
     phi::AbsKernel<T, Context>(                                       
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); 
     out->SetIndicesDict(x.GetIndicesDict());  
-    if (out->dtype() == DataType::COMPLEX64 || out->dtype() == DataType::COMPLEX64) {
+    if (out->dtype() == DataType::COMPLEX64 || out->dtype() == DataType::COMPLEX128) {
       DenseTensor* out_values = out->mutable_non_zero_elements();
       out->set_type(out_values->dtype());    
     }
@@ -114,7 +114,7 @@ void AbsCsrKernel(const Context& dev_ctx,
     phi::AbsKernel<T, Context>(                                       
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); 
 
-    if (out->dtype() == DataType::COMPLEX64 || out->dtype() == DataType::COMPLEX64) {
+    if (out->dtype() == DataType::COMPLEX64 || out->dtype() == DataType::COMPLEX128) {
       DenseTensor* out_values = out->mutable_non_zero_elements();
       out->set_type(out_values->dtype());    
     }
