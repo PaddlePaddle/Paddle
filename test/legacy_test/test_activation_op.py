@@ -370,7 +370,7 @@ class TestParameter:
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -963,7 +963,7 @@ class TestAtan(TestActivation, TestParameter):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.atan(x).numpy()
             z_expected = np.arctan(np_x)
             self.assertEqual(z, z_expected)
@@ -1036,7 +1036,7 @@ class TestSinhAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.sinh(x).numpy()
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -1075,7 +1075,7 @@ class TestSinhAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            var = base.dygraph.to_variable(input_x)
+            var = paddle.to_tensor(input_x)
             var.stop_gradient = False
             loss = paddle.sinh(var)
             loss.backward()
@@ -1168,7 +1168,7 @@ class TestCoshAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
-            x = base.dygraph.to_variable(np_x)
+            x = paddle.to_tensor(np_x)
             z = paddle.cosh(x).numpy()
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -1206,7 +1206,7 @@ class TestCoshAPI(unittest.TestCase):
             input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                 "float32"
             )
-            var = base.dygraph.to_variable(input_x)
+            var = paddle.to_tensor(input_x)
             var.stop_gradient = False
             loss = paddle.cosh(var)
             loss.backward()
@@ -4067,7 +4067,7 @@ class TestLog1pAPI(unittest.TestCase):
         # dygraph
         with base.dygraph.guard():
             np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
-            data_x = base.dygraph.to_variable(np_x)
+            data_x = paddle.to_tensor(np_x)
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))

@@ -45,41 +45,6 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  decltype(&xpu_fc_wrapper<XPUType, int16_t>) fc_api_list[5] = {
-      &xpu_fc_wrapper<XPUType, int16_t>,
-      &xpu_fc_wrapper<XPUType, int32_t>,
-      &xpu_fc_wrapper<XPUType, float>,
-      &xpu_fc_wrapper<XPUType, int_with_ll_t>,
-      &xpu_fc_wrapper<XPUType, tfloat32>,
-  };
-
-  auto fccal_type = FCCalcType<XPUType>();
-
-  auto fc_api = fc_api_list[fccal_type];
-
-  // fc + bias + act
-  phi::XpuFcInfo fc_info;
-  auto mat_x_dims =
-      common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
-  auto mat_y_dims = y.dims();
-  phi::GetFCInfo(mat_x_dims, mat_y_dims, trans_x, trans_y, &fc_info);
-  int batch_size = fc_info.bs;
-  int m = fc_info.m;
-  int n = fc_info.n;
-  int k = fc_info.k;
-  int ldx = fc_info.stride_x;
-  int ldy = fc_info.stride_y;
-  int ldout = fc_info.stride_out;
-  float* max_x = fc_info.max_x;
-  float* max_y = fc_info.max_y;
-  float* max_out = fc_info.max_out;
-
-  PADDLE_ENFORCE_LE(
-      batch_size,
-      1,
-      errors::InvalidArgument(
-          "FusedGemm do not support batched fc now, but got batch size %d.",
-          batch_size));
   const float* bias_ptr = reinterpret_cast<const float*>(bias.data<T>());
   if (!std::is_same<T, float>::value) {
     // TODO(lijin23): Now xblas and xdnn support fp32 bias only, may be removed
@@ -93,25 +58,22 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     bias_ptr = bias_tmp;
   }
-  fc_api(xpu_ctx,
-         x_ptr,
-         y_ptr,
-         out_ptr,
-         m,
-         n,
-         k,
-         trans_x,
-         trans_y,
-         max_x,
-         max_y,
-         max_out,
-         ldx,
-         ldy,
-         ldout,
-         1.0f,
-         0,
-         bias_ptr,
-         act);
+  // fc + bias + act
+  phi::XpuFcInfo fc_info;
+  fc_info.bias = bias_ptr;
+  auto mat_x_dims =
+      common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
+  auto mat_y_dims = y.dims();
+  phi::GetFCInfo(mat_x_dims, mat_y_dims, trans_x, trans_y, &fc_info);
+  int batch_size = fc_info.bs;
+  PADDLE_ENFORCE_LE(
+      batch_size,
+      1,
+      errors::InvalidArgument(
+          "FusedGemm do not support batched fc now, but got batch size %d.",
+          batch_size));
+  MatMulXPUFunction<XPUType>(
+      xpu_ctx, x_ptr, y_ptr, out_ptr, fc_info, 1.0f, false, act);
 }
 
 }  // namespace fusion

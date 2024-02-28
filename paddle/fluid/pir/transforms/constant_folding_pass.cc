@@ -74,7 +74,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
@@ -143,7 +143,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       }
     }
 
-    // 7. maybe affect performence
+    // 7. maybe affect performance
     if (op->isa<paddle::dialect::FullOp>()) {
       auto next_ops = pir::GetUseOpsForOutput(op, 0);
       for (auto [next_op, _] : next_ops) {
@@ -161,7 +161,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies rewrite on [" << op->name()
             << "] op";
     auto output_var_names = RunOp(op, rewriter);
 
@@ -410,7 +410,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
             context, suffix, place, scope, exe_config, deleted_vars) {}
 
   bool Match(pir::Operation* op) const override {
-    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     if (!ConstantFoldingPattern::Match(op)) {
       return false;
@@ -427,7 +427,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "constant_folding_pass for train applys rewrite on ["
+    VLOG(4) << "constant_folding_pass for train applies rewrite on ["
             << op->name() << "] op";
 
     auto output_var_names = RunOp(op, rewriter);
@@ -454,7 +454,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
       rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
     }
     rewriter.EraseOp(op);
-    VLOG(4) << "constant_folding_pass for traun applied rewrite on ["
+    VLOG(4) << "constant_folding_pass for train applied rewrite on ["
             << op->name() << "] op";
   }
 };

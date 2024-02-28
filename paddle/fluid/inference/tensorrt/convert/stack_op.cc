@@ -76,7 +76,7 @@ class StackOpConverter : public OpConverter {
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
-    RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };
 

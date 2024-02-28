@@ -63,7 +63,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def __init__(self):
         super().__init__()
-        # NOTE not use depence on loss and param_grads
+        # NOTE not use dependence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
         self.set_attr("use_sharding", False)

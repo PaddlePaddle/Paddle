@@ -69,7 +69,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
   }
 
   GroupList operator()() {
-    // run fusion merge untill no update.
+    // run fusion merge until no update.
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
@@ -564,7 +564,7 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
                         fusionable_consumers) {
     VLOG(3) << "VerticalFuse...!";
     GroupList fused_groups;
-    GroupPtr master_fuesd_group(nullptr);
+    GroupPtr master_fused_group(nullptr);
     for (auto& consumer : fusionable_consumers) {
       auto fused_group = std::make_shared<Graph::Group>(graph_);
       // update depth using consumer depth.
@@ -700,8 +700,8 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
       fusion_groups_[postion] = fused_group;
       fusion_groups_index_[fused_group] = postion;
 
-      if (!master_fuesd_group.get()) {
-        master_fuesd_group = fused_group;
+      if (!master_fused_group.get()) {
+        master_fused_group = fused_group;
       }
       CHECK(fused_group->output_nodes.size())
           << "No output node is found, " << fused_group->group_id;
@@ -731,8 +731,8 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
 
       if (be_output) {
         VLOG(4) << "Insert Id " << node->id() << " Into Group "
-                << master_fuesd_group->group_id;
-        master_fuesd_group->output_nodes.insert(node);
+                << master_fused_group->group_id;
+        master_fused_group->output_nodes.insert(node);
       }
     }
     // insert unfusionable consumer groups
@@ -740,10 +740,10 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
       if (fusionable_consumers.count(consumer)) {
         continue;
       }
-      master_fuesd_group->mut_consumer_groups()->insert(consumer);
+      master_fused_group->mut_consumer_groups()->insert(consumer);
       // update consumer's producer
       consumer->mut_producer_groups()->erase(producer);
-      consumer->mut_producer_groups()->insert(master_fuesd_group);
+      consumer->mut_producer_groups()->insert(master_fused_group);
     }
   }
 

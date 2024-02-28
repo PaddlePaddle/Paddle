@@ -28,6 +28,42 @@
     data_type : input
   optional : bias, residual_param
 
+- op : fused_elementwise_add
+  args : (Tensor x, Tensor y, int axis=-1, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, float fused_output_scale=1.0, int[] fused_unsqueeze2_axes={}, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_add
+
+- op : fused_elementwise_div
+  args : (Tensor x, Tensor y, int axis=-1, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, float fused_output_scale=1.0, int[] fused_unsqueeze2_axes={}, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_div
+
+- op : fused_elementwise_mul
+  args : (Tensor x, Tensor y, int axis=-1, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, float fused_output_scale=1.0, int[] fused_unsqueeze2_axes={}, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_mul
+
+- op : fused_elementwise_sub
+  args : (Tensor x, Tensor y, int axis=-1, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, float fused_output_scale=1.0, int[] fused_unsqueeze2_axes={}, float scale_x=1.0, float scale_y=1.0, float scale_out=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param : [x, y]
+  kernel :
+    func : fused_elementwise_sub
+
 - op: multi_gru
   args: (Tensor x, Tensor[] weight_x, Tensor[] weight_h, Tensor[] bias, Tensor[] scale_weights, str activation="tanh", str gate_activation="sigmoid", int layers=1, bool origin_mode=false, str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=1.0, bool force_fp32_output=false)
   output: Tensor(hidden)

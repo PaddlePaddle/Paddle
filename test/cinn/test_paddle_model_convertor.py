@@ -132,7 +132,7 @@ class TestPaddleModel(OpMapperTest):
                 msg="Repeat feed name: " + self.feed_names[i],
             )
 
-            dtype = self.paddleddtype2nptype(self.feed_dtypes[i])
+            dtype = self.paddledtype2nptype(self.feed_dtypes[i])
             # random int type data should not limited to [0, 1]
             high = 1 if ("int" not in dtype) else self.feed_shapes[i][0]
 
@@ -204,7 +204,7 @@ class TestPaddleModel(OpMapperTest):
         convertor = PaddleModelConvertor(target)
         for i in range(len(self.feed_names)):
             convertor.create_input(
-                dtype=self.paddleddtype2nptype(self.feed_dtypes[i]),
+                dtype=self.paddledtype2nptype(self.feed_dtypes[i]),
                 shape=self.feed_data[self.feed_names[i]].shape,
                 name=self.feed_names[i],
             )

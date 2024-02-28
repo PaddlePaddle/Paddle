@@ -136,9 +136,7 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
   return set.apply(transform);
 }
 
-isl_set *isl_get_precending_axis(isl_set *set,
-                                 int level,
-                                 bool with_tuple_name) {
+isl_set *isl_get_preceding_axis(isl_set *set, int level, bool with_tuple_name) {
   int n = isl_set_dim(set, isl_dim_set);
   CHECK_LT(level, n);
 
@@ -189,7 +187,7 @@ int isl_get_original_axes_from_optimized_level(isl_set __isl_keep *a,
   return original_level;
 }
 
-int isl_get_precending_removed_axes_counts(isl_set __isl_keep *a, int level) {
+int isl_get_preceding_removed_axes_counts(isl_set __isl_keep *a, int level) {
   int removed_axes_counts = 0;
   std::vector<std::tuple<int, int>> iden_dim_offsets;
   for (int i = 0; i <= level; i++) {
@@ -233,9 +231,9 @@ int isl_max_level_compatible(isl_set *a, isl_set *b) {
   int compatible_level = -1;
   for (int i = 0; i < std::min(an, bn); i++) {
     isl::set a_prefix =
-        isl::manage(isl_get_precending_axis(isl_set_copy(a), i, false));
+        isl::manage(isl_get_preceding_axis(isl_set_copy(a), i, false));
     isl::set b_prefix =
-        isl::manage(isl_get_precending_axis(isl_set_copy(b), i, false));
+        isl::manage(isl_get_preceding_axis(isl_set_copy(b), i, false));
 
     a_prefix = isl::manage(isl_set_set_tuple_name(a_prefix.release(), "s"));
     b_prefix = isl::manage(isl_set_set_tuple_name(b_prefix.release(), "s"));

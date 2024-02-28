@@ -188,7 +188,7 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
-        # parant block value is outside_value
+        # parent block value is outside_value
         self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
@@ -435,6 +435,14 @@ def all_stop_gradient_true(block):
     for op in block.ops:
         for value in op.results():
             if value.stop_gradient is False:
+                return False
+    return True
+
+
+def all_output_grad_none(list_of_list):
+    for list_ in list_of_list:
+        for value in list_:
+            if value is not None:
                 return False
     return True
 
