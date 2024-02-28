@@ -107,6 +107,10 @@ DEFINE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
                                         x_or_out.non_zero_elements(),     
                                         dout.non_zero_elements(),         
                                         dx->mutable_non_zero_elements()); 
+      if (dx->dtype() == DataType::COMPLEX64 || dx->dtype() == DataType::COMPLEX64) {
+        DenseTensor* out_values = dx->mutable_non_zero_elements();
+        dx->set_type(out_values->dtype());    
+      }
   }                                                                       
                                                                           
   template <typename T, typename Context>                                 
@@ -119,6 +123,10 @@ DEFINE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
                                         x_or_out.non_zero_elements(),     
                                         dout.non_zero_elements(),         
                                         dx->mutable_non_zero_elements()); 
+    if (dx->dtype() == DataType::COMPLEX64 || dx->dtype() == DataType::COMPLEX64) {
+        DenseTensor* out_values = dx->mutable_non_zero_elements();
+        dx->set_type(out_values->dtype());    
+      }
   }
 
 template <typename T, typename Context>
