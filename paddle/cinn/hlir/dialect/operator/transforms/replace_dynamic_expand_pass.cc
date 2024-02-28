@@ -56,8 +56,8 @@ class DynamicExpandOpPattern
       pir::ShapeConstraintIRAnalysis& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-      std::vector<int64_t> out_shape(out_rank, -1);
-      const auto& UpdateOutputShapeByDimExpr = [&]() {
+      const auto& UpdateOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
+        std::vector<int64_t> out_shape(out_rank, -1);
         if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
           VLOG(3) << "found shape dialect";
           auto shape_info =
@@ -69,9 +69,10 @@ class DynamicExpandOpPattern
             }
           }
         }
+        return out_shape;
       };
 
-      UpdateOutputShapeByDimExpr();
+      auto out_shape = UpdateOutputShapeByDimExpr();
 
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);
