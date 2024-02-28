@@ -3834,8 +3834,8 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          const MetaTensor& weight_x,
                          const MetaTensor& weight_h,
                          const MetaTensor& bias,
-                         const paddle::optional<const MetaTensor*>& h0,
-                         const paddle::optional<const MetaTensor*>& c0,
+                         const MetaTensor& h0,
+                         const MetaTensor& c0,
                          const bool use_peepholes,
                          const bool is_reverse,
                          const bool use_seq,
@@ -3864,21 +3864,15 @@ void FusionLstmInferMeta(const MetaTensor& x,
                         x_dims.size(),
                         x_dims));
 
-  if (h0) {
-    if (!c0) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "fusion_lstm must has h0 and c0 input at the same time."));
-    }
-    auto h_dims = h0.get()->dims();
-    auto c_dims = c0.get()->dims();
-    PADDLE_ENFORCE_EQ(h_dims,
-                      c_dims,
-                      phi::errors::InvalidArgument(
-                          "The dimension of Input(H0) and Input(C0) should be "
-                          "same, but received h0 dims is:[%s], c0 dims is:[%s]",
-                          h_dims,
-                          c_dims));
-  }
+  auto h_dims = h0.dims();
+  auto c_dims = c0.dims();
+  PADDLE_ENFORCE_EQ(h_dims,
+                    c_dims,
+                    phi::errors::InvalidArgument(
+                        "The dimension of Input(H0) and Input(C0) should be "
+                        "same, but received h0 dims is:[%s], c0 dims is:[%s]",
+                        h_dims,
+                        c_dims));
 
   auto wx_dims = weight_x.dims();
   PADDLE_ENFORCE_EQ(wx_dims.size(),
