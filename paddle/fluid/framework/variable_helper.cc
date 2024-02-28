@@ -32,10 +32,9 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<phi::DenseTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
+  } else if (var_type == proto::VarType::FEED_MINIBATCH ||
+             var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {  // NOLINT
-    var->GetMutable<FetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
