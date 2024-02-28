@@ -88,9 +88,8 @@ class TestDistPNorm(unittest.TestCase):
                 'fill_constant',
                 'reduce_mean_grad',
                 'c_embedding_grad',
-                'c_allreduce_sum',
-                'scale',
-            ]
+                'c_allreduce_avg',
+            ], f"Unexpexted op types: {op_types}"
 
 
 if __name__ == "__main__":
