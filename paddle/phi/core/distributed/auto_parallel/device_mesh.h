@@ -34,7 +34,7 @@ class DeviceCapabilityProto;
 class DeviceProto;
 class LinkCapabilityProto;
 class LinkProto;
-class DeviceMeshProto;
+class TEST_API DeviceMeshProto;
 
 struct DeviceCapability {
   double single_precision_flops = 0.0;
@@ -77,7 +77,7 @@ class Device {
   }
 
   // Device from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
   static Device from_proto(const DeviceProto& proto);
   void to_proto(DeviceProto* proto) const;
@@ -95,7 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const Device& obj) {
   return os;
 }
 
-bool operator==(const Device& lhs, const Device& rhs);
+TEST_API bool operator==(const Device& lhs, const Device& rhs);
 
 inline bool operator!=(const Device& lhs, const Device& rhs) {
   return !operator==(lhs, rhs);
@@ -134,7 +134,7 @@ class Link {
   }
 
   // Link from_string(const std::string& str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
   static Link from_proto(const LinkProto& proto);
   void to_proto(LinkProto* proto) const;
@@ -151,7 +151,7 @@ inline std::ostream& operator<<(std::ostream& os, const Link& obj) {
   return os;
 }
 
-bool operator==(const Link& lhs, const Link& rhs);
+TEST_API bool operator==(const Link& lhs, const Link& rhs);
 
 inline bool operator!=(const Link& lhs, const Link& rhs) {
   return !operator==(lhs, rhs);
@@ -203,10 +203,10 @@ class DeviceMesh {
  public:
   DeviceMesh() = default;
 
-  DeviceMesh(const std::string& name,
-             const std::vector<int64_t>& shape,
-             const std::vector<int64_t>& device_ids,
-             const std::vector<std::string>& dim_names);
+  TEST_API DeviceMesh(const std::string& name,
+                      const std::vector<int64_t>& shape,
+                      const std::vector<int64_t>& device_ids,
+                      const std::vector<std::string>& dim_names);
 
   const std::string& name() const { return name_; }
 
@@ -251,7 +251,7 @@ class DeviceMesh {
     return machines_.at(machine_id);
   }
 
-  int64_t size() const;
+  TEST_API int64_t size() const;
   int64_t ndim() const { return shape_.size(); }
 
   int64_t dim_size(int64_t dim) const {
@@ -270,15 +270,15 @@ class DeviceMesh {
   }
 
   bool empty() const { return (shape_.empty() || device_ids_.empty()); }
-  bool contains(int64_t device_id) const;
+  TEST_API bool contains(int64_t device_id) const;
 
-  void add_device(const Device& device);
-  void add_link(const Link& link);
+  TEST_API void add_device(const Device& device);
+  TEST_API void add_link(const Link& link);
 
   // DeviceMesh from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
-  static DeviceMesh from_proto(const DeviceMeshProto& proto);
+  TEST_API static DeviceMesh from_proto(const DeviceMeshProto& proto);
   void to_proto(DeviceMeshProto* proto) const;
 
  private:
@@ -296,7 +296,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceMesh& obj) {
   return os;
 }
 
-bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
+TEST_API bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
 
 inline bool operator!=(const DeviceMesh& lhs, const DeviceMesh& rhs) {
   return !operator==(lhs, rhs);

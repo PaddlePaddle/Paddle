@@ -28,16 +28,16 @@ namespace phi {
 namespace distributed {
 
 namespace auto_parallel {
-class ProcessMeshProto;
+class TEST_API ProcessMeshProto;
 }
 
 class ProcessMesh {
  public:
   ProcessMesh() = default;
 
-  ProcessMesh(const std::vector<int64_t>& shape,
-              const std::vector<int64_t>& process_ids,
-              const std::vector<std::string>& dim_names);
+  TEST_API ProcessMesh(const std::vector<int64_t>& shape,
+                       const std::vector<int64_t>& process_ids,
+                       const std::vector<std::string>& dim_names);
 
   const std::vector<int64_t>& shape() const { return shape_; }
 
@@ -45,7 +45,7 @@ class ProcessMesh {
 
   const std::vector<std::string>& dim_names() const { return dim_names_; }
 
-  int64_t size() const;
+  TEST_API int64_t size() const;
 
   int64_t ndim() const { return shape_.size(); }
 
@@ -65,14 +65,15 @@ class ProcessMesh {
   }
 
   bool empty() const { return (shape_.empty() || process_ids_.empty()); }
-  bool contains(int64_t process_id) const;
+  TEST_API bool contains(int64_t process_id) const;
 
   size_t hash() const { return std::hash<std::string>{}(to_string()); }
 
   // ProcessMesh from_string(const std::string& mesh_str);
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
-  static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
+  TEST_API static ProcessMesh from_proto(
+      const auto_parallel::ProcessMeshProto& proto);
   void to_proto(auto_parallel::ProcessMeshProto* proto) const;
 
  private:
@@ -86,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const ProcessMesh& obj) {
   return os;
 }
 
-bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
+TEST_API bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
 
 inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
   return !operator==(lhs, rhs);

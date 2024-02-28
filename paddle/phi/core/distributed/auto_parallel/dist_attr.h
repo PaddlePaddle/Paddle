@@ -33,7 +33,7 @@ namespace phi {
 namespace distributed {
 
 namespace auto_parallel {
-class TensorDistAttrProto;
+class TEST_API TensorDistAttrProto;
 }
 
 constexpr int kReplicateDim = -1;
@@ -216,7 +216,7 @@ inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
   return os;
 }
 
-bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
+TEST_API bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
 
 inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return !operator==(lhs, rhs);
