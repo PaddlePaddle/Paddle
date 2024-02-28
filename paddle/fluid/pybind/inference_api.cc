@@ -980,6 +980,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
+      .def("enable_cinn", &AnalysisConfig::EnableCINN)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
       .def("cpu_math_library_num_threads",
