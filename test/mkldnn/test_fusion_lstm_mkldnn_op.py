@@ -20,6 +20,7 @@ from test_fusion_lstm_op import TestFusionLSTMOp
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
     def set_conf(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def test_check_output(self):
         for use_seq in {True, False}:
