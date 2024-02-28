@@ -337,8 +337,7 @@ Tensor silu_decomp(const Tensor& x) {
 
 template <typename T>
 Tensor swiglu_decomp(const Tensor& x, const paddle::optional<Tensor>& y) {
-  auto y_ptr = y.get_ptr();
-  if (y_ptr) {
+  if (y) {
     return silu_decomp<T>(x) * y.get();
   } else {
     int axis = x.shape().size() - 1;

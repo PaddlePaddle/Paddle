@@ -431,7 +431,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "multihead_matmul", {output_name}, test_mode);
   }
 };

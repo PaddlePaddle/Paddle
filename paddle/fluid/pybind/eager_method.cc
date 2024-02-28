@@ -973,6 +973,27 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__to_dist(TensorObject* self,
+                                 PyObject* args,
+                                 PyObject* kwargs) {
+  EAGER_TRY
+  const auto& placements =
+      CastPyArg2VectorOfPlacement(PyTuple_GET_ITEM(args, 0), 0);
+  const auto& mesh = CastPyArg2ProcessMesh(PyTuple_GET_ITEM(args, 1), 1);
+
+  if (self->tensor.is_dense_tensor()) {
+    const auto& dense_tensor_ptr =
+        std::static_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    auto dist_tensor_ptr = std::make_shared<phi::distributed::DistTensor>(
+        dense_tensor_ptr, mesh, placements);
+    self->tensor.set_impl(dist_tensor_ptr);
+  }
+
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__share_buffer_to(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -3216,6 +3237,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      tensor_method_is_dist__doc__},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_to_dist_",
+     (PyCFunction)(void (*)())tensor__to_dist,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_share_buffer_to",

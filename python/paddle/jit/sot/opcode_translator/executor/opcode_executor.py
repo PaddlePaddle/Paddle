@@ -47,7 +47,7 @@ from ..instruction_utils import (
     calc_stack_effect,
     get_instructions,
 )
-from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
+from ..instruction_utils.opcode_info import RETURN, JumpDirection, PopJumpCond
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,
@@ -62,6 +62,7 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     FORMAT_VALUE_FLAG as FV,
     MAKE_FUNCTION_FLAG as MF,
+    IntrinsicsUnaryFunctions,
 )
 from .pycode_generator import PyCodeGen
 from .tracker import (
@@ -770,6 +771,12 @@ class OpcodeExecutorBase:
             )(obj, attr_name_var)
         )
 
+    @call_break_graph_decorator(push_n=1)
+    def LOAD_SUPER_ATTR(self, instr: Instruction):
+        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
+        # We align it's behavior with Python 3.11-.
+        raise BreakGraphError("call super is not supported")
+
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
         self.stack.push(var)
@@ -1389,11 +1396,13 @@ class OpcodeExecutorBase:
 
     POP_JUMP_FORWARD_IF_NONE = pop_jump_if_op_wrapper([operator_is_none])
     POP_JUMP_BACKWARD_IF_NONE = POP_JUMP_FORWARD_IF_NONE
+    POP_JUMP_IF_NONE = POP_JUMP_FORWARD_IF_NONE
 
     POP_JUMP_FORWARD_IF_NOT_NONE = pop_jump_if_op_wrapper(
         [operator_is_not_none]
     )
     POP_JUMP_BACKWARD_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
+    POP_JUMP_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
 
     @call_break_graph_decorator(push_n=lambda arg: arg)
     def UNPACK_SEQUENCE(self, instr: Instruction):
@@ -1545,6 +1554,19 @@ class OpcodeExecutorBase:
             )
         )
 
+    def CALL_INTRINSIC_1(self, instr: Instruction):
+        intrinsic_func = IntrinsicsUnaryFunctions(instr.arg)
+        if intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_1_INVALID:
+            raise RuntimeError("invalid intrinsic function")
+        elif (
+            intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_UNARY_POSITIVE
+        ):
+            self.UNARY_POSITIVE(instr)
+        elif intrinsic_func == IntrinsicsUnaryFunctions.INTRINSIC_LIST_TO_TUPLE:
+            self.LIST_TO_TUPLE(instr)
+        else:
+            raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
+
 
 class OpcodeExecutor(OpcodeExecutorBase):
     """
@@ -1644,8 +1666,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         start = self.indexof(instr)
         end = self.indexof(instr.jump_to)
         for i in range(start, end):
-            if self._instructions[i].opname == "RETURN_VALUE":
-                raise FallbackError("Found RETURN_VALUE in for loop body.")
+            if self._instructions[i].opname in RETURN:
+                raise FallbackError(
+                    f"Found {self._instructions[i].opname} in for loop body."
+                )
 
         self._graph.add_global_guarded_variable(iterator)
 
