@@ -113,12 +113,14 @@ void FusedConv2dAddActKernel(const Context& ctx,
     }
   };
 
-  auto cutlass_sm_version = [&](int device_sm_version) -> int {
+  auto cutlass_dispatch_sm_version = [&](int device_sm_version) -> int {
     if (device_sm_version < 75) {
-      PADDLE_ENFORCE_GE(device_sm_version,
-                        75,
-                        phi::errors::PreconditionNotMet(
-                            "conv2d_fuison_cutlass only supports sm >= 75"));
+      PADDLE_ENFORCE_GE(
+          device_sm_version,
+          75,
+          phi::errors::PreconditionNotMet(
+              "fused_conv2d_add_act only supports sm >= 75, but got %d.",
+              device_sm_version));
     } else if (device_sm_version > 80) {
       return 80;
     } else {
@@ -152,7 +154,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
       groups,
       ctx.stream(),
       0,  // alpha
-      cutlass_sm_version(sm_version),
+      cutlass_dispatch_sm_version(sm_version),
       get_conv2d_dtype(x.dtype()),
       nullptr,
   };
@@ -199,7 +201,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
       conv_func = (func)(dlsym(dlhandler, "Conv2dBiasAddRelu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Cutlass now only support relu activation in a residual block"));
+          "Cutlass now only support relu activation in a residual block, but "
+          "got %s.",
+          activation.c_str()));
     }
   } else if (activation == "relu") {
     conv_func = (func)(dlsym(dlhandler, "Conv2dBiasRelu"));
