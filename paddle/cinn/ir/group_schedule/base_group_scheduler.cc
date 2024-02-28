@@ -193,13 +193,20 @@ void GroupScheduler::MergeFlattenAxis() {
   }
 }
 void GroupScheduler::MergeReduceAxis() {
+  // should down reduce axis
+  std::vector<int32_t> fuse_axis = vec_reduce_axis;
+  if (vec_flatten_axis.size() >= 2) {
+    for (size_t i = 0; i < fuse_axis.size(); ++i) {
+      fuse_axis[i] -= (vec_flatten_axis.size() - 1);
+    }
+  }
   if (vec_reduce_axis.size() >= 2) {
     for (auto& name : node_list) {
       // skip reduce init block
       if (ir::IsReduceInitTensorName(name)) {
         continue;
       }
-      ir_sch_->Fuse(name, vec_reduce_axis);
+      ir_sch_->Fuse(name, fuse_axis);
     }
   }
 }

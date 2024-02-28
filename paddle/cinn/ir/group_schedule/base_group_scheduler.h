@@ -81,6 +81,16 @@ class GroupScheduler {
           vec_flatten_axis.push_back(i);
         }
       }
+
+      std::cerr << "flatten\n";
+      for (auto& d : vec_flatten_axis) {
+        std::cerr << "flatten d " << d << std::endl;
+      }
+
+      std::cerr << "reduce\n";
+      for (auto& d : vec_reduce_axis) {
+        std::cerr << "reduce d " << d << std::endl;
+      }
     }
   }
 

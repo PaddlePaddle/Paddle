@@ -712,17 +712,18 @@ std::shared_ptr<::pir::Program> BuildSmallSumGroupProgram() {
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  auto x = builder
-               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8, 4}),
-                                               1.0,
-                                               phi::DataType::FLOAT32,
-                                               phi::GPUPlace())
-               .result(0);
+  auto x =
+      builder
+          .Build<paddle::dialect::FullOp>(std::vector<int64_t>({512, 1024}),
+                                          1.0,
+                                          phi::DataType::FLOAT32,
+                                          phi::GPUPlace())
+          .result(0);
 
   auto out =
       builder
           .Build<paddle::dialect::SumOp>(
-              x, std::vector<int64_t>({}), paddle::DataType::FLOAT32, true)
+              x, std::vector<int64_t>({0}), paddle::DataType::FLOAT32, false)
           .result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
@@ -734,5 +735,5 @@ TEST(GroupOp, TestBuildSum2Group) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildSmallSumGroupProgram();
 
-  RunAndCheckResult(program.get(), true, 32.0);
+  RunAndCheckResult(program.get(), false, 32.0);
 }
