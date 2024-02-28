@@ -940,4 +940,16 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
+                           int random_seed,
+                           int k,
+                           const std::string& mode,
+                           MetaTensor* out,
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids);
+
 }  // namespace phi
