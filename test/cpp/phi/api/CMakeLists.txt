@@ -36,7 +36,10 @@ elseif(WITH_ROCM)
     DEPS ${COMMON_API_TEST_DEPS})
 else()
   paddle_test(test_phi_tensor SRCS test_phi_tensor.cc)
-  paddle_test(test_from_blob SRCS test_from_blob.cc)
+  nv_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS ${COMMON_API_TEST_DEPS})
 endif()
 
 paddle_test(test_phi_exception SRCS test_phi_exception.cc)
