@@ -209,33 +209,35 @@ struct Group {
     return group_outputs;
   }
 
-  std::vector<::pir::Value> GetGroupOutputValues() const {
+  const std::vector<::pir::Value>& GetGroupOutputValues() const {
     return this->output_values;
-    // std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
-    //                                                     this->ops.end());
-
-    // std::vector<::pir::Value> output_values;
-    // for (auto* op : this->ops) {
-    //   for (size_t i = 0; i < op->num_results(); ++i) {
-    //     auto result = op->result(i);
-    //     if (!result) {
-    //       continue;
-    //     }
-    //     for (auto use_iter = result.use_begin(); use_iter !=
-    //     result.use_end();
-    //          ++use_iter) {
-    //       auto* use_op = use_iter->owner();
-    //       if (group_ops_set.find(use_op) == group_ops_set.end()) {
-    //         output_values.push_back(result);
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
-    // return output_values;
   }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
+
+    std::vector<::pir::Value> output_values;
+    for (auto* op : this->ops) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        if (!result) {
+          continue;
+        }
+        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+             ++use_iter) {
+          auto* use_op = use_iter->owner();
+          if (group_ops_set.find(use_op) == group_ops_set.end()) {
+            output_values.push_back(result);
+            break;
+          }
+        }
+      }
+    }
+    return output_values;
+  }
 
   std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
     CHECK_NOTNULL(map_expr_ctx_);

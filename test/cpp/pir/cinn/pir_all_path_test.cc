@@ -614,7 +614,7 @@ static void RunAndCheckResult(::pir::Program* program,
 //                .result(0);
 
 //   auto out_arr =
-//       builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, 1).result(0);
+//       builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, -1).result(0);
 //   auto out = builder.Build<pir::SliceOp>(out_arr, 0).result(0);
 //   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
 //   return program;

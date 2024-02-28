@@ -16,23 +16,32 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::dialect {
-// using paddle::dialect::ScaleOpInferSymbolicShape;
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool SliceOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ConcatOpInferSymbolicShape(pir::Operation *op,
                                 pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ReduceMaxOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ReduceMinOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ReduceProdOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ReduceSumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
+
+bool SliceOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 }  // namespace cinn::dialect

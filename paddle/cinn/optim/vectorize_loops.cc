@@ -80,7 +80,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   const int factor_;
   const absl::flat_hash_map<std::string, cinn::common::CasInterval>
       *var_intervals_;
-  // save (tensor name) -> (bool flag) to indentify whether tensors can be
+  // save (tensor name) -> (bool flag) to identify whether tensors can be
   // vectorized or not
   std::unordered_map<std::string, bool> tensor2flag_;
 

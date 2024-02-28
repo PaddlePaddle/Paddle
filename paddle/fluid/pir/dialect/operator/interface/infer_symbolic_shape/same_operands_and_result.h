@@ -38,6 +38,9 @@ bool ExpOpInferSymbolicShape(pir::Operation *op,
 bool Exp_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis);
 
+bool FetchOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis);
+
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis);
 
@@ -95,3 +98,7 @@ bool Tril_OpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis);
 
 }  // namespace paddle::dialect
+
+namespace cinn::dialect {
+using paddle::dialect::ScaleOpInferSymbolicShape;
+}

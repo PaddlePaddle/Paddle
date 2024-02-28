@@ -758,7 +758,7 @@ class TestAdamOpV2(unittest.TestCase):
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
-        # leanrning_rate is Tensor
+        # learning_rate is Tensor
         with self.assertRaises(TypeError):
             learning_rate = np.array([0.01]).astype("float32")
             learning_rate = paddle.to_tensor(learning_rate)

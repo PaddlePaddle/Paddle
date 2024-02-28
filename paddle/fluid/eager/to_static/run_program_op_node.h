@@ -1518,7 +1518,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_values.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {

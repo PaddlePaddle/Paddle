@@ -298,13 +298,23 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
     // binding input_tensor of current_op
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
-                                            ir_node->operand(i).source());
-      if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
+      if (source_pattern_match_ctx->tensor_map().count(
+              drr_input_tensors[i]->name()) != 0 &&
+          ir_node->operand(i).source() !=
+              source_pattern_match_ctx->tensor_map().at(
+                  drr_input_tensors[i]->name())) {
         matched = false;
-        VLOG(8) << drr_node->name()
-                << " Match failed: it's input value is a block argument.";
+        VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
+                << "] already exists,but value is different!";
         break;
+      } else {
+        source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
+                                              ir_node->operand(i).source());
+      }
+
+      if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
+        VLOG(8) << "Match Attention! Found BlockArgument as input of "
+                << drr_node->name();
       }
 
       auto* drr_producer_op = drr_input_tensors[i]->producer();
@@ -520,27 +530,34 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     pir::Operation* op = src_match_ctx.IrOperation(&op_call);
-    VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
+    VLOG(6) << "DRR delete op: " << op->name() << " pointer: " << op;
     if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);
       delete_ops_set.insert(op);
     }
   });
+  const auto& DeleteOpAndUpdateQueue =
+      [&](pir::Operation* op,
+          std::queue<pir::Operation*>* delete_ops_que) -> void {
+    const std::vector<pir::Value> inputs = op->operands_source();
+    rewriter.EraseOp(op);
+    for (const auto& input : inputs) {
+      const bool use_empty =
+          (input && input.defining_op() && input.defining_op()->use_empty());
+      auto* defining_op = input.defining_op();
+      if (use_empty && delete_ops_set.count(defining_op) == 0U) {
+        delete_ops_set.insert(defining_op);
+        delete_ops_que->push(defining_op);
+      }
+    }
+  };
 
   while (!delete_ops_que.empty()) {
     pir::Operation* op = delete_ops_que.front();
     delete_ops_que.pop();
-    std::vector<pir::Value> inputs = op->operands_source();
-    VLOG(5) << "Delete (" << op->name() << " @" << op
+    VLOG(6) << "Delete (" << op->name() << " @" << op
             << ") in source_pattern_graph.";
-    rewriter.EraseOp(op);
-    for (const auto& input : inputs) {
-      if (input && input.defining_op()->use_empty() &&
-          delete_ops_set.count(input.defining_op()) == 0) {
-        delete_ops_set.insert(input.defining_op());
-        delete_ops_que.push(input.defining_op());
-      }
-    }
+    DeleteOpAndUpdateQueue(op, &delete_ops_que);
   }
 }
 
