@@ -3867,7 +3867,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
   if (h0.initialized()) {
     PADDLE_ENFORCE_EQ(
         c0.initialized(),
-        True,
+        true,
         phi::errors::InvalidArgument(
             "fusion_lstm must has h0 and c0 input at the same time."));
     auto h_dims = h0.dims();
