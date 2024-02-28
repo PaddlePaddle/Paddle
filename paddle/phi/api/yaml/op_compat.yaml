@@ -2432,7 +2432,7 @@
   outputs :
     out : Result
   attrs :
-    {axis : Axis, reduce : Reduce}
+    {axis : Axis, reduce : Reduce, include_self: Include_self}
 
 - op : pylayer
   backward : pylayer_grad

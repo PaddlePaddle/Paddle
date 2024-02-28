@@ -120,6 +120,470 @@ class TestPutAlongAxisOpCase2(TestPutAlongAxisOp):
         self.axis_type = "int64"
 
 
+class TestPutAlongAxisOpMul(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "mul"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMulNotIncludeSelf(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "mul"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        self.nums = np.zeros_like(self.target)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    if self.nums[i, self.index[i, j, k], k] == 0:
+                        self.target[i, self.index[i, j, k], k] = self.value[
+                            i, j, k
+                        ]
+                    else:
+                        self.target[i, self.index[i, j, k], k] *= self.value[
+                            i, j, k
+                        ]
+                    self.nums[i, self.index[i, j, k], k] += 1
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': False,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpAdd(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "add"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] += self.value[
+                        i, j, k
+                    ]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 100, (5, 5, 5)).astype(
+            self.value_type
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpAddNotIncludeSelf(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "add"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        self.nums = np.zeros_like(self.target)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    if self.nums[i, self.index[i, j, k], k] == 0:
+                        self.target[i, self.index[i, j, k], k] = self.value[
+                            i, j, k
+                        ]
+                    else:
+                        self.target[i, self.index[i, j, k], k] += self.value[
+                            i, j, k
+                        ]
+                    self.nums[i, self.index[i, j, k], k] += 1
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': False,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMean(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "mean"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        self.nums = np.ones_like(self.target)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] += self.value[
+                        i, j, k
+                    ]
+                    self.nums[i, self.index[i, j, k], k] += 1
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    self.target[i, j, k] /= self.nums[i, j, k]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMeanNotIncludeSelf(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "mean"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        self.nums = np.zeros_like(self.target)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    if self.nums[i, self.index[i, j, k], k] == 0:
+                        self.target[i, self.index[i, j, k], k] = self.value[
+                            i, j, k
+                        ]
+                    else:
+                        self.target[i, self.index[i, j, k], k] += self.value[
+                            i, j, k
+                        ]
+                    self.nums[i, self.index[i, j, k], k] += 1
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    if self.nums[i, j, k] > 0:
+                        self.target[i, j, k] = (
+                            self.target[i, j, k] / self.nums[i, j, k]
+                        )
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': False,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMin(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "amin"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = (
+                        self.value[i, j, k]
+                        if self.value[i, j, k]
+                        < self.target[i, self.index[i, j, k], k]
+                        else self.target[i, self.index[i, j, k], k]
+                    )
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = (
+            np.arange(1, 126).reshape((5, 5, 5)).astype(self.value_type)
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMinNotIncludeSelf(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "amin"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = self.value[i, j, k]
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = (
+                        self.value[i, j, k]
+                        if self.value[i, j, k]
+                        < self.target[i, self.index[i, j, k], k]
+                        else self.target[i, self.index[i, j, k], k]
+                    )
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': False,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = (
+            np.arange(1, 126).reshape((5, 5, 5)).astype(self.value_type)
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMax(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "amax"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = (
+                        self.value[i, j, k]
+                        if self.value[i, j, k]
+                        > self.target[i, self.index[i, j, k], k]
+                        else self.target[i, self.index[i, j, k], k]
+                    )
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'include_self': True,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = (
+            np.arange(1, 126).reshape((5, 5, 5)).astype(self.value_type)
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "amax"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = self.value[i, j, k]
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] = (
+                        self.value[i, j, k]
+                        if self.value[i, j, k]
+                        > self.target[i, self.index[i, j, k], k]
+                        else self.target[i, self.index[i, j, k], k]
+                    )
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+            'Value': self.value,
+        }
+        self.attrs = {
+            'Axis': self.axis,
+            'Reduce': self.reduce_op,
+            'Include_self': False,
+            'broadcast': False,
+        }
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.dtype = 'float64'
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float64"
+        self.value = (
+            np.arange(1, 126).reshape((5, 5, 5)).astype(self.value_type)
+        )
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -268,6 +732,45 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             out_ref = self.x_np
 
             np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPILargeCase(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [64, 1327104]
+        self.index_shape = [64, 1327104]
+        self.index_np = np.zeros(self.index_shape).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.axis = 1
+        self.value_np = np.ones(self.index_shape).astype(np.float32)
+        self.x_feed = copy.deepcopy(self.x_np)
+        self.place = [paddle.CUDAPlace(0)]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor = paddle.to_tensor(self.index_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+            out = paddle.put_along_axis(
+                x_tensor, index_tensor, value_tensor, self.axis
+            )
+            np.array(
+                np.put_along_axis(
+                    self.x_np, self.index_np, self.value_np, self.axis
+                )
+            )
+            out_ref = self.x_np
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
             paddle.enable_static()
 
         for place in self.place:
@@ -468,13 +971,262 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
 
-        # use includ_self=False
-        try:
+    def test_index_type_error(self):
+        tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
+        indices = paddle.to_tensor([[1]]).astype("float32")
+        values = paddle.to_tensor([[2]])
+        with self.assertRaises(TypeError):
             res = paddle.put_along_axis(
-                tensorx, indices, 1.0, 0, 'assign', False
+                tensorx, indices, values, 0, 'mul', True, False
             )
-        except Exception as error:
-            self.assertIsInstance(error, ValueError)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'float32'
+        self.x_type = "float32"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float32"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.random.randint(0, 5, (5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'float32'
+        self.x_type = "float32"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float32"
+        self.value = np.random.randint(1, 3, (3, 3, 3)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.random.randint(0, 3, (3, 3, 3)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+        self.xnp = convert_float_to_uint16(self.xnp)
+        self.value = convert_float_to_uint16(self.value)
+        self.target = convert_float_to_uint16(self.target)
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'int32'
+        self.x_type = "int32"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "int32"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int32"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'int64'
+        self.x_type = "int64"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "int64"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'uint8'
+        self.x_type = "uint8"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "uint8"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":
