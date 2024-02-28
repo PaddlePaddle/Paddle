@@ -18,7 +18,6 @@ import paddle
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
-    is_data_parallel_scale_op,
 )
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
@@ -264,32 +263,32 @@ def _append_gradient_merge_backward_op(
     return new_params_grads, grad_to_gradient_merge
 
 
-def _move_reduce_to_optimizer_ops_block(main_program, optimize_ops_block):
+def _move_reduce_to_optimizer_ops_block(
+    main_program, optimize_ops_block, params_grads
+):
     main_block = main_program.global_block()
     removed_op_idx = []
+    params_grads_name = [grad.name for _, grad in params_grads]
 
     for idx, op in list(enumerate(main_block.ops)):
         if is_data_parallel_reduce_op(op):
-            # append optimizer op to tmp block
-            new_op_desc = optimize_ops_block.desc._insert_op(
+            op_input_names = op.desc.input_arg_names()
+
+            reduce_op_desc = optimize_ops_block.desc._insert_op(
                 len(removed_op_idx)
             )
-            new_op_desc.copy_from(op.desc)
-            new_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
-            removed_op_idx.append(idx)
+            reduce_op_desc.copy_from(op.desc)
+            reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
+            reduce_op_desc.append(idx)
 
-            if op.type == "c_allreduce_sum":
-                scale_index = idx + 1
-                while scale_index < len(main_block.ops):
-                    if is_data_parallel_scale_op(main_block.ops[scale_index]):
-                        new_op_desc = optimize_ops_block.desc._insert_op(
-                            len(removed_op_idx)
-                        )
-                        new_op_desc.copy_from(main_block.ops[scale_index].desc)
-                        new_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
-                        removed_op_idx.append(scale_index)
-                        break
-                    scale_index += 1
+            if op_input_names[0] in params_grads_name:
+                elementadd_op = main_block.ops[idx + 1]
+                elementadd_op_desc = optimize_ops_block.desc._insert_op(
+                    len(removed_op_idx)
+                )
+                elementadd_op_desc.copy_from(elementadd_op.desc)
+                elementadd_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
+                removed_op_idx.append(idx + 1)
 
     for idx in removed_op_idx[::-1]:
         main_block._remove_op(idx, sync=False)
@@ -445,7 +444,7 @@ def parse_program(
 
     # 3 move reduce op to optimizer_ops_block
     optimize_ops_block = _move_reduce_to_optimizer_ops_block(
-        main_program, optimize_ops_block
+        main_program, optimize_ops_block, params_grads
     )
 
     # 4 create gradient_merge_cond

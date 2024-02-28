@@ -416,6 +416,7 @@ class Parallelizer:
             )
             dp_pass.apply([main_program], [startup_program], self._pass_context)
 
+        global_params_grads = params_grads
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
@@ -485,7 +486,7 @@ class Parallelizer:
         if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
-            config["params_grads"] = params_grads
+            config["params_grads"] = global_params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config
             )
