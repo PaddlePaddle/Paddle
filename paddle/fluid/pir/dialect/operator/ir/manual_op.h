@@ -37,7 +37,6 @@ namespace dialect {
 class AddNOp : public pir::Op<AddNOp,
                               paddle::dialect::OpYamlInfoInterface,
                               paddle::dialect::InferMetaInterface,
-                              paddle::dialect::GetKernelTypeForVarInterface,
                               paddle::dialect::VjpInterface,
                               paddle::dialect::DecompInterface> {
  public:
@@ -46,24 +45,18 @@ class AddNOp : public pir::Op<AddNOp,
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs_);
+  TEST_API static void Build(pir::Builder &builder,             // NOLINT
+                             pir::OperationArgument &argument,  // NOLINT
+                             pir::Value inputs);
 
   void VerifySig();
-
-  static phi::DataType GetKernelTypeForVar(
-      const std::string &var_name,
-      const phi::DataType &tensor_dtype,
-      const phi::DataType &expected_kernel_dtype);
-
   pir::Value inputs() { return operand_source(0); }
   pir::Value out() { return result(0); }
-
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       const pir::AttributeMap &attributes);
+
   static std::vector<std::vector<pir::Value>> Vjp(
       pir::Operation *op,
       const std::vector<std::vector<pir::Value>> &inputs_,
@@ -76,7 +69,6 @@ class AddNOp : public pir::Op<AddNOp,
 class AddN_Op : public pir::Op<AddN_Op,
                                paddle::dialect::OpYamlInfoInterface,
                                paddle::dialect::InferMetaInterface,
-                               paddle::dialect::GetKernelTypeForVarInterface,
                                paddle::dialect::InplaceTrait> {
  public:
   using Op::Op;
@@ -89,12 +81,6 @@ class AddN_Op : public pir::Op<AddN_Op,
                     pir::Value inputs_);
 
   void VerifySig();
-
-  static phi::DataType GetKernelTypeForVar(
-      const std::string &var_name,
-      const phi::DataType &tensor_dtype,
-      const phi::DataType &expected_kernel_dtype);
-
   pir::Value inputs() { return operand_source(0); }
   pir::Value out() { return result(0); }
 

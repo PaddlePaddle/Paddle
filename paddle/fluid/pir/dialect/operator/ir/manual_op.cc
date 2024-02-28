@@ -56,38 +56,19 @@ namespace dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
-      paddle::dialect::OpInputInfo(
-          "inputs",
-          "pir::VectorType<paddle::dialect::DenseTensorType>",
-          false,
-          false,
-          false,
-          false)};
+      OpInputInfo("inputs",
+                  "pir::VectorType<paddle::dialect::DenseTensorType>",
+                  false,
+                  false,
+                  false,
+                  true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
-      paddle::dialect::OpOutputInfo(
-          "out", "paddle::dialect::DenseTensorType", false, false)};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
       "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
+
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
-}
-
-void AddNOp::Build(pir::Builder &builder,
-                   pir::OperationArgument &argument,
-                   pir::Value inputs_) {
-  VLOG(4) << "Start build AddNOp";
-
-  VLOG(4) << "Builder construction inputs";
-  std::vector<pir::Value> argument_inputs = {inputs_};
-  argument.AddInputs(argument_inputs);
-
-  VLOG(4) << "Builder construction attributes";
-  pir::AttributeMap argument_attributes = {};
-
-  std::vector<pir::Type> argument_outputs =
-      AddNOp::InferMeta(argument_inputs, argument_attributes);
-  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNOp::VerifySig() {
@@ -95,27 +76,28 @@ void AddNOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
     if (auto vec_type =
-            (*this)->operand_source(0).type().dyn_cast<pir::VectorType>()) {
+            (*this)->operand(0).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                   "Type validation failed for the 0th input, got %s.",
-                   (*this)->operand_source(0).type());
+        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                           vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
+                       phi::errors::PreconditionNotMet(
+                           "Type validation failed for the 0th input."));
       }
     } else {
-      IR_ENFORCE((*this)->operand_source(0)
-                         .type()
-                         .isa<paddle::dialect::DenseTensorType>() ||
-                     (*this)
-                         ->operand_source(0)
-                         .type()
-                         .isa<paddle::dialect::SelectedRowsType>(),
-                 "Type validation failed for the 0th input, got %s.",
-                 (*this)->operand_source(0).type());
+      PADDLE_ENFORCE(
+          (*this)->operand(0).type().isa<paddle::dialect::DenseTensorType>() ||
+              (*this)
+                  ->operand(0)
+                  .type()
+                  .isa<paddle::dialect::SelectedRowsType>(),
+          phi::errors::PreconditionNotMet(
+              "Type validation failed for the 0th input."));
     }
   }
   VLOG(4) << "Verifying attributes:";
@@ -125,15 +107,36 @@ void AddNOp::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
             (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
-        "Type validation failed for the 0th output.");
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: AddNOp.";
+}
+
+void AddNOp::Build(pir::Builder &builder,             // NOLINT
+                   pir::OperationArgument &argument,  // NOLINT
+                   pir::Value inputs) {
+  VLOG(4) << "Start build AddNOp";
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {inputs};
+  argument.AddInput(inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  std::vector<pir::Type> argument_outputs =
+      AddNOp::InferMeta(argument_inputs, argument_attributes);
+
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -144,87 +147,66 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
 std::vector<pir::Type> AddNOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta AddNOp";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
              input_values.size());
-
   pir::Value inputs_ = input_values[0];
-  (void)inputs_;
-  VLOG(4) << "Builder construction outputs";
-  bool is_from_tensor = false;
-  (void)is_from_tensor;
-  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  (void)inputs;
 
-  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_inputs;
-  for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
-    if (inputs[i].isa<paddle::dialect::DenseTensorType>()) {
-      auto inputs_type = inputs[i].dyn_cast<paddle::dialect::DenseTensorType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
-    } else if (inputs[i].isa<paddle::dialect::AllocatedDenseTensorType>()) {
-      auto inputs_type =
-          inputs[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
-    } else if (inputs[i].isa<paddle::dialect::SelectedRowsType>()) {
-      auto inputs_type =
-          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType x = inputs_.type().dyn_cast<pir::VectorType>();
+
+  std::vector<paddle::dialect::IrTensor> vec_dense_x;
+  for (size_t i = 0; i < x.size(); i++) {
+    if (x[i].isa<paddle::dialect::DenseTensorType>()) {
+      vec_dense_x.push_back(paddle::dialect::IrTensor(
+          TransToPhiDataType(
+              x[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+          x[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+          x[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+          x[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+          x[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+    } else if (x[i].isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      vec_dense_x.push_back(paddle::dialect::IrTensor(
+          TransToPhiDataType(
+              x[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .dtype()),
+          x[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>().dims(),
+          x[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .data_layout(),
+          x[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>().lod(),
+          x[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>().offset()));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Only support DenseTensorType or AllocatedDenseTensorType or "
-          "SelectedRowsType"));
+          "Only support paddle::dialect::DenseTensorType or "
+          "paddle::dialect::AllocatedDenseTensorType"));
     }
   }
-  std::vector<paddle::dialect::IrMetaTensor> vec_meta_inputs;
-  for (size_t i = 0; i < vec_ir_tensor_inputs.size(); i++) {
-    vec_meta_inputs.push_back(
-        paddle::dialect::IrMetaTensor(&vec_ir_tensor_inputs[i]));
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_x;
+  for (size_t i = 0; i < vec_dense_x.size(); i++) {
+    vec_meta_x.push_back(paddle::dialect::IrMetaTensor(&vec_dense_x[i]));
   }
 
-  std::vector<const phi::MetaTensor *> meta_inputs;
-  for (size_t i = 0; i < static_cast<size_t>(vec_meta_inputs.size()); i++) {
-    meta_inputs.push_back(&vec_meta_inputs[i]);
+  std::vector<const phi::MetaTensor *> meta_x;
+  for (size_t i = 0; i < static_cast<size_t>(vec_meta_x.size()); i++) {
+    meta_x.push_back(&vec_meta_x[i]);
   }
+
   paddle::dialect::IrTensor dense_out;
   paddle::dialect::IrMetaTensor meta_out(&dense_out);
 
-  phi::AddNInferMeta(meta_inputs, &meta_out);
+  phi::AddNInferMeta(meta_x, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
       pir::IrContext::Instance(),
-      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      TransToIrDataType(dense_out.dtype()),
       dense_out.dims(),
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
-
   return argument_outputs;
-}
-
-phi::DataType AddNOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const phi::DataType &tensor_dtype,
-    const phi::DataType &expected_kernel_dtype) {
-  VLOG(4) << "Get KernelType for Var of op: AddNOp";
-
-  return expected_kernel_dtype;
 }
 
 OpInfoTuple AddN_Op::GetOpInfo() {
@@ -235,13 +217,13 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           false,
           false,
           false,
-          false)};
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, "add_n_", {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n_");
 }
 
@@ -252,15 +234,14 @@ void AddN_Op::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {inputs_};
-  argument.AddInputs(argument_inputs);
+  argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
-
   std::vector<pir::Type> argument_outputs =
       AddN_Op::InferMeta(argument_inputs, argument_attributes);
+
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddN_Op::VerifySig() {
@@ -268,27 +249,29 @@ void AddN_Op::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
     if (auto vec_type =
             (*this)->operand_source(0).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                   "Type validation failed for the 0th input, got %s.",
-                   (*this)->operand_source(0).type());
+        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                           vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
+                       phi::errors::PreconditionNotMet(
+                           "Type validation failed for the 0th input."));
       }
     } else {
-      IR_ENFORCE((*this)->operand_source(0)
-                         .type()
-                         .isa<paddle::dialect::DenseTensorType>() ||
-                     (*this)
-                         ->operand_source(0)
-                         .type()
-                         .isa<paddle::dialect::SelectedRowsType>(),
-                 "Type validation failed for the 0th input, got %s.",
-                 (*this)->operand_source(0).type());
+      PADDLE_ENFORCE((*this)->operand_source(0)
+                             .type()
+                             .isa<paddle::dialect::DenseTensorType>() ||
+                         (*this)
+                             ->operand_source(0)
+                             .type()
+                             .isa<paddle::dialect::SelectedRowsType>(),
+                     phi::errors::PreconditionNotMet(
+                         "Type validation failed for the 0th input."));
     }
   }
   VLOG(4) << "Verifying attributes:";
@@ -298,13 +281,16 @@ void AddN_Op::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
             (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
-        "Type validation failed for the 0th output.");
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: AddN_Op.";
 }
@@ -317,56 +303,51 @@ void AddN_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 std::vector<pir::Type> AddN_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
     const pir::AttributeMap &attributes) {
+  VLOG(4) << "Start infermeta AddN_Op";
   IR_ENFORCE(input_values.size() == 1,
              "Num of inputs is expected to be 1 but got %d.",
              input_values.size());
-
   pir::Value inputs_ = input_values[0];
-  (void)inputs_;
-  VLOG(4) << "Builder construction outputs";
-  bool is_from_tensor = false;
-  (void)is_from_tensor;
-  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
-  (void)inputs;
 
-  std::vector<paddle::dialect::IrTensor> vec_ir_tensor_inputs;
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
+  std::vector<paddle::dialect::IrTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     if (inputs[i].isa<paddle::dialect::DenseTensorType>()) {
-      auto inputs_type = inputs[i].dyn_cast<paddle::dialect::DenseTensorType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
+      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+          paddle::dialect::TransToPhiDataType(
+              inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+          inputs[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
     } else if (inputs[i].isa<paddle::dialect::AllocatedDenseTensorType>()) {
-      auto inputs_type =
-          inputs[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
-    } else if (inputs[i].isa<paddle::dialect::SelectedRowsType>()) {
-      auto inputs_type =
-          inputs[i].dyn_cast<paddle::dialect::SelectedRowsType>();
-      vec_ir_tensor_inputs.push_back(paddle::dialect::IrTensor(
-          paddle::dialect::TransToPhiDataType(inputs_type.dtype()),
-          inputs_type.dims(),
-          inputs_type.data_layout(),
-          inputs_type.lod(),
-          inputs_type.offset()));
+      vec_dense_inputs.push_back(paddle::dialect::IrTensor(
+          TransToPhiDataType(
+              inputs[i]
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .dtype()),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .dims(),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .data_layout(),
+          inputs[i].dyn_cast<paddle::dialect::AllocatedDenseTensorType>().lod(),
+          inputs[i]
+              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+              .offset()));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Only support DenseTensorType or AllocatedDenseTensorType or "
-          "SelectedRowsType"));
+          "Only support paddle::dialect::DenseTensorType or "
+          "paddle::dialect::AllocatedDenseTensorType"));
     }
   }
+
   std::vector<paddle::dialect::IrMetaTensor> vec_meta_inputs;
-  for (size_t i = 0; i < vec_ir_tensor_inputs.size(); i++) {
+  for (size_t i = 0; i < vec_dense_inputs.size(); i++) {
     vec_meta_inputs.push_back(
-        paddle::dialect::IrMetaTensor(&vec_ir_tensor_inputs[i]));
+        paddle::dialect::IrMetaTensor(&vec_dense_inputs[i]));
   }
 
   std::vector<const phi::MetaTensor *> meta_inputs;
@@ -387,17 +368,7 @@ std::vector<pir::Type> AddN_Op::InferMeta(
       dense_out.lod(),
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
-
   return argument_outputs;
-}
-
-phi::DataType AddN_Op::GetKernelTypeForVar(
-    const std::string &var_name,
-    const phi::DataType &tensor_dtype,
-    const phi::DataType &expected_kernel_dtype) {
-  VLOG(4) << "Get KernelType for Var of op: AddN_Op";
-
-  return expected_kernel_dtype;
 }
 
 OpInfoTuple AddNArrayOp::GetOpInfo() {
