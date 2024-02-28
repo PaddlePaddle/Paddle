@@ -57,7 +57,7 @@ void cos_double_grad(const Tensor& x,
       auto x_grad_tmp = -(grad_out.get() * cos<T>(x) * grad_x_grad);
       set_output<T>(x_grad_tmp, x_grad);
     } else {
-      auto x_grad_tmp = 0 * x;
+      auto x_grad_tmp = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
       set_output<T>(x_grad_tmp, x_grad);
     }
   }
@@ -80,7 +80,7 @@ void sin_double_grad(const Tensor& x,
       auto x_grad_tmp = -(grad_out.get() * sin<T>(x) * grad_x_grad);
       set_output<T>(x_grad_tmp, x_grad);
     } else {
-      auto x_grad_tmp = 0 * x;
+      auto x_grad_tmp = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
       set_output<T>(x_grad_tmp, x_grad);
     }
   }
