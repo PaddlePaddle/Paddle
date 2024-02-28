@@ -33,7 +33,7 @@ namespace funcs {
 // SelectedRows + SelectedRows will simplely concat value and rows.
 // The real computation happens in dealing with LoDTensor.
 template <typename DeviceContext, typename T>
-struct SelectedRowsAdd {
+struct TEST_API SelectedRowsAdd {
   TEST_API void operator()(const DeviceContext& context,
                            const phi::SelectedRows& input1,
                            const phi::SelectedRows& input2,
