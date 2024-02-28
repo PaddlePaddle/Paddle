@@ -1,9 +1,7 @@
 ./test_11_jumps.py
 ./test_12_for_loop.py
 ./test_21_global.py
-./test_break_graph.py
 ./test_builtin_zip.py
-./test_guard_user_defined_fn.py
 ./test_inplace_api.py
 ./test_min_graph_size.py
 ./test_side_effects.py
