@@ -1070,8 +1070,8 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const phi::DataType& type) {
-  auto obj = ::pybind11::cast(type);
+PyObject* ToPyObject(const phi::DataType& dtype) {
+  auto obj = ::pybind11::cast(dtype);
   obj.inc_ref();
   return obj.ptr();
 }
