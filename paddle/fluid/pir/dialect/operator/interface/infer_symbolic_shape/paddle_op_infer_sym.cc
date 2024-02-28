@@ -409,23 +409,45 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   const auto &attributes = op->attributes();
 
   const std::vector<symbol::DimExpr> shape = [&] {
-    std::vector<symbol::DimExpr> shape;
     pir::Attribute attr_shape = attributes.at("shape");
     const auto &shape_vec =
         attr_shape.dyn_cast<paddle::dialect::IntArrayAttribute>()
             .data()
             .GetData();
-
-    for (auto &dim : shape_vec) {
-      shape.push_back(symbol::DimExpr(dim));
-    }
+    std::vector<symbol::DimExpr> shape(shape_vec.begin(), shape_vec.end());
     return shape;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(shape)};
+  const auto shape_data = [&]() -> symbol::TensorShapeOrDataDimExprs {
+    // NOTE(Aurelius84): to<int64_t> is a risky operation when Scalar's dtype is
+    // not int32/int64. However, we found Full's Value could be like '3.0' but
+    // used as int.
+    const int64_t value = attributes.at("value")
+                              .dyn_cast<paddle::dialect::ScalarAttribute>()
+                              .data()
+                              .to<int64_t>();
+    const size_t shape_size = shape.size();
+    // NOTE(Aurelius84): When shape.size()==1, a new std::vector<int64_t> with
+    // length = shape[0] will be constructed, but not all cases is used for
+    // shape analysis. Considering MAX_RANK < 9 in Paddle, we limit it below
+    // DATA_MAX_LENGTH = 128 and will not create this vector once length >
+    // DATA_MAX_LENGTH.
+    constexpr int64_t DATA_MAX_LENGTH = 128;
+    if (shape_size == 0U) {
+      std::vector<symbol::DimExpr> data{value};
+      return symbol::TensorShapeOrDataDimExprs(shape, data);
+    } else if (shape_size == 1U &&
+               shape[0].template Get<int64_t>() <= DATA_MAX_LENGTH) {
+      std::vector<symbol::DimExpr> data(shape[0].template Get<int64_t>(),
+                                        symbol::DimExpr(value));
+      return symbol::TensorShapeOrDataDimExprs(shape, data);
+    } else {
+      return symbol::TensorShapeOrDataDimExprs(shape);
+    }
+  }();
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs(shape_data));
   return true;
 }
 
