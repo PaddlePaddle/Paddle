@@ -651,18 +651,6 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_batch_norm_act_grad
 
-- op : fused_bias_dropout_residual_layer_norm
-  args : (Tensor x, Tensor residual, Tensor bias, Tensor ln_scale, Tensor ln_bias, float dropout_rate = 0.5f, bool is_test = false, bool dropout_fix_seed = true, int dropout_seed = true, str dropout_implementation = "downgrade_in_infer", float ln_epsilon = 1e-5)
-  optional : bias, ln_scale, ln_bias
-  output : Tensor(y), Tensor(bias_dropout_residual_out), Tensor(dropout_mask_out), Tensor(ln_mean), Tensor(ln_variance)
-  infer_meta :
-    func : FusedBiasDropoutResidualLnInferMeta
-  kernel :
-    func : fused_bias_dropout_residual_layer_norm
-    data_type : x
-  backward : fused_bias_dropout_residual_layer_norm_grad
-  intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
-
 - op : fused_bn_add_activation
   args : (Tensor x, Tensor z, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str act_type)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
