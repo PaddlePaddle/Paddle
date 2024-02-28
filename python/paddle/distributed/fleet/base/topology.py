@@ -353,12 +353,13 @@ class HybridCommunicateGroup:
 
         group_nccl_comm_init_option = (
             g_pipeline_nccl_comm_init_option
-            if (parallel_method == "pipe") else 0
+            if (parallel_method == "pipe")
+            else 0
         )
         for group in parallel_groups:
             comm_group = paddle.distributed.new_group(
                 ranks=group,
-                enable_nccl_comm_init_option=group_nccl_comm_init_option,
+                nccl_comm_init_option=group_nccl_comm_init_option,
             )
             if self.global_rank in group:
                 parallel_group = group

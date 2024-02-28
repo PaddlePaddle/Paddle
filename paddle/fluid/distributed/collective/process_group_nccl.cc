@@ -722,7 +722,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store_, store_key, rank_, size_, "", &p2p_opts);
+      store_, store_key, rank_, size_, "", &p2p_opts, nccl_comm_init_option_);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 

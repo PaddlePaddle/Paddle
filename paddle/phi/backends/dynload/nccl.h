@@ -20,6 +20,18 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
+                               int nranks,
+                               ncclUniqueId commId,
+                               int myrank,
+                               int param);
+#ifdef __cplusplus
+}
+#endif
+
 namespace phi {
 namespace dynload {
 
@@ -44,6 +56,7 @@ extern void* nccl_dso_handle;
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommInitRank2);           \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
@@ -83,15 +96,6 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclRedOpCreatePreMulSum);                \
   __macro(ncclRedOpDestroy);
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
-#endif
-
-#ifndef NCCL_FIX_CODE
-#define NCCL_FIX_CODE 0
-#endif
-
-#if NCCL_FIX_CODE > 0
-#define NCCL_RAND_ROUTINE_EACH_WITH_FIX(__macro) __macro(ncclCommInitRank2);
-NCCL_RAND_ROUTINE_EACH_WITH_FIX(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
