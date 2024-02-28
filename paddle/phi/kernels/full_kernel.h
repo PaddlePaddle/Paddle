@@ -61,10 +61,7 @@ template <typename T, typename Context>
 void Full(const Context& dev_ctx,
           const IntArray& shape,
           const Scalar& val,
-          DenseTensor* out) {
-  FullKernel<T, Context>(
-      dev_ctx, shape, val, phi::CppTypeToDataType<T>::Type(), out);
-}
+          DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
