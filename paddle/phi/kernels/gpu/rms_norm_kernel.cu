@@ -392,7 +392,8 @@ __global__ void __launch_bounds__(block_size)
                          const int32_t rows,
                          const int32_t cols,
                          const float epsilon,
-                         ComputeType col_divisor) {
+                         ComputeType col_divisor,
+                         float* inv_var_data) {
   using LoadType = typename LOAD::LoadType;
   extern __shared__ __align__(sizeof(double)) unsigned char shared_buf[];
   auto* buf = reinterpret_cast<LoadType*>(shared_buf);
@@ -419,6 +420,10 @@ __global__ void __launch_bounds__(block_size)
     ComputeType row_rms = row_sum_square * col_divisor;
     ComputeType row_inv_rms =
         Rsqrt(row_rms + static_cast<ComputeType>(epsilon));
+    // save for backward
+    if (inv_var_data != nullptr) {
+      inv_var_data[row] = row_inv_rms;
+    }
     for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       ComputeType pack[kPackSize];
 #pragma unroll
@@ -443,7 +448,8 @@ inline cudaError_t LaunchRmsNormBlockSMemImpl(cudaStream_t stream,
                                               const int32_t rows,
                                               const int32_t cols,
                                               const float epsilon,
-                                              ComputeType col_divisor) {
+                                              ComputeType col_divisor,
+                                              float* inv_var_data) {
   constexpr int waves = 32;
   int grid_dim_x;
   {
@@ -460,7 +466,7 @@ inline cudaError_t LaunchRmsNormBlockSMemImpl(cudaStream_t stream,
   }
   RmsNormBlockSMemImpl<LOAD, STORE, ComputeType, kPackSize, block_size>
       <<<grid_dim_x, block_size, smem, stream>>>(
-          load, store, rows, cols, epsilon, col_divisor);
+          load, store, rows, cols, epsilon, col_divisor, inv_var_data);
   return cudaPeekAtLastError();
 }
 
@@ -488,7 +494,8 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
     const int32_t cols,
     const float epsilon,
     ComputeType col_divisor,
-    bool* success) {
+    bool* success,
+    float* inv_var_data) {
   constexpr int block_size_conf_1 = 128;
   constexpr int block_size_conf_2 = 256;
   constexpr int block_size_conf_3 = 512;
@@ -608,8 +615,15 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                       STORE,
                                       ComputeType,
                                       kPackSize,
-                                      block_size_conf_4>(
-        stream, load, store, smem, rows, cols, epsilon, col_divisor);
+                                      block_size_conf_4>(stream,
+                                                         load,
+                                                         store,
+                                                         smem,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         inv_var_data);
   }
 
   int max_active_blocks_conf_3;
@@ -634,8 +648,15 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                       STORE,
                                       ComputeType,
                                       kPackSize,
-                                      block_size_conf_3>(
-        stream, load, store, smem, rows, cols, epsilon, col_divisor);
+                                      block_size_conf_3>(stream,
+                                                         load,
+                                                         store,
+                                                         smem,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         inv_var_data);
   }
 
   int max_active_blocks_conf_2;
@@ -660,8 +681,15 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                       STORE,
                                       ComputeType,
                                       kPackSize,
-                                      block_size_conf_2>(
-        stream, load, store, smem, rows, cols, epsilon, col_divisor);
+                                      block_size_conf_2>(stream,
+                                                         load,
+                                                         store,
+                                                         smem,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         inv_var_data);
   }
 
   *success = true;
@@ -669,8 +697,15 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImplBlockSize(
                                     STORE,
                                     ComputeType,
                                     kPackSize,
-                                    block_size_conf_1>(
-      stream, load, store, smem, rows, cols, epsilon, col_divisor);
+                                    block_size_conf_1>(stream,
+                                                       load,
+                                                       store,
+                                                       smem,
+                                                       rows,
+                                                       cols,
+                                                       epsilon,
+                                                       col_divisor,
+                                                       inv_var_data);
 }
 
 template <typename LOAD, typename STORE, typename ComputeType>
@@ -682,27 +717,49 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
                          const int32_t cols,
                          const float epsilon,
                          ComputeType col_divisor,
-                         bool* success) {
+                         bool* success,
+                         float* inv_var_data) {
     if (cols % 4 == 0 && CanPackAs<LOAD>(load, 4) &&
         CanPackAs<STORE>(store, 4)) {
       return TryDispatchRmsNormBlockSMemImplBlockSize<LOAD,
                                                       STORE,
                                                       ComputeType,
-                                                      4>(
-          stream, load, store, rows, cols, epsilon, col_divisor, success);
+                                                      4>(stream,
+                                                         load,
+                                                         store,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         success,
+                                                         inv_var_data);
     } else if (cols % 2 == 0 && CanPackAs<LOAD>(load, 2) &&
                CanPackAs<STORE>(store, 2)) {
       return TryDispatchRmsNormBlockSMemImplBlockSize<LOAD,
                                                       STORE,
                                                       ComputeType,
-                                                      2>(
-          stream, load, store, rows, cols, epsilon, col_divisor, success);
+                                                      2>(stream,
+                                                         load,
+                                                         store,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         success,
+                                                         inv_var_data);
     } else {
       return TryDispatchRmsNormBlockSMemImplBlockSize<LOAD,
                                                       STORE,
                                                       ComputeType,
-                                                      1>(
-          stream, load, store, rows, cols, epsilon, col_divisor, success);
+                                                      1>(stream,
+                                                         load,
+                                                         store,
+                                                         rows,
+                                                         cols,
+                                                         epsilon,
+                                                         col_divisor,
+                                                         success,
+                                                         inv_var_data);
     }
   }
 };
@@ -715,9 +772,18 @@ inline cudaError_t TryDispatchRmsNormBlockSMemImpl(cudaStream_t stream,
                                                    const int32_t cols,
                                                    const float epsilon,
                                                    ComputeType col_divisor,
-                                                   bool* success) {
+                                                   bool* success,
+                                                   float* inv_var_data) {
   return TryDispatchRmsNormBlockSMemImplPackSize<LOAD, STORE, ComputeType>()(
-      stream, load, store, rows, cols, epsilon, col_divisor, success);
+      stream,
+      load,
+      store,
+      rows,
+      cols,
+      epsilon,
+      col_divisor,
+      success,
+      inv_var_data);
 }
 
 template <typename LOAD, typename STORE, typename ComputeType>
@@ -728,7 +794,8 @@ DispatchRmsNorm(cudaStream_t stream,
                 STORE store,
                 const int32_t rows,
                 const int32_t cols,
-                const float epsilon) {
+                const float epsilon,
+                float* inv_var_data) {
   const ComputeType col_divisor = 1.0f / cols;
   bool dispatch_smem_impl_success;
   {
@@ -740,7 +807,8 @@ DispatchRmsNorm(cudaStream_t stream,
         cols,
         epsilon,
         col_divisor,
-        &dispatch_smem_impl_success);
+        &dispatch_smem_impl_success,
+        inv_var_data);
     if (err != cudaSuccess) {
       return err;
     }
@@ -948,7 +1016,8 @@ void RmsNormKernel(const Context& dev_ctx,
                    const float quant_max_bound,
                    const float quant_min_bound,
                    DenseTensor* out,
-                   DenseTensor* residual_out) {
+                   DenseTensor* residual_out,
+                   DenseTensor* inv_var) {
 #if defined(PADDLE_WITH_HIP)
   LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
 #else
@@ -957,6 +1026,10 @@ void RmsNormKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* norm_weight_data = norm_weight.data<T>();
   const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
+  float* inv_var_data = nullptr;
+  if (inv_var != nullptr) {
+    inv_var_data = dev_ctx.template Alloc<float>(inv_var);
+  }
 
   int32_t rows = 1;
   int32_t cols = 1;
@@ -981,7 +1054,7 @@ void RmsNormKernel(const Context& dev_ctx,
       AffineStore<ComputeType, T> store(
           out_data, cols, norm_weight_data, norm_bias_data);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-          dev_ctx.stream(), load, store, rows, cols, epsilon);
+          dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {
       // Quantize and output int8.
       int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
@@ -996,7 +1069,7 @@ void RmsNormKernel(const Context& dev_ctx,
           quant_min_bound);
 
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-          dev_ctx.stream(), load, store, rows, cols, epsilon);
+          dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     }
   } else {
     DirectLoad<T, ComputeType> load(x_data, cols);
@@ -1006,7 +1079,7 @@ void RmsNormKernel(const Context& dev_ctx,
       AffineStore<ComputeType, T> store(
           out_data, cols, norm_weight_data, norm_bias_data);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-          dev_ctx.stream(), load, store, rows, cols, epsilon);
+          dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {
       // Quantize and output int8.
       int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
@@ -1020,7 +1093,7 @@ void RmsNormKernel(const Context& dev_ctx,
           quant_max_bound,
           quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-          dev_ctx.stream(), load, store, rows, cols, epsilon);
+          dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     }
   }
 #endif
