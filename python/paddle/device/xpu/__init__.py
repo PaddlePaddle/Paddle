@@ -82,3 +82,7 @@ def device_count():
     )
 
     return num_xpus
+
+
+def set_xpu_debug_level(level=1):
+    core.set_xpu_debug_level(level)
