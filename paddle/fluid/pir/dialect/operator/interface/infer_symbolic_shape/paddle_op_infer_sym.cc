@@ -428,8 +428,8 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
                               .to<int64_t>();
     const size_t shape_size = shape.size();
     // NOTE(Aurelius84): When shape.size()==1, a new std::vector<int64_t> with
-    // length = shape[0] will be constructed, but not all cases is used for
-    // shape analysis. Considering MAX_RANK < 9 in Paddle, we limit it below
+    // length = shape[0] will be constructed, but not all cases are used for
+    // ShapeAnalysis. Considering MAX_RANK < 9 in Paddle, we limit it below
     // DATA_MAX_LENGTH = 128 and will not create this vector once length >
     // DATA_MAX_LENGTH.
     constexpr int64_t DATA_MAX_LENGTH = 128;
