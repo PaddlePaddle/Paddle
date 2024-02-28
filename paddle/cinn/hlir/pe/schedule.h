@@ -182,7 +182,7 @@ void CudaScheduleMul(poly::StageMap stages,
                      const std::vector<int> &output_shape,
                      const cinn::common::Target &target);
 
-// reduce shedules.
+// reduce schedules.
 void CudaReduceSchedule(poly::StageMap stages,
                         ir::Tensor output,
                         int last_dimension_num,

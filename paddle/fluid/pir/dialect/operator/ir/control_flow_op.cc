@@ -14,8 +14,8 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
-    paddle::dialect::AssertOp, paddle::dialect::SelectInputOp,
-    paddle::dialect::SelectOutputOp
+    paddle::dialect::PyLayerOp, paddle::dialect::AssertOp,
+    paddle::dialect::SelectInputOp, paddle::dialect::SelectOutputOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
@@ -24,16 +24,17 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_trait.h"
+#include "paddle/pir/include/core/operation_utils.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -167,18 +168,21 @@ void IfOp::Print(pir::IrPrinter &printer) {
   printer.PrintOpResult(op);
   os << " = pd_op.if";
   printer.PrintOpOperands(op);
+  printer.PrintAttributeMap(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{\n";
   printer.AddIndentation();
   for (auto &item : true_block()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "} else {\n";
   printer.AddIndentation();
   for (auto &item : false_block()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "}";
@@ -304,6 +308,184 @@ std::vector<std::vector<pir::Value>> IfOp::Vjp(
   return res;
 }
 
+bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  // infer true block
+  pir::InferSymExprForBlock(true_block(), shape_analysis);
+
+  // infer false block
+  pir::InferSymExprForBlock(false_block(), shape_analysis);
+
+  auto GetSymExprForBlockResult =
+      [shape_analysis](const pir::Operation &op,
+                       uint32_t idx) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data =
+        shape_analysis->GetShapeOrDataForValue(op.operand_source(idx));
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  };
+
+  // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
+  // result_num == 0 should be supported in future
+  if (num_results() > 0) {
+    for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+      const auto &true_dims =
+          GetSymExprForBlockResult(true_block().back(), rst_idx);
+      const auto &false_dims =
+          GetSymExprForBlockResult(false_block().back(), rst_idx);
+
+      // merge shape for true and false block, new symbol will be assigned when
+      // the dims is not equal in true and false block, even if the dims are all
+      // constant, since we don't know which will be returned in compile time
+      // examples:
+      // true_block    false_block    return
+      // [1, 128]       [1, 256]      [1, S0]
+      // [1, S0]        [1, S1]       [1, S2]
+      // [1, S0]        [S1, S2]      [S1, S3]
+      // [1, S0]        [1, S0]       [1, S0]
+
+      std::vector<symbol::DimExpr> out_dims = true_dims;
+      if (false_dims.size() != 0) {
+        // now only support results of true and false block have same rank.
+        PADDLE_ENFORCE_EQ(true_dims.size(),
+                          false_dims.size(),
+                          phi::errors::PreconditionNotMet(
+                              "The true and false block should have same rank, "
+                              "but got true_rank(%d) and false_rank(%d)",
+                              true_dims.size(),
+                              false_dims.size()));
+        for (size_t i = 0; i < true_dims.size(); i++) {
+          if (true_dims[i] != false_dims[i]) {
+            out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+          }
+        }
+      }
+
+      shape_analysis->SetShapeOrDataForValue(
+          result(rst_idx),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(out_dims)});
+    }
+
+    return true;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("IfOp::InferSymbolicShape: now only "
+                                   "support num_results() == 1."));
+  }
+}
+
+void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
+                      pir::OperationArgument &argument,  // NOLINT
+                      pir::Value combined_inputs,
+                      std::vector<pir::Type> &&output_types) {
+  argument.AddInput(combined_inputs);
+  argument.output_types.swap(output_types);
+  argument.AddRegion().emplace_back();
+}
+
+void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
+                      pir::OperationArgument &argument,  // NOLINT
+                      pir::Value combined_inputs,
+                      std::unique_ptr<pir::Block> &&fwd_block) {
+  VLOG(4) << "Start build PyLayerOp";
+  if (fwd_block && !fwd_block->empty() &&
+      fwd_block->back().isa<pir::YieldOp>()) {
+    auto &op = fwd_block->back();
+
+    std::vector<pir::Attribute> outs_stop_gradient;
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      argument.AddOutput(op.operand(i).type());
+      auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
+          kStopGradientAttrName);
+      outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                             : builder.bool_attr(false));
+    }
+
+    argument.AddAttribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
+  }
+
+  argument.AddRegion().push_back(fwd_block.release());
+  argument.AddInput(combined_inputs);
+}
+
+pir::Block &PyLayerOp::forward_block() {
+  pir::Region &region = forward_region();
+  if (region.empty()) {
+    region.emplace_back();
+  }
+
+  return region.front();
+}
+
+void PyLayerOp::Print(pir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = pd_op.pylayer";
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << "{";
+  for (auto &item : forward_block()) {
+    os << "\n  ";
+    printer.PrintOperation(&item);
+  }
+  os << "\n }";
+}
+
+void PyLayerOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: PyLayerOp.";
+  // NOTE(MarioLulab): do nothing.
+}
+
+void PyLayerOp::VerifyRegion() {
+  VLOG(4) << "Start Verifying sub regions for: PyLayerOp.";
+  VLOG(4) << "Start Verifying forward block.";
+  PADDLE_ENFORCE_EQ((*this)->region(0).size(),
+                    1u,
+                    phi::errors::PreconditionNotMet(
+                        "The size %d of forward_region must be 1.",
+                        (*this)->region(0).size()));
+  if ((*this)->num_results() != 0) {
+    auto &fwd_last_op = (*this)->region(0).front().back();
+    PADDLE_ENFORCE_EQ(true,
+                      fwd_last_op.isa<pir::YieldOp>(),
+                      phi::errors::PreconditionNotMet(
+                          "The last of forward block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(
+        fwd_last_op.num_operands(),
+        (*this)->num_results(),
+        phi::errors::PreconditionNotMet(
+            "The size of last of forward block op's input must be "
+            "equal to PyLayerOp's outputs num."));
+  }
+}
+
+void PyLayerOp::UpdateOutput() {
+  PADDLE_ENFORCE_NOT_NULL(*this,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pylayer_op in PyLayerOp used to update "
+                              "output can't be nullptr"));
+  auto block = parent();
+  PADDLE_ENFORCE_NOT_NULL(
+      block,
+      paddle::platform::errors::InvalidArgument(
+          "The parent block of pylayer_op which used to update "
+          "output can't be nullptr"));
+  pir::Block::Iterator iter = **this;
+  pir::Builder builder(ir_context(), false);
+  auto new_pylayer_op =
+      builder.Build<PyLayerOp>(combined_inputs(), forward_region().TakeBack());
+  block->Assign(iter, new_pylayer_op);
+  PyLayerOp::operator=(new_pylayer_op);
+  VerifyRegion();
+}
+
 void WhileOp::Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value cond,
@@ -355,14 +537,14 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   printer.PrintValue(cond());
   os << ", inputs=";
   auto operands = (*this)->operands_source();
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
   os << ") { \n";
   os << printer.indentation() << "^";
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
       [&](pir::Value v) { printer.PrintValue(v); },
@@ -371,6 +553,7 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   printer.AddIndentation();
   for (auto &item : body()) {
     printer.PrintOperation(&item);
+    os << "\n";
   }
   printer.DecreaseIndentation();
   os << printer.indentation() << "}";
@@ -537,6 +720,42 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
   }
   return res;
 }
+
+bool WhileOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  for (auto &value : block_args()) {
+    std::vector<symbol::DimExpr> sym_dims;
+    const std::vector<int64_t> &dims =
+        common::vectorize(value.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    for (auto dim : dims) {
+      symbol::DimExpr dim_expr;
+      if (dim == pir::ShapedTypeInterface::kDynamic) {
+        symbol::DimExpr symbolic_dim_expr(shape_analysis->GetNextSymName());
+        dim_expr = symbolic_dim_expr;
+      } else {
+        symbol::DimExpr numeric_dim_expr(dim);
+        dim_expr = numeric_dim_expr;
+      }
+      sym_dims.push_back(dim_expr);
+    }
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_dims)};
+    shape_analysis->SetShapeOrDataForValue(value, shape_data);
+  }
+
+  pir::InferSymExprForBlock(body(), shape_analysis);
+
+  const auto &last_op = body().back();
+  for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
+    shape_analysis->SetShapeOrDataForValue(
+        result(i - 1),
+        shape_analysis->GetShapeOrDataForValue(last_op.operand_source(i)));
+  }
+
+  return true;
+}
+
 std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
@@ -765,6 +984,48 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
+bool SelectInputOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  auto GetSymExprForValue =
+      [shape_analysis](pir::Value val) -> const std::vector<symbol::DimExpr> & {
+    const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(val);
+    if (shape_or_data.data().has_value()) {
+      return shape_or_data.data().value();
+    } else {
+      return shape_or_data.shape();
+    }
+  };
+
+  const auto &input1_dims = GetSymExprForValue(operand_source(0));
+  const auto &input2_dims = GetSymExprForValue(operand_source(1));
+
+  std::vector<symbol::DimExpr> out_dims = input1_dims;
+  // merge shape for input1 and input2, since we don't know which will be
+  // selected in compile time, the strategy is same with IfOp, see IfOp's
+  // comments for details and examples
+  if (input2_dims.size() != 0) {
+    // now only support input1 and input2 have same rank.
+    PADDLE_ENFORCE_EQ(input1_dims.size(),
+                      input2_dims.size(),
+                      phi::errors::PreconditionNotMet(
+                          "The true and false block should have same rank, "
+                          "but got true_rank(%d) and false_rank(%d)",
+                          input1_dims.size(),
+                          input2_dims.size()));
+    for (size_t i = 0; i < input1_dims.size(); i++) {
+      if (input1_dims[i] != input2_dims[i]) {
+        out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};
+      }
+    }
+  }
+
+  shape_analysis->SetShapeOrDataForValue(
+      result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
 void SelectOutputOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SelectOutputOp.";
   VLOG(4) << "Verifying inputs:";
@@ -848,6 +1109,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssertOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PyLayerOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectOutputOp)
 

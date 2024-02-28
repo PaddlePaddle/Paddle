@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/common/dim_expr_util.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
 
 namespace cinn::common {
 

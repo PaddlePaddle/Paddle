@@ -56,7 +56,7 @@ static const std::initializer_list<std::string> rnn_variable_names{
 
 class ComputePropagateScalesMkldnnPassTest : public testing::Test {
  public:
-  ComputePropagateScalesMkldnnPassTest() {
+  ComputePropagateScalesMkldnnPassTest() {  // NOLINT
     pass = std::make_unique<ComputePropagateScalesMkldnnPass>();
   }
 

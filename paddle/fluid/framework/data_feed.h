@@ -876,7 +876,7 @@ struct BufState {
     len = tmp_len;
     central_word = -1;
     step = -1;
-    GetNextCentrolWord();
+    GetNextCentralWord();
   }
 
   int GetNextStep() {
@@ -895,7 +895,7 @@ struct BufState {
             << " row_num: " << row_num;
   }
 
-  int GetNextCentrolWord() {
+  int GetNextCentralWord() {
     if (++central_word >= walk_len) {
       return 0;
     }
@@ -923,7 +923,7 @@ struct BufState {
     len = tmp_len;
     central_word = -1;
     step = -1;
-    GetNextCentrolWord();
+    GetNextCentralWord();
     return tmp_len != 0;
   }
 };
@@ -932,7 +932,7 @@ struct BufState {
 const int EVENT_FINISH_EPOCH = 0;     // End of sampling single epoch
 const int EVENT_CONTINUE_SAMPLE = 1;  // Continue sampling
 const int EVENT_WALKBUF_FULL = 2;  // d_walk is full, end current pass sampling
-const int EVENT_NOT_SWTICH = 0;    // Continue sampling on the current metapath.
+const int EVENT_NOT_SWITCH = 0;    // Continue sampling on the current metapath.
 const int EVENT_SWTICH_METAPATH =
     1;  // Switch to the next metapath to perform sampling
 
@@ -1412,7 +1412,7 @@ class DataFeed {
   bool train_mode_;
 };
 
-// PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
+// PrivateQueueDataFeed is the base virtual class for other DataFeeds.
 // It use a read-thread to read file and parse data to a private-queue
 // (thread level), and get data from this queue when trainer call Next().
 template <typename T>
@@ -2000,7 +2000,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   std::mutex pack_mutex_;
 
   // async infershape
-  std::map<const Scope*, std::vector<phi::DenseTensor*>> scpoe_feed_vec_;
+  std::map<const Scope*, std::vector<phi::DenseTensor*>> scope_feed_vec_;
 #endif
 };
 

@@ -15,6 +15,7 @@
 #include "paddle/cinn/backends/codegen_cuda_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
@@ -88,6 +89,22 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // process host func
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
+
+  // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
+  // however, this make CodeGenCUDA_Dev before spliting the host and device
+  // module Maybe we could reorder the process.
+  CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
+  Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+
+  VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
+          << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "
+          << func_node->cuda_axis_info.grid_dim(1) << ", "
+          << func_node->cuda_axis_info.grid_dim(2) << "), "
+          << "block_dim: (" << func_node->cuda_axis_info.block_dim(0) << ", "
+          << func_node->cuda_axis_info.block_dim(1) << ", "
+          << func_node->cuda_axis_info.block_dim(2) << "), "
+          << "shared_mem: " << shared_mem_bytes;
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
                      runtime::intrinsic::call_cuda_kernel,
@@ -100,6 +117,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
                       func_node->cuda_axis_info.block_dim(0),  // block_x
                       func_node->cuda_axis_info.block_dim(1),  // block_y
                       func_node->cuda_axis_info.block_dim(2),  // block_z
+                      shared_mem_bytes,                        // shared_mem
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,

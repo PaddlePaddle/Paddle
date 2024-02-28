@@ -39,6 +39,7 @@ lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 # full html report
 
+
 function gen_full_html_report_cinn(){
         lcov --extract coverage.info \
         '/paddle/paddle/cinn/adt/*' \
@@ -61,6 +62,7 @@ function gen_full_html_report_cinn(){
 
     mv -f coverage-full.tmp coverage-full.info
 }
+
 
 function gen_full_html_report() {
     lcov --extract coverage.info \

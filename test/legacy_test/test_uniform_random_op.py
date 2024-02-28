@@ -740,8 +740,8 @@ class TestUniformMinMaxTensor(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -758,7 +758,7 @@ class TestUniformMinMaxTensor(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
 

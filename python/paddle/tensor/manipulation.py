@@ -1247,8 +1247,8 @@ def concat(x, axis=0, name=None):
     doesn't have any axis.
 
     Args:
-        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
-            float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
+        x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
+            float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
@@ -1292,10 +1292,21 @@ def concat(x, axis=0, name=None):
              [14, 15, 16]])
     """
     input = x
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
         if not isinstance(input, (Variable, paddle.pir.Value)):
+            input = [t for t in input if t.shape.count(0) == 0]
+        return _C_ops.concat(input, axis)
+    elif in_pir_mode():
+        if isinstance(input, paddle.pir.Value):
+            assert input.is_dense_tensor_array_type(), (
+                "If the element of concat op is Value, "
+                "dtype of the element must be Tensorarray"
+            )
+            out, _ = _C_ops.array_to_tensor(input, axis, False)
+            return out
+        if not isinstance(input, paddle.pir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
@@ -1308,13 +1319,17 @@ def concat(x, axis=0, name=None):
                     [
                         'bool',
                         'float16',
+                        'bfloat16',
                         'float32',
                         'float64',
+                        'int16',
                         'int32',
                         'int64',
                         'int8',
                         'unit8',
                         'uint16',
+                        'complex64',
+                        'complex128',
                     ],
                     'concat',
                 )
@@ -2497,6 +2512,12 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
         input_shape = input.shape
+
+        if not isinstance(num_or_sections, (int, list, tuple)):
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                "received %s." % (type(num_or_sections))
+            )
         if isinstance(num_or_sections, int):
             assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
@@ -6737,7 +6758,7 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         axes (list|tuple) : the dimensions to insert the value.
         starts (list|tuple) : the start indices of where to insert.
         ends (list|tuple) : the stop indices of where to insert.
-        strids (list|tuple) : the steps for each insert.
+        strides (list|tuple) : the steps for each insert.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:

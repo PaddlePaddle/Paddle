@@ -37,7 +37,7 @@ class MemoryInterface {
 };
 
 /**
- * MemoryManager holds a map of MemoryInterface for each articture.
+ * MemoryManager holds a map of MemoryInterface for each architecture.
  */
 class MemoryManager final {
  public:

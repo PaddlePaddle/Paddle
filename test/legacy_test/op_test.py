@@ -2643,7 +2643,7 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_pir_onednn:
+        if check_pir_onednn and place == base.CPUPlace():
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
@@ -3313,7 +3313,7 @@ class OpTest(unittest.TestCase):
             atol,
         )
 
-        if check_pir_onednn:
+        if check_pir_onednn and place == base.CPUPlace():
             with pir_executor_guard():
                 self.check_grad_with_place_for_static(
                     user_defined_grads,

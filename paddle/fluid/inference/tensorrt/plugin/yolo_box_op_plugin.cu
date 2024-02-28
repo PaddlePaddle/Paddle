@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 #include <algorithm>
 #include <cassert>
+
+#include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -101,9 +102,7 @@ nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(
 
 bool YoloBoxPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
-  return ((type == nvinfer1::DataType::kFLOAT ||
-           type == nvinfer1::DataType::kHALF ||
-           type == nvinfer1::DataType::kINT32) &&
+  return ((type == data_type_ || type == nvinfer1::DataType::kINT32) &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
 

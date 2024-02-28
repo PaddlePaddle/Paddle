@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 

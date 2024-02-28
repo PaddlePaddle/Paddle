@@ -733,6 +733,8 @@
     {input : Input, filter : Filter}
   outputs :
     out : Output
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
@@ -769,6 +771,10 @@
     {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -1070,6 +1076,8 @@
     bias : Bias
   outputs :
     out : Out
+  attrs :
+    {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
     attrs : [bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE = true, bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false]
 
@@ -1346,6 +1354,30 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
+- op : fused_elementwise_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_div
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_mul
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_sub
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
 - op : fused_embedding_eltwise_layernorm
   inputs :
     ids : Ids
@@ -1429,6 +1461,8 @@
     batched_input : BatchedInput
     batched_out : BatchedOut
     hidden : Hidden
+  attrs :
+    {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
@@ -2191,6 +2225,12 @@
   outputs :
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
+- op : moving_average_abs_max_scale
+  inputs :
+    {x : X, in_accum : InAccum, in_state : InState}
+  outputs :
+    {out : Out, out_scale : OutScale, out_state : OutState, out_accum : OutAccum}
+
 - op : multi_dot
   backward : multi_dot_grad
   inputs :
@@ -2198,6 +2238,14 @@
   outputs :
     out : Out
   drop_empty_grad : [x_grad]
+
+- op : multi_gru
+  inputs :
+    {x : X, weight_x : WeightX, weight_h : WeightH, bias : Bias, scale_weights : Scale_weights}
+  outputs :
+    hidden : Hidden
+  attrs :
+    {scale_data : Scale_data,  shift_data : Shift_data}
 
 - op : multiclass_nms3
   inputs :
@@ -2532,6 +2580,10 @@
     {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -3638,6 +3690,10 @@
     {numbers: numbers}
   outputs :
     out : Out
+
+- op: partial_send
+  inputs :
+    x : X
 
 - op: read_from_array
   inputs:

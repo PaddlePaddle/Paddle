@@ -65,7 +65,7 @@ BuddyAllocator::BuddyAllocator(
 }
 
 BuddyAllocator::~BuddyAllocator() {
-  VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
+  VLOG(10) << "BuddyAllocator destructor makes sure that all of these "
               "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));

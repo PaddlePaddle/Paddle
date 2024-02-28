@@ -59,7 +59,7 @@ class TestNormTestMode(TestNormOp):
         return {"axis": -1, "epsilon": 1e-10, "is_test": True}
 
     def skip_check_outputs(self):
-        # in test mode, 'Norm' is unnecesary
+        # in test mode, 'Norm' is unnecessary
         return {"Norm"}
 
 

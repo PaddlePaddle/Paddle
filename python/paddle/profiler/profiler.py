@@ -61,7 +61,7 @@ class SummaryView(Enum):
 
     - **SummaryView.MemoryView** : The memory summary view.
 
-    - **SummaryView.MemoryManipulationView** : The meomory manipulation summary view.
+    - **SummaryView.MemoryManipulationView** : The memory manipulation summary view.
 
     - **SummaryView.UDFView** : The user defined summary view.
     """
@@ -159,7 +159,7 @@ def make_scheduler(
 
         2. profiling range [3,6], [9,12], [15,18].
 
-        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat.
+        Assume batch 0: skipped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat.
 
             .. code-block:: python
                 :name: code-example2
@@ -855,7 +855,7 @@ class Profiler:
         views=None,
     ):
         r"""
-        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
+        Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and user-defined summary.
 
         Args:
             sorted_by( :ref:`SortedKeys <api_paddle_profiler_SortedKeys>` , optional): how to rank the op table items, default value is SortedKeys.CPUTotal.

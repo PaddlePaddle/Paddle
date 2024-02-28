@@ -32,10 +32,6 @@ PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
-namespace memory = paddle::memory;
-
 COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
@@ -51,7 +47,7 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
   out_var->SetType(var->Type());
   out_var->SetDataType(var->DataType());
   out_var->SetForwardDataType(var->ForwardDataType());
-  out_var->InnerSetOverridedStopGradient(var->InnerOverridedStopGradient());
+  out_var->InnerSetOverriddenStopGradient(var->InnerOverriddenStopGradient());
 
   // 2. get input and output var's tensor
   auto* out_tensor = out_var->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -74,8 +70,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   std::shared_ptr<VarBase> x(new VarBase(true, "x"));
   std::shared_ptr<VarBase> y(new VarBase(true, "y"));
   std::shared_ptr<VarBase> out(new VarBase(true, "out"));
-  x->SetOverridedStopGradient(false);
-  y->SetOverridedStopGradient(false);
+  x->SetOverriddenStopGradient(false);
+  y->SetOverriddenStopGradient(false);
 
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
@@ -161,9 +157,9 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   std::shared_ptr<VarBase> out_xy(new VarBase(true, "out_xy"));
   std::shared_ptr<VarBase> out_xz(new VarBase(true, "out_xz"));
   std::shared_ptr<VarBase> out(new VarBase(true, "out"));
-  x->SetOverridedStopGradient(false);
-  y->SetOverridedStopGradient(false);
-  z->SetOverridedStopGradient(false);
+  x->SetOverriddenStopGradient(false);
+  y->SetOverriddenStopGradient(false);
+  z->SetOverriddenStopGradient(false);
 
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);

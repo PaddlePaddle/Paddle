@@ -108,6 +108,7 @@ namespace paddle {
 namespace platform {
 using namespace ::phi::enforce;  // NOLINT
 using ::common::demangle;
+using ::common::enforce::EnforceNotMet;
 
 /** HELPER MACROS AND FUNCTIONS **/
 

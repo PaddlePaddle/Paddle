@@ -163,18 +163,20 @@ gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
           device_property_proto.name().c_str(),
           device_property_proto.name().length() + 1);
   device_property.totalGlobalMem = device_property_proto.total_global_memory();
-  device_property.major = device_property_proto.compute_major();
-  device_property.minor = device_property_proto.compute_minor();
-  device_property.multiProcessorCount = device_property_proto.sm_count();
+  device_property.major = device_property_proto.compute_major();  // NOLINT
+  device_property.minor = device_property_proto.compute_minor();  // NOLINT
+  device_property.multiProcessorCount =
+      device_property_proto.sm_count();  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
   device_property.maxThreadsPerBlock =
-      device_property_proto.max_threads_per_block();
+      device_property_proto.max_threads_per_block();  // NOLINT
   device_property.maxThreadsPerMultiProcessor =
-      device_property_proto.max_threads_per_multiprocessor();
-  device_property.regsPerBlock = device_property_proto.regs_per_block();
+      device_property_proto.max_threads_per_multiprocessor();  // NOLINT
+  device_property.regsPerBlock =
+      device_property_proto.regs_per_block();  // NOLINT
   device_property.regsPerMultiprocessor =
-      device_property_proto.regs_per_multiprocessor();
-  device_property.warpSize = device_property_proto.warp_size();
+      device_property_proto.regs_per_multiprocessor();           // NOLINT
+  device_property.warpSize = device_property_proto.warp_size();  // NOLINT
   device_property.sharedMemPerBlock =
       device_property_proto.shared_memory_per_block();
   device_property.sharedMemPerMultiprocessor =

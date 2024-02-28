@@ -26,8 +26,10 @@
   data_format_tensors : x, out_grad
 
 - op : bilinear_interp
+  data_format_tensors : x
 
-# - op : cast
+- op : cast
+  dynamic_fallback : True
 
 - op : clip
   extra_args : str mkldnn_data_type="float32"
@@ -35,9 +37,11 @@
 - op : clip_grad
   extra_args : str mkldnn_data_type="float32"
 
-# - op : concat
+- op : concat
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
-# - op : concat_grad
+- op : concat_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
 - op : conv2d
   extra_args : bool is_test=false
@@ -55,9 +59,11 @@
   extra_args : bool is_test=false
   data_format_tensors : input, out_grad
 
-# - op : depthwise_conv2d
+- op : depthwise_conv2d
+  extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
 
-# - op : depthwise_conv2d_grad
+- op : depthwise_conv2d_grad
+  extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
 
 - op : divide
 
@@ -71,19 +77,20 @@
 
 - op : exp_grad
 
-# - op : expand
+- op : expand
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : expand_grad
+- op : expand_grad
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : fc
+- op : fc
+  extra_args : bool ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE=true, bool use_quantizer=false, str mkldnn_data_type="float32", float scale_in=1.0, float[] scale_weights={1.0f}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : flatten
+- op : flatten
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : flatten_grad
-
-# - op : flatten2
-
-# - op : flatten2_grad
+- op : flatten_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : full
 
@@ -95,13 +102,13 @@
   extra_args : float fuse_alpha = 0.0, float fuse_beta = 0.0, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}
   data_format_tensors : input
 
-# - op : fused_elementwise_add
+- op : fused_elementwise_add
 
-# - op : fused_elementwise_div
+- op : fused_elementwise_div
 
-# - op : fused_elementwise_mul
+- op : fused_elementwise_mul
 
-# - op : fused_elementwise_sub
+- op : fused_elementwise_sub
 
 # - op : fused_matmul
 
@@ -109,7 +116,8 @@
 
 # - op : fused_transpose
 
-# - op : fusion_gru
+- op : fusion_gru
+  extra_args : str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0f}
 
 # - op : fusion_lstm
 
@@ -125,7 +133,8 @@
 
 - op : hardswish_grad
 
-# - op : layer_norm
+- op : layer_norm
+  extra_args : str mkldnn_data_type="float32", bool is_test=false
 
 - op : leaky_relu
 
@@ -141,25 +150,31 @@
   extra_args : bool is_test=false
   data_format_tensors : x, out, mid_out, out_grad
 
-# - op : matmul
-#   extra_args : str mkldnn_data_type="float32"
-#   layout_transform :
-#     arg_name: cur_paddle_data_layout
-#     tensors: x, y
+- op : matmul
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y
 
-# - op : matmul_grad
+- op : matmul_grad
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y, out_grad
 
-# - op : matmul_with_flatten
+- op : matmul_with_flatten
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
-# - op : matmul_with_flatten_grad
+- op : matmul_with_flatten_grad
+  extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
 - op : max
+  dynamic_fallback : True
 
 - op : mean
+  dynamic_fallback : True
 
 - op : mean_grad
+  dynamic_fallback : True
 
 - op : min
+  dynamic_fallback : True
 
 - op : mish
 
@@ -173,39 +188,47 @@
 
 - op : nearest_interp
 
-# - op : pad
+- op : pad
 
 - op : pad3d
   extra_args :
   data_format_tensors : x
   dynamic_fallback : True
 
-# - op : pool2d
+- op : pool2d
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
+  dynamic_fallback : True
 
-# - op : pool2d_grad
+- op : pool2d_grad
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x, out, out_grad
+  dynamic_fallback : True
 
-# - op : prelu
-#   extra_args : bool is_test=false, str mkldnn_data_type="float32"
+- op : prelu
+  extra_args : bool is_test=false, str mkldnn_data_type="float32"
 
-# - op : prelu_grad
+- op : prelu_grad
+  extra_args : bool is_test=false, str mkldnn_data_type="float32"
 
-# - op : prior_box
+- op : prior_box
+  extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
 - op : relu
 
 - op : relu_grad
 
-# - op : relu6
+- op : relu6
+  extra_args : float threshold=6.0
 
-# - op : relu6_grad
+- op : relu6_grad
+  extra_args : float threshold=6.0
 
-# - op : reshape
+- op : reshape
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
-# - op : reshape_grad
-
-# - op : reshape_infer
-
-# - op : reshape2_grad
+- op : reshape_grad
+  extra_args : str mkldnn_data_type="float32", bool use_quantizer=false
 
 - op : round
 
@@ -215,8 +238,8 @@
 
 # - op : sgd_dense_param_sparse_grad
 
-# - op : shape
-#   extra_args : str mkldnn_data_type="float32"
+- op : shape
+  extra_args : str mkldnn_data_type="float32"
 
 - op : shuffle_channel
 
@@ -228,9 +251,13 @@
 
 # - op : slice_grad
 
-# - op : softmax
+- op : softmax
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : x
 
-# - op : softmax_grad
+- op : softmax_grad
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
+  data_format_tensors : out, out_grad
 
 - op : softplus
 
@@ -242,11 +269,11 @@
 
 - op : sqrt_grad
 
-# - op : squeeze
+- op : squeeze
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : squeeze_grad
-
-# - op : squeeze_infer
+- op : squeeze_grad
+  extra_args : str mkldnn_data_type="float32"
 
 # - op : stack
 
@@ -255,14 +282,16 @@
 - op : subtract_grad
 
 - op : sum
-  extra_args : str mkldnn_data_type="float32"
+  dynamic_fallback : True
 
 - op : sum_grad
-  extra_args : str mkldnn_data_type="float32"
+  dynamic_fallback : True
 
-# - op : swish
+- op : swish
+  extra_args : float beta=1.0
 
-# - op : swish_grad
+- op : swish_grad
+  extra_args : float beta=1.0
 
 - op : tanh
 

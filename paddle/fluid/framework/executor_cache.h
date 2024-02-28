@@ -30,9 +30,9 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);

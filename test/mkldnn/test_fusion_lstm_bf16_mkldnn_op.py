@@ -57,7 +57,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         bs = len(self.lod[0])
 
         # fp32 X input for reference implementation and
-        # corressponding bf16 data as input to LSTM oneDNN bf16 kernel
+        # corresponding bf16 data as input to LSTM oneDNN bf16 kernel
         x = np.random.normal(size=(T, self.M)).astype('float32')
 
         x_bf16 = convert_float_to_uint16(x)

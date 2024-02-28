@@ -63,7 +63,7 @@ bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
   if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
+    LOG(WARNING) << "Profiler is activated, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
 
     auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll

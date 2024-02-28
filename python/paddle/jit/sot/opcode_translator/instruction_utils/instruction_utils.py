@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 import dis
 import sys
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ...utils import InnerError
@@ -410,3 +411,10 @@ def calc_stack_effect(instr: Instruction, *, jump: bool | None = None) -> int:
             assert instr.arg is not None
             return -instr.arg - 1
     return dis.stack_effect(instr.opcode, instr.arg, jump=jump)
+
+
+class Space(Enum):
+    locals = 1
+    globals = 2
+    cells = 3
+    not_found = 4

@@ -83,7 +83,7 @@ class TestKronFP16Op(TestKronOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestKronBF16Op(TestKronOp):
     def setUp(self):
@@ -189,7 +189,7 @@ class TestComplexKronOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -197,7 +197,7 @@ class TestComplexKronOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

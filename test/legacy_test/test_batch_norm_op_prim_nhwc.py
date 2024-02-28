@@ -43,6 +43,7 @@ class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
         self.epsilon = 1e-05
         self.data_format = "NHWC"
         self.use_global_stats = True
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCTestModeFp64(TestBatchNormOp):
@@ -88,8 +89,8 @@ class TestBatchNormOpNHWCTestModebf16(TestBatchNormOp):
         self.rev_comp_rtol = 1e-3
         # prim bf16 has diff in windows
         if sys.platform == "win32":
-            self.rev_comp_atol = 1e-2
-            self.rev_comp_rtol = 1e-2
+            self.rev_comp_atol = 5e-3
+            self.rev_comp_rtol = 5e-3
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"
@@ -130,6 +131,8 @@ class TestBatchNormOpNHWCFp64(TestBatchNormOp):
         self.data_format = "NHWC"
         self.use_global_stats = None
         self.check_prim_pir = True
+        self.check_prim_pir_grad = True
+        self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNHWCFp16(TestBatchNormOp):
@@ -160,8 +163,8 @@ class TestBatchNormOpNHWCbf16(TestBatchNormOp):
         self.rev_comp_rtol = 1e-3
         # prim bf16 has diff in windows
         if sys.platform == "win32":
-            self.rev_comp_atol = 1e-2
-            self.rev_comp_rtol = 1e-2
+            self.rev_comp_atol = 5e-3
+            self.rev_comp_rtol = 5e-3
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"

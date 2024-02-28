@@ -182,7 +182,7 @@ TEST(MatmulSPMDRule, Ctor) {
 
   check_dim_mapping(infered_dist_attrs.first[0], {-1, -1, 0, 1});
   check_dim_mapping(infered_dist_attrs.first[1],
-                    {-1, 0});  // confilct and should be changed to [-1, 0]
+                    {-1, 0});  // conflict and should be changed to [-1, 0]
   check_dim_mapping(infered_dist_attrs.second[0], {-1, -1, 1, -1});
   check_partial_dims(infered_dist_attrs.second[0], {0});
 
@@ -374,7 +374,7 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
   auto matmul_spmd_rule =
       phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
 
-  // TODO(zyc) update in future: propogate the partial in inferbackward
+  // TODO(zyc) update in future: propagate the partial in inferbackward
   // abmn[-1, -1, 1, -1] + partial[0] --> abmk[-1, -1, 1, -1], a1kn[-1, -1, -1,
   // -1]
   phi::distributed::InferSpmdContext ctx(
@@ -546,8 +546,8 @@ TEST(DefaultDataParallelSPMDRule, Ctor) {
   phi::distributed::DistMetaTensor out2(common::make_ddim(out2_shape),
                                         out2_dist_attr);
 
-  // 2 inputs 2 outputs, batch axis sharding is propagatd while other axes are
-  // replicatd call in vector arguments format
+  // 2 inputs 2 outputs, batch axis sharding is propagated while other axes are
+  // replicated call in vector arguments format
   auto infered_dist_attrs_st =
       phi::distributed::DefaultDataParallelInferSpmd({&x, &y}, {&out1, &out2});
   // call in variadic arguments format
@@ -677,7 +677,7 @@ TEST(ConcatRule, Ctor) {
   // test 1, inputs are aligned according to cost, and partial status is cleared
   auto inputs = build_inputs();
   auto infered_dist_attrs = phi::distributed::ConcatInferSpmd(inputs, 0);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
@@ -734,7 +734,7 @@ TEST(ConcatRule, Ctor) {
   // test 2，force replicate along concat axis
   inputs = build_inputs();
   infered_dist_attrs = phi::distributed::ConcatInferSpmd(inputs, 1);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
@@ -792,10 +792,10 @@ TEST(StackRule, Ctor) {
                                             t_dist_attr);
   };
 
-  // test 1, inputs are aligned according to cost,
+  // test 1, inputs are aligned according to cost.
   auto inputs = build_inputs();
   auto infered_dist_attrs = phi::distributed::StackInferSpmd(inputs, 0);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
@@ -840,7 +840,7 @@ TEST(StackRule, Ctor) {
   // test 2，force replicate along concat axis
   inputs = build_inputs();
   infered_dist_attrs = phi::distributed::StackInferSpmd(inputs, 1);
-  // list of tensor => sigle tensor
+  // list of tensor => single tensor
   EXPECT_EQ(infered_dist_attrs.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(infered_dist_attrs.second.size(), static_cast<size_t>(1));
   EXPECT_TRUE(
@@ -1213,7 +1213,7 @@ TEST(FusedRope, Ctor) {
   // 1.1 only q input
   phi::distributed::SpmdInfo forward_spmd_info =
       phi::distributed::FusedRopeInferSpmd(
-          q, none, none, none, none, none, false);
+          q, none, none, none, none, none, false, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
@@ -1237,7 +1237,7 @@ TEST(FusedRope, Ctor) {
   phi::distributed::DistMetaTensor position_ids =
       build_input({16, 2048}, {0, 1});
   forward_spmd_info = phi::distributed::FusedRopeInferSpmd(
-      q, k, none, sin, cos, position_ids, false);
+      q, k, none, sin, cos, position_ids, false, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
@@ -1253,7 +1253,7 @@ TEST(FusedRope, Ctor) {
   check_partial_dims(forward_spmd_info.second[1], {});
   // 2. test backward
   phi::distributed::SpmdInfo backward_spmd_info =
-      FusedRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false);
+      FusedRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false, false);
   EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(backward_spmd_info.first[0], {-1, -1, -1, -1});
@@ -1274,7 +1274,7 @@ TEST(FusedRope, Ctor) {
   phi::distributed::DistMetaTensor out_k =
       build_input({16, 2048, 64, 128}, {-1, 1, -1, 0});
   phi::distributed::SpmdInfo reverse_spmd_info = FusedRopeInferSpmdReverse(
-      q, k, none, sin, cos, position_ids, out_q, out_k, none, false);
+      q, k, none, sin, cos, position_ids, out_q, out_k, none, false, false);
   EXPECT_EQ(reverse_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(reverse_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(reverse_spmd_info.first[0], {0, -1, -1, -1});
@@ -1432,7 +1432,7 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
           << std::endl
           << std::endl;
 
-  // indices'rank is greater than 1,  x and weight is replicated, out_grad is
+  // Indices' rank is greater than 1, x and weight is replicated, out_grad is
   // sharded along axis 1
   x_dist_attr.set_dims_mapping({-1, -1});
   w_dist_attr.set_dims_mapping({-1, 1});
@@ -1464,7 +1464,7 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
           << std::endl
           << std::endl;
 
-  // Indices's rank equals 1, indices and out_grad is sharded.
+  // Indices' rank equals 1, indices and out_grad is sharded.
   x_shape = {5};
   w_shape = {10, 3};
   out_grad_shape = {5, 3};

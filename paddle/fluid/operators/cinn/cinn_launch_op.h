@@ -30,8 +30,8 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(enable_pe_launch_cinn);
 COMMON_DECLARE_bool(enable_interpretercore_launch_cinn);

@@ -32,11 +32,11 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/type_name.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/type_name.h"
+#include "paddle/pir/include/core/utils.h"
 
 #include "glog/logging.h"
 
@@ -45,10 +45,12 @@ namespace framework {
 
 class IfInstruction;
 class WhileInstruction;
+class PyLayerInstruction;
 class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class PyLayerInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
@@ -126,7 +128,7 @@ inline bool IsInvalid(pir::Value value) {
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
-                    bool force_persisable,
+                    bool force_persistable,
                     ValueExecutionInfo* value_exe_info);
 
 void BuildScope(const pir::Block& block,
@@ -188,7 +190,7 @@ void BuildPhiContext(pir::Operation* op,
         InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
 
@@ -439,7 +441,7 @@ void BuildPhiContext(pir::Operation* op,
         OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 

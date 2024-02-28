@@ -16,17 +16,17 @@
 #include <sstream>
 
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/region.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {
@@ -45,9 +45,9 @@ class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
   template <class ConcreteOp>
   struct Model : public Concept {
     static void InferShape(pir::Operation *op) {
-      ConcreteOp concret_op = ConcreteOp(op);
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      concret_op.InferShape();
+      ConcreteOp concrete_op = ConcreteOp(op);
+      if (concrete_op == nullptr) throw("concrete_op is nullptr");
+      concrete_op.InferShape();
     }
 
     Model() : Concept(InferShape) {}

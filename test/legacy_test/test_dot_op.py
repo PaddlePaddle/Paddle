@@ -19,7 +19,8 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class DotOp(OpTest):
@@ -50,7 +51,7 @@ class DotOp(OpTest):
         else:
             self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ['Y'],
@@ -62,7 +63,7 @@ class DotOp(OpTest):
         else:
             self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ['X'],
@@ -123,16 +124,19 @@ class DotOpBatch(DotOp):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestDotOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
             x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
@@ -236,7 +240,7 @@ class TestDotFP16Op(OpTest):
                     place, ['X', 'Y'], 'Out', check_pir=True
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
@@ -244,7 +248,7 @@ class TestDotFP16Op(OpTest):
                     place, ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
@@ -314,7 +318,7 @@ class TestDotBF16Op(OpTest):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -327,7 +331,7 @@ class TestDotBF16Op(OpTest):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -378,7 +382,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
@@ -391,7 +395,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     check_pir=True,
                 )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):

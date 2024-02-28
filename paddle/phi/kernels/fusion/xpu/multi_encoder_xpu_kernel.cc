@@ -25,7 +25,7 @@ namespace fusion {
   int r = xpu::transformer_encoder<x_dtype_, w_dtype_, gemm_dtype_>(     \
       ctx.x_context(),                                                   \
       x_fp16_data,                                                       \
-      fc_weight_data_##gemm_dtype_,                                      \
+      fc_weight_data_##w_dtype_,                                         \
       out_fp16_data,                                                     \
       fc_input_max_data,                                                 \
       fc_weight_max_data,                                                \
@@ -37,30 +37,34 @@ namespace fusion {
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
 
 template <typename T, typename Context>
-void MultiEncoderXPUKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const std::vector<const DenseTensor*>& fc_input_max,
-                           const std::vector<const DenseTensor*>& fc_weight,
-                           const std::vector<const DenseTensor*>& fc_weight_max,
-                           const std::vector<const DenseTensor*>& fc_bias,
-                           const std::vector<const DenseTensor*>& ln_scale,
-                           const std::vector<const DenseTensor*>& ln_bias,
-                           const paddle::optional<DenseTensor>& mask,
-                           const paddle::optional<DenseTensor>& seq_lod,
-                           const paddle::optional<DenseTensor>& max_seq_len,
-                           int layer_num,
-                           bool norm_before,
-                           int hidden_dim,
-                           int head_num,
-                           int size_per_head,
-                           int ffn_hidden_dim_scale,
-                           int act_type,
-                           int relative_type,
-                           int slice_idx,
-                           bool is_per_channel,
-                           DenseTensor* out,
-                           DenseTensor* x_fp16,
-                           DenseTensor* out_fp16) {
+void MultiEncoderXPUKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& fc_input_max,
+    const std::vector<const DenseTensor*>& fc_weight,
+    const std::vector<const DenseTensor*>& fc_weight_max,
+    const std::vector<const DenseTensor*>& fc_bias,
+    const std::vector<const DenseTensor*>& ln_scale,
+    const std::vector<const DenseTensor*>& ln_bias,
+    const std::vector<const DenseTensor*>& smooth_scale_weight,
+    const paddle::optional<DenseTensor>& mask,
+    const paddle::optional<DenseTensor>& seq_lod,
+    const paddle::optional<DenseTensor>& max_seq_len,
+    int layer_num,
+    bool norm_before,
+    int hidden_dim,
+    int head_num,
+    int size_per_head,
+    int ffn_hidden_dim_scale,
+    int act_type,
+    int relative_type,
+    int slice_idx,
+    bool is_per_channel,
+    const std::vector<float>& softmax_max_value,
+    const std::vector<std::string>& quant_types,
+    DenseTensor* out,
+    DenseTensor* x_fp16,
+    DenseTensor* out_fp16) {
   const int* seq_lod_data =
       seq_lod.get_ptr() == nullptr ? nullptr : seq_lod.get_ptr()->data<int>();
   const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
@@ -103,42 +107,40 @@ void MultiEncoderXPUKernel(const Context& ctx,
   // q,k,v weight are fused.
   // Each encoder's weight should be: w0, null, null, w3, w4, w5
   auto enable_int8 = fc_weight[0]->dtype() == phi::DataType::INT8;
-  std::vector<xpu::QuantType> quant_types(8 * layer_num,
-                                          xpu::QuantType::NOT_QUANT);
+  auto local_quant = fc_weight[0]->dtype() == phi::DataType::FLOAT16;
+  std::vector<xpu::QuantType> set_quant_types(8 * layer_num,
+                                              xpu::QuantType::NOT_QUANT);
   if (enable_int8) {
-    int quant_types_size = 0;
-    if (static_cast<int>(fc_input_max.size()) == 18 * layer_num) {
-      // quant mul + matmul
-      quant_types_size = 8;
-    } else if (static_cast<int>(fc_input_max.size()) == 12 * layer_num) {
-      // quant mul
-      quant_types_size = 6;
-    } else {
-      PADDLE_ENFORCE_XDNN_SUCCESS(
-          1, "fc_input_max size must be 12 * layer_num or 18 * layer_num.");
-    }
-    for (int i = 0; i < layer_num; i++) {
-      for (int j = 0; j < quant_types_size; j++) {
-        quant_types[i * 8 + j] = xpu::QuantType::QUANT_INT8;
-      }
+    for (size_t i = 0; i < quant_types.size(); i++) {
+      set_quant_types[i] = xpu::QuantType::QUANT_INT8;
     }
   }
   std::vector<const float*> fc_input_max_data;
   std::vector<const int16_t*> fc_weight_data_int16_t;
   std::vector<const int8_t*> fc_weight_data_int8_t;
+  std::vector<const XPUTypeFP16*> fc_weight_data_XPUTypeFP16;
   std::vector<const float*> fc_weight_max_data;
   std::vector<const float*> fc_bias_data;
   for (size_t i = 0; i < fc_weight.size(); i++) {
     if (!enable_int8) {
-      fc_weight_data_int16_t.push_back(fc_weight[i]->data<int16_t>());
+      if (local_quant) {
+        fc_weight_data_XPUTypeFP16.push_back(
+            reinterpret_cast<const XPUTypeFP16*>(fc_weight[i]->data()));
+      } else {
+        fc_weight_data_int16_t.push_back(
+            reinterpret_cast<const int16_t*>(fc_weight[i]->data()));
+      }
     } else {
-      fc_weight_data_int8_t.push_back(fc_weight[i]->data<int8_t>());
+      fc_weight_data_int8_t.push_back(
+          reinterpret_cast<const int8_t*>(fc_weight[i]->data()));
     }
     fc_weight_max_data.push_back(fc_weight_max[i]->data<float>());
     fc_bias_data.push_back(fc_bias[i]->data<float>());
     if (i % 4 == 0) {
       fc_weight_data_int16_t.push_back(nullptr);
       fc_weight_data_int16_t.push_back(nullptr);
+      fc_weight_data_XPUTypeFP16.push_back(nullptr);
+      fc_weight_data_XPUTypeFP16.push_back(nullptr);
       fc_weight_data_int8_t.push_back(nullptr);
       fc_weight_data_int8_t.push_back(nullptr);
       fc_weight_max_data.push_back(nullptr);
@@ -180,10 +182,29 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      hidden_dim,
                                      norm_before,
                                      is_per_channel);
-    qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
+    if (!softmax_max_value.empty()) {
+      qkv_attn_param.ptq_max_value = softmax_max_value;
+    }
+    if (!smooth_scale_weight.empty()) {
+      qkv_attn_param.is_smooth_quant = true;
+      std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
+      for (const auto& weight : smooth_scale_weight) {
+        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
+            weight->data<phi::dtype::float16>());
+        smooth_scale_weight_ptr.push_back(tmp_ptr);
+      }
+      qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
+                                         smooth_scale_weight_ptr.end());
+    }
+    qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
+                                      set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
     if (!enable_int8) {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      if (local_quant) {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
+      } else {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      }
     } else {
       TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
     }
@@ -204,10 +225,29 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      hidden_dim,
                                      norm_before,
                                      is_per_channel);
-    qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
+    if (!softmax_max_value.empty()) {
+      qkv_attn_param.ptq_max_value = softmax_max_value;
+    }
+    if (!smooth_scale_weight.empty()) {
+      qkv_attn_param.is_smooth_quant = true;
+      std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
+      for (const auto& weight : smooth_scale_weight) {
+        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
+            weight->data<phi::dtype::float16>());
+        smooth_scale_weight_ptr.push_back(tmp_ptr);
+      }
+      qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
+                                         smooth_scale_weight_ptr.end());
+    }
+    qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
+                                      set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
     if (!enable_int8) {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      if (local_quant) {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
+      } else {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      }
     } else {
       TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
     }
@@ -231,10 +271,29 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      hidden_dim,
                                      norm_before,
                                      is_per_channel);
-    qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
+    if (!softmax_max_value.empty()) {
+      qkv_attn_param.ptq_max_value = softmax_max_value;
+    }
+    if (!smooth_scale_weight.empty()) {
+      qkv_attn_param.is_smooth_quant = true;
+      std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
+      for (const auto& weight : smooth_scale_weight) {
+        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
+            weight->data<phi::dtype::float16>());
+        smooth_scale_weight_ptr.push_back(tmp_ptr);
+      }
+      qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
+                                         smooth_scale_weight_ptr.end());
+    }
+    qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
+                                      set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
     if (!enable_int8) {
-      TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      if (local_quant) {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
+      } else {
+        TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int16_t, int16_t)
+      }
     } else {
       TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, int8_t, int8_t)
     }
@@ -260,6 +319,6 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->InputAt(8).SetBackend(phi::Backend::CPU);
   kernel->InputAt(9).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(10).SetBackend(phi::Backend::CPU);
 }

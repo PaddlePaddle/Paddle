@@ -76,9 +76,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     if plen is None or len(plen) != 4:
                         break
 
-                    alllen = struct.unpack('i', plen)[0]
-                    label_len = alllen & 0xFFFF
-                    seq_len = (alllen >> 16) & 0xFFFF
+                    all_len = struct.unpack('i', plen)[0]
+                    label_len = all_len & 0xFFFF
+                    seq_len = (all_len >> 16) & 0xFFFF
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(
@@ -106,9 +106,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     if plen is None or len(plen) != 4:
                         break
 
-                    alllen = struct.unpack('i', plen)[0]
-                    label_len = alllen & 0xFFFF
-                    seq_len = (alllen >> 16) & 0xFFFF
+                    all_len = struct.unpack('i', plen)[0]
+                    label_len = all_len & 0xFFFF
+                    seq_len = (all_len >> 16) & 0xFFFF
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(

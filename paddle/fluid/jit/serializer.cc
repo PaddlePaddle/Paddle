@@ -104,8 +104,8 @@ void Deserializer::ReadTensorData(
     VLOG(3) << "load Tensor: " << item;
     Variable v;
     // TODO(dev): Support framework::Vocab
-    DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
-    framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
+    DenseTensor* dense_tensor = v.GetMutable<DenseTensor>();
+    framework::DeserializeFromStream(fin, dense_tensor, dev_ctx);
     (*params_dict)[item] = std::make_shared<Variable>(v);
   }
 }

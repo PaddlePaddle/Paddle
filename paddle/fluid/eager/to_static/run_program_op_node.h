@@ -26,11 +26,11 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
@@ -183,6 +183,11 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
+  if (is_input) {
+    for (auto &kwarg : block->kwargs()) {
+      value2name[kwarg.second] = kwarg.first;
+    }
+  }
   for (auto &op : *block) {
     std::string name;
     if (is_input && op.name() == "pd_op.data") {
@@ -1513,7 +1518,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_values.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {

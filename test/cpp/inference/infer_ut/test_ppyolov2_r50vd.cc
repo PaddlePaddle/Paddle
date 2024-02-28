@@ -62,7 +62,7 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/model.pdmodel",
                         FLAGS_modeldir + "/model.pdiparams");
@@ -75,7 +75,7 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   config.EnableTensorRtEngine(
       1 << 28, 2, 10, paddle_infer::PrecisionType::kFloat32, false, false);
   LOG(INFO) << config.Summary();
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &input_data_map, &truth_output_data, 1);
@@ -96,7 +96,7 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
     LOG(INFO) << "join tid : " << i;
     threads[i].join();
     // CompareRecord(&truth_output_data, &infer_output_data, 1e-2);
-    // TODO(OliverLPH): disable comparison since precsion is low
+    // TODO(OliverLPH): disable comparison since precision is low
   }
 
   std::cout << "finish multi-thread test" << std::endl;
@@ -109,7 +109,7 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/model.pdmodel",
                         FLAGS_modeldir + "/model.pdiparams");
@@ -123,7 +123,7 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
   config.SetMkldnnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   LOG(INFO) << config.Summary();
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
       pred_pool_no_ir.Retrieve(0), &input_data_map, &truth_output_data, 1);
@@ -144,7 +144,7 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
     LOG(INFO) << "join tid : " << i;
     threads[i].join();
     // CompareRecord(&truth_output_data, &infer_output_data, 1e-4);
-    // TODO(OliverLPH): disable comparison since precsion is low
+    // TODO(OliverLPH): disable comparison since precision is low
   }
 
   std::cout << "finish multi-thread test" << std::endl;

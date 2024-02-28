@@ -74,7 +74,7 @@ class Adam(Optimizer):
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
-            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
@@ -84,8 +84,8 @@ class Adam(Optimizer):
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
@@ -188,17 +188,17 @@ class Adam(Optimizer):
         if not isinstance(beta1, (Variable, Value)):
             if not 0 <= beta1 < 1:
                 raise ValueError(
-                    "Invaild value of beta1, expect beta1 in [0,1)."
+                    "Invalid value of beta1, expect beta1 in [0,1)."
                 )
         if not isinstance(beta2, (Variable, Value)):
             if not 0 <= beta2 < 1:
                 raise ValueError(
-                    "Invaild value of beta2, expect beta2 in [0,1)."
+                    "Invalid value of beta2, expect beta2 in [0,1)."
                 )
         if not isinstance(epsilon, (Variable, Value)):
             if not 0 <= epsilon:
                 raise ValueError(
-                    "Invaild value of epsilon, expect epsilon >= 0."
+                    "Invalid value of epsilon, expect epsilon >= 0."
                 )
         super().__init__(
             learning_rate=learning_rate,
@@ -270,12 +270,12 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -286,7 +286,7 @@ class Adam(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, (framework.Block, paddle.pir.Block))

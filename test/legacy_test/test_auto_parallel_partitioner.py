@@ -480,7 +480,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         self.assertTrue(
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
-        # check distribured attr for dist op
+        # check distributed attr for dist op
         serial_op_idx = [1, 4]
         dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
@@ -573,7 +573,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         self.assertTrue(
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
-        # check distribured attr for dist op
+        # check distributed attr for dist op
         serial_op_idx = [1, 4]
         dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
@@ -869,7 +869,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         self.assertTrue(
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
-        # check distribured attr for dist op
+        # check distributed attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
 
@@ -976,7 +976,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         self.assertTrue(
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
-        # check distribured attr for dist op
+        # check distributed attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
 
@@ -1364,7 +1364,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         self.assertTrue(
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
-        # check distribured attr
+        # check distributed attr
         serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
         dist_op_idx = [
             [2, 3],

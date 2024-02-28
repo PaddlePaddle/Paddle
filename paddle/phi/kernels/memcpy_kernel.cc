@@ -81,7 +81,7 @@ void MemcpyD2HMultiIOKernel(const Context& dev_ctx,
                             TensorArray* out_array) {
   PADDLE_ENFORCE_NOT_NULL(
       out_array,
-      errors::PreconditionNotMet("output tesnor_array should not be nullptr"));
+      errors::PreconditionNotMet("output tensor_array should not be nullptr"));
   PADDLE_ENFORCE_EQ(
       array.size(),
       out_array->size(),

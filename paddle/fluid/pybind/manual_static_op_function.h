@@ -27,7 +27,7 @@
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
 
 namespace paddle {
 
@@ -760,7 +760,17 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
           std::move(argument));
   for (size_t i = 0; i < outputs.size(); ++i) {
-    op_results.push_back(op->result(i));
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      auto split_op = paddle::dialect::ApiBuilder::Instance()
+                          .GetBuilder()
+                          ->Build<pir::SplitOp>(op->result(i));
+      auto split_outputs = split_op.outputs();
+      op_results.insert(
+          op_results.end(), split_outputs.begin(), split_outputs.end());
+    } else {
+      op_results.push_back(op->result(i));
+    }
   }
 
   return ToPyObject(op_results);

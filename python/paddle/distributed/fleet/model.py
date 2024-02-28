@@ -34,7 +34,7 @@ def distributed_model(model):
     Return distributed data parallel model (Only work in dygraph mode)
 
     Args:
-        model (Layer): the user-defind model which inherits Layer.
+        model (Layer): the user-defined model which inherits Layer.
 
     Returns:
         distributed data parallel model which inherits Layer.

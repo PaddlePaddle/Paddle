@@ -252,6 +252,25 @@ class TestIndexSelectAPI(unittest.TestCase):
         expect_out = np.repeat(input_x, index, axis=None)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
+        # case input dtype is bfloat16
+        input_x = np.array([[1, 2, 1], [1, 2, 3]]).astype('uint16')
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_x)
+            index = paddle.to_tensor(index_x)
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(input_x, index_x, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(input_x)
+            index = 2
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(input_x, index, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
         # case 1:
         with base.dygraph.guard():
             x = paddle.to_tensor(self.data_x)

@@ -150,6 +150,7 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& fc_bias,
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
+    const std::vector<const MetaTensor*>& smooth_scale_weight,
     const MetaTensor& mask,
     const MetaTensor& seq_lod,
     const MetaTensor& max_seq_len,
@@ -163,6 +164,8 @@ void MultiEncoderXPUInferMeta(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    const std::vector<float>& softmax_max_value,
+    const std::vector<std::string>& quant_types,
     MetaTensor* out,
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
@@ -836,4 +839,19 @@ void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
 
+void MultiGruInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& weight_x,
+    const std::vector<const MetaTensor*>& weight_h,
+    const paddle::optional<std::vector<const MetaTensor*>>& bias,
+    const paddle::optional<std::vector<const MetaTensor*>>& scale_weights,
+    const std::string& activation,
+    const std::string& gate_activation,
+    int layers,
+    bool origin_mode,
+    const std::string& mkldnn_data_type,
+    float scale_data,
+    float shift_data,
+    bool force_fp32_output,
+    MetaTensor* hidden);
 }  // namespace phi

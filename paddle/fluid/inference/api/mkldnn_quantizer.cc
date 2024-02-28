@@ -439,7 +439,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
     scales = 1.0 / eigen_tensor_mat.cast<double>().abs().rowwise().maxCoeff();
   }
   int output_channel_axis = is_transposed;
-  int channels = dims[output_channel_axis];
+  int channels = static_cast<int>(dims[output_channel_axis]);
   phi::DenseTensor scale_tensor = CreateScaleTensor(channels);
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scales.data(), scales.data() + scales.size(), scale_ptr);
@@ -454,13 +454,13 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
   check_tensor(wx_tensor);
   check_tensor(wh_tensor);
 
-  int OC = wh_tensor.dims()[0];
+  int OC = static_cast<int>(wh_tensor.dims()[0]);
   std::vector<float> scale_ur(2 * OC);
   std::vector<float> scale_o(OC);
 
   for (int row_id = 0; row_id < wx_tensor.dims()[0]; row_id++) {
     for (int col_id = 0; col_id < 2 * OC; col_id++) {
-      int idx = (row_id * wx_tensor.dims()[1]) + col_id;
+      int idx = (row_id * wx_tensor.dims()[1]) + col_id;  // NOLINT
       auto abs_value = std::abs(wx_tensor.data<float>()[idx]);
       if (row_id == 0) {
         scale_ur[col_id] = abs_value;
@@ -478,7 +478,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
 
   for (int row_id = 0; row_id < wx_tensor.dims()[0]; row_id++) {
     for (int col_id = 2 * OC; col_id < wx_tensor.dims()[1]; col_id++) {
-      int idx = (row_id * wx_tensor.dims()[1]) + col_id;
+      int idx = (row_id * wx_tensor.dims()[1]) + col_id;  // NOLINT
       auto abs_value = std::abs(wx_tensor.data<float>()[idx]);
       if (row_id == 0) {
         scale_o[col_id % OC] = abs_value;
@@ -515,7 +515,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
 
   for (int row_id = 0; row_id < wx_tensor.dims()[0]; row_id++) {
     for (int col_id = 0; col_id < wx_tensor.dims()[1]; col_id++) {
-      int idx = (row_id * wx_tensor.dims()[1]) + col_id;
+      int idx = (row_id * wx_tensor.dims()[1]) + col_id;  // NOLINT
       auto abs_value = std::abs(wx_tensor.data<float>()[idx]);
       if (row_id == 0) {
         scale[col_id] = abs_value;
@@ -526,7 +526,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
   }
   for (int row_id = 0; row_id < wh_tensor.dims()[0]; row_id++) {
     for (int col_id = 0; col_id < wh_tensor.dims()[1]; col_id++) {
-      int idx = (row_id * wh_tensor.dims()[1]) + col_id;
+      int idx = (row_id * wh_tensor.dims()[1]) + col_id;  // NOLINT
       auto abs_value = std::abs(wh_tensor.data<float>()[idx]);
       if (abs_value > scale[col_id]) scale[col_id] = abs_value;
     }
@@ -567,7 +567,7 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
                         std::to_string(min_val) + ")."));
   ConstEigenVectorArrayMap eigen_tensor{
       var_tensor.data<float>(), var_tensor.numel(), 1};
-  auto bin_width = std::abs(max_val - min_val) / num_bins;
+  auto bin_width = std::abs(max_val - min_val) / static_cast<float>(num_bins);
   std::vector<int> hist(num_bins);
 
   for (int i = 0; i < eigen_tensor.size(); i++) {
@@ -686,7 +686,7 @@ float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
     tmp_sum1 += p_idx * (log(Q_sum * p_idx));
     tmp_sum2 += p_idx * (log(P_sum * q_idx));
   }
-  return (tmp_sum1 - tmp_sum2) / P_sum;
+  return (tmp_sum1 - tmp_sum2) / static_cast<float>(P_sum);
 }
 
 }  // namespace paddle

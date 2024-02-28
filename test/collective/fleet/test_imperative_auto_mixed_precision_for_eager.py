@@ -1397,7 +1397,7 @@ class TestBf16(unittest.TestCase):
         func_isinstance()
 
 
-class TestAmpWithPyLyer(unittest.TestCase):
+class TestAmpWithPyLayer(unittest.TestCase):
     def test_pylayer(self):
         class MyMM(PyLayer):
             @staticmethod

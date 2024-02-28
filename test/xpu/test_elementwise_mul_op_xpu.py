@@ -86,7 +86,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     check_dygraph=False,
                 )
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -97,7 +97,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     check_dygraph=False,
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(

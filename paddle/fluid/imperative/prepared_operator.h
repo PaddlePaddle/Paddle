@@ -489,7 +489,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         PADDLE_ENFORCE_NOT_NULL(
             attr_ptr,
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind dygraph KernelContext.",
+                                       "building dygraph KernelContext.",
                                        attr_names[i]));
         auto& attr = *attr_ptr;
         switch (AttrTypeID(attr)) {

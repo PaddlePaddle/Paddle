@@ -51,7 +51,7 @@ from paddle.base.framework import (
     dygraph_only,
 )
 from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
@@ -914,6 +914,11 @@ def save(layer, path, input_spec=None, **configs):
             >>> save_function()
     """
 
+    if use_pir_api():
+        raise NotImplementedError(
+            "Currently, `paddle.jit.save` is not supported in PIR mode."
+        )
+
     # 1. input build & check
     prog_translator = ProgramTranslator()
     is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
@@ -1508,6 +1513,10 @@ def load(path, **configs):
                 ...         print("Epoch {} batch {}: loss = {}".format(
                 ...             epoch_id, batch_id, np.mean(loss.numpy())))
     """
+    if use_pir_api():
+        raise NotImplementedError(
+            "Currently, `paddle.jit.load` is not supported in PIR mode."
+        )
     # 1. construct correct config
     config = _parse_load_config(configs)
     model_path, config = _build_load_path_and_config(path, config)

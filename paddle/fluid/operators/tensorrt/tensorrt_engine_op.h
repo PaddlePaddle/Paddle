@@ -291,7 +291,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = common::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
         // We need collect value range for shape tensor for Paddle-TRT's use.
-        // To be noticed, this method to identify all inputd/outputs is shape
+        // To be noticed, this method to identify all inputs/outputs is shape
         // tensors; After, TRT Engine gets whether it is a real shape tensor.
         auto is_shape_tensor = true;
         if (trt_engine->engine()) {
@@ -512,7 +512,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int binding_offset = 0;
     nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
-      // Initilize context and get offset by profile index
+      // Initialize context and get offset by profile index
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
@@ -606,7 +606,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                     "by "
                     "setting min_subgraph_size using EnableTensorrtEngine "
                     "interface.\n"
-                    "\tThe min_subgraph_size shouble to be greater than the "
+                    "\tThe min_subgraph_size should to be greater than the "
                     "number "
                     "of "
                     "nodes in the inconsistent subgraph.\n"));
@@ -828,7 +828,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "by "
               "setting min_subgraph_size using EnableTensorrtEngine "
               "interface.\n"
-              "\tThe min_subgraph_size shouble to be greater than the number "
+              "\tThe min_subgraph_size should to be greater than the number "
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch,
