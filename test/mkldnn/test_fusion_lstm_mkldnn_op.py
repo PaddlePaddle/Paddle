@@ -24,7 +24,11 @@ class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
+            self.check_output(
+                check_dygraph=False,
+                no_check_set=["Cell"],
+                check_pir_onednn=True,
+            )
 
 
 class TestFusionLSTMONEDNNOpReverse(TestFusionLSTMONEDNNOp):
