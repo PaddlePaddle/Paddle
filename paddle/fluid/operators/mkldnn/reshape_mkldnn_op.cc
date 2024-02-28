@@ -20,10 +20,8 @@ limitations under the License. */
 namespace {
 enum class ReshapeKernelOpName {
   reshape,
-  reshape2,
   squeeze,
   flatten,
-  flatten2,
 };
 }  // anonymous namespace
 
@@ -105,9 +103,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
       case ReshapeKernelOpName::flatten:
-      case ReshapeKernelOpName::flatten2:
-        InferShapeFlattenOp(ctx, x_dims, out_dims);
-        break;
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
             "Reshape kernel doesn not support that operator name"));
@@ -317,17 +312,11 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
         break;
-      case ReshapeKernelOpName::reshape2:
-        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
-        break;
       case ReshapeKernelOpName::squeeze:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenGradOp(ctx, x_dims);
-        break;
-      case ReshapeKernelOpName::flatten2:
-        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
@@ -340,13 +329,6 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
       framework::DDim& dx_dims) const {  // NOLINT
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx_dims = dx->dims();
-  }
-
-  void InferShapeReshape2Flatten2GradOp(
-      const framework::ExecutionContext& ctx,
-      framework::DDim& dx_dims) const {  // NOLINT
-    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
-    dx_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   }
 
   void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,
@@ -391,14 +373,6 @@ REGISTER_OP_KERNEL(
                                  ReshapeKernelOpName::reshape>);
 
 REGISTER_OP_KERNEL(
-    reshape2_grad,
-    MKLDNN,
-    phi::CPUPlace,
-    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
-                                 ReshapeKernelOpName::reshape2>);
-
-REGISTER_OP_KERNEL(
     flatten,
     MKLDNN,
     phi::CPUPlace,
@@ -413,19 +387,3 @@ REGISTER_OP_KERNEL(
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::flatten>);
-
-REGISTER_OP_KERNEL(
-    flatten2,
-    MKLDNN,
-    phi::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::flatten2>);
-
-REGISTER_OP_KERNEL(
-    flatten2_grad,
-    MKLDNN,
-    phi::CPUPlace,
-    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::flatten2>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
-                                 ReshapeKernelOpName::flatten2>);
