@@ -39,6 +39,29 @@ lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 # full html report
 
+function gen_full_html_report_cinn(){
+        lcov --extract coverage.info \
+        '/paddle/paddle/cinn/adt/*' \
+        '/paddle/paddle/cinn/api/*' \
+        '/paddle/paddle/cinn/ast_gen_ius/*' \
+        '/paddle/paddle/cinn/auto_schedule/*' \
+        '/paddle/paddle/cinn/backends/*' \
+        '/paddle/paddle/cinn/common/*' \
+        '/paddle/paddle/cinn/frontend/*' \
+        '/paddle/paddle/cinn/hlir/*' \
+        '/paddle/paddle/cinn/ir/*' \
+        '/paddle/paddle/cinn/lang/*' \
+        '/paddle/paddle/cinn/optim/*' \
+        '/paddle/paddle/cinn/poly/*' \
+        '/paddle/paddle/cinn/pybind/*' \
+        '/paddle/paddle/cinn/runtime/*' \
+        '/paddle/paddle/cinn/utils/*' \
+        -o coverage-full.tmp \
+        --rc lcov_branch_coverage=0
+
+    mv -f coverage-full.tmp coverage-full.info
+}
+
 function gen_full_html_report() {
     lcov --extract coverage.info \
         '/paddle/paddle/fluid/framework/*' \
