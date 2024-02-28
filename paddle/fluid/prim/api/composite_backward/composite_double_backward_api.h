@@ -51,7 +51,7 @@ void cos_double_grad(const Tensor& x,
                      const Tensor& grad_x_grad,
                      Tensor* x_grad,
                      Tensor* grad_out_grad) {
-  // cos grad grad : ddout = - sinx * ddx, dx = -dy * cosx * ddx
+  // cos grad grad : ddout = -sinx * ddx, dx = -dy * cosx * ddx
   if (x_grad) {
     if (grad_out) {
       auto x_grad_tmp = -(grad_out.get() * cos<T>(x) * grad_x_grad);
@@ -114,34 +114,32 @@ void pow_double_grad(const Tensor& x,
   // * dout * ddx
   auto y_value = y.to<float>();
   if (grad_out_grad) {
-    auto grad_out_grad_tmp = y_value * x.pow(y_value - 1.0) * grad_x_grad;
+    auto grad_out_grad_tmp = y_value * x.pow(y_value - 1) * grad_x_grad;
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 
   if (x_grad) {
-    auto x_grad_tmp = y_value * (y_value - 1.0) * x.pow(y_value - 2.0) *
-                      grad_out * grad_x_grad;
+    auto x_grad_tmp =
+        y_value * (y_value - 1) * x.pow(y_value - 2) * grad_out * grad_x_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
 
 template <typename T>
 void exp_double_grad(const Tensor& out,
-                     const Tensor& grad_x_forward,
+                     const Tensor& grad_x,
                      const Tensor& grad_x_grad,
                      Tensor* grad_out_grad,
-                     Tensor* grad_x) {
-  if (grad_x) {
+                     Tensor* x_grad) {
+  if (x_grad) {
     if (out.dtype() == phi::DataType::FLOAT16 ||
         out.dtype() == phi::DataType::BFLOAT16) {
       Tensor grad_x_grad_promote = cast<T>(grad_x_grad, phi::DataType::FLOAT32);
-      Tensor grad_x_forward_promote =
-          cast<T>(grad_x_forward, phi::DataType::FLOAT32);
-      set_output<T>(
-          cast<T>(grad_x_forward_promote * grad_x_grad_promote, out.dtype()),
-          grad_x);
+      Tensor grad_x_promote = cast<T>(grad_x, phi::DataType::FLOAT32);
+      set_output<T>(cast<T>(grad_x_promote * grad_x_grad_promote, out.dtype()),
+                    x_grad);
     } else {
-      set_output<T>(grad_x_forward * grad_x_grad, grad_x);
+      set_output<T>(grad_x * grad_x_grad, x_grad);
     }
   }
 
@@ -165,18 +163,22 @@ void minimum_double_grad(const Tensor& x,
                          const paddle::optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    auto out_dims =
-        paddle::operators::details::BroadcastTwoDims(x.dims(), y.dims());
-    Tensor ddout_tmp = full<T>(common::vectorize(out_dims), 0.0, x.dtype());
-    if (grad_x_grad) {
-      auto x_tmp = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
-      ddout_tmp = ddout_tmp + grad_x_grad.get() * x_tmp;
+    if (grad_x_grad && grad_y_grad) {
+      auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout =
+          grad_x_grad.get() * x_mask + grad_y_grad.get() * (1 - x_mask);
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad) {
+      auto x_mask = cast<T>(less_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout = grad_x_grad.get() * x_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_y_grad) {
+      auto y_mask = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
+      auto ddout = grad_y_grad.get() * y_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      grad_out_grad = nullptr;
     }
-    if (grad_y_grad) {
-      auto y_tmp = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
-      ddout_tmp = ddout_tmp + grad_y_grad.get() * y_tmp;
-    }
-    set_output<T>(ddout_tmp, grad_out_grad);
   }
 }
 
@@ -187,18 +189,22 @@ void maximum_double_grad(const Tensor& x,
                          const paddle::optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    auto out_dims =
-        paddle::operators::details::BroadcastTwoDims(x.dims(), y.dims());
-    Tensor ddout_tmp = full<T>(common::vectorize(out_dims), 0.0, x.dtype());
-    if (grad_x_grad) {
-      auto x_tmp = cast<T>(greater_than<T>(x, y), grad_x_grad.get().dtype());
-      ddout_tmp = ddout_tmp + grad_x_grad.get() * x_tmp;
+    if (grad_x_grad && grad_y_grad) {
+      auto x_mask = cast<T>(greater_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout =
+          grad_x_grad.get() * x_mask + grad_y_grad.get() * (1 - x_mask);
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad) {
+      auto x_mask = cast<T>(greater_than<T>(x, y), grad_x_grad.get().dtype());
+      auto ddout = grad_x_grad.get() * x_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_y_grad) {
+      auto y_mask = cast<T>(less_equal<T>(x, y), grad_y_grad.get().dtype());
+      auto ddout = grad_y_grad.get() * y_mask;
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      grad_out_grad = nullptr;
     }
-    if (grad_y_grad) {
-      auto y_tmp = cast<T>(less_equal<T>(x, y), grad_y_grad.get().dtype());
-      ddout_tmp = ddout_tmp + grad_y_grad.get() * y_tmp;
-    }
-    set_output<T>(ddout_tmp, grad_out_grad);
   }
 }
 
