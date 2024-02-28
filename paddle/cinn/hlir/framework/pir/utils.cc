@@ -182,14 +182,20 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
     return false;
   }
 
+  auto GetNumElementsFromDim = [](const ::pir::DDim& dim) -> int64_t {
+    if (::common::contain_unknown_dim(dim)) {
+      return std::numeric_limits<int32_t>::max();
+    } else {
+      return ::common::product(dim);
+    }
+  };
+
   auto GetNumElementsFromValue = [&](const ::pir::Value& value) {
     int64_t numel = -1;
     if (value && value.type()) {
       auto type = value.type().dyn_cast<::pir::DenseTensorType>();
-      if (::common::contain_unknown_dim(type.dims())) {
-        numel = std::numeric_limits<int32_t>::max();
-      } else {
-        numel = ::common::product(type.dims());
+      if (type) {
+        numel = GetNumElementsFromDim(type.dims());
       }
     }
     return numel;
