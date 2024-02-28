@@ -3951,6 +3951,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
                           frame_size,
                           b_dims));
     checked_cell->set_dims(phi::make_ddim({2, frame_size}));
+    checked_cell->set_dtype(x.dtype());
   } else {
     PADDLE_ENFORCE_EQ(
         b_dims[1],
@@ -3967,6 +3968,9 @@ void FusionLstmInferMeta(const MetaTensor& x,
   cell->set_dims(out_dims);
   hidden->share_lod(x);
   cell->share_lod(x);
+  hidden->set_dtype(x.dtype());
+  cell->set_dtype(x.dtype());
+
   int xx_width = 0;
   if (use_seq) {
     xx_width = static_cast<int>(wx_dims[1]);
@@ -3977,8 +3981,12 @@ void FusionLstmInferMeta(const MetaTensor& x,
     batched_input->set_dims(phi::make_ddim({x_dims[0], wx_dims[1]}));
     batched_hidden->set_dims(out_dims);
     batched_cell->set_dims(out_dims);
+    batched_input->set_dtype(x.dtype());
+    batched_hidden->set_dtype(x.dtype());
+    batched_cell->set_dtype(x.dtype());
   }
   xx->set_dims(phi::make_ddim({x_dims[0], xx_width}));
+  xx->set_dtype(x.dtype());
   xx->share_lod(x);
 }
 
