@@ -157,6 +157,16 @@
   kernel :
     func : c_allgather
 
+- op : c_allreduce_avg
+  args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param : [x]
+  kernel :
+    func : c_allreduce_avg
+  inplace : (x -> out)
+
 - op : c_allreduce_max
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)

@@ -3465,6 +3465,12 @@
   outputs :
     out: Out
 
+- op: c_allreduce_avg
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_max
   inputs :
     x : X

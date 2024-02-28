@@ -439,6 +439,7 @@ void PirInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
       "pd_op.c_softmax_with_cross_entropy",
       "pd_op.c_allgather",
+      "pd_op.c_allreduce_avg",
       "pd_op.c_allreduce_max",
       "pd_op.c_allreduce_min",
       "pd_op.c_allreduce_sum",
@@ -510,6 +511,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.reduce_grad",
       "pd_op.c_softmax_with_cross_entropy_",
       "pd_op.c_allgather_",
+      "pd_op.c_allreduce_avg_",
       "pd_op.c_allreduce_max_",
       "pd_op.c_allreduce_min_",
       "pd_op.c_allreduce_sum_",
