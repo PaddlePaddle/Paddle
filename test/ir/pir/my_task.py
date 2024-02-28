@@ -183,9 +183,7 @@ class TestTask(unittest.TestCase):
     def run_program(self, program, feed, fetch_list, enable_cinn):
         if enable_cinn:
             paddle.decomposition.decomp.decompose(program, [])
-            fwd_pm = paddle.base.libpaddle.pir.PassManager()
-            paddle.base.libpaddle.pir.add_cinn_pass(fwd_pm, program)
-            fwd_pm.run(program)
+            paddle.base.libpaddle.pir.apply_cinn_pass(program)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         outs = exe._run_pir_impl(
