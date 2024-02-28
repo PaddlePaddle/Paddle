@@ -419,16 +419,21 @@ def remove_useless_full_like_ops(block, ops, state):
     remove ops which are not in use recursively,
 
     '''
+    remove_ops = []
+    inverse_ops = inverse_sort_op(list(ops))
     # from output to input
-    for op in inverse_sort_op(list(ops)):
-        if op.name() == 'pd_op.full_like':
+    for op in inverse_ops:
+        if op.name() == "pd_op.full_like":
             if op.result(0).use_empty():
                 full_op = op.operand_source(1).get_defining_op()
-                remove_op(block, op, state)
-                remove_op(block, full_op, state)
+                remove_ops.append(op)
+                remove_ops.append(full_op)
         elif is_control_flow(op):
             for sub_block in op.blocks():
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+    for op in remove_ops:
+        remove_op(block, op, state)
 
 
 def all_stop_gradient_true(block):
