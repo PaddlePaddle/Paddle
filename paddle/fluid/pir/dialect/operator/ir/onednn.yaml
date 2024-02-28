@@ -98,6 +98,7 @@
     func : FusionLstmInferMeta
   kernel :
     func : fusion_lstm
+    data_type : x
   optional : h0, c0
   intermediate : xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0, checked_cell
 
