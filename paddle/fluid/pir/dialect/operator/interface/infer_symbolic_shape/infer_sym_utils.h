@@ -65,4 +65,15 @@ bool ReduceInferDim(pir::Operation *op,
                     const std::vector<int64_t> &axis,
                     bool keep_dim,
                     bool reduce_all);
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
+    int axis);
+
+void BuildCstrEqForTensorListAlongAxis(
+    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    const std::vector<pir::Value> &values,
+    int axis);
+
 }  // namespace paddle::dialect::details

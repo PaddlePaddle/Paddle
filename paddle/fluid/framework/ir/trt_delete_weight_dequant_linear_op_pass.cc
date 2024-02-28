@@ -232,6 +232,13 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
+
+    // delete Scale and ZeroPoint tensor in scope
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(weight_dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(
+        weight_dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+
     int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
@@ -356,6 +363,13 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     }
 
     GraphSafeRemoveNodes(graph, nodes2rm);
+
+    for (auto& var_name : vars2rm) {
+      if (scope->FindVar(var_name)) {
+        scope->EraseVars({var_name});
+      }
+    }
+
     found_count++;
   };
   gpd(graph, handler);

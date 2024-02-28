@@ -75,8 +75,8 @@ class SyncMode:
     the synchronization mode for communication or auxiliary operator
     """
 
-    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
-    GlobalNormSync = "auto_parallel/global_norm_synchorization"
+    AmpFlagSync = "auto_parallel/amp_flag_synchronization"
+    GlobalNormSync = "auto_parallel/global_norm_synchronization"
 
 
 def is_elementwise_op(op_type):

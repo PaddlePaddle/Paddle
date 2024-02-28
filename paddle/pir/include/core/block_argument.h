@@ -24,8 +24,8 @@ class BlockArgumentImpl;
 }  // namespace detail
 
 ///
-/// \brief BlockArgument class represents the value defined by a result of
-/// operation. This class only provides interfaces, for specific implementation,
+/// \brief BlockArgument class represents the value defined by a argument of
+/// block. This class only provides interfaces, for specific implementation,
 /// see Impl class.
 ///
 class IR_API BlockArgument : public Value {
@@ -33,6 +33,8 @@ class IR_API BlockArgument : public Value {
   BlockArgument() = default;
   Block *owner() const;
   uint32_t index() const;
+  const std::string &keyword() const;
+  bool is_kwarg() const;
 
   const AttributeMap &attributes() const;
   Attribute attribute(const std::string &key) const;
@@ -44,6 +46,9 @@ class IR_API BlockArgument : public Value {
 
   /// create a new argument with the given type and owner.
   static BlockArgument Create(Type type, Block *owner, uint32_t index);
+  static BlockArgument Create(Type type,
+                              Block *owner,
+                              const std::string &keyword);
   /// Destroy the argument.
   void Destroy();
   /// set the position in the block argument list.
@@ -56,5 +61,4 @@ class IR_API BlockArgument : public Value {
   static bool classof(Value value);
   static BlockArgument dyn_cast_from(Value value);
 };
-
 }  // namespace pir

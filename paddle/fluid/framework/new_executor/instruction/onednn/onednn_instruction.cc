@@ -116,7 +116,8 @@ void TensorNameMap(pir::Operation* op,
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -327,7 +328,8 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
-    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
 
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();

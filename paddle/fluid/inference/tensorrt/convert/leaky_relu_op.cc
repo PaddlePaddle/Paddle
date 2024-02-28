@@ -116,7 +116,7 @@ class LeakyReluOpConverter : public OpConverter {
     engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         output_layer, "leaky_relu", {output_name}, test_mode);
   }
 };

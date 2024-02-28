@@ -567,9 +567,11 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -597,9 +599,11 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -630,9 +634,11 @@ class API_TestDygraphSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)

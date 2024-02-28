@@ -115,7 +115,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto|heter. "
+        help="Specify the backend, can be gloo|nccl|bkcl|auto|heter. "
         "Default value is auto which prefers nccl or bkcl.",
     )
     base_group.add_argument(
