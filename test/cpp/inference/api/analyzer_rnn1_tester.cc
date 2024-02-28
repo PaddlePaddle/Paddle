@@ -193,9 +193,11 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
   // assign data
   std::array<float, 2> arr0 = {0, 0};
   std::vector<float> zeros(batch_size * 15, 0);
+  std::copy_n(arr0.data(),
+              2,
+              lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
   std::copy_n(
-      arr0, 2, lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
-  std::copy_n(arr0, 2, data_tensor->mutable_data<float>(PaddlePlace::kCPU));
+      arr0.data(), 2, data_tensor->mutable_data<float>(PaddlePlace::kCPU));
   std::copy_n(zeros.begin(),
               zeros.size(),
               cell_init_tensor->mutable_data<float>(PaddlePlace::kCPU));
