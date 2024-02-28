@@ -36,16 +36,6 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
       vec_flatten_axis_.push_back(i);
     }
   }
-
-  std::cerr << "reduce aixs " << vec_reduce_axis_.size();
-  for (auto& d : vec_reduce_axis_) {
-    std::cerr << "reduce d " << d << std::endl;
-  }
-
-  std::cerr << "flatten aixs " << vec_flatten_axis_.size();
-  for (auto& d : vec_flatten_axis_) {
-    std::cerr << "flatten d " << d << std::endl;
-  }
 }
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
@@ -200,7 +190,6 @@ void TileFirstGeneralTactic::VariableTypeAssignment(
   auto block = sch->GetBlock(block_id);
   {
     if (!context_->group_tile_info->direct_output_var_names.count(block_id)) {
-      std::cerr << "set local " << block_id << std::endl;
       sch->SetBuffer(block, "local", false);
     }
   }
