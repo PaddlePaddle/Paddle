@@ -835,11 +835,11 @@ TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
 
 // NOTE: Only for (CPUPlace and PinnedPlace) -> (CPUPlace).
 template <>
-void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
-                                     void* dst,
-                                     phi::Place src_place,
-                                     const void* src,
-                                     size_t num) {
+TEST_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
+                                              void* dst,
+                                              phi::Place src_place,
+                                              const void* src,
+                                              size_t num) {
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num);
 }
 
