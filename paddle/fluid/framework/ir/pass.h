@@ -356,12 +356,12 @@ struct PassRegistrar : public Registrar {
       &__pass_tmp_registrar_##pass_type##__ UNUSED =        \
           __pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                           \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \
-      __use_pass_itself_##pass_type,                  \
-      "USE_PASS must be called in global namespace"); \
-  extern int TouchPassRegistrar_##pass_type();        \
-  static int use_pass_itself_##pass_type##_ UNUSED =  \
+#define USE_PASS(pass_type)                                 \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                      \
+      __use_pass_itself_##pass_type,                        \
+      "USE_PASS must be called in global namespace");       \
+  TEST_API extern int TouchPassRegistrar_##pass_type();     \
+  static int use_pass_itself_##pass_type##_ UNUSED =        \
       TouchPassRegistrar_##pass_type()
 
 }  // namespace ir
