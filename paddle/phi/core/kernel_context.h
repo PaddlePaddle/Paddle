@@ -65,7 +65,7 @@ class KernelContext {
   void EmplaceBackOutputsWithoutSetRange(
       paddle::small_vector<TensorBase*> outputs);
 
-  void EmplaceBackAttr(Attribute attr);
+  TEST_API void EmplaceBackAttr(Attribute attr);
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
 

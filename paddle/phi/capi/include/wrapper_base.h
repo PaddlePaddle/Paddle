@@ -264,7 +264,7 @@ class DeviceContext : public WrapperBase<PD_DeviceContext> {
   }
 
   template <typename T>
-  T* Alloc(DenseTensor* tensor, int64_t requested_size = 0) const {
+  TEST_API T* Alloc(DenseTensor* tensor, int64_t requested_size = 0) const {
     C_Status status;
     auto ptr =
         PD_DeviceContextAllocateTensor(raw_data(),
