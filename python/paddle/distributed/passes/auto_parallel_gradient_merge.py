@@ -279,7 +279,7 @@ def _move_reduce_to_optimizer_ops_block(
             )
             reduce_op_desc.copy_from(op.desc)
             reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
-            reduce_op_desc.append(idx)
+            removed_op_idx.append(idx)
 
             if op_input_names[0] in params_grads_name:
                 elementadd_op = main_block.ops[idx + 1]
