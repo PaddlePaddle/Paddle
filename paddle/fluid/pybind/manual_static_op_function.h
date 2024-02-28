@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -24,6 +25,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_callstack_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
@@ -341,10 +343,23 @@ PyObject *static_api_add_n_array(PyObject *self,
     PyObject *inputs_obj = PyTuple_GET_ITEM(args, 0);
     auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0);
 
-    // Parse Attributes
-
-    // Call ir static api
+    pir::InsertionPoint before_insertion_point =
+        paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+    auto before_insertion_iterator = before_insertion_point.second;
+    pir::Attribute callstack_info_attr = get_op_callstack_info();
+    before_insertion_iterator--;
     auto static_api_out = paddle::dialect::add_n_array(inputs);
+    before_insertion_iterator++;
+    pir::InsertionPoint after_insertion_point =
+        paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+    auto after_insertion_iterator = after_insertion_point.second;
+    for (auto block_iterator = before_insertion_iterator;
+         block_iterator != after_insertion_iterator;
+         block_iterator++) {
+      block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                        OpCreationCallstackAttrName(),
+                                    callstack_info_attr);
+    }
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -430,7 +445,6 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
       starts = paddle::dialect::full_int_array(
           starts_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
-
     // Call ir static api
     auto static_api_out = paddle::dialect::slice_array_dense(input, starts);
 

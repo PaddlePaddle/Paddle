@@ -52,6 +52,9 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pybind/op_callstack_utils.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 
 {body}
@@ -71,8 +74,23 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         {attrs}
 
         // Call ir static api
+        pir::InsertionPoint before_insertion_point =
+          paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto before_insertion_iterator = before_insertion_point.second;
+        pir::Attribute callstack_info_attr = get_op_callstack_info();
+        before_insertion_iterator--;
         auto static_api_out = paddle::dialect::{api_name}({args});
-
+        before_insertion_iterator++;
+        pir::InsertionPoint after_insertion_point =
+            paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto after_insertion_iterator = after_insertion_point.second;
+        for (auto block_iterator = before_insertion_iterator;
+            block_iterator != after_insertion_iterator;
+            block_iterator++) {{
+               block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                        OpCreationCallstackAttrName(),
+                                    callstack_info_attr);
+        }}
         return ToPyObject(static_api_out);
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
@@ -94,8 +112,23 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         {attrs}
 
         // Call ir static api
+        pir::InsertionPoint before_insertion_point =
+          paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto before_insertion_iterator = before_insertion_point.second;
+        pir::Attribute callstack_info_attr = get_op_callstack_info();
+        before_insertion_iterator--;
         paddle::dialect::{api_name}({args});
-
+        before_insertion_iterator++;
+        pir::InsertionPoint after_insertion_point =
+            paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto after_insertion_iterator = after_insertion_point.second;
+        for (auto block_iterator = before_insertion_iterator;
+            block_iterator != after_insertion_iterator;
+            block_iterator++) {{
+               block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                        OpCreationCallstackAttrName(),
+                                    callstack_info_attr);
+        }}
         return nullptr;
     }} catch (...) {{
         ThrowExceptionToPython(std::current_exception());
@@ -129,7 +162,23 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         {cast_attrs}
 
         // Call ir static api
+        pir::InsertionPoint before_insertion_point =
+          paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto before_insertion_iterator = before_insertion_point.second;
+        pir::Attribute callstack_info_attr = get_op_callstack_info();
+        before_insertion_iterator--;
         auto static_api_out = paddle::dialect::{api_name}({args_with_mutable_attrs});
+        before_insertion_iterator++;
+        pir::InsertionPoint after_insertion_point =
+            paddle::dialect::ApiBuilder::Instance().GetCurrentInsertionPoint();
+        auto after_insertion_iterator = after_insertion_point.second;
+        for (auto block_iterator = before_insertion_iterator;
+            block_iterator != after_insertion_iterator;
+            block_iterator++) {{
+               block_iterator->set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                        OpCreationCallstackAttrName(),
+                                    callstack_info_attr);
+        }}
         return ToPyObject(static_api_out);
 
 

@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <Python.h>
-#include <frameobject.h>
-#include <stdio.h>
-
-#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -246,20 +242,6 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
       {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
       {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
       {"activation", pir::StrAttribute::get(ctx, activation)}};
-
-  PyThreadState* tstate = PyThreadState_GET();
-  if (NULL != tstate && NULL != tstate->frame) {
-    PyFrameObject* frame = tstate->frame;
-
-    printf("Python stack trace:\n");
-    while (NULL != frame) {
-      int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
-      const char* filename = PyBytes_AsString(frame->f_code->co_filename);
-      const char* funcname = PyBytes_AsString(frame->f_code->co_name);
-      printf("    %s(%d): %s\n", filename, line, funcname);
-      frame = frame->f_back;
-    }
-  }
 
   auto fused_gemm_epilogue_op =
       ApiBuilder::Instance()
