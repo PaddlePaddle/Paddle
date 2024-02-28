@@ -103,7 +103,7 @@ void testFeatureNodeSerializeFloat64() {
   ASSERT_LE(eps * eps, 1e-5);
 }
 
-// void testSingleSampleNeighboor(
+// void testSingleSampleNeighbour(
 //     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
 //   std::vector<std::vector<int64_t>> vs;
 //   std::vector<std::vector<float>> vs1;
@@ -416,7 +416,7 @@ void RunBrpcPushSparse() {
   // auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
   // host_sign_list_.push_back(ph_host2.SerializeToString());
   // // test-end
-  // // Srart Server
+  // // Start Server
   // std::thread* server_thread = new std::thread(RunServer);
   // std::thread* server_thread2 = new std::thread(RunServer2);
   // sleep(1);

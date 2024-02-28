@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
+
+#include "paddle/phi/backends/dynload/cutlass_conv2d.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
+
+typedef void (*func)(phi::fusion::cutlass_internal::ConvAllParams);
 
 template <typename T, typename Context>
 void FusedConv2dAddActKernel(const Context& ctx,
@@ -49,6 +57,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   CHECK_EQ(dilations.size() == 2UL, true);
 
   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
+  CHECK_EQ(data_format == "NHWC", true);
   const int batch = in_dims[0];
   const int ic = in_dims[3];
   const int ih = in_dims[1];
@@ -112,27 +121,39 @@ void FusedConv2dAddActKernel(const Context& ctx,
                           oh,
                           ow,
                           groups,
-                          &ctx};
+                          ctx.stream()};
+
+  void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
+  func conv_func = NULL;
+  CHECK_EQ(dlhandler == NULL, false);
 
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
+    // conv2d_depthwise need a tmp workspace.
+    phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
+        ctx.GetPlace(),
+        oc * kh * kw * sizeof(T),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    params.workspace = tmp_ptr->ptr();
     // cutlass conv2d_depthwise not support residual
     if (residual) {
       CHECK_EQ(residual->data<T>() == nullptr, true);
     }
     if (activation == "relu") {
-      Conv2dDepthwiseBiasRelu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasRelu"));
     } else if (activation == "identity") {
-      Conv2dDepthwiseBias(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBias"));
     } else if (activation == "sigmoid") {
-      Conv2dDepthwiseBiasSigmoid(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasSigmoid"));
     } else if (activation == "swish") {
-      Conv2dDepthwiseBiasSilu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dDepthwiseBiasSilu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass conv2d_depthwise does not support this activation: %s.",
           activation.c_str()));
     }
+    conv_func(params);
+    output->set_layout(DataLayout::NHWC);
     return;
   }
 
@@ -141,26 +162,27 @@ void FusedConv2dAddActKernel(const Context& ctx,
   if (residual) {
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
-      Conv2dBiasAddRelu(params);
+      conv_func = (func)(dlsym(dlhandler, "Conv2dBiasAddRelu"));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
-    Conv2dBiasRelu(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasRelu"));
   } else if (activation == "swish") {
-    Conv2dBiasSilu(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasSilu"));
   } else if (activation == "identity") {
-    Conv2dBias(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBias"));
   } else if (activation == "leaky_relu") {
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasLeakyRelu"));
     params.alpha = fuse_alpha;
-    Conv2dBiasLeakyRelu(params);
   } else if (activation == "sigmoid") {
-    Conv2dBiasSigmoid(params);
+    conv_func = (func)(dlsym(dlhandler, "Conv2dBiasSigmoid"));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
   }
+  conv_func(params);
   output->set_layout(DataLayout::NHWC);
 }
 }  // namespace cutlass_internal

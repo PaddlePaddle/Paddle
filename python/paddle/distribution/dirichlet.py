@@ -51,7 +51,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             distribution, also called :math:`\alpha`. When it's over one
             dimension, the last axis denotes the parameter of distribution,
             ``event_shape=concentration.shape[-1:]`` , axes other than last are
-            condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
+            consider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
 
     Examples:
 
@@ -79,7 +79,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
     @property
     def mean(self):
-        """Mean of Dirichelt distribution.
+        """Mean of Dirichlet distribution.
 
         Returns:
             Mean value of distribution.

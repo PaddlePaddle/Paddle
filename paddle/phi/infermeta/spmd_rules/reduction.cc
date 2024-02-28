@@ -90,14 +90,14 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
   // get einsum notation for output
   std::string out_axes = GetOutputNotation(x_ndim, alphabet, axis, keep_dim);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> x_sharding_info(x_axes,
                                                                x_dims_mapping);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({x_sharding_info});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
@@ -119,7 +119,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
   // If the op is a linear op, i.e. `linearity` is true, it supports
   // the input to be partial. Otherwise, the input cannot be partial
   // on reduced axes, we should reshard the input when the reduced
-  // axes are parital.
+  // axes are partial.
   VLOG(4) << "ReductionInferSpmd:";
   VLOG(4) << "axis: " << str_join(axis) << ", keep_dim: " << keep_dim;
   VLOG(4) << "Einsum Notation: " << x_axes << " --> " << out_axes;
@@ -195,7 +195,7 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
   // get einsum notation for output
   std::string out_axes = GetOutputNotation(x_ndim, alphabet, axis, keep_dim);
 
-  // Step2: Sharding propogation
+  // Step2: Sharding propagation
   // Step2.1: Merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}});

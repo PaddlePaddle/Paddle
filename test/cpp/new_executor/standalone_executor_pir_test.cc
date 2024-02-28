@@ -296,7 +296,7 @@ TEST(StandaloneExecutor, while_op) {
                      std::vector<int64_t>{1}, 10, phi::DataType::INT32)
                  .out();
 
-  // comput condition value: i <= ten
+  // compute condition value: i <= ten
   auto cond_value = builder.Build<LessEqualOp>(i, ten).out();
 
   auto while_op =
@@ -312,7 +312,7 @@ TEST(StandaloneExecutor, while_op) {
           .out();
   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
 
-  // comput new condition value: new_i <= new_ten
+  // compute new condition value: new_i <= new_ten
   auto new_cond_value =
       builder.Build<LessEqualOp>(new_i, body_ten_argument).out();
 

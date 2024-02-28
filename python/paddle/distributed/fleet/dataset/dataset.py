@@ -843,7 +843,7 @@ class InMemoryDataset(DatasetBase):
         tree_path,
         tdm_layer_counts,
         start_sample_layer,
-        with_hierachy,
+        with_hierarchy,
         seed,
         id_slot,
     ):
@@ -852,7 +852,7 @@ class InMemoryDataset(DatasetBase):
             tree_path,
             tdm_layer_counts,
             start_sample_layer,
-            with_hierachy,
+            with_hierarchy,
             seed,
             id_slot,
         )

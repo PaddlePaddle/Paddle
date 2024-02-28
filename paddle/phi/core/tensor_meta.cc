@@ -187,7 +187,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
     DenseTensorMeta&& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
-  dims = std::move(other.dims);
+  dims = other.dims;
   dtype = other.dtype;
   layout = other.layout;
   lod = std::move(other.lod);
@@ -195,7 +195,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
   if (other.strides.size() == -1) {
     strides = calc_strides(dims);
   } else {
-    strides = std::move(other.strides);
+    strides = other.strides;
   }
   return *this;
 }

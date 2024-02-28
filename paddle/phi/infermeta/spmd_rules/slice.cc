@@ -171,7 +171,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     input_axes[axis] = '1';
   }
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
@@ -300,7 +300,7 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
     out_axes[i] = input_axes[output_axis_to_input_axis_mapping[i]];
   }
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   axes_sharding_info.emplace_back(
