@@ -24,9 +24,6 @@ import numpy as np
 import paddle
 from paddle.base.data_feeder import convert_dtype
 
-np.random.seed(2024)
-paddle.seed(2024)
-
 
 class ProgramInfo:
     def __init__(self, program, feeds, fetchs):
@@ -108,7 +105,6 @@ class Parser:
         return ProgramInfo(program, feeds, fetchs)
 
     def load_from(self, file):
-        # breakpoint()
         with open(file, 'r') as f:
             content = f.read()
 
@@ -155,24 +151,23 @@ class TestTask(unittest.TestCase):
     def test_cmp(self):
         parser = Parser()
         program_info = parser.run(self.file_path)
-        # if parser.have_dy_shape:
-        #     return
+        if parser.have_dy_shape:
+            return
 
         feed = program_info.random_feeds()
         fetch_list = program_info.fetch_list()
 
-        # cinn_out = self.run_program(
-        #     program_info.program, feed, fetch_list, True
-        # )
+        cinn_out = self.run_program(
+            program_info.program, feed, fetch_list, True
+        )
         base_out = self.run_program(
             program_info.program, feed, fetch_list, False
         )
-        print("res=== ", base_out)
 
-        # for cinn_res, base_res, fetch_name in zip(
-        #     cinn_out, base_out, fetch_list
-        # ):
-        #     np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
+        for cinn_res, base_res, fetch_name in zip(
+            cinn_out, base_out, fetch_list
+        ):
+            np.testing.assert_allclose(cinn_res, base_res, atol=1e-4, rtol=1e-4)
 
     def check_infer(self, enable_cinn):
         parser = Parser()
@@ -186,12 +181,11 @@ class TestTask(unittest.TestCase):
             )
 
     def run_program(self, program, feed, fetch_list, enable_cinn):
-        paddle.decomposition.decomp.decompose(program, [])
-        # if enable_cinn:
-        #     paddle.decomposition.decomp.decompose(program, [])
-        #     fwd_pm = paddle.base.libpaddle.pir.PassManager()
-        #     paddle.base.libpaddle.pir.add_cinn_pass(fwd_pm, program)
-        #     fwd_pm.run(program)
+        if enable_cinn:
+            paddle.decomposition.decomp.decompose(program, [])
+            fwd_pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.add_cinn_pass(fwd_pm, program)
+            fwd_pm.run(program)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         outs = exe._run_pir_impl(
