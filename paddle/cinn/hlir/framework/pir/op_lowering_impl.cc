@@ -167,12 +167,19 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     // warp reduce
     reduce_block = Next2Power(reduce_numel);
     flatten_block = 256 / reduce_block;
+    if (flatten_numel == 1) {
+      flatten_block = 1;
+    }
     flatten_inner_num = flatten_block;
     reduce_inner_num = reduce_block / 32;
     if (reduce_inner_num == 0) {
       reduce_inner_num = 2;
     }
+
     warp_num = 8;
+    if (flatten_numel == 1) {
+      warp_num = 1;
+    }
   } else if (reduce_numel > 256 && reduce_numel <= 2048) {
     flatten_block = 1;
     reduce_block = int64_t(std::ceil(reduce_numel * 1.0 / 256.0)) * 256;
@@ -207,6 +214,7 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
 
   for (auto op : group->ops) {
     if (CompatibleInfo::OpKind(*op) == OpPatternKind::kReduction) {
+      std::cerr << "add reduce var " << ValueName(op->result(0)) << std::endl;
       group_tile_info->reduce_var_names.insert(ValueName(op->result(0)));
     }
   }
@@ -585,7 +593,7 @@ void OpLowererImpl::BuildBroadcastInfo(const GroupPtr& group) {
         1,
         phi::errors::Unimplemented("only suppopt one transform yet"));
 
-    if (it->second[0].type == ScheduleAlignType::Broadcast) {
+    if (it->second[0].type == ScheduleAlignType::kBroadcast) {
       // get broadcast op
       auto broadcast_axes = it->second[0].axis_info;
       auto output_shape = it->second[0].factor_info;

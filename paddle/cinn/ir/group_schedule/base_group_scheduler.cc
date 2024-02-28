@@ -232,6 +232,8 @@ void GroupScheduler::SplitReduceInner() {
       }
       auto loops = ir_sch_->GetLoops(name);
 
+      std::cerr << "reduce_current_axis " << reduce_current_axis << "\t"
+                << loops.size() << std::endl;
       auto split_expr = loops[reduce_current_axis].As<ir::For>();
 
       if (split_expr->extent.as_int64() == 1) {
@@ -255,6 +257,7 @@ void GroupScheduler::SplitReduceInner() {
           ir_sch_->Split(loops[reduce_current_axis], split_factors);
 
       if (group_tile_info_->reduce_var_names.count(name)) {
+        std::cerr << "factorizer reduce \n";
         ir_sch_->FactorizeReduction(split_loops[0], 0);
       }
     }
@@ -334,14 +337,27 @@ void GroupScheduler::Tiling() {
   MergeFlattenAxis();
   MergeReduceAxis();
 
-  reduce_current_axis = 1;
+  if (vec_flatten_axis.size() > 0) {
+    reduce_current_axis = 1;
+  } else {
+    reduce_current_axis = 0;
+  }
 
   SplitFlattenInner();
+  std::cerr << "after split flatten: "
+            << ir_sch_->GetModule().GetExprs().front() << std::endl;
+
   SplitReduceInner();
+
+  std::cerr << "after split reduce: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 
   ReorderFlattenInnerWithReduceAxis();
 
   SplitWarpNumber();
+
+  std::cerr << "after split warp: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 }
 
 void GroupScheduler::Unroll() {
@@ -359,7 +375,8 @@ void GroupScheduler::Unroll() {
       ir_sch_->Unroll(loops[3]);
     }
 
-    if (group_tile_info_->reduce_var_names.count(name)) {
+    if (group_tile_info_->reduce_var_names.count(name) &&
+        ir_sch_->HasBlock(name + "_rf")) {
       auto loops = ir_sch_->GetLoops(name + "_rf");
 
       if (loops.size() > 2) {
@@ -388,10 +405,13 @@ void GroupScheduler::VariableTypeAssignment() {
     }
 
     if (group_tile_info_->reduce_var_names.count(name)) {
-      auto block = ir_sch_->GetBlock(name + "_rf");
-      ir_sch_->SetBuffer(block, "local", false);
+      if (ir_sch_->HasBlock(name + "_rf")) {
+        auto block = ir_sch_->GetBlock(name + "_rf");
+        ir_sch_->SetBuffer(block, "local", false);
+      }
     }
   }
+  std::cerr << "after assign\n";
 }
 
 void GroupScheduler::SetReduceType() {
@@ -419,7 +439,8 @@ void GroupScheduler::BindCudaInfo() {
       continue;
     }
     auto loops = ir_sch_->GetLoops(name);
-    if (loops.size() == 1) {
+    std::cerr << "loops  0 " << loops[0] << std::endl;
+    if ((loops.size() == 1) || (vec_flatten_axis.size() == 0)) {
       ir_sch_->Split(loops[0], std::vector<int>({1, -1}));
     }
 
@@ -429,14 +450,24 @@ void GroupScheduler::BindCudaInfo() {
 
     ir_sch_->Bind(loops[1], "threadIdx.x");
 
-    if (group_tile_info_->reduce_var_names.count(name)) {
+    if (group_tile_info_->reduce_var_names.count(name) &&
+        (ir_sch_->HasBlock(name + "_rf"))) {
       auto loops = ir_sch_->GetLoops(name + "_rf");
+
+      if (vec_flatten_axis.size() == 0) {
+        ir_sch_->Split(loops[0], std::vector<int>({1, -1}));
+      }
+
+      loops = ir_sch_->GetLoops(name + "_rf");
 
       ir_sch_->Bind(loops[0], "blockIdx.x");
 
       ir_sch_->Bind(loops[1], "threadIdx.x");
     }
   }
+
+  std::cerr << "after bind cuda: " << ir_sch_->GetModule().GetExprs().front()
+            << std::endl;
 }
 
 }  // namespace ir
