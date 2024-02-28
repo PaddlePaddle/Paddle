@@ -213,20 +213,6 @@ struct GammaGradFunctor {
   T* grad_;
 };
 
-// template <typename Context, typename T>
-// struct GammaGradSimper {
-//   void operator()(const Context& dev_ctx,
-//                              const DenseTensor& alpha,
-//                              const DenseTensor& out,
-//                              DenseTensor* alpha_grad) {
-
-//   GammaGradFunctor<T> gamma_grad_functor(
-//       alpha.data<T>(), out_grad.data<T>(), alpha_grad->data<T>());
-//   funcs::ForRange<Context> for_range(dev_ctx, alpha_grad->numel());
-//   for_range(gamma_grad_functor);
-// }
-// };
-
 template <typename T, typename Context>
 void StandardGammaGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
