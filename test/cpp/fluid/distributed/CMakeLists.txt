@@ -10,61 +10,48 @@ paddle_test(table_test SRCS table_test.cc)
 
 set_source_files_properties(
   dense_table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   dense_table_test
-  SRCS dense_table_test.cc
-  DEPS common_table table ps_framework_proto ${COMMON_DEPS} ${RPC_DEPS})
+  SRCS dense_table_test.cc)
 
 set_source_files_properties(
   barrier_table_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   barrier_table_test
-  SRCS barrier_table_test.cc
-  DEPS common_table table ps_framework_proto ${COMMON_DEPS})
+  SRCS barrier_table_test.cc)
 
 set_source_files_properties(
   brpc_service_dense_sgd_test.cc PROPERTIES COMPILE_FLAGS
                                             ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   brpc_service_dense_sgd_test
-  SRCS brpc_service_dense_sgd_test.cc
-  DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
+  SRCS brpc_service_dense_sgd_test.cc)
 
 set_source_files_properties(
   brpc_service_sparse_sgd_test.cc PROPERTIES COMPILE_FLAGS
                                              ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   brpc_service_sparse_sgd_test
-  SRCS brpc_service_sparse_sgd_test.cc
-  DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
+  SRCS brpc_service_sparse_sgd_test.cc)
 
 set_source_files_properties(
   brpc_utils_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   brpc_utils_test
   SRCS brpc_utils_test.cc
-  DEPS brpc_utils
-       scope
-       phi
-       common
-       sendrecv_rpc
-       ps_service
-       ${COMMON_DEPS}
-       ${RPC_DEPS})
+  DEPS common)
 
 set_source_files_properties(
   graph_node_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   graph_node_test
-  SRCS graph_node_test.cc
-  DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
+  SRCS graph_node_test.cc)
 
 set_source_files_properties(
   graph_node_split_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test(
+paddle_test(
   graph_node_split_test
-  SRCS graph_node_split_test.cc
-  DEPS scope ps_service table ps_framework_proto ${COMMON_DEPS})
+  SRCS graph_node_split_test.cc)
 
 set_source_files_properties(
   graph_table_sample_test.cc PROPERTIES COMPILE_FLAGS
