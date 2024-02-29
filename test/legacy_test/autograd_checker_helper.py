@@ -285,7 +285,7 @@ def get_static_vjp(func, inputs, tangents, order, atol, rtol, eps):
         exe = paddle.static.Executor()
         res = exe.run(program, feed=feeds, fetch_list=[d_inputs])
     if not d_inputs:
-        warning(f"{func.__name__} don't support {order}s derivative")
+        warning(f"{func.__name__} {order}s grad will return None")
         return []
     grad_check(
         pir_inputs,
