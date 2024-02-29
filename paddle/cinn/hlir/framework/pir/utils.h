@@ -114,12 +114,13 @@ class PrettyNamer {
 };
 
 enum class ScheduleAlignType : int {
-  None = 0,       //! No need to align
-  Broadcast = 1,  //! Using Broadcast schedule to align
+  kNone = 0,       //! No need to align
+  kBroadcast = 1,  //! Using Broadcast schedule to align
 };
 
 struct ScheduleInfoNode {
-  ScheduleAlignType type{ScheduleAlignType::None};
+  // TOOD(phlrain): update align type by new loop alignment
+  ScheduleAlignType type{ScheduleAlignType::kNone};
 
   std::vector<int64_t> axis_info;
   std::vector<int64_t> factor_info;

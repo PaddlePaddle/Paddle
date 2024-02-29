@@ -166,7 +166,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
-// TODO(@LiuYang): now -1 can't exsit in factors,
+// TODO(@LiuYang): now -1 can't exist in factors.
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<Expr>& factors) {
   CINN_IR_SCHEDULE_BEGIN();
@@ -330,6 +330,7 @@ Expr DyScheduleImpl::Fuse(const std::string& block_name,
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
+    std::cerr << "loop index  " << i << std::endl;
     if (i > 0) {
       if (loops_index[i - 1] + 1 != loops_index[i]) {
         os << "Loops index in Fuse should be continuous!\n";

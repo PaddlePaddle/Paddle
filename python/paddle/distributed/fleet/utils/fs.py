@@ -994,7 +994,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
@@ -1177,7 +1177,7 @@ class HDFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers
@@ -1200,7 +1200,7 @@ class HDFSClient(FS):
         Args:
             path_list(list): file list
         Returns:
-            fileist(list): file list with file path and size
+            filelist(list): file list with file path and size
         """
         if len(path_list) <= 0:
             return []
@@ -1650,7 +1650,7 @@ class AFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers

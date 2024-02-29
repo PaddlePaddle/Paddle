@@ -50,7 +50,15 @@ class BlockArgumentImpl : public ValueImpl {
 
  private:
   BlockArgumentImpl(Type type, Block *owner, uint32_t index)
-      : ValueImpl(type, BLOCK_ARG_IDX), owner_(owner), index_(index) {}
+      : ValueImpl(type, BLOCK_ARG_IDX),
+        owner_(owner),
+        index_(index),
+        is_kwarg_(false) {}
+  BlockArgumentImpl(Type type, Block *owner, const std::string &keyword)
+      : ValueImpl(type, BLOCK_ARG_IDX),
+        owner_(owner),
+        is_kwarg_(true),
+        keyword_(keyword) {}
 
   ~BlockArgumentImpl();
   // access construction and owner
@@ -58,7 +66,9 @@ class BlockArgumentImpl : public ValueImpl {
 
   AttributeMap attributes_;
   Block *owner_;
-  uint32_t index_;
+  uint32_t index_ = 0xFFFFFFFF;
+  bool is_kwarg_;
+  std::string keyword_ = "uninitialized_keyword";
 };
 
 BlockArgumentImpl::~BlockArgumentImpl() {
@@ -85,6 +95,16 @@ uint32_t BlockArgument::index() const {
   return IMPL_->index_;
 }
 
+const std::string &BlockArgument::keyword() const {
+  CHECK_NULL_IMPL(keyword);
+  return IMPL_->keyword_;
+}
+
+bool BlockArgument::is_kwarg() const {
+  CHECK_NULL_IMPL(is_kwarg);
+  return IMPL_->is_kwarg_;
+}
+
 const AttributeMap &BlockArgument::attributes() const {
   CHECK_NULL_IMPL(attributes_);
   return IMPL_->attributes_;
@@ -100,6 +120,12 @@ void BlockArgument::set_attribute(const std::string &key, Attribute value) {
 
 BlockArgument BlockArgument::Create(Type type, Block *owner, uint32_t index) {
   return new detail::BlockArgumentImpl(type, owner, index);
+}
+
+BlockArgument BlockArgument::Create(Type type,
+                                    Block *owner,
+                                    const std::string &keyword) {
+  return new detail::BlockArgumentImpl(type, owner, keyword);
 }
 /// Destroy the argument.
 void BlockArgument::Destroy() {

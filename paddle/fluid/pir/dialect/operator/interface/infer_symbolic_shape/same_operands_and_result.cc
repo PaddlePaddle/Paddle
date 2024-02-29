@@ -36,6 +36,16 @@ bool Abs_OpInferSymbolicShape(pir::Operation *op,
   return SameOperandsAndResultShape(op, shape_analysis);
 }
 
+bool AssignOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool Assign_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return AssignOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool CastOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
@@ -54,6 +64,45 @@ bool ExpOpInferSymbolicShape(pir::Operation *op,
 bool Exp_OpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool FetchOpInferSymbolicShape(pir::Operation *op,
+                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0)));
+
+  return true;
+}
+
+bool IncrementOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool Increment_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return IncrementOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool LogOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool Log_OpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return LogOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool LogicalNotOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SameOperandsAndResultShape(op, shape_analysis);
+}
+
+bool LogicalNot_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return LogicalNotOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool FullWithTensorOpInferSymbolicShape(

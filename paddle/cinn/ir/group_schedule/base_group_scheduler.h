@@ -63,26 +63,6 @@ class GroupScheduler {
         target_(target),
         group_tile_info_(group_tile_info) {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
-
-    auto loop_name_get = [&](ir::ScheduleBlockNode* node) {
-      node_list.push_back(node->id());
-    };
-
-    schedule_block_graph_->DFSTopoWalk(loop_name_get, false);
-
-    if (group_tile_info_) {
-      auto vec_axis = group_tile_info_->reduce_axis_;
-
-      // reduce axis have be re-order to last
-      int32_t reduce_start_idx = group_tile_info_->data_rank - vec_axis.size();
-      for (int32_t i = 0; i < group_tile_info_->data_rank; ++i) {
-        if (i >= reduce_start_idx) {
-          vec_reduce_axis.push_back(i);
-        } else {
-          vec_flatten_axis.push_back(i);
-        }
-      }
-    }
   }
 
   static std::unique_ptr<GroupScheduler> Make(
@@ -100,24 +80,6 @@ class GroupScheduler {
 
   std::unordered_set<std::string> OutputTensorNames() const;
 
-  void LoopReorderAligment();
-
-  void Tiling();
-
-  bool NeedOrderLoops();
-
-  void Unroll();
-  void VariableTypeAssignment();
-  void SetReduceType();
-  void BindCudaInfo();
-
-  void MergeFlattenAxis();
-  void MergeReduceAxis();
-  void SplitFlattenInner();
-  void SplitReduceInner();
-  void ReorderFlattenInnerWithReduceAxis();
-  void SplitWarpNumber();
-
  protected:
   ir::IRSchedule* ir_sch_;
   const std::unordered_set<std::string>& output_tensor_names_;
@@ -127,13 +89,6 @@ class GroupScheduler {
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
 
   std::shared_ptr<GroupTileInfo> group_tile_info_;
-
-  std::vector<std::string> node_list;
-
-  std::vector<int32_t> vec_flatten_axis;
-  std::vector<int32_t> vec_reduce_axis;
-
-  int reduce_current_axis{0};
 };
 
 }  // namespace ir

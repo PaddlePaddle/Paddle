@@ -53,6 +53,22 @@ class DynamicExpandOpPattern
         broadcast_axes[i] = i + index_gap;
       }
       std::vector<int64_t> out_shape(out_rank, -1);
+
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+      if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+        std::cerr << "have shape dialect\n";
+        auto shape_info =
+            shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+
+        for (size_t i = 0; i < shape_info.size(); ++i) {
+          if (shape_info[i].isa<int64_t>()) {
+            out_shape[i] = shape_info[i].Get<int64_t>();
+          }
+        }
+      }
+
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);
     }();
@@ -91,7 +107,7 @@ class ReplaceDynamicExpandOpPass : public pir::Pass {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
+          if (op.isa<cinn::dialect::GroupOp>()) {
             const auto& [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);

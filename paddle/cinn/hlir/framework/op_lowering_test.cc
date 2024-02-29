@@ -208,7 +208,7 @@ TEST(OP_LOWERING, Reduce_Fuse_Broadcast_Softmax) {
   {
     // softmax
     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    // redece max
+    // reduce max
     auto B = net_builder.ReduceMax(A, {1});
     // broadcast
     auto C = net_builder.BroadcastTo(B, {h, w}, {0});

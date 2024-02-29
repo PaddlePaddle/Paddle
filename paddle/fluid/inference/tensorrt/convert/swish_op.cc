@@ -74,7 +74,7 @@ class SwishOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);
   }
 };
 

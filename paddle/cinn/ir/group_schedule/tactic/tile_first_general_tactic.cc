@@ -25,6 +25,8 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
       context_->group_tile_info->flatten_inner_num > 1 ? 2 : 1;
   auto vec_axis = context_->group_tile_info->reduce_axis_;
   // reduce axis have be re-order to last
+  vec_flatten_axis_.clear();
+  vec_reduce_axis_.clear();
   int32_t reduce_start_idx =
       context_->group_tile_info->data_rank - vec_axis.size();
   for (int32_t i = 0; i < context_->group_tile_info->data_rank; ++i) {
@@ -188,7 +190,6 @@ void TileFirstGeneralTactic::VariableTypeAssignment(
   auto block = sch->GetBlock(block_id);
   {
     if (!context_->group_tile_info->direct_output_var_names.count(block_id)) {
-      std::cerr << "set local " << block_id << std::endl;
       sch->SetBuffer(block, "local", false);
     }
   }

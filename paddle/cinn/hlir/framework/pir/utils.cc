@@ -434,15 +434,15 @@ int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
 OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   auto op_name = CompatibleInfo::OpName(op);
-  if (op_name == "generate_shape" || op_name == "store") {
-    return hlir::framework::kNonFusible;
+  if (op_name == "generate_shape") {
+    return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
   CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
-    // element-wise. See fusion_hepler_base.h for detail.
+    // element-wise. See fusion_helper_base.h for detail.
     if (op_name != "broadcast_to") {
       kind = hlir::framework::kElementWise;
     }

@@ -771,6 +771,10 @@
     {scale : Scale, shift : Shift}
 
 - op : dequantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -1349,6 +1353,30 @@
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
+
+- op : fused_elementwise_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_div
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_mul
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : fused_elementwise_sub
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -2197,6 +2225,12 @@
   outputs :
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
+- op : moving_average_abs_max_scale
+  inputs :
+    {x : X, in_accum : InAccum, in_state : InState}
+  outputs :
+    {out : Out, out_scale : OutScale, out_state : OutState, out_accum : OutAccum}
+
 - op : multi_dot
   backward : multi_dot_grad
   inputs :
@@ -2546,6 +2580,10 @@
     {scale : Scale, shift : Shift, include_self: Include_self}
 
 - op : quantize_linear
+  inputs :
+    {x : X, scale : Scale, zero_point : ZeroPoint, in_accum : InAccum, in_state : InState}
+  outputs :
+    {y : Y, out_scale : OutScale, out_accum : OutAccum, out_state : OutState}
   extra :
     attrs : [float moving_rate = 0.9]
 
@@ -3652,6 +3690,10 @@
     {numbers: numbers}
   outputs :
     out : Out
+
+- op: partial_send
+  inputs :
+    x : X
 
 - op: read_from_array
   inputs:

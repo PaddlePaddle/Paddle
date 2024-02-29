@@ -103,7 +103,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
             - 1: sync_calc
             - 2: reduce_sum_sharding (allreduce --> reduce)
             - 3: sync_comm
-            - 4: allreuce_sum_dp (dp_grads)
+            - 4: allreduce_sum_dp (dp_grads)
             - 5: sync_comm (dp_grads)
             - 6: op that use Var (dp_grads & sum)
 
