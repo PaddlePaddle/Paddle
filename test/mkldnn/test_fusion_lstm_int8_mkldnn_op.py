@@ -145,6 +145,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
                 check_dygraph=False,
                 no_check_set=["Cell"],
                 atol=self.error_margin,
+                check_pir_onednn=True,
             )
 
 
