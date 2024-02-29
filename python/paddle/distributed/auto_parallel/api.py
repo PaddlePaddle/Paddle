@@ -2018,6 +2018,8 @@ class ShardDataloader:
                     process_id, self._meshes
                 )
             )
+        if input_keys is not None:
+            assert len(input_keys) == 2, "input_keys lengths must be 2"
 
         self._all_inputs_in_one_mesh = len(self._meshes) == 1
         self._input_keys = input_keys
@@ -2260,7 +2262,9 @@ def shard_dataloader(
     only if is_dataset_splitted is False and shard_dims is not None, it will do split.
 
     Args:
-        dataloader (paddle.io.DataLoader): The dataloader to be sharded.
+        dataloader (paddle.io.DataLoader): The dataloader to be sharded. the output of dataloader
+            must be a list or dict of paddle.Tensor with 2 elements, i.e. [input_data, label] or
+            {"input_data": input_data, "label": label}, input_data and label can be a list to support multiple inputs.
         meshes (ProcessMesh|list[ProcessMesh]|tuple[ProcessMesh]): The mesh list of the dataloader.
             Identify which mesh the input is on. if len(meshes) == 1 or type(meshes) == ProcessMesh,
             all the inputs are on the same mesh.
