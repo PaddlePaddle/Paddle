@@ -2023,17 +2023,15 @@ class ShardDataloader:
         self._input_keys = input_keys
         self._shard_dims = self._process_shard_dims(shard_dims)
 
-        mesh_index = self._get_mesh_idx(process_id)
-        if mesh_index == -1:
+        mesh, shard_dim = self._get_mesh_and_shard_dim(process_id)
+        if mesh is None:
+            mesh = to_list(self._meshes[0])[0]
+            shard_dim = to_list(self._shard_dims[0])[0]
             dp_rank = 0
-            dp_world_size = self._meshes[0].get_dim_size(self._shard_dims[0])
+            dp_world_size = mesh.get_dim_size(shard_dim)
         else:
-            dp_rank = self._meshes[mesh_index].get_rank_by_dim_and_process_id(
-                self._shard_dims[mesh_index], process_id
-            )
-            dp_world_size = self._meshes[mesh_index].get_dim_size(
-                self._shard_dims[mesh_index]
-            )
+            dp_rank = mesh.get_rank_by_dim_and_process_id(shard_dim, process_id)
+            dp_world_size = mesh.get_dim_size(shard_dim)
 
         if is_dataset_splitted is True or shard_dims is None:
             self._dataloader = dataloader
@@ -2074,7 +2072,13 @@ class ShardDataloader:
 
     def _process_shard_dims(self, shard_dims):
         if isinstance(shard_dims, (int, str)) or shard_dims is None:
-            return [shard_dims] * len(self._meshes)
+            res = []
+            for i in range(len(self._meshes)):
+                if isinstance(self._meshes[i], (list, tuple)):
+                    res.append([shard_dims] * len(self._meshes[i]))
+                else:
+                    res.append(shard_dims)
+            return res
         else:
             if len(shard_dims) != len(self._meshes):
                 raise ValueError(
@@ -2084,16 +2088,30 @@ class ShardDataloader:
                 )
             return shard_dims
 
-    def _get_mesh_idx(self, process_id):
+    def _get_mesh_and_shard_dim(self, process_id):
         for i in range(len(self._meshes)):
-            if process_id in self._meshes[i]._process_ids:
-                return i
-        return -1
+            if isinstance(self._meshes[i], (list, tuple)):
+                for j in range(len(self._meshes[i])):
+                    if process_id in self._meshes[i][j]._process_ids:
+                        return self._meshes[i][j], self._shard_dims[i][j]
+            else:
+                if process_id in self._meshes[i]._process_ids:
+                    return self._meshes[i], self._shard_dims[i]
+        return None, None
 
     def _process_id_in_multi_meshes(self, process_id):
         count = 0
-        for i in range(len(self._meshes)):
-            if process_id in self._meshes[i]._process_ids:
+        flatten_meshes = []
+        for mesh in self._meshes:
+            if isinstance(mesh, (list, tuple)):
+                flatten_meshes.extend(mesh)
+            else:
+                flatten_meshes.append(mesh)
+
+        # NOTE(zhengzhonghui): User may set the same mesh for different inputs, so we need to unique the meshes
+        unique_meshes = list(set(flatten_meshes))
+        for mesh in unique_meshes:
+            if process_id in mesh._process_ids:
                 count += 1
         return count > 1
 
@@ -2123,16 +2141,69 @@ class ShardDataloader:
             placements.append(dist.Replicate())
         return mesh, placements
 
+    def _get_meshes_and_placements_for_list_input(self, index, length):
+        if self._all_inputs_in_one_mesh:
+            meshes = [self._meshes[0]] * length
+            shard_dims = [self._shard_dims[0]] * length
+        else:
+            meshes = self._meshes[index]
+            if isinstance(meshes, (list, tuple)):
+                assert len(meshes) == length
+            else:
+                meshes = [meshes] * length
+            shard_dims = self._shard_dims[index]
+            if isinstance(shard_dims, (list, tuple)):
+                assert len(shard_dims) == length
+            else:
+                shard_dims = [shard_dims] * length
+
+        placements = []
+        for i in range(length):
+            if shard_dims[i] is not None:
+                placement = [dist.Shard(0)]
+            else:
+                placement = [dist.Replicate()]
+            for _ in range(1, len(meshes[i]._shape)):
+                placement.append(dist.Replicate())
+            placements.append(placement)
+        return meshes, placements
+
+    def _dtensors_from_list_input(self, list_tensors, meshes, placements):
+        dist_data = []
+        for j in range(len(list_tensors)):
+            dist_data.append(
+                dtensor_from_local(list_tensors[j], meshes[j], placements[j])
+            )
+        return dist_data
+
     def _get_batch(self, batch_data):
         if isinstance(batch_data, (list, tuple)):
             if self._all_inputs_in_one_mesh is False:
                 assert len(batch_data) == len(self._meshes)
             dist_batch_data = []
             for i in range(len(batch_data)):
-                mesh, placements = self._get_mesh_and_placement(i)
-                dist_batch_data.append(
-                    dtensor_from_local(batch_data[i], mesh, placements)
-                )
+                input_data = batch_data[i]
+                if isinstance(input_data, (list, tuple)):
+                    (
+                        meshes,
+                        placements,
+                    ) = self._get_meshes_and_placements_for_list_input(
+                        i, len(input_data)
+                    )
+                    dist_batch_data.append(
+                        self._dtensors_from_list_input(
+                            input_data, meshes, placements
+                        )
+                    )
+                elif isinstance(input_data, paddle.Tensor):
+                    mesh, placements = self._get_mesh_and_placement(i)
+                    dist_batch_data.append(
+                        dtensor_from_local(input_data, mesh, placements)
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported input_data type {type(input_data)}"
+                    )
             return dist_batch_data
         elif isinstance(batch_data, dict):
             if self._all_inputs_in_one_mesh is False:
@@ -2140,10 +2211,26 @@ class ShardDataloader:
             dist_batch_data = {}
             for i in range(len(self._input_keys)):
                 key = self._input_keys[i]
-                mesh, placements = self._get_mesh_and_placement(i)
-                dist_batch_data[key] = dtensor_from_local(
-                    batch_data[key], mesh, placements
-                )
+                input_data = batch_data[key]
+                if isinstance(input_data, (list, tuple)):
+                    (
+                        meshes,
+                        placements,
+                    ) = self._get_meshes_and_placements_for_list_input(
+                        i, len(input_data)
+                    )
+                    dist_batch_data[key] = self._dtensors_from_list_input(
+                        input_data, meshes, placements
+                    )
+                elif isinstance(input_data, paddle.Tensor):
+                    mesh, placements = self._get_mesh_and_placement(i)
+                    dist_batch_data[key] = dtensor_from_local(
+                        batch_data[key], mesh, placements
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported input_data type {type(input_data)}"
+                    )
             return dist_batch_data
         else:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
@@ -2286,6 +2373,12 @@ def shard_dataloader(
             >>> # RUN_STATIC=1 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
             >>> # RUN_STATIC=0 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
 
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.io import BatchSampler, DataLoader, Dataset
     """
 
     return ShardDataloader(
