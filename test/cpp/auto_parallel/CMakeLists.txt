@@ -31,10 +31,9 @@ if(WITH_DISTRIBUTE)
 
   paddle_test(expand_as_spmd_rule_test SRCS expand_as_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
-  
+
   paddle_test(custom_op_spmd_rule_test SRCS custom_op_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
-
 
   paddle_test(fused_rms_norm_spmd_rule_test SRCS
               fused_rms_norm_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
