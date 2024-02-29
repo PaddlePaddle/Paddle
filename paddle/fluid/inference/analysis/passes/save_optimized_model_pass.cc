@@ -39,7 +39,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
   // Remove the scale and zero point parameters from optimized program.
-  auto scale_and_zero_point_param = graph->Get<std::vector<std::string>>(
+  auto scale_and_zero_point_param = graph->GetOrInit<std::vector<std::string>>(
       framework::ir::kScaleAndZeroPointParamAttr);
   framework::BlockDesc* block = optimized_program_desc.MutableBlock(0);
   for (auto& var_desc : block->AllVars()) {
