@@ -101,7 +101,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                /*is_reduce = */ false));
       optim::ReplaceVarWithExpr(&init_body, axis[i], block_vars.back());
       axis_vars[i]->is_reduce_axis = false;
-      iter_values.push_back(axis_vars[i]);
+      if (!FLAGS_cinn_bucket_compile && shape[i] == Expr(1)) {
+        iter_values.push_back(Expr(0));
+      } else {
+        iter_values.push_back(axis_vars[i]);
+      }
     }
     init_body = ir::ScheduleBlockRealize::Make(
         iter_values,
@@ -124,7 +128,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                       cinn::UniqName("i" + std::to_string(i)),
                                       /*is_reduce = */ false));
       reduce_axis_vars[i]->is_reduce_axis = false;
-      reduce_iter_values.push_back(axis_vars[i]);
+      if (!FLAGS_cinn_bucket_compile && shape[i] == Expr(1)) {
+        reduce_iter_values.push_back(Expr(0));
+      } else {
+        reduce_iter_values.push_back(axis_vars[i]);
+      }
     }
     for (int i = 0; i < reduce_axis.size(); ++i) {
       int count = shape.size() + i;
@@ -188,7 +196,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
       optim::ReplaceVarWithExpr(&body, axis[i], block_vars[i]);
       axis_vars[i]->is_reduce_axis = false;
-      iter_values.push_back(axis_vars[i]);
+      if (!FLAGS_cinn_bucket_compile && shape[i] == Expr(1)) {
+        iter_values.push_back(Expr(0));
+      } else {
+        iter_values.push_back(axis_vars[i]);
+      }
     }
     body = ir::ScheduleBlockRealize::Make(
         iter_values,
