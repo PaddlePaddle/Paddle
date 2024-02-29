@@ -32,8 +32,7 @@ class TestNet(paddle.nn.Layer):
         y1 = self.fc1(x1)
         y2 = self.fc2(x2)
         y3 = y1 + y2
-        y4 = paddle.nn.functional.layer_norm(y3, y3.shape[1:])
-        z = paddle.nn.functional.softmax(y4)
+        z = paddle.nn.functional.softmax(y3)
         return z
 
 
@@ -50,7 +49,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
             net,
             input_spec=[
                 paddle.static.InputSpec(
-                    shape=self.shape, dtype='float32', name='input0'
+                    shape=[None, None, None, None],
+                    dtype='float32',
+                    name='input0',
                 ),
                 paddle.static.InputSpec(
                     shape=self.shape, dtype='float32', name='input1'
