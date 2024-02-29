@@ -185,7 +185,7 @@ if __name__ == "__main__":
             global DISTRIBUTED_COMM
             if DISTRIBUTED_COMM is None:
                 raise RuntimeError(
-                    "Distributed Commumication not setup. Please run setup_comm(MPI.COMM_WORLD) first."
+                    "Distributed Communication not setup. Please run setup_comm(MPI.COMM_WORLD) first."
                 )
             return DISTRIBUTED_COMM
 

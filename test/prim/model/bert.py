@@ -175,12 +175,12 @@ class BertEmbeddings(nn.Layer):
         if token_type_ids is None:
             token_type_ids = paddle.zeros_like(input_ids, dtype="int64")
 
-        input_embedings = self.word_embeddings(input_ids)
+        input_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = (
-            input_embedings + position_embeddings + token_type_embeddings
+            input_embeddings + position_embeddings + token_type_embeddings
         )
         embeddings = self.layer_norm(embeddings)
         embeddings = self.dropout(embeddings)

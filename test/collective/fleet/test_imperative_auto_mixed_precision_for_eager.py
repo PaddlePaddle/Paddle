@@ -58,7 +58,7 @@ class TestAutoCast(unittest.TestCase):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with base.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-            data = base.dygraph.to_variable(data)
+            data = paddle.to_tensor(data)
             with paddle.amp.amp_guard(True):
                 out_fp16 = conv2d(data)
 
@@ -75,7 +75,7 @@ class TestAutoCast(unittest.TestCase):
     def amp_guard_black_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with base.dygraph.guard():
-            data = base.dygraph.to_variable(data)
+            data = paddle.to_tensor(data)
             with paddle.amp.amp_guard(True):
                 out_fp32 = paddle.mean(data)
 
@@ -140,7 +140,7 @@ class TestAutoCast(unittest.TestCase):
                 with paddle.amp.amp_guard(
                     custom_white_list=["conv2d"], custom_black_list=["conv2d"]
                 ):
-                    inp = base.dygraph.to_variable(inp_np)
+                    inp = paddle.to_tensor(inp_np)
                     out = model(inp)
 
         self.assertRaises(ValueError, func)
@@ -152,7 +152,7 @@ class TestAutoCast(unittest.TestCase):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with base.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-            data = base.dygraph.to_variable(data)
+            data = paddle.to_tensor(data)
             with paddle.amp.amp_guard(True):
                 out_amp_fp16 = conv2d(data)
                 out_amp_fp32 = paddle.expand_as(
@@ -178,7 +178,7 @@ class TestAutoCast(unittest.TestCase):
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             with base.dygraph.guard():
                 conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-                data = base.dygraph.to_variable(data)
+                data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard(level='O'):
                     out = conv2d(data)
 
@@ -222,7 +222,7 @@ class TestAmpScaler(unittest.TestCase):
                     learning_rate=0.01, parameters=model.parameters()
                 )
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                data = base.dygraph.to_variable(inp_np)
+                data = paddle.to_tensor(inp_np)
 
                 out = model(data)
                 loss = paddle.mean(out)
@@ -283,7 +283,7 @@ class TestAmpScaler(unittest.TestCase):
                     learning_rate=0.01, parameters=model.parameters()
                 )
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                data = base.dygraph.to_variable(inp_np)
+                data = paddle.to_tensor(inp_np)
 
                 out = model(data)
                 loss = paddle.mean(out)
@@ -331,7 +331,7 @@ class TestAmpScaler(unittest.TestCase):
                 learning_rate=0.01, parameters=model.parameters()
             )
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-            data = base.dygraph.to_variable(inp_np)
+            data = paddle.to_tensor(inp_np)
             with paddle.amp.auto_cast(dtype='float16'):
                 out = model(data)
                 loss = paddle.mean(out)
@@ -1287,8 +1287,8 @@ class TestResnet(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
-                img = base.dygraph.to_variable(dy_x_data)
-                label = base.dygraph.to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
                 with paddle.amp.amp_guard(enable=enable_amp, level=level):
                     out = resnet(img)
@@ -1397,7 +1397,7 @@ class TestBf16(unittest.TestCase):
         func_isinstance()
 
 
-class TestAmpWithPyLyer(unittest.TestCase):
+class TestAmpWithPyLayer(unittest.TestCase):
     def test_pylayer(self):
         class MyMM(PyLayer):
             @staticmethod

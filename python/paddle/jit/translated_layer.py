@@ -503,7 +503,7 @@ class _ProgramHolder:
     def _append_scale_to_output(self, program):
         # 0. scale don't support bool output, we skip append scale for it
         for out_desc in self._output_descs:
-            if out_desc.dtype() == core.VarDesc.VarType.BOOL:
+            if out_desc.dtype() == paddle.bool:
                 return
 
         # 1. append scale & save var
@@ -998,8 +998,6 @@ def _run_dygraph(instance, input, program_holder):
                     program_holder.backward_program.block(0),
                 )
             )
-    # Note(lvyongkang): Current PIR don't support save/load
-    attrs.extend(['in_pir_pt_mode', False])
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),

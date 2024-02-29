@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -23,11 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

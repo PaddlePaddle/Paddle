@@ -366,10 +366,10 @@ def concat_states(states, bidirectional=False, state_components=1):
         return np.stack(flatten(states))
     else:
         states = flatten(states)
-        componnets = []
+        components = []
         for i in range(state_components):
-            componnets.append(states[i::state_components])
-        return [np.stack(item) for item in componnets]
+            components.append(states[i::state_components])
+        return [np.stack(item) for item in components]
 
 
 class RNN(LayerMixin):

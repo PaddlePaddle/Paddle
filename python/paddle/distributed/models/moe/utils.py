@@ -59,7 +59,7 @@ def _number_count(numbers, upper_range):
 def _assign_pos(x, cum_count):
     """
     Assign pos decides which tokens should be fetched belong to
-    specially expert orderingly.
+    specially expert orderly.
 
     Args:
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type

@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
@@ -31,11 +32,10 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace imperative {
@@ -489,7 +489,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         PADDLE_ENFORCE_NOT_NULL(
             attr_ptr,
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind dygraph KernelContext.",
+                                       "building dygraph KernelContext.",
                                        attr_names[i]));
         auto& attr = *attr_ptr;
         switch (AttrTypeID(attr)) {

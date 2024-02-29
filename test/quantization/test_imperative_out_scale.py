@@ -40,7 +40,7 @@ if core.is_compiled_with_cuda():
     set_flags({"FLAGS_cudnn_deterministic": True})
 
 
-def get_vaild_warning_num(warning, w):
+def get_valid_warning_num(warning, w):
     num = 0
     for i in range(len(w)):
         if warning in str(w[i].message):
@@ -119,7 +119,7 @@ class ImperativeLenet(paddle.nn.Layer):
         return x
 
 
-class TestImperativeOutSclae(unittest.TestCase):
+class TestImperativeOutScale(unittest.TestCase):
     def setUp(self):
         self.root_path = tempfile.TemporaryDirectory()
         self.param_save_path = os.path.join(

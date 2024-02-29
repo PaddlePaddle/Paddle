@@ -34,7 +34,7 @@ DTYPE_ALL_CPU = {
     'int64',
 }
 
-# add `bfloat16` if core is complied with CUDA and support the bfloat16
+# add `bfloat16` if core is compiled with CUDA and support the bfloat16
 DTYPE_ALL_GPU = DTYPE_ALL_CPU | (
     {'bfloat16'}
     if core.is_compiled_with_cuda()

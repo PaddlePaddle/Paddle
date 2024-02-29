@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/include/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 

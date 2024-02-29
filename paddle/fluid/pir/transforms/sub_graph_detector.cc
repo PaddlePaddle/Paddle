@@ -25,16 +25,16 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
@@ -83,7 +83,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       }
       auto* defined_op = operand.source().defining_op();
       --pending_count[defined_op];
-      if (pending_count[defined_op] == 0) {
+      if (defined_op && pending_count[defined_op] == 0) {
         queue.push(defined_op);
       }
     }
@@ -109,7 +109,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       continue;
     }
     auto* source_op = operand.source().defining_op();
-    if (!producers.count(source_op)) {
+    if (source_op && !producers.count(source_op)) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
@@ -134,8 +134,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
-    producers.insert(source_op);
+    if (auto* source_op = operand.source().defining_op()) {
+      producers.insert(source_op);
+    }
   }
   return producers;
 }
@@ -477,6 +478,40 @@ std::vector<pir::Value> AnalysisOutputs(
   return outputs;
 }
 
+namespace {
+
+pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                                const std::vector<pir::Value>& outputs) {
+  // Regard last op as insert position if there are no downstream ops between in
+  // group_ops.
+  pir::Operation* insert_point_op = group_ops.back();
+  auto begin = group_ops.front()->operator Block::ConstIterator();
+  auto end = ++(group_ops.back()->operator Block::ConstIterator());
+  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
+                                                   outputs.end());
+  const std::unordered_set<const pir::Operation*> group_ops_set(
+      group_ops.begin(), group_ops.end());
+
+  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+    if (group_ops_set.find(op) != group_ops_set.end()) return false;
+    for (auto& value : op->operands_source()) {
+      if (outputs_set.find(value) != outputs_set.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Find first downstream op as final insert position.
+  for (; begin != end; ++begin) {
+    if (IsDownstreamOp(begin)) {
+      insert_point_op = begin;
+      break;
+    }
+  }
+  return insert_point_op;
+}
+}  // namespace
+
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -485,25 +520,27 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
-  // step 1: Ensure the insert point and create GroupOp here.
-  auto* last_op = group_ops.back();
-  builder.SetInsertionPointAfter(last_op);
-  std::vector<pir::Type> output_types;
-  std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+  const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
 
-  for (auto& value : outputs) {
-    output_types.emplace_back(value.type());
-  }
+  // step 1: Analysis and insert group op before insert_point.
+  auto* insert_point = FindInsertPoint(group_ops, outputs);
+  builder.set_insertion_point(insert_point);
+  VLOG(6) << "Insert GroupOp after " << insert_point->name();
+
   // step 2: Replace the old op with GroupOp.
-  auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
-  pir::Block* group_block = new_group_op.block();
+  auto new_group_op = [&]() -> cinn::dialect::GroupOp {
+    std::vector<pir::Type> output_types;
+    for (auto& value : outputs) output_types.emplace_back(value.type());
 
-  for (auto op : group_ops) {
-    op->MoveTo(group_block, group_block->end());
-  }
+    auto group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
+    for (auto op : group_ops) {
+      op->MoveTo(group_op.block(), group_op.block()->end());
+    }
+    return group_op;
+  }();
 
   // step 3: Replace outputs of inner ops
-  std::vector<pir::Value> group_outs = new_group_op->results();
+  const std::vector<pir::Value> group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
   for (size_t i = 0; i < outputs.size(); ++i) {
@@ -514,7 +551,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   }
 
   // step 4: Insert YieldOp for outputs
-  builder.SetInsertionPointToBlockEnd(group_block);
+  builder.SetInsertionPointToBlockEnd(new_group_op.block());
   builder.Build<::pir::YieldOp>(outputs);
 }
 

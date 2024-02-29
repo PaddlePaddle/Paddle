@@ -1743,7 +1743,7 @@ def glu(x, axis=-1, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is
+        A Tensor with the same data type as x. The size of the given axis is
         halved.
 
     Examples:

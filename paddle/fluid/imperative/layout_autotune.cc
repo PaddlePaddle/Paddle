@@ -45,13 +45,13 @@ LayoutAutoTune::LayoutAutoTune() {
       // Attribute name is fuzzy matched, such as start and start_axis.
       for (auto& attr : attrs) {
         auto attr_name = attr.first;
-        VLOG(6) << "OP: " << info.first << " Attr Name: " << attr_name;
+        VLOG(8) << "OP: " << info.first << " Attr Name: " << attr_name;
         if (attr_name.find("axis") != std::string::npos ||
             attr_name.find("axes") != std::string::npos ||
             attr_name.find("dim") != std::string::npos ||
             attr_name.find("start") != std::string::npos ||
             attr_name.find("end") != std::string::npos) {
-          VLOG(4) << "Lightly layout sensitive OP: " << info.first;
+          VLOG(8) << "Lightly layout sensitive OP: " << info.first;
           layout_agnostic = false;
           lightly_layout_sensitive_ops_.emplace(info.first);
           break;
@@ -61,7 +61,7 @@ LayoutAutoTune::LayoutAutoTune() {
       if ((attrs.find("data_format") != attrs.end() ||
            attrs.find("data_layout") != attrs.end()) &&
           layout_agnostic == true) {
-        VLOG(4) << "Heavily layout sensitive OP: " << info.first;
+        VLOG(8) << "Heavily layout sensitive OP: " << info.first;
         heavily_layout_sensitive_ops_.emplace(info.first);
         layout_agnostic = false;  // NOLINT
         continue;
@@ -76,7 +76,7 @@ LayoutAutoTune::LayoutAutoTune() {
     }
 
     if (layout_agnostic) {
-      VLOG(4) << "Layout agnostic_ops: " << info.first;
+      VLOG(8) << "Layout agnostic_ops: " << info.first;
       layout_agnostic_ops_.emplace(info.first);
     }
   }

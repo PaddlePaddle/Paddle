@@ -1174,7 +1174,7 @@ ir::Tensor SliceAssign(const ir::Tensor& input,
       new_strides[i] = -new_strides[i];
     } else {
       CHECK_LT(new_starts[i], new_ends[i])
-          << "[ends] shoould greater than [starts] when [strides] > 0";
+          << "[ends] should greater than [starts] when [strides] > 0";
     }
   }
 

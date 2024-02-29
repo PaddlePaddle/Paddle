@@ -90,7 +90,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call SameNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& process_mesh = out_dist_attr.process_mesh();
 
@@ -273,8 +273,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
 bool CrossNdMeshReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().process_mesh() !=
-                            out_dist_attr.process_mesh());
+  const ProcessMesh& in_process_mesh = in.dist_attr().process_mesh();
+  const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.process_mesh().ndim() > 1);
 
   // check the input and output dims_mapping is not equal
@@ -287,10 +290,12 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                       const DistTensor& in,
                                       const TensorDistAttr& out_dist_attr,
                                       DistTensor* out) {
-  VLOG(3) << "Call CrossNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
 
-  DistTensor tmp_result;
+  // Construct a `DistTensor` by `dtype` of `in` tensor to avoid using default
+  // dtype `float32`. The default dtype `float32` may cause error in amp.
+  DistTensor tmp_result(in.dtype());
   TensorDistAttr in_dist_attr_shard = in_dist_attr;
   in_dist_attr_shard.set_partial_status(out_dist_attr.partial_status());
   in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());

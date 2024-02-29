@@ -255,11 +255,11 @@ std::vector<SearchState> SearchSpace::GenerateSketches(
 
   std::vector<SearchState> result;
   while (result.size() < num) {
-    std::vector<SearchState> sketchs;
+    std::vector<SearchState> sketches;
     if (strategy == "rule_prune") {
-      sketchs = InitSketchWithRulePrunedStrategy();
+      sketches = InitSketchWithRulePrunedStrategy();
     } else if (strategy == "random_prune") {
-      sketchs = InitSketchWithRandomPrunedStrategy();
+      sketches = InitSketchWithRandomPrunedStrategy();
     } else {
       LOG(FATAL) << "Unimplemented init sketch strategy";
     }
@@ -267,7 +267,7 @@ std::vector<SearchState> SearchSpace::GenerateSketches(
     // the more rules are applied, the greater the possibility of good results,
     // the more rules are applied, the more they are saved behind the queue,
     // so we give priority to the results in the rear
-    for (auto iter = sketchs.rbegin(); iter != sketchs.rend(); ++iter) {
+    for (auto iter = sketches.rbegin(); iter != sketches.rend(); ++iter) {
       result.push_back(*iter);
       if (result.size() == num) {
         break;

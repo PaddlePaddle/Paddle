@@ -34,21 +34,21 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/region.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_trait.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
@@ -74,7 +74,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
@@ -143,7 +143,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       }
     }
 
-    // 7. maybe affect performence
+    // 7. maybe affect performance
     if (op->isa<paddle::dialect::FullOp>()) {
       auto next_ops = pir::GetUseOpsForOutput(op, 0);
       for (auto [next_op, _] : next_ops) {
@@ -161,7 +161,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies rewrite on [" << op->name()
             << "] op";
     auto output_var_names = RunOp(op, rewriter);
 
@@ -200,7 +200,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         auto parameter_op = rewriter.Build<pir::ParameterOp>(
             output_var_name, op->result(i).type());
         parameter_op->set_attribute(
-            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+            kAttrIsPersistable,
+            rewriter.array_attr({rewriter.bool_attr(true)}));
 
         rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
 
@@ -221,7 +222,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
             output_var_name, op->result(i).type());
         constant_op->set_attribute(
-            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+            kAttrIsPersistable,
+            rewriter.array_attr({rewriter.bool_attr(true)}));
 
         rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
@@ -290,15 +292,16 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     const auto& var_name =
         pir::GetParameterNameFromValue(op->operand_source(index));
     auto* var = scope_->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var,
-                            phi::errors::InvalidArgument(
-                                "Persisable var [%s] not in scope.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
+                                     var_name));
     auto from_op =
         builder.Build<Op>(var_name, op->operand_source(index).type());
     if (op->operand_source(index).use_count() <= 1) {
       deleted_vars_->push_back(var_name);
     } else {
-      from_op->set_attribute(kAttrIsPersisable,
+      from_op->set_attribute(kAttrIsPersistable,
                              rewriter.array_attr({rewriter.bool_attr(true)}));
     }
     return from_op;
@@ -407,7 +410,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
             context, suffix, place, scope, exe_config, deleted_vars) {}
 
   bool Match(pir::Operation* op) const override {
-    VLOG(4) << "constant_folding_pass applys match on [" << op->name()
+    VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     if (!ConstantFoldingPattern::Match(op)) {
       return false;
@@ -424,7 +427,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    VLOG(4) << "constant_folding_pass for train applys rewrite on ["
+    VLOG(4) << "constant_folding_pass for train applies rewrite on ["
             << op->name() << "] op";
 
     auto output_var_names = RunOp(op, rewriter);
@@ -446,12 +449,12 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
       auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
           output_var_name, op->result(i).type());
       constant_op->set_attribute(
-          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+          kAttrIsPersistable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
       rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
     }
     rewriter.EraseOp(op);
-    VLOG(4) << "constant_folding_pass for traun applied rewrite on ["
+    VLOG(4) << "constant_folding_pass for train applied rewrite on ["
             << op->name() << "] op";
   }
 };

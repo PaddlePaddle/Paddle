@@ -38,7 +38,7 @@ H_FILE_TEMPLATE = """
 #include <vector>
 
 #include "paddle/utils/optional.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
@@ -54,12 +54,13 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
-#include "paddle/fluid/pir/dialect/operator/utils/amp_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/type_defs.h"
 
 {body}
 
@@ -99,15 +100,15 @@ API_INNER_CODE_TEMPLATE = """
 
 
 AMP_LOGIC_TEMPLATE = """
-    if (egr::Controller::Instance().GetCurrentAMPState()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
+    if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
         VLOG(5) << "Check and Prepare For AMP";
         auto op_name = phi::TransToFluidOpName("{op_name}");
-        std::vector<std::vector<pir::Value>> amp_values_vector = {{ {no_optional_inputs} }};
+        paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}
-        auto amp_dst_dtype = paddle::dialect::GetAmpDestDtype("{op_name}", amp_values_vector);
+        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype("{op_name}", amp_values_vector);
         {new_inputs}
         {{
-            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAMPState(), paddle::imperative::AmpLevel::O0);
+            paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
             return paddle::dialect::{op_name}({args});
         }}
     }}
@@ -116,7 +117,7 @@ AMP_LOGIC_TEMPLATE = """
 AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) amp_values_vector.push_back({vec_optional_input});
 """
 
-AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::dialect::PirAmpAutoCast("{input}", {input}, amp_dst_dtype, op_name);
+AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::imperative::{cast_func}("{input}", {input}, amp_dst_dtype, op_name);
 """
 
 OP_DISPATCH_TEMPLATE = """
@@ -629,9 +630,13 @@ class CodeGen:
 
     def _gen_amp_new_inputs(self, op_info, op_name):
         name_list = op_info.input_name_list
+        type_list = op_info.input_type_list
         ret = ''
-        for name in name_list:
-            ret += AMP_NEW_INPUTS_TEMPLATE.format(input=name, op_name=op_name)
+        for name, type in zip(name_list, type_list):
+            cast_func = 'AmpAutoCasts' if VECTOR_TYPE in type else 'AmpAutoCast'
+            ret += AMP_NEW_INPUTS_TEMPLATE.format(
+                input=name, cast_func=cast_func
+            )
         return ret
 
     def _gen_amp_args(self, op_info, is_mutable_attr):

@@ -47,6 +47,17 @@ DDim MetaTensor::dims() const {
   }
 }
 
+size_t MetaTensor::size() const {
+  ValidCheck(*this);
+  PADDLE_ENFORCE_EQ(
+      phi::TensorArray::classof(tensor_),
+      true,
+      phi::errors::InvalidArgument(
+          "The current MetaTensor is not initialized by TensorArray."));
+  phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
+  return tensor_array->size();
+}
+
 DDim MetaTensor::dims(int64_t index) const {
   ValidCheck(*this);
   PADDLE_ENFORCE_EQ(

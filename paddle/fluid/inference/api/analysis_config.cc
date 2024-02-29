@@ -17,6 +17,7 @@
 #include <tuple>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -25,7 +26,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -33,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -484,6 +484,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   CP_MEMBER(trt_optimization_level_);
   CP_MEMBER(trt_ops_run_float_);
+  CP_MEMBER(trt_exclude_var_names_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -534,7 +535,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(with_profile_);
 
   // cinn compiler related.
-  CP_MEMBER(use_cinn_compiler_);
+  CP_MEMBER(use_cinn_);
 
   // glog related.
   CP_MEMBER(with_glog_info_);
@@ -543,6 +544,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(ir_debug_);
   CP_MEMBER(specify_input_name_);
+
+  CP_MEMBER(use_optimized_model_);
 
   CP_MEMBER(cpu_math_library_num_threads_);
 
@@ -603,7 +606,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_ || use_cinn_compiler_) {
+  if (use_tensorrt_ || use_cinn_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -863,6 +866,13 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
+void AnalysisConfig::Exp_DisableTensorRtSubgraph(
+    const std::vector<std::string> &var_name_not_trt) {
+  trt_exclude_var_names_.insert(trt_exclude_var_names_.end(),
+                                var_name_not_trt.begin(),
+                                var_name_not_trt.end());
+}
+
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
@@ -977,7 +987,7 @@ void AnalysisConfig::Update() {
   }
 
   // TODO(wilber): An ugly method to update pass, need to be fixed.
-  if (use_cinn_compiler_) {
+  if (use_cinn_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kCINNCompilerPasses) {
       pass_builder()->AppendPass(pass);
@@ -1125,6 +1135,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
 
+  for (auto &name : trt_exclude_var_names_) ss << name.c_str();
+  ss << ";";
+
   ss << trt_use_dla_;
   ss << trt_dla_core_;
 
@@ -1151,6 +1164,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << enable_ir_optim_;
   ss << ir_debug_;
+
+  ss << use_optimized_model_;
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
@@ -1464,13 +1479,15 @@ std::string AnalysisConfig::Summary() {
   }
 
   // cinn compiler
-  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
+  os.InsertRow({"use_cinn_compiler", use_cinn_ ? "true" : "false"});
 
   // ir info
   os.InsertRow(
       {"save_optimized_model", save_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
+  os.InsertRow(
+      {"use_optimized_model", use_optimized_model_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
   os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
   os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
@@ -1586,9 +1603,9 @@ void AnalysisConfig::Exp_EnableMixedPrecisionOps(
   mixed_white_list_ = white_list;
 }
 
-void AnalysisConfig::Exp_EnableCINNCompiler() {
+void AnalysisConfig::EnableCINN() {
 #ifdef PADDLE_WITH_CINN
-  use_cinn_compiler_ = true;
+  use_cinn_ = true;
   Update();
 #else
   PADDLE_THROW(platform::errors::Unavailable(
@@ -1597,8 +1614,6 @@ void AnalysisConfig::Exp_EnableCINNCompiler() {
 #endif
 }
 
-bool AnalysisConfig::cinn_compiler_enabled() const {
-  return use_cinn_compiler_;
-}
+bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
 }  // namespace paddle

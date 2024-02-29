@@ -195,7 +195,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
 
 class FusedMultiHeadAttention(Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_

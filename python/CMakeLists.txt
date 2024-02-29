@@ -60,13 +60,11 @@ set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
-if(WITH_SETUP_INSTALL)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
-else()
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-endif()
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
+               ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/base/)
 
@@ -192,9 +190,8 @@ endif()
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
-  add_custom_target(
-    paddle_copy ALL DEPENDS paddle_python
-                            ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
+  add_custom_target(paddle_copy ALL
+                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
 endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)

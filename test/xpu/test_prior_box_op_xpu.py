@@ -201,7 +201,7 @@ class XPUTestPriorBoxOp(XPUOpTestWrapper):
                                 ]
                                 idx += 1
 
-            # clip the prior's coordidate such that it is within[0, 1]
+            # clip the prior's coordinate such that it is within[0, 1]
             if self.clip:
                 out_boxes = np.clip(out_boxes, 0.0, 1.0)
             # set the variance.

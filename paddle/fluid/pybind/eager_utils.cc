@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
 #include "paddle/common/exception.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -46,11 +47,10 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/include/core/attribute.h"
 
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace pybind {
 

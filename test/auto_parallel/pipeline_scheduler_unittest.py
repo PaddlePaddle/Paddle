@@ -153,7 +153,7 @@ class Test1F1BPass(unittest.TestCase):
             assert losses_1f1b_overlap[0].shape[0] == 4
             # losses_fleet_1f1b is the last loss of accumulate_steps
             # losses_fthenb is all the losses of accumulate_steps
-            # losses_1f1b is alla the losses of accumulate_steps
+            # losses_1f1b is all the losses of accumulate_steps
             self.check_results(losses_fleet_1f1b[0], losses_fthenb[0][-1])
             self.check_results(losses_fleet_1f1b[0], losses_1f1b[0][-1])
             self.check_results(losses_fleet_1f1b[0], losses_eager1f1b[0][-1])

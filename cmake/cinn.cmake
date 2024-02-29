@@ -184,8 +184,8 @@ if(WITH_MKL)
 endif()
 
 if(CINN_ONLY)
-  target_link_libraries(cinnapi ${flags_dep})
-  add_dependencies(cinnapi ${flags_dep})
+  target_link_libraries(cinnapi common)
+  add_dependencies(cinnapi common)
 endif()
 
 if(WITH_GPU)
@@ -248,8 +248,8 @@ function(gen_cinncore LINKTYPE)
   endif()
 
   if(CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} ${flags_dep})
-    add_dependencies(${CINNCORE_TARGET} ${flags_dep})
+    target_link_libraries(${CINNCORE_TARGET} common)
+    add_dependencies(${CINNCORE_TARGET} common)
   endif()
 
   if(WITH_GPU)
@@ -283,8 +283,7 @@ if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   set(core_includes
-      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h;paddle/utils/test_macros.h"
-  )
+      "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

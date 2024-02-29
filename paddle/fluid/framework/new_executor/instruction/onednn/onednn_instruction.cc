@@ -26,9 +26,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
@@ -86,6 +86,14 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
+    std::vector<int64_t> int_array =
+        attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+    return int_array;
+  } else if (attr_type_name == "paddle::dialect::DataTypeAttribute") {
+    phi::DataType dtype =
+        attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+    return dtype;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
@@ -108,7 +116,8 @@ void TensorNameMap(pir::Operation* op,
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -319,7 +328,8 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
-    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
 
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
@@ -353,6 +363,26 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
   new_config.is_run_mkldnn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
+
+  // Step5: Handle skip_transform_inputs
+  if (op_attributes.count("skip_transform_inputs")) {
+    std::vector<pir::Attribute> skip_transform_inputs =
+        op->attributes()
+            .at("skip_transform_inputs")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+
+    for (auto& input : skip_transform_inputs) {
+      auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
+      auto pair = kernel_context_.InputRangeAt(
+          yaml_info_parser.InputName2Id().at(input_name));
+      VLOG(6) << "skip_transform_input = " << input_name;
+      for (int i = pair.first; i < pair.second; ++i) {
+        skip_format_tensors_.insert(i);
+        VLOG(6) << input_name << " index = " << i;
+      }
+    }
+  }
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
@@ -371,6 +401,9 @@ void OneDNNPhiKernelInstruction::Run() {
       continue;
     }
     if (!input->initialized()) {
+      continue;
+    }
+    if (skip_format_tensors_.count(i)) {
       continue;
     }
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();

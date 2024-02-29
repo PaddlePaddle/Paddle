@@ -135,12 +135,12 @@ def ParseArguments():
 ######################
 # Code Gen Templates #
 ######################
-SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const paddle::Tensor& {}) {{
+SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper_{}(const paddle::Tensor& {}) {{
     {} = egr::TensorWrapper({}, {});
   }}
 """
 
-SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const std::vector<paddle::Tensor>& {}) {{
+SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper_{}(const std::vector<paddle::Tensor>& {}) {{
     for(const auto& eager_tensor : {}) {{
       {}.emplace_back(egr::TensorWrapper(eager_tensor, {}));
     }};
@@ -161,7 +161,7 @@ CLEAR_VECTOR_TENSOR_WRAPPERS_TEMPLATE = """    for (auto& tw : {}) {{
     }}
 """
 
-SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute{}({} {}) {{
+SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute_{}({} {}) {{
     {} = {};
   }}
 """
@@ -382,7 +382,7 @@ FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if(require_any_grad) {{
   }}
 """
 
-HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if(trace_backward) {{
+HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if(trace_backward) {{
 {}
     // Node Construction
 {}
@@ -427,10 +427,10 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 {}
 """
 
@@ -452,17 +452,17 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/eager/amp_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
 #include "paddle/phi/common/type_promotion.h"
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(tensor_operants_mode);
+#include "paddle/fluid/imperative/amp_utils.h"
+
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(tensor_operants_mode);
 {}
 {}
 """
@@ -520,7 +520,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
     {}
     {}
     {{
-      paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAMPState(), paddle::imperative::AmpLevel::O0);
+      paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
       {}
     }}
   }}
@@ -554,8 +554,10 @@ LAYOUT_LOGIC_TEMPLATE = """
   }}
 """
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = """
-  paddle::optional<paddle::Tensor> {}_optional;
-  if({}.initialized()) {}_optional = paddle::make_optional<paddle::Tensor>({});
+  paddle::optional<paddle::Tensor> {name}_optional;
+  if({name}.initialized() ||
+     ({name}.defined() && {name}.is_dist_tensor() &&
+      phi::distributed::NeedComputationClipForPP({name}.impl()))) {name}_optional = paddle::make_optional<paddle::Tensor>({name});
 """
 
 CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = """
@@ -1062,10 +1064,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         for name, _, default_val_attr, _ in backward_attrs_list:
             if name in forward_attrs_name_set:
                 set_attributes = (
-                    f"{indent}grad_node->SetAttribute{name}({name});"
+                    f"{indent}grad_node->SetAttribute_{name}({name});"
                 )
             else:
-                set_attributes = f"{indent}grad_node->SetAttribute{name}({default_val_attr});"
+                set_attributes = f"{indent}grad_node->SetAttribute_{name}({default_val_attr});"
             set_attributes_list.append(set_attributes)
         set_attributes_str = "\n".join(set_attributes_list)
 
@@ -1089,7 +1091,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     if is_inplace_input:
                         set_tensor_wrappers = """{indent}if({name}) {
                                                             auto {name}_clone = paddle::experimental::assign({name});
-                                                            grad_node->SetTensorWrapper{name}(*{name}_clone);}""".format_map(
+                                                            grad_node->SetTensorWrapper_{name}(*{name}_clone);}""".format_map(
                             {"indent": indent, "name": name}
                         )
                     else:
@@ -1100,16 +1102,16 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or (name in self.optional_inputs)
                         ):
                             if for_backward is False:
-                                set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                                set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper_{name}(*{name});"
                             else:
-                                set_tensor_wrappers = f"{indent}if({name}_optional) grad_node->SetTensorWrapper{name}(*{name}_optional);"
+                                set_tensor_wrappers = f"{indent}if({name}_optional) grad_node->SetTensorWrapper_{name}(*{name}_optional);"
 
                         else:
                             need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
+                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper_{name}(*{name}_tmp);"
                 else:
                     if is_inplace_input:
-                        set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper{name}({name}_clone);"
+                        set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper_{name}({name}_clone);"
                     else:
                         if (
                             (forward_api_name in strided_op_list)
@@ -1117,10 +1119,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or IsVectorTensorType(atype)
                             or (name in self.optional_inputs)
                         ):
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                         else:
                             need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}_tmp);"
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name}_tmp);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:  # Forwad's output as backward's input
                 if num_fwd_outputs > 1:
@@ -1130,7 +1132,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     ), AssertMessage(name, forward_outputs_position_map.keys())
 
                 set_tensor_wrappers = (
-                    f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                    f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                 )
                 set_output_tensor_wrappers_list.append(set_tensor_wrappers)
         set_input_tensor_wrappers_str = "\n".join(
@@ -1254,7 +1256,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
         else:
             self.node_creation_str = (
-                HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
+                HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE.format(
                     node_creation_event_str,
                     node_construction_str,
                     set_attributes_str,
@@ -1521,7 +1523,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_tensors_vector_optional_list.append(
                         f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
@@ -1538,13 +1540,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
                     else:
                         arg_str = f"const paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
@@ -1565,7 +1567,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_autotune_optional_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
@@ -1581,7 +1583,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"const std::vector<paddle::Tensor>& {name}"
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
-                        f"auto new_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
                     layout_autotune_list.append(
                         f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
@@ -1815,7 +1817,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list
         )
-        amp_get_dst_dtype_str = "auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str = "auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = (
             "    ".join(amp_autocast_list)
             + "    "
@@ -2266,7 +2268,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         backward_attrs_list = self.backward_attrs_list
         backward_inplace_map = self.backward_inplace_map
         indent = GetIndent(1)
-        need_gen_trace_backard_for_inplace = False
+        need_gen_trace_backward_for_inplace = False
 
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
@@ -2434,10 +2436,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     get_tensor_str += (
                         "\n"
                         + CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE.format(
-                            transformed_tensor_name,
-                            transformed_tensor_name,
-                            transformed_tensor_name,
-                            transformed_tensor_name,
+                            name=transformed_tensor_name
                         )
                     )
                     grad_api_args[
@@ -2519,7 +2518,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }} else {{
     {inplace_str}
   }}"""
-                        need_gen_trace_backard_for_inplace = True
+                        need_gen_trace_backward_for_inplace = True
                     else:
                         inplace_for_grad_outs_str += inplace_str
 
@@ -2623,7 +2622,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         if (
             len(next_grad_node_creation_str) > 0
             or is_invoke_forward_api
-            or need_gen_trace_backard_for_inplace
+            or need_gen_trace_backward_for_inplace
         ):
             compute_require_next_grad_str = f"{indent}bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;\n"
 

@@ -106,9 +106,9 @@ class TestArrayReadWrite(unittest.TestCase):
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
 
         with base.dygraph.guard(place):
-            tensor1 = base.dygraph.to_variable(tensor)
-            tensor2 = base.dygraph.to_variable(tensor)
-            tensor3 = base.dygraph.to_variable(tensor)
+            tensor1 = paddle.to_tensor(tensor)
+            tensor2 = paddle.to_tensor(tensor)
+            tensor3 = paddle.to_tensor(tensor)
             x_dygraph = [tensor1, tensor2, tensor3]
             for each_x in x_dygraph:
                 each_x.stop_gradient = False

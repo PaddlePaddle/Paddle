@@ -658,7 +658,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # check use_hierarchical_allreduce options
             if self.config.use_hierarchical_allreduce:
                 trainers_num = len(self.origin_program._trainers_endpoints)
-                # selected automaticly
+                # selected automatically
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
                     self.config.hierarchical_allreduce_inter_nranks = (
                         core.get_cuda_device_count()

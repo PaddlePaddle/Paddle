@@ -34,19 +34,19 @@ TEST(JobDispatcher, SequenceDispatcher) {
 
 TEST(parallel_run, Basic) {
   std::vector<int> results(100, -1);
-  auto woker_fn = [&results](int index) {
+  auto worker_fn = [&results](int index) {
     CHECK_LT(index, results.size()) << "index invalid";
     results[index] = index;
   };
   // check process every index in the extent of [0, 100) with step 1
-  parallel_run(woker_fn, SequenceDispatcher(0, 100), 2);
+  parallel_run(worker_fn, SequenceDispatcher(0, 100), 2);
   for (int i = 0; i < 100; ++i) {
     ASSERT_EQ(results[i], i);
   }
 
   // check only indexes in the extent of [0, 100) with step 3 are processed
   results.assign(100, -1);
-  parallel_run(woker_fn, SequenceDispatcher(0, 100, 3), 3);
+  parallel_run(worker_fn, SequenceDispatcher(0, 100, 3), 3);
   for (int i = 0; i < 100; ++i) {
     if (i % 3 == 0) {
       ASSERT_EQ(results[i], i);

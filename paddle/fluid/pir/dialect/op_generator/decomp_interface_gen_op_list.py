@@ -24,11 +24,13 @@ decomp_interface_declare_gen_op_list = [
     "batch_norm",
     "batch_norm_",
     "dropout",
+    "embedding",
     "flatten",
     "full_like",
     "gelu",
     "hardswish",
     "group_norm",
+    "index_sample",
     "index_select",
     "instance_norm",
     "layer_norm",
@@ -42,12 +44,14 @@ decomp_interface_declare_gen_op_list = [
     "sigmoid",
     "sigmoid_cross_entropy_with_logits",
     "silu",
+    "swiglu",
     "softmax",
     "sqrt",
     "square",
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -55,11 +59,13 @@ decomp_interface_declare_gen_op_list = [
 decomp_interface_implementation_gen_op_list = [
     "add_n",
     "dropout",
+    "embedding",
     "flatten",
     "full_like",
     "gelu",
     "hardswish",
     "group_norm",
+    "index_sample",
     "index_select",
     "instance_norm",
     "layer_norm",
@@ -73,12 +79,14 @@ decomp_interface_implementation_gen_op_list = [
     "sigmoid",
     "sigmoid_cross_entropy_with_logits",
     "silu",
+    "swiglu",
     "softmax",
     "sqrt",
     "square",
     "squeeze",
     "stack",
     "unsqueeze",
+    "tile",
 ]
 
 

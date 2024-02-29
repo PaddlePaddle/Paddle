@@ -46,10 +46,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 #ifdef WITH_GPERFTOOLS
@@ -1314,7 +1314,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/XPU is supportted. "
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
                                       "please use CPU/CUDA/XPU backend."));
   }
 

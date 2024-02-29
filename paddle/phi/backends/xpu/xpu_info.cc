@@ -23,7 +23,7 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 PHI_DEFINE_EXPORTED_string(
     selected_xpus,

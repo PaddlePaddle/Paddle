@@ -52,6 +52,7 @@ BACKENDS_BLACK_LIST = [
     "embedding_sparse_grad",
     "embedding_grad",
     "full",
+    "partial_send",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -103,6 +104,7 @@ OTHER_PRIM_VJP_OPS = [
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
     'group_norm_grad',

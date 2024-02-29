@@ -496,9 +496,12 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 
 
 class BadInputTest(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_bad_x():
                 data = [1, 2, 4]
@@ -534,8 +537,8 @@ class TestTensorAxis(unittest.TestCase):
         paddle.enable_static()
         np_x = np.random.randn(9, 10, 11).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
@@ -548,7 +551,7 @@ class TestTensorAxis(unittest.TestCase):
             sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer

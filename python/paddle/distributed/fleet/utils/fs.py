@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import re
 import shutil
+import subprocess
 import time
 
 # (TODO: GhostScreaming) It will be removed later.
@@ -301,7 +302,7 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
-            Bool: Wheter it's a file or directory, return true if the path exists,
+            Bool: Whether it's a file or directory, return true if the path exists,
             otherwise return false.
 
         Examples:
@@ -513,6 +514,34 @@ class HDFSClient(FS):
 
         return ret, output.splitlines()
 
+    def _run_safe_cmd(self, cmd, redirect_stderr=False, retry_times=5):
+        exe_cmd = [self._base_cmd] + cmd.split()
+        ret = 0
+        output = ""
+        retry_sleep_second = 3
+        for x in range(retry_times + 1):
+            try:
+                process = subprocess.run(
+                    exe_cmd,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT
+                    if redirect_stderr
+                    else subprocess.PIPE,
+                    text=True,
+                )
+                output = process.stdout
+                break
+            except subprocess.CalledProcessError as e:
+                ret = e.returncode
+                output = e.output
+                time.sleep(retry_sleep_second)
+            except Exception as e:
+                break
+
+        if ret == 134:
+            raise FSShellCmdAborted(cmd)
+
     @_handle_errors()
     def list_dirs(self, fs_path):
         """
@@ -582,8 +611,8 @@ class HDFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        cmd = f"ls {fs_path}"
-        ret, lines = self._run_cmd(cmd)
+        cmd = ["-ls", fs_path]
+        ret, lines = self._run_safe_cmd(cmd)
 
         if ret != 0:
             raise ExecuteError(cmd)
@@ -965,7 +994,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
@@ -1148,7 +1177,7 @@ class HDFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers
@@ -1171,7 +1200,7 @@ class HDFSClient(FS):
         Args:
             path_list(list): file list
         Returns:
-            fileist(list): file list with file path and size
+            filelist(list): file list with file path and size
         """
         if len(path_list) <= 0:
             return []
@@ -1505,7 +1534,7 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
@@ -1621,7 +1650,7 @@ class AFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers

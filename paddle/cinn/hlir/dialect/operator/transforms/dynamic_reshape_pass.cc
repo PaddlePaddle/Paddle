@@ -17,8 +17,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -118,7 +118,7 @@ class DynamicReshapeOpPass : public pir::Pass {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
+          if (op.isa<cinn::dialect::GroupOp>()) {
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);
