@@ -1160,6 +1160,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"yolo_box_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"weight_only_linear",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::BFLOAT16})},
 
       // AddMore
       {"sequence_conv", XPUKernelSet({phi::DataType::FLOAT32})},
