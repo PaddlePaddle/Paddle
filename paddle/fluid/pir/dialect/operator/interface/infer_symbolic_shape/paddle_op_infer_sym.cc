@@ -59,7 +59,7 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> out_data = operand_shape_or_data.shape();
+  const auto &out_data = operand_shape_or_data.shape();
   const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
   symbol::ShapeOrDataDimExprs shape_or_data{
       symbol::TensorShapeOrDataDimExprs(shape, out_data)};
@@ -1234,27 +1234,32 @@ bool GatherOpInferSymbolicShape(
       static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   if (axis < 0) axis += input_sym_shape.size();
 
-  std::vector<symbol::DimExpr> out_sym_shape;
-  if (index_sym_shape.size() == 0) {
-    if (input_sym_shape.size() == 1) {
-      out_sym_shape.push_back(symbol::DimExpr{0});
+  const auto &out_sym_shape = [&] {
+    std::vector<symbol::DimExpr> out_sym_shape;
+
+    if (index_sym_shape.size() == 0) {
+      if (input_sym_shape.size() == 1) {
+        out_sym_shape.push_back(symbol::DimExpr{0});
+      } else {
+        for (int i = 0; i < axis; ++i) {
+          out_sym_shape.push_back(input_sym_shape[i]);
+        }
+        for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
+          out_sym_shape.push_back(input_sym_shape[i]);
+        }
+      }
     } else {
       for (int i = 0; i < axis; ++i) {
         out_sym_shape.push_back(input_sym_shape[i]);
       }
+      out_sym_shape.push_back(numel);
       for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
         out_sym_shape.push_back(input_sym_shape[i]);
       }
     }
-  } else {
-    for (int i = 0; i < axis; ++i) {
-      out_sym_shape.push_back(input_sym_shape[i]);
-    }
-    out_sym_shape.push_back(numel);
-    for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
-      out_sym_shape.push_back(input_sym_shape[i]);
-    }
-  }
+    return out_sym_shape;
+  }();
+
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
 
