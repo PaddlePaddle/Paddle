@@ -32,6 +32,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -177,11 +178,7 @@ bool AllInputDenseTensor(const ::pir::Operation& op) {
   return true;
 }
 
-bool IsTempDenySpecialOp(const ::pir::Operation& op) {
-  if (op.name() == "cinn_op.generate_shape") {
-    return false;
-  }
-
+bool IsSmallNumelOp(const ::pir::Operation& op) {
   auto GetNumElementsFromDim = [](const ::pir::DDim& dim) -> int64_t {
     if (::common::contain_unknown_dim(dim)) {
       return std::numeric_limits<int32_t>::max();
@@ -212,8 +209,39 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
     }
     return max_value_numel;
   }();
+  VLOG(0) << "####### max_value_numel: " << max_value_numel;
 
+  // max value check
   if (0 <= max_value_numel && max_value_numel < 32) {
+    return true;
+  }
+
+  return false;
+}
+
+bool IsShapeComputeOp(const ::pir::Operation& op) {
+  const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
+      op.GetParent()->parent_program());
+  for (uint32_t i = 0; i < op.num_operands(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i)) &&
+        shape_analysis.GetShapeOrDataForValue(op.operand_source(i))
+            .data()) {  // no shape data
+      continue;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsTempDenySpecialOp(const ::pir::Operation& op) {
+  if (op.name() == "cinn_op.generate_shape") {
+    return false;
+  }
+  VLOG(0) << "###### IsShapeComputeOp(op): " << IsShapeComputeOp(op);
+  VLOG(0) << "###### IsSmallNumelOp(op): " << IsSmallNumelOp(op);
+
+  if (IsShapeComputeOp(op) || IsSmallNumelOp(op)) {
     return true;
   }
 
