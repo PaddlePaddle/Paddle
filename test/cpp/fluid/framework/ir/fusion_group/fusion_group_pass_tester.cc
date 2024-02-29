@@ -155,3 +155,4 @@ TEST(FusionGroupPass, elementwise_tree) {
 }  // namespace paddle
 
 USE_PASS(fusion_group_pass);
+USE_PASS(graph_viz_pass);
