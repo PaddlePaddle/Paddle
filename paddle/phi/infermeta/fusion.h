@@ -151,6 +151,7 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const std::vector<const MetaTensor*>& smooth_scale_weight,
+    const std::vector<const MetaTensor*>& roformer_embedding,
     const MetaTensor& mask,
     const MetaTensor& seq_lod,
     const MetaTensor& max_seq_len,
@@ -164,6 +165,7 @@ void MultiEncoderXPUInferMeta(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    int max_pos_len,
     const std::vector<float>& softmax_max_value,
     const std::vector<std::string>& quant_types,
     MetaTensor* out,
@@ -838,6 +840,11 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
+void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
+                                     const MetaTensor& sin_emb,
+                                     const MetaTensor& cos_emb,
+                                     int max_pos_len,
+                                     MetaTensor* out);
 
 void MultiGruInferMeta(
     const MetaTensor& x,
