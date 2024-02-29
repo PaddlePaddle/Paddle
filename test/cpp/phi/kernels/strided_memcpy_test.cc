@@ -110,7 +110,8 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::funcs::StridedMemcpy<int>(
       *ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
 
-  memory_utils::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
+  memory_utils::Copy(
+      cpu, dst.data(), gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
 
   ASSERT_EQ(1, dst[0]);
