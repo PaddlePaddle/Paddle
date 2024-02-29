@@ -198,8 +198,11 @@ std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     }
   }
 
+  for (auto& val : group->output_values) {
+    group_tile_info->direct_output_var_names.insert(ValueName(val));
+  }
+
   group_tile_info->shared_var_names = shared_var_names;
-  group_tile_info->direct_output_var_names = direct_output_var_names;
   group_tile_info->thread_sync_before_names = thread_sync_before_names;
 
   group_tile_info->broadcast_info = broadcast_info;
@@ -291,8 +294,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   BuildBroadcastInfo(group);
 
   for (auto& op : group->output_ops) {
-    direct_output_var_names.insert(ValueName(op->result(0)));
-
     // collect all output tensor.
     if (op->name() == "cinn_op.yield_store") {
       auto input_var_name = ValueName(op->operand_source(0));
@@ -307,8 +308,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
       if (tensor_map.count(opresult) == 0) {
         continue;
       }
-
-      direct_output_var_names.insert(ValueName(opresult));
     }
   }
 
@@ -533,8 +532,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   BuildBroadcastInfo(group);
 
   for (auto& op : group->output_ops) {
-    direct_output_var_names.insert(ValueName(op->result(0)));
-
     // collect all output tensor.
     if (op->name() == "cinn_op.yield_store") {
       auto input_var_name = ValueName(op->operand_source(0));
@@ -549,8 +546,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
       if (tensor_map.count(opresult) == 0) {
         continue;
       }
-
-      direct_output_var_names.insert(ValueName(opresult));
     }
   }
 
