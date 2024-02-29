@@ -629,4 +629,3 @@ PD_REGISTER_KERNEL(conv2d_transpose_bias,
                    phi::dtype::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvTransposeGetKernelTypeForVar;
 }
-

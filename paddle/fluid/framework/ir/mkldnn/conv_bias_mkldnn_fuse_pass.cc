@@ -466,4 +466,3 @@ REGISTER_PASS_CAPABILITY(conv_transpose_bias_mkldnn_fuse_pass)
 
 REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv3DBiasFusePass);
-

@@ -75,4 +75,3 @@ TEST(Conv2dTransposeBias, normal) { test_conv2d_transpose_bias(); }
 
 }  // namespace inference
 }  // namespace paddle
-
