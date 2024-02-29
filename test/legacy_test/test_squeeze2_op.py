@@ -32,7 +32,7 @@ class TestSqueezeOp(OpTest):
         self.op_type = "squeeze2"
         self.prim_op_type = "comp"
         self.python_api = paddle.squeeze
-        # self.public_python_api = paddle.squeeze
+        self.public_python_api = paddle.squeeze
         self.python_out_sig = [
             "Out"
         ]  # python out sig is customized output signature.
