@@ -271,6 +271,7 @@ def get_static_vjp(func, inputs, tangents, order, atol, rtol, eps):
     pir_outputs = []
     grads_in_init = []
     with paddle.static.program_guard(program):
+        # Make sure the grad_in_var is in the program
         for idx, output in enumerate(outputs):
             pir_outputs.append(op_map[output])
             np_type = dtype_to_np_dtype(input.dtype)
@@ -336,13 +337,9 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
 
 def check_vjp(func, args, order=1, atol=None, rtol=None, eps=EPS):
     args = _as_list(args)
-    tangents = []
     np_type = dtype_to_np_dtype(args[0].dtype)
     atol = atol if atol else default_gradient_tolerance[np_type]
     rtol = rtol if rtol else default_gradient_tolerance[np_type]
-    for arg in args:
-        t = paddle.randn(arg.shape, arg.dtype)
-        tangents.append(t)
 
     # shape like args, [pd.tensor, pd.tensor]
     eager_vjps, cotangents = get_eager_vjp(func, args, order=order)
