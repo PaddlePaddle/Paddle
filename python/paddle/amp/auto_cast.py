@@ -471,7 +471,7 @@ def amp_guard(
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different calsses according to their process_mesh.
                 # Otherwise, fault will occur.
-                if not amp_global_state().already_classify_params_meshs:
+                if not amp_global_state().already_classify_params_meshes:
                     for param in amp_global_state().model_parameters:
                         if param is not None and param.process_mesh is not None:
                             if (
@@ -485,7 +485,7 @@ def amp_guard(
                                 amp_global_state().mesh2params[
                                     param.process_mesh
                                 ].append(param)
-                    amp_global_state().already_classify_params_meshs = True
+                    amp_global_state().already_classify_params_meshes = True
 
                 if len(amp_global_state().mesh2params):
                     for _, params in amp_global_state().mesh2params.items():
