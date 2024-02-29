@@ -465,17 +465,25 @@ class SliceNet(paddle.nn.Layer):
 
     def forward(self, x):
         out = x[:, -1, :]
+        out = x[1:3, 0:2, 2:4]
+
+        axes = [0, 1, 2]
+        starts = [-3, 0, 2]
+        ends = [3, 2, 4]
+        out = paddle.slice(x, axes=axes, starts=starts, ends=ends)
 
         return out
 
 
 class TestSliceOpInferSymbolicShape(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.rand(2, 3, 4)]
+        self.cases = [np.random.rand(4, 5, 6)]
 
         self.expected = [
             [
                 'shape[S0, S2], data[NULL]',
+                'shape[2, 2, 2], data[NULL]',
+                'shape[Add(3, -Add(-3, S0)), 2, 2]',
             ]
         ]
 
