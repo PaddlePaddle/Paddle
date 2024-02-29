@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -184,8 +183,11 @@ class TestFullAPI(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # for ci coverage
             self.assertRaises(
                 TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint4'
