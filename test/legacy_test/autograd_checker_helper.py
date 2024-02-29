@@ -191,10 +191,6 @@ def grad_check(
     return True
 
 
-def numerical_jvp(func, primals, tangents, order=1, eps=EPS):
-    pass
-
-
 def dtype_to_np_dtype(dtype):
     if dtype == core.VarDesc.VarType.FP32 or dtype == core.DataType.FLOAT32:
         return np.float32
