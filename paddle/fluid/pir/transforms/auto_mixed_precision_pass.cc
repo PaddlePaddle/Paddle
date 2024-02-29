@@ -66,7 +66,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
                "Use Set method to set the place attribute.");
     IR_ENFORCE(Has("__mixed_precision_mode__"),
                "Pass initialize failed."
-               "When using AutoMixedPrecisionPass, precison_mode attribute is "
+               "When using AutoMixedPrecisionPass, precision_mode attribute is "
                "required!"
                "Use Set method to set the scope attribute.");
 
@@ -224,7 +224,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
           precision_updated = true;
         }
         if (!OpRunLowPrecision(op)) continue;
-        // if the producer's output is in float VectorType, then the precsion
+        // if the producer's output is in float VectorType, then the precision
         // between two op should be the same
         for (size_t idx = 0; idx < op->num_operands(); ++idx) {
           if (!op->operand_source(idx)) continue;
