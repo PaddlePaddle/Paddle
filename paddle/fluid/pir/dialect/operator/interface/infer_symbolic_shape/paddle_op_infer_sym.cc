@@ -1244,7 +1244,7 @@ bool GatherOpInferSymbolicShape(
         for (int i = 0; i < axis; ++i) {
           out_sym_shape.push_back(input_sym_shape[i]);
         }
-        for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
+        for (size_t i = axis + 1; i < input_sym_shape.size(); ++i) {
           out_sym_shape.push_back(input_sym_shape[i]);
         }
       }
@@ -1253,7 +1253,7 @@ bool GatherOpInferSymbolicShape(
         out_sym_shape.push_back(input_sym_shape[i]);
       }
       out_sym_shape.push_back(numel);
-      for (int i = axis + 1; i < input_sym_shape.size(); ++i) {
+      for (size_t i = axis + 1; i < input_sym_shape.size(); ++i) {
         out_sym_shape.push_back(input_sym_shape[i]);
       }
     }
