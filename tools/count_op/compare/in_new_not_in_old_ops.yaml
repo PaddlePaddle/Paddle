@@ -1,0 +1,633 @@
+- op: apply_per_channel_scale
+  inputs: (Tensor x, Tensor scales)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: asgd_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor
+    n, Tensor master_param)
+  attrs: (bool multi_precision)
+  outputs: Tensor(param_out), Tensor(d_out), Tensor(y_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+  inpalces: param->param_out,d->d_out,y->y_out,master_param->master_param_out
+
+- op: average_accumulates_
+  inputs: (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor
+    in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates)
+  attrs: (float average_window, int64_t max_average_window, int64_t min_average_window)
+  outputs: Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates),
+    Tensor(out_old_num_accumulates), Tensor(out_num_updates)
+  inpalces: in_sum_1->out_sum_1,in_sum_2->out_sum_2,in_sum_3->out_sum_3,in_num_accumulates->out_num_accumulates,in_old_num_accumulates->out_old_num_accumulates,in_num_updates->out_num_updates
+
+- op: bitwise_left_shift_
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool is_arithmetic)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: bitwise_left_shift
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool is_arithmetic)
+  outputs: Tensor(out)
+
+- op: bitwise_right_shift_
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool is_arithmetic)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: bitwise_right_shift
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool is_arithmetic)
+  outputs: Tensor(out)
+
+- op: copysign_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: copysign
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: cross_entropy_with_softmax_
+  inputs: (Tensor input, Tensor label)
+  attrs: (bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index,
+    int axis)
+  outputs: Tensor(softmax), Tensor(loss)
+  inpalces: input->softmax
+
+- op: fill_
+  inputs: (Tensor x)
+  attrs: (Scalar value)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: flatten_
+  inputs: (Tensor x)
+  attrs: (int start_axis, int stop_axis)
+  outputs: Tensor(out), Tensor(xshape)
+  inpalces: x->out
+
+- op: fractional_max_pool2d
+  inputs: (Tensor x)
+  attrs: (int[] output_size, int[] kernel_size, float random_u, bool return_mask)
+  outputs: Tensor(out), Tensor(mask)
+
+- op: fractional_max_pool3d
+  inputs: (Tensor x)
+  attrs: (int[] output_size, int[] kernel_size, float random_u, bool return_mask)
+  outputs: Tensor(out), Tensor(mask)
+
+- op: gammaincc_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: gammaincc
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: hardtanh_
+  inputs: (Tensor x)
+  attrs: (float t_min, float t_max)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: masked_multihead_attention_
+  inputs: (Tensor x, Tensor cache_kv, Tensor bias, Tensor src_mask, Tensor cum_offsets,
+    Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor
+    qkv_out_scale, Tensor out_shift, Tensor out_smooth)
+  attrs: (int seq_len, int rotary_emb_dims, bool use_neox_rotary_style, str compute_dtype,
+    float out_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  outputs: Tensor(out), Tensor(cache_kv_out), Tensor(beam_cache_offset_out)
+  optionals: bias,src_mask,cum_offsets,sequence_lengths,rotary_tensor,beam_cache_offset,qkv_out_scale,out_shift,out_smooth
+  inpalces: cache_kv->cache_kv_out,beam_cache_offset->beam_cache_offset_out
+
+- op: merged_adam_
+  inputs: (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1,
+    Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param)
+  attrs: (Scalar beta1, Scalar beta2, Scalar epsilon, bool multi_precision, bool use_global_beta_pow)
+  outputs: Tensor[](param_out), Tensor[](moment1_out), Tensor[](moment2_out), Tensor[](beta1_pow_out),
+    Tensor[](beta2_pow_out), Tensor[](master_param_out)
+  optionals: master_param,master_param_out
+  inpalces: param->param_out,moment1->moment1_out,moment2->moment2_out,beta1_pow->beta1_pow_out,beta2_pow->beta2_pow_out,master_param->master_param_out
+
+- op: rprop_
+  inputs: (Tensor param, Tensor grad, Tensor prev, Tensor learning_rate, Tensor master_param,
+    Tensor learning_rate_range, Tensor etas)
+  attrs: (bool multi_precision)
+  outputs: Tensor(param_out), Tensor(prev_out), Tensor(learning_rate_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+  inpalces: param->param_out,prev->prev_out,learning_rate->learning_rate_out,master_param->master_param_out
+
+- op: squeeze_
+  inputs: (Tensor x)
+  attrs: (IntArray axis)
+  outputs: Tensor(out), Tensor(xshape)
+  inpalces: x->out
+
+- op: swiglu
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  optionals: y
+
+- op: uniform_inplace_
+  inputs: (Tensor x)
+  attrs: (float min, float max, int seed, int diag_num, int diag_step, float diag_val)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: unsqueeze_
+  inputs: (Tensor x)
+  attrs: (IntArray axis)
+  outputs: Tensor(out), Tensor(xshape)
+  inpalces: x->out
+
+- op: block_multihead_attention_
+  inputs: (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder,
+    Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor
+    cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor block_tables, Tensor
+    pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask, Tensor tgt_mask,
+    Tensor cache_k_quant_scales, Tensor cache_v_quant_scales, Tensor cache_k_dequant_scales,
+    Tensor cache_v_dequant_scales, Tensor qkv_out_scale, Tensor qkv_bias, Tensor out_shift,
+    Tensor out_smooth)
+  attrs: (int max_seq_len, int block_size, bool use_neox_style, bool dynamic_cachekv_quant,
+    int quant_round_type, float quant_max_bound, float quant_min_bound, float out_scale,
+    str compute_dtype)
+  outputs: Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
+  optionals: pre_key_cache,pre_value_cache,rope_emb,mask,tgt_mask,cache_k_quant_scales,cache_v_quant_scales,cache_k_dequant_scales,cache_v_dequant_scales,qkv_out_scale,qkv_bias,out_shift,out_smooth
+  inpalces: qkv->qkv_out,key_cache->key_cache_out,value_cache->value_cache_out
+
+- op: fused_linear_param_grad_add
+  inputs: (Tensor x, Tensor dout, Tensor dweight, Tensor dbias)
+  attrs: (bool multi_precision, bool has_bias)
+  outputs: Tensor(dweight_out), Tensor(dbias_out)
+  optionals: dweight,dbias
+
+- op: add_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: add_n_
+  inputs: (Tensor[] inputs)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: add_n_with_kernel
+  inputs: (Tensor[] inputs)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: assign_out_
+  inputs: (Tensor x, Tensor output)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: output->out
+
+- op: assign_value_
+  inputs: (Tensor output)
+  attrs: (int[] shape, DataType dtype, Scalar[] values, Place place)
+  outputs: Tensor(out)
+  inpalces: output->out
+
+- op: c_broadcast_
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root, bool use_calc_stream)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: c_identity_
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: c_reduce_min_
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root_id, bool use_calc_stream)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: c_reduce_sum_
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root_id, bool use_calc_stream)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: c_sync_calc_stream_
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: c_sync_comm_stream_
+  inputs: (Tensor x)
+  attrs: (int ring_id)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: cast_
+  inputs: (Tensor x)
+  attrs: (DataType dtype)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: copy_to
+  inputs: (Tensor x)
+  attrs: (Place place, bool blocking)
+  outputs: Tensor(out)
+
+- op: disable_check_model_nan_inf
+  inputs: (Tensor x)
+  attrs: (int flag)
+  outputs: Tensor(out)
+
+- op: divide_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: empty_like
+  inputs: (Tensor x)
+  attrs: (DataType dtype, Place place)
+  outputs: Tensor(out)
+
+- op: enable_check_model_nan_inf
+  inputs: (Tensor x)
+  attrs: (int flag)
+  outputs: Tensor(out)
+
+- op: equal_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: floor_divide_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: full_
+  inputs: (Tensor output)
+  attrs: (IntArray shape, Scalar value, DataType dtype, Place place)
+  outputs: Tensor(out)
+  inpalces: output->out
+
+- op: full_with_tensor
+  inputs: (Tensor shape, Tensor value)
+  attrs: (DataType dtype)
+  outputs: Tensor(out)
+
+- op: fused_adam_
+  inputs: (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1,
+    Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params,
+    Tensor skip_update)
+  attrs: (Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay,
+    bool use_adamw, bool multi_precision, bool use_global_beta_pow)
+  outputs: Tensor[](params_out), Tensor[](moments1_out), Tensor[](moments2_out), Tensor[](beta1_pows_out),
+    Tensor[](beta2_pows_out), Tensor[](master_params_out)
+  optionals: master_params,skip_update
+  inpalces: params->params_out,moments1->moments1_out,moments2->moments2_out,beta1_pows->beta1_pows_out,beta2_pows->beta2_pows_out,master_params->master_params_out
+
+- op: fused_bn_add_activation
+  inputs: (Tensor x, Tensor z, Tensor scale, Tensor bias, Tensor mean, Tensor variance)
+  attrs: (float momentum, float epsilon, str act_type)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+
+- op: greater_equal_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: greater_than_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: increment_
+  inputs: (Tensor x)
+  attrs: (float value)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: less_equal_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: less_than_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: matrix_rank_tol
+  inputs: (Tensor x, Tensor atol_tensor)
+  attrs: (bool use_default_tol, bool hermitian)
+  outputs: Tensor(out)
+
+- op: multiply_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: not_equal_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: ones
+  inputs: ()
+  attrs: (IntArray shape, DataType dtype, Place place)
+  outputs: Tensor(out)
+
+- op: ones_like
+  inputs: (Tensor x)
+  attrs: (DataType dtype, Place place)
+  outputs: Tensor(out)
+
+- op: push_sparse_v2_
+  inputs: (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in)
+  attrs: (int embeddingdim, int tableid, str accessorclass, str ctrlabelname, int
+    paddingid, bool scalesparsegrad, str[] inputnames, bool is_distributed)
+  outputs: Tensor[](out_grad_out)
+  inpalces: out_grad_in->out_grad_out
+
+- op: push_sparse_v2
+  inputs: (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in)
+  attrs: (int embeddingdim, int tableid, str accessorclass, str ctrlabelname, int
+    paddingid, bool scalesparsegrad, str[] inputnames, bool is_distributed)
+  outputs: Tensor[](out_grad_out)
+
+- op: remainder_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: repeat_interleave_with_tensor_index
+  inputs: (Tensor x, Tensor repeats)
+  attrs: (int axis)
+  outputs: Tensor(out)
+
+- op: set_value_with_tensor_
+  inputs: (Tensor x, Tensor values)
+  attrs: (IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[]
+    decrease_axes, int64_t[] none_axes)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: set_value_with_tensor
+  inputs: (Tensor x, Tensor values)
+  attrs: (IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[]
+    decrease_axes, int64_t[] none_axes)
+  outputs: Tensor(out)
+
+- op: shadow_feed
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: split_with_num
+  inputs: (Tensor x)
+  attrs: (int num, Scalar(int) axis)
+  outputs: Tensor[](out)
+
+- op: subtract_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: sync_batch_norm_
+  inputs: (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias)
+  attrs: (bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats,
+    bool trainable_statistics)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+  optionals: reserve_space
+  inpalces: mean->mean_out,variance->variance_out
+
+- op: trans_layout
+  inputs: (Tensor x)
+  attrs: (int[] perm)
+  outputs: Tensor(out)
+
+- op: transpose_
+  inputs: (Tensor x)
+  attrs: (int[] perm)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: tril_
+  inputs: (Tensor x)
+  attrs: (int diagonal)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: tril
+  inputs: (Tensor x)
+  attrs: (int diagonal)
+  outputs: Tensor(out)
+
+- op: triu_
+  inputs: (Tensor x)
+  attrs: (int diagonal)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: triu
+  inputs: (Tensor x)
+  attrs: (int diagonal)
+  outputs: Tensor(out)
+
+- op: zeros
+  inputs: ()
+  attrs: (IntArray shape, DataType dtype, Place place)
+  outputs: Tensor(out)
+
+- op: zeros_like
+  inputs: (Tensor x)
+  attrs: (DataType dtype, Place place)
+  outputs: Tensor(out)
+
+- op: lars_momentum_
+  inputs: (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate,
+    Tensor[] master_param)
+  attrs: (float mu, float lars_coeff, float[] lars_weight_decay, float epsilon, bool
+    multi_precision, float rescale_grad)
+  outputs: Tensor[](param_out), Tensor[](velocity_out), Tensor[](master_param_out)
+  optionals: master_param,master_param_out
+  inpalces: master_param->master_param_out
+
+- op: onednn_to_paddle_layout
+  inputs: (Tensor x)
+  attrs: (int dst_layout)
+  outputs: Tensor(out)
+
+- op: add_n_array
+  inputs: (Tensor inputs)
+  attrs: ()
+  outputs: (Tensor out)
+
+- op: create_array
+  inputs: ()
+  attrs: (DataType dtype)
+  outputs: TensorArray(out)
+
+- op: create_array_like
+  inputs: (TensorArray input)
+  attrs: (float val)
+  outputs: TensorArray(out)
+
+- op: array_length
+  inputs: (TensorArray x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: array_read
+  inputs: (TensorArray array, Scalar i)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: array_write_
+  inputs: (TensorArray array, Tensor x, Scalar i)
+  attrs: ()
+  outputs: TensorArray(out)
+  inpalces: array->out
+
+- op: slice_array
+  inputs: (TensorArray input)
+  attrs: (int64_t[] starts, int64_t[] ends)
+  outputs: TensorArray(out)
+
+- op: slice_array_dense
+  inputs: (TensorArray input, IntArray starts)
+  attrs: ()
+  outputs: TensorArray(out)
+
+- op: assign_array
+  inputs: (TensorArray x)
+  attrs: ()
+  outputs: TensorArray(out)
+
+- op: scale_sr
+  inputs: (Tensor x)
+  attrs: (Scalar scale, float bias, bool bias_after_scale)
+  outputs: Tensor(out)
+
+- op: isfinite_sr
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: shape_sr
+  inputs: (Tensor input)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: scale_sr_
+  inputs: (Tensor x)
+  attrs: (Scalar scale, float bias, bool bias_after_scale)
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: isinf_sr
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: fused_batch_norm_act_
+  inputs: (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance)
+  attrs: (float momentum, float epsilon, str act_type)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+  inpalces: mean->mean_out,variance->variance_out
+
+- op: rnn_
+  inputs: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length,
+    Tensor dropout_state_in)
+  attrs: (float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int
+    num_layers, str mode, int seed, bool is_test)
+  outputs: Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
+  optionals: sequence_length
+  inpalces: dropout_state_in->dropout_state_out
+
+- op: sqrt_sr_
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: isnan_sr
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: multiply_sr_
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+  inpalces: x->out
+
+- op: multiply_sr
+  inputs: (Tensor x, Tensor y)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: batch_norm_
+  inputs: (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias)
+  attrs: (bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats,
+    bool trainable_statistics)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+  optionals: scale,bias,reserve_space
+  inpalces: mean -> mean_out,variance->variance_out
+
+- op: sqrt_st
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: square_sr
+  inputs: (Tensor x)
+  attrs: ()
+  outputs: Tensor(out)
+
+- op: clip_by_norm_sr
+  inputs: (Tensor x)
+  attrs: (float max_norm)
+  outputs: Tensor(out)
+
+- op: lamb_sr_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor
+    moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update)
+  attrs: (float weight_decay, float beta1, float beta2, float epsilon, bool always_adapt,
+    bool multi_precision)
+  outputs: Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out),
+    Tensor(beta2_pow_out), Tensor(master_param_outs)
+  optionals: master_param,skip_update,beta1_pow_out,beta2_pow_out,master_param_outs
+  inpalces: param->param_out,moment1->moment1_out,moment2->moment2_out,beta1_pow->beta1_pow_out,beta2_pow->beta2_pow_out,master_param->master_param_outs
+
+- op: sparse_weight_embedding
+  inputs: (Tensor x, Tensor weight)
+  attrs: (int64_t padding_idx, bool sparse)
+  outputs: Tensor(out)
+

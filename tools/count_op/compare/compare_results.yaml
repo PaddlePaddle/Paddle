@@ -1,0 +1,4305 @@
+- op: abs
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: abs_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: accuracy
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: acos
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: acos_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: acosh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: acosh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: adadelta_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: adagrad_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: adam_
+  inputs: (Tensor Beta1Tensor,Tensor Beta2Tensor,Tensor EpsilonTensor) -> ()
+  attrs: (float beta1,float beta2,float epsilon,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar beta1,Scalar
+    beta2,Scalar epsilon)
+  outputs: ->
+  optional: (Beta1Tensor, Beta2Tensor, EpsilonTensor) -> ()
+  inplaces: () -> ()
+
+- op: adamax_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: adamw_
+  inputs: (Tensor Beta1Tensor,Tensor Beta2Tensor,Tensor EpsilonTensor) -> ()
+  attrs: (float beta1,float beta2,float epsilon,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar beta1,Scalar
+    beta2,Scalar epsilon)
+  outputs: ->
+  optional: (Beta1Tensor, Beta2Tensor, EpsilonTensor) -> ()
+  inplaces: () -> ()
+
+- op: addmm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: addmm_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: affine_grid
+  inputs: (Tensor OutputShape) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    output_shape,bool with_quant_attr) -> (IntArray output_shape)
+  outputs: ->
+  optional: (OutputShape) -> ()
+  inplaces: () -> ()
+
+- op: allclose
+  inputs: (Tensor Rtol,Tensor Atol) -> ()
+  attrs: (str atol,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,str rtol,bool with_quant_attr) -> (Scalar atol,Scalar rtol)
+  outputs: ->
+  optional: (Atol, Rtol) -> ()
+  inplaces: () -> ()
+
+- op: angle
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: argmax
+  inputs: () -> ()
+  attrs: (int64_t axis,int dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar(int64_t) axis,DataType
+    dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: argmin
+  inputs: () -> ()
+  attrs: (int64_t axis,int dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar(int64_t) axis,DataType
+    dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: argsort
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: as_complex
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: as_real
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: as_strided
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: asin
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: asin_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: asinh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: asinh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: assign
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (x) -> ()
+  inplaces: () -> ()
+
+- op: assign_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (x) -> ()
+  inplaces: () -> ()
+
+- op: assign_value
+  inputs: (Tensor ValuesTensor) -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: (ValuesTensor) -> ()
+  inplaces: () -> ()
+
+- op: atan
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: atan2
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: atan_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: atanh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: atanh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: auc
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: batch_norm
+  inputs: (Tensor MomentumTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (MomentumTensor) -> ()
+  inplaces: () -> ()
+
+- op: bce_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bce_loss_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bernoulli
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bicubic_interp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bilinear_interp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bilinear
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bincount
+  inputs: () -> ()
+  attrs: (int minlength,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar(int) minlength)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_and
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_and_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_not
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_not_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_or
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_or_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_xor
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bitwise_xor_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bmm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: box_coder
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: hardtanh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: broadcast_tensors
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_allgather
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_allreduce_max
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_allreduce_max_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_allreduce_sum
+  inputs: (Tensor Cond) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (Cond) -> ()
+  inplaces: () -> ()
+
+- op: c_allreduce_sum_
+  inputs: (Tensor Cond) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (Cond) -> ()
+  inplaces: () -> ()
+
+- op: c_broadcast
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_concat
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_embedding
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_identity
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_reduce_min
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_reduce_sum
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_reducescatter
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_softmax_with_cross_entropy
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_sync_calc_stream
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: c_sync_comm_stream
+  inputs: (Tensor[] x) -> (Tensor x)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: Tensor[](out)->Tensor(out)
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cast
+  inputs: () -> ()
+  attrs: (int in_dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int out_dtype,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: ceil
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: ceil_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: celu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: channel_shuffle
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: check_finite_and_unscale_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: check_numerics
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cholesky
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cholesky_solve
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: class_center_sample
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: clip
+  inputs: (Tensor Min,Tensor Max) -> ()
+  attrs: (float max,float min,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar(float) max,Scalar(float)
+    min)
+  outputs: ->
+  optional: (Max, Min) -> ()
+  inplaces: () -> ()
+
+- op: clip_
+  inputs: (Tensor Min,Tensor Max) -> ()
+  attrs: (float max,float min,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar(float) max,Scalar(float)
+    min)
+  outputs: ->
+  optional: (Max, Min) -> ()
+  inplaces: () -> ()
+
+- op: clip_by_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: coalesce_tensor
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: complex
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: concat
+  inputs: (Tensor AxisTensor) -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar axis)
+  outputs: ->
+  optional: (AxisTensor) -> ()
+  inplaces: () -> ()
+
+- op: conj
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv2d
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv2d_transpose
+  inputs: (Tensor bias) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    output_size,bool with_quant_attr) -> (IntArray output_size)
+  outputs: ->
+  optional: (bias) -> ()
+  inplaces: () -> ()
+
+- op: conv3d
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv3d_transpose
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cos
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cos_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cosh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cosh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: crop
+  inputs: (Tensor Shape,Tensor[] ShapeTensor,Tensor Offsets,Tensor[] OffsetsTensor)
+    -> ()
+  attrs: (int[] offsets,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int[] shape,bool with_quant_attr) -> (IntArray offsets,IntArray shape)
+  outputs: ->
+  optional: (Offsets, OffsetsTensor, Shape, ShapeTensor) -> ()
+  inplaces: () -> ()
+
+- op: cross
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cummax
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cummin
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cumprod
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cumprod_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cumsum
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cumsum_
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: data
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int place,int64_t[] shape,bool with_quant_attr) -> (DataType dtype,Place
+    place,IntArray shape)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: decayed_adagrad
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: decode_jpeg
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: deformable_conv
+  inputs: () -> (Tensor mask)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> (mask)
+  inplaces: () -> ()
+
+- op: depthwise_conv2d
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: depthwise_conv2d_transpose
+  inputs: (Tensor bias) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    output_size,bool with_quant_attr) -> (IntArray output_size)
+  outputs: ->
+  optional: (bias) -> ()
+  inplaces: () -> ()
+
+- op: det
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: diag_embed
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: diag
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: diagonal
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: digamma
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: digamma_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dirichlet
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dist
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: distribute_fpn_proposals
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dot
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dpsgd
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dropout
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    p,bool with_quant_attr) -> (bool fix_seed,Scalar p,int seed)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: edit_distance
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: eig
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: eigh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: eigvals
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: eigvalsh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: einsum
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: add
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: divide
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: floor_divide
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fmax
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fmin
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: heaviside
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: maximum
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: minimum
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: remainder
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multiply
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: elementwise_pow
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: subtract
+  inputs: () -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: elu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: elu_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: empty
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int64_t[] shape,bool with_quant_attr) -> (DataType dtype,Place place,IntArray
+    shape)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: equal
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: equal_all
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: erf
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: erf_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: erfinv
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: erfinv_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: exp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: exp_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: expand
+  inputs: (Tensor Shape,Tensor[] expand_shapes_tensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    shape,bool with_quant_attr) -> (IntArray shape)
+  outputs: ->
+  optional: (Shape, expand_shapes_tensor) -> ()
+  inplaces: () -> ()
+
+- op: expand_as
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: expm1
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: expm1_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: exponential_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: eye
+  inputs: () -> ()
+  attrs: (int dtype,int64_t num_columns,int64_t num_rows,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,bool with_quant_attr) -> (DataType
+    dtype,Scalar num_columns,Scalar num_rows,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fc
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: feed
+  inputs: (Tensor X) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (str name)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fetch
+  inputs: () -> ()
+  attrs: (bool deepcopy,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (str name)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fft_c2c
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fft_c2r
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fft_r2c
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fill
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    value,bool with_quant_attr) -> (Scalar value)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: full_like
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,float value,bool with_quant_attr) -> (DataType dtype,Place place,Scalar
+    value)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: full
+  inputs: (Tensor ValueTensor,Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int place_type,int64_t[] shape,str str_value,float value,bool
+    with_quant_attr) -> (DataType dtype,Place place,IntArray shape,Scalar value)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList, ValueTensor) -> ()
+  inplaces: () -> ()
+
+- op: full_batch_size_like
+  inputs: () -> ()
+  attrs: (int dtype,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,str str_value,float value,bool with_quant_attr) -> (DataType
+    dtype,Place place,Scalar value)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fill_diagonal
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fill_diagonal_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fill_diagonal_tensor
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fill_diagonal_tensor_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: flatten
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: flip
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: floor
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: floor_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fold
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: frame
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: frobenius_norm
+  inputs: () -> ()
+  attrs: (int[] axis,int in_dtype,bool keepdim,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,int out_dtype,bool with_quant_attr)
+    -> (IntArray axis,bool keep_dim)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: ftrl
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: full_int_array
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int place,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_attention
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> (bias_dropout_residual_out, ln_mean_2, ln_var_2)
+  inplaces: () -> ()
+
+- op: fused_batch_norm_act
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_bias_dropout_residual_layer_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_bn_add_activation_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_elemwise_add_activation
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_embedding_eltwise_layernorm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_fc_elementwise_layernorm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_feedforward
+  inputs: (Tensor dropout1_seed_val,Tensor dropout2_seed_val) -> (Tensor dropout1_seed,Tensor
+    dropout2_seed)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (dropout1_seed_val, dropout2_seed_val) -> (dropout1_seed, dropout2_seed,
+    ln1_mean, ln1_out, ln1_variance, ln2_mean, ln2_variance)
+  inplaces: () -> ()
+
+- op: fused_softmax_mask_upper_triangle
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_gru
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_repeated_fc_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_seqconv_eltadd_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_seqexpand_concat_fc
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_squared_mat_sub
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fusion_transpose_flatten_concat
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gather
+  inputs: (Tensor Axis) -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar axis)
+  outputs: ->
+  optional: (Axis) -> ()
+  inplaces: () -> ()
+
+- op: gather_nd
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gather_tree
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gaussian
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int64_t[] shape,bool with_quant_attr) -> (DataType dtype,Place place,IntArray
+    shape)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: gelu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: generate_proposals
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: get_tensor_from_selected_rows
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: reindex_graph
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: send_u_recv
+  inputs: (Tensor Out_size) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int64_t[]
+    out_size,bool with_quant_attr) -> (IntArray out_size)
+  outputs: ->
+  optional: (Out_size) -> ()
+  inplaces: () -> ()
+
+- op: send_ue_recv
+  inputs: (Tensor Out_size) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int64_t[]
+    out_size,bool with_quant_attr) -> (IntArray out_size)
+  outputs: ->
+  optional: (Out_size) -> ()
+  inplaces: () -> ()
+
+- op: send_uv
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: greater_equal
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: greater_than
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: grid_sample
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: group_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gumbel_softmax
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: hardshrink
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: hardsigmoid
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: hardswish
+  inputs: () -> ()
+  attrs: (float offset,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,float scale,float threshold,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: hsigmoid_loss
+  inputs: () -> ()
+  attrs: (str[] epmap,int64_t[] height_sections,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,str[] table_names,int trainer_id,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: histogram
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: huber_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: i0
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: i0_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: i0e
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: i1
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: i1e
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: identity_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: identity_loss_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: imag
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: increment
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    step,bool with_quant_attr) -> (float value)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_add
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_add_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_put
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_put_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_sample
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_select
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: index_select_strided
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: instance_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: inverse
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: is_empty
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: isclose
+  inputs: (Tensor Rtol,Tensor Atol) -> ()
+  attrs: (str atol,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,str rtol,bool with_quant_attr) -> (Scalar(double) atol,Scalar(double)
+    rtol)
+  outputs: ->
+  optional: (Atol, Rtol) -> ()
+  inplaces: () -> ()
+
+- op: isfinite
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: isinf
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: isnan
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: kldiv_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: kron
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: kthvalue
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: label_smooth
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lamb_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lars_momentum
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: layer_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: leaky_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: leaky_relu_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lerp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lerp_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: less_equal
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: less_than
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lgamma
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lgamma_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: linear_interp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: linspace
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: load_combine
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> (Out)
+  inplaces: () -> ()
+
+- op: log
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log10
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log10_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log1p
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log1p_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log2
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log2_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: log_softmax
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logcumsumexp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_and
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_and_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_not
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_not_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_or
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_or_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_xor
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logical_xor_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logit
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logit_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logsigmoid
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logspace
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: logsumexp
+  inputs: () -> ()
+  attrs: (int[] axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (int64_t[] axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: embedding
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (bool sparse)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lstsq
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    rcond,bool with_quant_attr) -> (Scalar rcond)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lu_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lu_unpack
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: margin_cross_entropy
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: masked_select
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: match_matrix_tensor
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: matmul
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: matrix_nms
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: matrix_power
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: matrix_rank
+  inputs: (Tensor atol_tensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (atol_tensor) -> ()
+  inplaces: () -> ()
+
+- op: max_pool2d_with_index
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: max_pool3d_with_index
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: maxout
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: mean_all
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: memcpy
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: memcpy_d2h
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: memcpy_h2d
+  inputs: (Tensor X) -> (Tensor x)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: Tensor(Out)->Tensor(out)
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: merge_selected_rows
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: merged_momentum_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: meshgrid
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: mish
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: mode
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: momentum_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multi_dot
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multiclass_nms3
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multihead_matmul
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multinomial
+  inputs: () -> ()
+  attrs: (int num_samples,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar(int) num_samples)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multiplex
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: mv
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nanmedian
+  inputs: () -> ()
+  attrs: (int[] axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nce
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (int[] custom_neg_classes)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nearest_interp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nextafter
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nll_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nms
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: not_equal
+  inputs: () -> ()
+  attrs: (int axis,bool force_cpu,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: npu_identity
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: number_count
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: one_hot
+  inputs: (Tensor depth_tensor) -> ()
+  attrs: (bool allow_out_of_range,int depth,int dtype,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar(int)
+    num_classes)
+  outputs: ->
+  optional: (depth_tensor) -> ()
+  inplaces: () -> ()
+
+- op: overlap_add
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: p_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pad
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    pad_value,bool with_quant_attr) -> (Scalar pad_value)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pad3d
+  inputs: (Tensor Paddings) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    paddings,bool with_quant_attr) -> (IntArray paddings)
+  outputs: ->
+  optional: (Paddings) -> ()
+  inplaces: () -> ()
+
+- op: pixel_shuffle
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pixel_unshuffle
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: poisson
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: polygamma
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: polygamma_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pool2d
+  inputs: () -> ()
+  attrs: (int[] kernel_size,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool use_cudnn,bool with_quant_attr) -> (IntArray kernel_size)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pool3d
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    use_cudnn,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: pow
+  inputs: (Tensor FactorTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr,float y) -> (Scalar y)
+  outputs: ->
+  optional: (FactorTensor) -> ()
+  inplaces: () -> ()
+
+- op: pow_
+  inputs: (Tensor FactorTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr,float y) -> (Scalar y)
+  outputs: ->
+  optional: (FactorTensor) -> ()
+  inplaces: () -> ()
+
+- op: prelu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: prior_box
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: psroi_pool
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: put_along_axis
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: put_along_axis_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: qr
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: randint
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int seed,int64_t[] shape,bool with_quant_attr) -> (DataType dtype,Place
+    place,IntArray shape)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: randperm
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: arange
+  inputs: (Tensor start,Tensor end,Tensor step) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (DataType dtype,Scalar end,Place place,Scalar start,Scalar
+    step)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: read_file
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (DataType dtype,Place place)
+  outputs: Tensor(Out)->Tensor(out)
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: real
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: reciprocal
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: reciprocal_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: recv_v2
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: all
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: (AxisTensor, AxisTensorList) -> ()
+  inplaces: () -> ()
+
+- op: amax
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: (AxisTensor, AxisTensorList) -> ()
+  inplaces: () -> ()
+
+- op: amin
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: (AxisTensor, AxisTensorList) -> ()
+  inplaces: () -> ()
+
+- op: any
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr) -> ()
+  outputs: ->
+  optional: (AxisTensor, AxisTensorList) -> ()
+  inplaces: () -> ()
+
+- op: max
+  inputs: () -> ()
+  attrs: (int[] axis,int in_dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr)
+    -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: mean
+  inputs: () -> ()
+  attrs: (int[] axis,int in_dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr)
+    -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: min
+  inputs: () -> ()
+  attrs: (int[] axis,int in_dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int out_dtype,bool reduce_all,bool with_quant_attr)
+    -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: prod
+  inputs: () -> ()
+  attrs: (int[] dims,int in_dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int out_dtype,bool with_quant_attr) -> (IntArray dims)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sum
+  inputs: () -> ()
+  attrs: (int[] axis,int dtype,int in_dtype,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,bool reduce_all,bool with_quant_attr) -> (IntArray axis,DataType
+    dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: relu6
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: relu_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: renorm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: renorm_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: repeat_interleave
+  inputs: (Tensor RepeatsTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (RepeatsTensor) -> ()
+  inplaces: () -> ()
+
+- op: reshape
+  inputs: (Tensor Shape,Tensor[] ShapeTensor) -> ()
+  attrs: (str mkldnn_data_type,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int[] shape,bool use_quantizer,bool with_quant_attr)
+    -> (IntArray shape)
+  outputs: ->
+  optional: (Shape, ShapeTensor) -> ()
+  inplaces: () -> ()
+
+- op: reshape_
+  inputs: (Tensor X,Tensor Shape,Tensor[] ShapeTensor) -> (Tensor x)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    shape,bool with_quant_attr) -> (IntArray shape)
+  outputs: Tensor(Out)->Tensor(out), Tensor(xshape)
+  optional: (Shape, ShapeTensor) -> ()
+  inplaces: () -> ()
+
+- op: reverse
+  inputs: () -> ()
+  attrs: (int[] axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rmsprop_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rnn
+  inputs: () -> (Tensor dropout_state_in)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (dropout_state_out) -> ()
+  inplaces: () -> ()
+
+- op: roi_align
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: roi_pool
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: roll
+  inputs: (Tensor ShiftsTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int64_t[]
+    shifts,bool with_quant_attr) -> (IntArray shifts)
+  outputs: ->
+  optional: (ShiftsTensor) -> ()
+  inplaces: () -> ()
+
+- op: round
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: round_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: row_conv
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rrelu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rsqrt
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rsqrt_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: save_combine
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: Tensor(Y)->Tensor(out)
+  optional: (Y) -> (out)
+  inplaces: () -> ()
+
+- op: scale
+  inputs: (Tensor ScaleTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    scale,bool with_quant_attr) -> (Scalar scale)
+  outputs: ->
+  optional: (ScaleTensor) -> ()
+  inplaces: () -> ()
+
+- op: scale_
+  inputs: (Tensor ScaleTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    scale,bool with_quant_attr) -> (Scalar scale)
+  outputs: ->
+  optional: (ScaleTensor) -> ()
+  inplaces: () -> ()
+
+- op: scatter
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: scatter_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: scatter_nd_add
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: searchsorted
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: seed
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> (bool deterministic,bool force_cpu,str rng_name)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: segment_pool
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: self_dp_attention
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: selu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: send_v2
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sequence_mask
+  inputs: (Tensor MaxLenTensor) -> ()
+  attrs: (int max_len,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar(int) max_len)
+  outputs: ->
+  optional: (MaxLenTensor) -> ()
+  inplaces: () -> ()
+
+- op: set_value
+  inputs: (Tensor ValueTensor,Tensor[] StartsTensorList,Tensor[] EndsTensorList,Tensor[]
+    StepsTensorList) -> ()
+  attrs: (int dtype,int64_t[] ends,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int64_t[] starts,int64_t[] steps,bool with_quant_attr)
+    -> (IntArray ends,IntArray starts,IntArray steps)
+  outputs: ->
+  optional: (EndsTensorList, StartsTensorList, StepsTensorList, ValueTensor) -> ()
+  inplaces: () -> ()
+
+- op: set_value_
+  inputs: (Tensor ValueTensor,Tensor[] StartsTensorList,Tensor[] EndsTensorList,Tensor[]
+    StepsTensorList) -> ()
+  attrs: (int dtype,int64_t[] ends,str[] op_callstack,str op_device,str op_namescope,int
+    op_role,str[] op_role_var,int64_t[] starts,int64_t[] steps,bool with_quant_attr)
+    -> (IntArray ends,IntArray starts,IntArray steps)
+  outputs: ->
+  optional: (EndsTensorList, StartsTensorList, StepsTensorList, ValueTensor) -> ()
+  inplaces: () -> ()
+
+- op: sgd_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: shape
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: shard_index
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: share_data
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: shuffle_batch
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sigmoid
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sigmoid_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sigmoid_cross_entropy_with_logits
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sigmoid_cross_entropy_with_logits_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sign
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: silu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sin
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sin_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sinh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sinh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: numel
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: skip_layernorm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: slice
+  inputs: (Tensor StartsTensor,Tensor EndsTensor,Tensor[] StartsTensorList,Tensor[]
+    EndsTensorList) -> ()
+  attrs: (int[] axes,int[] decrease_axis,int[] ends,int[] infer_flags,str[] op_callstack,str
+    op_device,str op_namescope,int op_role,str[] op_role_var,int[] starts,bool with_quant_attr)
+    -> (int64_t[] axes,int64_t[] decrease_axis,IntArray ends,int64_t[] infer_flags,IntArray
+    starts)
+  outputs: ->
+  optional: (EndsTensor, EndsTensorList, StartsTensor, StartsTensorList) -> ()
+  inplaces: () -> ()
+
+- op: slogdet
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: soft_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: softmax
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: softmax_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: cross_entropy_with_softmax
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: softplus
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: softshrink
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: softsign
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: solve
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sparse_momentum
+  inputs: (Tensor axis) -> ()
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar axis)
+  outputs: ->
+  optional: (axis) -> ()
+  inplaces: () -> ()
+
+- op: spectral_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: split
+  inputs: (Tensor AxisTensor,Tensor[] SectionsTensorList) -> ()
+  attrs: (int axis,int num,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,int[] sections,bool with_quant_attr) -> (Scalar(int) axis,IntArray
+    sections)
+  outputs: ->
+  optional: (AxisTensor, SectionsTensorList) -> ()
+  inplaces: () -> ()
+
+- op: sqrt
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sqrt_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: square
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: squared_l2_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: squeeze
+  inputs: () -> ()
+  attrs: (int[] axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (IntArray axis)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: stack
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: stanh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: strided_slice
+  inputs: (Tensor StartsTensor,Tensor[] StartsTensorList,Tensor EndsTensor,Tensor[]
+    EndsTensorList,Tensor StridesTensor,Tensor[] StridesTensorList) -> ()
+  attrs: (int[] decrease_axis,int[] ends,int[] infer_flags,str[] op_callstack,str
+    op_device,str op_namescope,int op_role,str[] op_role_var,int[] starts,int[] strides,bool
+    with_quant_attr) -> (IntArray ends,IntArray starts,IntArray strides)
+  outputs: ->
+  optional: (EndsTensor, EndsTensorList, StartsTensor, StartsTensorList, StridesTensor,
+    StridesTensorList) -> ()
+  inplaces: () -> ()
+
+- op: add_n
+  inputs: (Tensor[] inputs) -> (Tensor inputs)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: svd
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: swish
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: take_along_axis
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tan
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tan_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tanh
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tanh_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tanh_shrink
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: temporal_shift
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tensor_unfold
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: thresholded_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: thresholded_relu_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tile
+  inputs: (Tensor RepeatTimes,Tensor[] repeat_times_tensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    repeat_times,bool with_quant_attr) -> (IntArray repeat_times)
+  outputs: ->
+  optional: (RepeatTimes, repeat_times_tensor) -> ()
+  inplaces: () -> ()
+
+- op: topk
+  inputs: (Tensor K) -> ()
+  attrs: (int k,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (Scalar(int) k)
+  outputs: ->
+  optional: (K) -> ()
+  inplaces: () -> ()
+
+- op: trace
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: transpose
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: Tensor(XShape)->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: triangular_solve
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: tril_indices
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: trilinear_interp
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: triu_indices
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: trunc
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: trunc_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: truncated_gaussian_random
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype,Place place)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unbind
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unfold
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: uniform
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int diag_num,int diag_step,float diag_val,int dtype,float max,float min,str[]
+    op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int64_t[]
+    shape,bool with_quant_attr) -> (DataType dtype,Scalar max,Scalar min,Place place,IntArray
+    shape)
+  outputs: ->
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: uniform_random_batch_size_like
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: uniform_inplace
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unique
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unique_consecutive
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unpool
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int[]
+    output_size,str unpooling_type,bool with_quant_attr) -> (IntArray output_size)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unpool3d
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: unsqueeze
+  inputs: (Tensor AxesTensor,Tensor[] AxesTensorList) -> ()
+  attrs: (int[] axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (IntArray axis)
+  outputs: ->
+  optional: (AxesTensor, AxesTensorList) -> ()
+  inplaces: () -> ()
+
+- op: unstack
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: update_loss_scaling_
+  inputs: (Tensor StopUpdate) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    stop_update,bool with_quant_attr) -> (Scalar stop_update)
+  outputs: ->
+  optional: (StopUpdate) -> ()
+  inplaces: () -> ()
+
+- op: view_dtype
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: view_shape
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: viterbi_decode
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: warpctc
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: warprnnt
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: weight_quantize
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: weighted_sample_neighbors
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: where
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: where_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: nonzero
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: yolo_box
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: yolo_loss
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_bias_residual_layernorm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: embedding_with_eltwise_add_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: flash_attn
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_dconv_drelu_dbn
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_scale_bias_add_relu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_dropout_add
+  inputs: (Tensor PTensor) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,float
+    p,bool with_quant_attr) -> (Scalar p)
+  outputs: ->
+  optional: (PTensor) -> ()
+  inplaces: () -> ()
+
+- op: max_pool2d_v2
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: add_act_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: standard_gamma
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_bias_act
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: dequantize_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv2d_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv2d_transpose_xpu
+  inputs: (Tensor OutputSizeTensor,Tensor[] OutputSizeTensorList) -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int64_t[]
+    output_size,bool with_quant_attr) -> (IntArray output_size)
+  outputs: ->
+  optional: (OutputSizeTensor, OutputSizeTensorList) -> ()
+  inplaces: () -> ()
+
+- op: squeeze_excitation_block
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_multi_transformer_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: memory_efficient_attention
+  inputs: (Tensor MaxSeqlenQTensor,Tensor MaxSeqlenKTensor) -> ()
+  attrs: (float max_seqlen_k,float max_seqlen_q,str[] op_callstack,str op_device,str
+    op_namescope,int op_role,str[] op_role_var,bool with_quant_attr) -> (Scalar max_seqlen_k,Scalar
+    max_seqlen_q)
+  outputs: ->
+  optional: (MaxSeqlenKTensor, MaxSeqlenQTensor) -> ()
+  inplaces: () -> ()
+
+- op: fused_conv2d_add_act
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_rotary_position_embedding
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: variable_length_memory_efficient_attention
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fast_where_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: multi_encoder_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: generate_sequence_xpu
+  inputs: () -> ()
+  attrs: (int dtype,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (DataType dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: top_p_sampling
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: lod_array_length
+  inputs: (Tensor|TensorArray? x) -> (Tensor[] x)
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: write_to_array
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: Tensor|TensorArray?(out)->Tensor[](out)
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_dot_product_attention
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: binomial
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: llm_int8_linear
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_scale_bias_relu_conv_bn
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: conv1d_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: flash_attn_unpadded
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_multi_transformer_int8_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: bn_act_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: add_layernorm_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: weight_only_linear
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: rms_norm
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fast_layernorm_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: layer_norm_act_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gammaln
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gammaln_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: print
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fc_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: fused_gemm_epilogue
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: (reserve_space) -> (out)
+  inplaces: () -> ()
+
+- op: array_to_tensor
+  inputs: (Tensor|TensorArray? x) -> (TensorArray x)
+  attrs: (int axis,str[] op_callstack,str op_device,str op_namescope,int op_role,str[]
+    op_role_var,bool with_quant_attr) -> (int32 axis)
+  outputs: Tensor|TensorArray?(out_index)->Tensor(out_index)
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: qkv_attention_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: quantize_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: weight_dequantize
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,int
+    out_dtype,bool with_quant_attr) -> (DataType out_dtype)
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: sine_pos_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gaussian_inplace
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: gaussian_inplace_
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: yolo_box_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+
+- op: addcmul_xpu
+  inputs: () -> ()
+  attrs: (str[] op_callstack,str op_device,str op_namescope,int op_role,str[] op_role_var,bool
+    with_quant_attr) -> ()
+  outputs: ->
+  optional: () -> ()
+  inplaces: () -> ()
+

@@ -1,0 +1,3734 @@
+- op: abs
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: abs_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: accuracy
+  inputs: (Tensor x, Tensor indices, Tensor label)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(accuracy), Tensor(correct), Tensor(total)
+
+- op: acos
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: acos_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: acosh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: acosh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: adadelta_
+  inputs: (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update,
+    Tensor learning_rate, Tensor master_param)
+  attrs: (float rho, float epsilon, bool multi_precision, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+
+- op: adagrad_
+  inputs: (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, Tensor
+    master_param)
+  attrs: (float epsilon, bool multi_precision, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+
+- op: adam_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor
+    moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update,
+    Tensor Beta1Tensor, Tensor Beta2Tensor, Tensor EpsilonTensor)
+  attrs: (float beta1, float beta2, float epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread,
+    bool multi_precision, bool use_global_beta_pow, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out),
+    Tensor(beta2_pow_out), Tensor(master_param_out)
+  optionals: master_param,skip_update,Beta1Tensor,Beta2Tensor,EpsilonTensor,master_param_out
+
+- op: adamax_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor
+    inf_norm, Tensor beta1_pow, Tensor master_param)
+  attrs: (float beta1, float beta2, float epsilon, bool multi_precision, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+
+- op: adamw_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor
+    moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update,
+    Tensor Beta1Tensor, Tensor Beta2Tensor, Tensor EpsilonTensor)
+  attrs: (float beta1, float beta2, float epsilon, float lr_ratio, float coeff, bool
+    with_decay, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision,
+    bool use_global_beta_pow, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out),
+    Tensor(beta2_pow_out), Tensor(master_param_out)
+  optionals: master_param,skip_update,Beta1Tensor,Beta2Tensor,EpsilonTensor,master_param_out
+
+- op: addmm
+  inputs: (Tensor input, Tensor x, Tensor y)
+  attrs: (float beta, float alpha, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: addmm_
+  inputs: (Tensor input, Tensor x, Tensor y)
+  attrs: (float beta, float alpha, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: affine_grid
+  inputs: (Tensor input, Tensor OutputShape)
+  attrs: (int[] output_shape, bool align_corners, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: OutputShape
+
+- op: allclose
+  inputs: (Tensor x, Tensor y, Tensor Rtol, Tensor Atol)
+  attrs: (str rtol, str atol, bool equal_nan, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Rtol,Atol
+
+- op: angle
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: argmax
+  inputs: (Tensor x)
+  attrs: (int64_t axis, bool keepdims, bool flatten, int dtype, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: argmin
+  inputs: (Tensor x)
+  attrs: (int64_t axis, bool keepdims, bool flatten, int dtype, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: argsort
+  inputs: (Tensor x)
+  attrs: (int axis, bool descending, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+
+- op: as_complex
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: as_real
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: as_strided
+  inputs: (Tensor input)
+  attrs: (int64_t[] dims, int64_t[] stride, int64_t offset, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: asin
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: asin_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: asinh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: asinh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: assign
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: x
+
+- op: assign_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: x
+
+- op: assign_value
+  inputs: (Tensor ValuesTensor)
+  attrs: (int[] shape, int dtype, Scalar[] values, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ValuesTensor
+
+- op: atan
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: atan2
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: atan_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: atanh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: atanh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: auc
+  inputs: (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight)
+  attrs: (str curve, int num_thresholds, int slide_steps, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
+  optionals: ins_tag_weight
+
+- op: batch_norm
+  inputs: (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, Tensor
+    MomentumTensor)
+  attrs: (bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats,
+    bool trainable_statistics, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+  optionals: scale,bias,MomentumTensor,reserve_space
+
+- op: bce_loss
+  inputs: (Tensor input, Tensor label)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bce_loss_
+  inputs: (Tensor input, Tensor label)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bernoulli
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bicubic_interp
+  inputs: (Tensor X, Tensor OutSize, Tensor[] SizeTensor, Tensor Scale)
+  attrs: (str data_layout, int out_d, int out_h, int out_w, float scale, str interp_method,
+    bool align_corners, int align_mode, bool use_mkldnn, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: OutSize,SizeTensor,Scale
+
+- op: bicubic_interp
+  inputs: (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor)
+  attrs: (str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method,
+    bool align_corners, int align_mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: out_size,size_tensor,scale_tensor
+
+- op: bilinear_interp
+  inputs: (Tensor X, Tensor OutSize, Tensor[] SizeTensor, Tensor Scale)
+  attrs: (str data_layout, int out_d, int out_h, int out_w, float scale, str interp_method,
+    bool align_corners, int align_mode, bool use_mkldnn, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: OutSize,SizeTensor,Scale
+
+- op: bilinear_interp
+  inputs: (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor)
+  attrs: (str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method,
+    bool align_corners, int align_mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: out_size,size_tensor,scale_tensor
+
+- op: bilinear
+  inputs: (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: bincount
+  inputs: (Tensor x, Tensor weights)
+  attrs: (int minlength, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: weights
+
+- op: bitwise_and
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_and_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_not
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_not_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_or
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_or_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_xor
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bitwise_xor_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: bmm
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: box_coder
+  inputs: (Tensor prior_box, Tensor prior_box_var, Tensor target_box)
+  attrs: (str code_type, bool box_normalized, int axis, float[] variance, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output_box)
+  optionals: prior_box_var
+
+- op: hardtanh
+  inputs: (Tensor x)
+  attrs: (float t_min, float t_max, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: broadcast_tensors
+  inputs: (Tensor[] input)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+
+- op: c_allgather
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, int nranks, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_max
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_max_
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_min
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_min_
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_prod
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_prod_
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_allreduce_sum
+  inputs: (Tensor x, Tensor Cond)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Cond
+
+- op: c_allreduce_sum_
+  inputs: (Tensor x, Tensor Cond)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Cond
+
+- op: c_broadcast
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root, bool use_calc_stream, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_concat
+  inputs: (Tensor x)
+  attrs: (int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_embedding
+  inputs: (Tensor weight, Tensor x)
+  attrs: (int64_t start_index, int64_t vocab_size, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_identity
+  inputs: (Tensor x)
+  attrs: (int ring_id, bool use_calc_stream, bool use_model_parallel, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_reduce_min
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root_id, bool use_calc_stream, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_reduce_sum
+  inputs: (Tensor x)
+  attrs: (int ring_id, int root_id, bool use_calc_stream, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_reducescatter
+  inputs: (Tensor x)
+  attrs: (int ring_id, int nranks, bool use_calc_stream, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_softmax_with_cross_entropy
+  inputs: (Tensor logits, Tensor label)
+  attrs: (int64_t ignore_index, int ring_id, int rank, int nranks, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(softmax), Tensor(loss)
+
+- op: c_sync_calc_stream
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: c_sync_comm_stream
+  inputs: (Tensor[] x)
+  attrs: (int ring_id, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+
+- op: cast
+  inputs: (Tensor x)
+  attrs: (int out_dtype, int in_dtype, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: ceil
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: ceil_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: celu
+  inputs: (Tensor x)
+  attrs: (float alpha, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: channel_shuffle
+  inputs: (Tensor x)
+  attrs: (int groups, str data_format, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: check_finite_and_unscale_
+  inputs: (Tensor[] x, Tensor scale)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor[](out), Tensor(found_infinite)
+
+- op: check_finite_and_unscale_
+  inputs: (Tensor[] x, Tensor scale)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor[](out), Tensor(found_infinite)
+
+- op: check_numerics
+  inputs: (Tensor tensor)
+  attrs: (str op_type, str var_name, int check_nan_inf_level, int stack_height_limit,
+    str output_dir, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(stats), Tensor(values)
+
+- op: cholesky
+  inputs: (Tensor x)
+  attrs: (bool upper, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cholesky_solve
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool upper, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: class_center_sample
+  inputs: (Tensor label)
+  attrs: (int num_classes, int num_samples, int ring_id, int rank, int nranks, bool
+    fix_seed, int seed, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(remapped_label), Tensor(sampled_local_class_center)
+
+- op: clip
+  inputs: (Tensor x, Tensor Min, Tensor Max)
+  attrs: (float min, float max, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Min,Max
+
+- op: clip_
+  inputs: (Tensor x, Tensor Min, Tensor Max)
+  attrs: (float min, float max, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Min,Max
+
+- op: clip_by_norm
+  inputs: (Tensor x)
+  attrs: (float max_norm, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: coalesce_tensor
+  inputs: (Tensor[] input)
+  attrs: (int dtype, bool copy_data, bool set_constant, bool persist_output, float
+    constant, bool use_align, int align_size, int size_of_dtype, int64_t[] concated_shapes,
+    int64_t[] concated_ranks, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](output), Tensor(fused_output)
+
+- op: complex
+  inputs: (Tensor real, Tensor imag)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: concat
+  inputs: (Tensor[] x, Tensor AxisTensor)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: AxisTensor
+
+- op: conj
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: conv2d
+  inputs: (Tensor input, Tensor filter)
+  attrs: (int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int
+    groups, str data_format, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: conv2d_transpose
+  inputs: (Tensor x, Tensor filter, Tensor bias)
+  attrs: (int[] strides, int[] paddings, int[] output_padding, int[] output_size,
+    str padding_algorithm, int groups, int[] dilations, str data_format, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: conv3d
+  inputs: (Tensor input, Tensor filter)
+  attrs: (int[] strides, int[] paddings, str padding_algorithm, int groups, int[]
+    dilations, str data_format, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: conv3d_transpose
+  inputs: (Tensor x, Tensor filter)
+  attrs: (int[] strides, int[] paddings, int[] output_padding, int[] output_size,
+    str padding_algorithm, int groups, int[] dilations, str data_format, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cos
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cos_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cosh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cosh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: crop
+  inputs: (Tensor X, Tensor Y, Tensor Offsets)
+  attrs: (int[] offsets, int[] shape, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: Y,Offsets
+
+- op: crop
+  inputs: (Tensor x, Tensor Shape, Tensor[] ShapeTensor, Tensor Offsets, Tensor[]
+    OffsetsTensor)
+  attrs: (int[] shape, int[] offsets, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Shape,ShapeTensor,Offsets,OffsetsTensor
+
+- op: cross
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cummax
+  inputs: (Tensor x)
+  attrs: (int axis, int dtype, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+
+- op: cummin
+  inputs: (Tensor x)
+  attrs: (int axis, int dtype, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+
+- op: cumprod
+  inputs: (Tensor x)
+  attrs: (int dim, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cumprod_
+  inputs: (Tensor x)
+  attrs: (int dim, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cumsum
+  inputs: (Tensor x)
+  attrs: (int axis, bool flatten, bool exclusive, bool reverse, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cumsum_
+  inputs: (Tensor x)
+  attrs: (int axis, bool flatten, bool exclusive, bool reverse, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: data
+  inputs: (Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (str name, int64_t[] shape, int dtype, int place, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShapeTensor,ShapeTensorList
+
+- op: decayed_adagrad
+  inputs: (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate)
+  attrs: (float decay, float epsilon, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment_out)
+
+- op: decode_jpeg
+  inputs: (Tensor x)
+  attrs: (str mode, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: deformable_conv
+  inputs: (Tensor x, Tensor offset, Tensor filter, Tensor mask)
+  attrs: (int[] strides, int[] paddings, int[] dilations, int deformable_groups, int
+    groups, int im2col_step, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: deformable_conv
+  inputs: (Tensor x, Tensor offset, Tensor filter)
+  attrs: (int[] strides, int[] paddings, int[] dilations, int groups, int deformable_groups,
+    int im2col_step, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: depthwise_conv2d
+  inputs: (Tensor input, Tensor filter)
+  attrs: (int[] strides, int[] paddings, str padding_algorithm, int groups, int[]
+    dilations, str data_format, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: depthwise_conv2d_transpose
+  inputs: (Tensor x, Tensor filter, Tensor bias)
+  attrs: (int[] strides, int[] paddings, int[] output_padding, int[] output_size,
+    str padding_algorithm, int groups, int[] dilations, str data_format, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: det
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: diag_embed
+  inputs: (Tensor input)
+  attrs: (int offset, int dim1, int dim2, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: diag
+  inputs: (Tensor x)
+  attrs: (int offset, float padding_value, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: diagonal
+  inputs: (Tensor x)
+  attrs: (int offset, int axis1, int axis2, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: digamma
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: digamma_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: dirichlet
+  inputs: (Tensor alpha)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: dist
+  inputs: (Tensor x, Tensor y)
+  attrs: (float p, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: distribute_fpn_proposals
+  inputs: (Tensor fpn_rois, Tensor rois_num)
+  attrs: (int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor[](multi_fpn_rois), Tensor(restore_index), Tensor[](multi_level_rois_num)
+  optionals: rois_num,multi_level_rois_num
+
+- op: distributed_lookup_table
+  inputs: (Tensor[] ids, Tensor w)
+  attrs: (int table_id, bool is_distributed, str lookup_table_version, int64_t padding_idx,
+    int dtype, bool is_test, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](outputs)
+
+- op: dot
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: dpsgd
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate)
+  attrs: (float clip, float batch_size, float sigma, int seed, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out)
+
+- op: dropout
+  inputs: (Tensor x, Tensor seed_tensor)
+  attrs: (float p, bool is_test, str mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mask)
+  optionals: seed_tensor
+
+- op: edit_distance
+  inputs: (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength)
+  attrs: (bool normalized, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(sequencenum), Tensor(out)
+  optionals: hypslength,refslength
+
+- op: eig
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out_w), Tensor(out_v)
+
+- op: eigh
+  inputs: (Tensor x)
+  attrs: (str UPLO, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out_w), Tensor(out_v)
+
+- op: eigvals
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: eigvalsh
+  inputs: (Tensor x)
+  attrs: (str uplo, bool is_test, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(eigenvalues), Tensor(eigenvectors)
+
+- op: einsum
+  inputs: (Tensor[] x)
+  attrs: (str equation, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor[](inner_cache), Tensor[](xshape)
+
+- op: add
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: divide
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: floor_divide
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fmax
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fmin
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: heaviside
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: maximum
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: minimum
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: remainder
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: multiply
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: elementwise_pow
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: subtract
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: elu
+  inputs: (Tensor x)
+  attrs: (float alpha, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: elu_
+  inputs: (Tensor x)
+  attrs: (float alpha, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: empty
+  inputs: (Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (int64_t[] shape, int dtype, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShapeTensor,ShapeTensorList
+
+- op: equal
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: equal_all
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: erf
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: erf_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: erfinv
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: erfinv_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: exp
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: exp_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: expand
+  inputs: (Tensor X, Tensor ExpandTimes, Tensor[] expand_times_tensor)
+  attrs: (int[] expand_times, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: ExpandTimes,expand_times_tensor
+
+- op: expand_as
+  inputs: (Tensor x, Tensor y)
+  attrs: (int[] target_shape, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: y
+
+- op: expand
+  inputs: (Tensor x, Tensor Shape, Tensor[] expand_shapes_tensor)
+  attrs: (int[] shape, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Shape,expand_shapes_tensor
+
+- op: expm1
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: expm1_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: exponential_
+  inputs: (Tensor x)
+  attrs: (float lam, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: exponential_
+  inputs: (Tensor x)
+  attrs: (float lam, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: eye
+  inputs: ()
+  attrs: (int64_t num_rows, int64_t num_columns, int dtype, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fc
+  inputs: (Tensor input, Tensor w, Tensor bias)
+  attrs: (int in_num_col_dims, str activation_type, bool padding_weights, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: feed
+  inputs: (Tensor X)
+  attrs: (int col, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fetch
+  inputs: (Tensor x)
+  attrs: (int col, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: fetch
+  inputs: (Tensor x)
+  attrs: (int col, bool deepcopy, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fft_c2c
+  inputs: (Tensor x)
+  attrs: (int64_t[] axes, str normalization, bool forward, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fft_c2r
+  inputs: (Tensor x)
+  attrs: (int64_t[] axes, str normalization, bool forward, int64_t last_dim_size,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fft_r2c
+  inputs: (Tensor x)
+  attrs: (int64_t[] axes, str normalization, bool forward, bool onesided, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fill
+  inputs: ()
+  attrs: (float[] value, int[] shape, int dtype, bool force_cpu, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: fill
+  inputs: (Tensor x)
+  attrs: (float value, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: full_like
+  inputs: (Tensor x)
+  attrs: (float value, int dtype, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: full
+  inputs: (Tensor ValueTensor, Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (int dtype, int64_t[] shape, float value, str str_value, bool force_cpu,
+    int place_type, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ValueTensor,ShapeTensor,ShapeTensorList
+
+- op: full_batch_size_like
+  inputs: (Tensor input)
+  attrs: (int[] shape, int input_dim_idx, int output_dim_idx, int dtype, float value,
+    str str_value, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fill_diagonal
+  inputs: (Tensor x)
+  attrs: (float value, int offset, bool wrap, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fill_diagonal_
+  inputs: (Tensor x)
+  attrs: (float value, int offset, bool wrap, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fill_diagonal_tensor
+  inputs: (Tensor x, Tensor y)
+  attrs: (int64_t offset, int dim1, int dim2, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fill_diagonal_tensor_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int64_t offset, int dim1, int dim2, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: flatten
+  inputs: (Tensor x)
+  attrs: (int start_axis, int stop_axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(xshape)
+
+- op: flip
+  inputs: (Tensor x)
+  attrs: (int[] axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: floor
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: floor_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fold
+  inputs: (Tensor x)
+  attrs: (int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[]
+    dilations, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: frame
+  inputs: (Tensor x)
+  attrs: (int frame_length, int hop_length, int axis, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: frobenius_norm
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: ftrl
+  inputs: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor
+    grad, Tensor learning_rate)
+  attrs: (float l1, float l2, float lr_power, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
+
+- op: full_int_array
+  inputs: ()
+  attrs: (int64_t[] value, int dtype, int place, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fused_attention
+  inputs: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias,
+    Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias,
+    Tensor ln_scale_2, Tensor ln_bias_2)
+  attrs: (int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon,
+    float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed,
+    str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int
+    dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual,
+    int ring_id, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(ln_mean), Tensor(ln_var), Tensor(ln_out), Tensor(qkv_out), Tensor(qkv_bias_out),
+    Tensor(transpose_out_2), Tensor(qk_out), Tensor(qktv_out), Tensor(softmax_out),
+    Tensor(attn_dropout_mask_out), Tensor(attn_dropout_out), Tensor(src_mask_out),
+    Tensor(fmha_out), Tensor(out_linear_out), Tensor(dropout_mask_out), Tensor(ln_mean_2),
+    Tensor(ln_var_2), Tensor(bias_dropout_residual_out), Tensor(cache_kv_out), Tensor(out)
+  optionals: ln_scale,ln_bias,qkv_bias,cache_kv,src_mask,out_linear_bias,ln_scale_2,ln_bias_2,cache_kv_out
+
+- op: fused_batch_norm_act
+  inputs: (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance)
+  attrs: (float momentum, float epsilon, str act_type, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+
+- op: fused_bias_dropout_residual_layer_norm
+  inputs: (Tensor x, Tensor residual, Tensor bias, Tensor ln_scale, Tensor ln_bias)
+  attrs: (float dropout_rate, bool is_test, bool dropout_fix_seed, int dropout_seed,
+    str dropout_implementation, float ln_epsilon, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(y), Tensor(bias_dropout_residual_out), Tensor(dropout_mask_out),
+    Tensor(ln_mean), Tensor(ln_variance)
+  optionals: bias,ln_scale,ln_bias
+
+- op: fused_bn_add_activation_
+  inputs: (Tensor x, Tensor z, Tensor scale, Tensor bias, Tensor mean, Tensor variance)
+  attrs: (float momentum, float epsilon, str act_type, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean),
+    Tensor(saved_variance), Tensor(reserve_space)
+
+- op: fused_elemwise_add_activation
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, float scale, bool save_intermediate_out, str[] functor_list, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(intermediate_out)
+
+- op: fused_embedding_eltwise_layernorm
+  inputs: (Tensor[] ids, Tensor[] embs, Tensor bias, Tensor scale)
+  attrs: (float epsilon, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fused_fc_elementwise_layernorm
+  inputs: (Tensor x, Tensor w, Tensor y, Tensor bias0, Tensor scale, Tensor bias1)
+  attrs: (int x_num_col_dims, str activation_type, float epsilon, int begin_norm_axis,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mean), Tensor(variance)
+  optionals: bias0,scale,bias1,mean,variance
+
+- op: fused_feedforward
+  inputs: (Tensor x, Tensor dropout1_seed_val, Tensor dropout2_seed_val, Tensor linear1_weight,
+    Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale,
+    Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias)
+  attrs: (bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method,
+    float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation,
+    bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val,
+    int dropout2_seed_val, bool add_residual, int ring_id, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(dropout1_mask), Tensor(dropout2_mask), Tensor(ln1_mean),
+    Tensor(ln1_variance), Tensor(ln2_mean), Tensor(ln2_variance), Tensor(linear1_out),
+    Tensor(ln1_out), Tensor(dropout1_out), Tensor(dropout2_out)
+  optionals: dropout1_seed_val,dropout2_seed_val,linear1_bias,linear2_bias,ln1_scale,ln1_bias,ln2_scale,ln2_bias
+
+- op: fused_softmax_mask
+  inputs: (Tensor X, Tensor Mask)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: fused_softmax_mask_upper_triangle
+  inputs: (Tensor X)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: fusion_gru
+  inputs: (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias)
+  attrs: (str activation, str gate_activation, bool is_reverse, bool use_seq, bool
+    origin_mode, bool use_mkldnn, str mkldnn_data_type, float scale_data, float shift_data,
+    float[] scale_weights, bool force_fp32_output, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out),
+    Tensor(hidden)
+  optionals: h0,bias
+
+- op: fusion_repeated_fc_relu
+  inputs: (Tensor x, Tensor[] w, Tensor[] bias)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor[](relu_out), Tensor(out)
+
+- op: fusion_seqconv_eltadd_relu
+  inputs: (Tensor x, Tensor filter, Tensor bias)
+  attrs: (int context_length, int context_start, int context_stride, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(col_mat)
+
+- op: fusion_seqexpand_concat_fc
+  inputs: (Tensor[] x, Tensor fc_weight, Tensor fc_bias)
+  attrs: (str fc_activation, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(fc_out)
+  optionals: fc_bias
+
+- op: fusion_squared_mat_sub
+  inputs: (Tensor x, Tensor y)
+  attrs: (float scalar, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(squared_x), Tensor(squared_y), Tensor(squared_xy), Tensor(out)
+
+- op: fusion_transpose_flatten_concat
+  inputs: (Tensor[] x)
+  attrs: (int[] trans_axis, int flatten_axis, int concat_axis, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gather
+  inputs: (Tensor x, Tensor index, Tensor Axis)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Axis
+
+- op: gather_nd
+  inputs: (Tensor x, Tensor index)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gather_tree
+  inputs: (Tensor ids, Tensor parents)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gaussian
+  inputs: (Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (int64_t[] shape, float mean, float std, int seed, int dtype, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShapeTensor,ShapeTensorList
+
+- op: gelu
+  inputs: (Tensor x)
+  attrs: (bool approximate, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: generate_proposals
+  inputs: (Tensor Scores, Tensor BboxDeltas, Tensor ImInfo, Tensor Anchors, Tensor
+    Variances)
+  attrs: (int pre_nms_topN, int post_nms_topN, float nms_thresh, float min_size, float
+    eta, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(RpnRois), Tensor(RpnRoiProbs), Tensor(RpnRoisNum)
+  optionals: RpnRoisNum
+
+- op: generate_proposals
+  inputs: (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor
+    variances)
+  attrs: (int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
+    float eta, bool pixel_offset, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(rpn_rois), Tensor(rpn_roi_probs), Tensor(rpn_rois_num)
+  optionals: rpn_rois_num
+
+- op: get_tensor_from_selected_rows
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: graph_khop_sampler
+  inputs: (Tensor row, Tensor eids, Tensor colptr, Tensor x)
+  attrs: (int[] sample_sizes, bool return_eids, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out_src), Tensor(out_dst), Tensor(sample_index), Tensor(reindex_x),
+    Tensor(out_eids)
+  optionals: eids
+
+- op: reindex_graph
+  inputs: (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor
+    hashtable_index)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(reindex_src), Tensor(reindex_dst), Tensor(out_nodes)
+  optionals: hashtable_value,hashtable_index
+
+- op: graph_sample_neighbors
+  inputs: (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer)
+  attrs: (int sample_size, bool return_eids, bool flag_perm_buffer, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_count), Tensor(out_eids)
+  optionals: eids,perm_buffer
+
+- op: send_u_recv
+  inputs: (Tensor x, Tensor src_index, Tensor dst_index, Tensor Out_size)
+  attrs: (str reduce_op, int64_t[] out_size, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(dst_count)
+  optionals: Out_size
+
+- op: send_ue_recv
+  inputs: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor Out_size)
+  attrs: (str message_op, str reduce_op, int64_t[] out_size, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(dst_count)
+  optionals: Out_size
+
+- op: send_uv
+  inputs: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index)
+  attrs: (str message_op, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: greater_equal
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: greater_than
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: grid_sample
+  inputs: (Tensor x, Tensor grid)
+  attrs: (str mode, str padding_mode, bool align_corners, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: group_norm
+  inputs: (Tensor x, Tensor scale, Tensor bias)
+  attrs: (float epsilon, int groups, str data_format, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(y), Tensor(mean), Tensor(variance)
+  optionals: scale,bias
+
+- op: gumbel_softmax
+  inputs: (Tensor x)
+  attrs: (float temperature, bool hard, int axis, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: hardshrink
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: hardsigmoid
+  inputs: (Tensor x)
+  attrs: (float slope, float offset, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: hardswish
+  inputs: (Tensor x)
+  attrs: (float threshold, float scale, float offset, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: hsigmoid_loss
+  inputs: (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias)
+  attrs: (int num_classes, int trainer_id, int64_t[] height_sections, str[] epmap,
+    str[] table_names, bool is_sparse, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(pre_out), Tensor(w_out)
+  optionals: path,code,bias
+
+- op: histogram
+  inputs: (Tensor input)
+  attrs: (int64_t bins, int min, int max, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: huber_loss
+  inputs: (Tensor input, Tensor label)
+  attrs: (float delta, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(residual)
+
+- op: i0
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: i0_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: i0e
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: i1
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: i1e
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: identity_loss
+  inputs: (Tensor x)
+  attrs: (int reduction, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: identity_loss_
+  inputs: (Tensor x)
+  attrs: (int reduction, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: imag
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: increment
+  inputs: (Tensor x)
+  attrs: (float step, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_add
+  inputs: (Tensor x, Tensor index, Tensor add_value)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_add_
+  inputs: (Tensor x, Tensor index, Tensor add_value)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_put
+  inputs: (Tensor x, Tensor[] indices, Tensor value)
+  attrs: (bool accumulate, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_put_
+  inputs: (Tensor x, Tensor[] indices, Tensor value)
+  attrs: (bool accumulate, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_sample
+  inputs: (Tensor x, Tensor index)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_select
+  inputs: (Tensor x, Tensor index)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: index_select_strided
+  inputs: (Tensor x)
+  attrs: (int64_t index, int axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: instance_norm
+  inputs: (Tensor x, Tensor scale, Tensor bias)
+  attrs: (float epsilon, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  optionals: scale,bias
+
+- op: inverse
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: is_empty
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: isclose
+  inputs: (Tensor x, Tensor y, Tensor Rtol, Tensor Atol)
+  attrs: (str rtol, str atol, bool equal_nan, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Rtol,Atol
+
+- op: isfinite
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: isinf
+  inputs: (Tensor X)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: isinf
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: isnan
+  inputs: (Tensor X)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: isnan
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: kldiv_loss
+  inputs: (Tensor x, Tensor label)
+  attrs: (str reduction, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: kron
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: kthvalue
+  inputs: (Tensor x)
+  attrs: (int k, int axis, bool keepdim, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+
+- op: label_smooth
+  inputs: (Tensor label, Tensor prior_dist)
+  attrs: (float epsilon, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: prior_dist
+
+- op: lamb_
+  inputs: (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor
+    moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update)
+  attrs: (float weight_decay, float beta1, float beta2, float epsilon, bool always_adapt,
+    bool multi_precision, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out),
+    Tensor(beta2_pow_out), Tensor(master_param_outs)
+  optionals: master_param,skip_update,beta1_pow_out,beta2_pow_out,master_param_outs
+
+- op: lars_momentum
+  inputs: (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate,
+    Tensor[] master_param)
+  attrs: (float mu, float lars_coeff, float[] lars_weight_decay, float epsilon, bool
+    multi_precision, float rescale_grad, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](param_out), Tensor[](velocity_out), Tensor[](master_param_out)
+  optionals: master_param,master_param_out
+
+- op: layer_norm
+  inputs: (Tensor x, Tensor scale, Tensor bias)
+  attrs: (float epsilon, int begin_norm_axis, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mean), Tensor(variance)
+  optionals: scale,bias
+
+- op: leaky_relu
+  inputs: (Tensor x)
+  attrs: (float negative_slope, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: leaky_relu_
+  inputs: (Tensor x)
+  attrs: (float negative_slope, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: lerp
+  inputs: (Tensor x, Tensor y, Tensor weight)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: lerp_
+  inputs: (Tensor x, Tensor y, Tensor weight)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: less_equal
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: less_than
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: lgamma
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: lgamma_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: linear_interp
+  inputs: (Tensor X, Tensor OutSize, Tensor[] SizeTensor, Tensor Scale)
+  attrs: (str data_layout, int out_d, int out_h, int out_w, float scale, str interp_method,
+    bool align_corners, int align_mode, bool use_mkldnn, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: OutSize,SizeTensor,Scale
+
+- op: linear_interp
+  inputs: (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor)
+  attrs: (str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method,
+    bool align_corners, int align_mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: out_size,size_tensor,scale_tensor
+
+- op: linspace
+  inputs: (Tensor start, Tensor stop, Tensor number)
+  attrs: (int dtype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: load_combine
+  inputs: ()
+  attrs: (bool load_as_fp16, str file_path, bool model_from_memory, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](Out)
+
+- op: log
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log10
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log10_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log1p
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log1p_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log2
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log2_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log_loss
+  inputs: (Tensor input, Tensor label)
+  attrs: (float epsilon, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: log_softmax
+  inputs: (Tensor x)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logcumsumexp
+  inputs: (Tensor x)
+  attrs: (int axis, bool flatten, bool exclusive, bool reverse, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_and
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_and_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_not
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_not_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_or
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_or_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_xor
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logical_xor_
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logit
+  inputs: (Tensor x)
+  attrs: (float eps, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logit_
+  inputs: (Tensor x)
+  attrs: (float eps, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logsigmoid
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logspace
+  inputs: (Tensor start, Tensor stop, Tensor num, Tensor base)
+  attrs: (int dtype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: logsumexp
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: embedding
+  inputs: (Tensor x, Tensor weight)
+  attrs: (int64_t padding_idx, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: lrn
+  inputs: (Tensor x)
+  attrs: (int n, float k, float alpha, float beta, str data_format, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mid_out)
+
+- op: lstsq
+  inputs: (Tensor x, Tensor y)
+  attrs: (float rcond, str driver, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  optionals: residuals
+
+- op: lu
+  inputs: (Tensor x)
+  attrs: (bool pivot, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(pivots), Tensor(infos)
+
+- op: lu_
+  inputs: (Tensor x)
+  attrs: (bool pivot, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(pivots), Tensor(infos)
+
+- op: lu_unpack
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool unpack_ludata, bool unpack_pivots, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(pmat), Tensor(l), Tensor(u)
+
+- op: margin_cross_entropy
+  inputs: (Tensor logits, Tensor label)
+  attrs: (bool return_softmax, int ring_id, int rank, int nranks, float margin1, float
+    margin2, float margin3, float scale, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(softmax), Tensor(loss)
+
+- op: masked_select
+  inputs: (Tensor x, Tensor mask)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: match_matrix_tensor
+  inputs: (Tensor x, Tensor y, Tensor w)
+  attrs: (int dim_t, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(tmp)
+
+- op: matmul
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool transpose_X, bool transpose_Y, float alpha, bool use_mkldnn, bool use_quantizer,
+    str mkldnn_data_type, float Scale_x, float Scale_y, float Scale_out, bool force_fp32_output,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: matmul
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool transpose_x, bool transpose_y, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: matrix_nms
+  inputs: (Tensor bboxes, Tensor scores)
+  attrs: (float score_threshold, int nms_top_k, int keep_top_k, float post_threshold,
+    bool use_gaussian, float gaussian_sigma, int background_label, bool normalized,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(index), Tensor(roisnum)
+  optionals: roisnum
+
+- op: matrix_power
+  inputs: (Tensor x)
+  attrs: (int n, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: matrix_rank
+  inputs: (Tensor x, Tensor atol_tensor)
+  attrs: (float tol, bool hermitian, bool use_default_tol, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: atol_tensor
+
+- op: max_pool2d_with_index
+  inputs: (Tensor x)
+  attrs: (int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool
+    adaptive, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mask)
+
+- op: max_pool3d_with_index
+  inputs: (Tensor x)
+  attrs: (int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool
+    adaptive, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(mask)
+
+- op: maxout
+  inputs: (Tensor x)
+  attrs: (int groups, int axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: mean_all
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: memcpy
+  inputs: (Tensor x)
+  attrs: (int dst_place_type, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: memcpy_d2h
+  inputs: (Tensor x)
+  attrs: (int dst_place_type, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: memcpy_h2d
+  inputs: (Tensor X)
+  attrs: (int dst_place_type, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: merge_selected_rows
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: merged_momentum_
+  inputs: (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate,
+    Tensor[] master_param)
+  attrs: (float mu, bool use_nesterov, str[] regularization_method, float[] regularization_coeff,
+    bool multi_precision, float rescale_grad, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](param_out), Tensor[](velocity_out), Tensor[](master_param_out)
+  optionals: master_param,master_param_out
+
+- op: meshgrid
+  inputs: (Tensor[] inputs)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+
+- op: mish
+  inputs: (Tensor x)
+  attrs: (float lambda, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: mode
+  inputs: (Tensor x)
+  attrs: (int axis, bool keepdim, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+
+- op: momentum_
+  inputs: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
+    master_param)
+  attrs: (float mu, bool use_nesterov, str regularization_method, float regularization_coeff,
+    bool multi_precision, float rescale_grad, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+
+- op: matmul_with_flatten
+  inputs: (Tensor x, Tensor y)
+  attrs: (int x_num_col_dims, int y_num_col_dims, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: multi_dot
+  inputs: (Tensor[] x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: multiclass_nms3
+  inputs: (Tensor bboxes, Tensor scores, Tensor rois_num)
+  attrs: (float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold,
+    bool normalized, float nms_eta, int background_label, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  optionals: rois_num,nms_rois_num
+
+- op: multihead_matmul
+  inputs: (Tensor input, Tensor w, Tensor bias, Tensor bias_qk)
+  attrs: (bool transpose_q, bool transpose_k, bool transpose_v, float alpha, int head_number,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias_qk
+
+- op: multinomial
+  inputs: (Tensor x)
+  attrs: (int num_samples, bool replacement, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: multiplex
+  inputs: (Tensor[] inputs, Tensor index)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: mv
+  inputs: (Tensor x, Tensor vec)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: nanmedian
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(medians)
+
+- op: nce
+  inputs: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight,
+    Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs)
+  attrs: (int num_total_classes, int num_neg_samples, int sampler, int seed, bool
+    is_sparse, bool remote_prefetch, bool is_test, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  optionals: bias,sample_weight,custom_dist_probs,custom_dist_alias,custom_dist_alias_probs
+
+- op: nearest_interp
+  inputs: (Tensor X, Tensor OutSize, Tensor[] SizeTensor, Tensor Scale)
+  attrs: (str data_layout, int out_d, int out_h, int out_w, float scale, str interp_method,
+    bool align_corners, int align_mode, bool use_mkldnn, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: OutSize,SizeTensor,Scale
+
+- op: nearest_interp
+  inputs: (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor)
+  attrs: (str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method,
+    bool align_corners, int align_mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: out_size,size_tensor,scale_tensor
+
+- op: nextafter
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: nll_loss
+  inputs: (Tensor input, Tensor label, Tensor weight)
+  attrs: (int64_t ignore_index, str reduction, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(total_weight)
+  optionals: weight
+
+- op: nms
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: norm
+  inputs: (Tensor x)
+  attrs: (int axis, float epsilon, bool is_test, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(norm)
+
+- op: not_equal
+  inputs: (Tensor x, Tensor y)
+  attrs: (int axis, bool force_cpu, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: npu_identity
+  inputs: (Tensor x)
+  attrs: (int format, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: number_count
+  inputs: (Tensor numbers)
+  attrs: (int upper_range, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: one_hot
+  inputs: (Tensor x, Tensor depth_tensor)
+  attrs: (int depth, int dtype, bool allow_out_of_range, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: depth_tensor
+
+- op: overlap_add
+  inputs: (Tensor x)
+  attrs: (int hop_length, int axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: p_norm
+  inputs: (Tensor x)
+  attrs: (float porder, int axis, float epsilon, bool keepdim, bool asvector, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pad
+  inputs: (Tensor x)
+  attrs: (int[] paddings, float pad_value, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pad3d
+  inputs: (Tensor x, Tensor Paddings)
+  attrs: (int[] paddings, str mode, float pad_value, str data_format, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: Paddings
+
+- op: partial_send
+  inputs: (Tensor x)
+  attrs: (int ring_id, int peer, bool use_calc_stream, int num, int id, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: ''
+
+- op: pixel_shuffle
+  inputs: (Tensor x)
+  attrs: (int upscale_factor, str data_format, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pixel_unshuffle
+  inputs: (Tensor x)
+  attrs: (int downscale_factor, str data_format, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: poisson
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: polygamma
+  inputs: (Tensor x)
+  attrs: (int n, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: polygamma_
+  inputs: (Tensor x)
+  attrs: (int n, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pool2d
+  inputs: (Tensor x)
+  attrs: (int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive,
+    str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm,
+    bool use_cudnn, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pool3d
+  inputs: (Tensor x)
+  attrs: (int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive,
+    str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm,
+    bool use_cudnn, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: pow
+  inputs: (Tensor x, Tensor FactorTensor)
+  attrs: (float y, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: FactorTensor
+
+- op: pow_
+  inputs: (Tensor x, Tensor FactorTensor)
+  attrs: (float y, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: FactorTensor
+
+- op: prelu
+  inputs: (Tensor x, Tensor alpha)
+  attrs: (str data_format, str mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: prior_box
+  inputs: (Tensor input, Tensor image)
+  attrs: (float[] min_sizes, float[] max_sizes, float[] aspect_ratios, float[] variances,
+    bool flip, bool clip, float step_w, float step_h, float offset, bool min_max_aspect_ratios_order,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(var)
+
+- op: psroi_pool
+  inputs: (Tensor x, Tensor boxes, Tensor boxes_num)
+  attrs: (int pooled_height, int pooled_width, int output_channels, float spatial_scale,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: boxes_num
+
+- op: put_along_axis
+  inputs: (Tensor arr, Tensor indices, Tensor values)
+  attrs: (int axis, str reduce, bool include_self, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: put_along_axis_
+  inputs: (Tensor arr, Tensor indices, Tensor values)
+  attrs: (int axis, str reduce, bool include_self, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: qr
+  inputs: (Tensor x)
+  attrs: (str mode, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(q), Tensor(r)
+
+- op: randint
+  inputs: (Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (int low, int high, int64_t[] shape, int dtype, int seed, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShapeTensor,ShapeTensorList
+
+- op: randperm
+  inputs: ()
+  attrs: (int n, int dtype, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: arange
+  inputs: (Tensor start, Tensor end, Tensor step)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: read_file
+  inputs: ()
+  attrs: (str filename, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: real
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: reciprocal
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: reciprocal_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: recv_v2
+  inputs: ()
+  attrs: (int ring_id, int peer, int dtype, int[] out_shape, bool use_calc_stream,
+    bool dynamic_shape, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: all
+  inputs: (Tensor x, Tensor AxisTensor, Tensor[] AxisTensorList)
+  attrs: (int64_t[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: AxisTensor,AxisTensorList
+
+- op: amax
+  inputs: (Tensor x, Tensor AxisTensor, Tensor[] AxisTensorList)
+  attrs: (int64_t[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: AxisTensor,AxisTensorList
+
+- op: amin
+  inputs: (Tensor x, Tensor AxisTensor, Tensor[] AxisTensorList)
+  attrs: (int64_t[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: AxisTensor,AxisTensorList
+
+- op: any
+  inputs: (Tensor x, Tensor AxisTensor, Tensor[] AxisTensorList)
+  attrs: (int64_t[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: AxisTensor,AxisTensorList
+
+- op: max
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: mean
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: min
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: prod
+  inputs: (Tensor x)
+  attrs: (int[] dims, bool keep_dim, bool reduce_all, int in_dtype, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sum
+  inputs: (Tensor x)
+  attrs: (int[] axis, bool keepdim, bool reduce_all, int in_dtype, int dtype, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: relu
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: relu6
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: relu_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: renorm
+  inputs: (Tensor x)
+  attrs: (float p, int axis, float max_norm, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: renorm_
+  inputs: (Tensor x)
+  attrs: (float p, int axis, float max_norm, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: repeat_interleave
+  inputs: (Tensor x, Tensor RepeatsTensor)
+  attrs: (int repeats, int axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: RepeatsTensor
+
+- op: reshape
+  inputs: (Tensor X, Tensor Shape, Tensor[] ShapeTensor)
+  attrs: (int[] shape, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: Shape,ShapeTensor
+
+- op: reshape
+  inputs: (Tensor x, Tensor Shape, Tensor[] ShapeTensor)
+  attrs: (int[] shape, bool use_quantizer, str mkldnn_data_type, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(xshape)
+  optionals: Shape,ShapeTensor
+
+- op: reshape_
+  inputs: (Tensor X, Tensor Shape, Tensor[] ShapeTensor)
+  attrs: (int[] shape, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: Shape,ShapeTensor
+
+- op: reverse
+  inputs: (Tensor x)
+  attrs: (int[] axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: rmsprop_
+  inputs: (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate,
+    Tensor mean_grad, Tensor master_param)
+  attrs: (float epsilon, float decay, float momentum, bool centered, bool multi_precision,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out),
+    Tensor(master_param_outs)
+  optionals: mean_grad,master_param,master_param_outs
+
+- op: rnn
+  inputs: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length)
+  attrs: (float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int
+    num_layers, str mode, int seed, bool is_test, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
+  optionals: sequence_length,dropout_state_out
+
+- op: roi_align
+  inputs: (Tensor x, Tensor boxes, Tensor boxes_num)
+  attrs: (int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio,
+    bool aligned, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: boxes_num
+
+- op: roi_pool
+  inputs: (Tensor x, Tensor boxes, Tensor boxes_num)
+  attrs: (int pooled_height, int pooled_width, float spatial_scale, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(arg_max)
+  optionals: boxes_num
+
+- op: roll
+  inputs: (Tensor x, Tensor ShiftsTensor)
+  attrs: (int64_t[] shifts, int64_t[] axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShiftsTensor
+
+- op: round
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: round_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: row_conv
+  inputs: (Tensor x, Tensor filter)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: rrelu
+  inputs: (Tensor x)
+  attrs: (bool is_test, float lower, float upper, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(noise)
+
+- op: rsqrt
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: rsqrt_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: save_combine
+  inputs: (Tensor[] x)
+  attrs: (bool overwrite, bool save_as_fp16, str file_path, bool save_to_memory, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(Y)
+  optionals: Y
+
+- op: scale
+  inputs: (Tensor x, Tensor ScaleTensor)
+  attrs: (float scale, float bias, bool bias_after_scale, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ScaleTensor
+
+- op: scale_
+  inputs: (Tensor x, Tensor ScaleTensor)
+  attrs: (float scale, float bias, bool bias_after_scale, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ScaleTensor
+
+- op: scatter
+  inputs: (Tensor x, Tensor index, Tensor updates)
+  attrs: (bool overwrite, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: scatter_
+  inputs: (Tensor x, Tensor index, Tensor updates)
+  attrs: (bool overwrite, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: scatter_nd_add
+  inputs: (Tensor x, Tensor index, Tensor updates)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: searchsorted
+  inputs: (Tensor sorted_sequence, Tensor values)
+  attrs: (bool out_int32, bool right, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: seed
+  inputs: ()
+  attrs: (int seed, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: segment_pool
+  inputs: (Tensor x, Tensor segment_ids)
+  attrs: (str pooltype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(summed_ids)
+
+- op: self_dp_attention
+  inputs: (Tensor x)
+  attrs: (float alpha, int head_number, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: selu
+  inputs: (Tensor x)
+  attrs: (float scale, float alpha, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: send_v2
+  inputs: (Tensor x)
+  attrs: (int ring_id, int peer, bool use_calc_stream, bool dynamic_shape, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: ''
+
+- op: sequence_mask
+  inputs: (Tensor x, Tensor MaxLenTensor)
+  attrs: (int max_len, int out_dtype, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(y)
+  optionals: MaxLenTensor
+
+- op: set_value
+  inputs: (Tensor x, Tensor ValueTensor, Tensor[] StartsTensorList, Tensor[] EndsTensorList,
+    Tensor[] StepsTensorList)
+  attrs: (int dtype, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] steps,
+    int64_t[] decrease_axes, int64_t[] none_axes, Scalar[] values, int64_t[] shape,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ValueTensor,StartsTensorList,EndsTensorList,StepsTensorList
+
+- op: set_value_
+  inputs: (Tensor x, Tensor ValueTensor, Tensor[] StartsTensorList, Tensor[] EndsTensorList,
+    Tensor[] StepsTensorList)
+  attrs: (int dtype, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] steps,
+    int64_t[] decrease_axes, int64_t[] none_axes, Scalar[] values, int64_t[] shape,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ValueTensor,StartsTensorList,EndsTensorList,StepsTensorList
+
+- op: sgd_
+  inputs: (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param)
+  attrs: (bool multi_precision, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(master_param_out)
+  optionals: master_param,master_param_out
+
+- op: shape
+  inputs: (Tensor input)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: shard_index
+  inputs: (Tensor input)
+  attrs: (int index_num, int nshards, int shard_id, int ignore_value, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: share_data
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: shuffle_batch
+  inputs: (Tensor x, Tensor seed)
+  attrs: (int startup_seed, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+
+- op: sigmoid
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sigmoid_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sigmoid_cross_entropy_with_logits
+  inputs: (Tensor x, Tensor label, Tensor pos_weight)
+  attrs: (bool normalize, int ignore_index, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: pos_weight
+
+- op: sigmoid_cross_entropy_with_logits_
+  inputs: (Tensor x, Tensor label, Tensor pos_weight)
+  attrs: (bool normalize, int ignore_index, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: pos_weight
+
+- op: sign
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: silu
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sin
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sin_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sinh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sinh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: numel
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(size)
+
+- op: skip_layernorm
+  inputs: (Tensor x, Tensor y, Tensor scale, Tensor bias)
+  attrs: (float epsilon, int begin_norm_axis, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: slice
+  inputs: (Tensor input, Tensor StartsTensor, Tensor EndsTensor, Tensor[] StartsTensorList,
+    Tensor[] EndsTensorList)
+  attrs: (int[] axes, int[] starts, int[] ends, int[] infer_flags, int[] decrease_axis,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: StartsTensor,EndsTensor,StartsTensorList,EndsTensorList
+
+- op: slogdet
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: soft_relu
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: softmax
+  inputs: (Tensor x)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: softmax_
+  inputs: (Tensor x)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: cross_entropy_with_softmax
+  inputs: (Tensor input, Tensor label)
+  attrs: (bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index,
+    int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(softmax), Tensor(loss)
+
+- op: softplus
+  inputs: (Tensor x)
+  attrs: (float beta, float threshold, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: softshrink
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: softsign
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: solve
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sparse_momentum
+  inputs: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor axis,
+    Tensor learning_rate, Tensor master_param)
+  attrs: (float mu, bool use_nesterov, str regularization_method, float regularization_coeff,
+    bool multi_precision, float rescale_grad, int axis, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  optionals: axis,master_param,master_param_out
+
+- op: spectral_norm
+  inputs: (Tensor weight, Tensor u, Tensor v)
+  attrs: (int dim, int power_iters, float eps, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: split
+  inputs: (Tensor x, Tensor AxisTensor, Tensor[] SectionsTensorList)
+  attrs: (int[] sections, int num, int axis, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+  optionals: AxisTensor,SectionsTensorList
+
+- op: sqrt
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sqrt_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: square
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: squared_l2_norm
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: squeeze
+  inputs: (Tensor x)
+  attrs: (int[] axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(xshape)
+
+- op: stack
+  inputs: (Tensor[] x)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: stanh
+  inputs: (Tensor x)
+  attrs: (float scale_a, float scale_b, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: strided_slice
+  inputs: (Tensor x, Tensor StartsTensor, Tensor[] StartsTensorList, Tensor EndsTensor,
+    Tensor[] EndsTensorList, Tensor StridesTensor, Tensor[] StridesTensorList)
+  attrs: (int[] axes, int[] starts, int[] ends, int[] strides, int[] infer_flags,
+    int[] decrease_axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: StartsTensor,StartsTensorList,EndsTensor,EndsTensorList,StridesTensor,StridesTensorList
+
+- op: add_n
+  inputs: (Tensor[] inputs)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: svd
+  inputs: (Tensor x)
+  attrs: (bool full_matrices, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(u), Tensor(s), Tensor(vh)
+
+- op: swish
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: take_along_axis
+  inputs: (Tensor arr, Tensor indices)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tan
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tan_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tanh
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tanh_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tanh_shrink
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tdm_sampler
+  inputs: (Tensor x, Tensor travel, Tensor layer)
+  attrs: (bool output_positive, int[] neg_samples_num_list, int[] layer_offset_lod,
+    int seed, int dtype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(labels), Tensor(mask)
+  optionals: labels
+
+- op: temporal_shift
+  inputs: (Tensor x)
+  attrs: (int seg_num, float shift_ratio, str data_format, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tensor_unfold
+  inputs: (Tensor input)
+  attrs: (int64_t axis, int64_t size, int64_t step, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: thresholded_relu
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: thresholded_relu_
+  inputs: (Tensor x)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tile
+  inputs: (Tensor x, Tensor RepeatTimes, Tensor[] repeat_times_tensor)
+  attrs: (int[] repeat_times, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: RepeatTimes,repeat_times_tensor
+
+- op: topk
+  inputs: (Tensor x, Tensor K)
+  attrs: (int k, int axis, bool largest, bool sorted, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices)
+  optionals: K
+
+- op: trace
+  inputs: (Tensor x)
+  attrs: (int offset, int axis1, int axis2, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: transpose
+  inputs: (Tensor X)
+  attrs: (int[] axis, bool use_mkldnn, str data_format, str mkldnn_data_type, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(Out)
+
+- op: transpose
+  inputs: (Tensor x)
+  attrs: (int[] perm, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(XShape)
+
+- op: triangular_solve
+  inputs: (Tensor x, Tensor y)
+  attrs: (bool upper, bool transpose, bool unitriangular, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: tril_indices
+  inputs: ()
+  attrs: (int rows, int cols, int offset, int dtype, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: trilinear_interp
+  inputs: (Tensor X, Tensor OutSize, Tensor[] SizeTensor, Tensor Scale)
+  attrs: (str data_layout, int out_d, int out_h, int out_w, float scale, str interp_method,
+    bool align_corners, int align_mode, bool use_mkldnn, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(Out)
+  optionals: OutSize,SizeTensor,Scale
+
+- op: trilinear_interp
+  inputs: (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor)
+  attrs: (str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method,
+    bool align_corners, int align_mode, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output)
+  optionals: out_size,size_tensor,scale_tensor
+
+- op: triu_indices
+  inputs: ()
+  attrs: (int row, int col, int offset, int dtype, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: trunc
+  inputs: (Tensor input)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: trunc_
+  inputs: (Tensor input)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: truncated_gaussian_random
+  inputs: ()
+  attrs: (int[] shape, float mean, float std, int seed, int dtype, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: unbind
+  inputs: (Tensor input)
+  attrs: (int axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+
+- op: unfold
+  inputs: (Tensor x)
+  attrs: (int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: uniform
+  inputs: (Tensor ShapeTensor, Tensor[] ShapeTensorList)
+  attrs: (int64_t[] shape, int dtype, float min, float max, int seed, int diag_num,
+    int diag_step, float diag_val, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: ShapeTensor,ShapeTensorList
+
+- op: uniform_random_batch_size_like
+  inputs: (Tensor input)
+  attrs: (int[] shape, int input_dim_idx, int output_dim_idx, float min, float max,
+    int seed, int diag_num, int diag_step, float diag_val, int dtype, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: uniform_inplace
+  inputs: (Tensor x)
+  attrs: (float min, float max, int seed, int diag_num, int diag_step, float diag_val,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: unique
+  inputs: (Tensor x)
+  attrs: (bool return_index, bool return_inverse, bool return_counts, int[] axis,
+    int dtype, bool is_sorted, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  optionals: indices,counts
+
+- op: unique_consecutive
+  inputs: (Tensor x)
+  attrs: (bool return_inverse, bool return_counts, int[] axis, int dtype, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(index), Tensor(counts)
+  optionals: index,counts
+
+- op: unpool
+  inputs: (Tensor x, Tensor indices)
+  attrs: (int[] ksize, str unpooling_type, int[] strides, int[] padding, int[] output_size,
+    str data_format, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: unpool3d
+  inputs: (Tensor x, Tensor indices)
+  attrs: (int[] ksize, int[] strides, int[] paddings, int[] output_size, str data_format,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: unsqueeze
+  inputs: (Tensor x, Tensor AxesTensor, Tensor[] AxesTensorList)
+  attrs: (int[] axis, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(xshape)
+  optionals: AxesTensor,AxesTensorList
+
+- op: unstack
+  inputs: (Tensor x)
+  attrs: (int axis, int num, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](out)
+
+- op: update_loss_scaling_
+  inputs: (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps,
+    Tensor in_bad_steps, Tensor StopUpdate)
+  attrs: (int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float
+    decr_ratio, bool stop_update, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor[](out), Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  optionals: StopUpdate
+
+- op: view_dtype
+  inputs: (Tensor input)
+  attrs: (int dtype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: view_shape
+  inputs: (Tensor input)
+  attrs: (int64_t[] dims, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: viterbi_decode
+  inputs: (Tensor potentials, Tensor transition_params, Tensor lengths)
+  attrs: (bool include_bos_eos_tag, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(scores), Tensor(path)
+
+- op: warpctc
+  inputs: (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length)
+  attrs: (int blank, bool norm_by_times, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(loss), Tensor(warpctcgrad)
+  optionals: logits_length,labels_length
+
+- op: warprnnt
+  inputs: (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths)
+  attrs: (int blank, float fastemit_lambda, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(loss), Tensor(warprnntgrad)
+
+- op: weight_quantize
+  inputs: (Tensor x)
+  attrs: (str algo, int arch, int group_size, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(scale)
+
+- op: weighted_sample_neighbors
+  inputs: (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor
+    eids)
+  attrs: (int sample_size, bool return_eids, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  optionals: eids
+
+- op: where
+  inputs: (Tensor condition, Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: where_
+  inputs: (Tensor condition, Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: nonzero
+  inputs: (Tensor condition)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: yolo_box
+  inputs: (Tensor x, Tensor img_size)
+  attrs: (int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool
+    clip_bbox, float scale_x_y, bool iou_aware, float iou_aware_factor, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(boxes), Tensor(scores)
+
+- op: yolo_loss
+  inputs: (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score)
+  attrs: (int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int
+    downsample_ratio, bool use_label_smooth, float scale_x_y, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  optionals: gt_score
+
+- op: fused_bias_residual_layernorm
+  inputs: (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias)
+  attrs: (float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale,
+    int quant_round_type, float quant_max_bound, float quant_min_bound, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  optionals: bias,residual,norm_weight,norm_bias,residual_out
+
+- op: embedding_with_eltwise_add_xpu
+  inputs: (Tensor[] ids, Tensor[] tables, Tensor mask)
+  attrs: (int64_t padding_idx, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
+  optionals: mask,seq_lod,max_seq_len
+
+- op: flash_attn
+  inputs: (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask)
+  attrs: (float dropout, bool causal, bool return_softmax, bool is_test, str rng_name,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optionals: fixed_seed_offset,attn_mask
+
+- op: fused_dconv_drelu_dbn
+  inputs: (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input,
+    Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor
+    bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean,
+    Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input)
+  attrs: (int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int
+    groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool
+    exhaustive_search, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(grad_weight), Tensor(grad_bn1_input), Tensor(grad_bn1_gamma), Tensor(grad_bn1_beta),
+    Tensor(grad_bn2_input), Tensor(grad_bn2_gamma), Tensor(grad_bn2_beta)
+  optionals: grad_output_add,residual_input,bn1_eqscale,bn1_eqbias,conv_input,bn2_mean,bn2_inv_std,bn2_gamma,bn2_beta,bn2_input,grad_bn2_input,grad_bn2_gamma,grad_bn2_beta
+
+- op: fused_scale_bias_add_relu
+  inputs: (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor
+    bias2)
+  attrs: (bool fuse_dual, bool exhaustive_search, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: scale2,bias2
+
+- op: fused_dropout_add
+  inputs: (Tensor x, Tensor y, Tensor seed_tensor, Tensor PTensor)
+  attrs: (float p, bool is_test, str mode, int seed, bool fix_seed, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(seed_offset)
+  optionals: seed_tensor,PTensor
+
+- op: max_pool2d_v2
+  inputs: (Tensor x)
+  attrs: (int[] kernel_size, int[] strides, int[] paddings, str data_format, bool
+    global_pooling, bool adaptive, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(saved_idx)
+
+- op: add_act_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor y, Tensor y_max)
+  attrs: (int act_type, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max,y_max
+
+- op: standard_gamma
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fused_bias_act
+  inputs: (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth)
+  attrs: (str act_method, str compute_dtype, float quant_scale, int quant_round_type,
+    float quant_max_bound, float quant_min_bound, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias,dequant_scales,shift,smooth
+
+- op: dequantize_xpu
+  inputs: (Tensor x)
+  attrs: (int out_dtype, float scale, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(y)
+
+- op: conv2d_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias,
+    Tensor branch, Tensor branch_max, Tensor scale_max, Tensor out_max_in)
+  attrs: (int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int
+    groups, int act_type, float act_param, int out_dtype, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max,bias,branch,branch_max,scale_max,out_max_in
+
+- op: conv2d_transpose_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias,
+    Tensor OutputSizeTensor, Tensor[] OutputSizeTensorList)
+  attrs: (int[] strides, int[] paddings, int[] output_padding, int64_t[] output_size,
+    str padding_algorithm, int groups, int[] dilations, str data_format, bool has_bias,
+    bool with_act, str act_type, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max,bias,OutputSizeTensor,OutputSizeTensorList
+
+- op: squeeze_excitation_block
+  inputs: (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch)
+  attrs: (int[] act_type, float[] act_param, int[] filter_dims, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias,branch
+
+- op: fused_multi_transformer_xpu
+  inputs: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[]
+    qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax,
+    Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[]
+    ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight,
+    Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches,
+    Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask,
+    Tensor gather_index, Tensor max_buffer)
+  attrs: (bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate,
+    bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int
+    ring_id, int gather_axis, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor[](cache_kv_out)
+  optionals: cache_kv,pre_caches,rotary_pos_emb,time_step,seq_lengths,src_mask,gather_index
+
+- op: memory_efficient_attention
+  inputs: (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q,
+    Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Tensor MaxSeqlenQTensor,
+    Tensor MaxSeqlenKTensor)
+  attrs: (float max_seqlen_q, float max_seqlen_k, bool causal, double dropout_p, float
+    scale, bool is_test, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(output), Tensor(logsumexp), Tensor(seed_and_offset)
+  optionals: bias,cu_seqlens_q,cu_seqlens_k,causal_diagonal,seqlen_k,MaxSeqlenQTensor,MaxSeqlenKTensor
+
+- op: fused_conv2d_add_act
+  inputs: (Tensor input, Tensor filter, Tensor bias, Tensor residual_data)
+  attrs: (int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int
+    groups, str data_format, str activation, int[] split_channels, bool exhaustive_search,
+    int workspace_size_MB, float fuse_alpha, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(output), Tensor[](outputs)
+  optionals: bias,residual_data,outputs
+
+- op: fused_rotary_position_embedding
+  inputs: (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids)
+  attrs: (bool use_neox_rotary_style, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  optionals: k,v,sin,cos,position_ids,out_k,out_v
+
+- op: variable_length_memory_efficient_attention
+  inputs: (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens,
+    Tensor mask)
+  attrs: (float scale, bool causal, int pre_cache_length, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: mask
+
+- op: fast_where_xpu
+  inputs: (Tensor condition, Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: multi_encoder_xpu
+  inputs: (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias,
+    Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, Tensor seq_lod, Tensor max_seq_len)
+  attrs: (int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head,
+    int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx, int
+    op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
+  optionals: mask,seq_lod,max_seq_len,x_fp16,out_fp16
+
+- op: generate_sequence_xpu
+  inputs: (Tensor x)
+  attrs: (int dtype, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: top_p_sampling
+  inputs: (Tensor x, Tensor ps, Tensor threshold)
+  attrs: (int seed, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(ids)
+  optionals: threshold
+
+- op: lod_array_length
+  inputs: (Tensor|TensorArray? x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: write_to_array
+  inputs: (Tensor x, Tensor i)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor|TensorArray?(out)
+
+- op: fused_dot_product_attention
+  inputs: (Tensor q, Tensor k, Tensor v, Tensor mask)
+  attrs: (float scaling_factor, float dropout_probability, bool is_training, bool
+    is_causal_masking, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(softmax_out), Tensor(rng_state)
+
+- op: binomial
+  inputs: (Tensor count, Tensor prob)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: llm_int8_linear
+  inputs: (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale)
+  attrs: (float threshold, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: fused_scale_bias_relu_conv_bn
+  inputs: (Tensor x, Tensor w, Tensor scale, Tensor bias, Tensor bn_scale, Tensor
+    bn_bias, Tensor input_running_mean, Tensor input_running_var)
+  attrs: (int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int
+    groups, str data_format, float momentum, float epsilon, bool fuse_prologue, bool
+    exhaustive_search, int64_t accumulation_count, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_running_mean), Tensor(out_running_var), Tensor(saved_mean),
+    Tensor(saved_var), Tensor(eq_scale), Tensor(eq_bias)
+  optionals: scale,bias
+
+- op: conv1d_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias,
+    Tensor branch, Tensor branch_max)
+  attrs: (int[] paddings, str padding_algorithm, int dilations, int strides, int groups,
+    int act_type, float act_param, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max,bias,branch,branch_max
+
+- op: flash_attn_unpadded
+  inputs: (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k,
+    Tensor fixed_seed_offset, Tensor attn_mask)
+  attrs: (int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout,
+    bool causal, bool return_softmax, bool is_test, str rng_name, int op_role, str[]
+    op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optionals: fixed_seed_offset,attn_mask
+
+- op: fused_multi_transformer_int8_xpu
+  inputs: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_in_max, Tensor[]
+    qkvw, Tensor[] qkv_bias, Tensor[] qkv_scales, Tensor[] out_linear_in_max, Tensor[]
+    out_linear_w, Tensor[] out_linear_bias, Tensor[] out_linear_scales, Tensor[] ffn_ln_scale,
+    Tensor[] ffn_ln_bias, Tensor[] ffn1_in_max, Tensor[] ffn1_weight, Tensor[] ffn1_bias,
+    Tensor[] ffn1_scales, Tensor[] ffn2_in_max, Tensor[] ffn2_weight, Tensor[] ffn2_bias,
+    Tensor[] ffn2_scales, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb,
+    Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor
+    max_buffer)
+  attrs: (bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate,
+    bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int
+    ring_id, int gather_axis, int op_role, str[] op_role_var, str op_namescope, str[]
+    op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor[](cache_kv_out)
+  optionals: cache_kv,pre_caches,rotary_pos_emb,time_step,seq_lengths,src_mask,gather_index
+
+- op: bn_act_xpu
+  inputs: (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias)
+  attrs: (float momentum, float epsilon, str data_format, int act_type, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: add_layernorm_xpu
+  inputs: (Tensor x, Tensor y, Tensor scale, Tensor bias)
+  attrs: (int begin_norm_axis, float epsilon, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: weight_only_linear
+  inputs: (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale)
+  attrs: (str weight_dtype, int arch, int group_size, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+  optionals: bias
+
+- op: rms_norm
+  inputs: (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias)
+  attrs: (float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type,
+    float quant_max_bound, float quant_min_bound, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(residual_out)
+  optionals: bias,residual,norm_bias,residual_out
+
+- op: fast_layernorm_xpu
+  inputs: (Tensor x, Tensor scale, Tensor bias)
+  attrs: (int begin_norm_axis, float epsilon, int op_role, str[] op_role_var, str
+    op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: layer_norm_act_xpu
+  inputs: (Tensor x, Tensor scale, Tensor bias)
+  attrs: (int begin_norm_axis, float epsilon, int act_type, float act_param, int op_role,
+    str[] op_role_var, str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gammaln
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gammaln_
+  inputs: (Tensor x)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: print
+  inputs: (Tensor in)
+  attrs: (int first_n, str message, int summarize, bool print_tensor_name, bool print_tensor_type,
+    bool print_tensor_shape, bool print_tensor_layout, bool print_tensor_lod, str
+    print_phase, bool is_forward, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: fc_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, Tensor scale_max,
+    Tensor out_max_in)
+  attrs: (int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type,
+    float act_alpha, int out_dtype, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max,bias,scale_max,out_max_in
+
+- op: fused_gemm_epilogue
+  inputs: (Tensor x, Tensor y, Tensor bias)
+  attrs: (bool trans_x, bool trans_y, str activation, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(reserve_space)
+  optionals: reserve_space
+
+- op: array_to_tensor
+  inputs: (Tensor|TensorArray? x)
+  attrs: (int axis, bool use_stack, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor|TensorArray?(out_index)
+
+- op: qkv_attention_xpu
+  inputs: (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max)
+  attrs: (float alpha, int head_num, int head_dim, bool qkv_fc_fusion, int out_dtype,
+    int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str op_device,
+    bool with_quant_attr)
+  outputs: Tensor(qkv), Tensor(qkv_max)
+  optionals: q_max,k_max,v_max
+
+- op: quantize_xpu
+  inputs: (Tensor x)
+  attrs: (int out_dtype, float scale, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(y)
+
+- op: weight_dequantize
+  inputs: (Tensor x, Tensor scale)
+  attrs: (str algo, int out_dtype, int group_size, int op_role, str[] op_role_var,
+    str op_namescope, str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: sine_pos_xpu
+  inputs: (Tensor x, Tensor y)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gaussian_inplace
+  inputs: (Tensor x)
+  attrs: (float mean, float std, int seed, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: gaussian_inplace_
+  inputs: (Tensor x)
+  attrs: (float mean, float std, int seed, int op_role, str[] op_role_var, str op_namescope,
+    str[] op_callstack, str op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+
+- op: yolo_box_xpu
+  inputs: (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid)
+  attrs: (float offset, int op_role, str[] op_role_var, str op_namescope, str[] op_callstack,
+    str op_device, bool with_quant_attr)
+  outputs: Tensor(out), Tensor(out_max)
+  optionals: x_max
+
+- op: addcmul_xpu
+  inputs: (Tensor x, Tensor y, Tensor w)
+  attrs: (int op_role, str[] op_role_var, str op_namescope, str[] op_callstack, str
+    op_device, bool with_quant_attr)
+  outputs: Tensor(out)
+

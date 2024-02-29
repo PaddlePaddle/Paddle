@@ -1,0 +1,592 @@
+- op: adam_
+  inputs: (Tensor Beta1Tensor,Tensor Beta2Tensor,Tensor EpsilonTensor) -> ()
+  attrs: (float beta1,float beta2,float epsilon) -> (Scalar beta1,Scalar beta2,Scalar
+    epsilon)
+  optional: (Beta1Tensor, Beta2Tensor, EpsilonTensor) -> ()
+
+- op: adamw_
+  inputs: (Tensor Beta1Tensor,Tensor Beta2Tensor,Tensor EpsilonTensor) -> ()
+  attrs: (float beta1,float beta2,float epsilon) -> (Scalar beta1,Scalar beta2,Scalar
+    epsilon)
+  optional: (Beta1Tensor, Beta2Tensor, EpsilonTensor) -> ()
+
+- op: affine_grid
+  inputs: (Tensor OutputShape) -> ()
+  attrs: (int[] output_shape) -> (IntArray output_shape)
+  optional: (OutputShape) -> ()
+
+- op: allclose
+  inputs: (Tensor Rtol,Tensor Atol) -> ()
+  attrs: (str atol,str rtol) -> (Scalar atol,Scalar rtol)
+  optional: (Atol, Rtol) -> ()
+
+- op: argmax
+  attrs: (int64_t axis,int dtype) -> (Scalar(int64_t) axis,DataType dtype)
+
+- op: argmin
+  attrs: (int64_t axis,int dtype) -> (Scalar(int64_t) axis,DataType dtype)
+
+- op: assign
+  optional: (x) -> ()
+
+- op: assign_
+  optional: (x) -> ()
+
+- op: assign_value
+  inputs: (Tensor ValuesTensor) -> ()
+  attrs: (int dtype) -> (DataType dtype,Place place)
+  optional: (ValuesTensor) -> ()
+
+- op: batch_norm
+  inputs: (Tensor MomentumTensor) -> ()
+  optional: (MomentumTensor) -> ()
+
+- op: bincount
+  attrs: (int minlength) -> (Scalar(int) minlength)
+
+- op: c_allreduce_sum
+  inputs: (Tensor Cond) -> ()
+  optional: (Cond) -> ()
+
+- op: c_allreduce_sum_
+  inputs: (Tensor Cond) -> ()
+  optional: (Cond) -> ()
+
+- op: c_sync_comm_stream
+  inputs: (Tensor[] x) -> (Tensor x)
+  outputs: Tensor[](out)->Tensor(out)
+
+- op: cast
+  attrs: (int in_dtype,int out_dtype) -> (DataType dtype)
+
+- op: clip
+  inputs: (Tensor Min,Tensor Max) -> ()
+  attrs: (float max,float min) -> (Scalar(float) max,Scalar(float) min)
+  optional: (Max, Min) -> ()
+
+- op: clip_
+  inputs: (Tensor Min,Tensor Max) -> ()
+  attrs: (float max,float min) -> (Scalar(float) max,Scalar(float) min)
+  optional: (Max, Min) -> ()
+
+- op: coalesce_tensor
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: concat
+  inputs: (Tensor AxisTensor) -> ()
+  attrs: (int axis) -> (Scalar axis)
+  optional: (AxisTensor) -> ()
+
+- op: conv2d_transpose
+  inputs: (Tensor bias) -> ()
+  attrs: (int[] output_size) -> (IntArray output_size)
+  optional: (bias) -> ()
+
+- op: crop
+  inputs: (Tensor Shape,Tensor[] ShapeTensor,Tensor Offsets,Tensor[] OffsetsTensor)
+    -> ()
+  attrs: (int[] offsets,int[] shape) -> (IntArray offsets,IntArray shape)
+  optional: (Offsets, OffsetsTensor, Shape, ShapeTensor) -> ()
+
+- op: cummax
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: cummin
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: cumsum
+  attrs: (int axis) -> (Scalar axis)
+
+- op: cumsum_
+  attrs: (int axis) -> (Scalar axis)
+
+- op: data
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,int place,int64_t[] shape) -> (DataType dtype,Place place,IntArray
+    shape)
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+
+- op: decode_jpeg
+  attrs: () -> (Place place)
+
+- op: deformable_conv
+  inputs: () -> (Tensor mask)
+  optional: () -> (mask)
+
+- op: depthwise_conv2d_transpose
+  inputs: (Tensor bias) -> ()
+  attrs: (int[] output_size) -> (IntArray output_size)
+  optional: (bias) -> ()
+
+- op: distributed_lookup_table
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: dropout
+  attrs: (float p) -> (bool fix_seed,Scalar p,int seed)
+
+- op: einsum
+  optional: () -> (inner_cache, xshape)
+
+- op: add
+  attrs: (int axis) -> ()
+
+- op: divide
+  attrs: (int axis) -> ()
+
+- op: floor_divide
+  attrs: (int axis) -> ()
+
+- op: maximum
+  attrs: (int axis) -> ()
+
+- op: minimum
+  attrs: (int axis) -> ()
+
+- op: remainder
+  attrs: (int axis) -> ()
+
+- op: multiply
+  attrs: (int axis) -> ()
+
+- op: elementwise_pow
+  attrs: (int axis) -> ()
+
+- op: subtract
+  attrs: (int axis) -> ()
+
+- op: empty
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,int64_t[] shape) -> (DataType dtype,Place place,IntArray shape)
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+
+- op: equal
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: expand
+  inputs: (Tensor Shape,Tensor[] expand_shapes_tensor) -> ()
+  attrs: (int[] shape) -> (IntArray shape)
+  optional: (Shape, expand_shapes_tensor) -> ()
+
+- op: eye
+  attrs: (int dtype,int64_t num_columns,int64_t num_rows) -> (DataType dtype,Scalar
+    num_columns,Scalar num_rows,Place place)
+
+- op: feed
+  inputs: (Tensor X) -> ()
+  attrs: () -> (str name)
+
+- op: fetch
+  attrs: (bool deepcopy) -> (str name)
+
+- op: fill
+  attrs: (float value) -> (Scalar value)
+
+- op: full_like
+  attrs: (int dtype,float value) -> (DataType dtype,Place place,Scalar value)
+
+- op: full
+  inputs: (Tensor ValueTensor,Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,bool force_cpu,int place_type,int64_t[] shape,str str_value,float
+    value) -> (DataType dtype,Place place,IntArray shape,Scalar value)
+  optional: (ShapeTensor, ShapeTensorList, ValueTensor) -> ()
+
+- op: full_batch_size_like
+  attrs: (int dtype,bool force_cpu,str str_value,float value) -> (DataType dtype,Place
+    place,Scalar value)
+
+- op: frobenius_norm
+  attrs: (int[] axis,int in_dtype,bool keepdim,int out_dtype) -> (IntArray axis,bool
+    keep_dim)
+
+- op: full_int_array
+  attrs: (int dtype,int place) -> (DataType dtype,Place place)
+
+- op: fused_attention
+  optional: () -> (bias_dropout_residual_out, ln_mean_2, ln_var_2)
+
+- op: fused_feedforward
+  inputs: (Tensor dropout1_seed_val,Tensor dropout2_seed_val) -> (Tensor dropout1_seed,Tensor
+    dropout2_seed)
+  optional: (dropout1_seed_val, dropout2_seed_val) -> (dropout1_seed, dropout2_seed,
+    ln1_mean, ln1_out, ln1_variance, ln2_mean, ln2_variance)
+
+- op: fused_softmax_mask
+  inputs: (Tensor X,Tensor Mask) -> (Tensor x,Tensor mask)
+  outputs: Tensor(Out)->Tensor(out)
+
+- op: fusion_gru
+  attrs: (str mkldnn_data_type,float scale_data,float[] scale_weights,float shift_data,bool
+    use_mkldnn) -> ()
+
+- op: gather
+  inputs: (Tensor Axis) -> ()
+  attrs: (int axis) -> (Scalar axis)
+  optional: (Axis) -> ()
+
+- op: gaussian
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,int64_t[] shape) -> (DataType dtype,Place place,IntArray shape)
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+
+- op: send_u_recv
+  inputs: (Tensor Out_size) -> ()
+  attrs: (int64_t[] out_size) -> (IntArray out_size)
+  optional: (Out_size) -> ()
+
+- op: send_ue_recv
+  inputs: (Tensor Out_size) -> ()
+  attrs: (int64_t[] out_size) -> (IntArray out_size)
+  optional: (Out_size) -> ()
+
+- op: greater_equal
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: greater_than
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: hardswish
+  attrs: (float offset,float scale,float threshold) -> ()
+
+- op: hsigmoid_loss
+  attrs: (str[] epmap,int64_t[] height_sections,str[] table_names,int trainer_id)
+    -> ()
+
+- op: increment
+  attrs: (float step) -> (float value)
+
+- op: isclose
+  inputs: (Tensor Rtol,Tensor Atol) -> ()
+  attrs: (str atol,str rtol) -> (Scalar(double) atol,Scalar(double) rtol)
+  optional: (Atol, Rtol) -> ()
+
+- op: less_equal
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: less_than
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: linspace
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: load_combine
+  optional: () -> (Out)
+
+- op: logspace
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: logsumexp
+  attrs: (int[] axis) -> (int64_t[] axis)
+
+- op: embedding
+  attrs: () -> (bool sparse)
+
+- op: lstsq
+  attrs: (float rcond) -> (Scalar rcond)
+
+- op: matrix_rank
+  inputs: (Tensor atol_tensor) -> ()
+  optional: (atol_tensor) -> ()
+
+- op: memcpy_h2d
+  inputs: (Tensor X) -> (Tensor x)
+  outputs: Tensor(Out)->Tensor(out)
+
+- op: multinomial
+  attrs: (int num_samples) -> (Scalar(int) num_samples)
+
+- op: nanmedian
+  attrs: (int[] axis) -> (IntArray axis)
+
+- op: nce
+  attrs: () -> (int[] custom_neg_classes)
+
+- op: not_equal
+  attrs: (int axis,bool force_cpu) -> ()
+
+- op: one_hot
+  inputs: (Tensor depth_tensor) -> ()
+  attrs: (bool allow_out_of_range,int depth,int dtype) -> (Scalar(int) num_classes)
+  optional: (depth_tensor) -> ()
+
+- op: pad
+  attrs: (float pad_value) -> (Scalar pad_value)
+
+- op: pad3d
+  inputs: (Tensor Paddings) -> ()
+  attrs: (int[] paddings) -> (IntArray paddings)
+  optional: (Paddings) -> ()
+
+- op: pool2d
+  attrs: (int[] kernel_size,bool use_cudnn) -> (IntArray kernel_size)
+
+- op: pool3d
+  attrs: (bool use_cudnn) -> ()
+
+- op: pow
+  inputs: (Tensor FactorTensor) -> ()
+  attrs: (float y) -> (Scalar y)
+  optional: (FactorTensor) -> ()
+
+- op: pow_
+  inputs: (Tensor FactorTensor) -> ()
+  attrs: (float y) -> (Scalar y)
+  optional: (FactorTensor) -> ()
+
+- op: randint
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int dtype,int seed,int64_t[] shape) -> (DataType dtype,Place place,IntArray
+    shape)
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+
+- op: randperm
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: arange
+  inputs: (Tensor start,Tensor end,Tensor step) -> ()
+  attrs: () -> (DataType dtype,Scalar end,Place place,Scalar start,Scalar step)
+
+- op: read_file
+  attrs: () -> (DataType dtype,Place place)
+  outputs: Tensor(Out)->Tensor(out)
+
+- op: recv_v2
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: all
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,int out_dtype,bool reduce_all) -> ()
+  optional: (AxisTensor, AxisTensorList) -> ()
+
+- op: amax
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,int out_dtype,bool reduce_all) -> ()
+  optional: (AxisTensor, AxisTensorList) -> ()
+
+- op: amin
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,int out_dtype,bool reduce_all) -> ()
+  optional: (AxisTensor, AxisTensorList) -> ()
+
+- op: any
+  inputs: (Tensor AxisTensor,Tensor[] AxisTensorList) -> ()
+  attrs: (int in_dtype,int out_dtype,bool reduce_all) -> ()
+  optional: (AxisTensor, AxisTensorList) -> ()
+
+- op: max
+  attrs: (int[] axis,int in_dtype,int out_dtype,bool reduce_all) -> (IntArray axis)
+
+- op: mean
+  attrs: (int[] axis,int in_dtype,int out_dtype,bool reduce_all) -> (IntArray axis)
+
+- op: min
+  attrs: (int[] axis,int in_dtype,int out_dtype,bool reduce_all) -> (IntArray axis)
+
+- op: prod
+  attrs: (int[] dims,int in_dtype,int out_dtype) -> (IntArray dims)
+
+- op: sum
+  attrs: (int[] axis,int dtype,int in_dtype,bool reduce_all) -> (IntArray axis,DataType
+    dtype)
+
+- op: repeat_interleave
+  inputs: (Tensor RepeatsTensor) -> ()
+  optional: (RepeatsTensor) -> ()
+
+- op: reshape
+  inputs: (Tensor Shape,Tensor[] ShapeTensor) -> ()
+  attrs: (str mkldnn_data_type,int[] shape,bool use_quantizer) -> (IntArray shape)
+  optional: (Shape, ShapeTensor) -> ()
+
+- op: reshape_
+  inputs: (Tensor X,Tensor Shape,Tensor[] ShapeTensor) -> (Tensor x)
+  attrs: (int[] shape) -> (IntArray shape)
+  outputs: Tensor(Out)->Tensor(out), Tensor(xshape)
+  optional: (Shape, ShapeTensor) -> ()
+
+- op: reverse
+  attrs: (int[] axis) -> (IntArray axis)
+
+- op: rnn
+  inputs: () -> (Tensor dropout_state_in)
+  optional: (dropout_state_out) -> ()
+
+- op: roll
+  inputs: (Tensor ShiftsTensor) -> ()
+  attrs: (int64_t[] shifts) -> (IntArray shifts)
+  optional: (ShiftsTensor) -> ()
+
+- op: save_combine
+  outputs: Tensor(Y)->Tensor(out)
+  optional: (Y) -> (out)
+
+- op: scale
+  inputs: (Tensor ScaleTensor) -> ()
+  attrs: (float scale) -> (Scalar scale)
+  optional: (ScaleTensor) -> ()
+
+- op: scale_
+  inputs: (Tensor ScaleTensor) -> ()
+  attrs: (float scale) -> (Scalar scale)
+  optional: (ScaleTensor) -> ()
+
+- op: seed
+  attrs: () -> (bool deterministic,bool force_cpu,str rng_name)
+
+- op: sequence_mask
+  inputs: (Tensor MaxLenTensor) -> ()
+  attrs: (int max_len) -> (Scalar(int) max_len)
+  optional: (MaxLenTensor) -> ()
+
+- op: set_value
+  inputs: (Tensor ValueTensor,Tensor[] StartsTensorList,Tensor[] EndsTensorList,Tensor[]
+    StepsTensorList) -> ()
+  attrs: (int dtype,int64_t[] ends,int64_t[] starts,int64_t[] steps) -> (IntArray
+    ends,IntArray starts,IntArray steps)
+  optional: (EndsTensorList, StartsTensorList, StepsTensorList, ValueTensor) -> ()
+
+- op: set_value_
+  inputs: (Tensor ValueTensor,Tensor[] StartsTensorList,Tensor[] EndsTensorList,Tensor[]
+    StepsTensorList) -> ()
+  attrs: (int dtype,int64_t[] ends,int64_t[] starts,int64_t[] steps) -> (IntArray
+    ends,IntArray starts,IntArray steps)
+  optional: (EndsTensorList, StartsTensorList, StepsTensorList, ValueTensor) -> ()
+
+- op: slice
+  inputs: (Tensor StartsTensor,Tensor EndsTensor,Tensor[] StartsTensorList,Tensor[]
+    EndsTensorList) -> ()
+  attrs: (int[] axes,int[] decrease_axis,int[] ends,int[] infer_flags,int[] starts)
+    -> (int64_t[] axes,int64_t[] decrease_axis,IntArray ends,int64_t[] infer_flags,IntArray
+    starts)
+  optional: (EndsTensor, EndsTensorList, StartsTensor, StartsTensorList) -> ()
+
+- op: sparse_momentum
+  inputs: (Tensor axis) -> ()
+  attrs: (int axis) -> (Scalar axis)
+  optional: (axis) -> ()
+
+- op: split
+  inputs: (Tensor AxisTensor,Tensor[] SectionsTensorList) -> ()
+  attrs: (int axis,int num,int[] sections) -> (Scalar(int) axis,IntArray sections)
+  optional: (AxisTensor, SectionsTensorList) -> ()
+
+- op: squeeze
+  attrs: (int[] axis) -> (IntArray axis)
+
+- op: strided_slice
+  inputs: (Tensor StartsTensor,Tensor[] StartsTensorList,Tensor EndsTensor,Tensor[]
+    EndsTensorList,Tensor StridesTensor,Tensor[] StridesTensorList) -> ()
+  attrs: (int[] decrease_axis,int[] ends,int[] infer_flags,int[] starts,int[] strides)
+    -> (IntArray ends,IntArray starts,IntArray strides)
+  optional: (EndsTensor, EndsTensorList, StartsTensor, StartsTensorList, StridesTensor,
+    StridesTensorList) -> ()
+
+- op: tile
+  inputs: (Tensor RepeatTimes,Tensor[] repeat_times_tensor) -> ()
+  attrs: (int[] repeat_times) -> (IntArray repeat_times)
+  optional: (RepeatTimes, repeat_times_tensor) -> ()
+
+- op: topk
+  inputs: (Tensor K) -> ()
+  attrs: (int k) -> (Scalar(int) k)
+  optional: (K) -> ()
+
+- op: transpose
+  outputs: Tensor(XShape)->
+
+- op: tril_indices
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: triu_indices
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: truncated_gaussian_random
+  attrs: (int dtype) -> (DataType dtype,Place place)
+
+- op: uniform
+  inputs: (Tensor ShapeTensor,Tensor[] ShapeTensorList) -> ()
+  attrs: (int diag_num,int diag_step,float diag_val,int dtype,float max,float min,int64_t[]
+    shape) -> (DataType dtype,Scalar max,Scalar min,Place place,IntArray shape)
+  optional: (ShapeTensor, ShapeTensorList) -> ()
+
+- op: uniform_random_batch_size_like
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: unique
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: unique_consecutive
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: unpool
+  attrs: (int[] output_size,str unpooling_type) -> (IntArray output_size)
+
+- op: unsqueeze
+  inputs: (Tensor AxesTensor,Tensor[] AxesTensorList) -> ()
+  attrs: (int[] axis) -> (IntArray axis)
+  optional: (AxesTensor, AxesTensorList) -> ()
+
+- op: update_loss_scaling_
+  inputs: (Tensor StopUpdate) -> ()
+  attrs: (bool stop_update) -> (Scalar stop_update)
+  optional: (StopUpdate) -> ()
+
+- op: view_dtype
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: fused_dropout_add
+  inputs: (Tensor PTensor) -> ()
+  attrs: (float p) -> (Scalar p)
+  optional: (PTensor) -> ()
+
+- op: dequantize_xpu
+  attrs: (int out_dtype) -> (DataType out_dtype)
+
+- op: conv2d_xpu
+  attrs: (int out_dtype) -> (DataType out_dtype)
+
+- op: conv2d_transpose_xpu
+  inputs: (Tensor OutputSizeTensor,Tensor[] OutputSizeTensorList) -> ()
+  attrs: (int64_t[] output_size) -> (IntArray output_size)
+  optional: (OutputSizeTensor, OutputSizeTensorList) -> ()
+
+- op: memory_efficient_attention
+  inputs: (Tensor MaxSeqlenQTensor,Tensor MaxSeqlenKTensor) -> ()
+  attrs: (float max_seqlen_k,float max_seqlen_q) -> (Scalar max_seqlen_k,Scalar max_seqlen_q)
+  optional: (MaxSeqlenKTensor, MaxSeqlenQTensor) -> ()
+
+- op: fused_rotary_position_embedding
+  attrs: () -> (bool time_major)
+
+- op: multi_encoder_xpu
+  inputs: () -> (Tensor[] fc_input_max,Tensor[] smooth_scale_weight)
+  attrs: () -> (bool is_per_channel,str[] quant_types,float[] softmax_max_value)
+
+- op: generate_sequence_xpu
+  attrs: (int dtype) -> (DataType dtype)
+
+- op: lod_array_length
+  inputs: (Tensor|TensorArray? x) -> (Tensor[] x)
+
+- op: write_to_array
+  outputs: Tensor|TensorArray?(out)->Tensor[](out)
+
+- op: fc_xpu
+  attrs: (int out_dtype) -> (DataType out_dtype)
+
+- op: fused_gemm_epilogue
+  optional: (reserve_space) -> (out)
+
+- op: array_to_tensor
+  inputs: (Tensor|TensorArray? x) -> (TensorArray x)
+  attrs: (int axis) -> (int32 axis)
+  outputs: Tensor|TensorArray?(out_index)->Tensor(out_index)
+
+- op: qkv_attention_xpu
+  attrs: (int out_dtype) -> (DataType out_dtype)
+
+- op: quantize_xpu
+  attrs: (int out_dtype) -> (DataType out_dtype)
+
+- op: weight_dequantize
+  attrs: (int out_dtype) -> (DataType out_dtype)
+

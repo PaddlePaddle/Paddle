@@ -1,0 +1,96 @@
+- op : add_n
+  inputs : (Tensor inputs)
+  attrs : ()
+  outputs : Tensor(out)
+  
+- op : add_n_
+  inputs : (Tensor inputs)
+  attrs : ()
+  outputs : Tensor(out)
+
+- op : add_n_with_kernel
+  inputs : (Tensor inputs)
+  attrs : ()
+  outputs : Tensor(out)
+
+- op : add_n_array
+  inputs : Tensor(inputs)
+  attrs : ()
+  outputs : (Tensor out)
+
+- op : fused_gemm_epilogue
+  inputs : (Tensor x, Tensor y, Tensor bias)
+  attrs : (bool trans_x, bool trans_y, str activation)
+  outputs : Tensor(out), Tensor(reserve_space)
+  optionals: out
+
+- op : create_array
+  inputs : ()
+  attrs : (DataType dtype)
+  outputs : TensorArray(out)
+
+- op : create_array_like
+  inputs : (TensorArray input)
+  attrs : (float val)
+  outputs : TensorArray(out)
+
+- op : array_length
+  inputs : (TensorArray x)
+  attrs : ()
+  outputs : Tensor(out)
+
+- op : array_read
+  inputs : (TensorArray array, Scalar i)
+  attrs : ()
+  outputs : Tensor(out)
+
+- op : array_write_
+  inputs : (TensorArray array, Tensor x, Scalar i)
+  attrs : ()
+  outputs : TensorArray(out)
+
+- op : slice_array
+  inputs : (TensorArray input)
+  attrs : (int64_t[] starts, int64_t[] ends)
+  outputs : TensorArray(out)
+
+- op : slice_array_dense
+  inputs : (TensorArray input, IntArray starts)
+  attrs : ()
+  outputs : TensorArray(out)
+
+- op : assign_array
+  inputs : (TensorArray x)
+  attrs : ()
+  outputs : TensorArray(out)
+
+- op : array_to_tensor
+  inputs : (TensorArray x)
+  attrs : (int32 axis, bool use_stack)
+  outputs : Tensor(out), Tensor(out_index)
+
+- op : expand
+  inputs : (Tensor x)
+  attrs : ()
+  outputs : Tensor(out)
+
+- op : increment
+  inputs : (Tensor x)
+  attrs : (float value)
+  outputs : Tensor(out)
+
+- op : increment_
+  inputs : (Tensor x)
+  attrs : (float value)
+  outputs : Tensor(out)
+
+- op : shape_broadcast
+#????????????
+
+- op : select_input
+#?????????????
+
+
+
+
+
