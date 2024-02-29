@@ -3445,9 +3445,11 @@ class TestELU(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
-    
+
     def test_check_output(self):
-        self.check_output(check_prim_pir=True, check_pir_onednn=self.check_pir_onednn)
+        self.check_output(
+            check_prim_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
 
     def get_alpha(self):
         return 1.0

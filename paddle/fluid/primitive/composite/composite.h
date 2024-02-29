@@ -1047,7 +1047,7 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
-  
+
   const Tensor zero = full<T>(x_cast.shape(), 0, x_cast.type());
   auto tmp_res = alpha * (exp<T>(x_cast) - 1);
   auto ans = where<T>(x_cast > zero, x_cast, tmp_res);
