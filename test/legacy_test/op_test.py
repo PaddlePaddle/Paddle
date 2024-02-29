@@ -2639,9 +2639,9 @@ class OpTest(unittest.TestCase):
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
 
-        # static_checker = StaticChecker(self, self.outputs)
-        # static_checker.check()
-        # outs, fetch_list = static_checker.outputs, static_checker.fetch_list
+        static_checker = StaticChecker(self, self.outputs)
+        static_checker.check()
+        outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
         if check_pir_onednn and isinstance(
             place, paddle.base.libpaddle.CPUPlace
@@ -2649,11 +2649,6 @@ class OpTest(unittest.TestCase):
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
-                outs, fetch_list = (
-                    pir_onednn_static_checker.outputs,
-                    pir_onednn_static_checker.fetch_list,
-                )
-                return outs, fetch_list
 
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
