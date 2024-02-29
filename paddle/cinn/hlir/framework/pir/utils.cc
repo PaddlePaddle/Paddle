@@ -85,11 +85,25 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_ {
-    "feed", "fetch", "conv2d", "conv2d_grad", "dropout", "slice", "concat",
-        "gather_nd", "pool2d", "split", "matmul", "matmul_grad", "transpose",
-        "embedding_grad", "embedding", "gather", "arange",
-  }
+  std::unordered_set<std::string> default_deny_ops_{
+      "feed",
+      "fetch",
+      "conv2d",
+      "conv2d_grad",
+      "dropout",
+      "slice",
+      "concat",
+      "gather_nd",
+      "pool2d",
+      "split",
+      "matmul",
+      "matmul_grad",
+      "transpose",
+      "embedding_grad",
+      "embedding",
+      "gather",
+      "arange",
+  };
 };
 
 std::unordered_set<std::string> StringSplit(const std::string& str,

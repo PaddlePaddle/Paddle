@@ -1193,7 +1193,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForStore(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
-        ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
+        ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
@@ -1233,7 +1233,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForStoreSymbolic(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
-        ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);
+        ir::Tensor out = pe::Store(tensor_A, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
