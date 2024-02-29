@@ -262,9 +262,10 @@
 
 - op : softplus
 
-# - op : split
+- op : split
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : split_with_num
+- op : split_with_num
 
 - op : sqrt
 
