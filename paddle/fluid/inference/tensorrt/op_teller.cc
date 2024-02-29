@@ -336,6 +336,19 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
 #endif
         }
+      } else {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      // for cutlass HWC kernel
+      if (op_type == "fused_conv2d_add_act" &&
+          desc.Input("ResidualData").size() == 0) {
+        auto input_var_name = desc.Input("Input")[0];
+        auto* input_var_desc = block->FindVarRecursive(input_var_name);
+        auto input_dtype = input_var_desc->GetDataType();
+        if (input_dtype == framework::proto::VarType::FP16) return false;
       }
     }
 

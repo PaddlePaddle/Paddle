@@ -154,6 +154,9 @@ class GenericPlugin : public DynamicPluginTensorRT {
            phi_kernels_[half_dtype]->IsValid();
   }
 
+  // get the tensor shape in HWC format
+  std::vector<int> getHwcShape(const nvinfer1::PluginTensorDesc* oridesc);
+
  private:
   std::string op_meta_data_;
   framework::proto::OpDesc proto_op_desc_;
