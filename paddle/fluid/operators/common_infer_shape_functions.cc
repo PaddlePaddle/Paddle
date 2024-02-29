@@ -166,7 +166,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
                           "For binary broadcastable operator, if X is "
                           "Sparse(VarType.SELECTED_ROWS"
                           "), Y must be scalar, and the size of Y should be 1. "
-                          "But reveived the size of Y = %s.",
+                          "But received the size of Y = %s.",
                           y_dims.size()));
     PADDLE_ENFORCE_EQ(
         y_dims[0],
@@ -175,7 +175,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
             "For binary broadcastable operator, if X is "
             "Sparse(VarType.SELECTED_ROWS"
             "), Y must be scalar, the first dimension of Y should be 1. "
-            "But reveived the first dimension of Y = %s.",
+            "But received the first dimension of Y = %s.",
             y_dims[0]));
   } else if (ctx->GetInputsVarType(x_name).front() !=
              framework::proto::VarType::LOD_TENSOR) {
