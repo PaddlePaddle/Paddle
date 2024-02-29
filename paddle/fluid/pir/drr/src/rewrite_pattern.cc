@@ -58,7 +58,7 @@ bool DrrRewritePattern::MatchAndRewrite(
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
     PatternGraphRewrite(*src_match_ctx, rewriter);
-    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewrited in program.";
+    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
   }
   return false;
@@ -414,13 +414,13 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   // add input tensors info for res_match_ctx
   for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
     PADDLE_ENFORCE_NE(
-        result_pattern_graph.id2owend_tensor().count(in_tensor),
+        result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
         phi::errors::NotFound("Not found the input tensor."
                               "Drr input tensor [%s] must exist in the result "
                               "pattern graph to be obtained.",
                               in_tensor));
-    if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
+    if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
   }
@@ -508,7 +508,7 @@ void DrrRewritePattern::ReplaceOutputTensor(
     const MatchContextImpl& res_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
   for (const auto& output_name : result_pattern_graph_->output_tensors()) {
-    if (source_pattern_graph_->id2owend_tensor().count(output_name)) {
+    if (source_pattern_graph_->id2owned_tensor().count(output_name)) {
       const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
       const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
       rewriter.ReplaceAllUsesWith(src_ir_tensor, res_ir_tensor);
