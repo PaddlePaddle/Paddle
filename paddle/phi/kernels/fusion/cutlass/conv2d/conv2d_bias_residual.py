@@ -358,7 +358,7 @@ if __name__ == "__main__":
     if args.cuda_arch == "75":
         sm_versions_and_types.append(["75", "fp16"])
         all_code += generate_sm75_1688()
-    if args.cuda_arch == "80":
+    if args.cuda_arch in ["80", "86", "89"]:
         sm_versions_and_types.append(["80", "fp16"])
         sm_versions_and_types.append(["80", "bf16"])
         all_code += generate_sm80_16816()
