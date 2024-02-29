@@ -742,13 +742,13 @@ class PyCodeGen:
             idx = self.cell_free_storage.index(name)
         return self.add_instr("LOAD_DEREF", arg=idx, argval=name)
 
-    def gen_load_attr(self, name: str, push_null=False):
+    def gen_load_attr(self, name: str, is_method=False):
         if name not in self._code_options["co_names"]:
             self._code_options["co_names"].append(name)
         idx = self._code_options["co_names"].index(name)
         if sys.version_info >= (3, 12):
             idx <<= 1
-            if push_null:
+            if is_method:
                 idx |= 1
         return self.add_instr("LOAD_ATTR", arg=idx, argval=name)
 
@@ -765,10 +765,13 @@ class PyCodeGen:
         return self.add_instr("DELETE_ATTR", arg=idx, argval=name)
 
     def gen_load_method(self, name: str):
-        if name not in self._code_options["co_names"]:
-            self._code_options["co_names"].append(name)
-        idx = self._code_options["co_names"].index(name)
-        return self.add_instr("LOAD_METHOD", arg=idx, argval=name)
+        if sys.version_info >= (3, 12):
+            self.gen_load_attr(name, True)
+        else:
+            if name not in self._code_options["co_names"]:
+                self._code_options["co_names"].append(name)
+            idx = self._code_options["co_names"].index(name)
+            return self.add_instr("LOAD_METHOD", arg=idx, argval=name)
 
     def gen_delete_global(self, name: str):
         if name not in self._code_options["co_names"]:

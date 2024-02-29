@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 from .mutable_data import MutableData
@@ -124,18 +123,12 @@ class DictSideEffectRestorer(SideEffectRestorer):
         # Reference to the original dict.
         # load old_dict.update and new_dict to stack.
         self.var.reconstruct(codegen)
-        if sys.version_info >= (3, 12):
-            codegen.gen_load_attr("update", True)
-        else:
-            codegen.gen_load_method("update")
+        codegen.gen_load_method("update")
         # Generate dict by each key-value pair.
         self.var.reconstruct(codegen, use_tracker=False)
         # load old_dict.clear to stack.
         self.var.reconstruct(codegen)
-        if sys.version_info >= (3, 12):
-            codegen.gen_load_attr("clear", True)
-        else:
-            codegen.gen_load_method("clear")
+        codegen.gen_load_method("clear")
 
     def post_gen(self, codegen: PyCodeGen):
         # Call methods to apply side effects.
