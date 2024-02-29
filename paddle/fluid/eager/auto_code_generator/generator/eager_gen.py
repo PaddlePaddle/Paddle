@@ -2618,7 +2618,7 @@ if (!create_graph) {{
 }}
 """
                     if has_higher_order_node:
-                        code += f"auto need_skip = false;\n{code}"
+                        code = f"auto need_skip = false;{code}"
                 else:
                     code = f"""
 std::string grad_op_name = "{composite_grad_api_name}";
