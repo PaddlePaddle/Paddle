@@ -110,7 +110,6 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_args[input_tensor_size + i]->dims().size());
-      std::cerr << "ddim !!!!!!!!!!! " << i << "\t" << dim << std::endl;
       kernel_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
@@ -164,8 +163,6 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
-    std::cerr << "dd  dd " << i << "\t" << alloc_tensor_type.dims()
-              << std::endl;
     for (size_t j = 0; j < alloc_tensor_type.dims().size(); ++j) {
       if (alloc_tensor_type.dims()[j] < 0) {
         need_update_shape = true;
