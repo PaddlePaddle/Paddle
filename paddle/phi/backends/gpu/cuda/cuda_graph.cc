@@ -192,6 +192,16 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
 #endif
 }
 
+inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
+  if (to_record == to_wait) return;
+  cudaEvent_t event = nullptr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, to_record));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(to_wait, event));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
+}
+
 void CUDAGraph::EndSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
@@ -199,6 +209,13 @@ void CUDAGraph::EndSegmentCapture() {
       IsCapturing(),
       true,
       phi::errors::PermissionDenied("No CUDA Graph is capturing."));
+
+  for (const auto &stream : capturing_graph_->streams_to_join_) {
+    VLOG(10) << "Joining steam when the capture is going to end stream =" << stream;
+    sync_streams(stream, capturing_graph_->stream_);
+  }
+  capturing_graph_->streams_to_join_.clear();
+
   cudaGraph_t graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamEndCapture(capturing_graph_->stream_, &graph));
@@ -221,8 +238,6 @@ void CUDAGraph::EndSegmentCapture() {
   capturing_graph_->cudagraph_pre_replay_callbacks_.emplace_back(
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
-  // if forward graph is registered, this graph is a backward graph
-  // we check whether there is remain blocks that is unreleased by this
   cudaGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
       FLAGS_auto_free_cudagraph_allocations_on_launch) {
@@ -245,6 +260,7 @@ void CUDAGraph::EndSegmentCapture() {
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
 #endif
+
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {

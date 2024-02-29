@@ -258,6 +258,10 @@ class CUDAGraph {
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
+  void AddJoiningStream(cudaStream_t stream) {
+    streams_to_join_.insert(stream);
+  }
+
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
 
   static void BeginCapture(phi::GPUPlace place,
@@ -267,6 +271,10 @@ class CUDAGraph {
 
   static void BeginSegmentCapture();
   static void EndSegmentCapture();
+
+  static void AddJoiningStreamDuringCapturing(cudaStream_t stream) {
+    capturing_graph_->AddJoiningStream(stream);
+  }
 
   static void AddPostResetCallbackDuringCapturing(
       std::function<void()> callback) {
@@ -334,6 +342,8 @@ class CUDAGraph {
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
+
+  std::unordered_set<cudaStream_t> streams_to_join_;
 
   // Holds callbacks that are triggered after the CUDA graph is reset. These
   // callbacks are used for operations that need to be performed following the

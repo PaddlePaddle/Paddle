@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_malloc_async_allocator.h"
+#include <cstddef>
 #include <cstdint>
+#include <mutex>
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 
@@ -29,85 +32,114 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 
+/*
+ * Note: [cuda_malloc_async_pool_memory_throttle_ratio]
+ * The primary purpose of the memory_throttle_ratio is to provide a
+ * threshold that determines when to initiate synchronization operations to
+ * deallocate memory. This mechanism helps in ensuring that the system does
+ * not exceed its memory capacity while also attempting to minimize performance
+ * degradation caused by frequent memory synchronization.
+ *
+ * ```
+ *   utilization = (allocated_size + pending_release_size) / total_memory_size
+ *   if(utilization > memory_throttle_ratio)
+ *      sync(free_stream, malloc_stream)
+ * ```
+ *
+ * When the utilization exceeds the memory_throttle_ratio, we
+ * initiate a stream synchronization operation before malloc.
+ *
+ * During synchronization, all memory deallocation requests in the free queue
+ * are processed, effectively lowering the memory utilization before
+ * any new memory allocation operations are going to proceed.
+ *
+ * [Impact on Performance and Memory Usage]
+ *
+ * - Lower memory_throttle_ratio Values
+ * the synchronization operation will be triggered more frequently.
+ * This can lead to better memory utilization but might result in decreased
+ * performance due to the increased number of synchronization operations.
+ *
+ * - Higher memory_throttle_ratio Values
+ * Conversely, setting a higher value allows for more memory to be allocated
+ * before triggering synchronization, which can enhance performance by reducing
+ * the number of sync operations. However, this increases the risk of reaching
+ * an OOM condition since more memory can be allocated without
+ * immediate deallocation.
+ */
+COMMON_DECLARE_double(cuda_malloc_async_pool_memory_throttle_ratio);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 thread_local std::once_flag CUDAMallocAsyncAllocation::once_flag_;
 
-void CUDAMallocAsyncAllocation::RecordGraphCapturingStreams() {
-  for (gpuStream_t stream : graph_capturing_stream_set_) {
-    RecordStreamWithNoGraphCapturing(stream);
-  }
-  graph_capturing_stream_set_.clear();
+inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
+  cudaEvent_t event = nullptr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, to_record));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(to_wait, event));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 }
 
-void CUDAMallocAsyncAllocation::RecordStreamWithNoGraphCapturing(
-    gpuStream_t stream) {
-  if (event_map_.find(stream) == event_map_.end()) {
-    gpuEvent_t event;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
-    event_map_[stream] = event;
-  } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_map_[stream], stream));
-  }
-}
+// CUDAMallocAsyncAllocation
 
 void CUDAMallocAsyncAllocation::RecordStream(gpuStream_t stream) {
   std::call_once(once_flag_,
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
-  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
-    // Disallow recording when graph is capturing
-    graph_capturing_stream_set_.insert(stream);
+  std::lock_guard<SpinLock> lock_guard(recorded_streams_lock_);
+  if (malloc_stream_ == stream) {
+    // Called record_stream on tensor whose original malloc_stream matches the
+    // recorded stream. This should have no effect.
     return;
+  }
+  auto it = recorded_streams_.find(stream);
+  if (it == recorded_streams_.end()) {
+    cudaEvent_t event = nullptr;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
+    recorded_streams_[stream] = event;
   } else {
-    RecordStreamWithNoGraphCapturing(stream);
-    // Record the stream after graph is captured
-    RecordGraphCapturingStreams();
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(it->second, stream));
   }
 }
 
 void CUDAMallocAsyncAllocation::EraseStream(gpuStream_t stream) {
-  std::lock_guard<SpinLock> lock_guard(event_map_lock_);
-  event_map_.erase(stream);
+  std::lock_guard<SpinLock> lock_guard(recorded_streams_lock_);
+  recorded_streams_.erase(stream);
 }
 
-void CUDAMallocAsyncAllocation::Free(int dev_id) {
-  platform::RecordedGpuFreeAsync(ptr(), size(), place_.device, malloc_stream_);
-}
+size_t CUDAMallocAsyncAllocation::Free() {
+  if (recorded_streams_.empty()) {
+    platform::RecordedGpuFreeAsync(
+        ptr(), size(), place_.device, malloc_stream_);
 
-// if synchronize, we sync the event so the block could be fully released.
-bool CUDAMallocAsyncAllocation::CanBeFreed(bool synchronize) {
-  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
-    return graph_capturing_stream_set_.empty() && event_map_.empty();
-  }
-  // When try to free a block, we record the stream that should be record during
-  // capturing.
-  RecordGraphCapturingStreams();
-
-  std::call_once(once_flag_,
-                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
-
-  for (auto it = event_map_.begin(); it != event_map_.end();) {
-    gpuEvent_t& event = it->second;
-    if (synchronize) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event));
-    } else {
-      gpuError_t err = cudaEventQuery(event);
-      if (err == cudaErrorNotReady) {
-        VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-        return false;
-      }
-      PADDLE_ENFORCE_GPU_SUCCESS(err);
+    if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+      phi::backends::gpu::CUDAGraph::AddJoiningStreamDuringCapturing(
+          malloc_stream_);
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
-    VLOG(8) << "Destroy event " << event;
-    it = event_map_.erase(it);
+    return size();
+  } else {
+    sync_streams(malloc_stream_, free_stream_);
+
+    for (const auto& [recorded_stream, event] : recorded_streams_) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(free_stream_, event));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
+    }
+    platform::RecordedGpuFreeAsync(ptr(), size(), place_.device, free_stream_);
+
+    if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
+      phi::backends::gpu::CUDAGraph::AddJoiningStreamDuringCapturing(
+          free_stream_);
+    }
+    return 0;
   }
-  return true;
 }
+
+// CUDAMallocAsyncAllocator
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
@@ -115,40 +147,23 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),
-      default_stream_(default_stream) {
+      default_stream_(default_stream),
+      current_allocated_size_(0),
+      pending_release_size_(0),
+      memory_throttle_ratio_(
+          FLAGS_cuda_malloc_async_pool_memory_throttle_ratio) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaStreamCreateWithPriority(&memory_stream_, cudaStreamNonBlocking, 0));
-}
+      cudaStreamCreateWithPriority(&free_stream_, cudaStreamNonBlocking, 0));
+  cudaDeviceGetDefaultMemPool(&mempool_, place.device);
 
-bool CUDAMallocAsyncAllocator::IsAllocThreadSafe() const { return true; }
+  size_t avail, total, actual_avail, actual_total;
+  platform::RecordedGpuMemGetInfo(
+      &avail, &total, &actual_avail, &actual_total, place_.device);
+  max_size_ = total;
 
-void CUDAMallocAsyncAllocator::ProcessUnfreedAllocations(bool synchronize) {
-  if (unfreed_allocations_.empty()) {
-    return;
-  }
-
-  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
-  for (auto it = unfreed_allocations_.begin();
-       it != unfreed_allocations_.end();) {
-    CUDAMallocAsyncAllocation* allocation = (*it);
-    if (allocation->CanBeFreed(synchronize)) {
-      allocation->Free(place_.device);
-      delete allocation;
-      it = unfreed_allocations_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-}
-
-void CUDAMallocAsyncAllocator::TryFree(CUDAMallocAsyncAllocation* allocation) {
-  if (allocation->CanBeFreed()) {
-    allocation->Free(place_.device);
-    delete allocation;
-  } else {
-    std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
-    unfreed_allocations_.emplace_back(allocation);
-  }
+  VLOG(0) << "CUDAMallocAsyncAllocator " << (this) << " place " << place
+          << " max_size " << string::HumanReadableSize(max_size_)
+          << " memory_throttle_ratio " << memory_throttle_ratio_;
 }
 
 uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const platform::Place& place) {
@@ -159,20 +174,44 @@ uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const platform::Place& place) {
 
   uint64_t released_size = 0;
   // we synchronize the event so all the block could be release.
-  ProcessUnfreedAllocations(true);
   if (underlying_allocator_)
     released_size += underlying_allocator_->Release(place_);
   VLOG(8) << "Release " << released_size << " bytes memory from all streams";
   return released_size;
 }
 
+void CUDAMallocAsyncAllocator::MallocThrottling() {
+  double allocated =
+      static_cast<double>(current_allocated_size_ + pending_release_size_);
+  double utilization = allocated / static_cast<double>(max_size_);
+
+  if (utilization > memory_throttle_ratio_) {
+    VLOG(10) << "utilization_ratio " << utilization
+             << " current_allocated_size "
+             << string::HumanReadableSize(current_allocated_size_)
+             << " pending_release_size "
+             << string::HumanReadableSize(pending_release_size_);
+    sync_streams(free_stream_, default_stream_);
+    current_allocated_size_ -= pending_release_size_;
+    pending_release_size_ = 0;
+  }
+}
+
+void CUDAMallocAsyncAllocator::FreeAllocation(
+    CUDAMallocAsyncAllocation* allocation) {
+  auto current_released_size = allocation->Free();
+  current_allocated_size_ -= current_released_size;
+  // The amount of pending release size (the space that has been queued to
+  // free_stream, that are going to be freed in the future)
+  pending_release_size_ += (allocation->size() - current_released_size);
+}
+
 void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* phi_allocation) {
   auto* allocation = dynamic_cast<CUDAMallocAsyncAllocation*>(phi_allocation);
 
-  // VLOG(0) << "Free " << allocation->ptr();
   // During graph capturing, only free the memory blocks owned by the graph;
   // others are cached.
-  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     if (graph_owned_allocations_.find(allocation) ==
         graph_owned_allocations_.end()) {
       // If the block is not owned by the graph, cache it for release after
@@ -181,37 +220,38 @@ void CUDAMallocAsyncAllocator::FreeImpl(phi::Allocation* phi_allocation) {
           [=]() {
             // Release this block after capturing
             VLOG(0) << "[PostCaptureCallback] Releasing ptr = "
-                    << allocation->ptr() << " size = " << allocation->size();
-            TryFree(allocation);
+                    << allocation->ptr() << " size = "
+                    << string::HumanReadableSize(allocation->size());
+            FreeAllocation(allocation);
           });
 
       return;
     }
+    // the block is graph-owned, free it immediately.
+    graph_owned_allocations_.erase(allocation);
   }
 
   // If not capturing or if the block is graph-owned, free it immediately.
-  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    graph_owned_allocations_.erase(allocation);
-  }
-  TryFree(allocation);
+  FreeAllocation(allocation);
 }
 
 phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
-  ProcessUnfreedAllocations();
+
+  MallocThrottling();
 
   void* ptr;
   auto result = platform::RecordedGpuMallocAsync(
       &ptr, size, place_.device, default_stream_);
   if (LIKELY(result == gpuSuccess)) {
     auto* allocation = new CUDAMallocAsyncAllocation(
-        ptr, size, platform::Place(place_), default_stream_);
+        ptr, size, platform::Place(place_), default_stream_, free_stream_);
 
     // If capturing, associate allocation with the current graph.
     if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
-      // auto graph_id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
       graph_owned_allocations_.insert(allocation);
     }
+    current_allocated_size_ += size;
     return allocation;
   }
 
