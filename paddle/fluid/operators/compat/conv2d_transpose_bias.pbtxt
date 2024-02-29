@@ -66,9 +66,5 @@ extra {
     name: "fuse_beta"
     type: FLOAT
   }
-  attrs {
-    name: "workspace_size_MB"
-    type: INT
-  }
 }
 
