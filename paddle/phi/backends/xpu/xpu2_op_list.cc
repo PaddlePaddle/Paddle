@@ -1174,6 +1174,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_gemm_epilogue_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"fused_bias_residual_layernorm",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_attention",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_attention_grad",
