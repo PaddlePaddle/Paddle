@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <queue>
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"

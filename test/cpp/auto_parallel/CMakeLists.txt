@@ -29,6 +29,9 @@ if(WITH_DISTRIBUTE)
   paddle_test(cross_entropy_softmax_spmd_rule_test SRCS
               cross_entropy_softmax_spmd_rule_test.cc DEPS spmd_rule_test_util)
 
+  paddle_test(expand_as_spmd_rule_test SRCS expand_as_spmd_rule_test.cc DEPS
+              spmd_rule_test_util phi)
+
   paddle_test(custom_op_spmd_rule_test SRCS custom_op_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
 

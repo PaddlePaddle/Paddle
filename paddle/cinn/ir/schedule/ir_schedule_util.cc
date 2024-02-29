@@ -207,7 +207,7 @@ void ReplaceExpr(Expr* source,
                  const std::vector<Expr>& candidates) {
   CHECK_EQ(replaced.size(), candidates.size())
       << "In ReplaceExpr, the size of Vars to be replaced must be equal to the "
-         "size of cadidate Exprs! Please check.";
+         "size of candidate Exprs! Please check.";
   if (replaced.empty()) return;
   std::map<Var, Expr, CompVar> replacing_map;
   for (int i = 0; i < replaced.size(); ++i) {
@@ -764,7 +764,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   //   }                                             }
   // }                                             }
   //
-  // We go throuph origin loop and check other body stmts, adding it as another
+  // We go through origin loop and check other body stmts, adding it as another
   // chain, such as:
   //
   // for (i, 0, 32) {
@@ -1022,7 +1022,7 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
     auto dst_it = dst_block->stmts.begin() + index;
     if (dst_it->As<IfThenElse>()) {
       auto* inserted_block = dst_it->As<IfThenElse>()->true_case.As<Block>();
-      CHECK(inserted_block) << "the IfThenElse node to be inserted shuold "
+      CHECK(inserted_block) << "the IfThenElse node to be inserted should "
                                "contain a true_case block";
       inserted_block->stmts.insert(inserted_block->stmts.begin(), insertion);
     } else {
@@ -1060,7 +1060,7 @@ std::vector<IterRange> CalculateRequiredRegions(
   }
 
   std::vector<IterRange> required_buffer_range;
-  // deduce accessed regions of the provided tensor in block by itering each
+  // deduce accessed regions of the provided tensor in block by iterating each
   // required block
   for (const Expr& pro_node : provided_nodes) {
     std::string provided_tensor_name =

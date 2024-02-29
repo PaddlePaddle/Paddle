@@ -74,7 +74,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
       }
     }
 
-    std::string save_params_path = path + ".pdiparams";
+    std::string save_params_path = path + "/" + "_optimized.pdiparams";
     std::vector<std::string> save_var_list(save_var_set.begin(),
                                            save_var_set.end());
     std::sort(save_var_list.begin(), save_var_list.end());
@@ -105,7 +105,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
         }
       }
     }
-    std::string save_model_path = path + ".pdmodel";
+    std::string save_model_path = path + "/" + "_optimized.pdmodel";
     auto str = optimized_program_desc.Proto()->SerializeAsString();
     std::ofstream file(save_model_path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());  // NOLINT
