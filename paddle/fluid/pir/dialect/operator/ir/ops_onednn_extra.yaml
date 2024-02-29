@@ -297,6 +297,10 @@
 
 - op : tanh_grad
 
-# - op : transpose
+- op : transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
-# - op : transpose_grad
+- op : transpose_grad
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : out_grad
