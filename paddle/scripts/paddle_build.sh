@@ -2465,6 +2465,7 @@ set +x
                 testcase=''
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
+	collect_failed_tests
 
 	# add unit test retry for CINN
 	rm -f $tmp_dir/*
