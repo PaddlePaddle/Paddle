@@ -26,12 +26,11 @@ from .opcode_info import ALL_JUMP, HAS_FREE, HAS_LOCAL, UNCONDITIONAL_JUMP
 class State:
     reads: OrderedSet[str]
     writes: OrderedSet[str]
-    visited: OrderedSet[int]
 
     def __or__(self, other):
         reads = self.reads | other.reads
         writes = self.writes | other.writes
-        return State(reads, writes, OrderedSet())
+        return State(reads, writes)
 
 
 def is_read_opcode(opname):
@@ -83,7 +82,8 @@ def analysis_used_names(
     Returns:
         set[str]: The analysis result.
     """
-    root_state = State(OrderedSet(), OrderedSet(), OrderedSet())
+    root_state = State(OrderedSet(), OrderedSet())
+    visited = OrderedSet()
 
     def fork(
         state: State, start: int, jump: bool, jump_target: int
@@ -92,16 +92,15 @@ def analysis_used_names(
         new_state = State(
             OrderedSet(state.reads),
             OrderedSet(state.writes),
-            OrderedSet(state.visited),
         )
         return walk(new_state, new_start)
 
     def walk(state: State, start: int) -> OrderedSet[str]:
         end = len(instructions) if stop_instr_idx is None else stop_instr_idx
         for i in range(start, end):
-            if i in state.visited:
+            if i in visited:
                 return state
-            state.visited.add(i)
+            visited.add(i)
 
             instr = instructions[i]
             if instr.opname in HAS_LOCAL | HAS_FREE:
@@ -119,7 +118,7 @@ def analysis_used_names(
                 not_jump_branch = (
                     fork(state, i, False, target_idx)
                     if instr.opname not in UNCONDITIONAL_JUMP
-                    else State(OrderedSet(), OrderedSet(), OrderedSet())
+                    else State(OrderedSet(), OrderedSet())
                 )
                 return jump_branch | not_jump_branch
             elif instr.opname == "RETURN_VALUE":

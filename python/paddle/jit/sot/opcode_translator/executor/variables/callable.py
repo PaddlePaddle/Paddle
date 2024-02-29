@@ -186,6 +186,11 @@ class UserDefinedFunctionVariable(FunctionVariable):
             if output is not None:
                 return output
 
+        if inspect.isgeneratorfunction(self.value):
+            raise BreakGraphError(
+                f"call function {self.value}, which is a generator"
+            )
+
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(
