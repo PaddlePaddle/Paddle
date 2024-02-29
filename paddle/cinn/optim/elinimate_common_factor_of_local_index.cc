@@ -93,8 +93,9 @@ int ExtractNumberFromExpr(const ir::Expr& expr) {
                     ExtractNumberFromExpr(mul->b()));
   } else {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
+    return 1;
   }
-  return 1;
+  LOG(FATAL) << "Dead code";
 }
 
 int gcd(int a, int b) {
@@ -104,8 +105,7 @@ int gcd(int a, int b) {
   return gcd(b, a % b);
 }
 
-// Note: Only calculates gcd of int factors. It's too complicated to support gcd
-// for any ir::Expr
+// Note (Hongyu Jia): Currently, we only calculates gcd of int factors.
 ir::Expr CalculateGcdForExprPair(const ir::Expr& expr1, const ir::Expr& expr2) {
   return ir::Expr(
       gcd(ExtractNumberFromExpr(expr1), ExtractNumberFromExpr(expr2)));
