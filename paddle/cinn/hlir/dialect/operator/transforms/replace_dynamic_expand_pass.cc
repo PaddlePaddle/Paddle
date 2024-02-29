@@ -78,6 +78,8 @@ class DynamicExpandOpPattern
           op->operand_source(0), broadcast_axes, out_shape);
     }();
 
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     CHECK(shape_analysis.HasShapeOrDataForValue(op.result(0)))
         << "Can't find DimExpr for output of reshape in shape_analysis.";
     shape_analysis.SetShapeOrDataForValue(
