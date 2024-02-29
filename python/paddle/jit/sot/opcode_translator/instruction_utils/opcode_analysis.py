@@ -43,6 +43,7 @@ class State:
 def is_read_opcode(opname):
     if opname in [
         "LOAD_FAST",
+        "LOAD_FAST_CHECK",
         "LOAD_DEREF",
         "LOAD_NAME",
         "LOAD_GLOBAL",
@@ -76,7 +77,7 @@ def analysis_used_names(
     instructions: list[Instruction],
     current_instr_idx: int,
     stop_instr_idx: int | None = None,
-) -> OrderedSet[str]:
+) -> tuple[OrderedSet[str], OrderedSet[str]]:
     """
     Analyze the inputs of the instructions from current_instr_idx to stop_instr_idx.
 
@@ -87,13 +88,11 @@ def analysis_used_names(
             If None, the analysis will stop at the end of the instructions.
 
     Returns:
-        set[str]: The analysis result.
+        State: The analysis result.
     """
     root_state = State(OrderedSet(), OrderedSet(), OrderedSet())
 
-    def fork(
-        state: State, start: int, jump: bool, jump_target: int
-    ) -> OrderedSet[str]:
+    def fork(state: State, start: int, jump: bool, jump_target: int) -> State:
         new_start = start + 1 if not jump else jump_target
         new_state = State(
             OrderedSet(state.reads),
@@ -102,7 +101,7 @@ def analysis_used_names(
         )
         return walk(new_state, new_start)
 
-    def walk(state: State, start: int) -> OrderedSet[str]:
+    def walk(state: State, start: int) -> State:
         end = len(instructions) if stop_instr_idx is None else stop_instr_idx
         for i in range(start, end):
             if i in state.visited:

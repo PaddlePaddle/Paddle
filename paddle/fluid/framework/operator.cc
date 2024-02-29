@@ -2677,7 +2677,7 @@ Scope* OperatorWithKernel::PrepareData(
       // target_kernel_type.
       // Have a discussion with @Superjomn or the inference developers if some
       // changes on this logic for this macro might not tested on the other
-      // scenerios.
+      // scenarios.
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
@@ -3088,10 +3088,10 @@ static void SetDnnAttrIntoDeviceContext(
     phi::DeviceContext* dev_ctx,
     const Attribute& attr,
     const std::string& attr_name,
-    const operators::ExtraAttrPropertySet& attr_propertys) {
+    const operators::ExtraAttrPropertySet& attr_properties) {
 #ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx) &&
-      attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
+      attr_properties.Support(operators::ExtraAttrProperty::ONEDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     switch (AttrTypeID(attr)) {
@@ -3124,7 +3124,7 @@ static void SetDnnAttrIntoDeviceContext(
 #endif
 #ifdef PADDLE_WITH_CUDA
   if (phi::GPUContext::classof(dev_ctx) &&
-      attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+      attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to GPUDNNContext.";
     phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
     switch (AttrTypeID(attr)) {
@@ -3585,8 +3585,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
-    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+    auto attr_properties = paddle::operators::GetExtraAttrProperties(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_properties);
   }
   // TODO(chenweihang): Since the pass will still `SetAttr` in the OpDesc,
   // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
@@ -3600,8 +3600,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   for (const auto& attr_iter : attrs) {
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
-    auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
-    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+    auto attr_properties = paddle::operators::GetExtraAttrProperties(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_properties);
   }
   VLOG(4) << "Done runtime attributes";
 #endif

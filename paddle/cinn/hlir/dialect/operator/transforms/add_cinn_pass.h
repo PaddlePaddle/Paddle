@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,20 @@
 
 #pragma once
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
+#include <functional>
+#include <memory>
 
-// TODO(ljz) Automatic this process in cmake file.
-namespace paddle {
-namespace distributed {
-namespace auto_parallel {
+namespace pir {
 
-// replicated rule
-REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
+class PassManager;
+class Program;
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace pir
+
+namespace cinn::dialect::ir {
+
+void ApplyCinnPass(::pir::Program* program,
+                   const std::function<std::shared_ptr<pir::PassManager>()>&
+                       CreatePassManager);
+
+}  // namespace cinn::dialect::ir

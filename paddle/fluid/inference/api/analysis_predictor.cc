@@ -105,6 +105,12 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
@@ -874,6 +880,25 @@ bool AnalysisPredictor::PrepareExecutor() {
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
       }
+#ifdef PADDLE_WITH_CINN
+      if (config_.cinn_enabled()) {
+        VLOG(4) << "[CINN] Begin ApplyCinnPass";
+        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), [&] {
+          pir::IrContext *ctx = pir::IrContext::Instance();
+          ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+          ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+          auto pass_manager = std::make_shared<::pir::PassManager>(
+              ::pir::IrContext::Instance(), 2);
+          if (!config_.glog_info_disabled()) {
+            pass_manager->EnablePrintStatistics();
+          }
+          if (config_.ir_debug_) {
+            pass_manager->EnableIRPrinting();
+          }
+          return pass_manager;
+        });
+      }
+#endif
 
       if (config_.use_gpu()) {
         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
@@ -1702,6 +1727,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
+    argument_->SetTRTExcludeVarNames(config_.trt_exclude_var_names_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
@@ -1792,8 +1818,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
-  if (config_.use_cinn_compiler_) {
-    argument_->SetUseCinnCompiler(config_.use_cinn_compiler_);
+  if (config_.cinn_enabled()) {
+    argument_->SetUseCinnCompiler(true);
   }
 
 #ifdef PADDLE_WITH_DNNL
@@ -1868,7 +1894,7 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only GPU/XPU "
                  "backend is supported for now.";
-    if (!config_.use_cinn_compiler_) {
+    if (!config_.cinn_enabled()) {
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
         pass_builder->ClearPasses();
