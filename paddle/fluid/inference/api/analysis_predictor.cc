@@ -436,8 +436,6 @@ bool AnalysisPredictor::Init(
           << "The optimized model is not found, fallback to original model. "
              "EnableSaveOptimModel will be turned on and the optimized model "
              "can be available next time.";
-      // UseOptimizedModel supports only the default path of shape_range_info
-      config_.shape_range_info_path_ = "";
       config_.EnableSaveOptimModel(true);
       config_.UseOptimizedModel(false);
     }
@@ -612,16 +610,19 @@ void AnalysisPredictor::ClearExtraParams() {
                                          op_desc->GetAttr("parameters"));
       trt_repetitive_params.insert(
           trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
-      // TODO(ming1753): This is a trick solution to the problem of possible
+      // NOTE(ming1753): This is a trick solution to the problem of possible
       // absolute paths in the model_opt_cache_dir and shape_range_info_path
-      // attributes in tensorrt_engine op. Expect the issue to be completely
-      // resolved in PIR.
+      // attributes in tensorrt_engine op.
       auto model_opt_cache_dir_from_model = PADDLE_GET_CONST(
           std::string, op_desc->GetAttr("model_opt_cache_dir"));
       auto model_opt_cache_dir = GetOptimizedModelPath();
-      op_desc->SetAttr("model_opt_cache_dir", model_opt_cache_dir);
-      op_desc->SetAttr("shape_range_info_path",
-                       model_opt_cache_dir + "/" + "shape_range_info.pbtxt");
+      if (op_desc->HasAttr("model_opt_cache_dir")) {
+        op_desc->SetAttr("model_opt_cache_dir", model_opt_cache_dir);
+      }
+      if (op_desc->HasAttr("shape_range_info_path")) {
+        op_desc->SetAttr("shape_range_info_path",
+                         config_.shape_range_info_path_);
+      }
     }
   }
 
