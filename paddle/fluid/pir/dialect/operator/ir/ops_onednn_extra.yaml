@@ -247,9 +247,11 @@
 
 - op : sigmoid_grad
 
-# - op : slice
+- op : slice
+  extra_args : str mkldnn_data_type="float32"
 
-# - op : slice_grad
+- op : slice_grad
+  extra_args : str mkldnn_data_type="float32"
 
 - op : softmax
   extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32", bool is_test=false
@@ -275,7 +277,7 @@
 - op : squeeze_grad
   extra_args : str mkldnn_data_type="float32"
 
-# - op : stack
+- op : stack
 
 - op : subtract
 
