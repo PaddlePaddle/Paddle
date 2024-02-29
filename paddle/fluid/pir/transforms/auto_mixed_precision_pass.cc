@@ -230,7 +230,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
           if (!op->operand_source(idx)) continue;
           auto operand = op->operand(idx);
           if (operand.type() && operand.type().isa<pir::VectorType>()) {
-            // check if there are all float in the vectortype
+            // check if there are all float in the vector type
             auto vec_type = operand.type().dyn_cast<pir::VectorType>();
             if (IsVectorTypeFloat(vec_type)) {
               auto input_operation = GetDefiningOpForInput(op, idx);
