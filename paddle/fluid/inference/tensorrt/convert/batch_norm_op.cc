@@ -170,10 +170,10 @@ class BatchNormOpConverter : public OpConverter {
       squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
       squeeze_layer->setReshapeDimensions(squeeze_shape);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           squeeze_layer, "batchnorm_add_scale", {output_name}, test_mode);
     } else {
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layer, "batchnorm_add_scale", {output_name}, test_mode);
     }
   }

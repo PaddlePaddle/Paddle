@@ -54,7 +54,7 @@ class LogSigmoidOpConverter : public OpConverter {
                                  *(sigmoid->getOutput(0)),
                                  nvinfer1::UnaryOperation::kLOG);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "logsigmoid", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "logsigmoid", {output_name}, test_mode);
   }
 };
 

@@ -21,6 +21,7 @@ from . import (  # noqa: F401
     dist_dropout,
     dist_eltwise,
     dist_embedding,
+    dist_expand_as,
     dist_fill_constant_batch_size_like,
     dist_flash_attn,
     dist_fused_attention,

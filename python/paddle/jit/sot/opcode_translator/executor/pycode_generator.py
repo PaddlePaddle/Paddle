@@ -742,12 +742,14 @@ class PyCodeGen:
             idx = self.cell_free_storage.index(name)
         return self.add_instr("LOAD_DEREF", arg=idx, argval=name)
 
-    def gen_load_attr(self, name: str):
+    def gen_load_attr(self, name: str, is_method=False):
         if name not in self._code_options["co_names"]:
             self._code_options["co_names"].append(name)
         idx = self._code_options["co_names"].index(name)
         if sys.version_info >= (3, 12):
             idx <<= 1
+            if is_method:
+                idx |= 1
         return self.add_instr("LOAD_ATTR", arg=idx, argval=name)
 
     def gen_store_attr(self, name: str):
@@ -763,6 +765,8 @@ class PyCodeGen:
         return self.add_instr("DELETE_ATTR", arg=idx, argval=name)
 
     def gen_load_method(self, name: str):
+        if sys.version_info >= (3, 12):
+            return self.gen_load_attr(name, True)
         if name not in self._code_options["co_names"]:
             self._code_options["co_names"].append(name)
         idx = self._code_options["co_names"].index(name)

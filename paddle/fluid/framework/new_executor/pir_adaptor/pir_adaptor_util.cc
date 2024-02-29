@@ -556,11 +556,13 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->operand_source(0);
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (value.defining_op()->HasAttribute(kAttrIsPersistable) &&
-        value.attribute<pir::BoolAttribute>(kAttrIsPersistable).data()) {
-      VLOG(6) << "Handle for builtin.shadow_output persistable value:"
-              << var_name;
-      scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+    if (auto bool_atttr =
+            value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
+      if (bool_atttr.data()) {
+        VLOG(6) << "Handle for builtin.shadow_ouptut persistable value:"
+                << var_name;
+        scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+      }
     }
 
     // change operand name to param_name
@@ -805,7 +807,8 @@ void BuildRuntimeContext(pir::Operation* op,
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -890,7 +893,8 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -947,27 +951,27 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
         }
         attr_map[legacy_arg_name] = vec_int;
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
-        std::vector<int> vec_int64;
+        std::vector<int64_t> vec_int64;
         for (auto attribute : array_list) {
           vec_int64.push_back(
               attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
         attr_map[legacy_arg_name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
-        std::vector<int> vec_bool;
+        std::vector<bool> vec_bool;
         for (auto attribute : array_list) {
           vec_bool.push_back(attribute.dyn_cast<pir::BoolAttribute>().data());
         }
         attr_map[legacy_arg_name] = vec_bool;
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
-        std::vector<int> vec_float;
+        std::vector<float> vec_float;
         for (auto attribute : array_list) {
           vec_float.push_back(
               attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
         attr_map[legacy_arg_name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
-        std::vector<int> vec_double;
+        std::vector<double> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT

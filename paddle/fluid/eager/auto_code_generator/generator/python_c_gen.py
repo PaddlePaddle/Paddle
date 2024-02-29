@@ -193,8 +193,6 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/pybind/eager_custom_python_api.h"
 #include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/eager/amp_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
 namespace paddle {{
 namespace pybind {{

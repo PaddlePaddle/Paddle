@@ -87,7 +87,7 @@ class Multinomial(distribution.Distribution):
 
     @property
     def mean(self):
-        """mean of multinomial distribuion.
+        """mean of multinomial distribution.
 
         Returns:
             Tensor: mean value.

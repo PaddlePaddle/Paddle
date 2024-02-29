@@ -142,7 +142,7 @@ void XPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           std::string branch_name = any_op->Op()->Input("branch")[0];
           auto* branch_node = FindNodeWithName(graph, branch_name);
           // If branch datatype is not equal to dequant_out datatype, can not
-          // squash. Because phase1: dquantize + quantize squash maybe squash
+          // squash. Because phase1: dequantize + quantize squash maybe squash
           // branch quantize, if so, We judge the datatype to decide whether to
           // squash. If squash, the result will be wrong.
           if (branch_node->Var()->GetDataType() !=

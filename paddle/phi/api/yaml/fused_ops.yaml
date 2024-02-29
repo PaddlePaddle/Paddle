@@ -399,7 +399,7 @@
   backward : max_pool2d_v2_grad
 
 - op : multi_encoder_xpu
-  args : (Tensor x, Tensor[] fc_input_max, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] smooth_scale_weight, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx, bool is_per_channel, float[] softmax_max_value, str[] quant_types)
+  args : (Tensor x, Tensor[] fc_input_max, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] smooth_scale_weight, Tensor[] roformer_embedding, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx, bool is_per_channel, int max_pos_len, float[] softmax_max_value, str[] quant_types)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
   infer_meta :
     func : MultiEncoderXPUInferMeta
@@ -435,6 +435,15 @@
     func : QuantizeXPUInferMeta
   kernel :
     func : quantize_xpu
+    data_type : x
+
+- op : roformer_relative_embedding_xpu
+  args : (Tensor x, Tensor sin_emb, Tensor cos_emb, int max_pos_len)
+  output : Tensor(out)
+  infer_meta :
+    func : RoformerRelativePosXPUInferMeta
+  kernel :
+    func : roformer_relative_embedding_xpu
     data_type : x
 
 - op : self_dp_attention

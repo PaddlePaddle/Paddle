@@ -120,7 +120,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
     }
 
-    if (tgt_splitted_shape.size() > 0) {
+    if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];

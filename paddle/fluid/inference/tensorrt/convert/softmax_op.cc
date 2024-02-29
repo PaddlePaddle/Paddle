@@ -92,10 +92,10 @@ class SoftMaxOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
       reshaped_layer->setReshapeDimensions(
           engine_->GetITensor(op_desc.Input("X")[0])->getDimensions());
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           reshaped_layer, "reshape_softmax_reshape", {output_name}, test_mode);
     } else {
-      RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
     }
   }
 };

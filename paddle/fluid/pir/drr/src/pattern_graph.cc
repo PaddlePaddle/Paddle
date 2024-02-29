@@ -147,7 +147,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   const std::unordered_set<std::string> &inputs_tensor =
       graph_->input_tensors();
   const std::unordered_map<std::string, std::shared_ptr<Tensor>>
-      &id2owned_tensor = graph_->id2owend_tensor();
+      &id2owned_tensor = graph_->id2owned_tensor();
   const std::vector<std::shared_ptr<OpCall>> &owend_opcall =
       graph_->owned_op_call();
 
@@ -202,7 +202,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
 std::ostream &operator<<(std::ostream &os, const PatternGraph &pattern_graph) {
   os << "\nAll Tensors:\n";
-  for (const auto &kv : pattern_graph.id2owend_tensor()) {
+  for (const auto &kv : pattern_graph.id2owned_tensor()) {
     os << "  " << kv.first;
   }
   os << "\n\n";

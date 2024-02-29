@@ -47,6 +47,7 @@ void MultiEncoderXPUKernel(
     const std::vector<const DenseTensor*>& ln_scale,
     const std::vector<const DenseTensor*>& ln_bias,
     const std::vector<const DenseTensor*>& smooth_scale_weight,
+    const std::vector<const DenseTensor*>& roformer_embedding,
     const paddle::optional<DenseTensor>& mask,
     const paddle::optional<DenseTensor>& seq_lod,
     const paddle::optional<DenseTensor>& max_seq_len,
@@ -60,6 +61,7 @@ void MultiEncoderXPUKernel(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    int max_pos_len,
     const std::vector<float>& softmax_max_value,
     const std::vector<std::string>& quant_types,
     DenseTensor* out,
@@ -150,7 +152,6 @@ void MultiEncoderXPUKernel(
     }
   }
 
-  std::vector<float> test_data(6, 0);
   for (size_t i = 0; i < fc_input_max.size(); i++) {
     fc_input_max_data.push_back(fc_input_max[i]->data<float>());
   }
@@ -199,6 +200,16 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
+      }
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
+    }
     if (!enable_int8) {
       if (local_quant) {
         TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
@@ -242,6 +253,16 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
+      }
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
+    }
     if (!enable_int8) {
       if (local_quant) {
         TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
@@ -288,6 +309,16 @@ void MultiEncoderXPUKernel(
     qkv_attn_param.quant_type_.assign(set_quant_types.begin(),
                                       set_quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
+    if (!roformer_embedding.empty()) {
+      std::vector<const float*> roformer_embedding_data;
+      for (size_t i = 0; i < roformer_embedding.size(); i++) {
+        roformer_embedding_data.push_back(roformer_embedding[i]->data<float>());
+      }
+      qkv_attn_param.relative_type = relative_type;
+      qkv_attn_param.max_pos_len = max_pos_len;
+      qkv_attn_param.relative_pos.assign(roformer_embedding_data.begin(),
+                                         roformer_embedding_data.end());
+    }
     if (!enable_int8) {
       if (local_quant) {
         TRANSFORMER_ENCODER_KERNEL_IMPL(XPUTypeFP16, XPUTypeFP16, float)
@@ -319,6 +350,6 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->InputAt(9).SetBackend(phi::Backend::CPU);
   kernel->InputAt(10).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(11).SetBackend(phi::Backend::CPU);
 }

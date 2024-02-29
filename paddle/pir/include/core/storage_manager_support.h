@@ -15,6 +15,7 @@
 #pragma once
 
 #include <set>
+
 #include "paddle/pir/include/core/interface_support.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/type.h"

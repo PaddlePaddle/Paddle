@@ -103,7 +103,7 @@ TEST(CinnJitInstruction, Run) {
 
       std::vector<::pir::Operation*> ops = {it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
-      group->output_ops.insert(it);
+      group->output_values.push_back(it->result(0));
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,

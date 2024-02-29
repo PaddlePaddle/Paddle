@@ -21,15 +21,17 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
                         "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp")
 
 execute_process(
-  COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_bias_act.py"
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/conv2d_bias_act.py
+          --cuda_arch ${COMPUTE_CAPABILITY}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/conv2d_bias_residual.py
+    --cuda_arch ${COMPUTE_CAPABILITY}
   COMMAND ${PYTHON_EXECUTABLE}
-          "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_bias_residual.py"
-  COMMAND ${PYTHON_EXECUTABLE}
-          "${CMAKE_CURRENT_SOURCE_DIR}/conv2d_depthwise_bias_act.py"
+          ${CMAKE_CURRENT_SOURCE_DIR}/conv2d_depthwise_bias_act.py
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 find_package(CUDA)
-
+# you can append -std=c++17 in CUDA_NVCC_FLAGS for compiling cutlass 3.0
 set(CUDA_NVCC_FLAGS
     -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)

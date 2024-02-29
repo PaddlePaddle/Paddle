@@ -40,9 +40,12 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 # The input type of sqrt op must be Variable or numpy.ndarray.
                 in1 = 1
                 self.assertRaises(TypeError, paddle.sqrt, in1)
@@ -643,6 +646,7 @@ class TestSiluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -890,6 +894,7 @@ class TestTanhAPI(unittest.TestCase):
             for r in [out1, out2, out3]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2702,22 +2707,24 @@ class TestReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    # The input type must be Variable.
-                    self.assertRaises(TypeError, self.relu, 1)
-                    # The input dtype must be float16, float32, float64.
-                    x_int32 = paddle.static.data(
-                        name='x_int32', shape=[10, 12], dtype='int32'
-                    )
-                    self.assertRaises(TypeError, self.relu, x_int32)
-                    # support the input dtype is float16
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[10, 12], dtype='float16'
-                    )
-                    self.relu(x_fp16)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                # The input type must be Variable.
+                self.assertRaises(TypeError, self.relu, 1)
+                # The input dtype must be float16, float32, float64.
+                x_int32 = paddle.static.data(
+                    name='x_int32', shape=[10, 12], dtype='int32'
+                )
+                self.assertRaises(TypeError, self.relu, x_int32)
+                # support the input dtype is float16
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[10, 12], dtype='float16'
+                )
+                self.relu(x_fp16)
 
 
 class TestReluInplaceAPI(TestReluAPI):
@@ -2846,6 +2853,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3029,6 +3037,7 @@ class TestGELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):

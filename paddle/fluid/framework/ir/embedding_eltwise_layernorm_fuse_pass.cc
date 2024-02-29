@@ -230,7 +230,7 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
   std::vector<Node*> end_pattern_scales;
   std::vector<Node*> end_pattern_biases;
   std::vector<Node*> end_pattern_out;
-  std::vector<Node*> end_patter_layernorms;
+  std::vector<Node*> end_pattern_layernorms;
   std::vector<std::unordered_set<Node*>> end_pattern_remove_nodes;
   GraphPatternDetector gpd3;
   auto* pattern3 = gpd3.mutable_pattern();
@@ -264,7 +264,7 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     end_pattern_biases.push_back(layer_norm_bias);
     end_pattern_scales.push_back(layer_norm_scale);
     end_pattern_out.push_back(layer_norm_out);
-    end_patter_layernorms.push_back(layer_norm);
+    end_pattern_layernorms.push_back(layer_norm);
   };
   gpd3(graph, handler3);
 
@@ -376,13 +376,13 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
       new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
       new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
       new_op_desc.SetAttr("epsilon",
-                          end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
+                          end_pattern_layernorms[k]->Op()->GetAttr("epsilon"));
 
-      if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
+      if (end_pattern_layernorms[k]->Op()->HasAttr("out_threshold")) {
         new_op_desc.SetAttr("enable_int8", true);
         new_op_desc.SetAttr(
             "out_threshold",
-            end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
+            end_pattern_layernorms[k]->Op()->GetAttr("out_threshold"));
       }
 
       auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);

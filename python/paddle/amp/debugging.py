@@ -270,7 +270,7 @@ class TensorCheckerConfig:
             self.seed = self.initial_seed
 
         if self.seed > np.iinfo(np.uint32).max or self.seed < 0:
-            print("[Warnning: Seed must be between 0 and 2**32 - 1")
+            print("[Warning: Seed must be between 0 and 2**32 - 1")
             self.seed = 123
 
         # get random seed
@@ -616,7 +616,7 @@ def compare_accuracy(
             ...             [1, 5, 2, 0], dtype="float32"
             ...         )
             ...         z1 = x + y
-            ...         out_excel = "compary_accuracy_out_excel.csv"
+            ...         out_excel = "compare_accuracy_out_excel.csv"
             ...         paddle.amp.debugging.compare_accuracy(
             ...             path, path, out_excel, loss_scale=1, dump_all_tensors=False
             ...         )

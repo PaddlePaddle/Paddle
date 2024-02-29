@@ -81,28 +81,28 @@ class DataNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSize shouold be 1"));
+                          "The input dim of BatchSize should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSum shouold be 1"));
+                          "The input dim of BatchSum should be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(),
                       1UL,
                       platform::errors::InvalidArgument(
-                          "The input dim of BatchSquareSum shouold be 1"));
+                          "The input dim of BatchSquareSum should be 1"));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSize shouold be C"));
+                            "The input dim[0] of BatchSize should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSum shouold be C"));
+                            "The input dim[0] of BatchSum should be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0],
                         C,
                         platform::errors::InvalidArgument(
-                            "The input dim[0] of BatchSqureSum shouold be C"));
+                            "The input dim[0] of BatchSquareSum should be C"));
     }
 
     if (enable_scale_and_shift) {
@@ -112,10 +112,10 @@ class DataNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           scale_dim.size(),
           1UL,
-          platform::errors::InvalidArgument("the dimensionof scale"
+          platform::errors::InvalidArgument("the dimension of scale"
                                             "must equal to 1. But received: "
                                             "the shape of scale is [%s], "
-                                            "the dimensionof scale is [%d]",
+                                            "the dimension of scale is [%d]",
                                             scale_dim,
                                             scale_dim.size()));
       PADDLE_ENFORCE_EQ(
@@ -691,7 +691,7 @@ class DataNormGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
             }
           }
         } else {
-          // calculate data sum and squre sum
+          // calculate data sum and square sum
           Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
           Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
           // calculate data sample sum and square sum
@@ -769,7 +769,7 @@ PD_REGISTER_STRUCT_KERNEL(
 
 REGISTER_OP_VERSION(data_norm).AddCheckpoint(
     R"ROC(
-              upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
+              upgrade data_norm op by adding scale_w to support scale and shift.)ROC",
     paddle::framework::compatible::OpVersionDesc().NewInput(
         "scale_w",
-        "scale_w is used to do scale duirng data_norm like batchnorm "));
+        "scale_w is used to do scale during data_norm like batchnorm "));

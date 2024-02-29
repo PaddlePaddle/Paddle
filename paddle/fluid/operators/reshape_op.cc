@@ -581,7 +581,7 @@ class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
     auto *dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
-    VLOG(6) << "Runing reshape2_grad composite func";
+    VLOG(6) << "Running reshape2_grad composite func";
     prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
     this->RecoverOutputName(dx, dx_name);
   }

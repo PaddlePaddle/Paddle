@@ -1314,7 +1314,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/XPU is supportted. "
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supported. "
                                       "please use CPU/CUDA/XPU backend."));
   }
 

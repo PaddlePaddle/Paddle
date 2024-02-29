@@ -740,7 +740,7 @@ void AnalyzeEvent(
     size_t *max_name_width,
     OverHead *overhead,
     bool merge_thread) {
-  // In oreder to deal with special event in main thread
+  // In order to deal with special event in main thread
   std::set<std::string> main_thread_event_name;
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {

@@ -145,16 +145,16 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 #endif  // PADDLE_WITH_CUPTI
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
-  static const char* categary_name_[] = {// NOLINT
+  static const char* category_name_[] = {// NOLINT
                                          "Allocate",
                                          "Free",
                                          "ReservedAllocate",
                                          "ReservedFree"};
-  return categary_name_[static_cast<int>(type)];
+  return category_name_[static_cast<int>(type)];
 }
 
 const char* StringTracerEventType(TracerEventType type) {
-  static const char* categary_name_[] = {"Operator",  // NOLINT
+  static const char* category_name_[] = {"Operator",  // NOLINT
                                          "Dataloader",
                                          "ProfileStep",
                                          "CudaRuntime",
@@ -169,7 +169,7 @@ const char* StringTracerEventType(TracerEventType type) {
                                          "Communication",
                                          "PythonOp",
                                          "PythonUserDefined"};
-  return categary_name_[static_cast<int>(type)];
+  return category_name_[static_cast<int>(type)];
 }
 
 }  // namespace platform

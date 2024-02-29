@@ -153,7 +153,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
 
     // step 3: Create Fusion Op for each divided sub group.
     for (auto group : merged_group_list) {
-      const std::vector<::pir::Value> vec_outs = group->GetGroupOutputValues();
+      const std::vector<::pir::Value> vec_outs =
+          group->GenerateGroupOutputValues();
       auto fusion_op = CreateFusionOp(vec_outs, group);
 
       for (size_t i = 0; i < fusion_op.num_results(); ++i) {
@@ -198,7 +199,7 @@ class DivideGroupOpToFusionOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

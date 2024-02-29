@@ -158,9 +158,9 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       } else if (op_type.compare("conditional_block") == 0) {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       } else {
-        // Only support while_op and conditinal_block_op now
+        // Only support while_op and conditional_block_op now
         LOG(WARNING)
-            << "Currently, only support while_op and conditinal_block_op.\n";
+            << "Currently, only support while_op and conditional_block_op.\n";
         continue;
       }
 

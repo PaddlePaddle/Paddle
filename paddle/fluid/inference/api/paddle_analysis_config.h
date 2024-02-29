@@ -606,7 +606,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use ir graph optimization.
   ///
   bool ir_optim() const { return enable_ir_optim_; }
-
   ///
   /// \brief INTERNAL Determine whether to use the feed and fetch operators.
   /// Just for internal development, not stable yet.
@@ -811,6 +810,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  void Exp_DisableTensorRtSubgraph(
+      const std::vector<std::string>& var_name_not_trt);
+
   ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
   /// https://github.com/NVIDIA/TensorRT), with which some models's inference
@@ -880,6 +882,13 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
 
   bool new_executor_enabled() const { return use_new_executor_; }
+
+  ///
+  /// \brief Control whether to use optimized model to inference.
+  ///
+  /// \param x whether to use optimized model.
+  ///
+  void UseOptimizedModel(bool x = true) { use_optimized_model_ = x; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1187,7 +1196,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Enable use cinn compiler optimization.
   ///
-  void Exp_EnableCINNCompiler();
+  void EnableCINN();
 
   ///
   /// \brief A boolean state telling whether the CINN compiler optimization is
@@ -1195,7 +1204,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether the CINN compiler optimization is turned on.
   ///
-  bool cinn_compiler_enabled() const;
+  bool cinn_enabled() const;
 
  protected:
   // Update the config.
@@ -1263,6 +1272,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
   std::vector<std::string> trt_output_tensor_names_{};
+  std::vector<std::string> trt_exclude_var_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1316,6 +1326,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_ir_optim_{true};
   bool ir_debug_{false};
 
+  bool use_optimized_model_{false};
+
   bool use_new_executor_{false};
 
   bool specify_input_name_{false};
@@ -1338,7 +1350,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool lite_zero_copy_;
 
   // CINN compiler related.
-  bool use_cinn_compiler_{false};
+  bool use_cinn_{false};
 
   // XPU related.
   bool use_xpu_{false};

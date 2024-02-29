@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
@@ -49,7 +49,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
     if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
         "fused_bias_dropout_residual_layer_norm", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast(

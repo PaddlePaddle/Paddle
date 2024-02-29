@@ -57,7 +57,7 @@ class PatternGraph {
   }
 
   const std::unordered_map<std::string, std::shared_ptr<Tensor>>&
-  id2owend_tensor() const {
+  id2owned_tensor() const {
     return id2owned_tensor_;
   }
 

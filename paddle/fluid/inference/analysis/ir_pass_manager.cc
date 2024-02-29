@@ -170,6 +170,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));
+      pass->Set(
+          "trt_exclude_var_names",
+          new std::vector<std::string>(argument->trt_exclude_var_names()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));

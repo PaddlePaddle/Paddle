@@ -74,7 +74,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTransReverse(
   ret.resize(x_ndim);
   fill(ret.begin(), ret.end(), std::make_shared<Singleton>());
 
-  for (int64_t i = 0, j = 0; i < out_ndim; i++) {
+  for (int64_t i = 0, j = 0; i < out_ndim; i++) {  // NOLINT
     auto it = find(axis.begin(), axis.end(), i);
 
     if (it == axis.end()) {

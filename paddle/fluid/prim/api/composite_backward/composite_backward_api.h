@@ -87,12 +87,9 @@ void silu_grad(const Tensor& x,
 template <typename T>
 void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto condition = greater_than<T>(
+    auto mask = greater_than<T>(
         out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
-    auto res =
-        where<T>(condition,
-                 out_grad,
-                 full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = cast<T>(mask, out.dtype()) * out_grad;
     set_output<T>(res, x_grad);
   }
 }
@@ -275,7 +272,6 @@ void add_grad(const Tensor& x,
         auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
         set_output<T>(dy_tmp, dy);
       }
-
     } else {
       by_pass<T>(out_grad, dy);
     }

@@ -19,17 +19,20 @@ from pass_test import PassTest
 
 import paddle
 from paddle.base import core
+from paddle.pir.core import create_parameter
 
 paddle.enable_static()
 
 
 class TestConv2dAddFusePass(PassTest):
     r"""
-    x_var   f_var
+    x_var   filter(w)
       \       /
-         conv2d
-           |
-          add
+         conv2d  bias(w)
+           |    /
+            add
+             |
+            out_var
     """
 
     def is_program_valid(self, program=None):
@@ -43,8 +46,13 @@ class TestConv2dAddFusePass(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[3, 1, 28, 28], dtype='float32'
                 )
-                y = paddle.static.data(
-                    name="y", shape=[3, 32, 28, 28], dtype="float32"
+                bias = create_parameter(
+                    name="bias",
+                    shape=[3, 32, 28, 28],
+                    dtype='float32',
+                    initializer=paddle.nn.initializer.Assign(
+                        np.random.random((3, 32, 28, 28)).astype("float32")
+                    ),
                 )
                 conv2d = paddle.nn.Conv2D(
                     in_channels=1,
@@ -54,12 +62,11 @@ class TestConv2dAddFusePass(PassTest):
                     data_format='NCHW',
                     bias_attr=False,
                 )
-                out = paddle.add(conv2d(x), y)
+                out = paddle.add(conv2d(x), bias)
                 out = paddle.assign(out)
                 self.pass_list = ['conv2d_add_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
-                    "y": np.random.random((3, 32, 28, 28)).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {

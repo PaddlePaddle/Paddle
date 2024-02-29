@@ -86,7 +86,7 @@ static void PushBoxExtendedSparseFunctor(
                         cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same,"
-                            "please cheack"));
+                            "please check"));
     }
     const float *grad_value = d_output[i]->data<float>();
     const float *grad_value_extend = d_output_extend[i]->data<float>();

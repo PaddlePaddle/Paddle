@@ -289,7 +289,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
         ("shuffle_last_multihead_matmul(Output: " + output_name + ")").c_str());
     nvinfer1::ILayer* layer = nullptr;
     layer = reshape_after_mha_layer;
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "qk_multihead_matmul", {output_name}, test_mode);
   }
 };

@@ -95,4 +95,14 @@ std::vector<Value> GetUsedExternalValue(const Operation& op);
  */
 std::vector<Value> GetUsedExternalValue(const Block& block);
 
+/**
+ * @brief Determine whether a value comes from a weight or has no input op. That
+ is to say, it is permissible.
+ *
+ * @param pir::Value
+
+ * @return bool
+ */
+bool ValueIsPersitable(pir::Value value);
+
 }  // namespace pir

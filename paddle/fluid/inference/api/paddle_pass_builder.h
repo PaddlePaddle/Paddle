@@ -113,13 +113,14 @@ class PD_INFER_DECL PaddlePassBuilder {
 
  protected:
   /// \cond Protected
-  std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass",
-       "ir_analysis_pass",
-       "save_optimized_model_pass",
-       "ir_params_sync_among_devices_pass",
-       "adjust_cudnn_workspace_size_pass",
-       "inference_op_replace_pass"}};
+  std::vector<std::string> analysis_passes_{{
+      "ir_graph_build_pass",
+      "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
+      "adjust_cudnn_workspace_size_pass",
+      "inference_op_replace_pass",
+      "save_optimized_model_pass",
+  }};
   std::vector<std::string> passes_;
   std::unordered_set<std::string> deleted_passes_;
   /// \endcond

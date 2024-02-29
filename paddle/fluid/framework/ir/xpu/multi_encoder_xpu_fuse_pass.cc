@@ -38,7 +38,8 @@ struct SingleEncoderXPUPattern : public PatternBase {
                           bool norm_before,
                           bool with_q_scale,
                           bool with_mask,
-                          bool is_smooth_quant);
+                          bool is_smooth_quant,
+                          const std::string& relative_type);
 
   // declare operator node's name
   // If norm_before, use ln_0 & ln_1.
@@ -141,6 +142,16 @@ struct SingleEncoderXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(smooth_scale_1_out);
   PATTERN_DECL_NODE(smooth_scale_2_out);
 
+  // roformer_relative_embedding_xpu
+  PATTERN_DECL_NODE(q_relative_emb);
+  PATTERN_DECL_NODE(q_cos_embedding);
+  PATTERN_DECL_NODE(q_sin_embedding);
+  PATTERN_DECL_NODE(q_relative_emb_out);
+  PATTERN_DECL_NODE(k_relative_emb);
+  PATTERN_DECL_NODE(k_cos_embedding);
+  PATTERN_DECL_NODE(k_sin_embedding);
+  PATTERN_DECL_NODE(k_relative_emb_out);
+
  private:
   std::string act_type_;
   std::string matmul_type_0_;
@@ -150,6 +161,7 @@ struct SingleEncoderXPUPattern : public PatternBase {
   bool with_q_scale_{false};
   bool with_mask_{true};
   bool is_smooth_quant_{false};
+  std::string relative_type_ = "";
 };
 
 SingleEncoderXPUPattern::SingleEncoderXPUPattern(
@@ -162,7 +174,8 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
     bool norm_before,
     bool with_q_scale,
     bool with_mask,
-    bool is_smooth_quant)
+    bool is_smooth_quant,
+    const std::string& relative_type)
     : PatternBase(pattern, name_scope, name_scope),
       act_type_(act_type),
       matmul_type_0_(matmul_type_0),
@@ -171,7 +184,8 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
       norm_before_(norm_before),
       with_q_scale_(with_q_scale),
       with_mask_(with_mask),
-      is_smooth_quant_(is_smooth_quant) {
+      is_smooth_quant_(is_smooth_quant),
+      relative_type_(relative_type) {
   // layer_norm 0
   PDNode* ln_0_x = pattern->NewNode(ln_0_x_repr());
   PDNode* ln_0_bias = nullptr;
@@ -244,14 +258,38 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
                               ->assert_var_not_persistable();
   PDNode* q_scale = nullptr;
   PDNode* q_scale_out = nullptr;
+  std::string target_op_type = matmul_type_1_;
   if (with_q_scale_) {
     q_scale = pattern->NewNode(q_scale_repr())->assert_is_op("scale");
     q_scale_out = pattern->NewNode(q_scale_out_repr())
                       ->assert_is_op_output("scale", "Out")
                       ->assert_is_op_input(matmul_type_1_, "X")
                       ->assert_var_not_persistable();
+    target_op_type = "scale";
   } else {
-    q_transpose_out->assert_is_op_input(matmul_type_1_, "X");
+    if (relative_type_.empty()) {
+      q_transpose_out->assert_is_op_input(target_op_type, "X");
+    } else {
+      q_transpose_out->assert_is_op_input(relative_type_, "x");
+    }
+  }
+  PDNode* q_relative_emb = nullptr;
+  PDNode* q_cos_embedding = nullptr;
+  PDNode* q_sin_embedding = nullptr;
+  PDNode* q_relative_emb_out = nullptr;
+  if (relative_type_ == "roformer_relative_embedding_xpu") {
+    VLOG(3) << "build q_relative_emb";
+    q_relative_emb =
+        pattern->NewNode(q_relative_emb_repr())->assert_is_op(relative_type_);
+    q_sin_embedding = pattern->NewNode(q_sin_embedding_repr())
+                          ->assert_is_op_input(relative_type_, "sin_emb")
+                          ->AsInput();
+    q_cos_embedding = pattern->NewNode(q_cos_embedding_repr())
+                          ->assert_is_op_input(relative_type_, "cos_emb")
+                          ->AsInput();
+    q_relative_emb_out = pattern->NewNode(q_relative_emb_out_repr())
+                             ->assert_is_op_output(relative_type_, "out")
+                             ->assert_is_op_input(target_op_type, "X");
   }
 
   // k: matmul + add + reshape + transpose
@@ -279,9 +317,23 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
       pattern->NewNode(k_transpose_repr())->assert_is_op("transpose2");
   auto* k_transpose_out = pattern->NewNode(k_transpose_out_repr())
                               ->assert_is_op_output("transpose2", "Out")
-                              ->assert_is_op_input(matmul_type_1_, "Y")
                               ->assert_var_not_persistable();
 
+  PDNode* k_relative_emb = nullptr;
+  PDNode* k_sin_embedding = q_sin_embedding;
+  PDNode* k_cos_embedding = q_cos_embedding;
+  PDNode* k_relative_emb_out = nullptr;
+  if (relative_type_.empty()) {
+    k_transpose_out->assert_is_op_input(matmul_type_1_, "Y");
+  } else if (relative_type_ == "roformer_relative_embedding_xpu") {
+    VLOG(3) << "build k_relative_emb";
+    k_transpose_out->assert_is_op_input(relative_type_, "x");
+    k_relative_emb =
+        pattern->NewNode(k_relative_emb_repr())->assert_is_op(relative_type_);
+    k_relative_emb_out = pattern->NewNode(k_relative_emb_out_repr())
+                             ->assert_is_op_output(relative_type_, "out")
+                             ->assert_is_op_input(matmul_type_1_, "Y");
+  }
   // qk: matmul + add + softmax
   auto* qk_matmul =
       pattern->NewNode(qk_matmul_repr())->assert_is_op(matmul_type_1_);
@@ -482,18 +534,31 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   q_add->LinksFrom({q_matmul_out, q_add_bias}).LinksTo({q_add_out});
   q_reshape->LinksFrom({q_add_out}).LinksTo({q_reshape_out});
   q_transpose->LinksFrom({q_reshape_out}).LinksTo({q_transpose_out});
-  PDNode* qk_matmul_x = q_transpose_out;
-  if (with_q_scale_) {
-    q_scale->LinksFrom({q_transpose_out}).LinksTo({q_scale_out});
-    qk_matmul_x = q_scale_out;
+  PDNode* last_node = q_transpose_out;
+  if (relative_type_ == "roformer_relative_embedding_xpu") {
+    VLOG(3) << "build q_relative_emb link";
+    q_relative_emb->LinksFrom({last_node, q_sin_embedding, q_cos_embedding})
+        .LinksTo({q_relative_emb_out});
+    last_node = q_relative_emb_out;
   }
+  if (with_q_scale_) {
+    q_scale->LinksFrom({last_node}).LinksTo({q_scale_out});
+    last_node = q_scale_out;
+  }
+  PDNode* qk_matmul_x = last_node;
 
   k_matmul->LinksFrom({q_matmul_x, k_matmul_w}).LinksTo({k_matmul_out});
   k_add->LinksFrom({k_matmul_out, k_add_bias}).LinksTo({k_add_out});
   k_reshape->LinksFrom({k_add_out}).LinksTo({k_reshape_out});
   k_transpose->LinksFrom({k_reshape_out}).LinksTo({k_transpose_out});
-
-  qk_matmul->LinksFrom({qk_matmul_x, k_transpose_out}).LinksTo({qk_matmul_out});
+  last_node = k_transpose_out;
+  if (relative_type_ == "roformer_relative_embedding_xpu") {
+    VLOG(3) << "build k_relative_emb link";
+    k_relative_emb->LinksFrom({last_node, k_sin_embedding, k_cos_embedding})
+        .LinksTo({k_relative_emb_out});
+    last_node = k_relative_emb_out;
+  }
+  qk_matmul->LinksFrom({qk_matmul_x, last_node}).LinksTo({qk_matmul_out});
   PDNode* qk_softmax_x = qk_matmul_out;
   if (with_mask_) {
     qk_add->LinksFrom({qk_matmul_out, qk_add_mask}).LinksTo({qk_add_out});
@@ -571,7 +636,8 @@ void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
                                   pattern_param.norm_before,
                                   pattern_param.with_q_scale,
                                   pattern_param.with_mask,
-                                  pattern_param.is_smooth_quant);
+                                  pattern_param.is_smooth_quant,
+                                  pattern_param.relative_type);
     while (ApplyMultiEncoderXPUFuse(graph)) {
       multi_encoder_fused_counts++;
     }
@@ -950,7 +1016,8 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     bool norm_before,
     bool with_q_scale,
     bool with_mask,
-    bool is_smooth_quant) const {
+    bool is_smooth_quant,
+    const std::string& relative_type) const {
   bool local_quant = false;
   if (std::getenv("XPU_LOCAL_QUANT")) {
     local_quant = atoi(std::getenv("XPU_LOCAL_QUANT"));
@@ -965,7 +1032,8 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                                             norm_before,
                                             with_q_scale,
                                             with_mask,
-                                            is_smooth_quant);
+                                            is_smooth_quant,
+                                            relative_type);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -1067,6 +1135,16 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     GET_IR_NODE(smooth_scale_2_weight);
     GET_IR_NODE(smooth_scale_1_out);
     GET_IR_NODE(smooth_scale_2_out);
+
+    // roformer_relative_embedding_xpu
+    GET_IR_NODE(q_relative_emb);
+    GET_IR_NODE(q_cos_embedding);
+    GET_IR_NODE(q_sin_embedding);
+    GET_IR_NODE(q_relative_emb_out);
+    GET_IR_NODE(k_relative_emb);
+    GET_IR_NODE(k_cos_embedding);
+    GET_IR_NODE(k_sin_embedding);
+    GET_IR_NODE(k_relative_emb_out);
 
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
@@ -1275,6 +1353,24 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     op_desc.SetAttr("relative_type", static_cast<int>(0));
     op_desc.SetAttr("use_precision", use_precision);
     op_desc.SetAttr("is_per_channel", is_per_channel);
+    if (relative_type == "roformer_relative_embedding_xpu") {
+      // q/k share the rotary embedding
+      op_desc.SetInput("roformer_embedding",
+                       {q_cos_embedding->Name(), q_sin_embedding->Name()});
+      op_desc.SetAttr("relative_type", 1);
+      auto q_cos_emb_shape = q_cos_embedding->Var()->GetShape();
+      CHECK_GE(static_cast<int>(q_cos_emb_shape.size()), 2)
+          << q_cos_emb_shape.size();
+      auto size_per_head = q_reshape_out->Var()->GetShape()[3];
+      CHECK_EQ(size_per_head, q_cos_emb_shape[q_cos_emb_shape.size() - 1]);
+      int max_pos_len = q_cos_emb_shape[q_cos_emb_shape.size() - 2];
+      VLOG(3) << "relative embedding max sequence len: " << max_pos_len;
+      op_desc.SetAttr("max_pos_len", max_pos_len);
+    } else {
+      op_desc.SetInput("roformer_embedding", {});
+      op_desc.SetAttr("max_pos_len", 0);
+    }
+
     // if quant,skip softmax,and use qk_matmul out_threshold as softmax_max
     auto softmax_max_name = qk_matmul->Op()->Output("Out")[0];
     if (var_quant_scales.find(softmax_max_name) != var_quant_scales.end()) {
@@ -1319,6 +1415,10 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     if (is_smooth_quant) {
       IR_NODE_LINK_TO(smooth_scale_1_weight, single_encoder_xpu);
       IR_NODE_LINK_TO(smooth_scale_2_weight, single_encoder_xpu);
+    }
+    if (relative_type == "roformer_relative_embedding_xpu") {
+      IR_NODE_LINK_TO(q_cos_embedding, single_encoder_xpu);
+      IR_NODE_LINK_TO(q_sin_embedding, single_encoder_xpu);
     }
 
     // Delete nodes
@@ -1405,6 +1505,12 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       delete_nodes.insert(smooth_scale_1_out);
       delete_nodes.insert(smooth_scale_2_out);
     }
+    if (relative_type == "roformer_relative_embedding_xpu") {
+      delete_nodes.insert(q_relative_emb);
+      delete_nodes.insert(q_relative_emb_out);
+      delete_nodes.insert(k_relative_emb);
+      delete_nodes.insert(k_relative_emb_out);
+    }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -1453,7 +1559,8 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
                                      "fc_bias",
                                      "ln_scale",
                                      "ln_bias",
-                                     "smooth_scale_weight"};
+                                     "smooth_scale_weight",
+                                     "roformer_embedding"};
   std::map<std::string, std::vector<std::string>> arg_names_map;
   std::string mask_name = single_encoders[0]->Op()->Inputs().count("mask") > 0
                               ? single_encoders[0]->Op()->Inputs().at("mask")[0]
@@ -1556,6 +1663,11 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
         quant_types.end(), per_quant_types.begin(), per_quant_types.end());
   }
   op_desc.SetAttr("quant_types", quant_types);
+  if (single_encoders[0]->Op()->HasAttr("max_pos_len")) {
+    op_desc.SetAttr("max_pos_len",
+                    PADDLE_GET_CONST(
+                        int, single_encoders[0]->Op()->GetAttr("max_pos_len")));
+  }
   op_desc.SetOutput("out", {out_name});
   op_desc.SetOutput("x_fp16", {x_fp16_name});
   op_desc.SetOutput("out_fp16", {out_fp16_name});
@@ -1642,15 +1754,157 @@ std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
     const {
   return std::vector<PatternParam>{
       // Params are arranged in alphabetic order
-      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true, false},
-      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true, false},
-      {"gelu", "mul", "matmul", "matmul", false, true, true, false},
-      {"relu", "mul", "matmul", "matmul", false, true, true, false},
+      {"gelu",
+       "matmul_v2",
+       "matmul",
+       "matmul_v2",
+       false,
+       false,
+       true,
+       false,
+       ""},
+      {"gelu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       false,
+       ""},
+      {"gelu", "mul", "matmul", "matmul", false, true, true, false, ""},
+      {"relu", "mul", "matmul", "matmul", false, true, true, false, ""},
+      {"relu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       false,
+       ""},
 
-      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true, true},
-      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true, true},
-      {"gelu", "mul", "matmul", "matmul", false, true, true, true},
-      {"relu", "mul", "matmul", "matmul", false, true, true, true},
+      {"gelu",
+       "matmul_v2",
+       "matmul",
+       "matmul_v2",
+       false,
+       false,
+       true,
+       true,
+       ""},
+      {"gelu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       true,
+       ""},
+      {"gelu", "mul", "matmul", "matmul", false, true, true, true, ""},
+      {"relu", "mul", "matmul", "matmul", false, true, true, true, ""},
+      {"relu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       true,
+       ""},
+
+      {"gelu",
+       "matmul_v2",
+       "matmul",
+       "matmul_v2",
+       false,
+       false,
+       true,
+       false,
+       "roformer_relative_embedding_xpu"},
+      {"gelu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       false,
+       "roformer_relative_embedding_xpu"},
+      {"gelu",
+       "mul",
+       "matmul",
+       "matmul",
+       false,
+       true,
+       true,
+       false,
+       "roformer_relative_embedding_xpu"},
+      {"relu",
+       "mul",
+       "matmul",
+       "matmul",
+       false,
+       true,
+       true,
+       false,
+       "roformer_relative_embedding_xpu"},
+      {"relu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       false,
+       "roformer_relative_embedding_xpu"},
+
+      {"gelu",
+       "matmul_v2",
+       "matmul",
+       "matmul_v2",
+       false,
+       false,
+       true,
+       true,
+       "roformer_relative_embedding_xpu"},
+      {"gelu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       true,
+       "roformer_relative_embedding_xpu"},
+      {"gelu",
+       "mul",
+       "matmul",
+       "matmul",
+       false,
+       true,
+       true,
+       true,
+       "roformer_relative_embedding_xpu"},
+      {"relu",
+       "mul",
+       "matmul",
+       "matmul",
+       false,
+       true,
+       true,
+       true,
+       "roformer_relative_embedding_xpu"},
+      {"relu",
+       "matmul_v2",
+       "matmul_v2",
+       "matmul_v2",
+       false,
+       true,
+       true,
+       true,
+       "roformer_relative_embedding_xpu"},
   };
 }
 

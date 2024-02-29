@@ -118,7 +118,7 @@ class DynamicReshapeOpPass : public pir::Pass {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
+          if (op.isa<cinn::dialect::GroupOp>()) {
             auto [_, num_rewrites] =
                 pir::ApplyPatternsGreedily(&op, patterns_, cfg);
             AddStatistics(num_rewrites);

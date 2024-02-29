@@ -151,7 +151,7 @@ TEST(CostDataTest, TestGetGraphProgram) {
   EXPECT_EQ(cost_data.GetProgram(), nullptr);
 }
 
-TEST(CostDataTest, TestUninitailzed) {
+TEST(CostDataTest, TestUninitialized) {
   CostData cost_data;
   EXPECT_EQ(cost_data.GetWholeMemoryBytes(), CostData::NOT_MEASURED);
   EXPECT_EQ(cost_data.GetWholeTimeMs(), CostData::NOT_MEASURED);

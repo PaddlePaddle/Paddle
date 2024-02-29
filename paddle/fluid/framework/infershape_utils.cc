@@ -859,7 +859,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   attr_names[i]));
           }
         } else {
-          // do nothing, skip currnet attr
+          // do nothing, skip current attr
         }
     }
   }

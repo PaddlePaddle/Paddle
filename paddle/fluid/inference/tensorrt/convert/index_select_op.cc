@@ -64,7 +64,7 @@ class IndexSelectConverter : public OpConverter {
         engine_, Gather, *input_tensor, *reshape_layer->getOutput(0), axis);
     layer->setNbElementWiseDims(0);
 
-    RreplenishLayerAndOutput(layer, "index_select", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "index_select", {output_name}, test_mode);
   }
 };
 

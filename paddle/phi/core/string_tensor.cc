@@ -37,7 +37,7 @@ StringTensor::StringTensor(const std::shared_ptr<phi::Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-StringTensor::StringTensor(const StringTensor& other) {
+StringTensor::StringTensor(const StringTensor& other) {  // NOLINT
   this->meta_ = other.meta();
   holder_ = other.holder_;
 }

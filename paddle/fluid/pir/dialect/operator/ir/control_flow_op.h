@@ -193,7 +193,8 @@ class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
   pir::Value data() { return operand_source(1); }
 };
 
-class SelectInputOp : public pir::Op<SelectInputOp> {
+class SelectInputOp
+    : public pir::Op<SelectInputOp, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.select_input"; }
@@ -202,6 +203,7 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::Value out() { return result(0); }
+  bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 };
 
 class SelectOutputOp : public pir::Op<SelectOutputOp> {

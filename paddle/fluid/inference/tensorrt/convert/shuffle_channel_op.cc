@@ -60,7 +60,7 @@ class ShuffleChannelOpConverter : public OpConverter {
       auto* output_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *output);
       output_layer->setInput(1, *input_shape_tensor);
 
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           output_layer, "shuffle_channel", {output_name}, test_mode);
     }
 #endif
@@ -79,7 +79,7 @@ class ShuffleChannelOpConverter : public OpConverter {
       nvinfer1::Dims3 reshape_dim2(c, h, w);
       reshape_layer->setReshapeDimensions(reshape_dim2);
 
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           reshape_layer, "shuffle_channel", {output_name}, test_mode);
     }
   }

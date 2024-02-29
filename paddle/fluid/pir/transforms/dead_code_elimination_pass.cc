@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include <cstdint>
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -31,7 +32,12 @@ class DeadCodeEliminationPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     VLOG(6) << "apply dead_code_elimination_pass";
     int64_t num_erasers{0};
-    EraseOp(*op->GetParentProgram()->block(), &num_erasers);
+    bool updated{true};
+    while (updated) {
+      int64_t pre_num_erasers = num_erasers;
+      EraseOp(*op->GetParentProgram()->block(), &num_erasers);
+      updated = pre_num_erasers != num_erasers;
+    }
     AddStatistics(num_erasers);
   }
 

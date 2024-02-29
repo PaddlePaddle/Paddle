@@ -110,7 +110,7 @@ class TransferLayoutFunctor {
         }
         VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
                 << target_layout;
-        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Case2 - transform from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
         phi::funcs::TransDataLayoutFromOneDNN(in_layout,
                                               target_layout,
@@ -119,11 +119,11 @@ class TransferLayoutFunctor {
                                               dev_ctx_.GetPlace());
       }
     } else {
-      // Case3 - transfrom between Non-ONEDNN OPKernels
+      // Case3 - transform between Non-ONEDNN OPKernels
       TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
     }
 #else
-    // Case3 - transfrom between Non-ONEDNN OPKernels
+    // Case3 - transform between Non-ONEDNN OPKernels
     TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
 #endif
     framework::SetTensorToVariable(*in_, out_tensor, out_);
