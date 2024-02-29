@@ -1178,6 +1178,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_attention_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"fused_bias_act",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_feedforward",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_feedforward_grad",
