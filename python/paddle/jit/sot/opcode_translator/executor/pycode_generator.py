@@ -766,12 +766,11 @@ class PyCodeGen:
 
     def gen_load_method(self, name: str):
         if sys.version_info >= (3, 12):
-            self.gen_load_attr(name, True)
-        else:
-            if name not in self._code_options["co_names"]:
-                self._code_options["co_names"].append(name)
-            idx = self._code_options["co_names"].index(name)
-            return self.add_instr("LOAD_METHOD", arg=idx, argval=name)
+            return self.gen_load_attr(name, True)
+        if name not in self._code_options["co_names"]:
+            self._code_options["co_names"].append(name)
+        idx = self._code_options["co_names"].index(name)
+        return self.add_instr("LOAD_METHOD", arg=idx, argval=name)
 
     def gen_delete_global(self, name: str):
         if name not in self._code_options["co_names"]:
