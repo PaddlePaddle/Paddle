@@ -1278,7 +1278,7 @@ struct SplitOpTranscriber : public OpTranscriber {
       target_op_name = prefix + "split_with_num";
 
     } else {
-      target_op_name = prefix = "split";
+      target_op_name = prefix + "split";
     }
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
