@@ -433,9 +433,14 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 void TopPSamplingInferMeta(const MetaTensor& x,
                            const MetaTensor& ps,
                            const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
                            int random_seed,
+                           int k,
+                           const std::string& mode,
                            MetaTensor* out,
-                           MetaTensor* ids);
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
