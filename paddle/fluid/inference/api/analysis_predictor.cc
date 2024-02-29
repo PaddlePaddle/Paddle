@@ -620,8 +620,14 @@ void AnalysisPredictor::ClearExtraParams() {
         op_desc->SetAttr("model_opt_cache_dir", model_opt_cache_dir);
       }
       if (op_desc->HasAttr("shape_range_info_path")) {
-        op_desc->SetAttr("shape_range_info_path",
-                         config_.shape_range_info_path_);
+        if (config_.shape_range_info_path_.empty()) {
+          op_desc->SetAttr(
+              "shape_range_info_path",
+              model_opt_cache_dir + "/" + "shape_range_info.pbtxt");
+        } else {
+          op_desc->SetAttr("shape_range_info_path",
+                           config_.shape_range_info_path_);
+        }
       }
     }
   }
