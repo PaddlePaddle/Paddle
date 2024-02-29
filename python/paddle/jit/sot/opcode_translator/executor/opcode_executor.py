@@ -1570,6 +1570,7 @@ class OpcodeExecutorBase:
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
+
 class OpcodeExecutor(OpcodeExecutorBase):
     """
     A class that represents an executor for opcode operations.
@@ -2141,7 +2142,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         nop = self._graph.pycode_gen.add_instr("NOP")
 
-        for_iter.jump_to = end_for
+        for_iter.jump_to = nop
         jump_if_break.jump_to = nop
         breakpoint()
 
@@ -2197,9 +2198,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             # 2.1. load iter, it is a input of loop fn
             pycode_gen.gen_load_fast(iterator.id)
 
-            if sys.version_info >= (3,12):
-                # 2.2. copy main logic, need contain END_FOR
-                pycode_gen.extend_instrs(origin_instrs[start_idx:end_idx+1])
+            if sys.version_info >= (3, 12):
+                # 2.2. copy main logic，不需要 BACKWARD
+                pycode_gen.extend_instrs(origin_instrs[start_idx : end_idx - 1])
             else:
                 # 2.2. copy main logic
                 pycode_gen.extend_instrs(origin_instrs[start_idx:end_idx])
@@ -2207,7 +2208,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             # 2.3. add break, continue marker and relocate jump
             for_iter_instr = origin_instrs[start_idx]
             assert for_iter_instr.jump_to is not None
-            if sys.version_info >= (3,12):
+            if sys.version_info >= (3, 12):
                 assert for_iter_instr.jump_to.opname == "END_FOR"
                 # out_loop_instr = origin_instrs[end_idx+1]
                 # pycode_gen.gen_jump(out_loop_instr, direction=JumpDirection.FORWARD)
@@ -2216,13 +2217,38 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 #     for_iter_instr, direction=JumpDirection.BACKWARD
                 # )
                 # nop_for_break = pycode_gen.add_instr("NOP")
+
+                jump1 = pycode_gen.gen_jump(
+                    for_iter_instr, direction=JumpDirection.BACKWARD
+                )
+                for_iter_instr.jump_to = pycode_gen.add_instr("END_FOR")
+
+                nop_for_break = pycode_gen.add_instr("NOP")
+
+                # 2.4. relocate jumps
+                for instr in pycode_gen._instructions:
+                    # 这里会如果跳转到 END_FOR 会跑两次 pop, 所以这里应该是跳到 END_FOR 的下一个字节码 NOP
+                    if instr.jump_to == for_iter_instr:
+                        instr.jump_to = nop_for_break
+
+                    if (
+                        sys.version_info < (3, 12)
+                        and instr.jump_to in origin_instrs
+                        and origin_instrs.index(instr.jump_to) >= end_idx
+                    ):
+                        breakpoint()
+                        instr.jump_to = nop_for_break
+
+                jump1.jump_to = for_iter_instr
             else:
                 out_loop_instr = for_iter_instr.jump_to
 
-                pycode_gen.gen_jump(out_loop_instr, direction=JumpDirection.FORWARD)
+                pycode_gen.gen_jump(
+                    out_loop_instr, direction=JumpDirection.FORWARD
+                )
                 nop_for_continue = pycode_gen.add_instr("NOP")
 
-                jump1 = pycode_gen.gen_jump(
+                jump = pycode_gen.gen_jump(
                     for_iter_instr, direction=JumpDirection.BACKWARD
                 )
 
@@ -2231,7 +2257,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 # 2.4. relocate jumps
                 for instr in pycode_gen._instructions:
                     if instr.jump_to == for_iter_instr:
-                        breakpoint()
                         instr.jump_to = nop_for_continue
 
                     if (
@@ -2240,8 +2265,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                     ):
                         instr.jump_to = nop_for_break
 
-                jump1.jump_to = for_iter_instr
-                breakpoint()
+                jump.jump_to = for_iter_instr
 
             pycode_gen.set_function_outputs(output_var_names)
             breakpoint()

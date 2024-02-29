@@ -405,12 +405,11 @@ def stacksize(instructions: list[Instruction]) -> float:
             idx + 1 < len(instructions)
             and instr.opname not in UNCONDITIONAL_JUMP
         ):
-            stack_effect = calc_stack_effect(instr, jump1=False)
+            stack_effect = calc_stack_effect(instr, jump=False)
             update_stacksize(idx, idx + 1, stack_effect)
 
-
         if instr.opcode in opcode.hasjabs or instr.opcode in opcode.hasjrel:
-            stack_effect = calc_stack_effect(instr, jump1=True)
+            stack_effect = calc_stack_effect(instr, jump=True)
             target_idx = instructions.index(instr.jump_to)
             update_stacksize(idx, target_idx, stack_effect)
 
