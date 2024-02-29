@@ -143,6 +143,7 @@ class TestTask(unittest.TestCase):
         paddle.enable_static()
         file_dir = os.path.dirname(os.path.abspath(__file__))
         self.file_path = os.path.join(file_dir, args.file_path)
+        paddle.set_flags({'FLAGS_enable_pir_api': True})
 
     def test_phi(self):
         self.check_infer(enable_cinn=False)
