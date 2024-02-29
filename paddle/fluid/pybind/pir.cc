@@ -950,11 +950,14 @@ AnalysisMiddleVariable(const Program &program,
       program.block(),
       forward_range,
       [&middle_values, &backward_inputs, &x_or_param](Operation *op) {
-        for (auto &t : op->results()) {
-          auto v = Value(t.Value::impl());
-          if (backward_inputs.count(v) && !x_or_param.count(v))
-            middle_values.push_back(v);
-        }
+        pir::Walk(op, [&](Operation *inner_op) {
+          for (auto &t : inner_op->results()) {
+            auto v = Value(t.Value::impl());
+            if (backward_inputs.count(v) && !x_or_param.count(v)) {
+              middle_values.push_back(v);
+            }
+          }
+        });
       });
   return std::make_pair(middle_values, backward_inputs);
 }
