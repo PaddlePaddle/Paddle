@@ -18,23 +18,51 @@
 #include "paddle/fluid/pybind/op_callstack_utils.h"
 
 pir::Attribute get_op_callstack_info() {
-  PyThreadState* tstate = PyThreadState_GET();
-  std::vector<pir::Attribute> op_callstack_infos;
-  if (NULL != tstate && NULL != tstate->frame) {
-    PyFrameObject* frame = tstate->frame;
+  PyObject* traceback_str = PyUnicode_FromString("traceback");
+  PyObject* traceback_module = PyImport_Import(traceback_str);
 
-    while (NULL != frame) {
-      int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
-      const char* filename = PyUnicode_AsUTF8(frame->f_code->co_filename);
-      const char* funcname = PyUnicode_AsUTF8(frame->f_code->co_name);
-      std::string callstack_info =
-          (filename + std::string("(") + std::to_string(line) +
-           std::string(")") + funcname + "\n");
-      op_callstack_infos.push_back(
-          pir::StrAttribute::get(pir::IrContext::Instance(), callstack_info));
-      frame = frame->f_back;
-    }
+  if (NULL == traceback_module) {
+    Py_DECREF(traceback_str);
+    Py_DECREF(traceback_module);
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                    std::vector<pir::Attribute>());
   }
+  PyObject* tb = PyObject_GetAttrString(traceback_module, "extract_stack");
+  PyObject* stack = PyObject_CallObject(tb, NULL);
+  if (NULL == stack) {
+    Py_DECREF(tb);
+    Py_DECREF(traceback_str);
+    Py_DECREF(traceback_module);
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                    std::vector<pir::Attribute>());
+  }
+  Py_ssize_t stack_size = PyList_Size(stack);
+  std::vector<pir::Attribute> op_callstack_infos;
+  for (Py_ssize_t i = 0; i < stack_size; ++i) {
+    PyObject* frame_summary = PyList_GetItem(stack, i);
+    PyObject* filename = PyObject_GetAttrString(frame_summary, "filename");
+    PyObject* lineno = PyObject_GetAttrString(frame_summary, "lineno");
+    PyObject* name = PyObject_GetAttrString(frame_summary, "name");
+    PyObject* line = PyObject_GetAttrString(frame_summary, "line");
+    PyObject* callstack_info = PyUnicode_FromFormat(
+        "  File \"%S\", line %S, in %S", filename, lineno, name);
+    PyObject* callstack_source_line = PyUnicode_FromFormat("    %S", line);
+    op_callstack_infos.push_back(
+        pir::StrAttribute::get(pir::IrContext::Instance(),
+                               std::string(PyUnicode_AsUTF8(callstack_info))));
+    op_callstack_infos.push_back(pir::StrAttribute::get(
+        pir::IrContext::Instance(),
+        std::string(PyUnicode_AsUTF8(callstack_source_line))));
+    Py_DECREF(callstack_info);
+    Py_DECREF(callstack_source_line);
+    Py_DECREF(filename);
+    Py_DECREF(lineno);
+    Py_DECREF(name);
+    Py_DECREF(line);
+  }
+  Py_DECREF(tb);
+  Py_DECREF(traceback_str);
+  Py_DECREF(traceback_module);
   return pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                   op_callstack_infos);
 }
