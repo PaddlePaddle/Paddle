@@ -2379,7 +2379,9 @@ def shard_dataloader(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
-
+            >>> import numpy as np
+            >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
+            >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
             >>> class RandomDataset(Dataset):
             ...     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
@@ -2420,7 +2422,7 @@ def shard_dataloader(
             ...     batch_sampler=sampler,
             ... )
             >>> dist_dataloader = dist.shard_dataloader(
-            ...     dataloader=self.dataloader,
+            ...     dataloader=dataloader,
             ...     meshes=[mesh0, mesh1],  # or [[mesh0, mesh0], mesh1]
             ...     shard_dims="dp",
             ...     input_keys=["inputs", "label"],
