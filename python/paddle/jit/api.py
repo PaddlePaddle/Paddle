@@ -36,10 +36,8 @@ from paddle.base.dygraph.base import (
 )
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
-    Block,
     EagerParamBase,
     Parameter,
-    Program,
     Variable,
     _current_expected_place,
     dygraph_only,
@@ -77,14 +75,6 @@ ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 def sot_mode_guard(value: bool):
     with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
         yield
-
-
-def create_program_from_desc(program_desc):
-    program = Program()
-    program.desc = program_desc
-    program.blocks = [Block(program, 0)]
-    program._sync_with_cpp()
-    return program
 
 
 def copy_decorator_attrs(original_func, decorated_obj):
