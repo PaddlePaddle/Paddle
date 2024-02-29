@@ -129,6 +129,7 @@ struct PatternParam {
   bool with_q_scale;
   bool with_mask;
   bool is_smooth_quant;
+  std::string relative_type;
 };
 
 class MultiEncoderXPUFusePass : public FusePassBase {
@@ -144,7 +145,8 @@ class MultiEncoderXPUFusePass : public FusePassBase {
                                 bool norm_before,
                                 bool with_q_scale,
                                 bool with_mask,
-                                bool is_smooth_quant) const;
+                                bool is_smooth_qunat,
+                                const std::string& relative_type) const;
 
   bool ApplyMultiEncoderXPUFuse(ir::Graph* graph) const;
 
