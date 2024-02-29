@@ -19,6 +19,7 @@
 #include "paddle/pir/include/core/cast_utils.h"
 #include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_id.h"
+
 namespace pir {
 class TypeStorage;
 class AbstractType;
