@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -47,6 +48,12 @@ AnalysisConfig::AnalysisConfig() {
   // NOTE(liuyuanle): Why put the following code here?
   // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
   inference::InitGflagsFromEnv();
+}
+PaddlePassContorller *AnalysisConfig::pass_controller() const {
+  if (!pass_ctrl_.get()) {
+    pass_ctrl_ = std::make_unique<PaddlePassContorller>();
+  }
+  return pass_ctrl_.get();
 }
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -581,7 +588,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(skip_load_params_);
 
   CP_MEMBER(use_new_executor_);
-
+  // pass controller related
+  CP_MEMBER(use_pass_controller_);
+  if (use_pass_controller_) {
+    pass_ctrl_ = std::make_unique<PaddlePassContorller>(
+        *static_cast<PaddlePassContorller *>(other.pass_controller()));
+  }
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,

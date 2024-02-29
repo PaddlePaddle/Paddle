@@ -10,7 +10,7 @@ if(WITH_MKLDNN)
   cc_library(
     ${mkldnn_quantizer_cfg}
     SRCS mkldnn_quantizer_config.cc
-    DEPS lod_tensor paddle_pass_builder)
+    DEPS lod_tensor paddle_pass_builder paddle_pass_controller)
   set(mkldnn_quantizer_cfg
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
@@ -24,11 +24,16 @@ cc_library(
   paddle_pass_builder
   SRCS paddle_pass_builder.cc
   DEPS framework_proto)
+cc_library(
+  paddle_pass_controller
+  SRCS paddle_pass_controller.cc
+  DEPS framework_proto)
 
 set(paddle_inference_api_deps
     reset_tensor_array
     paddle_infer_contrib
     paddle_pass_builder
+    paddle_pass_controller
     zero_copy_tensor
     trainer_desc_proto
     custom_operator
@@ -58,7 +63,7 @@ cc_library(
   analysis_config
   SRCS analysis_config.cc
   DEPS ${mkldnn_quantizer_cfg} paddle_inference_api paddle_pass_builder
-       table_printer utf8proc)
+       paddle_pass_controller table_printer utf8proc)
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi common)

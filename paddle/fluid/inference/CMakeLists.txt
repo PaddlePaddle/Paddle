@@ -48,6 +48,7 @@ set(STATIC_INFERENCE_API
     reset_tensor_array
     analysis_config
     paddle_pass_builder
+    paddle_pass_controller
     ${mkldnn_quantizer_cfg})
 
 set(OP_LIST

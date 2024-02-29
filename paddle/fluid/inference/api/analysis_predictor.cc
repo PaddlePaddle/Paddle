@@ -46,6 +46,7 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
@@ -1886,7 +1887,6 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.quant_post_dynamic_op_types);
   argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
   argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
-
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
   // processed in a single
@@ -1960,7 +1960,21 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   argument_->SetDisableLogs(config_.glog_info_disabled());
-  argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
+  if (config_.use_pass_controller() &&
+      ((config_.use_gpu()) ||
+       (config_.use_gpu() && config_.tensorrt_engine_enabled())) &&
+      model_precision_ == phi::DataType::FLOAT32) {
+    LOG(INFO) << "Pass Contorl is enabled!";
+    auto *pass_ctrl = config_.pass_controller();
+    argument_->SetIrAnalysisPasses(pass_ctrl->GetCtrlPassList(
+        pass_builder->AllPasses(),
+        static_cast<int64_t>(config_.mixed_precision_mode_),
+        static_cast<int64_t>(config_.tensorrt_precision_mode_),
+        config_.use_gpu_,
+        config_.use_tensorrt_));
+  } else {
+    argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
+  }
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
 

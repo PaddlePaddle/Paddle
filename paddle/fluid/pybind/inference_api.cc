@@ -35,6 +35,7 @@
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/pybind/eager.h"
@@ -113,6 +114,7 @@ void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
 void BindZeroCopyTensor(py::module *m);
 void BindPaddlePassBuilder(py::module *m);
+void BindPaddlePassController(py::module *m);
 void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
@@ -514,6 +516,7 @@ void BindInferenceApi(py::module *m) {
   BindZeroCopyTensor(m);
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
+  BindPaddlePassController(m);
   BindPredictorPool(m);
   BindInternalUtils(m);
 #ifdef PADDLE_WITH_DNNL
@@ -1023,10 +1026,27 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
+      .def("enable_pass_controller",
+           &AnalysisConfig::EnablePassController,
+           py::arg("use_pass_controller") = false)
+      .def("set_pass_ctrl_mode",
+           [](AnalysisConfig &self, bool ctrl_mode) {
+             self.pass_controller()->SetPassCtrlMode(ctrl_mode);
+           })
+      .def("set_pass_ctrl_config_dir",
+           [](AnalysisConfig &self, const std::string &config_dir) {
+             self.pass_controller()->SetPassCtrlCfigDir(config_dir);
+           })
       .def(
           "pass_builder",
           [](AnalysisConfig &self) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+          },
+          py::return_value_policy::reference)
+      .def(
+          "pass_controller",
+          [](AnalysisConfig &self) {
+            return dynamic_cast<PaddlePassContorller *>(self.pass_controller());
           },
           py::return_value_policy::reference)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
@@ -1327,6 +1347,32 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
 }
 
+void BindPaddlePassController(py::module *m) {
+  py::class_<PaddlePassContorller>(*m, "PaddlePassController")
+      .def(
+          "get_ctrl_pass_list",
+          [](PaddlePassContorller &self,
+             const std::vector<std::string> &passes,
+             const int64_t mixed_precision_mode,
+             const int64_t tensorrt_precision_mode,
+             const bool use_gpu,
+             const bool use_trt) {
+            self.GetCtrlPassList(passes,
+                                 mixed_precision_mode,
+                                 tensorrt_precision_mode,
+                                 use_gpu,
+                                 use_trt);
+          },
+          py::return_value_policy::reference)
+      .def("set_pass_ctrl_mode",
+           [](PaddlePassContorller &self, bool ctrl_mode) {
+             self.SetPassCtrlMode(ctrl_mode);
+           })
+      .def("set_pass_ctrl_config_dir",
+           [](PaddlePassContorller &self, const std::string &config_dir) {
+             self.SetPassCtrlCfigDir(config_dir);
+           });
+}
 void BindInternalUtils(py::module *m) {
   py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
   internal_utils
