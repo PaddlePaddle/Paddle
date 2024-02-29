@@ -110,7 +110,9 @@ void ApplyBuildGroupOpPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+  if (HasDynamicShape(*program)) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+  }
   pass_manager->Run(program);
 }
 
@@ -118,8 +120,10 @@ void ApplyGroupOpPass(::pir::Program* program,
                       const std::function<std::shared_ptr<pir::PassManager>()>&
                           CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  if (HasDynamicShape(*program)) {
+    pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
+  }
 
-  pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
   pass_manager->AddPass(
