@@ -152,7 +152,8 @@ TEST(StridedMemcpy, GPUConcat) {
   phi::funcs::StridedMemcpy<int>(
       *ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
 
-  memory_utils::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
+  memory_utils::Copy(
+      cpu, dst.data(), gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
 
   // clang-format off
