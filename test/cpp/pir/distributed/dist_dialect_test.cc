@@ -54,6 +54,7 @@ TEST(process_mesh_test, base) {
   EXPECT_EQ(mesh_attr.hash(), process_mesh.hash());
   EXPECT_EQ(mesh_attr.to_string(), process_mesh.to_string());
 }
+
 TEST(tensor_dist_attr_test, base) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<DistDialect>();
@@ -122,4 +123,27 @@ TEST(dist_dense_tensor_type_test, base) {
   EXPECT_EQ(dist_densor_type.global_ddim(), dims);
   EXPECT_EQ(dist_densor_type.data_layout(), data_layout);
   EXPECT_EQ(dist_densor_type.local_ddim(), dims);
+}
+
+TEST(operation_dist_attr_test, base) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<DistDialect>();
+
+  std::vector<int64_t> shape = {2, 4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(shape, process_ids, dim_names);
+
+  auto x_dist_attr = DistTensorAttribute::get(ctx, process_mesh, {0, -1});
+  auto y_dist_attr = DistTensorAttribute::get(ctx, process_mesh, {-1, 0});
+
+  auto out_dist_attr = DistTensorAttribute::get(ctx, process_mesh, {0, 1});
+
+  auto inputs = std::vector<DistTensorAttribute>{x_tensor_attr, y_tensor_attr};
+  auto outputs = std::vector<DistTensorAttribute>{y_tensor_attr};
+  auto op_attr = OperationDistAttribute::get(ctx, process_mesh2, input, output);
+
+  EXPECT_EQ(op_attr.inputs()[0], x_dist_attr);
+  EXPECT_EQ(op_attr.inputs()[1], y_dist_attr);
+  EXPECT_EQ(op_attr.outputs()[1], out_dist_attr);
 }
