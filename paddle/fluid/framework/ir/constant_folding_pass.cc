@@ -85,12 +85,16 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
-      if (!in_node->Var()->Persistable() || !in_node->inputs.empty()) {
+      if (in_node->Var() == nullptr || !in_node->Var()->Persistable() ||
+          !in_node->inputs.empty()) {
         input_persis = false;
       }
     }
     for (auto out_node : op_node->outputs) {
       map[out_node->Name()] = 0;
+      if (out_node->Var() == nullptr) {
+        input_persis = false;
+      }
     }
     // Forbid other node in graph having the same name with nodes in map
     for (auto const &iter : map) {
