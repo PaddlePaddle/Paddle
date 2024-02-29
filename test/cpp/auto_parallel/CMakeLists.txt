@@ -9,47 +9,31 @@ cc_test(
 
 if(WITH_DISTRIBUTE)
   cc_library(spmd_rule_test_util SRCS spmd_rule_test_util.cc)
-  add_dependencies(spmd_rule_test_util spmd_rules)
   cc_test(
     dist_tensor_test
     SRCS dist_tensor_test.cc
     DEPS phi common)
 
-  paddle_test(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rule_test_util
-              spmd_rules)
+  paddle_test(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rule_test_util)
 
   paddle_test(softmax_grad_spmd_rule_test SRCS softmax_grad_spmd_rule_test.cc
-              DEPS spmd_rule_test_util spmd_rules)
+              DEPS spmd_rule_test_util)
 
   paddle_test(tile_spmd_rule_test SRCS tile_spmd_rule_test.cc DEPS
-              spmd_rule_test_util spmd_rules)
+              spmd_rule_test_util)
 
   paddle_test(
     fused_linear_param_grad_add_spmd_rule_test SRCS
-    fused_linear_param_grad_add_spmd_rule_test.cc DEPS spmd_rule_test_util
-    spmd_rules)
+    fused_linear_param_grad_add_spmd_rule_test.cc DEPS spmd_rule_test_util)
 
-  paddle_test(
-    cross_entropy_softmax_spmd_rule_test SRCS
-    cross_entropy_softmax_spmd_rule_test.cc DEPS spmd_rule_test_util spmd_rules)
+  paddle_test(cross_entropy_softmax_spmd_rule_test SRCS
+              cross_entropy_softmax_spmd_rule_test.cc DEPS spmd_rule_test_util)
 
-  paddle_test(
-    custom_op_spmd_rule_test
-    SRCS
-    custom_op_spmd_rule_test.cc
-    DEPS
-    spmd_rule_test_util
-    spmd_rules
-    phi)
+  paddle_test(custom_op_spmd_rule_test SRCS custom_op_spmd_rule_test.cc DEPS
+              spmd_rule_test_util phi)
 
-  paddle_test(
-    fused_rms_norm_spmd_rule_test
-    SRCS
-    fused_rms_norm_spmd_rule_test.cc
-    DEPS
-    spmd_rule_test_util
-    spmd_rules
-    phi)
+  paddle_test(fused_rms_norm_spmd_rule_test SRCS
+              fused_rms_norm_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 
 endif()
 

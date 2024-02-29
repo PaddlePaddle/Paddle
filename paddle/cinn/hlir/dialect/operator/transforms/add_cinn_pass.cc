@@ -122,9 +122,11 @@ void ApplyGroupOpPass(::pir::Program* program,
   pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   pass_manager->Run(program);
 }
@@ -135,18 +137,6 @@ void ApplyDivideGroupOpToFusionOpPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
-  pass_manager->Run(program);
-}
-
-void ApplyFusionOpPass(::pir::Program* program,
-                       const std::function<std::shared_ptr<pir::PassManager>()>&
-                           CreatePassManager) {
-  std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-
-  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateReplaceDynamicExpandOpPass());
-  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-
   pass_manager->Run(program);
 }
 
@@ -186,7 +176,6 @@ void ApplyCinnPass(::pir::Program* program,
   ApplyBuildGroupOpPass(program, CreatePassManager);
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  ApplyFusionOpPass(program, CreatePassManager);
   ApplyCinnLowerPass(program, CreatePassManager);
 }
 

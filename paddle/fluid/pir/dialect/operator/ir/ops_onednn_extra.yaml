@@ -15,7 +15,8 @@
 
 - op : abs_grad
 
-# - op : add_n
+- op : add_n_onednn
+  extra_args : str mkldnn_data_type="float32"
 
 - op : batch_norm
   extra_args : bool fuse_with_relu=false
