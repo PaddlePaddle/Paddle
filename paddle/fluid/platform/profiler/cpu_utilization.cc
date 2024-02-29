@@ -24,7 +24,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
-#include "test/cpp/inference/api/tester_helper.h"
+#include <array>
+
 namespace paddle {
 namespace platform {
 
