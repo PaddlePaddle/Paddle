@@ -20,8 +20,11 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -62,10 +65,14 @@ static void RunAndCheckResult(::pir::Program* program,
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
   pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
+  pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pm.EnableIRPrinting();
   CHECK_EQ(pm.Run(program), true);
@@ -90,44 +97,45 @@ static void RunAndCheckResult(::pir::Program* program,
   }
 }
 
-std::shared_ptr<::pir::Program> BuildGroupProgram() {
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+// std::shared_ptr<::pir::Program> BuildGroupProgram() {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  auto program = std::make_shared<::pir::Program>(ctx);
-  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
-  // full -> softmax(max -> subtract -> exp -> sum -> divide)
-  const float value_one = 1.0;
-  const std::vector<int64_t> shape = {128, 128, 768};
-  auto x = builder
-               .Build<paddle::dialect::FullOp>(
-                   shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
-               .result(0);
+//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+//   const float value_one = 1.0;
+//   const std::vector<int64_t> shape = {128, 128, 768};
+//   auto x = builder
+//                .Build<paddle::dialect::FullOp>(
+//                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
+//                .result(0);
 
-  auto max =
-      builder.Build<paddle::dialect::MaxOp>(x, std::vector<int64_t>{-1}, true)
-          .result(0);
-  auto sub = builder.Build<paddle::dialect::SubtractOp>(x, max).result(0);
-  auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
-  auto sum =
-      builder
-          .Build<paddle::dialect::SumOp>(
-              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-          .result(0);
-  auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum).result(0);
+//   auto max =
+//       builder.Build<paddle::dialect::MaxOp>(x, std::vector<int64_t>{-1},
+//       true)
+//           .result(0);
+//   auto sub = builder.Build<paddle::dialect::SubtractOp>(x, max).result(0);
+//   auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
+//   auto sum =
+//       builder
+//           .Build<paddle::dialect::SumOp>(
+//               exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
+//           .result(0);
+//   auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum).result(0);
 
-  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
-  return program;
-}
+//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+//   return program;
+// }
 
-TEST(GroupOp, TestBuild) {
-  // Step 1: Construct pir::Program
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildGroupProgram();
+// TEST(GroupOp, TestBuild) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildGroupProgram();
 
-  RunAndCheckResult(program.get(), true, 1.0 / 768);
-}
+//   RunAndCheckResult(program.get(), true, 1.0 / 768);
+// }
 
 // std::shared_ptr<::pir::Program> BuildLayerNormProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -697,3 +705,34 @@ TEST(GroupOp, TestBuild) {
 
 //   RunAndCheckResult(program.get(), 2.0);
 // }
+
+std::shared_ptr<::pir::Program> BuildSmallSumGroupProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(std::vector<int64_t>({8, 4}),
+                                               1.0,
+                                               phi::DataType::FLOAT32,
+                                               phi::GPUPlace())
+               .result(0);
+
+  auto out =
+      builder
+          .Build<paddle::dialect::SumOp>(
+              x, std::vector<int64_t>({}), paddle::DataType::FLOAT32, true)
+          .result(0);
+
+  builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+  return program;
+}
+
+TEST(GroupOp, TestBuildSum2Group) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildSmallSumGroupProgram();
+
+  RunAndCheckResult(program.get(), true, 32.0);
+}

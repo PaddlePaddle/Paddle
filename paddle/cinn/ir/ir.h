@@ -977,6 +977,7 @@ struct ScheduleBlock : public ExprNode<ScheduleBlock> {
   std::map<std::string, attr_t> attrs;
   std::string name;
   Expr body;
+  int32_t reduce_type{-1};  // 0 for warp reduce, 1 for block reduce
 
   static Expr Make(const std::vector<Var>& iter_vars,
                    const std::vector<Expr>& read_buffers,

@@ -398,7 +398,13 @@ bool CanFuse(const GroupClusterNode& first,
 
     if (first.loop_ranges != second.loop_ranges) {
       sch_node->type = hlir::framework::pir::ScheduleAlignType::kBroadcast;
-      sch_node->axis_info = first.reduce_axis;
+      for (auto& d : first.reduce_axis) {
+        if (d < 0) {
+          sch_node->axis_info.push_back(d + first.loop_ranges.size());
+        } else {
+          sch_node->axis_info.push_back(d);
+        }
+      }
       sch_node->factor_info = first.loop_ranges;
     }
     return true;
@@ -508,11 +514,17 @@ void GetClusterNodeBasicInfo(::pir::Operation* op,
   if (cluster_node->group_kind == cinn::hlir::framework::kReduction) {
     // set reduce axis and loop range
     cluster_node->reduce_axis = cinn::dialect::ir::GetVectorAttr(op, "dim");
+
     cluster_node->loop_ranges =
         phi::vectorize(op->operand_source(0)
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims());
+    if (cluster_node->reduce_axis.size() == 0) {
+      for (size_t i = 0; i < cluster_node->loop_ranges.size(); ++i) {
+        cluster_node->reduce_axis.push_back(i);
+      }
+    }
   } else if (cluster_node->group_kind == cinn::hlir::framework::kElementWise) {
     cluster_node->loop_ranges =
         phi::vectorize(op->result(0)

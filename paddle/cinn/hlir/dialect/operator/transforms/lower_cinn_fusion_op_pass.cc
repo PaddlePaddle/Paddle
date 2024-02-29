@@ -634,7 +634,9 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto* program = fusion_op->GetParentProgram();
     auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
         *program, target, scope);
+    std::cerr << "rebuild\n";
     auto group = RebuildGroup(fusion_op);
+    std::cerr << "fin rebuild\n";
     // Because the group is rebuilt, the order of group.output_values generated
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
     // so a mapping is required.
@@ -646,6 +648,33 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
     }
+    std::cerr << "after shape dal\n";
+
+    // auto attr = fusion_op.attribute("group_info")
+    //                 .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+    //                 .data();
+    // auto align_info = attr.alignment_schedule_info;
+
+    // for (auto it = align_info.begin(); it != align_info.end(); ++it) {
+    //   for (auto& node : it->second) {
+    //     std::cerr << node.DebugStr() << std::endl;
+    //   }
+    // }
+
+    // std::cerr << "!!!!!!!!!!!! group id " << attr.group_id << std::endl;
+    // std::cerr << "type " << attr.op_pattern_kind << std::endl;
+
+    // std::cerr << "reduce axis ";
+    // for (auto d : attr.reduce_axis) {
+    //   std::cerr << " " << d;
+    // }
+    // std::cerr << std::endl;
+
+    // std::cerr << "loop range ";
+    // for (auto d : attr.loop_ranges) {
+    //   std::cerr << " " << d;
+    // }
+    // std::cerr << std::endl;
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     pir::Operation* compiled_op =
@@ -691,12 +720,29 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
     auto group = std::make_shared<Group>();
     group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+    if (fusion_op.attributes().count("group_info")) {
+      auto attr = fusion_op.attribute("group_info")
+                      .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                      .data();
+
+      group->op_pattern_kind = attr.op_pattern_kind;
+      group->loop_ranges = attr.loop_ranges;
+
+      group->reduce_axis = attr.reduce_axis;
+      group->alignment_schedule_info = attr.alignment_schedule_info;
+    }
 
     // Rebuild ops of the group
+    std::stringstream ss;
+    ::pir::IrPrinter printer(ss);
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
         group->ops.push_back(op);
+        printer.PrintOperation(op);
+        ss << std::endl;
+
         group->ops_set.insert(op);
+
         group->op_pattern_kind =
             static_cast<int>(CompatibleInfo::OpKind(*op)) >
                     static_cast<int>(group->op_pattern_kind)
@@ -705,7 +751,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       }
     }
 
-    // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
       auto in = yield_op->operand_source(i);
@@ -713,6 +758,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
       group->output_ops.insert(in.defining_op());
     }
+
+    std::cerr << "program " << ss.str() << std::endl;
 
     // Rebuild other informations
     // TODO(zhangyuqin1998): Do we need group.master_ops?
