@@ -153,3 +153,5 @@ TEST(FusionGroupPass, elementwise_tree) {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+USE_PASS(fusion_group_pass);
