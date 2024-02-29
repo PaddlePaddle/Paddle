@@ -2198,32 +2198,28 @@ class OpcodeExecutor(OpcodeExecutorBase):
             # 2.1. load iter, it is a input of loop fn
             pycode_gen.gen_load_fast(iterator.id)
 
-            if sys.version_info >= (3, 12):
-                # 2.2. copy main logic，不需要 BACKWARD
-                pycode_gen.extend_instrs(origin_instrs[start_idx : end_idx - 1])
-            else:
-                # 2.2. copy main logic
-                pycode_gen.extend_instrs(origin_instrs[start_idx:end_idx])
+            # 2.2. copy main logic
+            pycode_gen.extend_instrs(origin_instrs[start_idx:end_idx])
 
             # 2.3. add break, continue marker and relocate jump
             for_iter_instr = origin_instrs[start_idx]
             assert for_iter_instr.jump_to is not None
             if sys.version_info >= (3, 12):
                 assert for_iter_instr.jump_to.opname == "END_FOR"
-                # out_loop_instr = origin_instrs[end_idx+1]
-                # pycode_gen.gen_jump(out_loop_instr, direction=JumpDirection.FORWARD)
-                # nop_for_continue = pycode_gen.add_instr("NOP")
-                # jump1 = pycode_gen.gen_jump(
-                #     for_iter_instr, direction=JumpDirection.BACKWARD
-                # )
-                # nop_for_break = pycode_gen.add_instr("NOP")
 
-                jump1 = pycode_gen.gen_jump(
+                out_loop_instr = for_iter_instr.jump_to
+
+                pycode_gen.gen_jump(
+                    out_loop_instr, direction=JumpDirection.FORWARD
+                )
+                nop_for_continue = pycode_gen.add_instr("NOP")
+
+                jump = pycode_gen.gen_jump(
                     for_iter_instr, direction=JumpDirection.BACKWARD
                 )
-                for_iter_instr.jump_to = pycode_gen.add_instr("END_FOR")
 
-                nop_for_break = pycode_gen.add_instr("NOP")
+                end_for = pycode_gen.add_instr("END_FOR")
+                nop_for_break = pycode_gen.gen_pop_top()
 
                 # 2.4. relocate jumps
                 for instr in pycode_gen._instructions:
@@ -2239,24 +2235,130 @@ class OpcodeExecutor(OpcodeExecutorBase):
                         breakpoint()
                         instr.jump_to = nop_for_break
 
-                jump1.jump_to = for_iter_instr
+                jump.jump_to = for_iter_instr
             else:
-                out_loop_instr = for_iter_instr.jump_to
+                """
+                        >>    6 FOR_ITER                34 (to 76)
+                            8 STORE_FAST               0 (i)
 
+                7          10 LOAD_GLOBAL              0 (sot)
+                            22 LOAD_ATTR                1 (psdb)
+                            32 LOAD_METHOD              2 (breakgraph)
+                            54 PRECALL                  0
+                            58 CALL                     0
+                            68 POP_TOP
+
+                8          70 LOAD_FAST                0 (i)
+                            72 STORE_FAST               1 (zzz)
+                            74 JUMP_BACKWARD           35 (to 6)
+                """
+                out_loop_instr = for_iter_instr.jump_to  # 76 LOAD_FAST
+
+                """
+                >>    6 FOR_ITER                34 (to 76)
+                    8 STORE_FAST               0 (i)
+
+        7          10 LOAD_GLOBAL              0 (sot)
+                    22 LOAD_ATTR                1 (psdb)
+                    32 LOAD_METHOD              2 (breakgraph)
+                    54 PRECALL                  0
+                    58 CALL                     0
+                    68 POP_TOP
+
+        8          70 LOAD_FAST                0 (i)
+                    72 STORE_FAST               1 (zzz)
+                    74 JUMP_BACKWARD           35 (to 6)
+                    76 JUMP_FORWARD             1 (to out_loop_instr)
+                """
                 pycode_gen.gen_jump(
                     out_loop_instr, direction=JumpDirection.FORWARD
                 )
+
+                """
+                >>    6 FOR_ITER                34 (to 76)
+                    8 STORE_FAST               0 (i)
+
+        7          10 LOAD_GLOBAL              0 (sot)
+                    22 LOAD_ATTR                1 (psdb)
+                    32 LOAD_METHOD              2 (breakgraph)
+                    54 PRECALL                  0
+                    58 CALL                     0
+                    68 POP_TOP
+
+        8          70 LOAD_FAST                0 (i)
+                    72 STORE_FAST               1 (zzz)
+                    74 JUMP_BACKWARD           35 (to 6)
+                    76 JUMP_FORWARD             1 (to out_loop_instr)
+                    78 NOP
+                """
                 nop_for_continue = pycode_gen.add_instr("NOP")
 
+                """
+                >>    6 FOR_ITER                34 (to 76)
+                    8 STORE_FAST               0 (i)
+
+        7          10 LOAD_GLOBAL              0 (sot)
+                    22 LOAD_ATTR                1 (psdb)
+                    32 LOAD_METHOD              2 (breakgraph)
+                    54 PRECALL                  0
+                    58 CALL                     0
+                    68 POP_TOP
+
+        8          70 LOAD_FAST                0 (i)
+                    72 STORE_FAST               1 (zzz)
+                    74 JUMP_BACKWARD           35 (to 6)
+                    76 JUMP_FORWARD             1 (to out_loop_instr)
+                    78 NOP
+                    80 JUMP_BACKWARD           35 (to 6)
+                """
                 jump = pycode_gen.gen_jump(
-                    for_iter_instr, direction=JumpDirection.BACKWARD
+                    for_iter_instr,
+                    direction=JumpDirection.BACKWARD,  # JUMP_BACKWARD
                 )
 
+                """
+                >>    6 FOR_ITER                34 (to 76)
+                    8 STORE_FAST               0 (i)
+
+        7          10 LOAD_GLOBAL              0 (sot)
+                    22 LOAD_ATTR                1 (psdb)
+                    32 LOAD_METHOD              2 (breakgraph)
+                    54 PRECALL                  0
+                    58 CALL                     0
+                    68 POP_TOP
+
+        8          70 LOAD_FAST                0 (i)
+                    72 STORE_FAST               1 (zzz)
+                    74 JUMP_BACKWARD           35 (to 6)
+                    76 JUMP_FORWARD             1 (to out_loop_instr)
+                    78 NOP
+                    80 JUMP_BACKWARD           35 (to 6)
+                    82 NOP
+                """
                 nop_for_break = pycode_gen.add_instr("NOP")
 
                 # 2.4. relocate jumps
                 for instr in pycode_gen._instructions:
                     if instr.jump_to == for_iter_instr:
+                        """
+                                >>    6 FOR_ITER                34 (to 76)
+                                    8 STORE_FAST               0 (i)
+
+                        7          10 LOAD_GLOBAL              0 (sot)
+                                    22 LOAD_ATTR                1 (psdb)
+                                    32 LOAD_METHOD              2 (breakgraph)
+                                    54 PRECALL                  0
+                                    58 CALL                     0
+                                    68 POP_TOP
+
+                        8          70 LOAD_FAST                0 (i)
+                                    72 STORE_FAST               1 (zzz)
+                                    74 JUMP_BACKWARD           35 (to 6) 一次改这个跳到82
+                                    76 JUMP_FORWARD             1 (to out_loop_instr)
+                                    78 NOP
+                                    80 JUMP_BACKWARD           35 (to 6) 一次改这个跳到82
+                                    82 NOP
+                        """
                         instr.jump_to = nop_for_continue
 
                     if (
