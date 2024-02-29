@@ -1514,7 +1514,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
             if porder == -2:
@@ -1522,7 +1522,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
 
@@ -4926,11 +4926,14 @@ def histogramdd(
     for i in range(D):
         on_edge = reshaped_input[:, i] == edges[i][-1]
         if paddle.in_dynamic_mode():
-            index_list[i][on_edge] -= 1
-        else:
-            index_list = paddle.static.setitem(
-                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            index_list[i] = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
             )
+        else:
+            index_list_i = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
+            )
+            index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
     lut = paddle.arange(
         paddle.to_tensor(hist_shape).prod(),

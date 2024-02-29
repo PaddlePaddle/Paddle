@@ -194,7 +194,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
         np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
 
-        # test dygrapg api
+        # test dygraph api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = logsoftmax(x)

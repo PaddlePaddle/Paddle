@@ -2896,7 +2896,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
     auto sst_filelist = _afs_client.list(::paddle::string::format_string(
         "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
     if (!sst_filelist.empty()) {
-      int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
+      int ret = _db->ingest_external_file(shard_idx, sst_filelist);
       if (ret) {
         VLOG(0) << "ingest file failed";
         abort();
@@ -3038,7 +3038,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
               }
               VLOG(0) << "write sst_file shard " << shard_id << ": "
                       << butil::gettimeofday_ms() - show_begin << " ms";
-              int ret = _db->ingest_externel_file(shard_id, {filename});
+              int ret = _db->ingest_external_file(shard_id, {filename});
               if (ret) {
                 VLOG(0) << "ingest file failed"
                         << ", " << status.getState();

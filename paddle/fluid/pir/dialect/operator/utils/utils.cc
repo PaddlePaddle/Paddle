@@ -44,8 +44,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
-    FusedGemmEpilogueOp::name(),
-    FusedGemmEpilogueGradOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -74,14 +72,22 @@ const std::unordered_set<std::string> LegacyOpList = {
     NceGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
+    MovingAverageAbsMaxScaleOp::name(),
+    MovingAverageAbsMaxScale_Op::name(),
+    QuantizeLinearOp::name(),
+    QuantizeLinear_Op::name(),
+    DequantizeLinearOp::name(),
+    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::RequantizeOp::name(),
+    paddle::onednn::dialect::MultiGruOp::name(),
 #endif
     CReduceMinOp::name(),
-    PushSparseV2Op::name()};
+    PushSparseV2Op::name(),
+    PartialSendOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -181,7 +187,7 @@ static std::unordered_map<
         {AttrType::ARRAY,
          [](const pir::Attribute& attr) {
            auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
-           if (attr_vec.size() == 0) {
+           if (attr_vec.empty()) {
              return VariantType{std::vector<int>()};
            }
            AttrType element_type = GetAttributeType(attr_vec[0]);
@@ -243,6 +249,11 @@ static std::unordered_map<
 };
 
 VariantType GetAttributeData(const pir::Attribute& attr) {
+  AttrType attr_type = GetAttributeType(attr);
+  return kAttrCastMap[attr_type](attr);
+}
+
+paddle::any TransAttrToAny(const pir::Attribute& attr) {
   AttrType attr_type = GetAttributeType(attr);
   return kAttrCastMap[attr_type](attr);
 }
@@ -401,15 +412,33 @@ void CheckValueDataType(const pir::Value& value,
   DoValueCheck(value, input_name, expected_dtype, op_name);
 }
 
+bool IsSameDataTypeForValues(const std::vector<pir::Value>& vector_value) {
+  if (vector_value.size() <= 1) {
+    return true;
+  }
+  auto dtype = GetValueDataType(vector_value[0]);
+  for (size_t i = 1; i < vector_value.size(); ++i) {
+    if (GetValueDataType(vector_value[i]) != dtype) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name) {
   VLOG(6) << "CheckVectorOfValueDataType for " << op_name
           << ", input: " << input_name;
-  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-  for (auto& value : vector_value) {
-    DoValueCheck(value, input_name, expected_dtype, op_name);
+  if (vector_value.size() == 0) {
+    return;
   }
+  if (!IsSameDataTypeForValues(vector_value)) {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "All the Values in the input must have the same data type."));
+  }
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+  DoValueCheck(vector_value[0], input_name, expected_dtype, op_name);
 }
 
 void CheckDataType(const phi::DataType& dtype,

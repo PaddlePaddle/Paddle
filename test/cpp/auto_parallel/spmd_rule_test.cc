@@ -256,7 +256,6 @@ TEST(LayerNormSPMDRule, Ctor) {
   bias_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
   bias_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
 
-  paddle::framework::AttributeMap attrs;
   float epsilon = 1e-5;
   int begin_norm_axis = 2;
 
@@ -912,7 +911,7 @@ TEST(ReduceMaxRule, Ctor) {
   t_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
       common::make_ddim({4, 6, 8}), t_dist_attr);
-  IntArray axis = {1};
+  phi::IntArray axis = {1};
   bool keep_dim = false;
   phi::distributed::SpmdInfo forward_info =
       phi::distributed::ReductionMaxInferSpmdDynamic(x, axis, keep_dim);
@@ -944,7 +943,7 @@ TEST(ReduceAllRule, Ctor) {
   t_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor x =
       phi::distributed::DistMetaTensor(phi::make_ddim({4, 6, 8}), t_dist_attr);
-  IntArray axis = {1};
+  phi::IntArray axis = {1};
   bool keep_dim = false;
   phi::distributed::SpmdInfo forward_info =
       phi::distributed::ReductionAllInferSpmdDynamic(x, axis, keep_dim);
@@ -1213,7 +1212,7 @@ TEST(FusedRope, Ctor) {
   // 1.1 only q input
   phi::distributed::SpmdInfo forward_spmd_info =
       phi::distributed::FusedRopeInferSpmd(
-          q, none, none, none, none, none, false);
+          q, none, none, none, none, none, false, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
@@ -1237,7 +1236,7 @@ TEST(FusedRope, Ctor) {
   phi::distributed::DistMetaTensor position_ids =
       build_input({16, 2048}, {0, 1});
   forward_spmd_info = phi::distributed::FusedRopeInferSpmd(
-      q, k, none, sin, cos, position_ids, false);
+      q, k, none, sin, cos, position_ids, false, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
@@ -1253,7 +1252,7 @@ TEST(FusedRope, Ctor) {
   check_partial_dims(forward_spmd_info.second[1], {});
   // 2. test backward
   phi::distributed::SpmdInfo backward_spmd_info =
-      FusedRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false);
+      FusedRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false, false);
   EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(backward_spmd_info.first[0], {-1, -1, -1, -1});
@@ -1274,7 +1273,7 @@ TEST(FusedRope, Ctor) {
   phi::distributed::DistMetaTensor out_k =
       build_input({16, 2048, 64, 128}, {-1, 1, -1, 0});
   phi::distributed::SpmdInfo reverse_spmd_info = FusedRopeInferSpmdReverse(
-      q, k, none, sin, cos, position_ids, out_q, out_k, none, false);
+      q, k, none, sin, cos, position_ids, out_q, out_k, none, false, false);
   EXPECT_EQ(reverse_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(reverse_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(reverse_spmd_info.first[0], {0, -1, -1, -1});

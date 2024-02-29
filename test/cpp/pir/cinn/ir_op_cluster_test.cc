@@ -623,5 +623,5 @@ TEST(IROpFusionPass, layer_norm2) {
   CHECK_EQ(pm.Run(&program), true);
 
   // TODO(phlrain): need update same as 4u
-  ASSERT_EQ(program.block()->size(), 11u);
+  ASSERT_EQ(program.block()->size(), 10u);
 }

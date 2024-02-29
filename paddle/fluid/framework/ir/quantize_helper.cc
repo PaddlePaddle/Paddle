@@ -38,7 +38,7 @@ std::unordered_map<std::string, std::vector<float>> GetQuantInfoFromTheGraph(
   const std::string suffix = "_" + key_suffix + "_" + flag;
   if (graph->Has(flag)) {
     std::vector<std::string> attr_names = graph->AttrNames();
-    for (auto fake_name : attr_names) {
+    for (auto const& fake_name : attr_names) {
       size_t pos = fake_name.find(suffix);
       if (pos != std::string::npos) {
         std::string name = fake_name.substr(0, pos);

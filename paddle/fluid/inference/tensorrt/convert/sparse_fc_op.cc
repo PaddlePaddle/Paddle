@@ -203,15 +203,15 @@ class SparseFcOpConverter : public OpConverter {
                                    Activation,
                                    *(fc_layer_int8->getOutput(0)),
                                    nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8,
-                                   "relu_after_ernie_fc_int8",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(relu_layer_int8,
+                                  "relu_after_ernie_fc_int8",
+                                  {output_name},
+                                  test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_layer_int8,
-                                   "ernie_fc_op_int8: Convolution",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(fc_layer_int8,
+                                  "ernie_fc_op_int8: Convolution",
+                                  {output_name},
+                                  test_mode);
         }
       } else {
         // add fc layer
@@ -225,12 +225,12 @@ class SparseFcOpConverter : public OpConverter {
                                    Activation,
                                    *(fc_layer_float->getOutput(0)),
                                    nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_float,
-                                   "relu_after_ernie_fc_float",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(relu_layer_float,
+                                  "relu_after_ernie_fc_float",
+                                  {output_name},
+                                  test_mode);
         } else {
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               fc_layer_float, "ernie_fc_op_float", {output_name}, test_mode);
         }
       }
@@ -264,10 +264,10 @@ class SparseFcOpConverter : public OpConverter {
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
 
-        RreplenishLayerAndOutput(fc_after_reshape_int8,
-                                 "sparse_fc_op_int8_reshape_after_fc: Shuffle",
-                                 {output_name},
-                                 test_mode);
+        ReplenishLayerAndOutput(fc_after_reshape_int8,
+                                "sparse_fc_op_int8_reshape_after_fc: Shuffle",
+                                {output_name},
+                                test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
             weight,
@@ -285,10 +285,10 @@ class SparseFcOpConverter : public OpConverter {
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
 
-        RreplenishLayerAndOutput(fc_after_reshape_float,
-                                 "shuffle_after_sparse_fc",
-                                 {output_name},
-                                 test_mode);
+        ReplenishLayerAndOutput(fc_after_reshape_float,
+                                "shuffle_after_sparse_fc",
+                                {output_name},
+                                test_mode);
       }
     };
 

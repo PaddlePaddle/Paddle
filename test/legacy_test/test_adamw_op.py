@@ -404,7 +404,7 @@ class TestAdamWOpGroup(TestAdamWOp):
             adam.clear_gradients()
 
 
-class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
+class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
     def _test_adamw_op_dygraph_place_amp_with_maingrad(
         self, place, shape, use_main_grad
     ):
@@ -543,7 +543,7 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
                     )
 
 
-class TestAdamWOpMultiPrecison(unittest.TestCase):
+class TestAdamWOpMultiPrecision(unittest.TestCase):
     def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
         paddle.disable_static()
         paddle.seed(10)

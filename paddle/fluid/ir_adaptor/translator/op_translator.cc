@@ -556,7 +556,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
-      // if src type is Vector<Tesnor> , need an additional `CombineOp` to
+      // if src type is Vector<Tensor> , need an additional `CombineOp` to
       // assemble them.
     } else {
       auto* combine_op = InsertCombineOperationForTarget(
@@ -654,7 +654,7 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
       arg_to_idx[var_name] = {cur_output_idx, 0};
       op_output_types.push_back(translated_var_type);
 
-      // if src type is Vector<Tesnor>
+      // if src type is Vector<Tensor>
     } else {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " :"
@@ -1355,13 +1355,21 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
 struct AddNOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
-    std::string target_op_name =
-        GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
-    if (IsInplace(op_desc)) {
-      target_op_name += "_";
-    } else {
-      target_op_name += "_with_kernel";
+    auto prefix = GetPrefix(ctx, op_desc);
+    std::string target_op_name;
+#ifdef PADDLE_WITH_DNNL
+    if (prefix == kOneDNNTargetDialectPrefix) {
+      target_op_name = std::string(kOneDNNTargetDialectPrefix) + "add_n_onednn";
+    } else  // NOLINT
+#endif
+    {
+      target_op_name =
+          GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
+      if (IsInplace(op_desc)) {
+        target_op_name += "_";
+      }
     }
+
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op add_n should have corresponding OpInfo %s", target_op_name);
@@ -1451,6 +1459,19 @@ ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
 }
 
 struct MulOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulOp::name();
@@ -1605,6 +1626,19 @@ struct MulOpTranscriber : public OpTranscriber {
 };
 
 struct MulGradOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+      return static_cast<OpTranscriber>(*this).operator()(
+          ctx, param_map, op_desc, block);
+    }
+#endif
+    return OpTranscriber::operator()(ctx, param_map, op_desc, block);
+  }
+
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     const std::string& target_op_name = paddle::dialect::MatmulGradOp::name();
@@ -3087,6 +3121,25 @@ struct CEmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
+struct QuantizeLinearOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "round_type") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    }
+    if (info.name == "is_test") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+    if (info.name == "only_observer") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+    if (info.name == "moving_rate") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.9);
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -3159,6 +3212,8 @@ OpTranslator::OpTranslator() {
   special_handlers["elementwise_mod_grad"] = ElementwiseGradTranscriber();
   special_handlers["elementwise_floordiv_grad"] = ElementwiseGradTranscriber();
   special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
+  special_handlers["quantize_linear"] = QuantizeLinearOpTranscriber();
+  special_handlers["dequantize_linear"] = QuantizeLinearOpTranscriber();
 }
 
 }  // namespace translator
