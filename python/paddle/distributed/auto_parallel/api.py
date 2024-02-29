@@ -2379,6 +2379,52 @@ def shard_dataloader(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
+
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, seq_len, hidden, num_samples=8):
+            ...         super().__init__()
+            ...         self.seq_len = seq_len
+            ...         self.hidden = hidden
+            ...         self.num_samples = num_samples
+            ...         self.inputs1 = [
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
+            ...                 "float32"
+            ...             )
+            ...             for _ in range(num_samples)
+            ...         ]
+            ...         self.inputs2 = [
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
+            ...                 "float32"
+            ...             )
+            ...             for _ in range(num_samples)
+            ...         ]
+            ...         self.labels = [
+            ...             np.array(index, dtype="float32") for index in range(num_samples)
+            ...         ]
+
+            ...     def __getitem__(self, index):
+            ...         return {
+            ...             "inputs": [self.inputs1[index], self.inputs2[index]],
+            ...             "label": self.labels[index],
+            ...         }
+
+            ...     def __len__(self):
+            ...         return self.num_samples
+            >>> dataset = RandomDataset(4, 8)
+            >>> sampler = BatchSampler(
+            ...     dataset,
+            ...     batch_size=2,
+            ... )
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     batch_sampler=sampler,
+            ... )
+            >>> dist_dataloader = dist.shard_dataloader(
+            ...     dataloader=self.dataloader,
+            ...     meshes=[mesh0, mesh1],  # or [[mesh0, mesh0], mesh1]
+            ...     shard_dims="dp",
+            ...     input_keys=["inputs", "label"],
+            ... )
     """
 
     return ShardDataloader(
