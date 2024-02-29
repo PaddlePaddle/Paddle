@@ -120,7 +120,7 @@ class FillConstantOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "fill_constant", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "fill_constant", {output_name}, test_mode);
   }
 };
 

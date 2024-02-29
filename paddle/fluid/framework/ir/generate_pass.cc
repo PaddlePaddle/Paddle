@@ -348,7 +348,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The input may be mapped on the operator of pattern subgraph.
-              if (var_node_maps[argument].size() == 0) {
+              if (var_node_maps[argument].empty()) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
                 var_node_maps[argument].emplace_back(
                     graph->CreateVarNode(&var_desc));
@@ -363,7 +363,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The output may be mapped on the operator of pattern subgraph.
-              if (var_node_maps[argument].size() == 0) {
+              if (var_node_maps[argument].empty()) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
                 var_node_maps[argument].emplace_back(
                     graph->CreateVarNode(&var_desc));

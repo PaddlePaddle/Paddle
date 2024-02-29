@@ -19,21 +19,22 @@ from pass_test import PassTest
 
 import paddle
 from paddle.base import core
+from paddle.pir.core import create_parameter
 
 paddle.enable_static()
 
 
 class TestConv2dAddActFusePattern(PassTest):
     r"""
-      x_var   f_var
+      x_var   f_var(w)
     \       /
        conv2d
          |
-      conv2d_var    y_var
+      conv2d_var    y_var(w)
           \          /
          elementwise_add
               |
-       elementwise_add_var
+            add_var
               |
              act
               |
@@ -59,8 +60,14 @@ class TestConv2dAddActFusePattern(PassTest):
                     data_format='NCHW',
                     bias_attr=False,
                 )
-                y = paddle.static.data(
-                    name="y", shape=[3, 32, 28, 28], dtype="float32"
+
+                y = create_parameter(
+                    name="y",
+                    shape=[3, 32, 28, 28],
+                    dtype='float32',
+                    initializer=paddle.nn.initializer.Assign(
+                        np.random.random((3, 32, 28, 28)).astype("float32")
+                    ),
                 )
                 act_op = paddle.nn.ReLU()
                 out = act_op(paddle.add(conv2d(x), y))
@@ -68,7 +75,6 @@ class TestConv2dAddActFusePattern(PassTest):
                 self.pass_list = ['conv2d_add_act_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
-                    "y": np.random.random((3, 32, 28, 28)).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
@@ -130,8 +136,13 @@ class TestConv2dAdd2ActFusePattern(PassTest):
                     data_format='NCHW',
                     bias_attr=False,
                 )
-                y = paddle.static.data(
-                    name="y", shape=[3, 32, 28, 28], dtype="float32"
+                y = create_parameter(
+                    name="y",
+                    shape=[3, 32, 28, 28],
+                    dtype='float32',
+                    initializer=paddle.nn.initializer.Assign(
+                        np.random.random((3, 32, 28, 28)).astype("float32")
+                    ),
                 )
                 residual_data = paddle.static.data(
                     name="residual_data", shape=[3, 32, 28, 28], dtype="float32"
@@ -144,7 +155,6 @@ class TestConv2dAdd2ActFusePattern(PassTest):
                 self.pass_list = ['conv2d_add_act_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
-                    "y": np.random.random((3, 32, 28, 28)).astype("float32"),
                     "residual_data": np.random.random((3, 32, 28, 28)).astype(
                         "float32"
                     ),

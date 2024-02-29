@@ -17,6 +17,7 @@ from __future__ import annotations
 import builtins
 import dis
 import sys
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from ...utils import InnerError, NameGenerator
@@ -431,6 +432,37 @@ class CreateLayerTracker(Tracker):
                 v.reconstruct(codegen)
             codegen.gen_build_map(len(self.kwargs))
             codegen.gen_call_function_ex(has_kwargs=True)
+
+    def trace_value_from_frame(self):
+        class_tracer = self.layer_class.tracker.trace_value_from_frame()
+        arg_tracers = [
+            arg.tracker.trace_value_from_frame() for arg in self.args
+        ]
+        kwarg_tracers_dict = {
+            k: v.tracker.trace_value_from_frame()
+            for k, v in self.kwargs.items()
+        }
+        kwarg_tracers = list(kwarg_tracers_dict.values())
+
+        expr = "{}("
+        expr += ", ".join(["{}"] * len(arg_tracers))
+        if len(arg_tracers) and len(kwarg_tracers) > 0:
+            expr += ", "
+        expr += ", ".join(f"{k}={{}}" for k in kwarg_tracers_dict.keys())
+        expr += ")"
+
+        return StringifyExpression(
+            expr,
+            [class_tracer] + arg_tracers + kwarg_tracers,
+            union_free_vars(
+                *(
+                    tracer.free_vars
+                    for tracer in chain(
+                        [class_tracer], arg_tracers, kwarg_tracers
+                    )
+                )
+            ),
+        )
 
     def __repr__(self) -> str:
         return f"CreateLayerTracker(Layer={self.layer_class}, args={self.args}, kwargs={self.kwargs})"

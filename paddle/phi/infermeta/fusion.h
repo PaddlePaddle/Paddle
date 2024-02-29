@@ -151,6 +151,7 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const std::vector<const MetaTensor*>& smooth_scale_weight,
+    const std::vector<const MetaTensor*>& roformer_embedding,
     const MetaTensor& mask,
     const MetaTensor& seq_lod,
     const MetaTensor& max_seq_len,
@@ -164,6 +165,7 @@ void MultiEncoderXPUInferMeta(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    int max_pos_len,
     const std::vector<float>& softmax_max_value,
     const std::vector<std::string>& quant_types,
     MetaTensor* out,
@@ -838,6 +840,11 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
+void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
+                                     const MetaTensor& sin_emb,
+                                     const MetaTensor& cos_emb,
+                                     int max_pos_len,
+                                     MetaTensor* out);
 
 void MultiGruInferMeta(
     const MetaTensor& x,
@@ -854,4 +861,31 @@ void MultiGruInferMeta(
     float shift_data,
     bool force_fp32_output,
     MetaTensor* hidden);
+
+void FusionLstmInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight_x,
+                         const MetaTensor& weight_h,
+                         const MetaTensor& bias,
+                         const MetaTensor& h0,
+                         const MetaTensor& c0,
+                         const bool use_peepholes,
+                         const bool is_reverse,
+                         const bool use_seq,
+                         const std::string& gate_activation,
+                         const std::string& cell_activation,
+                         const std::string& candidate_activation,
+                         const float scale_data,
+                         const float shift_data,
+                         const std::vector<float>& scale_weights,
+                         const bool force_fp32_output,
+                         MetaTensor* hidden,
+                         MetaTensor* cell,
+                         MetaTensor* xx,
+                         MetaTensor* batched_input,
+                         MetaTensor* batched_hidden,
+                         MetaTensor* batched_cell,
+                         MetaTensor* reordered_h0,
+                         MetaTensor* reordered_c0,
+                         MetaTensor* checked_cell);
+
 }  // namespace phi
