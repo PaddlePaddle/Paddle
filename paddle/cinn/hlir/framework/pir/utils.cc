@@ -199,6 +199,10 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   };
   const int64_t max_value_numel = [&] {
     int64_t max_value_numel = -1;
+    if (op.num_operands() == 0) {  // no input
+      return max_value_numel;
+    }
+
     for (uint32_t i = 0; i < op.num_operands(); ++i) {
       max_value_numel = std::max(GetNumElementsFromValue(op.operand_source(i)),
                                  max_value_numel);
@@ -209,7 +213,6 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
     }
     return max_value_numel;
   }();
-  VLOG(0) << "####### max_value_numel: " << max_value_numel;
 
   // max value check
   if (0 <= max_value_numel && max_value_numel < 32) {
@@ -222,24 +225,26 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
 bool IsShapeComputeOp(const ::pir::Operation& op) {
   const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
       op.GetParent()->parent_program());
+  bool all_input_has_shape_data = false;
   for (uint32_t i = 0; i < op.num_operands(); ++i) {
     if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i)) &&
         shape_analysis.GetShapeOrDataForValue(op.operand_source(i))
             .data()) {  // no shape data
-      continue;
+      all_input_has_shape_data = true;
     } else {
-      return false;
+      all_input_has_shape_data = false;
+      break;
     }
   }
-  return true;
+  return all_input_has_shape_data;
 }
 
+// TODO(zyfncg): This function is a temporary solution, we need to remove it in
+// the future.
 bool IsTempDenySpecialOp(const ::pir::Operation& op) {
   if (op.name() == "cinn_op.generate_shape") {
     return false;
   }
-  VLOG(0) << "###### IsShapeComputeOp(op): " << IsShapeComputeOp(op);
-  VLOG(0) << "###### IsSmallNumelOp(op): " << IsSmallNumelOp(op);
 
   if (IsShapeComputeOp(op) || IsSmallNumelOp(op)) {
     return true;
