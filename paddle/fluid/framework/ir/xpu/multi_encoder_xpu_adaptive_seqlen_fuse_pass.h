@@ -76,7 +76,8 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
               |
            out_var*
   */
-  int ApplyAdaptiveSeqlenPassV1(ir::Graph* graph) const;
+  int ApplyAdaptiveSeqlenPassV1(ir::Graph* graph,
+                                const std::string& matmul_type) const;
 
   /*
   adaptive seqlen V2, before:
@@ -132,7 +133,8 @@ class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
               |
            out_var*
   */
-  int ApplyAdaptiveSeqlenPassV2(ir::Graph* graph) const;
+  int ApplyAdaptiveSeqlenPassV2(ir::Graph* graph,
+                                const std::string& matmul_type) const;
 
  private:
   const std::string name_scope_{"multi_encoder_xpu_adaptive_seqlen_fuse_pass"};

@@ -1447,6 +1447,7 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const std::vector<const MetaTensor*>& smooth_scale_weight,
+    const std::vector<const MetaTensor*>& roformer_embedding,
     const MetaTensor& mask,
     const MetaTensor& seq_lod,
     const MetaTensor& max_seq_len,
@@ -1460,6 +1461,7 @@ void MultiEncoderXPUInferMeta(
     int relative_type,
     int slice_idx,
     bool is_per_channel,
+    int max_pos_len,
     const std::vector<float>& softmax_max_value,
     const std::vector<std::string>& quant_types,
     MetaTensor* out,
@@ -3829,4 +3831,56 @@ void MultiGruInferMeta(
   hidden->set_dims(out_dims);
   hidden->share_lod(x);
 }
+
+void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
+                                     const MetaTensor& sin_emb,
+                                     const MetaTensor& cos_emb,
+                                     int max_pos_len,
+                                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  auto sin_emb_dims = sin_emb.dims();
+  auto sin_emb_dims_size = sin_emb_dims.size();
+  auto cos_emb_dims = cos_emb.dims();
+  auto cos_emb_dims_size = cos_emb_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims_size,
+      4,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 4, but received x_dims_size is %d",
+          x_dims_size));
+  PADDLE_ENFORCE_EQ(
+      sin_emb_dims_size,
+      4,
+      phi::errors::InvalidArgument(
+          "sin_emb_dims_size should be 4, but received sin_emb_dims_size is %d",
+          sin_emb_dims_size));
+  PADDLE_ENFORCE_EQ(
+      cos_emb_dims_size,
+      4,
+      phi::errors::InvalidArgument(
+          "cos_emb_dims_size should be 4, but received cos_emb_dims_size is %d",
+          cos_emb_dims_size));
+  for (int i = 0; i < sin_emb_dims_size; i++) {
+    PADDLE_ENFORCE_EQ(
+        sin_emb_dims[i],
+        cos_emb_dims[i],
+        phi::errors::InvalidArgument(
+            "sin_emb_dims[i] should be equal to cos_emb_dims[i], index i is "
+            "%d, sin_emb_dims[i] is %d, cos_emb_dims[i] is %d",
+            i,
+            sin_emb_dims[i],
+            cos_emb_dims[i]));
+  }
+  PADDLE_ENFORCE_EQ(
+      x_dims[3],
+      cos_emb_dims[3],
+      phi::errors::InvalidArgument("x_dims[3] should be equal to cos_dims[3], "
+                                   "but sin_dims[3] is %d, cos_dims[3] is %d",
+                                   x_dims[3],
+                                   cos_emb_dims[3]));
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
