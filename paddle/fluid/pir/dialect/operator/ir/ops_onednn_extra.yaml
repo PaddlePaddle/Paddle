@@ -111,16 +111,19 @@
 
 - op : fused_elementwise_sub
 
-# - op : fused_matmul
+- op : fused_matmul
 
-# - op : fused_softplus
+- op : fused_softplus
 
-# - op : fused_transpose
+- op : fused_transpose
+  extra_args : str data_format="AnyLayout", str mkldnn_data_type="float32"
+  data_format_tensors : x
 
 - op : fusion_gru
   extra_args : str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0f}
 
-# - op : fusion_lstm
+- op : fusion_lstm
+  extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
 
