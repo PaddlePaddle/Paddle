@@ -1038,6 +1038,26 @@ Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
   }
 }
 
+template <typename T>
+Tensor elu_decomp(const Tensor& x, const float alpha) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+  
+  const Tensor zero = full<T>(x_cast.shape(), 0, x_cast.type());
+  auto tmp_res = alpha * (exp<T>(x_cast) - 1);
+  auto ans = where<T>(x_cast > zero, x_cast, tmp_res);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
