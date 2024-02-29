@@ -59,20 +59,12 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
-
-  const std::vector<symbol::DimExpr> sym_shape = [&] {
-    std::vector<symbol::DimExpr> sym_shape;
-    symbol::DimExpr dim_expr(
-        op->result(0).type().dyn_cast<pir::DenseTensorType>().dims()[0]);
-    sym_shape.emplace_back(dim_expr);
-    return sym_shape;
-  }();
-
-  symbol::ShapeOrDataDimExprs shape_or_data{symbol::TensorShapeOrDataDimExprs(
-      sym_shape, operand_shape_or_data.shape())};
+  const std::vector<symbol::DimExpr> out_data = operand_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+  symbol::ShapeOrDataDimExprs shape_or_data{
+      symbol::TensorShapeOrDataDimExprs(shape, out_data)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_or_data);
-
   return true;
 }
 
@@ -1238,7 +1230,8 @@ bool GatherOpInferSymbolicShape(
           ? index_shape_or_data.data().value()
           : index_shape_or_data.shape();
 
-  int axis = static_cast<int>(axis_shape_or_data.shape()[0].Get<int64_t>());
+  int axis =
+      static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   if (axis < 0) axis += input_sym_shape.size();
 
   std::vector<symbol::DimExpr> out_sym_shape;
