@@ -219,17 +219,15 @@ def get_eager_vjp(func, inputs, tangents=None, order=1):
 def _get_eager_vjp(inputs, outputs, tangents, order):
     if order > 1:
         create_graph = True
-        allow_unused = True
     else:
         create_graph = False
-        allow_unused = False
 
     d_inputs = paddle.grad(
         outputs=outputs,
         inputs=inputs,
         grad_outputs=tangents,
         create_graph=create_graph,
-        allow_unused=allow_unused,
+        allow_unused=True,
     )
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
     if order > 1:
