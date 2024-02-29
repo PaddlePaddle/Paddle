@@ -100,9 +100,7 @@ else()
 endif()
 
 if(WITH_GPU)
-  paddle_test(
-    copy_cross_scope_test
-    SRCS copy_cross_scope_test.cc)
+  paddle_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
