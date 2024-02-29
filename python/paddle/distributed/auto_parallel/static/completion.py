@@ -22,7 +22,6 @@ import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
-    get_spmd_rule,
 )
 from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger

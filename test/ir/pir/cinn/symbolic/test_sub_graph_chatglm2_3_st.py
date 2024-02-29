@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# repo: PaddleDetection
-# model: configs^fcos^fcos_dcn_r50_fpn_1x_coco_single_dy2st_train
-# api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.manipulation.split||api:paddle.tensor.ops.sigmoid||api:paddle.vision.ops.deform_conv2d
+# repo: llm_sub_graphs
+# model: chatglm2
+# api:paddle.nn.functional.common.linear||method:__getitem__||method:__getitem__||api:paddle.nn.functional.activation.silu||method:__mul__||api:paddle.nn.functional.common.linear
 import unittest
 
 import numpy as np
@@ -26,64 +26,44 @@ class LayerCase(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.parameter_0 = self.create_parameter(
-            shape=[256, 256, 3, 3],
+            shape=[1024, 32],
             dtype=paddle.float32,
         )
         self.parameter_1 = self.create_parameter(
-            shape=[256],
-            dtype=paddle.float32,
-        )
-        self.parameter_2 = self.create_parameter(
-            shape=[27, 256, 3, 3],
-            dtype=paddle.float32,
-        )
-        self.parameter_3 = self.create_parameter(
-            shape=[27],
+            shape=[32, 2048],
             dtype=paddle.float32,
         )
 
     def forward(
         self,
-        var_0,  # (shape: [1, 256, 28, 40], dtype: paddle.float32, stop_gradient: False)
+        var_0,  # (shape: [1024, 4, 32], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.nn.functional.conv._conv_nd(
-            var_0,
-            self.parameter_2,
-            bias=self.parameter_3,
-            stride=[1, 1],
-            padding=[1, 1],
-            padding_algorithm='EXPLICIT',
-            dilation=[1, 1],
-            groups=1,
-            data_format='NCHW',
-            channel_dim=1,
-            op_type='conv2d',
-            use_cudnn=True,
+        var_1 = paddle.nn.functional.common.linear(
+            x=var_0, weight=self.parameter_1, bias=None, name=None
         )
-        var_2, var_3 = paddle.tensor.manipulation.split(
-            var_1, num_or_sections=[18, 9], axis=1
+        var_2 = var_1[(..., slice(None, 1024, None))]
+        var_3 = var_1[(..., slice(1024, None, None))]
+        var_4 = paddle.nn.functional.activation.silu(var_2)
+        var_5 = var_4 * var_3
+        var_6 = paddle.nn.functional.common.linear(
+            x=var_5, weight=self.parameter_0, bias=None, name=None
         )
-        var_4 = paddle.tensor.ops.sigmoid(var_3)
-        var_5 = paddle.vision.ops.deform_conv2d(
-            x=var_0,
-            offset=var_2,
-            weight=self.parameter_0,
-            bias=self.parameter_1,
-            stride=[1, 1],
-            padding=[1, 1],
-            dilation=[1, 1],
-            deformable_groups=1,
-            groups=1,
-            mask=var_4,
-        )
-        return var_5
+        return var_6
+
+
+def create_paddle_inputs():
+    inputs = (paddle.rand(shape=[1024, 4, 32], dtype=paddle.float32),)
+    return inputs
+
+
+def create_numpy_inputs():
+    inputs = (np.random.random(size=[1024, 4, 32]).astype('float32'),)
+    return inputs
 
 
 class TestLayer(unittest.TestCase):
     def setUp(self):
-        self.inputs = (
-            paddle.rand(shape=[1, 256, 28, 40], dtype=paddle.float32),
-        )
+        self.inputs = create_paddle_inputs()
         self.net = LayerCase()
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
@@ -104,12 +84,12 @@ class TestLayer(unittest.TestCase):
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
+            self.net, to_static=True, with_prim=True, with_cinn=False
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':

@@ -1396,11 +1396,13 @@ class OpcodeExecutorBase:
 
     POP_JUMP_FORWARD_IF_NONE = pop_jump_if_op_wrapper([operator_is_none])
     POP_JUMP_BACKWARD_IF_NONE = POP_JUMP_FORWARD_IF_NONE
+    POP_JUMP_IF_NONE = POP_JUMP_FORWARD_IF_NONE
 
     POP_JUMP_FORWARD_IF_NOT_NONE = pop_jump_if_op_wrapper(
         [operator_is_not_none]
     )
     POP_JUMP_BACKWARD_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
+    POP_JUMP_IF_NOT_NONE = POP_JUMP_FORWARD_IF_NOT_NONE
 
     @call_break_graph_decorator(push_n=lambda arg: arg)
     def UNPACK_SEQUENCE(self, instr: Instruction):

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 
 namespace pir {
@@ -25,7 +26,8 @@ class Program;
 
 namespace cinn::dialect::ir {
 
-void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
-                 pir::Program &program);                           // NOLINT
+void ApplyCinnPass(::pir::Program* program,
+                   const std::function<std::shared_ptr<pir::PassManager>()>&
+                       CreatePassManager);
 
 }  // namespace cinn::dialect::ir

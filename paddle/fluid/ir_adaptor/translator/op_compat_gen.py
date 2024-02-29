@@ -84,7 +84,7 @@ def OpNameNormalizerInitialization(
                     if k == 'tensor_name' or k == 'tensors_name':
                         op_mutable_attribute_infos[op_name][
                             attribute_name
-                        ].append(v)
+                        ].insert(0, v)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
         legacy_backward_op_names = []
