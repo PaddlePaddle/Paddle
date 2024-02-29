@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 import sys
 import unittest
 
@@ -140,7 +141,8 @@ class Parser:
 class TestTask(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
-        self.file_path = args.file_path
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        self.file_path = os.path.join(file_dir, args.file_path)
 
     def test_phi(self):
         self.check_infer(enable_cinn=False)
