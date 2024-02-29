@@ -248,15 +248,22 @@ static PyObject* tensor__add__method(TensorObject* self,
     }
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    if (other_tensor_ref.shape().size() == 0 &&
+    if ((other_tensor_ref.shape().size() == 0 ||
+         self_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       // common major types follow with tensor: int32(tensor) + int64(scalar) =
       // int32
       if (is_common_dtype_for_scalar(self_tensor_ref.dtype(),
                                      other_tensor_ref.dtype())) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref =
-            cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        if (self_tensor_ref.shape().size() == 0) {
+          eager_gil_scoped_release guard;
+          self_tensor_ref =
+              cast_ad_func(self_tensor_ref, other_tensor_ref.dtype());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor_ref =
+              cast_ad_func(other_tensor_ref, self_tensor_ref.dtype());
+        }
       } else {
         // different major types follow with rule.
         phi::DataType promote_type = GetPromoteDtype(

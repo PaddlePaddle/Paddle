@@ -559,11 +559,14 @@ def monkey_patch_variable():
             if lhs_dtype != rhs_dtype:
                 if method_name in SUPPORT_PROMOTION_OPS:
                     # for 0-d tensor, the logic same with Tensor + Scalar
-                    if len(other_var.shape) == 0:
+                    if len(other_var.shape) == 0 or len(self.shape) == 0:
                         if core.is_common_dtype_for_scalar(
                             lhs_dtype, rhs_dtype
                         ):
-                            other_var = astype(other_var, lhs_dtype)
+                            if len(self.shape) == 0:
+                                self = astype(self, rhs_dtype)
+                            else:
+                                other_var = astype(other_var, lhs_dtype)
                         else:
                             promote_type = core.get_promote_dtype(
                                 op_type, lhs_dtype, rhs_dtype
