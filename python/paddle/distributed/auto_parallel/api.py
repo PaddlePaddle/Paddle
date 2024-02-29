@@ -2282,7 +2282,7 @@ def shard_dataloader(
 
     Examples:
         .. code-block:: python
-
+            :name: example-1
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
@@ -2377,9 +2377,8 @@ def shard_dataloader(
             >>> # RUN_STATIC=1 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
             >>> # RUN_STATIC=0 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
 
-    Examples:
         .. code-block:: python
-
+            :name: example-2
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> from paddle.io import BatchSampler, DataLoader, Dataset
