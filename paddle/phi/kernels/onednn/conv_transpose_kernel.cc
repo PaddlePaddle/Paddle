@@ -405,6 +405,23 @@ void Execute(const OneDNNContext& dev_ctx,
       args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
   } else {
+    // Check if bias obey the rules
+    if (bias) {
+      PADDLE_ENFORCE_EQ(
+          bias->layout(),
+          DataLayout::ONEDNN,
+          phi::errors::InvalidArgument(
+              "The Bias tensor's layout should be %d, but got %d.",
+              DataLayout::ONEDNN,
+              bias->layout()));
+
+      PADDLE_ENFORCE_EQ(
+          bias->dims().size(),
+          1,
+          phi::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                       "i.e. X, but got dimension = %d .",
+                                       bias->dims().size()));
+    }
     // Caching Key for weights is needed
     std::string key =
         funcs::CreateKey(dev_ctx,
