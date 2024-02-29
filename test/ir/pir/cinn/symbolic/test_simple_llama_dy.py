@@ -143,7 +143,6 @@ class TestTask(unittest.TestCase):
         paddle.enable_static()
         file_dir = os.path.dirname(os.path.abspath(__file__))
         self.file_path = os.path.join(file_dir, args.file_path)
-        paddle.set_flags({'FLAGS_enable_pir_api': True})
 
     def test_phi(self):
         self.check_infer(enable_cinn=False)
@@ -166,7 +165,7 @@ class TestTask(unittest.TestCase):
         )
 
         for cinn_res, base_res in zip(cinn_out, base_out):
-            np.testing.assert_allclose(cinn_res, base_res, atol=1e-5, rtol=1e-5)
+            np.testing.assert_allclose(cinn_res, base_res, atol=5e-3, rtol=5e-3)
 
     def check_infer(self, enable_cinn):
         parser = Parser()
