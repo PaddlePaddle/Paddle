@@ -5,7 +5,7 @@ if(WITH_TESTING AND TEST test_code_generator)
   set_tests_properties(test_code_generator PROPERTIES TIMEOUT 120)
 endif()
 
-if(not win32)
+if(NOT WIN32)
   nv_test(	
     test_fusion_group_pass	
     SRCS fusion_group_pass_tester.cc	
