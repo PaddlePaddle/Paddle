@@ -43,36 +43,36 @@ inline std::vector<int> get_expand_times(
       expand_data = cpu_expand_tensor.data<int>();
     }
 #endif
-    auto vec_epxand_times =
+    auto vec_expand_times =
         std::vector<int>(expand_data, expand_data + expand_tensor->numel());
-    return vec_epxand_times;
+    return vec_expand_times;
   }
 
   auto list_expand_times_tensor =
       ctx.MultiInput<phi::DenseTensor>("expand_times_tensor");
   if (list_expand_times_tensor.size() > 0) {
     // get tensor from
-    std::vector<int> vec_epxand_times;
+    std::vector<int> vec_expand_times;
     for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
       auto tensor = list_expand_times_tensor[i];
       if (platform::is_gpu_place(tensor->place())) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_times.push_back(*temp.data<int32_t>());
+        vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #ifdef PADDLE_WITH_XPU
       else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_epxand_times.push_back(*temp.data<int32_t>());
+        vec_expand_times.push_back(*temp.data<int32_t>());
       }
 #endif
       else {  // NOLINT
-        vec_epxand_times.push_back(*tensor->data<int32_t>());
+        vec_expand_times.push_back(*tensor->data<int32_t>());
       }
     }
 
-    return vec_epxand_times;
+    return vec_expand_times;
   } else {
     return ctx.Attr<std::vector<int>>("expand_times");
   }
