@@ -39,9 +39,9 @@ void OpBenchmarkTester::TestOp(const std::string& test_name,
                                const hlir::framework::NodeAttr& attrs,
                                const std::vector<Type>& input_types,
                                const std::vector<Type>& out_types,
-                               bool use_default_stragegy) {
+                               bool use_default_strategy) {
   auto module =
-      CreateCinnModule(input_tensors, attrs, out_types, use_default_stragegy);
+      CreateCinnModule(input_tensors, attrs, out_types, use_default_strategy);
   auto engine = CreateExecutionEngine(module);
   auto test_func_ptr =
       reinterpret_cast<void (*)(void**, int32_t)>(engine->Lookup(op_name_));
@@ -68,7 +68,7 @@ Module OpBenchmarkTester::CreateCinnModule(
     const std::vector<Tensor>& input_tensors,
     const hlir::framework::NodeAttr& attrs,
     const std::vector<Type>& out_types,
-    bool use_default_stragegy) {
+    bool use_default_strategy) {
   std::vector<Tensor> outs;
   std::vector<Tensor> rets;
   poly::StageMap stages;
@@ -76,7 +76,7 @@ Module OpBenchmarkTester::CreateCinnModule(
   rets = input_tensors;
   Module::Builder builder("module_" + op_name_, target_);
 
-  if (use_default_stragegy) {
+  if (use_default_strategy) {
     auto strategy =
         hlir::framework::Operator::GetAttrs<hlir::framework::StrategyFunction>(
             "CINNStrategy");

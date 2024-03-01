@@ -59,7 +59,7 @@ class DependencyBuilder {
 
  protected:
   void AddDependencyForCoalesceTensorOp();
-  void AddDependencyForCommunicationOp();
+  virtual void AddDependencyForCommunicationOp();
   virtual void AddDependencyForRandomOp();
   void AddDependencyForReadOp();
   void AddDependencyForSequentialRun();
@@ -117,6 +117,8 @@ class PirDependencyBuilder : public DependencyBuilder {
   void ShareDependencyFrom(const PirDependencyBuilder& src);
 
  private:
+  void AddDependencyForCommunicationOp() override;
+
   void AddDependencyForRandomOp() override;
 
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned

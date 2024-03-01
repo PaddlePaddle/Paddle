@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -23,7 +23,7 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(local_exe_sub_scope_limit);
+COMMON_DECLARE_double(local_exe_sub_scope_limit);
 
 namespace paddle {
 namespace framework {

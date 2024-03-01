@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/utils/profiler.h"
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_NVTX
 #include <nvToolsExt.h>

@@ -21,8 +21,8 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace jit {

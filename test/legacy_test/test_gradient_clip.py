@@ -700,7 +700,7 @@ class TestDygraphGradientClip(unittest.TestCase):
         with base.dygraph.guard():
             linear = paddle.nn.Linear(5, 5)
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
-            out = linear(base.dygraph.to_variable(inputs))
+            out = linear(paddle.to_tensor(inputs))
             loss = paddle.mean(out)
             loss.backward()
             sgd_optimizer = paddle.optimizer.SGD(
@@ -722,12 +722,8 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(
-            np.array([2, 3]).astype("float32"), name="x"
-        )
-        y = base.dygraph.to_variable(
-            np.array([3, 4]).astype("float32"), name="y"
-        )
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
+        y = paddle.to_tensor(np.array([3, 4]).astype("float32"))
         assert len(self.clip1([(x, x), (x, y), (x, None)])) == 2
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
@@ -762,10 +758,10 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
-        self.clip([(base.dygraph.to_variable(np.array([2, 3])), None)])
+        self.clip([(paddle.to_tensor(np.array([2, 3])), None)])
         opt, params_grads = optimizer.minimize(loss)
         _, grads = zip(*params_grads)
         params_grads = self.clip(params_grads)
@@ -791,7 +787,7 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
@@ -839,7 +835,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     'float32'
                 )
                 with paddle.amp.auto_cast(level='O2'):
-                    out = model(base.dygraph.to_variable(inputs))
+                    out = model(paddle.to_tensor(inputs))
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaled.backward()
@@ -884,7 +880,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
         with base.dygraph.guard():
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             linear = paddle.nn.Linear(5, 5)
-            out = linear(base.dygraph.to_variable(inputs))
+            out = linear(paddle.to_tensor(inputs))
             loss = paddle.mean(out)
             loss.backward()
             # before clip

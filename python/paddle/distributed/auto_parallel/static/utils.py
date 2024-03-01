@@ -1012,7 +1012,7 @@ def _merge_parameter(
     partition_param_list, param, partition_index, complete_shape
 ):
     """
-    Merge partitial parameters to a complete one.
+    Merge partial parameters to a complete one.
 
     Returns:
         None
@@ -1355,7 +1355,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
     changed = False
     op_dist_attr = dist_op.dist_attr
     op_desc = dist_op.serial_op.desc
-    # The following statement will be replaced by a more elegent way
+    # The following statement will be replaced by a more elegant way
     if op_desc.type() == "shape" or op_desc.type() == "slice":
         return False
     output_names = op_desc.output_names()

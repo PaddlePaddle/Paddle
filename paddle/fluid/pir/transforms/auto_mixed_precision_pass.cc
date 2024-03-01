@@ -40,15 +40,15 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
@@ -66,7 +66,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
                "Use Set method to set the place attribute.");
     IR_ENFORCE(Has("__mixed_precision_mode__"),
                "Pass initialize failed."
-               "When using AutoMixedPrecisionPass, precison_mode attribute is "
+               "When using AutoMixedPrecisionPass, precision_mode attribute is "
                "required!"
                "Use Set method to set the scope attribute.");
 
@@ -224,13 +224,13 @@ class AutoMixedPrecisionPass : public pir::Pass {
           precision_updated = true;
         }
         if (!OpRunLowPrecision(op)) continue;
-        // if the producer's output is in float VectorType, then the precsion
+        // if the producer's output is in float VectorType, then the precision
         // between two op should be the same
         for (size_t idx = 0; idx < op->num_operands(); ++idx) {
           if (!op->operand_source(idx)) continue;
           auto operand = op->operand(idx);
           if (operand.type() && operand.type().isa<pir::VectorType>()) {
-            // check if there are all float in the vectortype
+            // check if there are all float in the vector type
             auto vec_type = operand.type().dyn_cast<pir::VectorType>();
             if (IsVectorTypeFloat(vec_type)) {
               auto input_operation = GetDefiningOpForInput(op, idx);

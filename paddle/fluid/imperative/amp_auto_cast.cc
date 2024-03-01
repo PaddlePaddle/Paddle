@@ -119,7 +119,7 @@ OpSupportedInfos(const std::string& place,
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
 
-AutoCastGuard::AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel level)
+AutoCastGuard::AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel level)
     : state_(state) {
   pre_amp_level_ = state_->GetAmpLevel();
 
@@ -162,8 +162,6 @@ AmpOperators::AmpOperators()
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() = default;
-
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;
   return instance;
@@ -187,7 +185,7 @@ AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
       true,
       phi::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == phi::DataType::FLOAT16) {
+  if (data_type == phi::DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;
@@ -231,25 +229,25 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
-thread_local bool AMPState::use_promote_ = false;
+thread_local bool AmpAttrs::use_promote_ = false;
 
-thread_local AmpLevel AMPState::amp_level_ = AmpLevel::O0;
+thread_local AmpLevel AmpAttrs::amp_level_ = AmpLevel::O0;
 
-thread_local phi::DataType AMPState::amp_dtype_ = phi::DataType::FLOAT32;
+thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
 
-AMPState::AMPState() {}
+AmpAttrs::AmpAttrs() {}
 
-AMPState::~AMPState() = default;
+AmpAttrs::~AmpAttrs() = default;
 
-bool AMPState::GetUsePromote() const { return use_promote_; }
+bool AmpAttrs::GetUsePromote() const { return use_promote_; }
 
-void AMPState::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
+void AmpAttrs::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
 
-AmpLevel AMPState::GetAmpLevel() const { return amp_level_; }
+AmpLevel AmpAttrs::GetAmpLevel() const { return amp_level_; }
 
-void AMPState::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
+void AmpAttrs::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
 
-std::string AMPState::GetAmpDtype() const {
+std::string AmpAttrs::GetAmpDtype() const {
   if (amp_dtype_ == phi::DataType::FLOAT16) {
     return std::string("float16");
   } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
@@ -259,7 +257,7 @@ std::string AMPState::GetAmpDtype() const {
   }
 }
 
-void AMPState::SetAmpDtype(std::string amp_dtype) {
+void AmpAttrs::SetAmpDtype(std::string amp_dtype) {
   if (amp_dtype == "float16") {
     amp_dtype_ = phi::DataType::FLOAT16;
   } else if (amp_dtype == "bfloat16") {
@@ -269,7 +267,7 @@ void AMPState::SetAmpDtype(std::string amp_dtype) {
   }
 }
 
-phi::DataType AMPState::GetAmpPhiDtype() const { return amp_dtype_; }
+phi::DataType AmpAttrs::GetAmpPhiDtype() const { return amp_dtype_; }
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
@@ -308,7 +306,7 @@ static inline std::shared_ptr<VarType> CastToType(
   imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(imperative::GetCurrentAMPState(), AmpLevel::O0);
+    AutoCastGuard guard(imperative::GetCurrentAmpAttrs(), AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -377,7 +375,8 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
-  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(
+          op_type)) {  // NOLINT
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||

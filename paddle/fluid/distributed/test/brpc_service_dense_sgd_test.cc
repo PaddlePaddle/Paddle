@@ -42,9 +42,6 @@ class DenseTensor;
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
-namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
@@ -60,7 +57,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i)
-    x_ptr[i] = 1.0 * static_cast<float>(i);
+    x_ptr[i] = static_cast<float>(1.0) * static_cast<float>(i);
 }
 
 void GetDownpourDenseTableProto(

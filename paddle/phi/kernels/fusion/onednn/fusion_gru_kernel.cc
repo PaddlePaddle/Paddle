@@ -457,7 +457,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   const auto& input_lod = x.lod()[0];
 
   // Calculate RNN dimensions
-  const int64_t N = input_lod.size() - 1;  // Number of sentences (batches)
+  const int64_t N = static_cast<int64_t>(input_lod.size() -
+                                         1);  // Number of sentences (batches)
   const int64_t Ti =  // Max length of the sentence in a batch
       [&input_lod]() {
         size_t res = 0;

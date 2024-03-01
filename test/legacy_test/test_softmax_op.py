@@ -59,7 +59,7 @@ class TestSoftmaxOp(OpTest):
         self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -91,10 +91,14 @@ class TestSoftmaxOp(OpTest):
                 check_prim=True,
                 check_pir=True,
                 check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         else:
             self.check_output(
-                check_prim=True, check_pir=True, check_prim_pir=True
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
     def test_check_grad(self):
@@ -110,6 +114,7 @@ class TestSoftmaxOp(OpTest):
                     check_dygraph=(not self.use_mkldnn),
                     check_pir=True,
                     check_prim_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
         else:
             self.check_grad(
@@ -120,6 +125,7 @@ class TestSoftmaxOp(OpTest):
                 check_prim=True,
                 check_pir=True,
                 check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
 
@@ -136,7 +142,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
 
@@ -158,11 +164,18 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_pir=True, check_prim_pir=True
+                place,
+                atol=1e-5,
+                check_pir=True,
+                check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         else:
             self.check_output(
-                check_prim=True, check_pir=True, check_prim_pir=True
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
 
@@ -177,7 +190,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.prim_op_type = "comp"
         self.use_cudnn = True
         self.use_mkldnn = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
         np.random.seed(0)
@@ -203,10 +216,14 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
                 atol=1e-5,
                 check_pir=True,
                 check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
         else:
             self.check_output(
-                check_prim=True, check_pir=True, check_prim_pir=True
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
             )
 
 
@@ -387,6 +404,7 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
                     check_prim=True,
                     check_pir=True,
                     check_prim_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
     # FIXME: If the x_shape is [10, 10], gradient failed.
@@ -420,6 +438,7 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
                     check_prim=True,
                     check_pir=True,
                     check_prim_pir=True,
+                    check_pir_onednn=self.check_pir_onednn,
                 )
 
 
@@ -472,6 +491,7 @@ class TestSoftmaxBF16Op(OpTest):
             check_prim=True,
             check_pir=(not self.use_mkldnn),
             check_prim_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -485,6 +505,7 @@ class TestSoftmaxBF16Op(OpTest):
             check_prim=True,
             check_pir=(not self.use_mkldnn),
             check_prim_pir=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 

@@ -51,8 +51,8 @@ class LayerCase(paddle.nn.Layer):
         var_12 = paddle.tensor.linalg.transpose(var_11, (1, 0))
         var_13 = var_12.reshape((0, 49, 49))
         var_14 = paddle.tensor.linalg.matmul(var_6, var_9)
-        var_15 = var_14.__mul__(0.25)
-        var_16 = var_15.__add__(var_13)
+        var_15 = var_14 * 0.25
+        var_16 = var_15 + var_13
         var_17 = paddle.nn.functional.activation.softmax(var_16)
         var_18 = paddle.tensor.linalg.matmul(var_17, var_8)
         var_19 = paddle.tensor.linalg.transpose(var_18, perm=[0, 2, 1, 3])

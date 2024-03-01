@@ -17,7 +17,7 @@
 #include <chrono>
 #include <unordered_set>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
@@ -52,6 +52,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/if_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/control_flow/pylayer_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_input_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/select_output_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/tuple_pop_instruction.h"
@@ -68,19 +69,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -702,7 +702,7 @@ void PirInterpreter::BuildInstruction() {
         continue;
       }
     } else if (op.dialect()->name() == "pd_op") {
-      if (op.isa<paddle::dialect::IfOp>()) {
+      if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
         vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
         sub_blocks_.insert(
@@ -713,6 +713,14 @@ void PirInterpreter::BuildInstruction() {
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
+      } else if (op.isa<paddle::dialect::PyLayerOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<PyLayerInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::PyLayerOp>().forward_block(),
+             dynamic_cast<PyLayerInstruction*>(
+                 vec_instruction_base_.back().get())
+                 ->ForwardInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
@@ -743,7 +751,7 @@ void PirInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op.isa<paddle::dialect::LegacyKernelOp>()) {
+      if (op.isa<paddle::dialect::LegacyKernelOp>()) {  // NOLINT
         CREATE_INSTR(LegacyKernelInstruction);
       } else {
         CREATE_INSTR(PhiKernelInstruction);
@@ -1297,6 +1305,7 @@ paddle::framework::FetchList PirInterpreter::Run(
 
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
   FeedInput();
@@ -1305,7 +1314,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
-    SolvePersisableVarNames();
+    SolvePersistableVarNames();
 
     if (VLOG_IS_ON(6)) {
       std::stringstream ss;
@@ -1321,7 +1330,6 @@ paddle::framework::FetchList PirInterpreter::Run(
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
 
-    // Run
     if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
@@ -1389,13 +1397,14 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running ...";
     VLOG(4) << DebugValueInfo();
 
-    SolvePersisableVarNames();
+    SolvePersistableVarNames();
 
     if (VLOG_IS_ON(6)) {
       std::stringstream ss;
@@ -1836,12 +1845,12 @@ void PirInterpreter::PreAnalysis() {
   return nullptr;
 }
 
-void PirInterpreter::SolvePersisableVarNames() {
-  VLOG(6) << "SolvePersisableVarNames";
+void PirInterpreter::SolvePersistableVarNames() {
+  VLOG(6) << "SolvePersistableVarNames";
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersisable);
+    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersistable);
     if (bool_attr && bool_attr.data()) {
       parameter_var_names_.insert(var_name);
     }

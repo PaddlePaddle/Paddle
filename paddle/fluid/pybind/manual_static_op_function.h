@@ -27,7 +27,7 @@
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
 
 namespace paddle {
 
@@ -379,17 +379,17 @@ static PyObject *static_api_slice_array(PyObject *self,
           starts_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
 
-    PyObject *ends_obj = PyTuple_GET_ITEM(args, 1);
+    PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value ends;
     if (PyObject_CheckIRValue(ends_obj)) {
-      ends = CastPyArg2Value(ends_obj, "slice_array", 1);
+      ends = CastPyArg2Value(ends_obj, "slice_array", 2);
     } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
-          CastPyArg2VectorOfValue(ends_obj, "slice_array", 1);
+          CastPyArg2VectorOfValue(ends_obj, "slice_array", 2);
       ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
     } else {
       std::vector<int64_t> ends_tmp =
-          CastPyArg2Longs(ends_obj, "slice_array", 1);
+          CastPyArg2Longs(ends_obj, "slice_array", 2);
       ends = paddle::dialect::full_int_array(
           ends_tmp, phi::DataType::INT64, phi::CPUPlace());
     }
@@ -760,7 +760,17 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
           std::move(argument));
   for (size_t i = 0; i < outputs.size(); ++i) {
-    op_results.push_back(op->result(i));
+    const auto &output = outputs.at(i);
+    if (paddle::framework::detail::IsDuplicableVar(output)) {
+      auto split_op = paddle::dialect::ApiBuilder::Instance()
+                          .GetBuilder()
+                          ->Build<pir::SplitOp>(op->result(i));
+      auto split_outputs = split_op.outputs();
+      op_results.insert(
+          op_results.end(), split_outputs.begin(), split_outputs.end());
+    } else {
+      op_results.push_back(op->result(i));
+    }
   }
 
   return ToPyObject(op_results);
@@ -778,6 +788,39 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
+                                                PyObject *args,
+                                                PyObject *kwargs) {
+  try {
+    VLOG(6) << "Running Static API: fused_gemm_epilogue";
+
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2Value(x_obj, "fused_gemm_epilogue", 0);
+    PyObject *y_obj = PyTuple_GET_ITEM(args, 1);
+    auto y = CastPyArg2Value(y_obj, "fused_gemm_epilogue", 1);
+    PyObject *bias_obj = PyTuple_GET_ITEM(args, 2);
+    auto bias = CastPyArg2Value(bias_obj, "fused_gemm_epilogue", 2);
+
+    // Parse Attributes if needed
+    PyObject *trans_x_obj = PyTuple_GET_ITEM(args, 3);
+    bool trans_x = CastPyArg2Boolean(trans_x_obj, "fused_gemm_epilogue", 3);
+    PyObject *trans_y_obj = PyTuple_GET_ITEM(args, 4);
+    bool trans_y = CastPyArg2Boolean(trans_y_obj, "fused_gemm_epilogue", 4);
+    PyObject *activation_obj = PyTuple_GET_ITEM(args, 5);
+    std::string activation =
+        CastPyArg2String(activation_obj, "fused_gemm_epilogue", 5);
+
+    // Call ir static api
+    auto out = paddle::dialect::fused_gemm_epilogue(
+        x, y, bias, trans_x, trans_y, activation);
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
 static PyObject *static_api_array_pop(PyObject *self,
                                       PyObject *args,
                                       PyObject *kwargs) {
@@ -799,6 +842,22 @@ static PyObject *static_api_array_pop(PyObject *self,
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
+  }
+}
+
+extern PyObject *eager_api_fused_gemm_epilogue(PyObject *self,
+                                               PyObject *args,
+                                               PyObject *kwargs);
+
+static PyObject *fused_gemm_epilogue(PyObject *self,
+                                     PyObject *args,
+                                     PyObject *kwargs) {
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {
+    VLOG(6) << "Call static_api_fused_gemm_epilogue";
+    return static_api_fused_gemm_epilogue(self, args, kwargs);
+  } else {
+    VLOG(6) << "Call eager_api_fused_gemm_epilogue";
+    return eager_api_fused_gemm_epilogue(self, args, kwargs);
   }
 }
 
@@ -851,6 +910,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_slice_array_dense,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for slice_array_dense."},
+    {"fused_gemm_epilogue",
+     (PyCFunction)(void (*)(void))fused_gemm_epilogue,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for fused_gemm_epilogue."},
     {"_run_custom_op",
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,

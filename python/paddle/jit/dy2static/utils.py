@@ -35,6 +35,7 @@ from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
 from .ast_utils import ast_to_source_code
@@ -308,7 +309,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
     global DEL_TEMP_DIR
     if delete_on_exit and DEL_TEMP_DIR:
-        # Clear temporary files in TEMP_DIR while exitting Python process
+        # Clear temporary files in TEMP_DIR while exiting Python process
         atexit.register(remove_if_exit, dir_path=temp_dir)
         DEL_TEMP_DIR = False
 
@@ -361,6 +362,14 @@ def recover_globals_attribute(src_obj, dst_obj):
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
+
+    # Inject source function closure into destination function globals
+    # Because the destination function is a standalone function, the original
+    # closure of the source function is compiled as LOAD_GLOBAL in the
+    # destination function.
+    src_closure = inspect.getclosurevars(src_obj)
+    for k, v in src_closure.nonlocals.items():
+        dst_globals[k] = v
 
 
 def func_to_source_code(function, dedent=True):
@@ -479,9 +488,9 @@ class GetterSetterHelper:
 
     def __init__(self, getter_func, setter_func, *name_lists):
         name_lists = ([] if x is None else x for x in name_lists)
-        name_sets = (set(x) for x in name_lists)
+        name_sets = (OrderedSet(x) for x in name_lists)
         self._union = list(
-            functools.reduce(lambda x, y: x | y, name_sets, set())
+            functools.reduce(lambda x, y: x | y, name_sets, OrderedSet())
         )
         self._union.sort()
         self.getter = getter_func
@@ -567,16 +576,16 @@ def is_builtin(func, name=None):
 @signature_safe_contextmanager
 def backend_guard(backend):
     core.check_and_set_prim_all_enabled()
-    orign_fwd = core._is_fwd_prim_enabled()
-    orign_bwd = core._is_bwd_prim_enabled()
+    origin_fwd = core._is_fwd_prim_enabled()
+    origin_bwd = core._is_bwd_prim_enabled()
 
     if backend == 'CINN':
         core._set_prim_all_enabled(True)
     try:
         yield
     finally:
-        core._set_prim_forward_enabled(orign_fwd)
-        core._set_prim_backward_enabled(orign_bwd)
+        core._set_prim_forward_enabled(origin_fwd)
+        core._set_prim_backward_enabled(origin_bwd)
 
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):

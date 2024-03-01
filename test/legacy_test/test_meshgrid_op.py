@@ -269,8 +269,8 @@ class TestMeshgridOp6(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -295,8 +295,8 @@ class TestMeshgridOp7(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid([tensor_3, tensor_4])
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -321,8 +321,8 @@ class TestMeshgridOp8(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -372,15 +372,15 @@ class TestMeshgridEager(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input_1)
-            tensor_2 = base.dygraph.to_variable(input_2)
+            tensor_1 = paddle.to_tensor(input_1)
+            tensor_2 = paddle.to_tensor(input_2)
             tensor_1.stop_gradient = False
             tensor_2.stop_gradient = False
             res_1, res_2 = paddle.tensor.meshgrid((tensor_1, tensor_2))
             sum = paddle.add_n([res_1, res_2])
             sum.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input_1)
-            tensor_eager_2 = base.dygraph.to_variable(input_2)
+            tensor_eager_1 = paddle.to_tensor(input_1)
+            tensor_eager_2 = paddle.to_tensor(input_2)
             tensor_eager_1.stop_gradient = False
             tensor_eager_2.stop_gradient = False
             res_eager_1, res_eager_2 = paddle.tensor.meshgrid(

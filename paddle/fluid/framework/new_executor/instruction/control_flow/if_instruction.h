@@ -49,9 +49,6 @@ class IfInstruction : public InstructionBase {
   PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
 
  private:
-  void CopyBranchOutput(const std::vector<std::string>& var_names,
-                        const PirInterpreter* inter);
-
   ::pir::Operation* op_;
 
   std::string cond_name_{"if_instruction"};

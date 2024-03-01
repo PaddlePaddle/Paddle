@@ -28,17 +28,18 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::AssertOp;
 using paddle::dialect::HasElementsOp;
 using paddle::dialect::IfOp;
+using paddle::dialect::PyLayerOp;
 using paddle::dialect::WhileOp;
 using paddle::pybind::PyIfOp;
 using paddle::pybind::PyWhileOp;
@@ -80,6 +81,32 @@ void BindIfOp(py::module* m) {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
           op_list.append(static_cast<pir::Value>(self.result(i)));
+        }
+        return op_list;
+      });
+}
+
+void BindPyLayerOp(py::module* m) {
+  m->def("build_pylayer_op", [](const std::vector<Value>& inputs) {
+    auto inputs_combine_op =
+        ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
+    return ApiBuilder::Instance().GetBuilder()->Build<PyLayerOp>(
+        inputs_combine_op.out(), std::vector<Type>{});
+  });
+  py::class_<PyLayerOp> pylayer_op(*m, "PyLayerOp", R"DOC(
+    TODO(MarioLulab): Add some docs for pd_op.pylayer
+  )DOC");
+  pylayer_op
+      .def("forward_block",
+           &PyLayerOp::forward_block,
+           return_value_policy::reference)
+      .def("update_output", &PyLayerOp::UpdateOutput)
+      .def(
+          "as_operation", &PyLayerOp::operation, return_value_policy::reference)
+      .def("results", [](PyLayerOp& self) -> py::list {
+        py::list op_list;
+        for (uint32_t i = 0; i < self->num_results(); i++) {
+          op_list.append(self.result(i));
         }
         return op_list;
       });
@@ -241,6 +268,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
+      operand_source(operand_index).set_type(body_block.arg(arg_index).type());
       body_block.arg(arg_index).ReplaceAllUsesWith(
           operand_source(operand_index));
       body_block.EraseArg(arg_index);
@@ -287,6 +315,7 @@ void BindControlFlowApi(py::module* m) {
   BindIfOp(m);
   BindWhileOp(m);
   BindAssertOp(m);
+  BindPyLayerOp(m);
 }
 
 }  // namespace pybind

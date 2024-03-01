@@ -161,7 +161,7 @@ void TopkKernel(const Context& dev_ctx,
 
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
-    // accroding to axis to set K value in the dim
+    // according to axis to set K value in the dim
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);

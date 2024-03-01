@@ -47,16 +47,17 @@ def log_pruned_info(cur_cfg, pruned_reason):
     )
 
 
-def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
+def same_cfgs_beside(attrs, cur_cfg, history_cfgs=[]):
     """
     Compare the current configuration with the history configuration,
     and obtain the same configurations as the current configuration except for the given attr.
     """
     results = []
     same = True
+
     for cfg in history_cfgs:
         for key in cur_cfg:
-            if key == attr:
+            if key in attrs:
                 continue
             if key not in cfg or (
                 cfg[key] != cur_cfg[key]
@@ -189,6 +190,38 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=[]):
     return False
 
 
+@register_prune_history
+def prune_by_mp_pp_history(tuner_cfg, cur_cfg, history_cfgs, pruned_cfgs):
+    mp_degree = cur_cfg.get("mp_degree", None)
+    pp_degree = cur_cfg.get("pp_degree", None)
+    use_recompute = cur_cfg.get("recompute", None)
+
+    if mp_degree is None or pp_degree is None or use_recompute is None:
+        return False
+
+    history_cfgs.extend(pruned_cfgs)
+    cfgs = same_cfgs_beside(["mp_degree", "pp_degree"], cur_cfg, history_cfgs)
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["mp_degree", "pp_degree", "sharding_satge"], cur_cfg, history_cfgs
+        )
+
+    if cfgs:
+        for cfg in cfgs:
+            if (
+                not use_recompute
+                and cfg["mp_degree"] * cfg["pp_degree"] == mp_degree * pp_degree
+                and cfg["mp_degree"] > mp_degree
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                pruned_reason = f"mp_degree {mp_degree}, pp_degree {pp_degree} may cause oom because {cfg['mp_degree']}, {cfg['pp_degree']} already oom."
+                log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
+                return True
+
+    return False
+
+
 @register_prune
 def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
@@ -238,11 +271,19 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
 
 
 @register_prune_history
-def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     vpp_degree = cur_cfg.get("vpp_degree", None)
     if vpp_degree is None:
         return False
+
+    history_cfgs.extend(pruned_cfgs)
+
     cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["vpp_degree", "sharding_satge"], cur_cfg, history_cfgs
+        )
+
     if cfgs:
         for cfg in cfgs:
             # memory prune
@@ -252,7 +293,9 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[]):
             ):
                 pruned_reason = f"vpp_degree {vpp_degree} may cause oom because { cfg['vpp_degree']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
                 return True
+
     return False
 
 
@@ -308,11 +351,23 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=[]):
 
 
 @register_prune_history
-def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     if micro_batch_size is None:
         return False
-    cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
+
+    history_cfgs.extend(pruned_cfgs)
+
+    cfgs = same_cfgs_beside(
+        ["micro_batch_size", "acc_steps"], cur_cfg, history_cfgs
+    )
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["micro_batch_size", "sharding_satge", "acc_steps"],
+            cur_cfg,
+            history_cfgs,
+        )
+
     if cfgs:
         for cfg in cfgs:
             if (
@@ -321,8 +376,8 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
             ):
                 pruned_reason = f"micro_batch_size {micro_batch_size} may be slower because {cfg['micro_batch_size']} has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["time"] = cfg["time"]
                 return True
-
             # memory prune
             if (
                 cfg["micro_batch_size"] < micro_batch_size
@@ -330,6 +385,7 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
             ):
                 pruned_reason = f"micro_batch_size {micro_batch_size} may cause oom because {cfg['micro_batch_size']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
                 return True
     return False
 
@@ -342,6 +398,7 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
     2. Sharding stage and degree should be in the candidates of user defined.
     3. If PP (pipeline-parallelism) degree is not 1, sharding stage must be 1.
     4. Prune if a similar configuration with a lower sharding stage resulted in a valid run.
+    5. If sharding degree is 1, sharding stage is invalid.
     """
     sharding_stage = cur_cfg.get("sharding_stage", None)
     sharding_degree = cur_cfg.get("sharding_degree", None)
@@ -372,11 +429,18 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
     if pp_degree and pp_degree != 1 and sharding_stage != 1:
         return True
 
+    if sharding_degree == 1:
+        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
+        if cfgs:
+            return True
+
     return False
 
 
 @register_prune_history
-def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+def prune_by_sharding_history(
+    tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
+):
     sharding_degree = cur_cfg.get("sharding_degree", None)
     if sharding_degree is None:
         return False
@@ -384,6 +448,8 @@ def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     sharding_stage = cur_cfg.get("sharding_stage", None)
     if sharding_stage is None:
         return False
+
+    history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
     if cfgs:
@@ -394,6 +460,7 @@ def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
             ):
                 pruned_reason = f"sharding_stage {sharding_stage} may be slower because {cfg['sharding_stage'] } has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["time"] = cfg["time"]
                 return True
 
             # memory prune
@@ -403,12 +470,8 @@ def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
             ):
                 pruned_reason = f"sharding_stage {sharding_stage} may cause oom because {cfg['sharding_stage']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
                 return True
-
-    if sharding_degree == 1:
-        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
-        if cfgs:
-            return True
 
     return False
 
@@ -421,9 +484,12 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
     2. Usage of recompute and recompute granularity should be in the candidates of user defined.
     3. If recompute is not used, but recompute granularity is set, return True for pruning.
     4. Prune if a similar configuration without using recompute resulted in a valid run.
+    5. If recompute is false, prune redundant recompute granularity
     """
     recompute_granularity = cur_cfg.get("recompute_granularity", None)
     use_recompute = cur_cfg.get("use_recompute", None)
+    recompute_level = get_config_recompute_level(cur_cfg)
+
     if use_recompute is None:
         return False
 
@@ -442,41 +508,78 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
         if recompute_granularity not in recompute_granularity_candidates:
             return True
 
+    if not use_recompute:
+        if recompute_granularity != "full":
+            return True
+
+        cfgs = same_cfgs_beside(
+            ["use_recompute", "recompute_granularity"], cur_cfg, history_cfgs
+        )
+        if cfgs:
+            for cfg in cfgs:
+                if recompute_level == get_config_recompute_level(cfg):
+                    return True
+
     return False
 
 
-@register_prune_history
-def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
-    use_recompute = cur_cfg.get("use_recompute", None)
-    if use_recompute is None:
-        return False
-    cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
-    if cfgs:
-        for cfg in cfgs:
-            if (
-                not cfg["use_recompute"]
-                and use_recompute
-                and cfg.get("time", -1) > 0
-            ):
-                pruned_reason = f"use_recompute {use_recompute} may be slower because {cfg['use_recompute']} has been already runnable."
-                log_pruned_info(cur_cfg, pruned_reason)
-                return True
+def get_config_recompute_level(cfg):
+    recompute_granularity_level = {"full": 3, "full_attn": 2, "core_attn": 1}
+    use_recompute = cfg.get("use_recompute", None)
+    recompute_granularity = cfg.get("recompute_granularity", None)
 
-            if (
-                cfg["use_recompute"]
-                and not use_recompute
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                pruned_reason = f"use_recompute {use_recompute} may cause oom because {cfg['use_recompute']} already oom."
-                log_pruned_info(cur_cfg, pruned_reason)
-                return True
+    if use_recompute is None:
+        return None
 
     if not use_recompute:
-        cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
-        if cfgs:
-            pruned_reason = f"recompute_granularity invalid because use_recompute is {use_recompute}."
-            log_pruned_info(cur_cfg, pruned_reason)
-            return True
+        return 0
+    else:
+        return recompute_granularity_level[recompute_granularity]
+
+
+@register_prune_history
+def prune_by_recompute_history(
+    tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
+):
+    recompute_level = get_config_recompute_level(cur_cfg)
+
+    if recompute_level is None:
+        return False
+
+    history_cfgs.extend(pruned_cfgs)
+
+    cfgs = same_cfgs_beside(
+        ["use_recompute", "recompute_granularity"], cur_cfg, history_cfgs
+    )
+    if cur_cfg.get("sharding_degree") == 1:
+        cfgs = same_cfgs_beside(
+            ["use_recompute", "recompute_granularity", "sharding_satge"],
+            cur_cfg,
+            history_cfgs,
+        )
+
+    if cfgs:
+        for cfg in cfgs:
+            cfg["recompute_level"] = get_config_recompute_level(cfg)
+
+            if (
+                cfg["recompute_level"] < recompute_level
+                and cfg.get("time", -1) > 0
+            ):
+                pruned_reason = f"use_recompute may be slower because {cfg['use_recompute']} has been already runnable."
+                log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["time"] = cfg["time"]
+                return True
+
+            if (
+                cfg["recompute_level"] > recompute_level
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                pruned_reason = f"use_recompute may cause oom because {cfg['use_recompute']} already oom."
+                log_pruned_info(cur_cfg, pruned_reason)
+                cur_cfg["max_mem_usage"] = "OOM"
+                return True
+
     return False
 
 
@@ -604,7 +707,9 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
 
 
 @register_prune_history
-def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
+def prune_by_sharding_overlap(
+    tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]
+):
     """Prune by sharding overlap for single dp estimation"""
     if "sharding_overlap" in cur_cfg:
         result = same_cfgs_beside_sharding_overlap(

@@ -16,6 +16,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -137,7 +138,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
           phi::errors::InvalidArgument(
               "Only "
               "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
-      VLOG(3) << "reshard tensor which is not in current mesh, just set its "
+      VLOG(4) << "reshard tensor which is not in current mesh, just set its "
                  "dist_attr "
               << "from " << dist_tensor->dist_attr() << " to " << dist_attr;
 
@@ -151,8 +152,10 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      VLOG(6) << "reshard func, reshard tensor from "
-              << dist_tensor->dist_attr() << " to " << dist_attr;
+      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
+              << paddle::experimental::ReshardDebugInfo(*dist_tensor,
+                                                        dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                  dist_attr);
       dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);

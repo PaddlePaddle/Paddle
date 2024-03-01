@@ -20,9 +20,9 @@ limitations under the License. */
 #include <numeric>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle_infer {

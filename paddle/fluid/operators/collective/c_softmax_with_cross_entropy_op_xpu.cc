@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/xpu/reduce.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {

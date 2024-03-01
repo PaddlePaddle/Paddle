@@ -239,7 +239,7 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
               "represents the cross entropy loss.");
     AddAttr<bool>("soft_label",
                   "(bool, default false), a flag indicating whether to "
-                  "interpretant the given labels as soft labels.")
+                  "interpret the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<int>("ignore_index",
                  "(int, default -100), Specifies a target value that is"
@@ -268,10 +268,10 @@ computation.
 
                 $Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}$
 
-   Please make sure that in this case the summuation of each row of Label
+   Please make sure that in this case the summation of each row of Label
    equals one.
 
-3) One-hot cross-entropy with vecterized Input(Label):
+3) One-hot cross-entropy with vectorized Input(Label):
      As a special case of 2), when each row of Input(Label) has only one
      non-zero element (equals 1), soft-label cross-entropy degenerates to a
      one-hot cross-entropy with one-hot label representation.

@@ -441,7 +441,7 @@ class DlnneEngineOp : public framework::OperatorBase {
             first_batch,
             batch,
             platform::errors::Unavailable(
-                "compute infer_batchs is different from each other"));
+                "compute infer_batches is different from each other"));
       }
       infer_batch = first_batch;
     }

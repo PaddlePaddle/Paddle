@@ -34,17 +34,17 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PD_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 

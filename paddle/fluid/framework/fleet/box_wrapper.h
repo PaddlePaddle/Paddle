@@ -362,7 +362,7 @@ class BoxWrapper {
   virtual ~BoxWrapper() {}
   BoxWrapper() {}
 
-  void FeedPass(int date, const std::vector<uint64_t>& feasgin_to_box) const;
+  void FeedPass(int date, const std::vector<uint64_t>& feasign_to_box) const;
   void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;

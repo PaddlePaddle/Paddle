@@ -719,7 +719,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -727,7 +727,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
@@ -772,7 +772,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -780,7 +780,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

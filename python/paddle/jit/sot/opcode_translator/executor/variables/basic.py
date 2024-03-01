@@ -284,6 +284,20 @@ class TensorDtypeVariable(DataVariable):
             return paddle.pir.core.DataType
         return super().get_py_type()
 
+    def _reconstruct(self, codegen: PyCodeGen):
+        # dtype of paddle.Tensor is hashable, we can just load it as const var
+        if use_pir_api() and isinstance(
+            self.value, paddle.base.core.VarDesc.VarType
+        ):
+            assert (
+                self.value in paddle.pir.core.vartype_to_datatype
+            ), f"Unknow dtype {self.value}"
+            codegen.gen_load_const(
+                paddle.pir.core.vartype_to_datatype[self.value]
+            )
+        else:
+            codegen.gen_load_const(self.value)
+
     @property
     def main_info(self) -> dict[str, Any]:
         return {

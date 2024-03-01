@@ -310,7 +310,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "qk attention plugin, Stop fusing.";
       return;
     }

@@ -217,9 +217,10 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
             .at("data_format_tensors")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
-    std::vector<std::string> layout_transform_inputs;
+
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
-    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
     for (auto& attr : data_format_tensors_attr) {
       auto input_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       data_format_tensors_.insert(
@@ -231,6 +232,25 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
   new_config.is_run_mkldnn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
+
+  // Step4: Handle skip_transform_inputs
+  if (op_attributes.count("skip_transform_inputs")) {
+    std::vector<pir::Attribute> skip_transform_inputs =
+        op->attributes()
+            .at("skip_transform_inputs")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+
+    auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
+
+    for (auto& input : skip_transform_inputs) {
+      auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
+      skip_format_tensors_.insert(
+          op_normalizer.GetLegacyArgName(fluid_op_name, input_name));
+    }
+  }
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
@@ -247,6 +267,9 @@ void OneDNNLegacyKernelInstruction::Run() {
   // Step1. TransLayout
   auto inputs = kernel_context_->InNameList();
   for (auto& input_name : inputs) {
+    if (skip_format_tensors_.count(*input_name)) {
+      continue;
+    }
     auto input_vars = kernel_context_->MultiInputVar(*input_name);
     for (auto& var : input_vars) {
       if (var->IsType<phi::DenseTensor>()) {

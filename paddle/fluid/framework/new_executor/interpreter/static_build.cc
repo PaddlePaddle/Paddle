@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};

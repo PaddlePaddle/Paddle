@@ -22,11 +22,11 @@ namespace cub = hipcub;
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -42,7 +42,7 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-PD_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace phi {
 

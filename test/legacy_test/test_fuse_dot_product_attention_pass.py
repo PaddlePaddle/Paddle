@@ -25,7 +25,7 @@ paddle.seed(0)
 def skip_unit_test():
     return (
         not paddle.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability() != (8, 0)
+        or paddle.device.cuda.get_device_capability()[0] < 8
         or paddle.get_cudnn_version() < 8906
     )
 

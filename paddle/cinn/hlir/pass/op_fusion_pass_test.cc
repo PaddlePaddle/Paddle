@@ -66,9 +66,9 @@ TEST(OpFusionPass, ElementWise_Fusion_1) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_0) {
+TEST(OpFusionPass, Broadcast_Test_0) {
   int h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_0");
+  NetBuilder net_builder("Broadcast_Test_0");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {w}, "A");
@@ -89,9 +89,9 @@ TEST(OpFusionPass, Brodcast_Test_0) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_1) {
+TEST(OpFusionPass, Broadcast_Test_1) {
   int h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_1");
+  NetBuilder net_builder("Broadcast_Test_1");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {w}, "A");
@@ -114,9 +114,9 @@ TEST(OpFusionPass, Brodcast_Test_1) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_2) {
+TEST(OpFusionPass, Broadcast_Test_2) {
   int n = 2, c = 16, h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_2");
+  NetBuilder net_builder("Broadcast_Test_2");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {c}, "A");
