@@ -789,7 +789,7 @@ bool TransposeOpInferSymbolicShape(
 
   int x_rank = x_dims.size();
 
-  const std::vector<int32_t> formated_axis = [op, x_rank, &perm] {
+  const std::vector<int32_t> formatted_axis = [op, x_rank, &perm] {
     std::vector<int32_t> out(perm.size(), 0);
     std::transform(perm.begin(),
                    perm.end(),
@@ -807,11 +807,11 @@ bool TransposeOpInferSymbolicShape(
     return out;
   }();
 
-  int axis_size = static_cast<int>(formated_axis.size());
+  int axis_size = static_cast<int>(formatted_axis.size());
 
   std::vector<symbol::DimExpr> out_dims(x_dims);
   for (int i = 0; i < axis_size; ++i) {
-    out_dims[i] = x_dims[formated_axis[i]];
+    out_dims[i] = x_dims[formatted_axis[i]];
   }
 
   shape_analysis->SetShapeOrDataForValue(op->result(0),
