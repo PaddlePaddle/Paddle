@@ -185,11 +185,12 @@ class TestBreakGraphInLayer(TestCaseBase):
         self.assert_results(net.forward, x)
 
 
+def dummy(*args):
+    return None
+
+
 def break_graph_call_generator_function(x):
-    out = 0
-    for i in list(y for y in x):  # noqa: C400
-        out += i
-    return out
+    return dummy(y for y in x)
 
 
 class TestBreakGraphCallGeneratorFunction(TestCaseBase):

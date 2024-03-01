@@ -88,6 +88,7 @@ from .variables import (
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
+    UserDefinedGeneratorFunctionVariable,
     VariableBase,
     VariableFactory,
 )
@@ -1309,11 +1310,21 @@ class OpcodeExecutorBase:
             default_args,
             closure,
         )
-        self.stack.push(
-            VariableFactory.from_value(
-                new_fn, self._graph, DummyTracker(related_list)
+        # new_fn is created for which is binded with Variables
+        # so new_fn.__module__ is a ConstantVariable
+        # can not use VariableFactory.from_value
+        if inspect.isgeneratorfunction(new_fn):
+            self.stack.push(
+                UserDefinedGeneratorFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
             )
-        )
+        else:
+            self.stack.push(
+                UserDefinedFunctionVariable(
+                    new_fn, self._graph, DummyTracker(related_list)
+                )
+            )
 
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
