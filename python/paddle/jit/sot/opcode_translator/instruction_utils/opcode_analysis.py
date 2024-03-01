@@ -83,7 +83,25 @@ def analysis_used_names(
         set[str]: The analysis result.
     """
     root_state = State(OrderedSet(), OrderedSet())
-    visited = OrderedSet()
+    visited = {}
+
+    def cache_check_and_update_cache(idx, writes):
+        writes = set(writes)
+
+        if idx in visited:
+            history = visited[idx]
+            for record in history:
+                if writes.issubset(record):
+                    return True
+                elif record.issubset(writes):
+                    history.remove(record)
+                    history.append(writes)
+                    return False
+        else:
+            visited[idx] = []
+            visited[idx].append(writes)
+
+        return False
 
     def fork(
         state: State, start: int, jump: bool, jump_target: int
@@ -98,9 +116,8 @@ def analysis_used_names(
     def walk(state: State, start: int) -> OrderedSet[str]:
         end = len(instructions) if stop_instr_idx is None else stop_instr_idx
         for i in range(start, end):
-            if i in visited:
+            if cache_check_and_update_cache(i, state.writes):
                 return state
-            visited.add(i)
 
             instr = instructions[i]
             if instr.opname in HAS_LOCAL | HAS_FREE:
