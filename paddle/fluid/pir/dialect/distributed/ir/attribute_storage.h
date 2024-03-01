@@ -52,7 +52,9 @@ struct ProcessMeshAttrStorage : public pir::AttributeStorage {
   ///
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
-  bool operator==(const ParamKey& key) const { return process_mesh == key; }
+  bool operator==(const ParamKey& key) const {
+    return process_mesh == key && process_mesh.dim_names() == key.dim_names();
+  }
 
   ParamKey process_mesh;
 };

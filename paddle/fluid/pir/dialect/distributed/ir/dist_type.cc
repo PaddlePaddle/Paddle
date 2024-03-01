@@ -29,6 +29,14 @@ TensorDistAttribute DistDenseTensorType::tensor_dist_attr() const {
 const common::DDim& DistDenseTensorType::global_ddim() const {
   return storage()->global_ddim;
 }
+
+DistDenseTensorType DistDenseTensorType::get(
+    pir::IrContext* ctx,
+    pir::DenseTensorType dense_tensor_type,
+    TensorDistAttribute tensor_dist_attr,
+    const common::DDim& global_ddim) {
+  return Base::get(ctx, dense_tensor_type, tensor_dist_attr, global_ddim);
+}
 }  // namespace dialect
 }  // namespace paddle
 

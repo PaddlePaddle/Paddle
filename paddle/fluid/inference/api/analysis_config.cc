@@ -1232,11 +1232,13 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   size_t gpu_total, gpu_available;
   platform::SetDeviceId(gpu_device_id_);
   platform::GpuMemoryUsage(&gpu_available, &gpu_total);
-  double total_gpu_memory = gpu_total / 1024. / 1024.;
+  double total_gpu_memory = static_cast<double>(gpu_total) / 1024. / 1024.;
   float fraction_of_gpu_memory =
-      static_cast<double>(memory_pool_init_size_mb()) / total_gpu_memory;
+      static_cast<float>(memory_pool_init_size_mb()) /
+      static_cast<float>(total_gpu_memory);
   VLOG(3) << "total_gpu_memory is " << total_gpu_memory
-          << "M, gpu_available is " << gpu_available / 1024. / 1024.
+          << "M, gpu_available is "
+          << static_cast<double>(gpu_available) / 1024. / 1024.
           << "M, memory_pool_init_size is " << memory_pool_init_size_mb()
           << "M.";
   return fraction_of_gpu_memory;
