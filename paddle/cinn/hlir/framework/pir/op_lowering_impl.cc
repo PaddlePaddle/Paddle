@@ -294,7 +294,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
     direct_output_var_names.insert(ValueName(op->result(0)));
 
     // collect all output tensor.
-    if (op->name() == "cinn_op.store") {
+    if (op->name() == "cinn_op.yield_store") {
       auto input_var_name = ValueName(op->operand_source(0));
       if (broadcast_info.count(input_var_name)) {
         auto base_info = broadcast_info[input_var_name];
@@ -536,7 +536,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     direct_output_var_names.insert(ValueName(op->result(0)));
 
     // collect all output tensor.
-    if (op->name() == "cinn_op.store") {
+    if (op->name() == "cinn_op.yield_store") {
       auto input_var_name = ValueName(op->operand_source(0));
       if (broadcast_info.count(input_var_name)) {
         auto base_info = broadcast_info[input_var_name];
