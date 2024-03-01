@@ -30,9 +30,22 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
   pir::Value output = op->result(0);
   // The value of shape attribute is fake, we only use the output shape info
   // in shape analysis.
-  std::vector<int> shape(
-      output.type().dyn_cast<pir::DenseTensorType>().dims().size(), 1);
-  shape[0] = -1;
+  std::vector<int> shape = phi::vectorize<int>(
+      output.type().dyn_cast<pir::DenseTensorType>().dims());
+  //     output.type().dyn_cast<pir::DenseTensorType>().dims().size(), 1);
+  // shape[0] = -1;
+
+  if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
+    std::cerr << "have shape dialect\n";
+    auto shape_info =
+        shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+
+    for (size_t i = 0; i < shape_info.size(); ++i) {
+      if (shape_info[i].isa<int64_t>()) {
+        shape[i] = shape_info[i].Get<int64_t>();
+      }
+    }
+  }
 
   auto cinn_reshape =
       rewriter.Build<cinn::dialect::ReshapeOp>(op->operand_source(0), shape);

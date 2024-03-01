@@ -35,7 +35,9 @@ Tensor CreateRFTensor(const Tensor& original_tensor,
                       int rf_axis) {
   std::string name = original_tensor->name + "_rf";
   std::vector<Expr> new_shape = original_tensor->shape;
+  std::cerr << "original shape " << original_tensor->shape << std::endl;
   new_shape.insert(new_shape.begin() + rf_axis, rf_loop.As<For>()->extent);
+  std::cerr << "new shape " << new_shape << std::endl;
   Tensor rf_tensor = _Tensor_::Make(name,
                                     original_tensor->type(),
                                     new_shape,
@@ -361,6 +363,7 @@ class RFBlockCreater : public ReduceBlockCreater {
     new_update_stmt_ =
         ir::Store::Make(rf_tensor_, new_store_body, rf_tensor_access_indices_);
 
+    std::cerr << "new update stams \n" << new_update_stmt_ << std::endl;
     if (!bound_check_.is_constant()) {
       new_update_stmt_ = ir::IfThenElse::Make(bound_check_, new_update_stmt_);
     }

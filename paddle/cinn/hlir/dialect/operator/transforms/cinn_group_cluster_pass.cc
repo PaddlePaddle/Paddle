@@ -285,13 +285,13 @@ std::vector<pir::Type> BuildOutType(
   auto& alignment_schedule_info = node.alignment_schedule_info;
   for (auto op : group_ops) {
     auto new_op = op->Clone(*ir_mapping, clone_options);
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      shape_analysis.SetShapeOrDataForValue(
-          new_op->result(i),
-          shape_analysis.GetShapeOrDataForValue(op->result(i)));
-    }
+    // auto& shape_analysis =
+    //     pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    // for (size_t i = 0; i < op->num_results(); ++i) {
+    //   shape_analysis.SetShapeOrDataForValue(
+    //       new_op->result(i),
+    //       shape_analysis.GetShapeOrDataForValue(op->result(i)));
+    // }
 
     vec_new_op_list.push_back(new_op);
 

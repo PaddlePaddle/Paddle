@@ -78,6 +78,7 @@ void ApplyCinnPreprocessPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
+  // has_dynamic_shape = true;
 
   pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
   if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {

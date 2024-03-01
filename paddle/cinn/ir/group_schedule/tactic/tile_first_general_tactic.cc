@@ -50,6 +50,9 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VariableTypeAssignment(sch, block_id);
   Unroll(sch, block_id);
   SetReduceType(sch, block_id);
+
+  std::cerr << "process:  " << block_id << "\n"
+            << sch->GetModule().GetExprs().front() << std::endl;
 }
 
 void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,

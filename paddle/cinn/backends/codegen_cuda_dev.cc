@@ -123,7 +123,9 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
     CHECK_NOTNULL(op);
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
+    std::cerr << buffer->name << std::endl;
     for (Expr shape : buffer->shape) {
+      std::cerr << "shape " << shape << std::endl;
       ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
         if (x->as_var()) {
           CHECK(x->as_var()->is_symbolic_constant)
