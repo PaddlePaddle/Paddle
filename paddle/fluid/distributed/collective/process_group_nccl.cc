@@ -861,6 +861,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
         &nccl_comm, num_ranks, nccl_id, rank, nccl_comm_init_option_));
   } else {
+    if (nccl_comm_init_option_ > 0) {
+      LOG(WARNING) << "ncclCommInitRank2 is not supported.";
+    }
     NCCL_CHECK(
         phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
   }
