@@ -41,7 +41,7 @@ TypeTranslator::TypeTranslator() {
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
-    const auto layout = DataLayout::UNDEFINED;
+    const auto layout = DataLayout::NCHW;
     const LoD lod = {};
     const size_t offset = 0;
     return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
