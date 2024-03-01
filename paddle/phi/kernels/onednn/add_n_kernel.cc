@@ -23,7 +23,8 @@ bool AddNCheckIfOneDNNSupport(const KernelContext* ctx) {
       return false;
     }
   }
-  if (!DenseTensor::classof(ctx->MutableOutputAt(0))) {
+  KernelContext* ctx_tmp = const_cast<KernelContext*>(ctx);
+  if (!DenseTensor::classof(ctx_tmp->MutableOutputAt(0))) {
     return false;
   }
   return true;
