@@ -56,7 +56,6 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         {1, cols});
     PD_CHECK(r == 0, "baidu::xpu::api::broadcast_add failed.");
   }
-  cols = act_method == "swiglu" ? cols / 2 : cols;
   if (act_method == "geglu") {
     PD_THROW(
         "NOT supported GeGLU. "
@@ -66,8 +65,8 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<XPUType *>(const_cast<T *>(out->data<T>())),
-        {rows, 1, cols},
-        2,
+        {rows, cols},
+        1,
         true);
     PD_CHECK(r == 0, "baidu::xpu::api::swiglu failed.");
   } else if (act_method == "gelu") {
