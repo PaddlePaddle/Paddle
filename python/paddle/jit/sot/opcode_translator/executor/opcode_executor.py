@@ -2146,7 +2146,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         nop = self._graph.pycode_gen.add_instr("NOP")
 
-        for_iter.jump_to = end_for
+        for_iter.jump_to = end_for if sys.version_info >= (3, 12) else nop
         jump_if_break.jump_to = nop
 
         # 9. prepare inputs and call after_loop_fn
