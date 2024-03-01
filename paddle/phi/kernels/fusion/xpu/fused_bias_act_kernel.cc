@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -34,9 +33,9 @@ static void DispatchComputeImpl(const phi::XPUContext *xpu_ctx,
                                 const float quant_max_bound,
                                 const float quant_min_bound,
                                 DenseTensor *out) {
-  PADDLE_THROW(paddle::platform::errors::Unimplemented(
-      "fused_bias_act with smooth "
-      "quant on xpu is not implemented yet."));
+  PADDLE_THROW(
+      phi::errors::Unimplemented("fused_bias_act with smooth "
+                                 "quant on xpu is not implemented yet."));
 }
 
 template <typename T>
