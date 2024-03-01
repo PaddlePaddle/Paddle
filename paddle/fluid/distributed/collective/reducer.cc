@@ -894,7 +894,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
-            "For example, if is_sparese=True is used in Embedding, "
+            "For example, if is_sparse=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
             "because of stop_gradient/detach, where error will occur.",
             var_index,

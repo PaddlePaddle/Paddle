@@ -28,7 +28,7 @@ class ShareDataOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "share_data", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "share_data", {output_name}, test_mode);
   }
 };
 

@@ -48,13 +48,13 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.HasInput("Y") && batch_size > 1) {
-      const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
+      const phi::DenseTensor* img_real_size = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
-          *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
-      std::vector<int> imgreal_h;
-      std::vector<int> imgreal_w;
+          *img_real_size, platform::CPUPlace(), &cpu_shape_tensor);
+      std::vector<int> img_real_h;
+      std::vector<int> img_real_w;
       std::vector<int> output_height;
       std::vector<int> output_width;
       int result = 0;
@@ -72,12 +72,12 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         } else {
           tmp_real_w = tmp_real_w / out_stride[1] + 1;
         }
-        imgreal_h.push_back(tmp_real_h);
-        imgreal_w.push_back(tmp_real_w);
+        img_real_h.push_back(tmp_real_h);
+        img_real_w.push_back(tmp_real_w);
         output_height.push_back(Im2SeqOutputSize(
-            imgreal_h[i], kernels[0], paddings[0], paddings[2], strides[0]));
+            img_real_h[i], kernels[0], paddings[0], paddings[2], strides[0]));
         output_width.push_back(Im2SeqOutputSize(
-            imgreal_w[i], kernels[1], paddings[1], paddings[3], strides[1]));
+            img_real_w[i], kernels[1], paddings[1], paddings[3], strides[1]));
         result += output_height[i] * output_width[i];
       }
 

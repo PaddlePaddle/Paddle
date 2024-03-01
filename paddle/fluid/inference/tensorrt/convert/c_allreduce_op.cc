@@ -84,7 +84,7 @@ class CAllReduceOpConverter : public OpConverter {
 #endif
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, name, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, name, {output_name}, test_mode);
   }
 };
 

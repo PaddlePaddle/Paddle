@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
@@ -66,8 +66,8 @@ fused_gate_attention_dygraph_function(
     if (GateWeight.initialized()) amp_tensors_vector.push_back({GateWeight});
     if (GateBias.initialized()) amp_tensors_vector.push_back({GateBias});
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_gate_attention", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_gate_attention", amp_tensors_vector);
 
     auto NEW_Query =
         egr::AmpAutoCast("Query", Query, amp_dst_dtype, "fused_gate_attention");
