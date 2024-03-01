@@ -45,16 +45,16 @@ void predictor_run() {
   EXPECT_EQ(in_infos->size, 2u);
   PD_IOInfos* out_infos = PD_PredictorGetOutputInfos(predictor);
 
-  int32_t shape_0[4] = {1, 3, 224, 224};
-  float data_0[1 * 3 * 224 * 224] = {0};
+  std::array<int32_t, 4> shape_0 = {1, 3, 224, 224};
+  std::array<float, 1 * 3 * 224 * 224> data_0 = {0};
   PD_Tensor* input_0 = PD_PredictorGetInputHandle(predictor, "image");
-  PD_TensorReshape(input_0, 4, shape_0);
-  PD_TensorCopyFromCpuFloat(input_0, data_0);
-  int32_t shape_1[2] = {1, 1};
-  int64_t data_1[1] = {0};
+  PD_TensorReshape(input_0, 4, shape_0.data());
+  PD_TensorCopyFromCpuFloat(input_0, data_0.data());
+  std::array<int32_t, 2> shape_1 = {1, 1};
+  std::array<int64_t, 1> data_1 = {0};
   PD_Tensor* input_1 = PD_PredictorGetInputHandle(predictor, "label");
-  PD_TensorReshape(input_1, 2, shape_1);
-  PD_TensorCopyFromCpuInt64(input_1, data_1);
+  PD_TensorReshape(input_1, 2, shape_1.data());
+  PD_TensorCopyFromCpuInt64(input_1, data_1.data());
 
   LOG(INFO) << "Run Inference in CAPI encapsulation. ";
   EXPECT_TRUE(PD_PredictorRun(predictor));

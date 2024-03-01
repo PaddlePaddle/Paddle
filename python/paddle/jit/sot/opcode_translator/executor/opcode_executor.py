@@ -809,6 +809,9 @@ class OpcodeExecutorBase:
         var = self._locals[instr.argval]
         self.stack.push(var)
 
+    def LOAD_FAST_CHECK(self, instr: Instruction):
+        self.LOAD_FAST(instr)
+
     def DELETE_FAST(self, instr: Instruction):
         varname = self._code.co_varnames[instr.arg]
         del self._locals[varname]

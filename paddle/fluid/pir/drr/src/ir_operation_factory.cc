@@ -81,7 +81,7 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
         std::any_cast<phi::DataType>(obj));
   } else if (obj.type() == typeid(phi::Place)) {
     return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
-  } else if (obj.type() == typeid(std::vector<int32_t>)) {
+  } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
     return IrAttributeCreator<std::vector<int32_t>>()(
         std::any_cast<std::vector<int32_t>>(obj));
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
