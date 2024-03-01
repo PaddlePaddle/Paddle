@@ -389,6 +389,19 @@ void divide_grad(const Tensor& x,
 }
 
 template <typename T>
+void pow_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const Scalar& y,
+              Tensor* x_grad) {
+  // dx = y * x^(y-1) * out_grad
+  if (x_grad) {
+    auto y_value = y.to<float>();
+    auto dx_res = y_value * x.pow(y_value - 1) * out_grad;
+    set_output<T>(dx_res, x_grad);
+  }  // indicate we will compute dx
+}
+
+template <typename T>
 void elementwise_pow_grad(const Tensor& x,
                           const Tensor& y,
                           const Tensor& out_grad,
