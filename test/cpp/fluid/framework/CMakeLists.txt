@@ -29,7 +29,10 @@ else()
     DEPS tensor dlpack_tensor isfinite_op)
 endif()
 
-paddle_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS allocator)
+nv_test(
+  copy_same_tensor_test
+  SRCS copy_same_tensor_test.cc
+  DEPS tensor)
 
 paddle_test(eigen_test SRCS eigen_test.cc)
 
