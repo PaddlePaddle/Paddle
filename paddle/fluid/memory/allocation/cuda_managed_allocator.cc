@@ -65,7 +65,7 @@ phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
 
   std::string err_msg;
   if (UNLIKELY(is_limited)) {
-    int64_t limit_size_mb = limit_size >> 20;
+    int64_t limit_size_mb = limit_size >> 20;  // NOLINT
     err_msg = string::Sprintf(
         "Or set environment variable `FLAGS_gpu_memory_limit_mb` to a larger "
         "value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the maximum "

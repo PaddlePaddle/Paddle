@@ -83,6 +83,7 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
@@ -949,11 +950,14 @@ AnalysisMiddleVariable(const Program &program,
       program.block(),
       forward_range,
       [&middle_values, &backward_inputs, &x_or_param](Operation *op) {
-        for (auto &t : op->results()) {
-          auto v = Value(t.Value::impl());
-          if (backward_inputs.count(v) && !x_or_param.count(v))
-            middle_values.push_back(v);
-        }
+        pir::Walk(op, [&](Operation *inner_op) {
+          for (auto &t : inner_op->results()) {
+            auto v = Value(t.Value::impl());
+            if (backward_inputs.count(v) && !x_or_param.count(v)) {
+              middle_values.push_back(v);
+            }
+          }
+        });
       });
   return std::make_pair(middle_values, backward_inputs);
 }
@@ -1533,28 +1537,19 @@ void BindUtils(pybind11::module *m) {
 
 namespace {
 
-bool HasDynamicShape(const pir::Program &program) {
-  for (const auto &op : *program.block()) {
-    if (op.isa<pir::CombineOp>()) {
-      continue;
-    }
-    for (uint32_t i = 0; i < op.num_results(); ++i) {
-      if (op.result(i) && op.result(i).type()) {
-        auto shape_type =
-            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
-        if (shape_type && shape_type.IsDynamicShape()) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-void AddCinnPass(std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
-                 pir::Program &program) {                          // NOLINT
+void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
-  cinn::dialect::ir::AddCinnPass(pass_manager, program);
+  cinn::dialect::ir::ApplyCinnPass(&program, [] {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir) {
+      pass_manager->EnableIRPrinting();
+    }
+    return pass_manager;
+  });
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1569,13 +1564,14 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (pir::shape::HasDynamicShape(program) &&
+      FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
 
 void BindIrPass(pybind11::module *m) {
-  m->def("add_cinn_pass", AddCinnPass);
+  m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,

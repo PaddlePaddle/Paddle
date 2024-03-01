@@ -3519,22 +3519,22 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
 }
 
 void patterns::DeleteQuantDequantOpPattern::operator()(
-    PDNode *input_node, const std::string &quantdequant_types) {
+    PDNode *input_node, const std::string &quant_dequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(quantdequant_types, "InScale")
+          ->assert_is_op_input(quant_dequant_types, "InScale")
           ->AsInput();
   auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
-                              ->assert_is_op(quantdequant_types);
+                              ->assert_is_op(quant_dequant_types);
 
   auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(quantdequant_types, "Out")
+          ->assert_is_op_output(quant_dequant_types, "Out")
           ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(quantdequant_types, "OutScale")
+          ->assert_is_op_output(quant_dequant_types, "OutScale")
           ->AsOutput();
 
   quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});

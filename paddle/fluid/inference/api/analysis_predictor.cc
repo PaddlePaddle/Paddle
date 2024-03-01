@@ -106,7 +106,9 @@
 #endif
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -129,6 +131,7 @@
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
@@ -422,8 +425,10 @@ bool AnalysisPredictor::Init(
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
     std::string optimized_model_path = GetOptimizedModelPath();
-    std::string optimized_model = optimized_model_path + ".pdmodel";
-    std::string optimized_params = optimized_model_path + ".pdiparams";
+    std::string optimized_model =
+        optimized_model_path + "/" + "_optimized.pdmodel";
+    std::string optimized_params =
+        optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
       LOG(INFO) << "Load Optimized model from " << optimized_model_path;
@@ -594,7 +599,7 @@ std::string AnalysisPredictor::GetOptimizedModelPath() {
             ? config_.model_dir()
             : inference::analysis::GetDirRoot(config_.prog_file());
   }
-  return model_opt_cache_dir + "/" + "_optimized";
+  return model_opt_cache_dir;
 }
 
 void AnalysisPredictor::ClearExtraParams() {
@@ -606,6 +611,25 @@ void AnalysisPredictor::ClearExtraParams() {
                                          op_desc->GetAttr("parameters"));
       trt_repetitive_params.insert(
           trt_repetitive_params.end(), trt_params.begin(), trt_params.end());
+      // NOTE(ming1753): This is a trick solution to the problem of possible
+      // absolute paths in the model_opt_cache_dir and shape_range_info_path
+      // attributes in tensorrt_engine op.
+      auto model_opt_cache_dir_from_model = PADDLE_GET_CONST(
+          std::string, op_desc->GetAttr("model_opt_cache_dir"));
+      auto model_opt_cache_dir = GetOptimizedModelPath();
+      if (op_desc->HasAttr("model_opt_cache_dir")) {
+        op_desc->SetAttr("model_opt_cache_dir", model_opt_cache_dir);
+      }
+      if (op_desc->HasAttr("shape_range_info_path")) {
+        if (config_.shape_range_info_path_.empty()) {
+          op_desc->SetAttr(
+              "shape_range_info_path",
+              model_opt_cache_dir + "/" + "shape_range_info.pbtxt");
+        } else {
+          op_desc->SetAttr("shape_range_info_path",
+                           config_.shape_range_info_path_);
+        }
+      }
     }
   }
 
@@ -873,24 +897,35 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
+#ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
-      }
-#ifdef PADDLE_WITH_CINN
-      if (config_.cinn_enabled()) {
-        VLOG(4) << "[CINN] Begin AddCinnPass";
-        auto cinn_pm = std::make_shared<::pir::PassManager>(
+
+        auto shape_pm = std::make_shared<::pir::PassManager>(
             ::pir::IrContext::Instance(), 2);
-        cinn::dialect::ir::AddCinnPass(cinn_pm, *pir_program_.get());
-        if (!config_.glog_info_disabled()) {
-          cinn_pm->EnablePrintStatistics();
-        }
-        if (config_.ir_debug_) {
-          cinn_pm->EnableIRPrinting();
-        }
-        cinn_pm->Run(pir_program_.get());
+        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
+        VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
+        shape_pm->Run(pir_program_.get());
+      }
+
+      if (config_.cinn_enabled()) {
+        VLOG(4) << "[CINN] Begin ApplyCinnPass";
+        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), [&] {
+          pir::IrContext *ctx = pir::IrContext::Instance();
+          ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+          ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+          auto pass_manager = std::make_shared<::pir::PassManager>(
+              ::pir::IrContext::Instance(), 2);
+          if (!config_.glog_info_disabled()) {
+            pass_manager->EnablePrintStatistics();
+          }
+          if (config_.ir_debug_) {
+            pass_manager->EnableIRPrinting();
+          }
+          return pass_manager;
+        });
       }
 #endif
 

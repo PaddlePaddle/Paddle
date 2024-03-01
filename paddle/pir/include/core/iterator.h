@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
 #include <iterator>
 #include <list>
+
 #include "paddle/common/macros.h"
+
 namespace pir {
 
 class Operation;

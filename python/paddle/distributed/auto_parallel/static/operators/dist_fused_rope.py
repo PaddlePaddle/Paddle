@@ -100,6 +100,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
         )
 
         use_neox_rotary_style = op_desc.attr("use_neox_rotary_style")
+        time_major = op_desc.attr("time_major")
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("fused_rotary_position_embedding")
@@ -112,6 +113,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             cos_spec,
             position_ids_spec,
             use_neox_rotary_style,
+            time_major,
         )
         bw_results = rule.infer_backward(
             q_spec,
@@ -124,6 +126,7 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             out_k_spec,
             out_v_spec,
             use_neox_rotary_style,
+            time_major,
         )
 
         # remove optional args in spmd results
