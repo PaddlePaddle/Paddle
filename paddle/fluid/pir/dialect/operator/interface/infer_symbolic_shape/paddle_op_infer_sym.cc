@@ -279,8 +279,16 @@ inline void CheckAndUpdateSliceAttrs(
     ExprVec *starts_p,
     ExprVec *ends_p,
     std::vector<int64_t> *infer_flags = nullptr) {
-  std::vector<int64_t> starts_int = details::VecExpr2Int64(*starts_p);
-  std::vector<int64_t> ends_int = details::VecExpr2Int64(*ends_p);
+  auto vec_int64 = details::VecExpr2Int64(*starts_p);
+  IR_ENFORCE(vec_int64.has_value(),
+             "for slice op, all the elements in `starts` must be int64_t");
+  std::vector<int64_t> starts_int = vec_int64.value();
+
+  vec_int64 = details::VecExpr2Int64(*ends_p);
+  IR_ENFORCE(vec_int64.has_value(),
+             "for slice op, all the elements in `ends` must be int64_t");
+  std::vector<int64_t> ends_int = vec_int64.value();
+
   ExprVec &starts = *starts_p;
   ExprVec &ends = *ends_p;
   auto IsMaxInt = [](const symbol::DimExpr &expr) {
@@ -351,7 +359,7 @@ inline ExprVec GetDecreasedDims(const ExprVec &slice_dims,
       decrease_flag[axis] = 1;
     }
     ExprVec new_shape;
-    for (int i = 0; i < slice_dims.size(); ++i) {
+    for (size_t i = 0; i < slice_dims.size(); ++i) {
       if (decrease_flag[i] == 0) {
         new_shape.emplace_back(slice_dims[i]);
       }
@@ -416,10 +424,19 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
   // op, the reseult should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     std::vector<symbol::DimExpr> out_data;
+
     // Currently, we DO NOT support the case that any element in `axes` `starts`
     // or `ends` is a Symbol.
-    const auto starts_int = details::VecExpr2Int64(starts);
-    const auto ends_int = details::VecExpr2Int64(ends);
+    auto vec_int64 = details::VecExpr2Int64(starts);
+    IR_ENFORCE(vec_int64.has_value(),
+               "for slice op, all the elements in `starts` must be int64_t");
+    std::vector<int64_t> starts_int = vec_int64.value();
+
+    vec_int64 = details::VecExpr2Int64(ends);
+    IR_ENFORCE(vec_int64.has_value(),
+               "for slice op, all the elements in `ends` must be int64_t");
+    std::vector<int64_t> ends_int = vec_int64.value();
+
     const int64_t start =
         starts_int[0] < 0
             ? starts_int[0] + operand_shape_or_data.data().value().size()

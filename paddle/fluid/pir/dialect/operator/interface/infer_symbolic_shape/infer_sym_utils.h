@@ -66,7 +66,7 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   return vec_res;
 }
 
-std::vector<int64_t> VecExpr2Int64(const ExprVec &expr_vec);
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,

@@ -16,11 +16,12 @@
 
 namespace paddle::dialect::details {
 
-std::vector<int64_t> VecExpr2Int64(const ExprVec &expr_vec) {
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec) {
   std::vector<int64_t> int64vec;
   for (auto item : expr_vec) {
-    IR_ENFORCE(item.isa<int64_t>(),
-               "all the elements in expr_vec must be int64_t");
+    if (!item.isa<int64_t>()) {
+      return std::nullopt;
+    }
     int64vec.push_back(item.Get<int64_t>());
   }
   return int64vec;
