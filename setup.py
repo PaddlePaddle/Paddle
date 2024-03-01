@@ -76,7 +76,7 @@ def filter_setup_args(input_args):
     filter_args_list = []
     for arg in input_args:
         if arg == 'rerun-cmake':
-            rerun_cmake = True  # delete Cmakecache.txt and rerun cmake
+            rerun_cmake = True  # delete CMakeCache.txt and rerun cmake
             continue
         if arg == 'only-cmake':
             only_cmake = True  # only cmake and do not make, leave a chance for users to adjust build options
@@ -314,7 +314,7 @@ def git_commit():
 def _get_version_detail(idx):
     assert (
         idx < 3
-    ), "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
+    ), "version info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
     tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
     paddle_version = env_dict.get("PADDLE_VERSION")
@@ -400,7 +400,7 @@ def get_xpu_xhpc_version():
         return 'False'
 
 
-def is_taged():
+def is_tagged():
     try:
         cmd = [
             'git',
@@ -447,7 +447,7 @@ cudnn_version    = '%(cudnn)s'
 xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
-istaged          = %(istaged)s
+is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
@@ -516,7 +516,7 @@ def show():
             cinn: False
             >>> # doctest: -SKIP
     """
-    if istaged:
+    if is_tagged:
         print('full_version:', full_version)
         print('major:', major)
         print('minor:', minor)
@@ -667,7 +667,7 @@ def cinn():
                 'xpu_xccl': get_xpu_xccl_version(),
                 'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
-                'istaged': is_taged(),
+                'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
             }
@@ -824,13 +824,13 @@ def cmake_run(build_path):
         subprocess.check_call(cmake_args)
 
 
-def build_run(args, build_path, envrion_var):
+def build_run(args, build_path, environ_var):
     with cd(build_path):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
         try:
-            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
+            subprocess.check_call(build_args, cwd=build_path, env=environ_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
 
@@ -870,7 +870,7 @@ def build_steps():
     print("build_dir:", build_dir)
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
-    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
+    # if rerun_cmake is True,remove CMakeCache.txt and rerun cmake
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
 
@@ -880,13 +880,13 @@ def build_steps():
     if os.path.exists(cmake_cache_file_path) and not (
         bool_ninja and not os.path.exists(build_ninja_file_path)
     ):
-        print("Do not need rerun camke, everything is ready, run build now")
+        print("Do not need rerun cmake, everything is ready, run build now")
     else:
         cmake_run(build_path)
     # make
     if only_cmake:
         print(
-            "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
+            "You have finished running cmake, the program exited,run 'cmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
     run_cmake_build(build_path)
@@ -927,7 +927,7 @@ def get_paddle_extra_install_requirements():
     paddle_cuda_install_requirements = os.getenv(
         "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
     )
-    if paddle_cuda_install_requirements is not None:
+    if paddle_cuda_install_requirements == "ON":
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1064,11 +1064,12 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
-    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
-        package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
-        ]
-        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
+    if env_dict.get("WITH_GPU") == 'ON':
+        if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
@@ -1268,7 +1269,7 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("IR_NAME")
                     )
-            # The sw_64 not suppot patchelf, so we just disable that.
+            # The sw_64 not support patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:
                     if os.system(command) != 0:
@@ -1366,6 +1367,27 @@ def get_headers():
             find_files(
                 'init_phi.h',
                 paddle_source_dir + '/paddle/fluid/platform',
+                recursive=True,
+            )
+        )
+        + list(  # pir init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/pir/include',
+                recursive=True,
+            )
+        )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/drr/include',
+                recursive=True,
+            )
+        )
+        + list(  # pass utils init headers
+            find_files(
+                'transform_general_functions.h',
+                paddle_source_dir + '/paddle/fluid/pir/transforms',
                 recursive=True,
             )
         )
@@ -1609,11 +1631,11 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             f.read().splitlines()
         )  # Specify the dependencies to install
 
-    python_dependcies_module = []
+    python_dependencies_module = []
     installed_packages = []
 
     for dependency in build_dependencies:
-        python_dependcies_module.append(
+        python_dependencies_module.append(
             re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
         )
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
@@ -1623,7 +1645,7 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             re.sub("_|-", '', r.decode().split('==')[0]).lower()
         )
 
-    for dependency in python_dependcies_module:
+    for dependency in python_dependencies_module:
         if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
@@ -1632,7 +1654,7 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     """install cpp distribution and build test target
 
     TODO(huangjiyi):
-    1. This function will be moved when seperating C++ distribution
+    1. This function will be moved when separating C++ distribution
     installation from python package installation.
     2. Reduce the header and library files to be installed.
     """
@@ -1704,7 +1726,7 @@ def check_submodules():
             end = time.time()
             print(f' --- Submodule initialization took {end - start:.2f} sec')
         except Exception:
-            print(' --- Submodule initalization failed')
+            print(' --- Submodule initialization failed')
             print('Please run:\n\tgit submodule update --init --recursive')
             sys.exit(1)
 

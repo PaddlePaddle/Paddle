@@ -3348,7 +3348,8 @@ function distribute_test() {
 
     echo "Dowloading ...."
     cd ${work_dir}
-    git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci
+    wget https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
+    tar -zvxf PaddleNLP_stable_paddle.tar.gz 
     cd PaddleNLP
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 

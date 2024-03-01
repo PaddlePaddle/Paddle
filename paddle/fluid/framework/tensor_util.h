@@ -103,7 +103,7 @@ void TensorToVector(const phi::DenseTensor& src,
                     const platform::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
-void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
+void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
 

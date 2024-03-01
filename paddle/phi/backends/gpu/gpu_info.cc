@@ -66,7 +66,7 @@ size_t GpuAvailableMemToAlloc() {
   size_t available = 0;
   memory_utils::GpuMemoryUsage(&available, &total);
   size_t reserving =
-      static_cast<size_t>(fraction_reserve_gpu_memory * available);
+      static_cast<size_t>(fraction_reserve_gpu_memory * available);  // NOLINT
   // If available size is less than minimum chunk size, no usable memory exists
   size_t available_to_alloc = available - reserving;
   size_t min_chunk_size = GpuMinChunkSize();

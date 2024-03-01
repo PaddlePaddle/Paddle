@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include <functional>
 
 #include "paddle/pir/include/core/dll_decl.h"

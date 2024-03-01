@@ -185,7 +185,7 @@ class GlobalStepTable : public DenseTensorTable {
     }
 
     if (main_program_id_ != -1) {
-      // Run main porgram, if program is used for learning decay
+      // Run main program, if program is used for learning decay
       auto main_program_desc = sub_program_->at(main_program_id_);
       auto main_ctx = executor_->Prepare(main_program_desc, 0);
       exec_context_ = std::move(main_ctx);

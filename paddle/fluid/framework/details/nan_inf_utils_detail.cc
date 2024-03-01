@@ -264,7 +264,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (IsSkipOp(op)) return;
 
-  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {  // NOLINT
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);

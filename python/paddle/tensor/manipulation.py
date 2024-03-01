@@ -6758,7 +6758,7 @@ def slice_scatter(x, value, axes, starts, ends, strides, name=None):
         axes (list|tuple) : the dimensions to insert the value.
         starts (list|tuple) : the start indices of where to insert.
         ends (list|tuple) : the stop indices of where to insert.
-        strids (list|tuple) : the steps for each insert.
+        strides (list|tuple) : the steps for each insert.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:

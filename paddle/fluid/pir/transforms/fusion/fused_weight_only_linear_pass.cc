@@ -50,8 +50,7 @@ class FusedWeightOnlyLinearPattern : public paddle::drr::DrrPatternBase {
         src.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", src.Attr("matmul_transpose_x")},
                 {"transpose_y", src.Attr("matmul_transpose_y")}});
-    const auto &parameter = src.Op(
-        pir::ParameterOp::name(), {{"parameter_name", src.Attr("param_name")}});
+    const auto &parameter = src.Op(pir::ParameterOp::name());
     src.Tensor("w") = parameter();
     src.Tensor("matmul_out") = matmul(src.Tensor("x"), src.Tensor("w"));
     const auto &add = src.Op(paddle::dialect::AddOp::name());
@@ -124,9 +123,9 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    int sm_vesion = getSMVersion();
-    if (sm_vesion != 70 && sm_vesion != 75 && sm_vesion != 80 &&
-        sm_vesion != 86) {
+    int sm_version = getSMVersion();
+    if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
+        sm_version != 86) {
       return false;
     }
     return op->num_regions() > 0;

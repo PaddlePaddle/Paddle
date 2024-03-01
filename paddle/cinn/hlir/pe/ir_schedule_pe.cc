@@ -611,7 +611,7 @@ void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
   }
 
   // bind block and thread for reduce.
-  // as outer loop range should be eqaul, get loop size.
+  // as outer loop range should be equal, get loop size.
   auto b_loop = ir::GetLoopExtent(ir_sch.GetLoops(out->name)[0]);
   // reduce_tmp_out
   {
@@ -784,7 +784,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       }
       return loop_var_count;
     }
-    LOG(FATAL) << "Can't find var in tensor indeces!";
+    LOG(FATAL) << "Can't find var in tensor indexes!";
   };
   auto loop_var_count = get_loop_index(ir_sch.GetLoops(reduce_out->name).back(),
                                        ir_sch.GetBlock(reduce_out->name));

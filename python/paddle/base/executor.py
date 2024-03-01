@@ -739,7 +739,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise TypeError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
                     "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
@@ -1675,7 +1675,7 @@ class Executor:
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
-                :code:`use_prune` will be overrided to True, and the program will be pruned.
+                :code:`use_prune` will be overridden to True, and the program will be pruned.
 
         Returns:
 
@@ -1880,7 +1880,7 @@ class Executor:
         if scope is None:
             scope = global_scope()
 
-        # use_prune can be overrided by putting optimize_ops in fetch_list
+        # use_prune can be overridden by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
         _origin_program = program
         fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(

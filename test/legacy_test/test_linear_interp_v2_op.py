@@ -333,12 +333,31 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             mode='linear',
             align_mode=1,
             align_corners=False,
-            data_format='NCW',
         )
         with base.dygraph.guard():
             x = paddle.to_tensor(x_data)
             interp = us_1(x)
 
+            expect = linear_interp_np(
+                x_data, out_w=64, align_mode=1, align_corners=False
+            )
+
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
+
+
+class TestLinearInterpOpAPI2_0_case2(unittest.TestCase):
+    def test_case(self):
+        # dygraph
+        x_data = np.random.random((1, 3, 128)).astype("float32")
+        with base.dygraph.guard():
+            x = paddle.to_tensor(x_data)
+            interp = interpolate(
+                x,
+                size=[64],
+                mode='linear',
+                align_mode=1,
+                align_corners=False,
+            )
             expect = linear_interp_np(
                 x_data, out_w=64, align_mode=1, align_corners=False
             )

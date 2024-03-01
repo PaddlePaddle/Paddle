@@ -57,7 +57,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
 
-  DenseTensor in_reduce_scatter = in.value();
+  DenseTensor in_reduce_scatter;
   std::vector<int> axis;
   if (out_split_axis != 0) {
     for (size_t i = 0; i < common::vectorize(logical_ddim).size(); ++i) {
@@ -66,6 +66,8 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
     std::swap(axis[0], axis[out_split_axis]);
     RESHARD_FUNCTOR(
         dev_ctx, Transpose, dtype, in.value(), axis, &in_reduce_scatter);
+  } else {
+    in_reduce_scatter.ShareDataWith(in.value());
   }
 
   DenseTensor out_reduce_scatter;

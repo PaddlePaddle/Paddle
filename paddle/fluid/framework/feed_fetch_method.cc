@@ -97,7 +97,7 @@ FetchType& GetFetchVariable(const Scope& scope,
                             const std::string& var_name,
                             size_t index) {
   // Since we want to fetch FetchType from a variable, the variable must
-  // be created alreadly.
+  // be created already.
   Variable* g_fetch_value = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
                           platform::errors::NotFound(
