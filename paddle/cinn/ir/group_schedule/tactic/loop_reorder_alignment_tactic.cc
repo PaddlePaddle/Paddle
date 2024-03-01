@@ -75,8 +75,6 @@ void LoopReorderAlignmentTactic::UpdateBaseRank(ir::IRSchedule* sch,
     base_rank_ = loops.size();
   } else {
     if (base_rank_ != loops.size()) {
-      std::cerr << "block " << block_id << std::endl;
-      std::cerr << base_rank_ << "\t" << loops.size() << std::endl;
       throw std::runtime_error("loops  rank not same ");
     }
   }
