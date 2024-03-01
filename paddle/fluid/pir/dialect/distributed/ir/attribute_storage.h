@@ -68,7 +68,7 @@ struct TensorDistAttrStorage : public pir::AttributeStorage {
                               flat_hash_map<int64_t, phi::ReduceType>>;
 
   TensorDistAttrStorage(ParamKey&& param)  // NOLINT
-      : process_mesh(std::get<0>(param)),
+      : mesh_attr(std::get<0>(param)),
         dims_mapping(std::move(std::get<1>(param))),
         partial_status(std::move(std::get<2>(param))) {}
   ///
@@ -101,12 +101,12 @@ struct TensorDistAttrStorage : public pir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return process_mesh == std::get<0>(key) &&
+    return mesh_attr == std::get<0>(key) &&
            dims_mapping == std::get<1>(key) &&
            partial_status == std::get<2>(key);
   }
 
-  ProcessMeshAttribute process_mesh;
+  ProcessMeshAttribute mesh_attr;
   std::vector<int64_t> dims_mapping;
   // partial map would less or equal than to mesh.size.
   // iterate operation (copy and comparison) would more frequency than random
@@ -122,9 +122,9 @@ struct OperationDistAttrStorage : public pir::AttributeStorage {
                               std::vector<TensorDistAttribute>,
                               std::vector<TensorDistAttribute>>;
   OperationDistAttrStorage(ParamKey&& param)  // NOLINT
-      : process_mesh(std::get<0>(param)),
-        inputs(std::get<1>(param)),
-        outputs(std::get<2>(param)) {}
+      : mesh_attr(std::get<0>(param)),
+        operand_dist_attrs(std::get<1>(param)),
+        result_dist_attrs(std::get<2>(param)) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -139,13 +139,13 @@ struct OperationDistAttrStorage : public pir::AttributeStorage {
   ///
   static std::size_t HashValue(const ParamKey& key) {
     auto hash_value = std::hash<pir::Attribute>()(std::get<0>(key));
-    for (auto &iter: std::get<1>(key)) {
-        auto tmp_value = std::hash<pir::Attribute>()(iter);
-        hash_value = pir::detail::hash_combine(hash_value, tmp_value);
+    for (auto& iter : std::get<1>(key)) {
+      auto tmp_value = std::hash<pir::Attribute>()(iter);
+      hash_value = pir::detail::hash_combine(hash_value, tmp_value);
     }
-    for (auto &iter: std::get<2>(key)) {
-        auto tmp_value = std::hash<pir::Attribute>()(iter);
-        hash_value = pir::detail::hash_combine(hash_value, tmp_value);
+    for (auto& iter : std::get<2>(key)) {
+      auto tmp_value = std::hash<pir::Attribute>()(iter);
+      hash_value = pir::detail::hash_combine(hash_value, tmp_value);
     }
     return hash_value;
   }
@@ -154,14 +154,14 @@ struct OperationDistAttrStorage : public pir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return process_mesh == std::get<0>(key) &&
-           inputs == std::get<1>(key) &&
-           outputs == std::get<2>(key);
+    return mesh_attr == std::get<0>(key) &&
+           operand_dist_attrs == std::get<1>(key) &&
+           result_dist_attrs == std::get<2>(key);
   }
 
-  ProcessMeshAttribute process_mesh;
-  std::vector<TensorDistAttribute> inputs;
-  std::vector<TensorDistAttribute> outputs;
+  ProcessMeshAttribute mesh_attr;
+  std::vector<TensorDistAttribute> operand_dist_attrs;
+  std::vector<TensorDistAttribute> result_dist_attrs;
 };
 
 }  // namespace dialect
