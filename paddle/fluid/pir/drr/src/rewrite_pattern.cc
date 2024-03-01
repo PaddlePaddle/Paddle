@@ -59,7 +59,7 @@ bool DrrRewritePattern::MatchAndRewrite(
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
     PatternGraphRewrite(*src_match_ctx, rewriter);
-    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewrited in program.";
+    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
   }
   return false;
