@@ -2722,7 +2722,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
   std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
       pir::IrContext* ctx,
       const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos) {
+      const OpOutputInfoList& output_infos) override {
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types = {};
 
