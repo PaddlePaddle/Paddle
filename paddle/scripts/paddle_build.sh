@@ -2478,9 +2478,6 @@ set +x
         is_retry_execuate=0
         rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
-            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
-                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
-            fi
             need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
@@ -2547,7 +2544,15 @@ set +x
                     fi
 	    done
 	fi
-set -x
+	        rerun_ut_endTime_s=`date +%s`
+
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+
         for file in `ls $tmp_dir`; do
             exit_code=0
             grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
