@@ -16,6 +16,7 @@ import contextlib
 import random
 import sys
 import unittest
+from itertools import product
 
 import numpy as np
 
@@ -178,20 +179,29 @@ class TestEmbeddingBase(unittest.TestCase):
         ranks = [None, 0, 2, 4, 8]
         allow_duplicate_ids = [False, True]
         allow_pure_randoms = [False, True]
-        for weight_dtype in weight_dtypes:
-            for ids_dtype in ids_dtypes:
-                for deterministic_level in deterministic_levels:
-                    for rank in ranks:
-                        for allow_duplicate_id in allow_duplicate_ids:
-                            for allow_pure_random in allow_pure_randoms:
-                                self.check_main(
-                                    weight_dtype,
-                                    ids_dtype,
-                                    deterministic_level,
-                                    rank,
-                                    allow_duplicate_id,
-                                    allow_pure_random,
-                                )
+        for (
+            weight_dtype,
+            ids_dtype,
+            deterministic_level,
+            rank,
+            allow_duplicate_id,
+            allow_pure_random,
+        ) in product(
+            weight_dtypes,
+            ids_dtypes,
+            deterministic_levels,
+            ranks,
+            allow_duplicate_ids,
+            allow_pure_randoms,
+        ):
+            self.check_main(
+                weight_dtype,
+                ids_dtype,
+                deterministic_level,
+                rank,
+                allow_duplicate_id,
+                allow_pure_random,
+            )
 
 
 class TestEmbedding2(TestEmbeddingBase):

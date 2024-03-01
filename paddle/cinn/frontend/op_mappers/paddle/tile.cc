@@ -56,7 +56,7 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
   // output's shape
   std::vector<int> output_shape = vec_x_dims;
 
-  // calucate output's shape
+  // calculate output's shape
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     output_shape[i] *= repeat_times[i];
   }
@@ -71,7 +71,7 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   // make a copy of vec_x_dims
   std::vector<int> vec_x_dims_copy = vec_x_dims;
-  // recontruct vec_x_dims_copy by inserting 1 before every element
+  // reconstruct vec_x_dims_copy by inserting 1 before every element
   for (size_t i = 0; i < vec_x_dims_copy.size(); ++i) {
     vec_x_dims_copy.insert(vec_x_dims_copy.begin() + i, 1);
     i++;
@@ -79,7 +79,7 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   x = ctx.Builder()->Reshape(x, vec_x_dims_copy);
 
-  // recontruct vec_x_dims_copy for BroadaCast
+  // reconstruct vec_x_dims_copy for BroadCast
   for (size_t i = 0; i < vec_x_dims_copy.size(); ++i) {
     if (i % 2 == 0) {
       vec_x_dims_copy[i] = output_shape[i / 2] / vec_x_dims_copy[i + 1];

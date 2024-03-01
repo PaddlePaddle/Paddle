@@ -96,12 +96,10 @@ class TestFunctionalHingeEmbeddingLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_cpu(self):
         self.run_dynamic_check(place=paddle.CPUPlace())
         self.run_static_check(place=paddle.CPUPlace())
 
-    @test_with_pir_api
     def test_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -184,12 +182,10 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_cpu(self):
         self.run_dynamic_check(place=paddle.CPUPlace())
         self.run_static_check(place=paddle.CPUPlace())
 
-    @test_with_pir_api
     def test_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return

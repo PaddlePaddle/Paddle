@@ -490,6 +490,10 @@ PD_REGISTER_SPMD_RULE(
     reduce_sum,  // static
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    squared_l2_norm,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
 // layer_norm
 PD_REGISTER_SPMD_RULE(
@@ -586,12 +590,12 @@ PD_REGISTER_SPMD_RULE(tile,
 // cross_entropy_with_softmax
 PD_REGISTER_SPMD_RULE(
     cross_entropy_with_softmax,
-    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     softmax_with_cross_entropy,
-    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmd),
+    PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
 
 // fused_linear_param_grad_add got no reverse infer spmd rule
@@ -600,6 +604,21 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::FusedLinearParamGradAddInferSpmd),
     PD_INFER_SPMD(
         phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
+
+PD_REGISTER_SPMD_RULE(
+    expand_as,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    expand_as_v2,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
+// scatter
+PD_REGISTER_SPMD_RULE(scatter,
+                      PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

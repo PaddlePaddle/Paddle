@@ -251,21 +251,21 @@ class Cauchy(distribution.Distribution):
         """
         name = self.name + '_prob'
 
-        if not isinstance(value, framework.Variable):
+        if not isinstance(value, (framework.Variable, paddle.pir.Value)):
             raise TypeError(
-                f"Expected type of value is Variable, but got {type(value)}"
+                f"Expected type of value is Variable or Value, but got {type(value)}"
             )
 
         return self.log_prob(value).exp(name=name)
 
     def log_prob(self, value):
-        """Log of probability densitiy function.
+        """Log of probability density function.
 
         Args:
             value (Tensor): Value to be evaluated.
 
         Returns:
-            Tensor: Log of probability densitiy evaluated at value.
+            Tensor: Log of probability density evaluated at value.
 
         Examples:
 
@@ -300,9 +300,9 @@ class Cauchy(distribution.Distribution):
         """
         name = self.name + '_log_prob'
 
-        if not isinstance(value, framework.Variable):
+        if not isinstance(value, (framework.Variable, paddle.pir.Value)):
             raise TypeError(
-                f"Expected type of value is Variable, but got {type(value)}"
+                f"Expected type of value is Variable or Value, but got {type(value)}"
             )
 
         value = self._check_values_dtype_in_probs(self.loc, value)
@@ -367,9 +367,9 @@ class Cauchy(distribution.Distribution):
         """
         name = self.name + '_cdf'
 
-        if not isinstance(value, framework.Variable):
+        if not isinstance(value, (framework.Variable, paddle.pir.Value)):
             raise TypeError(
-                f"Expected type of value is Variable, but got {type(value)}"
+                f"Expected type of value is Variable or Value, but got {type(value)}"
             )
 
         value = self._check_values_dtype_in_probs(self.loc, value)

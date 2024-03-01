@@ -41,7 +41,6 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
 
  protected:
   // The methods of ir nodes follows the order defined in node.h
-
   Expr Visit(const ir::IntImm* op) override {
     return Expr(make_shared<IntImm>(op->type(), op->value));
   }
@@ -101,6 +100,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
 
     n->name = op->name;
     n->is_reduce_axis = op->is_reduce_axis;
+    n->is_symbolic_constant = op->is_symbolic_constant;
     n->set_type(op->type());
 
     if (op->lower_bound.defined()) {

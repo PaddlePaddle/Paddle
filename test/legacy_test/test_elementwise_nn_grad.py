@@ -28,7 +28,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -58,7 +58,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -90,7 +90,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -120,7 +120,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -153,7 +153,7 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -190,7 +190,7 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -223,7 +223,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
@@ -262,7 +262,7 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
@@ -295,7 +295,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -324,7 +324,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
 class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -357,7 +357,7 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -393,7 +393,7 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
 class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64

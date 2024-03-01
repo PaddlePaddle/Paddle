@@ -265,7 +265,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
         ("shuffle_last_multihead_matmul(Output: " + output_name + ")").c_str());
     // return
     layer = reshape_after_mha_layer;
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "cross_multihead_matmul", {output_name}, test_mode);
   }
 };

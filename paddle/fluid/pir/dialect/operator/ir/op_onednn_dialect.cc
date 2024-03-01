@@ -19,15 +19,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/interface_value.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/interface_value.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
 namespace paddle {
@@ -51,16 +51,16 @@ void OneDNNOperatorDialect::initialize() {
 #ifdef WIN32
   RegisterOps<
 #define GET_OP_LIST1
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
   RegisterOps<
 #define GET_OP_LIST2
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
 #else
   RegisterOps<
 #define GET_OP_LIST
-#include "paddle/fluid/pir/dialect/operator/ir/pd_onednn_op_info.cc"  // NOLINT
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
 #endif
 }
@@ -100,7 +100,7 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
     os << "IntArray)"
        << "[";
     const auto &inner_data = data.GetData();
-    pir::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_data.begin(),
         inner_data.end(),
         [&os](int64_t i) { os << i; },
@@ -166,15 +166,24 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-void OneDNNOperatorDialect::PrintOperation(pir::Operation *op,
-                                           pir::IrPrinter &printer) const {
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
-    if_op.Print(printer);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto if_op = op->dyn_cast<IfOp>();
+      if_op.Print(printer);
+    };
+  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto pylayer_op = op->dyn_cast<PyLayerOp>();
+      pylayer_op.Print(printer);
+    };
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
-    while_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto while_op = op->dyn_cast<WhileOp>();
+      while_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 
 }  // namespace dialect

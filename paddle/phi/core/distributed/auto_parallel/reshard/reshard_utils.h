@@ -33,6 +33,9 @@ class DeviceContext;
 namespace distributed {
 class ProcessMesh;
 
+std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
+                                        std::vector<int64_t> out_process_ids);
+
 bool IsCurRankInMesh(const ProcessMesh& process_mesh);
 
 bool NeedComputationClipForPP(
@@ -164,6 +167,9 @@ phi::DDim InferShapeForReshardFromReplicate(
       return false;                     \
     }                                   \
   } while (0)
+
+std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh);
+bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
 
 }  // namespace distributed
 }  // namespace phi

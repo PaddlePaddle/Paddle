@@ -606,19 +606,19 @@ class TestDistBase(unittest.TestCase):
             result1 = []
             result2 = []
 
-            def is_empyt_list(x):
+            def is_empty_list(x):
                 if isinstance(x, list) and len(x) == 0:
                     return True
                 return False
 
             for i in range(tot_expert):
                 for arr in output1[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result2.append(arr)
 

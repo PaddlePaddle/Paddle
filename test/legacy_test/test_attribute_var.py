@@ -73,8 +73,8 @@ class TestDropout(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(10, 10)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -88,7 +88,7 @@ class TestDropout(UnittestBase):
             self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[x, out])
             # export model
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
@@ -110,8 +110,8 @@ class TestTileTensorList(UnittestBase):
 
     def _test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -126,7 +126,7 @@ class TestTileTensorList(UnittestBase):
             self.assertTrue("Vars[" in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[x, out])
             self.assertEqual(res[1].shape, (6, 6, 10))
 
@@ -143,8 +143,8 @@ class TestTileTensor(UnittestBase):
 
     def _test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -158,7 +158,7 @@ class TestTileTensor(UnittestBase):
             self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[x, out])
             self.assertEqual(res[1].shape, (6, 6, 10))
 

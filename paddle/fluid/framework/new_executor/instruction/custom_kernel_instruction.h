@@ -25,7 +25,6 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-
 class CustomKernelInstruction : public InstructionBase {
  public:
   CustomKernelInstruction(size_t id,
@@ -45,6 +44,8 @@ class CustomKernelInstruction : public InstructionBase {
   void BuildCustomContext(
       const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
+  void BuildShapeDtype();
+
   void UpdateOutputMeta(const std::vector<std::vector<int64_t>>& output_shapes,
                         const std::vector<DataType>& output_dtypes);
 
@@ -54,6 +55,10 @@ class CustomKernelInstruction : public InstructionBase {
   paddle::InferDtypeFunc inferdtype_func_ = nullptr;
   paddle::KernelFunc kernel_func_ = nullptr;
 
+  // key is input name, value is a index in input_shapes_ or vec_input_shapes_
+  std::unordered_map<std::string, int> input_name2id_map_;
+  std::unordered_map<std::string, int> vec_input_name2id_map_;
+
   // use for runing infershape
   std::vector<std::vector<int64_t>> input_shapes_;
   std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes_;
@@ -62,6 +67,10 @@ class CustomKernelInstruction : public InstructionBase {
   // use for runing inferdtype
   std::vector<DataType> input_dtypes_;
   std::vector<std::vector<DataType>> vec_input_dtypes_;
+
+  // use for calculate input shapes and dtypes in runtime
+  std::vector<phi::DenseTensor*> input_ptrs_;
+  std::vector<std::vector<phi::DenseTensor*>> vec_input_ptrs_;
 
   // use for update output
   std::vector<phi::DenseTensor*> cache_out_ptrs_;

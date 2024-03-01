@@ -18,7 +18,6 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     IrMapping,
     Operation,
     OpOperand,
-    OpResult,
     PassManager,
     Program,
     Type,

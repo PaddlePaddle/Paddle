@@ -27,23 +27,6 @@
 namespace phi {
 namespace distributed {
 
-namespace {
-
-std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
-                                        std::vector<int64_t> out_process_ids) {
-  std::vector<int64_t> result;
-  std::sort(in_process_ids.begin(), in_process_ids.end());
-  std::sort(out_process_ids.begin(), out_process_ids.end());
-  std::set_union(in_process_ids.begin(),
-                 in_process_ids.end(),
-                 out_process_ids.begin(),
-                 out_process_ids.end(),
-                 std::back_inserter(result));
-  return result;
-}
-
-}  // namespace
-
 bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
@@ -66,7 +49,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call SameStatusReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();

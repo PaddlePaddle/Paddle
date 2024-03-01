@@ -50,16 +50,8 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      pir_transforms
-      op_with_group_merge_pass
-      add_broadcast_to_elementwise_pass
-      pd_to_cinn_pass
-      sub_graph_checker
-      fully_insert_broadcast_pass
-      fuse_shape_ops_into_generate_shape_op_pass
-      split_generate_shape_into_shape_ops_pass)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
+                  sub_graph_checker add_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
@@ -127,8 +119,6 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ops_api.cc
-    static_op_function.cc
     control_flow_api.cc
     pir.cc
     graph.cc
@@ -160,6 +150,7 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     eval_frame_tools.cc
+    cpython_internals.c
     eval_frame.c)
 
 if(NOT WITH_SHARED_IR)
@@ -305,7 +296,7 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(NOT WITH_ARM)
+  if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
@@ -516,6 +507,8 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS ops_api.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS static_op_function.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)

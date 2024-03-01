@@ -29,7 +29,7 @@ namespace tests {
 using cinn::hlir::framework::AttrType;
 
 #define TEST_DEFAULT(op_name__, shape_name__, input_types_, output_types_) \
-  TEST(op_defualt, shape_name__) {                                         \
+  TEST(op_default, shape_name__) {                                         \
     std::vector<std::vector<int>> input_shapes = shapes_##shape_name__;    \
     std::string op_name = #op_name__;                                      \
     hlir::framework::NodeAttr attrs;                                       \
@@ -44,7 +44,7 @@ using cinn::hlir::framework::AttrType;
 
 #define TEST_DEFAULT1(                                                  \
     op_name__, shape_name__, input_types_, output_types_, attr_store__) \
-  TEST(op_defualt1, shape_name__) {                                     \
+  TEST(op_default1, shape_name__) {                                     \
     std::vector<std::vector<int>> input_shapes = shapes_##shape_name__; \
     std::string op_name = #op_name__;                                   \
     OpBenchmarkTester tester(op_name, input_shapes);                    \
@@ -60,7 +60,7 @@ using cinn::hlir::framework::AttrType;
   }
 
 #define TEST_DEFAULT_INT(op_name__, shape_name__, input_types_, output_types_) \
-  TEST(op_defualt, shape_name__) {                                             \
+  TEST(op_default, shape_name__) {                                             \
     std::vector<std::vector<int>> input_shapes = shapes_##shape_name__;        \
     std::string op_name = #op_name__;                                          \
     hlir::framework::NodeAttr attrs;                                           \

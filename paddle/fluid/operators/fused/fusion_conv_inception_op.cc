@@ -41,14 +41,14 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(w_dims[0][1],
                       in_dims[1],
                       platform::errors::InvalidArgument(
-                          "Invalid fileter channel number %d, which should be "
+                          "Invalid filter channel number %d, which should be "
                           "equal to input channel number %d.",
                           w_dims[0][1],
                           in_dims[1]));
     PADDLE_ENFORCE_EQ(w_dims[1][1],
                       in_dims[1],
                       platform::errors::InvalidArgument(
-                          "Invalid fileter channel number %d, which should be "
+                          "Invalid filter channel number %d, which should be "
                           "equal to input channel number %d.",
                           w_dims[1][1],
                           in_dims[1]));

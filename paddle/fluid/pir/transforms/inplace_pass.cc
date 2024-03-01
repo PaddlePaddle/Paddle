@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -29,13 +30,12 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
-PHI_DECLARE_string(ir_inplace_kernel_blacklist);
+COMMON_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace {
 
@@ -54,7 +54,7 @@ std::unordered_set<std::string> RelaxShapeCheckOps = {
 
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
-// AllocatedSelectedRowsType; (2) Value's is not persisable.
+// AllocatedSelectedRowsType; (2) Value's is not persistable.
 bool CanBeDeleted(pir::Value value) {
   if (!value.type()) {
     return false;
@@ -63,7 +63,7 @@ bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersisable);
+  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
   return !(persist_attr && persist_attr.data());
 }
 
@@ -71,7 +71,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                   pir::Value input,
                   pir::Value output,
                   const std::string& op_name) {
-  if (!input.type() || !output.type()) {
+  if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
     return false;
   }
 
@@ -91,7 +91,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       return true;
     }
 
-    auto is_numel_euqal = [](const TensorType& in,
+    auto is_numel_equal = [](const TensorType& in,
                              const TensorType& out) -> bool {
       int64_t in_numel = 1;
       int64_t out_numel = 1;
@@ -127,7 +127,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     };
     // In this version, we don't consider the -1 in ddim, we just calculate the
     // result.
-    auto is_numel_euqal_loose_version = [](const TensorType& in,
+    auto is_numel_equal_loose_version = [](const TensorType& in,
                                            const TensorType& out) -> bool {
       auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
         int64_t numel = 1;
@@ -144,10 +144,10 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     bool equal = false;
     bool relax = (RelaxShapeCheckOps.count(op_name) > 0);
     if (relax) {
-      equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
+      equal = is_numel_equal_loose_version(input_alloc_tensor_type,
                                            output_alloc_tensor_type);
     } else {
-      equal = is_numel_euqal(input_alloc_tensor_type, output_alloc_tensor_type);
+      equal = is_numel_equal(input_alloc_tensor_type, output_alloc_tensor_type);
     }
 
     if (!equal) {
@@ -159,7 +159,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     return false;
   }
   if (eager_dels.count(input) == 0) {
-    VLOG(9) << "     -- input not in eager_deletion_valus, can't do inplace";
+    VLOG(9) << "     -- input not in eager_deletion_vars, can't do inplace";
     return false;
   }
   return true;
@@ -451,7 +451,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
   }
   if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
-    for (auto i : inplace_ops) {
+    for (auto const& i : inplace_ops) {
       std::cout << i.second << std::endl;
     }
   }
@@ -492,7 +492,7 @@ class InplacePass : public pir::Pass {
         }
       }
     }
-    PrintStatistics(num_rewrites_);
+    AddStatistics(num_rewrites_);
   }
 };
 

@@ -28,14 +28,18 @@
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 namespace cinn {
 namespace ir {
 
 Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Rfactor";
+  std::ostringstream os;
+
   CHECKRfactorValidation(rf_loop, rf_axis);
   // get root ScheduleBlockRealize
   Expr root = GetRootBlock(rf_loop);
@@ -43,16 +47,18 @@ Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
   RfCreater rf_create(root, rf_loop, rf_axis);
   // return new created rfactor tensor
   return rf_create.CreateRfAllStmts();
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
+  CINN_IR_SCHEDULE_BEGIN()
   std::string primitive = "FactorizeReduction";
+  std::ostringstream os;
   // Get child block of the rf_loop and check.
   std::vector<Expr> blocks = GetChildBlocks(rf_loop);
   if (blocks.size() != 1) {
-    std::ostringstream os;
     os << "The rf_loop is required to have only one child block, but got "
-       << blocks.size() << std::endl;
+       << blocks.size() << "!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
   }
   Expr original_block = blocks.at(0);
@@ -62,7 +68,10 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
   // Collect the loops of the block.
   // Construct a map from loop var names to corresponding loops.
   std::vector<Expr> original_loops = this->GetLoops(original_block);
-  CHECK_GT(original_loops.size(), 0);
+  if (original_loops.size() <= 0) {
+    os << "The size of original_loops should be great than 0!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
+  }
   VLOG(3) << "before FactorizeReduction, original computational body of the "
              "reduction is:\n"
           << original_loops[0];
@@ -116,6 +125,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
              "reduction is:\n"
           << new_computational_body;
   return rf_tensor;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 }  // namespace ir

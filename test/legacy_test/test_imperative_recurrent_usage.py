@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 
 
 class RecurrentTest(paddle.nn.Layer):
@@ -39,10 +38,9 @@ class TestRecurrentFeed(unittest.TestCase):
         original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
         original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
-            original_in1 = to_variable(original_np1)
-            original_in2 = to_variable(original_np2)
+            paddle.seed(seed)
+            original_in1 = paddle.to_tensor(original_np1)
+            original_in2 = paddle.to_tensor(original_np2)
             original_in1.stop_gradient = False
             original_in2.stop_gradient = False
             rt = RecurrentTest("RecurrentTest")
@@ -58,10 +56,9 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
-            original_in1 = to_variable(original_np1)
-            original_in2 = to_variable(original_np2)
+            paddle.seed(seed)
+            original_in1 = paddle.to_tensor(original_np1)
+            original_in2 = paddle.to_tensor(original_np2)
             original_in1.stop_gradient = False
             original_in2.stop_gradient = False
             rt = RecurrentTest("RecurrentTest")
@@ -77,8 +74,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             in1 = paddle.static.data(name="inp1", shape=[2, 2])
             in1.stop_gradient = False
             in2 = paddle.static.data(name="inp2", shape=[2, 2])

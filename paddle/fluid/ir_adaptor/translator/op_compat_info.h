@@ -126,7 +126,7 @@ class OpNameNormalizer {
         return ret.value();
       }
     } else if (is_grad_op && !is_grad_arg) {
-      // backwward op using forward args: like trace_grad using forward input
+      // backward op using forward args: like trace_grad using forward input
       size_t type_pos = op_type.find(kPhiGradSuffix);
       if (auto ret = GetDirectMapping(op_type.substr(0, type_pos), arg_name)) {
         VLOG(10) << "[" << op_type << "] found " << ret.value();

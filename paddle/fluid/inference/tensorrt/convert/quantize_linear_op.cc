@@ -50,7 +50,7 @@ class QuantizeLinearOpConverter : public OpConverter {
       layer->setAxis(axis);
     }
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "quantize_linear", {output_name}, test_model);
 #else
     PADDLE_THROW(

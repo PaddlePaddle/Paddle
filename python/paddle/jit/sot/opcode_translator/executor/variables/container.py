@@ -450,7 +450,7 @@ class ListVariable(ContainerVariable):
         # Note(SigureMo): Why not use isinstance?
         # Because user may define a class that inherit from list.
         # We should convert it to ObjectVariable instead of ListVariable.
-        if type(value) is list:  # noqa: E721
+        if type(value) is list:
             return ListVariable(value, graph=graph, tracker=tracker)
         return None
 
@@ -796,7 +796,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             key_var = ConstantVariable.wrap_literal(key, self.graph)
             value_var = self[key]
@@ -809,7 +809,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             key_var = VariableFactory.from_value(
                 key, self.graph, tracker=ConstTracker(key)
@@ -823,7 +823,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             items[key] = self[key]
         return items
@@ -843,7 +843,7 @@ class DictVariable(ContainerVariable):
     def get(self, key, default=None):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} to get value."
+                f"[{self.__class__.__name__}]: received {key} to get value."
             )
 
         if default is None:
@@ -863,12 +863,12 @@ class DictVariable(ContainerVariable):
     def setitem(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} as key."
+                f"[{self.__class__.__name__}]: received {key} as key."
             )
 
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {value} to set value."
+                f"[{self.__class__.__name__}]: received {value} to set value."
             )
 
         self.proxy.set(key, value)
@@ -889,7 +889,7 @@ class DictVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} as key to delete."
+                f"[{self.__class__.__name__}]: received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)

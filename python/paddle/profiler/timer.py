@@ -425,7 +425,7 @@ class Benchmark:
                 self.current_event.reader.__dict__['_dataset']
                 != reader.__dict__['_dataset']
             ):
-                # enter a new task but not calling beign() to record it.
+                # enter a new task but not calling begin() to record it.
                 # we pause the timer until the end of new task, so that
                 # the cost of new task is not added to the current event.
                 # eg. start evaluation in the training task

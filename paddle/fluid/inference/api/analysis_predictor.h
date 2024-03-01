@@ -42,7 +42,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
 namespace experimental {
@@ -171,7 +171,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Get the Output Tensor object
   ///
-  /// \param[in] name otuput name
+  /// \param[in] name output name
   /// \return output tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
@@ -309,7 +309,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -379,7 +379,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] input_datas inpute tensors
+  /// \param[in] input_datas input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///
@@ -389,7 +389,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] inputs inpute tensors
+  /// \param[in] inputs input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///
@@ -494,6 +494,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
+  std::string GetOptimizedModelPath();
+  void ClearExtraParams();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related

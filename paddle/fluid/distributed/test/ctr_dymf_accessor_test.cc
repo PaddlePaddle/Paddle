@@ -79,7 +79,7 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
 
   float* value = new float[acc->GetAccessorInfo().dim];
   for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
-    value[i] = i * 1.0;
+    value[i] = static_cast<float>(i) * 1.0;
   }
   ASSERT_TRUE(!acc->Shrink(value));
 
@@ -98,7 +98,7 @@ TEST(downpour_feature_value_accessor_test, test_save) {
 
   float* value = new float[acc->GetAccessorInfo().dim];
   for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
-    value[i] = i * 1.0;
+    value[i] = static_cast<float>(i) * 1.0;
   }
 
   // save all feature
@@ -160,7 +160,7 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   const int field_size = 16;
   float* value = new float[field_size];
   for (auto i = 0u; i < field_size; ++i) {
-    value[i] = i;
+    value[i] = static_cast<float>(i);
   }
 
   auto str = acc->ParseToString(value, 0);

@@ -19,10 +19,10 @@ from ..utils import (
     ORIGI_INFO,
     Dygraph2StaticException,
     ast_to_source_code,
-    index_in_list,
 )
 from .base import BaseTransformer
 from .break_continue_transformer import ForToWhileTransformer
+from .utils import create_bool_node, index_in_list
 
 __all__ = []
 
@@ -232,6 +232,7 @@ class SingleReturnTransformer(BaseTransformer):
             return node
 
         # Prepend initialization of final return and append final return statement
+        return_flag_names = self.return_name
         value_name = self.return_value_name
         if value_name is not None:
             node.body.append(
@@ -256,6 +257,10 @@ class SingleReturnTransformer(BaseTransformer):
                 value=gast.Constant(kind=None, value=None),
             )
             node.body.insert(0, assign_return_value_node)
+
+        for return_flag_name in return_flag_names:
+            assign_return_flag_node = create_bool_node(return_flag_name, False)
+            node.body.insert(0, assign_return_flag_node)
 
         # Prepend no value placeholders
         return node

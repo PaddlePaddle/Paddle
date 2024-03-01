@@ -104,7 +104,7 @@ def convert_to_mixed_precision(
     '''
     if backend is PlaceType.GPU and not core.is_compiled_with_cuda():
         _logger.error(
-            "You shoule use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
+            "You should use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
         )
 
     mixed_model_dirname = os.path.dirname(mixed_model_file)

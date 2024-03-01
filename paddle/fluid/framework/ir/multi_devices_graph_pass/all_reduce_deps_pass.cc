@@ -150,7 +150,7 @@ class AllReduceDepsPass : public ir::Pass {
       const std::vector<details::OpHandleBase*>& all_reduce_op_handles) const {
     // get vars order
     std::map<int, std::vector<std::string>> vars =
-        GetSoredGradientsFromStaleProgram(graph);
+        GetSortedGradientsFromStaleProgram(graph);
     std::stringstream out;
     size_t grads_of_stale_program = 0;
     out << "Get Order From details::kStaleProgramOpDescs: ";
@@ -188,7 +188,7 @@ class AllReduceDepsPass : public ir::Pass {
     }
   }
 
-  std::map<int, std::vector<std::string>> GetSoredGradientsFromStaleProgram(
+  std::map<int, std::vector<std::string>> GetSortedGradientsFromStaleProgram(
       const ir::Graph& graph) const {
     std::map<int, std::vector<std::string>> vars;
     auto ops =

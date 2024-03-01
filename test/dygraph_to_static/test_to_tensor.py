@@ -186,8 +186,8 @@ class TestStatic(Dy2StTestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
             else:
@@ -208,7 +208,7 @@ class TestStatic(Dy2StTestBase):
             sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[x, out])
 
 
@@ -223,17 +223,13 @@ class TestInt16(Dy2StTestBase):
         if paddle.base.framework.use_pir_api():
             self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
         else:
-            self.assertTrue(
-                x.dtype == paddle.framework.core.VarDesc.VarType.INT16
-            )
+            self.assertTrue(x.dtype == paddle.int16)
 
         y = paddle.to_tensor([1, 2], dtype="int16")
         if paddle.base.framework.use_pir_api():
             self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
         else:
-            self.assertTrue(
-                y.dtype == paddle.framework.core.VarDesc.VarType.INT16
-            )
+            self.assertTrue(y.dtype == paddle.int16)
 
 
 if __name__ == '__main__':

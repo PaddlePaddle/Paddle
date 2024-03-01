@@ -31,7 +31,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
   PADDLE_ENFORCE_EQ(argument->analysis_passes_valid(),
                     true,
                     platform::errors::InvalidArgument(
-                        "analsis_passes is not valid in the argument."));
+                        "analysis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
     if (!disable_logs) {
@@ -39,7 +39,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
     }
     if (!argument->enable_ir_optim() && pass == "ir_analysis_pass") continue;
 
-    auto *ptr = PassRegistry::Global().Retreive(pass);
+    auto *ptr = PassRegistry::Global().Retrieve(pass);
     PADDLE_ENFORCE_NOT_NULL(ptr,
                             platform::errors::PreconditionNotMet(
                                 "no analysis pass called %s", pass));

@@ -222,7 +222,7 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
 
 llvm::Value* CodeGenCUDA_Host::LowerParseArgsValueCall(
     const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(32), m_);
+  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
   std::vector<llvm::Type*> args_type;
   CHECK_EQ(call_ir->read_args.size(), 2);
   CHECK(call_ir->read_args[0].is_var() &&
@@ -270,6 +270,8 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
         args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
       } else if (r_arg.as_var()->type().is_int(32)) {
         args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
+      } else if (r_arg.as_var()->type().is_int(64)) {
+        args_type.push_back(CinnTypeToLLVMType(type_of<int64_t>(), m_));
       } else {
         CINN_NOT_IMPLEMENTED;
       }
@@ -316,10 +318,11 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
                                             b_->getInt8PtrTy());
         call_args.push_back(b_->CreateLoad(
             b_->getInt8PtrTy(), kvalue, r_arg.as_var()->name + "_ptr_load"));
-      } else if (r_arg.as_var()->type().is_cpp_handle() ||
-                 r_arg.as_var()->type().is_int(32)) {
+      } else if (r_arg.as_var()->type().is_cpp_handle()) {
         CHECK(global_args.count(r_arg.as_var()->name));
         call_args.push_back(global_args[r_arg.as_var()->name]);
+      } else if (r_arg.as_var()->type().is_int()) {
+        call_args.push_back(GetVar(r_arg.as_var()->name, false));
       } else {
         CINN_NOT_IMPLEMENTED;
       }
@@ -331,9 +334,9 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
       } else if (r_arg.type().is_int(16)) {
         call_args.push_back(b_->getInt16(r_arg.as_int16()));
       } else if (r_arg.type().is_int(32)) {
-        call_args.push_back(b_->getInt32(r_arg.as_int32()));
+        call_args.push_back(CodeGenLLVM::Visit(&r_arg));
       } else if (r_arg.type().is_int(64)) {
-        call_args.push_back(b_->getInt64(r_arg.as_int64()));
+        call_args.push_back(CodeGenLLVM::Visit(&r_arg));
       } else if (r_arg.type().is_uint(8)) {
         call_args.push_back(b_->getInt8(r_arg.as_uint8()));
       } else if (r_arg.type().is_uint(16)) {

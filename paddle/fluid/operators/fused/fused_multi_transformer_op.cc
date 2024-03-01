@@ -212,8 +212,8 @@ class FusedMultiTransformerOpOpMaker
     AddOutput("Out", "Result after multi .");
 
     AddAttr<bool>("pre_layer_norm",
-                  "if true, the attention op uses pre_layer_norm architecure, "
-                  "else, uses post_layer_norm architecuture. "
+                  "if true, the attention op uses pre_layer_norm architecture, "
+                  "else, uses post_layer_norm architecture. "
                   "[default true].")
         .SetDefault(true);
     AddAttr<int>("rotary_emb_dims",

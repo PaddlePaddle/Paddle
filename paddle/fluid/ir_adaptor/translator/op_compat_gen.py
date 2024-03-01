@@ -84,7 +84,7 @@ def OpNameNormalizerInitialization(
                     if k == 'tensor_name' or k == 'tensors_name':
                         op_mutable_attribute_infos[op_name][
                             attribute_name
-                        ].append(v)
+                        ].insert(0, v)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
         legacy_backward_op_names = []
@@ -164,6 +164,9 @@ def OpNameNormalizerInitialization(
         "atol_tensor": "TolTensor",
         "out": "Out",
     }
+    op_arg_name_mappings['push_sparse_v2'].update(
+        {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
+    )
 
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:

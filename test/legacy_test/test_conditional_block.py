@@ -19,19 +19,25 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Executor, append_backward
 from paddle.static.nn.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
+    @test_with_pir_api
     def test_forward(self):
         main_program = base.Program()
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             data.stop_gradient = False
+            data.persistable = True
             cond = ConditionalBlock(inputs=[data])
-            out = paddle.tensor.create_tensor(dtype='float32')
+            out = paddle.tensor.fill_constant(
+                [10, 10], dtype='float32', value=0.0
+            )
+            out.stop_gradient = False
             with cond.block():
                 hidden = paddle.static.nn.fc(x=data, size=10)
                 paddle.assign(hidden, out)
@@ -42,16 +48,23 @@ class ConditionalBlockTest(unittest.TestCase):
 
             x = np.random.random(size=(10, 1)).astype('float32')
 
-            outs = exe.run(main_program, feed={'X': x}, fetch_list=[out])[0]
-            print(outs)
             loss = paddle.mean(out)
-            append_backward(loss=loss)
-            outs = exe.run(
-                main_program,
-                feed={'X': x},
-                fetch_list=[main_program.block(0).var(data.name + "@GRAD")],
-            )[0]
-            print(outs)
+            grad_list = append_backward(loss=loss)
+            if paddle.framework.in_pir_mode():
+                outs = exe.run(
+                    main_program,
+                    feed={'X': x},
+                    fetch_list=[out, grad_list[0][1]],
+                )
+            else:
+                outs = exe.run(
+                    main_program,
+                    feed={'X': x},
+                    fetch_list=[
+                        out,
+                        main_program.block(0).var(data.name + "@GRAD"),
+                    ],
+                )
 
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):

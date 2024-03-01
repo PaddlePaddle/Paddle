@@ -77,18 +77,18 @@ OP_VJP_CALL_VJP_TEMPLATE = """
         {inputs_list}stop_gradients);"""
 
 OP_VJP_STOPGRADIENT_TEMPLATE = """
-    std::vector<std::vector<pir::OpResult>> res(tensor_res.size());
+    std::vector<std::vector<pir::Value>> res(tensor_res.size());
     for (size_t i = 0; i < tensor_res.size(); ++i) {
         res[i].resize(tensor_res[i].size());
         for (size_t j = 0; j < tensor_res[i].size(); ++j) {
             if(tensor_res[i][j].defined()){
-                res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(tensor_res[i][j].impl())->value().dyn_cast<pir::OpResult>();
+                res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(tensor_res[i][j].impl())->value();
             }
         }
     }"""
 
 OP_VJP_DEFINE_TEMPLATE = """
-std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
+std::vector<std::vector<pir::Value>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
 {check_param}
     VLOG(6) << "Prepare inputs of {op_grad_name}";
 {backward_input_code}
@@ -96,7 +96,7 @@ std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op,
     VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
 {attribute_code}
 
-    VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+    VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp interface";
 {call_vjp_code}
 
     VLOG(6) << "Vjp prepare stop gradient of {op_grad_name}";
@@ -294,13 +294,15 @@ def gen_exclusive_interface_str(op_info, op_info_items):
     exclusive_interface_str = ""
     if op_info.infer_meta_func:
         exclusive_interface_str += (
-            "  static void InferMeta( phi::InferMetaContext *infer_meta );"
+            "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
+            "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
         )
     elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
         if op_info_items[op_info.invoke_map['func']].infer_meta_func:
             exclusive_interface_str += (
-                "  static void InferMeta( phi::InferMetaContext *infer_meta );"
+                "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
+                "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
             )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::Value>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

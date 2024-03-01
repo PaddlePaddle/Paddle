@@ -7,6 +7,7 @@
   kernel :
     func : expand
     param : [x, broadcast_axes]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isclose
   args : (Tensor x, Tensor y, float rtol=1e-5, float atol=1e-8,  bool equal_nan=false)
@@ -35,6 +36,7 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_min
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
@@ -43,6 +45,7 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_prod
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
@@ -51,6 +54,7 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_sum
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
@@ -59,6 +63,7 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
   args : (Tensor x, int[] shape)
@@ -67,6 +72,7 @@
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
   args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
@@ -76,6 +82,7 @@
     param : [x]
   kernel :
     func : scale
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : slice
   args : (Tensor x, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] infer_flags, int64_t[] decrease_axis)

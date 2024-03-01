@@ -13,10 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/pooling.h"
-
 #include <algorithm>
 #include <vector>
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace phi {
@@ -1847,5 +1845,352 @@ template class MaxPool3dWithIndexFunctor<CPUContext, float, int>;
 template class MaxPool3dWithIndexGradFunctor<CPUContext, float, int>;
 template class MaxPool3dWithIndexFunctor<CPUContext, double, int>;
 template class MaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
+
+/*
+ * All tensors are in NCHW format.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool2dFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_height = static_cast<int>(output->dims()[2]);
+    const int output_width = static_cast<int>(output->dims()[3]);
+    const int pool_height = kernel_size[0];
+    const int pool_width = kernel_size[1];
+    const int input_stride = input_height * input_width;
+    const int output_stride = output_height * output_width;
+
+    PADDLE_ENFORCE_GE(
+        input_height,
+        output_height - 1 + pool_height,
+        phi::errors::InvalidArgument(
+            "input_height [%d] is less than valid output_height [%d]",
+            input_height,
+            output_height - 1 + pool_height));
+    PADDLE_ENFORCE_GE(
+        input_width,
+        output_width - 1 + pool_width,
+        phi::errors::InvalidArgument(
+            "input_width [%d] is less than valid output_width [%d]",
+            input_width,
+            output_width - 1 + pool_width));
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    float alpha_height = 0, alpha_width = 0;
+    float u_height = 0, u_width = 0;
+    float u = 0;
+    if (random_u == 0) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      u = dist(*engine);
+    } else {
+      u = random_u;
+    }
+
+    alpha_height = static_cast<float>(input_height - pool_height) /
+                   (output_height - (pool_height > 0 ? 1 : 0));
+    alpha_width = static_cast<float>(input_width - pool_width) /
+                  (output_width - (pool_width > 0 ? 1 : 0));
+
+    u_height = FractionalRationalU(
+        u, alpha_height, input_height, output_height, pool_height);
+    u_width = FractionalRationalU(
+        u, alpha_width, input_width, output_width, pool_width);
+
+    int hstart = 0, hend = 0;
+    int wstart = 0, wend = 0;
+    for (int i = 0; i < batch_size; i++) {
+      for (int c = 0; c < output_channels; ++c) {
+        for (int ph = 0; ph < output_height; ++ph) {
+          hstart =
+              FractionalStartIndex(ph, alpha_height, u_height, pool_height);
+          hend = FractionalEndIndex(ph, alpha_height, u_height, pool_height);
+          hstart = std::max(hstart, 0);
+          hend = std::min(hend, input_height);
+
+          for (int pw = 0; pw < output_width; ++pw) {
+            wstart = FractionalStartIndex(pw, alpha_width, u_width, pool_width);
+            wend = FractionalEndIndex(pw, alpha_width, u_width, pool_width);
+            wstart = std::max(wstart, 0);
+            wend = std::min(wend, input_width);
+
+            T1 ele = static_cast<T1>(-FLT_MAX);
+            int index = -1;
+            for (int h = hstart; h < hend; ++h) {
+              for (int w = wstart; w < wend; ++w) {
+                if (ele < input_data[h * input_width + w]) {
+                  ele = input_data[h * input_width + w];
+                  index = h * input_width + w;
+                }
+              }
+            }
+            output_data[ph * output_width + pw] = ele;
+            mask_data[ph * output_width + pw] = index;
+          }
+        }
+        // offset
+        input_data += input_stride;
+        output_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
+/*
+ * All tensors are in NCHW format.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool2dGradFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& output_size UNUSED,
+                  const std::vector<int>& kernel_size UNUSED,
+                  float random_u UNUSED,
+                  bool return_mask UNUSED,
+                  DenseTensor* input_grad) {
+    const int batch_size = static_cast<int>(input_grad->dims()[0]);
+    const int input_height = static_cast<int>(input_grad->dims()[2]);
+    const int input_width = static_cast<int>(input_grad->dims()[3]);
+    const int output_channels = static_cast<int>(output_grad.dims()[1]);
+    const int output_height = static_cast<int>(output_grad.dims()[2]);
+    const int output_width = static_cast<int>(output_grad.dims()[3]);
+    const int input_stride = input_height * input_width;
+    const int output_stride = output_height * output_width;
+
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    for (int n = 0; n < batch_size; ++n) {
+      for (int c = 0; c < output_channels; ++c) {
+        for (int ph = 0; ph < output_height; ++ph) {
+          for (int pw = 0; pw < output_width; ++pw) {
+            const int output_idx = ph * output_width + pw;
+            const int input_idx = static_cast<int>(mask_data[output_idx]);
+            input_grad_data[input_idx] += output_grad_data[output_idx];
+          }
+        }
+        // offset
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
+template class FractionalMaxPool2dFunctor<CPUContext, float, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, float, int>;
+template class FractionalMaxPool2dFunctor<CPUContext, double, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool2dFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, dtype::float16, int>;
+
+/*
+ * All tensors are in NCDHW format.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool3dFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& output_size,
+                  const std::vector<int>& kernel_size,
+                  float random_u,
+                  bool return_mask,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_depth = static_cast<int>(input.dims()[2]);
+    const int input_height = static_cast<int>(input.dims()[3]);
+    const int input_width = static_cast<int>(input.dims()[4]);
+    const int output_channels = static_cast<int>(output->dims()[1]);
+    const int output_depth = static_cast<int>(output->dims()[2]);
+    const int output_height = static_cast<int>(output->dims()[3]);
+    const int output_width = static_cast<int>(output->dims()[4]);
+    const int pool_depth = kernel_size[0];
+    const int pool_height = kernel_size[1];
+    const int pool_width = kernel_size[2];
+    const int input_stride = input_depth * input_height * input_width;
+    const int output_stride = output_depth * output_height * output_width;
+
+    PADDLE_ENFORCE_GE(
+        input_depth,
+        output_depth - 1 + pool_depth,
+        phi::errors::InvalidArgument(
+            "input_depth [%d] is less than valid output_depth [%d]",
+            input_depth,
+            output_depth - 1 + pool_depth));
+    PADDLE_ENFORCE_GE(
+        input_height,
+        output_height - 1 + pool_height,
+        phi::errors::InvalidArgument(
+            "input_height [%d] is less than valid output_height [%d]",
+            input_height,
+            output_height - 1 + pool_height));
+    PADDLE_ENFORCE_GE(
+        input_width,
+        output_width - 1 + pool_width,
+        phi::errors::InvalidArgument(
+            "input_width [%d] is less than valid output_width [%d]",
+            input_width,
+            output_width - 1 + pool_width));
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+    float u_height = 0, u_width = 0, u_depth = 0;
+    float u = 0;
+    if (random_u == 0) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      u = dist(*engine);
+    } else {
+      u = random_u;
+    }
+
+    alpha_depth = static_cast<float>(input_depth - pool_depth) /
+                  (output_depth - (pool_depth > 0 ? 1 : 0));
+    alpha_height = static_cast<float>(input_height - pool_height) /
+                   (output_height - (pool_height > 0 ? 1 : 0));
+    alpha_width = static_cast<float>(input_width - pool_width) /
+                  (output_width - (pool_width > 0 ? 1 : 0));
+
+    u_depth = FractionalRationalU(
+        u, alpha_depth, input_depth, output_depth, pool_depth);
+    u_height = FractionalRationalU(
+        u, alpha_height, input_height, output_height, pool_height);
+    u_width = FractionalRationalU(
+        u, alpha_width, input_width, output_width, pool_width);
+
+    int dstart = 0, dend = 0;
+    int hstart = 0, hend = 0;
+    int wstart = 0, wend = 0;
+    for (int i = 0; i < batch_size; i++) {
+      for (int c = 0; c < output_channels; ++c) {
+        for (int pd = 0; pd < output_depth; ++pd) {
+          dstart = FractionalStartIndex(pd, alpha_depth, u_depth, pool_depth);
+          dend = FractionalEndIndex(pd, alpha_depth, u_depth, pool_depth);
+          dstart = std::max(dstart, 0);
+          dend = std::min(dend, input_depth);
+
+          for (int ph = 0; ph < output_height; ++ph) {
+            hstart =
+                FractionalStartIndex(ph, alpha_height, u_height, pool_height);
+            hend = FractionalEndIndex(ph, alpha_height, u_height, pool_height);
+            hstart = std::max(hstart, 0);
+            hend = std::min(hend, input_height);
+
+            for (int pw = 0; pw < output_width; ++pw) {
+              wstart =
+                  FractionalStartIndex(pw, alpha_width, u_width, pool_width);
+              wend = FractionalEndIndex(pw, alpha_width, u_width, pool_width);
+              wstart = std::max(wstart, 0);
+              wend = std::min(wend, input_width);
+
+              int output_idx = (pd * output_height + ph) * output_width + pw;
+              T1 ele = static_cast<T1>(-FLT_MAX);
+              int index = -1;
+              for (int d = dstart; d < dend; ++d) {
+                for (int h = hstart; h < hend; ++h) {
+                  for (int w = wstart; w < wend; ++w) {
+                    int input_idx = (d * input_height + h) * input_width + w;
+                    if (ele < input_data[input_idx]) {
+                      index = input_idx;
+                      ele = input_data[input_idx];
+                    }
+                  }
+                }
+              }
+              output_data[output_idx] = ele;
+              mask_data[output_idx] = index;
+            }
+          }
+        }
+        // offset
+        input_data += input_stride;
+        output_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
+/*
+ * All tensors are in NCDHW format.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool3dGradFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& output_size UNUSED,
+                  const std::vector<int>& kernel_size UNUSED,
+                  float random_u UNUSED,
+                  bool return_mask UNUSED,
+                  DenseTensor* input_grad) {
+    const int batch_size = static_cast<int>(input_grad->dims()[0]);
+    const int input_depth = static_cast<int>(input_grad->dims()[2]);
+    const int input_height = static_cast<int>(input_grad->dims()[3]);
+    const int input_width = static_cast<int>(input_grad->dims()[4]);
+    const int output_channels = static_cast<int>(output_grad.dims()[1]);
+    const int output_depth = static_cast<int>(output_grad.dims()[2]);
+    const int output_height = static_cast<int>(output_grad.dims()[3]);
+    const int output_width = static_cast<int>(output_grad.dims()[4]);
+    const int input_stride = input_depth * input_height * input_width;
+    const int output_stride = output_depth * output_height * output_width;
+
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    for (int n = 0; n < batch_size; ++n) {
+      for (int c = 0; c < output_channels; ++c) {
+        for (int pd = 0; pd < output_depth; ++pd) {
+          for (int ph = 0; ph < output_height; ++ph) {
+            for (int pw = 0; pw < output_width; ++pw) {
+              const int output_idx =
+                  (pd * output_height + ph) * output_width + pw;
+              const int input_idx = static_cast<int>(mask_data[output_idx]);
+              input_grad_data[input_idx] += output_grad_data[output_idx];
+            }
+          }
+        }
+        // offset
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
+template class FractionalMaxPool3dFunctor<CPUContext, float, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, float, int>;
+template class FractionalMaxPool3dFunctor<CPUContext, double, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool3dFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, dtype::float16, int>;
+
 }  // namespace funcs
 }  // namespace phi

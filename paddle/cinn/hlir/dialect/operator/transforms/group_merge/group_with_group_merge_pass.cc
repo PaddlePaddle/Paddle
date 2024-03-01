@@ -17,15 +17,17 @@
 #include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_group.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/value.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_pass_utils.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/group_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/special_ops_fusion_rule.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
 
@@ -62,6 +64,9 @@ class FuseHelper {
   virtual bool HorizontalWithInjective(const OpGroupPtr& src,
                                        const OpGroupPtr& dst) const = 0;
 
+  virtual bool InjectiveFuseInjective(const OpGroupPtr& src,
+                                      const OpGroupPtr& dst) const = 0;
+
   virtual bool ElementwiseFuseReduce(const OpGroupPtr& src,
                                      const OpGroupPtr& dst) const = 0;
 
@@ -75,6 +80,9 @@ class FuseHelper {
                                      const OpGroupPtr& dst) const = 0;
 
   virtual bool ReduceFuseBroadcast(const OpGroupPtr& src,
+                                   const OpGroupPtr& dst) const = 0;
+
+  virtual bool ReduceFuseInjective(const OpGroupPtr& src,
                                    const OpGroupPtr& dst) const = 0;
 
   virtual bool ReduceFuseReduce(const OpGroupPtr& src,
@@ -120,10 +128,16 @@ class GraphGroupFuseHelper final : public FuseHelper {
   bool InjectiveHorizontalWithReduce(const OpGroupPtr& src,
                                      const OpGroupPtr& dst) const override;
 
+  bool InjectiveFuseInjective(const OpGroupPtr& src,
+                              const OpGroupPtr& dst) const override;
+
   bool ReduceFuseElementwise(const OpGroupPtr& src,
                              const OpGroupPtr& dst) const override;
 
   bool ReduceFuseBroadcast(const OpGroupPtr& src,
+                           const OpGroupPtr& dst) const override;
+
+  bool ReduceFuseInjective(const OpGroupPtr& src,
                            const OpGroupPtr& dst) const override;
 
   bool ReduceFuseReduce(const OpGroupPtr& src,
@@ -341,7 +355,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::AllOutputsSameSize(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::HorizontalElementwiseFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return honrizontal_elementwise_fuse_reduce(src.GetGroup(), dst.GetGroup());
+  return horizontal_elementwise_fuse_reduce(src.GetGroup(), dst.GetGroup());
 }
 
 template <typename FusePassCtxT>
@@ -354,6 +368,12 @@ template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::HorizontalWithInjective(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
   return horizontal_with_injective(src.GetGroup(), dst.GetGroup());
+}
+
+template <typename FusePassCtxT>
+bool GraphGroupFuseHelper<FusePassCtxT>::InjectiveFuseInjective(
+    const OpGroupPtr& src, const OpGroupPtr& dst) const {
+  return true;
 }
 
 template <typename FusePassCtxT>
@@ -384,6 +404,21 @@ template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseBroadcast(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
   return reduce_fuse_broadcast(src.GetGroup(), dst.GetGroup());
+}
+
+template <typename FusePassCtxT>
+bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseInjective(
+    const OpGroupPtr& src, const OpGroupPtr& dst) const {
+  bool can_all_special_ops_fused = false;
+  dst.WalkOpNodes([&](const OpNode& op) {
+    can_all_special_ops_fused =
+        can_all_special_ops_fused &&
+        SpecialOpsFusionRule::GetInstance().ConsumerOpAllowsFusion(
+            op.node(), OpPatternKind::kReduction);
+  });
+
+  return can_all_special_ops_fused &&
+         horizontal_with_injective(src.GetGroup(), dst.GetGroup());
 }
 
 template <typename FusePassCtxT>
@@ -564,7 +599,7 @@ class DefaultInputFusePass final : public InputFusePass {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }
@@ -655,7 +690,7 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         break;
       }
 
-      // if can't fuse to othors Groups, new Groups.
+      // if can't fuse to other Groups, new Groups.
       if (!fusionable) {
         fusionable_consumers.push_back({candidate});
       }
@@ -789,7 +824,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         {{OpPatternKind::kInjective, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::IsSameSize},
         {{OpPatternKind::kInjective, OpPatternKind::kInjective},
-         &DefaultVerticalFusePass::HorizontalWithInjective},
+         &DefaultVerticalFusePass::InjectiveFuseInjective},
         {{OpPatternKind::kInjective, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::InjectiveHorizontalWithReduce},
 
@@ -798,7 +833,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         {{OpPatternKind::kReduction, OpPatternKind::kBroadcast},
          &DefaultVerticalFusePass::ReduceFuseBroadcast},
         {{OpPatternKind::kReduction, OpPatternKind::kInjective},
-         &DefaultVerticalFusePass::HorizontalWithInjective},
+         &DefaultVerticalFusePass::ReduceFuseInjective},
         {{OpPatternKind::kReduction, OpPatternKind::kReduction},
          &DefaultVerticalFusePass::ReduceFuseReduce},
     };
@@ -820,6 +855,12 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
                                       const OpGroupPtr& src,
                                       const OpGroupPtr& dst) {
     return ctx->fuse_helper().HorizontalWithInjective(src, dst);
+  }
+
+  static bool InjectiveFuseInjective(LightwareFusePassCtx* ctx,
+                                     const OpGroupPtr& src,
+                                     const OpGroupPtr& dst) {
+    return ctx->fuse_helper().InjectiveFuseInjective(src, dst);
   }
 
   static bool ElementwiseFuseReduce(LightwareFusePassCtx* ctx,
@@ -850,6 +891,12 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
                                   const OpGroupPtr& src,
                                   const OpGroupPtr& dst) {
     return ctx->fuse_helper().ReduceFuseBroadcast(src, dst);
+  }
+
+  static bool ReduceFuseInjective(LightwareFusePassCtx* ctx,
+                                  const OpGroupPtr& src,
+                                  const OpGroupPtr& dst) {
+    return ctx->fuse_helper().ReduceFuseInjective(src, dst);
   }
 
   static bool ReduceFuseReduce(LightwareFusePassCtx* ctx,
@@ -1033,10 +1080,7 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(
-      const GroupList& group_list,
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
-      : shape_analysis_(shape_analysis) {
+  explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
     fusion_groups_ = group_list;
     // init input to consumers.
     InitInputToConsumers();
@@ -1067,7 +1111,7 @@ class GeneralFusionMergePassHelper {
   }
 
   GroupList operator()() {
-    // run fusion merge untill no update.
+    // run fusion merge until no update.
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
@@ -1095,6 +1139,46 @@ class GeneralFusionMergePassHelper {
 
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
+    DoPrologueGenerateShapeOpGroupFustion();
+  }
+
+  void DoPrologueGenerateShapeOpGroupFustion() {
+    VLOG(3) << "DoPrologueGenerateShapeOpGroupFustion...!";
+    bool updated = false;
+    for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
+      auto producer = fusion_groups_[idx];
+      VLOG(3) << "Fusion Producer idx " << idx << " Group -> "
+              << producer->group_id;
+      // Skip to next iterator if producer is sub group.
+      if (producer->belong_groups.size()) continue;
+
+      // a prologue generate-shape-op group has only one op.
+      if (producer->ops.size() != 1) continue;
+
+      // only prologue generate-shape-op groups will be processed.
+      if (!producer->ops.at(0)->isa<cinn::dialect::GenerateShapeOp>()) continue;
+
+      // prologue generate-shape-op groups have no inputs.
+      if (!producer->input_ops.empty()) continue;
+
+      // do generate-shape-op fusion.
+      updated |= FusePrologueGenerateShapeOpGroupToConsumer(producer);
+    }
+    if (updated) {
+      UpdateFusionGroup();
+    }
+  }
+
+  bool FusePrologueGenerateShapeOpGroupToConsumer(const GroupPtr& producer) {
+    VLOG(3) << "FusePrologueGenerateShapeOpGroupToConsumer handling producer : "
+            << producer->group_id;
+    // copy is need.
+    auto consumer_groups = producer->consumer_groups();
+    if (consumer_groups.size() > 0) {
+      RecomputeFuse(producer, consumer_groups);
+      return true;
+    }
+    return false;
   }
 
   bool DoGeneralHorizontalFusion() {
@@ -1571,7 +1655,7 @@ class GeneralFusionMergePassHelper {
                         fusionable_consumers) {
     VLOG(3) << "VerticalFuse...!";
     GroupList fused_groups;
-    GroupPtr master_fuesd_group(nullptr);
+    GroupPtr master_fused_group(nullptr);
     for (auto& consumer : fusionable_consumers) {
       auto fused_group = std::make_shared<ir::Group>();
       // update depth using consumer depth.
@@ -1713,8 +1797,8 @@ class GeneralFusionMergePassHelper {
       fusion_groups_[postion] = fused_group;
       fusion_groups_index_[fused_group] = postion;
 
-      if (!master_fuesd_group.get()) {
-        master_fuesd_group = fused_group;
+      if (!master_fused_group.get()) {
+        master_fused_group = fused_group;
       }
       CHECK(fused_group->output_ops.size())
           << "No output node is found, " << fused_group->group_id;
@@ -1744,8 +1828,8 @@ class GeneralFusionMergePassHelper {
 
       if (be_output) {
         // VLOG(4) << "Insert Id " << node->id() << " Into Group "
-        //         << master_fuesd_group->group_id;
-        master_fuesd_group->output_ops.insert(node);
+        //         << master_fused_group->group_id;
+        master_fused_group->output_ops.insert(node);
       }
     }
     // insert unfusionable consumer groups
@@ -1753,10 +1837,10 @@ class GeneralFusionMergePassHelper {
       if (fusionable_consumers.count(consumer)) {
         continue;
       }
-      master_fuesd_group->mut_consumer_groups()->insert(consumer);
+      master_fused_group->mut_consumer_groups()->insert(consumer);
       // update consumer's producer
       consumer->mut_producer_groups()->erase(producer);
-      consumer->mut_producer_groups()->insert(master_fuesd_group);
+      consumer->mut_producer_groups()->insert(master_fused_group);
     }
   }
 
@@ -1849,7 +1933,7 @@ class GeneralFusionMergePassHelper {
           sub_group->ops.insert(sub_group->ops.begin(),
                                 producer->CollectOps()[0]);
           sub_group->ops_set.insert(producer->CollectOps()[0]);
-          // remove depency.
+          // remove dependency.
           consumer->input_ops.erase(producer->CollectOps()[0]);
           consumer->mut_producer_groups()->erase(producer);
           producer->mut_consumer_groups()->erase(consumer);
@@ -2126,29 +2210,21 @@ class GeneralFusionMergePassHelper {
     }
   }
 
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
-    return CHECK_NOTNULL(shape_analysis_.lock());
-  }
-
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
   std::unordered_map<::pir::Value,
                      std::unordered_set<GroupPtr, Hasher, Comparator>>
       input_to_consumers_;
-  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
-GroupList GeneralFusionMergePassInternal(
-    const GroupList& group_list,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";
     return group_list;
   }
 
-  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list,
-                                                        shape_analysis);
+  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
 
   if (VLOG_IS_ON(6)) {

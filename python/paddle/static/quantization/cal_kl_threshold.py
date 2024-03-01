@@ -80,7 +80,7 @@ def safe_entropy(reference_distr_P, P_sum, candidate_distr_Q, Q_sum):
 
 def cal_kl_threshold(hist, bin_width, bits):
     '''
-    Using the KL-divergenc method to get the more precise threshold.
+    Using the KL-divergence method to get the more precise threshold.
 
     Args:
         hist(List): The hist of the tensor.

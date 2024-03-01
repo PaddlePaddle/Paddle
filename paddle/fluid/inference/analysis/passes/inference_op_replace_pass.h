@@ -28,7 +28,7 @@ namespace analysis {
 
 /*
  * There are some ops (while, conditional_block_op etc) which have different
- * optimization points under predicion and training conditions.
+ * optimization points under prediction and training conditions.
  * So, We added the corresponding inference impl to these ops separately.
  * This pass replaces these ops with corresponding inference ops.
  */

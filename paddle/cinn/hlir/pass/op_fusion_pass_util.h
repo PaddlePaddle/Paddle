@@ -134,7 +134,7 @@ CONDITION_FUNC(is_horizontal_relation) {
       candidates.pop();
       // visit all producer node
       for (auto tmp_node : helper->GetProducerNode(candidate)) {
-        // check depency.
+        // check dependency.
         if (producer == tmp_node) {
           return true;
         }
@@ -142,7 +142,7 @@ CONDITION_FUNC(is_horizontal_relation) {
         if (!consumer->nodes_set.count(tmp_node)) {
           continue;
         }
-        // recored visited node.
+        // recorded visited node.
         if (!visited_set.count(tmp_node)) {
           visited_set.insert(tmp_node);
           candidates.push(tmp_node);

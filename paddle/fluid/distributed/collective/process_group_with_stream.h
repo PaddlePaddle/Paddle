@@ -23,7 +23,7 @@ namespace distributed {
 
 // NOTE: Notice that some backends use `stream` as an abstract conception of
 // hardward resource. We provide this base class allowing users to put
-// communications on calculation stream. In some scenorios, we found this will
+// communications on calculation stream. In some scenarios, we found this will
 // save the time of switching streams.
 class ProcessGroupWithStream : public ProcessGroup {
  public:

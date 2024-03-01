@@ -43,7 +43,7 @@ using ::cinn::hlir::framework::Tensor;
 
 void TestAutoGenRuleBase::Initialize(const cinn::common::Target& target) {
   target_ = target;
-  backend_compier_ = backends::Compiler::Create(target);
+  backend_compiler_ = backends::Compiler::Create(target);
 }
 
 ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
@@ -92,7 +92,7 @@ ir::Module TestAutoGenRuleBase::BuildIRModule(const ir::IRSchedule& schedule) {
   CHECK_EQ(lowered_funcs_.size(), updated_bodys.size())
       << "associated exprs size not equal";
 
-  ir::Module::Builder builder("test_bulder", this->target_);
+  ir::Module::Builder builder("test_builder", this->target_);
   for (int i = 0; i < lowered_funcs_.size(); ++i) {
     ir::Expr func_body = updated_bodys.at(i);
     const ir::LoweredFunc& ori_func = lowered_funcs_.at(i);
@@ -124,9 +124,9 @@ raw_func_type TestAutoGenRuleBase::GenExecutableKernel(
     const ir::Module& ir_module) {
   auto&& func_name = lowered_funcs_.front()->name;
   // Compile to machine code
-  backend_compier_->Build(ir_module);
+  backend_compiler_->Build(ir_module);
   auto test_func_ptr = reinterpret_cast<void (*)(void**, int32_t)>(
-      backend_compier_->Lookup(func_name));
+      backend_compiler_->Lookup(func_name));
   return test_func_ptr;
 }
 

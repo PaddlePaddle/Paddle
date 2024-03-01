@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -41,58 +44,63 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for data_layout in ["NCHW", "NHWC"]:
-            for interp_method in ["nearest"]:
-                for align_corners in [True, False]:
-                    for scale in [2.0, -1.0, 0.0]:
-                        for out_h in [32, 64, 128 - 32]:
-                            for out_w in [32, -32]:
-                                dics = [
-                                    {
-                                        "data_layout": data_layout,
-                                        "interp_method": interp_method,
-                                        "align_corners": align_corners,
-                                        "scale": scale,
-                                        "out_h": out_h,
-                                        "out_w": out_w,
-                                    }
-                                ]
+        for (
+            data_layout,
+            interp_method,
+            align_corners,
+            scale,
+            out_h,
+            out_w,
+        ) in product(
+            ["NCHW", "NHWC"],
+            ["nearest"],
+            [True, False],
+            [2.0, -1.0, 0.0],
+            [32, 64, 128 - 32],
+            [32, -32],
+        ):
+            dics = [
+                {
+                    "data_layout": data_layout,
+                    "interp_method": interp_method,
+                    "align_corners": align_corners,
+                    "scale": scale,
+                    "out_h": out_h,
+                    "out_w": out_w,
+                }
+            ]
 
-                                ops_config = [
-                                    {
-                                        "op_type": "nearest_interp",
-                                        "op_inputs": {"X": ["input_data"]},
-                                        "op_outputs": {
-                                            "Out": [
-                                                "nearest_interp_output_data"
-                                            ]
-                                        },
-                                        "op_attrs": dics[0],
-                                    }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "nearest_interp",
+                    "op_inputs": {"X": ["input_data"]},
+                    "op_outputs": {"Out": ["nearest_interp_output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, dics
-                                            )
-                                        )
-                                    },
-                                    outputs=["nearest_interp_output_data"],
-                                )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, dics)
+                    )
+                },
+                outputs=["nearest_interp_output_data"],
+            )
 
-                                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}

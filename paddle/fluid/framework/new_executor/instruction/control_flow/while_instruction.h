@@ -55,7 +55,7 @@ class WhileInstruction : public InstructionBase {
   void ShareInputsToOutputs();
 
   // Pass argument to body_block for execution.
-  void CopyOutputsToBlockArgs();
+  void ShareOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
   void ShareDatasToOutputs();
@@ -70,6 +70,7 @@ class WhileInstruction : public InstructionBase {
   std::unique_ptr<PirInterpreter> body_inter_;
   std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
+  std::set<std::string> external_input_names_;
 
   ::pir::Block* body_block_;
 

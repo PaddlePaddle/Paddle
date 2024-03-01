@@ -21,7 +21,7 @@ namespace ir {
 
 std::string IRScheduleErrorHandler::GeneralErrorMessage() const {
   std::ostringstream os;
-  os << "[IRScheduleError] An error occurred in the scheduel primitive < "
+  os << "[IRScheduleError] An error occurred in the schedule primitive < "
      << this->primitive_ << " >. " << std::endl;
   os << indent_str_ << "[Error info] " << this->err_msg_;
   return os.str();

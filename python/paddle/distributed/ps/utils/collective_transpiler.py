@@ -357,7 +357,7 @@ class GradAllReduce(Collective):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # As we search ops reversely, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
@@ -631,7 +631,7 @@ class MultiThread(GradAllReduce):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allgather
+                    # As we search ops reversely, we should insert c_allgather
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(

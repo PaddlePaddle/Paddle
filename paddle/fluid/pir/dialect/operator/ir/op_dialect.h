@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -35,8 +35,7 @@ class TEST_API OperatorDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
  private:
   void initialize();
@@ -56,8 +55,7 @@ class CustomOpDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
   void RegisterCustomOp(const paddle::OpMetaInfo& op_meta);
 
@@ -70,7 +68,7 @@ class CustomOpDialect : public pir::Dialect {
   }
 
  private:
-  std::vector<std::string> op_names_;
+  std::vector<const char*> op_names_;
 };
 
 }  // namespace dialect

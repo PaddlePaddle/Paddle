@@ -34,8 +34,9 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace pybind {
@@ -520,7 +521,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {(int64_t)PyLong_AsLongLong(obj)};
+    return {(int64_t)PyLong_AsLongLong(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
@@ -865,18 +866,14 @@ void CastPyArg2AttrValues(PyObject* obj,
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      // TODO(xiongkun): judge OpResult or Value;
+      // TODO(xiongkun): judge Value;
       item = PyList_GetItem(obj, i);
       ::pybind11::detail::instance* inst =
           (::pybind11::detail::instance*)item;  // NOLINT
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
-      ::pir::OpResult* opresult = reinterpret_cast<::pir::OpResult*>(vh[0]);
-      if (opresult->impl() == nullptr) {
-        results.emplace_back(pir::Value(nullptr));
-      } else {
-        results.emplace_back(pir::Value(opresult->Value::impl()));
-      }
+      ::pir::Value* value = reinterpret_cast<::pir::Value*>(vh[0]);
+      results.emplace_back(pir::Value(value->impl()));
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidType(

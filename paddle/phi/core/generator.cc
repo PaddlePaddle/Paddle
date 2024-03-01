@@ -47,7 +47,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("xpu device id shoule be greater than 0"));
+        phi::errors::InvalidArgument("xpu device id should be greater than 0"));
   }
 
   std::call_once(xpu_device_flags[device_id], [device_id]() {
@@ -78,7 +78,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "cuda device id shoule be greater than 0"));
+        "cuda device id should be greater than 0"));
   }
 
   std::call_once(cuda_device_flags[device_id], [device_id]() {

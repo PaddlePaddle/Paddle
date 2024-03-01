@@ -28,9 +28,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
@@ -94,7 +94,10 @@ PhiKernelInstruction::PhiKernelInstruction(
     }
     SetEventsToWaitInfo(events_to_wait);
   }
-  VLOG(6) << "finish process dist attributes";
+  VLOG(6) << "finish process dist attributes for " << op_name
+          << " : [execution_stream, stream_priority, scheduling_priority] = ["
+          << GetExecutionStream() << ", " << GetStreamPriority() << ", "
+          << GetSchedulingPriority() << "]";
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -137,6 +140,16 @@ PhiKernelInstruction::PhiKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
+  platform::DeviceContext* dev_ctx =
+      ParseDeviceContext(op,
+                         phi::DeviceContextPool::Instance().Get(
+                             phi::TransToPhiPlace(kernel_key.backend())),
+                         place,
+                         GetExecutionStream(),
+                         GetStreamPriority());
+  SetDeviceContext(dev_ctx);
+  VLOG(6) << "finish process device context";
+
   BuildPhiContext<phi::KernelContext,
                   const phi::TensorBase*,
                   phi::TensorBase*,
@@ -145,18 +158,8 @@ PhiKernelInstruction::PhiKernelInstruction(
                   true>(
       op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
-  kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
+  kernel_context_.SetDeviceContext(dev_ctx);
   VLOG(6) << "finish process kernel context";
-
-  SetDeviceContext(
-      ParseDeviceContext(op,
-                         phi::DeviceContextPool::Instance().Get(
-                             phi::TransToPhiPlace(kernel_key.backend())),
-                         place,
-                         GetExecutionStream(),
-                         GetStreamPriority()));
-  VLOG(6) << "finish process device context";
 
   InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
