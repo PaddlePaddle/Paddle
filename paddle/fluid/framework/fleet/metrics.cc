@@ -219,7 +219,7 @@ void BasicAucCalculator::calculate_bucket_error() {
       }
     }
   } else {
-    double* table[2] = {&_table[0][0], &_table[1][0]};
+    double* table[2] = {&_table[0][0], &_table[1][0]};  // NOLINT
     for (int i = 0; i < _table_size; i++) {
       double click = table[1][i];
       double show = table[0][i] + table[1][i];

@@ -120,8 +120,8 @@ struct DataRecord {
 void PrepareInputs(std::vector<PaddleTensor> *input_slots,
                    DataRecord *data,
                    int batch_size) {
-  PaddleTensor turns_tensor[FLAGS_max_turn_num];
-  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];
+  PaddleTensor turns_tensor[FLAGS_max_turn_num];       // NOLINT
+  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];  // NOLINT
   PaddleTensor response_tensor;
   PaddleTensor response_mask_tensor;
   std::string turn_pre = "turn_";

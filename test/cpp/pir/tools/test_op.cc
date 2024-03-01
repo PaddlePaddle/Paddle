@@ -35,7 +35,8 @@ void BranchOp::VerifySig() const {
   IR_ENFORCE((*this)->successor(0), "successor[0] can't be nullptr");
 }
 
-const char *Operation1::attributes_name[2] = {"op1_attr1", "op1_attr2"};
+const char *Operation1::attributes_name[2] = {"op1_attr1",
+                                              "op1_attr2"};  // NOLINT
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT
                        pir::OperationArgument &argument) {  // NOLINT

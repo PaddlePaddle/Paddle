@@ -507,7 +507,7 @@ void HeterSectionWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
+    char mbstr[80];  // NOLINT
     std::strftime(
         mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
     std::stringstream ss;
