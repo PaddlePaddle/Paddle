@@ -1171,7 +1171,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
   return strategy;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForStore(
+std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<Type> &out_type,
@@ -1211,7 +1211,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForStore(
   return strategy;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForStoreSymbolic(
+std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<Type> &out_type,
@@ -1577,9 +1577,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_inputs(1)
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForStore)
+          "CINNStrategy", cinn::hlir::op::StrategyForYieldStore)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
-          "CINNStrategySymbolic", cinn::hlir::op::StrategyForStoreSymbolic)
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForYieldStoreSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))

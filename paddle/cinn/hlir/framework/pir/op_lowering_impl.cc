@@ -77,13 +77,12 @@ int64_t Next2Power(int64_t n) {
 
 std::shared_ptr<cinn::ir::GroupTileInfo> OpLowererImpl::GetGroupTileInfo(
     const GroupPtr& group) {
-  auto master_ops = group->master_ops;
   std::shared_ptr<cinn::ir::GroupTileInfo> group_tile_info =
       std::make_shared<cinn::ir::GroupTileInfo>();
 
-  auto data_dim = group->loop_ranges;
+  const auto data_dim = group->loop_ranges;
   group_tile_info->data_rank = data_dim.size();
-  auto reduce_axis = group->reduce_axis;
+  const auto reduce_axis = group->reduce_axis;
 
   std::set<int64_t> reduce_set;
   for (auto dim : reduce_axis) {
