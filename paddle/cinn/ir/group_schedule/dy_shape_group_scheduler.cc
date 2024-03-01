@@ -36,14 +36,8 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  // tactics_.emplace_back(new AlignIterSpaceTactic());
-  // tactics_.emplace_back(new ComputeInlineTactic());
-  // tactics_.emplace_back(new TileTactic());
-  // tactics_.emplace_back(new OptimizeReductionTactic());
-  // tactics_.emplace_back(new BindCudaTactic());
-  // tactics_.emplace_back(new ArrangeStorageTactic());
-  tactics_.emplace_back(new LoopReorderAlignmentTactic());
-  tactics_.emplace_back(new TileFirstGeneralTactic());
+  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  tactics_.emplace_back(CreateTileFirstGeneralTactic());
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -131,22 +125,7 @@ void DynamicShapeGroupScheduler::Schedule() {
       ApplyTactics(&bucket_context);
     }
   } else {
-    ScheduleContext schedule_context{OutputTensorNames(),
-                                     target_,
-                                     IterativeSpaceInfo(),
-                                     BucketInfo(),
-                                     group_tile_info_};
-    LoopReorderAlignmentTactic loop_reorder_tactic;
-    loop_reorder_tactic.Init(&schedule_context);
-    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
-      loop_reorder_tactic.Apply(ir_sch_, node->id());
-    });
-
-    TileFirstGeneralTactic tile_first_general_tactic;
-    tile_first_general_tactic.Init(&schedule_context);
-    schedule_block_graph_->DFSTopoWalk([&](ir::ScheduleBlockNode* node) {
-      tile_first_general_tactic.Apply(ir_sch_, node->id());
-    });
+    CINN_NOT_IMPLEMENTED;
   }
 }
 

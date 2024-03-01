@@ -20,6 +20,34 @@
 namespace cinn {
 namespace ir {
 
+class LoopReorderAlignmentTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override {
+    return "LoopReorderAlignmentTactic";
+  }
+
+ private:
+  bool NeedReorderLoops();
+
+  std::vector<int32_t> GetNewOrder();
+
+  void UpdateBaseRank(ir::IRSchedule* sch, const std::string& block_id);
+
+  void DoBroadcastLoop(ir::IRSchedule* sch, const std::string& block_id);
+
+  void DoReorder(ir::IRSchedule* sch, const std::string& block_id);
+
+ private:
+  ScheduleContext* context_;
+  size_t base_rank_;
+  bool need_reorder_loops_;
+  std::vector<int32_t> new_order_;
+};
+
 void LoopReorderAlignmentTactic::Init(ScheduleContext* context) {
   context_ = context;
   base_rank_ = 0;
@@ -136,6 +164,10 @@ void LoopReorderAlignmentTactic::DoReorder(ir::IRSchedule* sch,
   }
 
   sch->Reorder(block_id, new_order_);
+}
+
+std::unique_ptr<ScheduleTactic> CreateLoopReorderAlignmentTactic() {
+  return std::make_unique<LoopReorderAlignmentTactic>();
 }
 
 }  // namespace ir

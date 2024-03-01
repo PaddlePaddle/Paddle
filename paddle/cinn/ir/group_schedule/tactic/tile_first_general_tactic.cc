@@ -19,6 +19,34 @@
 namespace cinn {
 namespace ir {
 
+class TileFirstGeneralTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "TileFirstGeneralTactic"; }
+
+ private:
+  void MergeFlattenAxis(ir::IRSchedule* sch, const std::string& block_id);
+  void MergeReduceAxis(ir::IRSchedule* sch, const std::string& block_id);
+  void SplitFlattenInner(ir::IRSchedule* sch, const std::string& block_id);
+  void SplitReduceInner(ir::IRSchedule* sch, const std::string& block_id);
+  void ReorderFlattenInnerWithReduceAxis(ir::IRSchedule* sch,
+                                         const std::string& block_id);
+  void SplitWarpNumber(ir::IRSchedule* sch, const std::string& block_id);
+  void Unroll(ir::IRSchedule* sch, const std::string& block_id);
+  void VariableTypeAssignment(ir::IRSchedule* sch, const std::string& block_id);
+  void SetReduceType(ir::IRSchedule* sch, const std::string& block_id);
+  void BindCudaInfo(ir::IRSchedule* sch, const std::string& block_id);
+
+ private:
+  ScheduleContext* context_;
+  std::vector<int32_t> vec_flatten_axis_;
+  std::vector<int32_t> vec_reduce_axis_;
+  int reduce_current_axis_{0};
+};
+
 void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   context_ = context;
   reduce_current_axis_ =
@@ -234,6 +262,10 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
     sch->Bind(loops[0], "blockIdx.x");
     sch->Bind(loops[1], "threadIdx.x");
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateTileFirstGeneralTactic() {
+  return std::make_unique<TileFirstGeneralTactic>();
 }
 
 }  // namespace ir
