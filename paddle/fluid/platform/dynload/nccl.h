@@ -31,6 +31,7 @@ namespace dynload {
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommInitRank2);           \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
@@ -70,15 +71,6 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclRedOpCreatePreMulSum);                \
   __macro(ncclRedOpDestroy);
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
-#endif
-
-#ifndef NCCL_FIX_CODE
-#define NCCL_FIX_CODE 0
-#endif
-
-#if NCCL_FIX_CODE > 0
-#define NCCL_RAND_ROUTINE_EACH_WITH_FIX(__macro) __macro(ncclCommInitRank2);
-NCCL_RAND_ROUTINE_EACH_WITH_FIX(PLATFORM_DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
