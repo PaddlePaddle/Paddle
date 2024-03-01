@@ -146,7 +146,6 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
 
   bool Match(paddle::dialect::ScaleOp op) const override {
     bool flag = CompatibleInfo::IsSupportCinn(*op.operation());
-    VLOG(0) << "###### op " << op->name() << " FLAG: " << flag;
     return flag;
   }
 

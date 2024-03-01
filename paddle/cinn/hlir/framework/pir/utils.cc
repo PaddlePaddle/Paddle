@@ -225,16 +225,21 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
 bool IsShapeComputeOp(const ::pir::Operation& op) {
   const auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
       op.GetParent()->parent_program());
-  bool all_input_has_shape_data = false;
+  if (op.num_operands() == 0) {
+    return false;
+  }
+  bool all_input_has_shape_data = true;
   for (uint32_t i = 0; i < op.num_operands(); ++i) {
-    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i)) &&
-        shape_analysis.GetShapeOrDataForValue(op.operand_source(i))
-            .data()) {  // no shape data
-      all_input_has_shape_data = true;
-    } else {
-      all_input_has_shape_data = false;
-      break;
+    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.operand_source(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
     }
+    all_input_has_shape_data = false;
+    break;
   }
   return all_input_has_shape_data;
 }
