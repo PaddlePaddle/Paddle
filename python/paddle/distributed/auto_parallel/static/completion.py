@@ -181,6 +181,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "unsqueeze2",
         "silu",
         "concat",
+        "expand_as_v2",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":

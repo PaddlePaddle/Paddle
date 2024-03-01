@@ -309,7 +309,7 @@ void ProgramTranslator::TranslateIfOperation(
     TranslationContext* translation_ctx,
     pir::Block* dst_block,
     bool for_bwd) {
-  VLOG(8) << "=============>Start to translate if op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate ConditionalBlockOp";
   auto& type_translator = TypeTranslator::instance();
 
   auto cond_op_cond = op->Input("Cond")[0];
@@ -479,7 +479,7 @@ void ProgramTranslator::TranslateWhileOperation(
     const OpDesc* op,
     TranslationContext* translation_ctx,
     pir::Block* dst_block) {
-  VLOG(8) << "=============>Start to translate while op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate WhileOp";
   auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
   auto& inputs = op->Output("Out");
   auto& cond_var = op->Input("Condition")[0];

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pir/include/core/value.h"
+
 namespace pir {
 
 namespace detail {

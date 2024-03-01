@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <unordered_set>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -37,10 +38,17 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
 
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
-  // Some vars may be deleted by pass, so we need to remove them in block
+  // Remove the scale and zero point parameters from optimized program.
+  auto scale_and_zero_point_param = graph->GetOrInit<std::vector<std::string>>(
+      framework::ir::kScaleAndZeroPointParamAttr);
   framework::BlockDesc* block = optimized_program_desc.MutableBlock(0);
   for (auto& var_desc : block->AllVars()) {
-    if (var_desc->Persistable() && !scope.FindVar(var_desc->Name())) {
+    auto var_name = var_desc->Name();
+    if (var_desc->Persistable() && scope.FindVar(var_name) &&
+        std::count(scale_and_zero_point_param.begin(),
+                   scale_and_zero_point_param.end(),
+                   var_name) > 0) {
+      scope.EraseVars({var_name});
       block->RemoveVar(var_desc->Name());
     }
   }
@@ -74,7 +82,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
       }
     }
 
-    std::string save_params_path = path + ".pdiparams";
+    std::string save_params_path = path + "/" + "_optimized.pdiparams";
     std::vector<std::string> save_var_list(save_var_set.begin(),
                                            save_var_set.end());
     std::sort(save_var_list.begin(), save_var_list.end());
@@ -105,7 +113,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
         }
       }
     }
-    std::string save_model_path = path + ".pdmodel";
+    std::string save_model_path = path + "/" + "_optimized.pdmodel";
     auto str = optimized_program_desc.Proto()->SerializeAsString();
     std::ofstream file(save_model_path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());  // NOLINT

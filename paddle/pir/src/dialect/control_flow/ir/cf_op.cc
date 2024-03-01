@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {

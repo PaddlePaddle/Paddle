@@ -106,7 +106,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
              "expand_times_tensor and expand_times.")
         .AsDispensable();
     AddInput("expand_times_tensor",
-             "(Tensor Tensor<int>), epxand times for X."
+             "(Tensor Tensor<int>), expand times for X."
              "It has a higher priority than expand_times, but a lower priority "
              "than ExpandTimes")
         .AsDuplicable()
@@ -165,7 +165,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
           out_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension size (%d) of Input(Out@GRAD) should be "
-              "equal to the crroresponding dimension size (%d) of Input(X)",
+              "equal to the corresponding dimension size (%d) of Input(X)",
               out_dims[0],
               x_dims[0]));
       start_pos = 1u;
@@ -181,7 +181,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
               out_dims[i],
               platform::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
-                  "equal to the multiplication of the crroresponding dimension "
+                  "equal to the multiplication of the corresponding dimension "
                   "sizes of Input(X) (%d) and expand_times (%d).",
                   i,
                   out_dims[i],
