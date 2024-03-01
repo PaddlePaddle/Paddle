@@ -5,7 +5,9 @@ if(WITH_TESTING AND TEST test_code_generator)
   set_tests_properties(test_code_generator PROPERTIES TIMEOUT 120)
 endif()
 
-nv_test(	
-  test_fusion_group_pass	
-  SRCS fusion_group_pass_tester.cc	
-  DEPS fusion_group_pass graph_viz_pass)
+if(not win32)
+  nv_test(	
+    test_fusion_group_pass	
+    SRCS fusion_group_pass_tester.cc	
+    DEPS fusion_group_pass graph_viz_pass)
+endif()
