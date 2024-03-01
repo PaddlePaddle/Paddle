@@ -846,8 +846,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         }
 
         group_tensor
-            .ShareDataWith(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
+            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                grad_tensor.impl())))
             .Resize({grad_tensor.numel()});
       } else {
         VLOG(3) << "Tensor[" << tensors_[var_index].name()
