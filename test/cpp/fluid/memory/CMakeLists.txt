@@ -1,7 +1,8 @@
 paddle_test(memory_stats_test SRCS memory_stats_test.cc)
 paddle_test(stats_test SRCS stats_test.cc)
 
-paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc DEPS allocator)
+paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc
+            DEPS allocator)
 nv_test(
   buffered_allocator_test
   SRCS buffered_allocator_test.cc
@@ -31,35 +32,24 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS allocator)
+  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
+              allocator)
 endif()
 
-cc_test(
-  test_aligned_allocator
-  SRCS test_aligned_allocator.cc
-  DEPS allocator)
+paddle_test(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
+            allocator)
 
-cc_test(
-  retry_allocator_test
-  SRCS retry_allocator_test.cc
-  DEPS allocator)
+paddle_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
 endif()
 
-cc_test(
-  allocator_facade_abs_flags_test
-  SRCS allocator_facade_abs_flags_test.cc
-  DEPS allocator)
+paddle_test(allocator_facade_abs_flags_test SRCS
+            allocator_facade_abs_flags_test.cc DEPS allocator)
 
-cc_test(
-  allocator_facade_frac_flags_test
-  SRCS allocator_facade_frac_flags_test.cc
-  DEPS allocator)
+paddle_test(allocator_facade_frac_flags_test SRCS
+            allocator_facade_frac_flags_test.cc DEPS allocator)
 
 if(WITH_GPU)
   nv_test(
@@ -147,3 +137,11 @@ cc_test(
   buddy_allocator_test
   SRCS buddy_allocator_test.cc
   DEPS allocator)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(memory_stats_test)
+  copy_onnx(stats_test)
+  copy_onnx(naive_best_fit_allocator_test)
+endif()
