@@ -77,11 +77,6 @@ prim_white_list = [
 
 # white ops list whose kernel can automaically do type promotion.
 # future will get this list from same place with static graph.
-# type_promote_white_list = {
-#     "add": ["x", "y"],
-#     "subtract": ["x", "y"],
-#     "where": ["x", "y"],
-# }
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],

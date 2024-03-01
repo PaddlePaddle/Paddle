@@ -92,6 +92,7 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_min": ['X', 'Y'],
     "elementwise_min_grad": ['X', 'Y'],
     "elementwise_mod": ['X', 'Y'],
+    "elementwise_mod_grad": ['X', 'Y'],
     "huber_loss": ['input', 'label'],
     "huber_loss_grad": ['input', 'label'],
     "nextafter": ['x', 'y'],
