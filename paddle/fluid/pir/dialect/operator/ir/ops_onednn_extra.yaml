@@ -62,9 +62,11 @@
 
 - op : depthwise_conv2d
   extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
+  data_format_tensors : input
 
 - op : depthwise_conv2d_grad
   extra_args : bool is_test=false, bool fuse_relu_before_depthwise_conv=false, bool use_quantizer=false, str mkldnn_data_type="float32", bool fuse_relu=false, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0, bool use_addto=false, bool fuse_residual_connection=false, float scale_in=1.0, float scale_out=1.0, float scale_in_eltwise=1.0, float[] scale_weights={1.0f}, bool force_fp32_output=false
+  data_format_tensors : input, out_grad
 
 - op : divide
 
@@ -191,6 +193,7 @@
 - op : multiply_grad
 
 - op : nearest_interp
+  data_format_tensors : x
 
 - op : pad
 
