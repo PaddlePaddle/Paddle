@@ -2209,6 +2209,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             assert for_iter_instr.jump_to is not None
             if sys.version_info >= (3, 12):
                 assert for_iter_instr.jump_to.opname == "END_FOR"
+                # breakpoint()
 
                 out_loop_instr = for_iter_instr.jump_to
 
@@ -2230,14 +2231,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
                         instr.jump_to = nop_for_continue
 
                     if (
-                        instr.opname != "FOR_ITER"
-                        and instr.jump_to in origin_instrs
+                        instr.jump_to in origin_instrs
                         and origin_instrs.index(instr.jump_to) >= end_idx
                     ):
                         instr.jump_to = nop_for_break
 
                 jump.jump_to = for_iter_instr
                 for_iter_instr.jump_to = end_for
+                # breakpoint()
             else:
                 """
                         >>    6 FOR_ITER                34 (to 76)

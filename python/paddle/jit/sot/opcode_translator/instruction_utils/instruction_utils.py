@@ -147,8 +147,11 @@ def modify_instrs(instructions: list[Instruction]) -> None:
     """
     modify_completed = False
     while not modify_completed:
+        # breakpoint()
         reset_offset(instructions)
+        # breakpoint()
         relocate_jump_target(instructions)
+        # breakpoint()
         modify_completed = modify_extended_args(instructions)
 
 
@@ -337,11 +340,10 @@ def modify_vars(instructions: list[Instruction], code_options):
                     instrs.argval in namemap
                 ), f"`{instrs.argval}` not in {namemap}"
                 instrs.arg = namemap.index(instrs.argval)
-        # 可能是错的
         elif instrs.opname == "FOR_ITER":
-            # breakpoint()
             if sys.version_info >= (3, 12):
                 assert instrs.arg is not None
+                # END_FOR offset = ((FOR_ITER arg) + (FOR_ITER offset) - 1) << 1
                 instrs.arg -= 1
 
 
