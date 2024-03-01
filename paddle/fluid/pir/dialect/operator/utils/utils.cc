@@ -87,6 +87,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
     CReduceMinOp::name(),
+    CReduceProdOP::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name()};
 

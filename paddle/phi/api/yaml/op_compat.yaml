@@ -3555,6 +3555,12 @@
   outputs :
     out: Out
 
+- op: c_reduce_prod
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_reduce_sum
   inputs :
     x : X

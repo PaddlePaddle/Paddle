@@ -160,6 +160,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'match_matrix_tensor',
     'c_reduce_min',
     'c_reduce_min_',
+    'c_reduce_prod',
+    'c_reduce_prod_',
     'push_sparse_v2',
     'push_sparse_v2_',
     'partial_send',
