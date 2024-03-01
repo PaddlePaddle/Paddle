@@ -1255,6 +1255,16 @@ struct SplitOpTranscriber : public OpTranscriber {
 
       return attribute_map;
     }
+#ifdef PADDLE_WITH_DNNL
+    else if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
+      pir::AttributeMap attribute_map = {
+          {"mkldnn_data_type",
+           pir::StrAttribute::get(
+               ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"))},
+      };
+      return attribute_map;
+    }
+#endif
 
     return {};
   }
@@ -1262,17 +1272,19 @@ struct SplitOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     int num = paddle::get<int>(op_desc.GetAttr("num"));
+    auto prefix = GetPrefix(ctx, op_desc);
     std::string target_op_name;
     if (num > 0) {
-      target_op_name = "pd_op.split_with_num";
+      target_op_name = prefix + "split_with_num";
 
     } else {
-      target_op_name = "pd_op.split";
+      target_op_name = prefix + "split";
     }
 
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      IR_THROW("Op assign_value should have corresponding OpInfo pd_op.split");
+      IR_THROW("Op assign_value should have corresponding OpInfo %s.",
+               target_op_name);
     }
 
     return op_info;

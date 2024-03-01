@@ -42,11 +42,11 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::string primitive = "ComputeAt";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr prama(block) should be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) should be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!loop.As<ir::For>()) {
-    os << "Expr prama(loop) should be a For node!\n";
+    os << "Expr param(loop) should be a For node!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   Expr root = this->GetRootBlock(block);
