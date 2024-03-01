@@ -51,7 +51,7 @@ SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCooTensor::SparseCooTensor(const SparseCooTensor& other) {
+SparseCooTensor::SparseCooTensor(const SparseCooTensor& other) {  // NOLINT
   this->non_zero_indices_ = other.non_zero_indices_;
   this->non_zero_elements_ = other.non_zero_elements_;
   this->coalesced_ = other.coalesced_;

@@ -861,4 +861,31 @@ void MultiGruInferMeta(
     float shift_data,
     bool force_fp32_output,
     MetaTensor* hidden);
+
+void FusionLstmInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight_x,
+                         const MetaTensor& weight_h,
+                         const MetaTensor& bias,
+                         const MetaTensor& h0,
+                         const MetaTensor& c0,
+                         const bool use_peepholes,
+                         const bool is_reverse,
+                         const bool use_seq,
+                         const std::string& gate_activation,
+                         const std::string& cell_activation,
+                         const std::string& candidate_activation,
+                         const float scale_data,
+                         const float shift_data,
+                         const std::vector<float>& scale_weights,
+                         const bool force_fp32_output,
+                         MetaTensor* hidden,
+                         MetaTensor* cell,
+                         MetaTensor* xx,
+                         MetaTensor* batched_input,
+                         MetaTensor* batched_hidden,
+                         MetaTensor* batched_cell,
+                         MetaTensor* reordered_h0,
+                         MetaTensor* reordered_c0,
+                         MetaTensor* checked_cell);
+
 }  // namespace phi
