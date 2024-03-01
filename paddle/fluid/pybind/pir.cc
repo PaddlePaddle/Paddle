@@ -23,11 +23,15 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -62,6 +66,7 @@
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/block.h"
@@ -78,8 +83,6 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-
-#include "paddle/common/flags.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
@@ -762,7 +765,8 @@ void BindValue(py::module *m) {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "_local_shape is only for distdense tensor."));
             }
-            return phi::vectorize(self.local_ddim());
+            return phi::vectorize(
+                self.type().dyn_cast<DistDenseTensorType>().local_ddim());
           },
           [](Value self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
@@ -1350,6 +1354,27 @@ pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
   }
 }
 
+pir::Type CreateDistDenseTensorTypeByDenseTensor(
+    const pir::Type &dense_tensor_type,
+    const std::vector<int> &gshape,
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<int64_t> &dims_mapping) {
+  if (dense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = dense_tensor_type.dyn_cast<DenseTensorType>();
+    paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+    paddle::dialect::TensorDistAttribute tensor_dist_attr =
+        paddle::dialect::TensorDistAttribute::get(
+            pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
+    return DistDenseTensorType::get(pir::IrContext::Instance(),
+                                    type,
+                                    tensor_dist_attr,
+                                    phi::make_ddim(gshape));
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, input is not a dense tensor type are not supported."));
+  }
+}
+
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
@@ -1412,8 +1437,14 @@ void BindUtils(pybind11::module *m) {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   });
+  m->def("register_dist_dialect", []() {
+    pir::IrContext::Instance()
+        ->GetOrRegisterDialect<paddle::dialect::DistDialect>();
+  });
   m->def("create_selected_rows_type_by_dense_tensor",
          CreateSelectedRowsTypeByDenseTensor);
+  m->def("create_dist_dense_tensor_type_by_dense_tensor",
+         CreateDistDenseTensorTypeByDenseTensor);
   m->def(
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
