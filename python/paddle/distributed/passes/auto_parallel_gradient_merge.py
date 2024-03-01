@@ -273,6 +273,8 @@ def _move_reduce_to_optimizer_ops_block(
     for idx, op in list(enumerate(main_block.ops)):
         if is_data_parallel_reduce_op(op):
             op_input_names = op.desc.input_arg_names()
+            if "@RENAME" in op_input_names[0]:
+                continue
 
             reduce_op_desc = optimize_ops_block.desc._insert_op(
                 len(removed_op_idx)
