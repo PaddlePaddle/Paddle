@@ -253,7 +253,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetModel(const std::string& model_dir) { model_dir_ = model_dir; }
 
   ///
-  /// \brief Set the combined model with two specific pathes for program and
+  /// \brief Set the combined model with two specific paths for program and
   /// parameters.
   ///
   /// \param prog_file_path model file path of the combined model.
@@ -596,12 +596,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Control whether to perform IR graph optimization.
   /// If turned off, the AnalysisConfig will act just like a NativeConfig.
   ///
-  /// \param x Whether the ir graph optimization is actived.
+  /// \param x Whether the ir graph optimization is activated.
   ///
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
   ///
   /// \brief A boolean state telling whether the ir graph optimization is
-  /// actived.
+  /// activated.
   ///
   /// \return bool Whether to use ir graph optimization.
   ///
@@ -1213,7 +1213,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string SerializeInfoCache();
 
  protected:
-  // Model pathes.
+  // Model paths.
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;

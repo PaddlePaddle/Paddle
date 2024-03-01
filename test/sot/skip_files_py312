@@ -1,5 +1,4 @@
 ./test_11_jumps.py
-./test_21_global.py
 ./test_builtin_zip.py
 ./test_inplace_api.py
 ./test_min_graph_size.py

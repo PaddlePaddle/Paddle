@@ -15,33 +15,57 @@
 set(PADDLE_INFERENCE_INSTALL_DIR
     "${CMAKE_BINARY_DIR}/paddle_inference_install_dir")
 
-function(phi_header_path_compat TARGET_PATH)
-  message(STATUS "phi header path compat processing: ${TARGET_PATH}")
+function(header_path_compat TARGET_PATH)
+  message(STATUS "header path compat processing: ${TARGET_PATH}")
   file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
   foreach(header ${HEADERS})
     if(${header} MATCHES ".*.h$")
       file(READ ${header} HEADER_CONTENT)
       string(REPLACE "paddle/fluid/platform/" "paddle/phi/" HEADER_CONTENT
                      "${HEADER_CONTENT}")
+      string(REPLACE "paddle/pir/include/" "paddle/pir/" HEADER_CONTENT
+                     "${HEADER_CONTENT}")
+      string(REPLACE "paddle/fluid/pir/drr/include/" "paddle/pir/drr/"
+                     HEADER_CONTENT "${HEADER_CONTENT}")
+      string(REPLACE "paddle/fluid/pir/transforms/" "paddle/pir/transforms/"
+                     HEADER_CONTENT "${HEADER_CONTENT}")
       file(WRITE ${header} "${HEADER_CONTENT}")
-      message(STATUS "phi header path compat processing complete: ${header}")
+      message(STATUS "header path compat processing complete: ${header}")
     endif()
   endforeach()
 endfunction()
 
-phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle)
-phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
-phi_header_path_compat(
+header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle)
+header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
+header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api)
-phi_header_path_compat(
+header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext)
-phi_header_path_compat(
+header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/include)
-phi_header_path_compat(
+header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/common)
-phi_header_path_compat(
+header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core/parser)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/control_flow/ir
+)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/shape/ir)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/dialect/shape/utils)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/drr)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pass)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/pattern_rewrite)
+header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/transforms)
 
 # NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
 file(READ ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/extension.h

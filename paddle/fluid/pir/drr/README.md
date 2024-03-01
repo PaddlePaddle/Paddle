@@ -9,9 +9,9 @@ DRR can reduce the development cost of PASS, allowing developers to focus on pro
 Taking PASS to eliminate redundant CastOp as an example, the code example developed using DRR is as follows:
 ~~~ c++
 // 1. Inherit class from DrPatternBase
-class RemoveRedundentCastPattern : public paddle::drr::DrrPatternBase {
+class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
 public:
-  std::string name() const override { return "RemoveRedundentCastPattern"; }
+  std::string name() const override { return "RemoveRedundantCastPattern"; }
 
   // 2. Overload operator()
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {

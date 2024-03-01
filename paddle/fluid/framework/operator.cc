@@ -1754,7 +1754,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+      if (phi::KernelFactory::Instance().HasStructuredKernel(
+              type_)) {  // NOLINT
         kernel_signature_ =
             std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
@@ -1989,7 +1990,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      if (fallback_to_cpu) {
+      if (fallback_to_cpu) {  // NOLINT
         transfer_scope = PrepareData(scope,
                                      phi_cpu_kernel_key,
                                      &transfered_inplace_vars,
@@ -2278,7 +2279,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {  // NOLINT
     kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
     kernel_signature_ = std::make_unique<phi::KernelSignature>(
@@ -3104,7 +3105,7 @@ static void SetDnnAttrIntoDeviceContext(
       case proto::AttrType::STRING:
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
         break;
-      case proto::AttrType::INTS:
+      case proto::AttrType::INTS:  // NOLINT
         one_dnn_ctx->SetDnnAttr(attr_name,
                                 PADDLE_GET_CONST(std::vector<int>, attr));
         break;
@@ -3358,7 +3359,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       case phi::AttributeType::INT_ARRAY:
         if (attr_iter != Attrs().end()) {
           switch (AttrTypeID(attr_iter->second)) {
-            case proto::AttrType::INTS:
+            case proto::AttrType::INTS:  // NOLINT
               phi_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
                   PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second))));
               break;
@@ -3497,7 +3498,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(int64_t, attr_iter->second));
             break;
-          case phi::AttributeType::INT32S:
+          case phi::AttributeType::INT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
@@ -3536,7 +3537,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                     attr_names[i]));
             }
             break;
-          case phi::AttributeType::FLOAT32S:
+          case phi::AttributeType::FLOAT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
             break;

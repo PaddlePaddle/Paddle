@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
+
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 const int vlog_level = 3;
 
@@ -154,5 +158,39 @@ std::unique_ptr<Pass> CreateShapeOptimizationPass() {
 }
 
 }  // namespace pir
+
+namespace pir::shape {
+
+bool HasDynamicShape(const pir::Program& program) {
+  for (const auto& op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i).type()) {
+        auto shape_type =
+            op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
+        if (shape_type && shape_type.IsDynamicShape()) {
+          VLOG(vlog_level) << "###### HasDynamicShape == true";
+          return true;
+        }
+      }
+    }
+  }
+  VLOG(vlog_level) << "###### HasDynamicShape == false";
+  return false;
+}
+
+void AddShapeOptimizationPass(
+    std::shared_ptr<pir::PassManager>& pass_manager,  // NOLINT
+    pir::Program& program) {                          // NOLINT
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  }
+}
+
+}  // namespace pir::shape
 
 REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
