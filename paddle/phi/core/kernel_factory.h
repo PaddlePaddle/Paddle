@@ -315,7 +315,7 @@ struct KernelResult {
  */
 class KernelFactory {
  public:
-  static KernelFactory& Instance();
+  TEST_API static KernelFactory& Instance();
 
   KernelNameMap& kernels() { return kernels_; }
 
@@ -323,9 +323,10 @@ class KernelFactory {
 
   bool HasStructuredKernel(const std::string& op_type) const;
 
-  KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key,
-                                        bool use_strided_kernel = false) const;
+  TEST_API KernelResult
+  SelectKernelOrThrowError(const std::string& kernel_name,
+                           const KernelKey& kernel_key,
+                           bool use_strided_kernel = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
@@ -341,8 +342,8 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
-  void AddToLowPrecisionKernelList(const std::string& name,
-                                   const DataType& kernel_key_type);
+  TEST_API void AddToLowPrecisionKernelList(const std::string& name,
+                                            const DataType& kernel_key_type);
 
   std::map<const std::string, OpCount> GetLowPrecisionKernelList();
 
@@ -365,7 +366,7 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
 
 std::ostream& operator<<(std::ostream& os, AttributeType attr_type);
 
-std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
+TEST_API std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
 

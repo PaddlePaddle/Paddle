@@ -751,7 +751,7 @@ void UnbindInferMeta(const MetaTensor& x,
 
 void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
-void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
+TEST_API void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
