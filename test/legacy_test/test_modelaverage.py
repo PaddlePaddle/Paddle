@@ -196,7 +196,6 @@ class TestModelAverage(unittest.TestCase):
                 'num_updates', layer.bias
             )
 
-            print(num_accumulates, old_num_accumulates)
             return (
                 (
                     (sum_1 + sum_2 + sum_3)
