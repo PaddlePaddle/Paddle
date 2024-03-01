@@ -518,7 +518,7 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -566,7 +566,7 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {PyLong_AsSize_t(obj)};
+    return {PyLong_AsSize_t(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -614,7 +614,7 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
-    return {static_cast<float>(PyFloat_AsDouble(obj))};
+    return {static_cast<float>(PyFloat_AsDouble(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -647,7 +647,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
 
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   platform::Place place;
-  if (PyObject_TypeCheck(obj, g_place_pytype)) {
+  if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<platform::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
@@ -761,7 +761,8 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             i));
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_framework_lodtensorarray_pytype)) {
+  } else if (PyObject_TypeCheck(obj,
+                                g_framework_lodtensorarray_pytype)) {  // NOLINT
     for (auto& tensor :
          (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
       result.emplace_back(tensor);
@@ -788,7 +789,7 @@ using phi::distributed::Shard;
 Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   Placements result;
   auto check_and_emplace = [&](PyObject* item, ssize_t i) {
-    if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {
+    if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {  // NOLINT
       result.emplace_back(
           std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {

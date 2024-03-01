@@ -316,11 +316,11 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
     if (!consumer->substitute) {
       continue;
     }
-    // fast depency check.
+    // fast dependency check.
     if (IsDependencySimplify(producer, consumer, consumers)) {
       continue;
     }
-    // global depency check.
+    // global dependency check.
     if (IsDependency(producer, consumer, consumers)) {
       continue;
     }
@@ -341,7 +341,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
         producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
     producer->op_set.insert(candidate->op_set.begin(), candidate->op_set.end());
 
-    // update bound for check depency
+    // update bound for check dependency
     producer->max_depth = std::max(producer->max_depth, candidate->max_depth);
     producer->min_depth = std::min(producer->min_depth, candidate->min_depth);
 
@@ -364,7 +364,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
       tmp->producers.erase(candidate);
     }
 
-    // remove candicate in producer/consumer
+    // remove candidate in producer/consumer
     producer->producers.erase(candidate);
     producer->consumers.erase(candidate);
 
@@ -387,7 +387,7 @@ bool SubgraphDetector::FuseSubGraph(SubGraphPtr subgraph_ptr) {
 
   return true;
 }
-// check exist depency.
+// check exist dependency.
 bool SubgraphDetector::IsDependency(
     const SubGraphPtr& producer_g,
     const SubGraphPtr& consumer,
@@ -528,17 +528,16 @@ void ReplaceWithGroupOp(pir::Block* block,
   VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
   // step 2: Replace the old op with GroupOp.
-  const auto& CreateGroupOp = [&]() -> cinn::dialect::GroupOp {
+  auto new_group_op = [&]() -> cinn::dialect::GroupOp {
     std::vector<pir::Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
 
-    auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
+    auto group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
     for (auto op : group_ops) {
-      op->MoveTo(new_group_op.block(), new_group_op.block()->end());
+      op->MoveTo(group_op.block(), group_op.block()->end());
     }
-    return new_group_op;
-  };
-  auto new_group_op = CreateGroupOp();
+    return group_op;
+  }();
 
   // step 3: Replace outputs of inner ops
   const std::vector<pir::Value> group_outs = new_group_op->results();
