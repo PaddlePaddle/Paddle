@@ -58,7 +58,6 @@ class DynamicExpandOpPattern
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
       if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
-        std::cerr << "have shape dialect\n";
         auto shape_info =
             shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
 

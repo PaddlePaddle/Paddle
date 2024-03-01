@@ -94,13 +94,10 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    VLOG(4) << "FLAGS_group_schedule_tiling_first = "
-            << FLAGS_group_schedule_tiling_first;
     std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     const auto reduce_axis_position = [&reduce_axis,
                                        &tensor]() -> std::vector<int> {
-      VLOG(4) << "start calculus reduce_axis_position: ";
       std::vector<int> res;
       auto fn_body = tensor->operation.ptr()->as<ir::ComputeOp>()->body[0];
       if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
@@ -115,9 +112,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
               res.push_back(position);
             }
           }
-        }
-        for (auto i : res) {
-          VLOG(4) << "reduce axis position is " << i;
         }
         return res;
       }
@@ -243,8 +237,8 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                     i) != reduce_axis_position.end()) {
         continue;
       }
-      if (!FLAGS_group_schedule_tiling_first /*&& !FLAGS_cinn_bucket_compile*/
-          && shape[i] == Expr(1)) {
+      if ((!FLAGS_group_schedule_tiling_first || !FLAGS_cinn_bucket_compile) &&
+          shape[i] == Expr(1)) {
         continue;
       }
       ir::Var loop_var = axis[i];

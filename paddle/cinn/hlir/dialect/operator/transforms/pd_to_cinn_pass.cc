@@ -727,16 +727,10 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(paddle::drr::Create<MinOpPattern>(context));
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
-  // ps.Add<ConcatOpPattern>(context);
-  //  ps.Add<SliceOpPattern>(context);
-  // ps.Add<Pool2dOpPattern>(context);
   ps.Add<PowOpPattern>(context);
-  // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
-  // ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
-  // ps.Add(paddle::drr::Create<UniformOpPattern>(context));
 
   return ps;
 }

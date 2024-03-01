@@ -93,7 +93,6 @@ class IR_API StoreOp : public pir::Op<StoreOp> {
                     pir::Type output_type);
 
   void VerifySig();
-  // void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
 class IR_API ConcatOp
