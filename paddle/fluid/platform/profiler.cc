@@ -30,12 +30,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(enable_record_memory);
+COMMON_DECLARE_bool(enable_record_memory);
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
@@ -200,8 +200,8 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
             RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
-        current_allocated =
-            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
+        current_allocated = DEVICE_MEMORY_STAT_CURRENT_VALUE(
+            Allocated, place.GetDeviceId());  // NOLINT
         peak_allocated =
             DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
@@ -283,10 +283,10 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
             RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
-        current_reserved =
-            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-        peak_reserved =
-            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        current_reserved = DEVICE_MEMORY_STAT_CURRENT_VALUE(
+            Reserved, place.GetDeviceId());  // NOLINT
+        peak_reserved = DEVICE_MEMORY_STAT_PEAK_VALUE(
+            Reserved, place.GetDeviceId());  // NOLINT
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
             current_reserved;
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =
@@ -366,10 +366,10 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
             RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
-        current_allocated =
-            DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-        peak_allocated =
-            DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
+        current_allocated = DEVICE_MEMORY_STAT_CURRENT_VALUE(
+            Allocated, place.GetDeviceId());  // NOLINT
+        peak_allocated = DEVICE_MEMORY_STAT_PEAK_VALUE(
+            Allocated, place.GetDeviceId());  // NOLINT
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][0] =
             current_allocated;
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][2] =
@@ -449,10 +449,10 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
             RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3];
         RecordMemEvent::has_initialized["gpu"][place.GetDeviceId()] = true;
       } else {
-        current_reserved =
-            DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-        peak_reserved =
-            DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
+        current_reserved = DEVICE_MEMORY_STAT_CURRENT_VALUE(
+            Reserved, place.GetDeviceId());  // NOLINT
+        peak_reserved = DEVICE_MEMORY_STAT_PEAK_VALUE(
+            Reserved, place.GetDeviceId());  // NOLINT
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][1] =
             current_reserved;
         RecordMemEvent::size_cache["gpu"][place.GetDeviceId()][3] =

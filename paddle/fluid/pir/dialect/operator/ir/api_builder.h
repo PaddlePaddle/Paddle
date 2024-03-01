@@ -17,9 +17,9 @@
 #include <stack>
 
 #include "paddle/common/macros.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {

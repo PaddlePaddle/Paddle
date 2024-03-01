@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/phi/core/mixed_vector.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace operators {
@@ -214,9 +214,9 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
         label_vec[i * sample_res_length + offset] = 0;
         mask_vec[i * sample_res_length + offset] = 1;
         VLOG(3) << "TDM: node id: " << travel_data[start_offset + layer_idx]
-                << " Res append negitive "
+                << " Res append negative "
                 << output_vec[i * sample_res_length + offset]
-                << " Label append negitive "
+                << " Label append negative "
                 << label_vec[i * sample_res_length + offset]
                 << " Mask append value "
                 << mask_vec[i * sample_res_length + offset];

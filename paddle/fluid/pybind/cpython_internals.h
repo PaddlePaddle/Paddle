@@ -37,6 +37,14 @@ static inline PyFrameObject *Internal_PyFrame_GetFrameObject(
 static void Internal_take_ownership(PyFrameObject *f,
                                     _PyInterpreterFrame *frame);
 void Internal_PyFrame_Clear(_PyInterpreterFrame *frame);
+
+#if PY_VERSION_HEX >= 0x030c0000
+void Internal_PyEvalFrameClearAndPop(PyThreadState *tstate,
+                                     _PyInterpreterFrame *frame);
+_PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
+                                                      size_t size);
+#endif
+
 #endif
 
 #ifdef __cplusplus

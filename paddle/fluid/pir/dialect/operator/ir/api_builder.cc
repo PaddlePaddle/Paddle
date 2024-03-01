@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {

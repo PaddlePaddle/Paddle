@@ -50,7 +50,7 @@ class TestHistogramOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.histogram(inputs, bins=5, min=1, max=5)
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(

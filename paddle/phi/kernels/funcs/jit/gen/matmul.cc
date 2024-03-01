@@ -34,7 +34,7 @@ void MatMulJitCode::genCode() {
                                    "be larger than 0. But it is %d.",
                                    groups.front()));
 
-  const int block_len = sizeof(float) * block;
+  const int block_len = sizeof(float) * block;  // NOLINT
   const int x_reg_idx = (block == ZMM_FLOAT_BLOCK ? 32 : 16) - 1;
   const int w_reg_idx = x_reg_idx - 1;
   // from packed mov(reg_ptr_wgt, ptr[param_attr + offsetof(matmul_attr_t,

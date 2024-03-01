@@ -86,6 +86,48 @@ ir::Tensor GatherNd(const ir::Tensor &x,
   return res;
 }
 
+ir::Tensor GatherNdSymbolic(const ir::Tensor &x,
+                            const ir::Tensor &index,
+                            const std::string &name) {
+  std::vector<Expr> x_shape = x->shape;
+  std::vector<Expr> index_shape = index->shape;
+  size_t x_shape_size = x_shape.size();
+  size_t index_shape_size = index_shape.size();
+  std::vector<Expr> out_shape;
+  out_shape.insert(out_shape.end(), index_shape.begin(), index_shape.end() - 1);
+  out_shape.insert(out_shape.end(),
+                   x_shape.begin() + index_shape.back().as_int64(),
+                   x_shape.end());
+  auto res = Compute(
+      out_shape,
+      [=](const std::vector<Expr> &indices) {
+        std::vector<Expr> indices_position;
+        for (size_t i = 0; i < index_shape_size - 1; ++i) {
+          indices_position.push_back(
+              ir::Cast::Make(cinn::common::Int(64), indices[i]));
+        }
+        indices_position.push_back(
+            ir::Cast::Make(cinn::common::Int(64), Expr(0)));
+        size_t indices_position_size = indices_position.size();
+        std::vector<Expr> real_indices;
+        for (size_t i = 0; i < index_shape.back().as_int64(); ++i) {
+          indices_position[indices_position_size - 1] =
+              ir::Cast::Make(cinn::common::Int(64), Expr(i));
+          real_indices.push_back(
+              ir::Cast::Make(cinn::common::Int(64), index(indices_position)));
+        }
+        if (real_indices.size() == x_shape_size) {
+          return x(real_indices);
+        }
+        for (size_t i = index_shape_size - 1; i < indices.size(); ++i) {
+          real_indices.push_back(indices[i]);
+        }
+        return x(real_indices);
+      },
+      name);
+  return res;
+}
+
 std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -190,7 +232,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 3U);
         std::string tensor_name = pack_args[2].operator std::string();
-        ir::Tensor out = GatherNd(tensor_x, tensor_index, tensor_name);
+        ir::Tensor out = GatherNdSymbolic(tensor_x, tensor_index, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
@@ -249,6 +291,8 @@ CINN_REGISTER_HELPER(gather_nd_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForGatherNd))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForGatherNd))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
 
   return true;

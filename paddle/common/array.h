@@ -55,7 +55,7 @@ class Array {
 
   HOSTDEVICE inline T &at(size_t i) {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
-    COMMON_ENFORCE_LT(
+    PADDLE_ENFORCE_LT(
         i, N, common::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
@@ -63,7 +63,7 @@ class Array {
 
   HOSTDEVICE inline const T &at(size_t i) const {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
-    COMMON_ENFORCE_LT(
+    PADDLE_ENFORCE_LT(
         i, N, common::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];

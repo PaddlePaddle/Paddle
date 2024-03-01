@@ -28,7 +28,7 @@ bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
-      phi::errors::OutOfRange("Input index [%d] large than op input size [d]",
+      phi::errors::OutOfRange("Input index [%d] large than op input size [%d]",
                               index,
                               InputInfo().size()));
 
@@ -232,7 +232,7 @@ int OpYamlInfoParser::GetTensorParamIndexByArgsName(
                                kernel_fn_tensor_params_.end(),
                                args_name);
   if (iter != kernel_fn_tensor_params_.end()) {
-    return std::distance(kernel_fn_tensor_params_.begin(), iter);
+    return std::distance(kernel_fn_tensor_params_.begin(), iter);  // NOLINT
   } else {
     return -1;
   }

@@ -112,7 +112,7 @@ class DeviceEvent {
     event_finisher_[type_id_](this);
   }
 
-  void SetFininshed() {
+  void SetFinished() {
     PADDLE_ENFORCE_NOT_NULL(
         event_finished_setter_[type_id_],
         platform::errors::Unavailable(

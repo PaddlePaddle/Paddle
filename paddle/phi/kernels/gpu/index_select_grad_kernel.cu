@@ -15,15 +15,15 @@
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 

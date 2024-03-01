@@ -20,9 +20,6 @@
 
 namespace phi {
 
-using phi::funcs::gpc_free_polygon;
-using phi::funcs::gpc_polygon_clip;
-
 template <class T>
 class Point_ {
  public:

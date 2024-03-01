@@ -47,6 +47,7 @@ class TestReshardSToR:
 
         assert np.equal(out.shape, out._local_shape).all()
         assert np.equal(out.shape, input_tensor.shape).all()
+        np.testing.assert_equal(out.numpy(), a.numpy())
 
 
 if __name__ == '__main__':

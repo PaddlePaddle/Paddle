@@ -43,16 +43,17 @@ class GradNodeScale : public GradNodeBase {
   // Functor: perform backward computations
   virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
-                                  kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false,
-             bool is_new_grad = false) override;
+      TEST_API
+      operator()(paddle::small_vector<std::vector<paddle::Tensor>,
+                                      kSlotSmallVectorSize>& grads,  // NOLINT
+                 bool create_graph = false,
+                 bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
   void SetTensorWrappers_X(const std::vector<paddle::Tensor>& tensors);
 
-  void SetAttributes_scale(float scale);
+  TEST_API void SetAttributes_scale(float scale);
   std::string name() override { return "scale node"; }
   // Members: define fwd input tensors
   // For Scale there is no fwd input tensor needed

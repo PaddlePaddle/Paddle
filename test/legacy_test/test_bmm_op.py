@@ -129,8 +129,8 @@ class API_TestDygraphBmm(unittest.TestCase):
             ]
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input1)
-            y = base.dygraph.to_variable(input2)
+            x = paddle.to_tensor(input1)
+            y = paddle.to_tensor(input2)
             out = paddle.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)

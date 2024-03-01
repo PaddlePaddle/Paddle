@@ -19,11 +19,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
-from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
 from paddle.framework import use_pir_api
@@ -33,6 +31,11 @@ from paddle.jit.dy2static.program_translator import (
 )
 from paddle.nn import Layer
 from paddle.static import InputSpec
+
+
+def call_to_tensor(x):
+    res = paddle.to_tensor(x)
+    return res
 
 
 def create_simple_net():
@@ -370,7 +373,7 @@ class TestDeclarativeAPI(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_error(self):
-        func = paddle.jit.to_static(dyfunc_to_variable)
+        func = paddle.jit.to_static(call_to_tensor)
 
         paddle.enable_static()
 
@@ -378,12 +381,6 @@ class TestDeclarativeAPI(Dy2StTestBase):
         # if it does NOT in dynamic mode.
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
-
-        with enable_to_static_guard(False):
-            with self.assertRaises(AssertionError):
-                # AssertionError: We Only support to_variable in imperative mode,
-                #  please use base.dygraph.guard() as context to run it in imperative Mode
-                func(np.ones(5).astype("int32"))
 
         paddle.disable_static()
 

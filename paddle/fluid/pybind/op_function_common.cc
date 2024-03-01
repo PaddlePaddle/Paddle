@@ -34,9 +34,9 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/op_result.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace pybind {
@@ -521,7 +521,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {(int64_t)PyLong_AsLongLong(obj)};
+    return {(int64_t)PyLong_AsLongLong(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "

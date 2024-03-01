@@ -28,8 +28,11 @@ struct DimExprToIrExprVisitor {
   ir::Expr operator()(const int64_t& dim) { return ir::Expr(dim); }
 
   ir::Expr operator()(const std::string& dim_expr) {
-    Var x = ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
-                            ir::Expr(INT64_MAX),
+    // The dimension must be greater equal than 1, and due to the extensive use
+    // of int32 in CAS, the upper bound here is temporarily INT32_MAX, otherwise
+    // there may be a risk of overflow.
+    Var x = ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                            ir::Expr(INT32_MAX),
                             dim_expr,
                             /* is_reduce  = */ false,
                             /* is_symbolic_constant = */ true);

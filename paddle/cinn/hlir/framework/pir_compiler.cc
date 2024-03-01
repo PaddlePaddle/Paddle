@@ -19,7 +19,8 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -27,12 +28,15 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-// TODO(Aurelius84): Clear usless Build Interface.
+// TODO(Aurelius84): Clear useless Build Interface.
 std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
   for (auto& op : *program_.block()) {
+    if (op.isa<::pir::YieldOp>()) {
+      continue;
+    }
     std::vector<::pir::Operation*> ops = {&op};
     auto group = std::make_shared<pir::Group>(ops);
     group->output_ops.insert(&op);
@@ -209,8 +213,8 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   };
 
   for (auto& op : *program.block()) {
-    for (auto oprand : op.operands()) {
-      create_var(oprand.source());
+    for (auto operand : op.operands()) {
+      create_var(operand.source());
     }
 
     for (auto result : op.results()) {

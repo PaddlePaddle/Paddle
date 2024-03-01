@@ -15,8 +15,9 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/dll_decl.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 namespace pir {
 
@@ -24,4 +25,16 @@ class Pass;
 
 IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
 
+void InferSymExprForBlock(const Block &block,
+                          ShapeConstraintIRAnalysis *shape_analysis);
+
 }  // namespace pir
+
+namespace pir::shape {
+bool HasDynamicShape(const pir::Program &program);
+
+void AddShapeOptimizationPass(
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program);                           // NOLINT
+
+}  // namespace pir::shape

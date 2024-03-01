@@ -28,8 +28,8 @@
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 namespace cinn {
@@ -428,7 +428,7 @@ Expr DyScheduleImpl::SampleCategorical(
   std::string primitive = "SampleCategorical";
   std::ostringstream os;
   if (candidates.size() != probs.size()) {
-    os << "vector<int> params(candidates) and vector<int> prama(probs) must "
+    os << "vector<int> params(candidates) and vector<int> params(probs) must "
           "have same size in SampleCategorical!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }

@@ -24,22 +24,22 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pir/core/block_argument.h"
+#include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -416,6 +416,28 @@ bool GetCondData(const phi::DenseTensor& cond) {
       "WITH_XPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
+}
+
+void CopyBranchOutput(const std::vector<std::string>& var_names,
+                      const std::vector<Variable*>& output_vars,
+                      Scope* inner_scope) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto* inner_var = inner_scope->GetVar(var_names[i]);
+
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
+  }
 }
 
 }  // namespace framework

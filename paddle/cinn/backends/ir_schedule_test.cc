@@ -1738,7 +1738,8 @@ TEST(IrSchedule, cache_write3) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
@@ -1818,7 +1819,8 @@ TEST(IrSchedule, sync_threads) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {

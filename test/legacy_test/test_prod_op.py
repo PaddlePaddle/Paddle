@@ -151,6 +151,7 @@ class TestProdOp(unittest.TestCase):
 
 
 class TestProdOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

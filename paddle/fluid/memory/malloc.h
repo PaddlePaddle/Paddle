@@ -32,7 +32,7 @@ using phi::Allocation;
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size);
 
-extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+TEST_API extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 

@@ -17,11 +17,11 @@ limitations under the License. */
 #include <algorithm>
 
 #include "glog/logging.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define USE_DEVICE
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -65,7 +65,7 @@ BuddyAllocator::BuddyAllocator(
 }
 
 BuddyAllocator::~BuddyAllocator() {
-  VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
+  VLOG(10) << "BuddyAllocator destructor makes sure that all of these "
               "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));

@@ -53,9 +53,18 @@ class FillConstantOpConverter : public OpConverter {
       } else {
         int32_t shape_size = op_desc.Input("ShapeTensorList").size();
         std::vector<nvinfer1::ITensor*> shape_tensor;
+        nvinfer1::Dims dims{1, {1}};
         for (int32_t i = 0; i < shape_size; ++i) {
-          shape_tensor.push_back(
-              engine_->GetITensor(op_desc.Input("ShapeTensorList")[i]));
+          if (engine_->GetITensor(op_desc.Input("ShapeTensorList")[i])
+                  ->getDimensions()
+                  .nbDims == 0) {
+            shape_tensor.push_back(Reshape(
+                engine_->GetITensor(op_desc.Input("ShapeTensorList")[i]),
+                dims));
+          } else {
+            shape_tensor.push_back(
+                engine_->GetITensor(op_desc.Input("ShapeTensorList")[i]));
+          }
         }
         tensor_rank = shape_size;
         shapes_tensor = Concat(shape_tensor, 0);
@@ -111,7 +120,7 @@ class FillConstantOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "fill_constant", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "fill_constant", {output_name}, test_mode);
   }
 };
 

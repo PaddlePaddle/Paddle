@@ -23,7 +23,22 @@ template <typename T, typename Context>
 void AsComplexStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out) {
-  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
+  PADDLE_ENFORCE_EQ(
+      x.strides()[x.strides().size() - 1],
+      1,
+      phi::errors::InvalidArgument(
+          "Expected the stride of last dimension of input(X) to be 1."
+          "But received %d. This means that the last dimension of the"
+          "Tensor(x) is not continuous and cannot be as_complex directly."
+          "You can call x.contiguous() to make the Tensor(x) contiguous first.",
+          x.strides()[x.strides().size() - 1]));
+
+  phi::DDim out_strides(x.strides().Get(), x.strides().size() - 1);
+  for (int i = 0; i < out_strides.size(); ++i) {
+    out_strides[i] /= 2;
+  }
+  out->set_strides(out_strides);
+
   if (x.dtype() == DataType::FLOAT32) {
     out->set_type(DataType::COMPLEX64);
   } else if (x.dtype() == DataType::FLOAT64) {

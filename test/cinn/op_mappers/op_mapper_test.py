@@ -127,7 +127,7 @@ class OpMapperTest(OpTest):
         self.skip_outputs = self.skip_check_outputs()
         # dict of inplace var
         self.inplace_outputs = self.set_inplace_outputs()
-        # collect some important infomation
+        # collect some important information
         self.input_arg_map = self.__get_arguments_map(self.inputs)
         self.fetch_targets = []
         self.skip_check_list = []
@@ -169,7 +169,7 @@ class OpMapperTest(OpTest):
                 msg=f"The shape of input {var.name} in feed_data is error",
             )
             self.assertEqual(
-                self.paddleddtype2nptype(var.dtype),
+                self.paddledtype2nptype(var.dtype),
                 str(self.feed_data[name].dtype),
                 msg=f"The dtype of input {var.name} in feed_data is error",
             )
@@ -312,7 +312,7 @@ class OpMapperTest(OpTest):
 
         for var_name, var in self.input_arg_map.items():
             convertor.create_input(
-                dtype=self.paddleddtype2nptype(var.dtype),
+                dtype=self.paddledtype2nptype(var.dtype),
                 shape=var.shape,
                 name=var_name,
             )
@@ -411,7 +411,7 @@ class OpMapperTest(OpTest):
         return vars
 
     @staticmethod
-    def paddleddtype2nptype(dtype):
+    def paddledtype2nptype(dtype):
         switch_map = {
             paddle.float16: "float16",
             paddle.float32: "float32",
