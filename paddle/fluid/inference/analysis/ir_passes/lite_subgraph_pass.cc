@@ -71,7 +71,7 @@ std::vector<std::string> IOVarsFilter(const std::vector<Node*>& nodes) {
 
 void StrToBinaryFile(const std::string& path, const std::string& str) {
   std::ofstream file(path.c_str(), std::ios::binary);
-  file.write(str.c_str(), str.size());
+  file.write(str.c_str(), str.size());  // NOLINT
   file.close();
 }
 

@@ -193,7 +193,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
   int test_batch_num =
-      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "The number of samples to be test: "
             << test_batch_num * FLAGS_batch_size;
   for (int bid = 0; bid < test_batch_num; ++bid) {
