@@ -173,6 +173,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     kv_transpose_out.Resize({{2, bsz, num_head, seq_len, dim_head}});
     auto *kv_transpose_out_data = dev_ctx.Alloc<T>(
         &kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
+    
+    if (encoder_remove_padding) {
+      InitValue(dev_ctx, q_transpose_out_data, q_transpose_out.numel(), static_cast<T>(0.));
+      InitValue(dev_ctx, kv_transpose_out_data, kv_transpose_out.numel(), static_cast<T>(0.));
+    }
 
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
@@ -271,7 +276,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // calc
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    phi::DenseTensor *from_tensor = out;
+    
+    // Init out
+    if (encoder_remove_padding) {
+      InitValue(dev_ctx, from_data, out->numel(), static_cast<T>(0.));
+    }
+    
     phi::DenseTensor tmp_out, tmp_out_rm_padding;
     tmp_out.Resize({{token_num, dim_embed}});
     if (encoder_remove_padding) {
@@ -839,6 +849,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     kv_transpose_out.Resize({{2, bsz, num_head, seq_len, dim_head}});
     auto *kv_transpose_out_data = dev_ctx.Alloc<T>(
         &kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
+    
+    if (encoder_remove_padding) {
+      InitValue(dev_ctx, q_transpose_out_data, q_transpose_out.numel(), static_cast<T>(0.));
+      InitValue(dev_ctx, kv_transpose_out_data, kv_transpose_out.numel(), static_cast<T>(0.));
+    }
 
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
@@ -945,7 +960,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // calc
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    phi::DenseTensor *from_tensor = out;
+    
+    // Init out
+    if (encoder_remove_padding) {
+      InitValue(dev_ctx, from_data, out->numel(), static_cast<T>(0.));
+    }
+    
     phi::DenseTensor tmp_out, tmp_out_rm_padding;
     tmp_out.Resize({{token_num, dim_embed}});
     if (encoder_remove_padding) {
