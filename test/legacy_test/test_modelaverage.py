@@ -89,7 +89,7 @@ class TestModelAverage(unittest.TestCase):
 
         average_b = (sum_1 + sum_2 + sum_3) / (
             num_accumulates + old_num_accumulates
-        )
+        ).astype('float32')
         # apply ModelAverage
         with model_average.apply(exe):
             x = np.random.random(size=(10, 1)).astype('float32')
@@ -170,7 +170,7 @@ class TestModelAverage(unittest.TestCase):
             return (
                 (
                     (sum_1 + sum_2 + sum_3)
-                    / (num_accumulates + old_num_accumulates)
+                    / (num_accumulates + old_num_accumulates).astype('float32')
                 )
                 .astype(sum_1.dtype)
                 .numpy()

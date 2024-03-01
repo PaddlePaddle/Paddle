@@ -193,7 +193,7 @@ class Gumbel(TransformedDistribution):
             value.dtype
         )
 
-        return paddle.exp(y - paddle.exp(y)) / self.scale
+        return paddle.exp(y - paddle.exp(y)) / self.scale.astype(y.dtype)
 
     def log_prob(self, value):
         """Log probability density/mass function.

@@ -1399,7 +1399,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if not paddle.all(
             fweights
-            == paddle.round(fweights.astype('float64').astype(fweights.dtype))
+            == paddle.round(fweights.astype('float64')).astype(fweights.dtype)
         ):
             raise ValueError("Input(fweights) must be integer ")
 
