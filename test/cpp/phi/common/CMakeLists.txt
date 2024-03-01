@@ -1,3 +1,5 @@
+list(APPEND kernel_cc "full_kernel.cc")
+
 paddle_test(phi_test_backend SRCS test_backend.cc)
 paddle_test(phi_test_data_layout SRCS test_data_layout.cc)
 paddle_test(phi_test_data_type SRCS test_data_type.cc)
