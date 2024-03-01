@@ -35,11 +35,11 @@ class OperatorStatsUnit:
         if dtype is None:
             self.other_calls = self.other_calls + 1
         else:
-            if dtype == paddle.base.core.VarDesc.VarType.FP32:
+            if dtype == paddle.float32:
                 self.fp32_calls = self.fp32_calls + 1
-            elif dtype == paddle.base.core.VarDesc.VarType.FP16:
+            elif dtype == paddle.float16:
                 self.fp16_calls = self.fp16_calls + 1
-            elif dtype == paddle.base.core.VarDesc.VarType.BF16:
+            elif dtype == paddle.bfloat16:
                 self.bf16_calls = self.bf16_calls + 1
             else:
                 self.other_calls = self.other_calls + 1

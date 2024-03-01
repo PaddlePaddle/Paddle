@@ -29,6 +29,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& cos,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
+                     bool time_major,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -37,6 +38,10 @@ void FusedRopeKernel(const Context& dev_ctx,
     return;
   }
 
+  PADDLE_ENFORCE_EQ(
+      time_major,
+      false,
+      phi::errors::InvalidArgument("time_major is not supported in xpu"));
   int64_t batch_size = q.dims()[0];
   int64_t seq_len = q.dims()[1];
   int64_t num_heads = q.dims()[2];
@@ -57,7 +62,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                       cos.get_ptr()->dims(),
                       phi::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
   }
@@ -84,7 +89,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         num_heads,
         head_dim);
 
-    if (k.get_ptr()) {
+    if (k) {
       auto* outk_data =
           reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_k));
       XPUFusedRotaryHalf<XPUT, Context>(
@@ -99,7 +104,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           head_dim);
     }
 
-    if (v.get_ptr()) {
+    if (v) {
       auto* outv_data =
           reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_v));
       XPUFusedRotaryHalf<XPUT, Context>(

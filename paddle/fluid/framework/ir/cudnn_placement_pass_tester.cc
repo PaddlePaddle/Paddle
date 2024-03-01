@@ -120,7 +120,7 @@ TEST(CUDNNPlacementPass, enable_relu_pool) {
 
 TEST(CUDNNPlacementPass, enable_all) {
   // 1 conv2d + 1 pool2d
-  // depthwise_conv2d doesnot have CUDNN kernel.
+  // depthwise_conv2d does not have CUDNN kernel.
   PlacementPassTest().MainTest({}, 2);
 }
 

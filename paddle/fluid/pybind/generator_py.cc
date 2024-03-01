@@ -72,8 +72,7 @@ void BindGenerator(py::module* m_ptr) {
 
   py::class_<std::mt19937_64>(m, "mt19937_64", "");  // NOLINT
   py::class_<phi::Generator, std::shared_ptr<phi::Generator>>(m, "Generator")
-      .def("__init__",
-           [](phi::Generator& self) { new (&self) phi::Generator(); })
+      .def(py::init([]() { return std::make_unique<phi::Generator>(); }))
       .def("get_state", &phi::Generator::GetState)
       .def("set_state", &phi::Generator::SetState)
       .def("get_state_index", &phi::Generator::GetStateIndex)

@@ -61,7 +61,7 @@ class TileSmemLoader {
 
   using Fragment = typename GmemTileIterator::Fragment;
 
-  /// load a tile from global memory into shared memory
+  // load a tile from global memory into shared memory
   CUTLASS_DEVICE
   static void load(GmemTileIterator tile_load_iter,
                    SmemTileIterator tile_store_iter) {

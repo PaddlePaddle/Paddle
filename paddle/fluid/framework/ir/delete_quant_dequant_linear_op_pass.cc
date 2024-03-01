@@ -86,7 +86,7 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
 }
 // Delete quantize_linear_op dequantize_linear_op, then add input_scales
 void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_linear_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -125,6 +125,13 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
+
+    // delete Scale and ZeroPoint tensor in scope
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
 
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =
@@ -175,6 +182,13 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     nodes2rm.insert(dequantize_linear_op);
     nodes2rm.insert(dequantize_linear_op_out);
     GraphSafeRemoveNodes(graph, nodes2rm);
+
+    for (auto& var_name : vars2rm) {
+      if (scope->FindVar(var_name)) {
+        scope->EraseVars({var_name});
+      }
+    }
+
     found_count++;
   };
   gpd(graph, handler);

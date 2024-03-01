@@ -448,7 +448,7 @@ bool CanbeInline(::pir::Operation* op,
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<::pir::Operation*> visited;
     std::queue<::pir::Operation*> candidates;
     candidates.push(op);

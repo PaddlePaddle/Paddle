@@ -40,8 +40,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       std::stringstream oss;
       oss << less_than_ir->a();
       std::string var_name = oss.str();
-      if (utils::Startswith(var_name, "blockIdx") ||
-          utils::Startswith(var_name, "threadIdx")) {
+      if (utils::StartsWith(var_name, "blockIdx") ||
+          utils::StartsWith(var_name, "threadIdx")) {
         var_name_to_extent_[var_name] = less_than_ir->b();
       }
     }
@@ -153,7 +153,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
     // We only use the maximal of var, maximal of Mod operation,
     // which may not be the maximal of index
-    // mathmetically, but it works for current CINN.
+    // mathematically, but it works for current CINN.
     //
     // We may add better computation of MaxIndexRange if we need
     for (int i = 0; i < vars.size(); ++i) {

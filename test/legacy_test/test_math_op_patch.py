@@ -230,7 +230,7 @@ class TestMathOpPatches(unittest.TestCase):
         )
 
         np.testing.assert_array_equal(c_np, a_np == b_np)
-        self.assertEqual(c.dtype, base.core.VarDesc.VarType.BOOL)
+        self.assertEqual(c.dtype, paddle.bool)
 
     @prog_scope()
     @test_with_pir_api

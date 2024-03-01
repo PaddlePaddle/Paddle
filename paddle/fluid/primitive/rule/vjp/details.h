@@ -860,11 +860,11 @@ void gather_grad(const Tensor& x,
   }
   // scatter grad to grad_x
   auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_tranposed = tmp_grad_x;
+  auto tmp_grad_x_transposed = tmp_grad_x;
   if (tmp_grad_x.dims().size() > 0) {
-    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+    tmp_grad_x_transposed = transpose<T>(tmp_grad_x, reverse_perm);
   }
-  set_output<T>(tmp_grad_x_tranposed, grad_x);
+  set_output<T>(tmp_grad_x_transposed, grad_x);
 }
 
 template <typename T>
@@ -1195,6 +1195,187 @@ void topk_grad(const Tensor& x,
 }
 
 template <typename T>
+void batch_norm_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& scale,
+                     const paddle::optional<Tensor>& bias,
+                     const paddle::optional<Tensor>& mean_out,
+                     const paddle::optional<Tensor>& variance_out,
+                     const Tensor& saved_mean,
+                     const Tensor& saved_variance,
+                     const paddle::optional<Tensor>& reserve_space,
+                     const Tensor& out_grad,
+                     float momentum,
+                     float epsilon,
+                     const std::string& data_layout,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  use_global_stats = is_test || use_global_stats;
+
+  DataLayout data_layout_ = common::StringToDataLayout(data_layout);
+
+  Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+
+  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
+                   x.dtype() == phi::DataType::BFLOAT16;
+  if (need_cast) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
+      out_grad.dtype() == phi::DataType::BFLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+
+  auto x_dims = x_data.dims();
+  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                                   : x_dims[x_dims.size() - 1]);
+  int nume = 1;
+  for (auto i = 0; i < x_dims.size(); i++) {
+    nume = nume * x_dims[i];
+  }
+
+  const int nhw = nume / C;
+
+  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
+    data_layout_ = DataLayout::kNHWC;
+  }
+
+  auto run_var = variance_out.get();
+  auto run_mean = mean_out.get();
+
+  Tensor mean_data;
+  Tensor rsqrt_var;
+
+  if (use_global_stats) {
+    auto eps =
+        full<T>(common::vectorize(run_var.dims()), epsilon, run_var.dtype());
+    mean_data = run_mean;
+    rsqrt_var = (run_var + eps).pow(-0.5);
+  } else {
+    mean_data = saved_mean;
+    rsqrt_var = saved_variance;
+  }
+
+  // inv_var = 1 / sqrt(var + eps)
+  // reduce_axis = [0, 2, 3] (NCHW) [0, 1, 2] (NHWC)
+  //
+  // d_bias = np.sum(d_y, reduce_axis)
+  // d_scale = np.sum((X - mean) / inv_var * dy, reduce_axis)
+  //
+  // train mode
+  // d_x = (1. / nhw) * scale * inv_var
+  // *(nhw * d_y - np.sum(d_y, reduce_axis) - (X - mean) * inv_var * inv_var *
+  // np.sum(d_y * (X - mean), reduce_axis))
+  //
+  // test mode
+  // d_x = d_y * scale * inv_var
+
+  std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
+  std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
+  auto reduce_axis = IntArray(std::vector<int64_t>{0, 1, 2});
+  auto dtype = x_data.dtype();
+
+  switch (data_layout_) {
+    case DataLayout::kNCHW: {
+      auto nhwc_x = transpose<T>(x_data, nchw_to_nhwc_dim);
+      auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
+      auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
+
+      auto sum_dout_mul_diff = sum<T>(
+          nhwc_out_grad * (nhwc_x - mean_data), reduce_axis, dtype, false);
+
+      if (x_grad) {
+        if (use_global_stats) {
+          auto nhwc_x_grad = rsqrt_var * nhwc_out_grad;
+          if (scale) {
+            nhwc_x_grad = scale.get() * nhwc_x_grad;
+          }
+          auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
+          if (need_cast) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
+          set_output<T>(nchw_x_grad, x_grad);
+        } else {
+          auto part1 = rsqrt_var;
+          if (scale) {
+            part1 = scale.get() * part1;
+          }
+          auto mean_temp1 = nhwc_out_grad_sum / nhw;
+          auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          auto part2 =
+              nhwc_out_grad - mean_temp1 - (nhwc_x - mean_data) * mean_temp2;
+
+          auto x_grad_data = part1 * part2;
+          auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
+          if (need_cast) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
+          set_output<T>(nchw_x_grad, x_grad);
+        }
+      }
+      if (scale_grad) {
+        auto scale_grad_data = sum_dout_mul_diff * rsqrt_var;
+        set_output<T>(scale_grad_data, scale_grad);
+      }
+      if (bias_grad) {
+        set_output<T>(assign<T>(nhwc_out_grad_sum), bias_grad);
+      }
+      break;
+    }
+    case DataLayout::kNHWC: {
+      if (x_grad) {
+        auto out_grad_data_sum =
+            sum<T>(out_grad_data, reduce_axis, dtype, false);
+        auto nhwc_sum_dout_mul_diff = sum<T>(
+            out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
+        if (use_global_stats) {
+          auto x_grad_data = rsqrt_var * out_grad_data;
+          if (scale) {
+            x_grad_data = scale.get() * x_grad_data;
+          }
+          if (need_cast) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
+          }
+          set_output<T>(x_grad_data, x_grad);
+        } else {
+          auto part1 = rsqrt_var;
+          if (scale) {
+            part1 = scale.get() * part1;
+          }
+          auto mean_temp1 = out_grad_data_sum / nhw;
+          auto mean_temp2 =
+              nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
+          auto part2 =
+              out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
+
+          auto x_grad_data = part1 * part2;
+          if (need_cast) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
+          }
+          set_output<T>(x_grad_data, x_grad);
+        }
+        if (scale_grad) {
+          auto scale_grad_data = nhwc_sum_dout_mul_diff * rsqrt_var;
+          set_output<T>(scale_grad_data, scale_grad);
+        }
+        if (bias_grad) {
+          set_output<T>(assign<T>(out_grad_data_sum), bias_grad);
+        }
+      }
+      break;
+    }
+
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
+                                                data_layout));
+  }
+}
+
+template <typename T>
 void prod_grad(const Tensor& x,
                const Tensor& out,
                const Tensor& out_grad,
@@ -1279,6 +1460,168 @@ void minimum_grad(const Tensor& x,
       set_output<T>(dy_tmp, y_grad);
     } else {
       set_output<T>(dy_res, y_grad);
+    }
+  }
+}
+
+template <typename T>
+void group_norm_grad(const Tensor& x,
+                     const paddle::optional<Tensor>& scale,
+                     const paddle::optional<Tensor>& bias,
+                     const Tensor& y,
+                     const Tensor& mean,
+                     const Tensor& variance,
+                     const Tensor& out_grad,
+                     float epsilon,
+                     int groups,
+                     const std::string& data_layout,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  // x.shape=[n,c,h,w]
+  // y.shape=[n,c,h,w]
+  // g_size = c/g
+  // scale.shape=[c]
+  // mean, var: shape=[n, g]
+  // inv_std = rsqrt(var + epsilon)
+  // ds = sum(dy * x, axes=(2,3))
+  // db = sum(dy, axes=(2,3))
+  //
+  // cal d_x:
+  // s = g / (h*w*c)
+  // if scale:
+  //  ds_val = sum((ds * scale).reshape(n, g, g_size), axes=2)
+  //  db_val = sum((db * scale).reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (scale.reshape(1, g, g_size))
+  // else:
+  //  ds_val = sum(ds.reshape(n, g, g_size), axes=2)
+  //  db_val = sum(db.reshape(n, g, g_size), axes=2)
+  //  p1 = (inv_std.reshape(n, g, 1)) * (ones(1, g, g_size))
+  // p2 = (db_val * mean - ds_val) * inv_std * inv_std * inv_std * s
+  // p3 = -p2 * mean - db_val * inv_std * s
+  // p1.reshape(n, g, g_size, 1)
+  // p2.reshape(n, g, 1, 1)
+  // p3.reshape(n, g, 1, 1)
+  // d_x = dy.reshape(n, g, g_size, h*w) * p1 + x.reshape(n, g, g_size, h*w)* p2
+  // + p3
+  //
+  // cal d_scale:
+  // temp = ds.reshape(n, g, g_size) - db.reshape(n, g, g_size) *
+  // mean.reshape(n, g, 1)
+  // d_scale = sum(temp * inv_std.reshape(n, g, 1), axes=0).reshape(c)
+  //
+  // cal d_bias:
+  // d_bias = sum(dy, axes=(0,2,3))
+  DataLayout data_layout_ = common::StringToDataLayout(data_layout);
+  if (data_layout_ != DataLayout::kNCHW) {
+    // TODO(chengyanfu): Subsequent support NHWC
+    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
+                                              data_layout));
+  }
+  Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
+      out_grad.dtype() == phi::DataType::BFLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+
+  std::vector<int64_t> x_dims = common::vectorize<int64_t>(x.dims());
+  auto add_axis = std::vector<int64_t>({-1});
+  const int N = x_dims[0];
+  const int C = x_dims[1];
+
+  const int hw = x_dims[2] * x_dims[3];
+  const int g_num = C / groups;
+
+  auto reduce_axis = IntArray(std::vector<int64_t>({2, 3}));
+  auto shape_group = IntArray(std::vector<int64_t>({N, groups, g_num}));
+  auto whole_group_shape =
+      IntArray(std::vector<int64_t>({N, groups, g_num, hw}));
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+  auto sqrt_element = 1.0 / (variance + epsilon);
+  auto inv_std = elementwise_pow<T>(
+      sqrt_element,
+      full<T>(
+          common::vectorize(sqrt_element.dims()), 0.5, sqrt_element.dtype()));
+  auto inv_std_mul_s = inv_std / hw / g_num;
+  auto dtype = x_data.dtype();
+  auto sum_y_grad_mul_x =
+      sum<T>(out_grad_data * x_data, reduce_axis, dtype, false);
+  auto sum_y_grad = sum<T>(out_grad_data, reduce_axis, dtype, false);
+  if (x_grad) {
+    Tensor d1;
+    Tensor d2;
+    Tensor p1;
+    if (scale_ptr) {
+      auto scale_data = scale.get();
+      if (scale_data.dtype() == phi::DataType::FLOAT16 ||
+          scale_data.dtype() == phi::DataType::BFLOAT16) {
+        scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
+      }
+      d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad * scale_data, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})) *
+           reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num}));
+    } else {
+      d1 = (reshape<T>(sum_y_grad_mul_x, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      d2 = (reshape<T>(sum_y_grad, shape_group))
+               .sum(std::vector<int64_t>({2}), dtype, false);
+      p1 = (reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})))
+               .expand(IntArray(shape_group));
+    }
+
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
+    auto p3 = -p2 * mean - d2 * inv_std_mul_s;
+    auto first_shape = get_unsqueeze_dims(p1, std::vector<int64_t>({3}));
+    auto second_shape = get_unsqueeze_dims(p2, std::vector<int64_t>({2, 3}));
+    p1 = reshape<T>(p1, first_shape);
+    p2 = reshape<T>(p2, second_shape);
+    p3 = reshape<T>(p3, second_shape);
+    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
+    auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
+    auto x_grad_data = tmp_1 + tmp_2;
+    x_grad_data = reshape<T>(x_grad_data, x.shape());
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      x_grad_data = cast<T>(x_grad_data, x.dtype());
+    }
+
+    set_output<T>(x_grad_data, x_grad);
+  }
+  if (scale_grad) {
+    if (scale_ptr) {
+      auto third_shape = get_unsqueeze_dims(mean, std::vector<int64_t>({2}));
+      auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
+                   reshape<T>(sum_y_grad, shape_group) *
+                       reshape<T>(mean, third_shape)) *
+                  reshape<T>(inv_std, third_shape);
+      auto scale_grad_tmp = reshape<T>(
+          tmp1.sum(std::vector<int64_t>({0}), scale_ptr->dtype(), false),
+          IntArray(std::vector<int64_t>({C})));
+      set_output<T>(scale_grad_tmp, scale_grad);
+    } else {
+      scale_grad = nullptr;
+    }
+  }
+
+  if (bias_grad) {
+    if (bias_ptr) {
+      auto bias_grad_tmp =
+          sum_y_grad.sum(std::vector<int64_t>({0}), bias_ptr->dtype(), false);
+      set_output<T>(bias_grad_tmp, bias_grad);
+    } else {
+      bias_grad = nullptr;
     }
   }
 }

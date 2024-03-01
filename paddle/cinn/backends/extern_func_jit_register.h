@@ -167,7 +167,7 @@ struct RegisterExternFunction {
   }
 
   /**
-   * End the register, once end, futher modification is disallowed.
+   * End the register, once end, further modification is disallowed.
    */
   void End();
 

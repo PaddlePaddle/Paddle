@@ -536,7 +536,7 @@ class LlamaModelAuto(nn.Layer):
                     combined_attention_mask = dist.shard_tensor(
                         combined_attention_mask,
                         mesh,
-                        [dist.Replicate(), dist.Replicate()],
+                        [dist.Replicate() for _ in range(len(mesh._shape))],
                     )
                     expanded_attn_mask = (
                         expanded_attn_mask & combined_attention_mask
@@ -648,7 +648,9 @@ class LlamaModelAuto(nn.Layer):
                 (batch_size, seq_length)
             )
             position_ids = dist.shard_tensor(
-                position_ids, mesh, [dist.Replicate(), dist.Replicate()]
+                position_ids,
+                mesh,
+                [dist.Replicate() for _ in range(len(mesh._shape))],
             )
 
         attention_mask = self._prepare_decoder_attention_mask(

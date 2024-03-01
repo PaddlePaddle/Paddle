@@ -30,8 +30,8 @@
  */
 #define CINN_IR_SCHEDULE_END(err_msg_level)                    \
   }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  catch (const utils::ErrorHandler& err_handler) {             \
+    CINN_THROW(err_handler.FormatErrorMessage(err_msg_level)); \
   }
 
 namespace cinn {
@@ -166,7 +166,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
-// TODO(@LiuYang): now -1 can't exsit in factors,
+// TODO(@LiuYang): now -1 can't exist in factors.
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<Expr>& factors) {
   CINN_IR_SCHEDULE_BEGIN();

@@ -14,18 +14,20 @@
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
+    ORIGI_INFO,
+    ast_to_source_code,
+)
+from paddle.utils import gast
+
+from .utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
     FOR_ITER_TARGET_PREFIX,
     FOR_ITER_VAR_LEN_PREFIX,
     FOR_ITER_VAR_NAME_PREFIX,
     FOR_ITER_ZIP_TO_LIST_PREFIX,
-    ORIGI_INFO,
-    ast_to_source_code,
+    create_assign_node,
 )
-from paddle.utils import gast
-
-from .utils import create_assign_node
 
 __all__ = []
 
@@ -223,7 +225,7 @@ class ForNodeVisitor:
         #   - for i, x enumerate(var|var.numpy())
         self.iter_node = self._get_iter_node()
 
-        # - enumeate i:
+        # - enumerate i:
         #   - for i, x enumerate(var|var.numpy())
         self.enum_idx_name = self._get_enum_idx_name()
 
@@ -392,7 +394,7 @@ class ForNodeVisitor:
 
     def _build_iter_node(self):
         """
-        Process special cases for iter_node inclue:
+        Process special cases for iter_node include:
           - Case 1 (for zip):
 
             - for i, val in enumerate(zip(x, y))  # original code:

@@ -18,6 +18,21 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
+bool Pool2dGradCheckIfOneDNNSupport(const KernelContext* ctx) {
+  if (ctx->AttrAt<bool>(8) == false) {
+    // adaptive
+    return true;
+  }
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = common::vectorize(ctx->InputAt<phi::DenseTensor>(0).dims());
+  const TensorRef& kernel_size_tmp = ctx->AttrAt<TensorRef>(0);
+  IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
+  std::vector<int64_t> kernel_size = kernel_size_array.GetData();
+  // Fast but not exhaustive check
+  return ((src_tz[src_tz.size() - 1] % kernel_size[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % kernel_size[0] == 0));
+}
+
 template <typename T, typename Context>
 void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -100,4 +115,5 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    float,
                    phi::dtype::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGradGetKernelTypeForVar;
+  kernel->check_if_onednn_kernel_support_ = phi::Pool2dGradCheckIfOneDNNSupport;
 }

@@ -11,9 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
+from itertools import product
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -51,142 +55,132 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
             x = (x - np.mean(x)) / (np.std(x))
             return x.astype(np.float32)
 
-        for batch in [2]:
-            for begin_norm_axis in [2]:
-                for h in [32, 64]:
-                    for w in [32, 64]:
-                        for c in [128, 320, 255, 133]:
-                            for reshape in ["flatten", "reshape"]:
-                                dics = {
-                                    "batch": batch,
-                                    "begin_norm_axis": begin_norm_axis,
-                                    "h": h,
-                                    "w": w,
-                                    "c": c,
-                                    "flatten": {
-                                        "op_type": "flatten_contiguous_range",
-                                        "op_inputs": {
-                                            "X": ["transpose2_out"],
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["reshape_out"],
-                                        },
-                                        "op_attrs": {
-                                            "start_axis": 1,
-                                            "stop_axis": 2,
-                                        },
-                                    },
-                                    "reshape": {
-                                        "op_type": "reshape2",
-                                        "op_inputs": {
-                                            "X": ["transpose2_out"],
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["reshape_out"],
-                                        },
-                                        "op_attrs": {"shape": [-1, h * w, c]},
-                                    },
-                                }
-                                ops_config = [
-                                    {
-                                        "op_type": "conv2d",
-                                        "op_inputs": {
-                                            "Input": ["conv2d_input"],
-                                            "Filter": ["conv2d_filter"],
-                                        },
-                                        "op_outputs": {
-                                            "Output": ["conv2d_output"],
-                                        },
-                                        "op_attrs": {
-                                            "dilations": [1, 1],
-                                            "padding_algorithm": "EXPLICIT",
-                                            "groups": 1,
-                                            "paddings": [0, 0],
-                                            "strides": [1, 1],
-                                            "data_format": "NCHW",
-                                        },
-                                    },
-                                    {
-                                        "op_type": "elementwise_add",
-                                        "op_inputs": {
-                                            "X": ["conv2d_output"],
-                                            "Y": ["elementwise_bias"],
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["elementwise_out"]
-                                        },
-                                        "op_attrs": {"axis": 1},
-                                    },
-                                    {
-                                        "op_type": "transpose2",
-                                        "op_inputs": {
-                                            "X": ["elementwise_out"],
-                                        },
-                                        "op_outputs": {
-                                            "Out": ["transpose2_out"],
-                                        },
-                                        "op_attrs": {"axis": [0, 2, 3, 1]},
-                                    },
-                                    dics[reshape],
-                                    {
-                                        "op_type": "layer_norm",
-                                        "op_inputs": {
-                                            "X": ["reshape_out"],
-                                            "Bias": ["layernorm_bias"],
-                                            "Scale": ["layernorm_scale"],
-                                        },
-                                        "op_outputs": {
-                                            "Y": ["layernorm_out"],
-                                            "Mean": ["layernorm_mean"],
-                                            "Variance": ["layernorm_variance"],
-                                        },
-                                        "op_attrs": {
-                                            "epsilon": 1e-5,
-                                            "begin_norm_axis": dics[
-                                                "begin_norm_axis"
-                                            ],
-                                        },
-                                    },
-                                ]
-                                ops = self.generate_op_config(ops_config)
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={
-                                        "conv2d_filter": TensorConfig(
-                                            data_gen=partial(
-                                                conv_filter_datagen, dics
-                                            )
-                                        ),
-                                        "elementwise_bias": TensorConfig(
-                                            data_gen=partial(
-                                                elementwise_bias_datagen, dics
-                                            )
-                                        ),
-                                        "layernorm_bias": TensorConfig(
-                                            data_gen=partial(
-                                                layernorm_bias_datagen, dics
-                                            )
-                                        ),
-                                        "layernorm_scale": TensorConfig(
-                                            data_gen=partial(
-                                                layernorm_scale_datagen, dics
-                                            )
-                                        ),
-                                    },
-                                    inputs={
-                                        "conv2d_input": TensorConfig(
-                                            data_gen=partial(
-                                                conv2d_input_datagen, dics
-                                            )
-                                        ),
-                                    },
-                                    outputs=["reshape_out", "layernorm_out"],
-                                )
-                                yield program_config
+        for batch, begin_norm_axis, h, w, c, reshape in product(
+            [2],
+            [2],
+            [32, 64],
+            [32, 64],
+            [128, 320, 255, 133],
+            ["flatten", "reshape"],
+        ):
+            dics = {
+                "batch": batch,
+                "begin_norm_axis": begin_norm_axis,
+                "h": h,
+                "w": w,
+                "c": c,
+                "flatten": {
+                    "op_type": "flatten_contiguous_range",
+                    "op_inputs": {
+                        "X": ["transpose2_out"],
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_out"],
+                    },
+                    "op_attrs": {
+                        "start_axis": 1,
+                        "stop_axis": 2,
+                    },
+                },
+                "reshape": {
+                    "op_type": "reshape2",
+                    "op_inputs": {
+                        "X": ["transpose2_out"],
+                    },
+                    "op_outputs": {
+                        "Out": ["reshape_out"],
+                    },
+                    "op_attrs": {"shape": [-1, h * w, c]},
+                },
+            }
+            ops_config = [
+                {
+                    "op_type": "conv2d",
+                    "op_inputs": {
+                        "Input": ["conv2d_input"],
+                        "Filter": ["conv2d_filter"],
+                    },
+                    "op_outputs": {
+                        "Output": ["conv2d_output"],
+                    },
+                    "op_attrs": {
+                        "dilations": [1, 1],
+                        "padding_algorithm": "EXPLICIT",
+                        "groups": 1,
+                        "paddings": [0, 0],
+                        "strides": [1, 1],
+                        "data_format": "NCHW",
+                    },
+                },
+                {
+                    "op_type": "elementwise_add",
+                    "op_inputs": {
+                        "X": ["conv2d_output"],
+                        "Y": ["elementwise_bias"],
+                    },
+                    "op_outputs": {"Out": ["elementwise_out"]},
+                    "op_attrs": {"axis": 1},
+                },
+                {
+                    "op_type": "transpose2",
+                    "op_inputs": {
+                        "X": ["elementwise_out"],
+                    },
+                    "op_outputs": {
+                        "Out": ["transpose2_out"],
+                    },
+                    "op_attrs": {"axis": [0, 2, 3, 1]},
+                },
+                dics[reshape],
+                {
+                    "op_type": "layer_norm",
+                    "op_inputs": {
+                        "X": ["reshape_out"],
+                        "Bias": ["layernorm_bias"],
+                        "Scale": ["layernorm_scale"],
+                    },
+                    "op_outputs": {
+                        "Y": ["layernorm_out"],
+                        "Mean": ["layernorm_mean"],
+                        "Variance": ["layernorm_variance"],
+                    },
+                    "op_attrs": {
+                        "epsilon": 1e-5,
+                        "begin_norm_axis": dics["begin_norm_axis"],
+                    },
+                },
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={
+                    "conv2d_filter": TensorConfig(
+                        data_gen=partial(conv_filter_datagen, dics)
+                    ),
+                    "elementwise_bias": TensorConfig(
+                        data_gen=partial(elementwise_bias_datagen, dics)
+                    ),
+                    "layernorm_bias": TensorConfig(
+                        data_gen=partial(layernorm_bias_datagen, dics)
+                    ),
+                    "layernorm_scale": TensorConfig(
+                        data_gen=partial(layernorm_scale_datagen, dics)
+                    ),
+                },
+                inputs={
+                    "conv2d_input": TensorConfig(
+                        data_gen=partial(conv2d_input_datagen, dics)
+                    ),
+                },
+                outputs=["reshape_out", "layernorm_out"],
+            )
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs, inputs):
             conv2d_c = inputs['conv2d_input'].shape[1]
             self.dynamic_shape.min_input_shape = {

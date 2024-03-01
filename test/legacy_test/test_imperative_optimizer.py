@@ -234,7 +234,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -258,7 +258,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -289,7 +289,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -324,7 +324,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 

@@ -33,7 +33,7 @@ transpose-|   transpose-|   transpose-|
    |------|-----|-------|------|      |
           |   concat    |             |
           |-----|-------|-------------|
-                |     cocnat
+                |     concat
                 |-------|
                        nms3
 

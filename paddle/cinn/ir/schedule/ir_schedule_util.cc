@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -85,39 +86,38 @@ void SetCudaAxisInfo(Expr* lowered_func) {
 
   auto func_body = lowered_func->as_lowered_func_ref()->body;
   CudaAxisInfo info;
-
-  auto block_nodes =
-      ir::ir_utils::CollectIRNodes(func_body, [&](const Expr* x) {
-        if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
-          auto bind_info = x->As<ir::For>()->bind_info();
-          info.set_valid(true);
-          if (bind_info.for_type == ForType::GPUThread) {
-            CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
-            CHECK(x->As<ir::For>()->extent.is_constant());
-            int range = x->As<ir::For>()->extent.get_constant();
-            range = range > info.block_dim(bind_info.offset)
-                        ? range
-                        : info.block_dim(bind_info.offset);
-            VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
-                    << range;
-            info.set_block_dim(bind_info.offset, range);
-          } else if (bind_info.for_type == ForType::GPUBlock) {
-            CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
-            CHECK(x->As<ir::For>()->extent.is_constant());
-            int range = x->As<ir::For>()->extent.get_constant();
-            range = range > info.grid_dim(bind_info.offset)
-                        ? range
-                        : info.grid_dim(bind_info.offset);
-            info.set_grid_dim(bind_info.offset, range);
-            VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
-                    << range;
-          } else {
-            LOG(FATAL)
-                << "The for loop's bind info should be gpu block or thread!";
-          }
+  auto CannotProveLT = [](const ir::Expr& lhs, const ir::Expr& rhs) -> bool {
+    std::vector<ir::Expr> exprs{rhs, lhs};
+    common::cas_intervals_t var_intervals =
+        common::CollectVarIntervalsOfExprs(exprs);
+    common::SymbolicExprAnalyzer analyzer{var_intervals};
+    std::optional<bool> proved_lt = analyzer.ProveLT(lhs, rhs);
+    return !proved_lt.has_value() || !proved_lt.value();
+  };
+  ir::ir_utils::CollectIRNodes(func_body, [&](const Expr* x) {
+    if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
+      CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
+      auto bind_info = x->As<ir::For>()->bind_info();
+      info.set_valid(true);
+      ir::Expr range = x->As<ir::For>()->extent;
+      if (bind_info.for_type == ForType::GPUThread) {
+        if (CannotProveLT(range, info.block_dim(bind_info.offset))) {
+          VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_block_dim(bind_info.offset, range);
         }
-        return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
-      });
+      } else if (bind_info.for_type == ForType::GPUBlock) {
+        if (CannotProveLT(range, info.grid_dim(bind_info.offset))) {
+          VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_grid_dim(bind_info.offset, range);
+        }
+      } else {
+        LOG(FATAL) << "The for loop's bind info should be gpu block or thread!";
+      }
+    }
+    return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
+  });
   lowered_func->as_lowered_func_ref()->cuda_axis_info = info;
 }
 
@@ -207,7 +207,7 @@ void ReplaceExpr(Expr* source,
                  const std::vector<Expr>& candidates) {
   CHECK_EQ(replaced.size(), candidates.size())
       << "In ReplaceExpr, the size of Vars to be replaced must be equal to the "
-         "size of cadidate Exprs! Please check.";
+         "size of candidate Exprs! Please check.";
   if (replaced.empty()) return;
   std::map<Var, Expr, CompVar> replacing_map;
   for (int i = 0; i < replaced.size(); ++i) {
@@ -596,7 +596,7 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
 
 // This function is used in Reorder schedule primitive. Since input loop
 // Expr(s) of Reorder doesn't give original for loop order, we have to
-// find the top (most outter) loop and bottom (most inner) among loop Expr(s)
+// find the top (most outer) loop and bottom (most inner) among loop Expr(s)
 std::pair<Expr, Expr> GetBoundaryOfReorderRange(
     const std::set<Expr, CompExpr>& loop_set) {
   Expr top = *loop_set.begin();
@@ -764,7 +764,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   //   }                                             }
   // }                                             }
   //
-  // We go throuph origin loop and check other body stmts, adding it as another
+  // We go through origin loop and check other body stmts, adding it as another
   // chain, such as:
   //
   // for (i, 0, 32) {
@@ -1022,7 +1022,7 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
     auto dst_it = dst_block->stmts.begin() + index;
     if (dst_it->As<IfThenElse>()) {
       auto* inserted_block = dst_it->As<IfThenElse>()->true_case.As<Block>();
-      CHECK(inserted_block) << "the IfThenElse node to be inserted shuold "
+      CHECK(inserted_block) << "the IfThenElse node to be inserted should "
                                "contain a true_case block";
       inserted_block->stmts.insert(inserted_block->stmts.begin(), insertion);
     } else {
@@ -1060,7 +1060,7 @@ std::vector<IterRange> CalculateRequiredRegions(
   }
 
   std::vector<IterRange> required_buffer_range;
-  // deduce accessed regions of the provided tensor in block by itering each
+  // deduce accessed regions of the provided tensor in block by iterating each
   // required block
   for (const Expr& pro_node : provided_nodes) {
     std::string provided_tensor_name =

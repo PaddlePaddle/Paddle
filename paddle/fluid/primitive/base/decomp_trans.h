@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 
@@ -38,10 +38,14 @@ class DecompProgram {
         whitelist_(whitelist) {}
 
   void decomp_program();
+  void decomp_block(pir::Block* block,
+                    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+                    std::vector<pir::Value>& tar_vars);  // NOLINT
   bool check_decomp_dynamic_shape(pir::Operation* op);
   void check_decomp_outputs(const std::string& op_name,
                             const std::vector<pir::Value>& orig_outs,
                             const std::vector<pir::Value>& decomp_outs);
+  void check_ops();
   std::vector<pir::Value> format_decomp_res(
       const std::string& op_name,
       const std::vector<pir::Value>& orig_outs,
@@ -69,6 +73,7 @@ class DecompProgram {
   std::vector<pir::Value> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
+  std::set<std::string> decomposed_prog_ops_set_;
 };
 
 bool has_decomp_rule(const pir::Operation& op);

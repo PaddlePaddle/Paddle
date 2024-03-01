@@ -77,7 +77,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   if (tensor->is_reduce_tensor()) {
     // Make an init Tensor for domain without reduce axis
     Expr init_value = tensor->GetReduceInitVal();
-    // TODO(zhhsplendid): Clean the handcoded "__reduce_init" string
+    // TODO(zhhsplendid): Clean the hardcoded "__reduce_init" string
     std::string reduce_init_name = tensor->name + "__reduce_init";
     const std::vector<Expr>& domain = tensor->domain_without_reduce_axis();
     ir::Tensor init_tensor = lang::Compute(

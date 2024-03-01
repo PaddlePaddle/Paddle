@@ -97,7 +97,7 @@ void FusedBiasDropoutResidualLnKernel(
       ln_var_data);
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      "FusedBiasDropoutResidualLnKernel not surpport for rocm"));
+      "FusedBiasDropoutResidualLnKernel not support for rocm"));
 #endif
 }
 }  // namespace fusion

@@ -134,7 +134,7 @@ class FunctionSpec:
             # So we don't support to deal this case while specifying `input_spec` currently.
             if kwargs:
                 raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".format(
+                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specified.".format(
                         self._dygraph_function.__name__, kwargs
                     )
                 )
@@ -420,7 +420,7 @@ def convert_to_input_spec(inputs, input_spec):
             for rest_input in inputs[len(input_spec) :]:
                 if isinstance(rest_input, (core.eager.Tensor, np.ndarray)):
                     logging_utils.warn(
-                        "The inputs constain `{}` without specifying InputSpec, its shape and dtype will be treated immutable. "
+                        "The inputs contain `{}` without specifying InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(
                             type_name(rest_input)
                         )
@@ -452,7 +452,7 @@ def convert_to_input_spec(inputs, input_spec):
             real_spec.shape = input_spec.shape
         else:
             logging_utils.warn(
-                f"input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
+                f"input spec is not compatible with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
             )
         return real_spec
     else:
@@ -520,7 +520,7 @@ def _replace_spec_name(name, input_spec):
 
 def _hash_spec_names(args_specs, kwargs_specs):
     """
-    Generater hash spec with args/kwargs InputSpec names.
+    Generator hash spec with args/kwargs InputSpec names.
     Consider the following InputSpecs with same shape/dtype except for name:
       1. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'x')]
       2. [InputSpec([3,3], 'float32', 'x'), InputSpec([3,3], 'float32', 'y')]

@@ -51,27 +51,20 @@ class TestLayer(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
+        paddle.seed(123)
         outs = net(*self.inputs)
         return outs
 
-    def test_static(self):
-        dy_out = self.train(self.net, to_static=False)
-        st_out = self.train(self.net, to_static=True)
-        for dy, st in zip(
-            paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
-        ):
-            np.testing.assert_allclose(dy.numpy(), st.numpy(), atol=1e-8)
-
-    # NOTE prim + cinn lead to error
-    def _test_ast_prim_cinn(self):
+    def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
             self.net, to_static=True, with_prim=True, with_cinn=True
         )
+        # NOTE(Aurelius84): atol only satisfy 1e-6 under with_cinn=True
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

@@ -49,10 +49,10 @@ class Planner:
         self._dist_context._dist_op_context = default_ctx.dist_op_context
         self._dist_context.data_parallel = default_ctx.data_parallel
         if not is_naive_data_parallel(self._dist_context):
-            # Use SSA graph for complex parallism
+            # Use SSA graph for complex parallelism
             self._dist_context.initialize(with_graph=True)
         else:
-            # Use program for data parallel parallism
+            # Use program for data parallel parallelism
             self._dist_context.initialize(with_graph=False)
 
         self._completer = Completer(self._dist_context)

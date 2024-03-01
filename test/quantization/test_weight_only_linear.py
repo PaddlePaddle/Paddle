@@ -25,12 +25,10 @@ import paddle
 import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 
 np.random.seed(123)
 paddle.seed(123)
-default_main_program().random_seed = 42
 
 
 def get_cuda_version():

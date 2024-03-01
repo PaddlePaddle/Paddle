@@ -15,7 +15,8 @@
 import paddle
 from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_
-from paddle.base.framework import Variable
+from paddle.base.framework import Variable, in_pir_mode
+from paddle.base.libpaddle.pir import build_pylayer_op, cf_yield
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
 from paddle.utils import flatten, map_structure
 
@@ -324,6 +325,32 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                         input_var.name, input_var.stop_gradient
                     )
                 )
+
+    if in_pir_mode():
+        assert (
+            backward_fn is None
+        ), "backward_fn should be None in pir mode Now. We will support it soon."
+
+        pylayer_op = build_pylayer_op(inputs)
+        if forward_fn is not None:
+            if not callable(forward_fn):
+                raise ValueError("`forward_fn` should be callable")
+            with pylayer_op.forward_block():
+                fwd_outputs = forward_fn(*inputs)
+
+            if fwd_outputs is None:
+                return None
+
+            with pylayer_op.forward_block():
+                if fwd_outputs is not None:
+                    cf_yield(flatten(fwd_outputs))
+            pylayer_op.update_output()
+
+        return (
+            pylayer_op.results()[0]
+            if len(pylayer_op.results()) == 1
+            else pylayer_op.results()
+        )
 
     # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
     fwd_fn_ctx = _get_ctx_from_func_(forward_fn)

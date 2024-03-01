@@ -40,7 +40,7 @@ def get_cuda_version():
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
-    "core is not complied with CUDA or nvcc version is less than11.6",
+    "core is not compiled with CUDA or nvcc version is less than11.6",
 )
 class TestFusedGemm_epilogueAdd(unittest.TestCase):
     def test_fused_gemm_epilogue_add(self):
