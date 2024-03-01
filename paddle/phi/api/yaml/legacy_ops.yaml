@@ -601,7 +601,6 @@
   kernel :
     func : fused_multi_transformer
     data_type : x
-  support_dygraph_mode : true
 
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)

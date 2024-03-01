@@ -14,6 +14,7 @@
   kernel :
     func : fused_bias_dropout_residual_layer_norm_grad
     data_type : y_grad
+  support_dygraph_mode : true
 
 - backward_op : fused_dot_product_attention_grad
   forward : fused_dot_product_attention (Tensor q, Tensor k, Tensor v, Tensor mask, float scaling_factor, float dropout_probability, bool is_training, bool is_causal_masking) -> Tensor(out), Tensor(softmax_out), Tensor(rng_state)
