@@ -843,7 +843,6 @@ void BindValue(py::module *m) {
               std::unordered_set<Operation *> &grad_ops) {
              for (auto it = self.use_begin(); it != self.use_end(); it++) {
                auto use_op = it.owner();
-               std::cout << use_op->name() << std::endl;
                if (grad_ops.find(use_op) != grad_ops.end()) {
                  it->set_source(value);
                }
