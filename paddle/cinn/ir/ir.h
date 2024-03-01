@@ -381,7 +381,6 @@ struct _Var_ : public ExprNode<_Var_> {
   std::string name;
 
   bool is_reduce_axis{false};
-  bool is_keepdim{false};
   bool is_symbolic_constant{false};
   //! Lower bound and upper bound of a axis.
   // @{
@@ -402,8 +401,7 @@ struct _Var_ : public ExprNode<_Var_> {
                    Expr upper_bound,
                    const std::string& name,
                    bool is_reduce,
-                   bool is_symbolic_constant = false,
-                   bool is_keepdim = false);
+                   bool is_symbolic_constant = false);
 
   void Verify() const override;
 
@@ -421,14 +419,12 @@ struct Var : public IrNodeRef {
   Var(Expr lower_bound,
       Expr upper_bound,
       const std::string& name,
-      bool is_reduce = false,
-      bool is_keepdim = false)
-      : Var(_Var_::Make(
-            lower_bound, upper_bound, name, is_reduce, false, is_keepdim)) {}
+      bool is_reduce = false)
+      : Var(_Var_::Make(lower_bound, upper_bound, name, is_reduce)) {}
   Var(int upper_bound, const std::string& name)
-      : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false, false)) {}
+      : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false)) {}
   Var(Expr upper_bound, const std::string& name)
-      : Var(_Var_::Make(Expr(0), upper_bound, name, false, false)) {}
+      : Var(_Var_::Make(Expr(0), upper_bound, name, false)) {}
 
   operator Expr() { return Expr(get()); }
   operator Expr() const {
