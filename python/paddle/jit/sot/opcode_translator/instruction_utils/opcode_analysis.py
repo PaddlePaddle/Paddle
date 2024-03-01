@@ -116,7 +116,7 @@ def analysis_used_names(
 
     def fork(
         name_recorder: NameRecorder, start: int, jump: bool, jump_target: int
-    ) -> OrderedSet[str]:
+    ) -> NameRecorder:
         new_start = start + 1 if not jump else jump_target
         new_state = NameRecorder(
             OrderedSet(name_recorder.reads),
@@ -124,7 +124,7 @@ def analysis_used_names(
         )
         return walk(new_state, new_start)
 
-    def walk(name_recorder: NameRecorder, start: int) -> OrderedSet[str]:
+    def walk(name_recorder: NameRecorder, start: int) -> NameRecorder:
         end = len(instructions) if stop_instr_idx is None else stop_instr_idx
         for i in range(start, end):
             if check_and_update_visited_states(i, name_recorder.writes):
