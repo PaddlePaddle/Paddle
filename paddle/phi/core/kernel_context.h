@@ -114,7 +114,7 @@ class KernelContext {
     return paddle::none;
   }
 
-  TensorBase* MutableIutputAt(size_t idx) { return inputs_.at(idx); }
+  const TensorBase* MutableIutputAt(size_t idx) { return inputs_.at(idx); }
 
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
