@@ -257,6 +257,7 @@ def get_static_vjp(func, inputs, tangents, order, atol, rtol, eps):
         feeds.update({'input_' + str(idx): input.numpy()})
     outputs = func(input_vars)
     outputs = _as_list(outputs)
+    # TODO(GGBond8488): Need to be fixed when paddle uses pir by default.
     program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
         paddle.static.default_main_program()
     )
