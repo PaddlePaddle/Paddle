@@ -30,8 +30,8 @@ using DenseTensorType = paddle::dialect::DenseTensorType;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 using SelectedRowsType = paddle::dialect::SelectedRowsType;
 using SelectedRowsTypeStorage = paddle::dialect::SelectedRowsTypeStorage;
-using DataLayout = DenseTensorTypeStorage::DataLayout using LoD =
-    DenseTensorTypeStorage::LoD;
+using DataLayout = DenseTensorTypeStorage::DataLayout;
+using LoD = DenseTensorTypeStorage::LoD;
 
 TypeTranslator::TypeTranslator() {
   const auto& HandleTensor = [&](pir::IrContext* ctx,
