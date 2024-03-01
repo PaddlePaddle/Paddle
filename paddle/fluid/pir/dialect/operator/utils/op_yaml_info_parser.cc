@@ -232,7 +232,7 @@ int OpYamlInfoParser::GetTensorParamIndexByArgsName(
                                kernel_fn_tensor_params_.end(),
                                args_name);
   if (iter != kernel_fn_tensor_params_.end()) {
-    return std::distance(kernel_fn_tensor_params_.begin(), iter);
+    return std::distance(kernel_fn_tensor_params_.begin(), iter);  // NOLINT
   } else {
     return -1;
   }

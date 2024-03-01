@@ -723,11 +723,6 @@ std::vector<std::vector<pir::Value>> WhileOp::Vjp(
 
 bool WhileOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  VLOG(3) << "############ WhileOp::InferSymbolicShape start...";
-  pir::Program *body_program = body().parent_program();
-  VLOG(3) << "##### WhileOp::InferSymbolicShape: sub_program id = "
-          << body_program->module_op().operation()->id();
-
   for (auto &value : block_args()) {
     std::vector<symbol::DimExpr> sym_dims;
     const std::vector<int64_t> &dims =
