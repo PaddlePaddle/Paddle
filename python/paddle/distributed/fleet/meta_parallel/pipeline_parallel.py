@@ -203,7 +203,7 @@ class PipelineParallel(MetaParallelBase):
 
         self._clear_every_step_cache = self._strategy.hybrid_configs[
             "pp_configs"
-        ].earse_every_step_cache
+        ].clear_every_step_cache
 
         self._batch_p2p_comm = not self._overlap_p2p_comm
 
