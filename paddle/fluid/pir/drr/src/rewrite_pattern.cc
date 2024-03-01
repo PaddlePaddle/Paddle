@@ -448,13 +448,13 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   // add input tensors info for res_match_ctx
   for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
     PADDLE_ENFORCE_NE(
-        result_pattern_graph.id2owend_tensor().count(in_tensor),
+        result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
         phi::errors::NotFound("Not found the input tensor."
                               "Drr input tensor [%s] must exist in the result "
                               "pattern graph to be obtained.",
                               in_tensor));
-    if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
+    if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
   }
