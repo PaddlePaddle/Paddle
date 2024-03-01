@@ -33,7 +33,9 @@ static void DispatchComputeImpl(const phi::XPUContext *xpu_ctx,
                                 const float quant_max_bound,
                                 const float quant_min_bound,
                                 DenseTensor *out) {
-  return;
+  PADDLE_THROW(
+      platform::errors::Unimplemented("fused_bias_act with smooth "
+                                      "quant on xpu is not implemented yet."));
 }
 
 template <typename T>
@@ -64,7 +66,7 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
     r = baidu::xpu::api::swiglu<XPUType>(
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
-        reinterpret_cast<XPUType *>(const_cast<T *>(out->data<T>())),
+        reinterpret_cast<XPUType *>(out->data<T>()),
         {rows, cols},
         1,
         true);
@@ -73,14 +75,14 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
     r = baidu::xpu::api::gelu<XPUType>(
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
-        reinterpret_cast<XPUType *>(const_cast<T *>(out->data<T>())),
+        reinterpret_cast<XPUType *>(out->data<T>()),
         rows * cols);
     PD_CHECK(r == 0, "baidu::xpu::api::gelu failed.");
   } else if (act_method == "relu") {
     r = baidu::xpu::api::relu<XPUType>(
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
-        reinterpret_cast<XPUType *>(const_cast<T *>(out->data<T>())),
+        reinterpret_cast<XPUType *>(out->data<T>()),
         rows * cols);
     PD_CHECK(r == 0, "baidu::xpu::api::relu failed.");
   } else {
@@ -88,7 +90,6 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         "NOT supported. "
         "Currently Only Support SwiGLU, GeLU, ReLU");
   }
-  return;
 }
 
 template <typename T, typename Context>
