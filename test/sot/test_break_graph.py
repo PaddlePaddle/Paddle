@@ -185,5 +185,19 @@ class TestBreakGraphInLayer(TestCaseBase):
         self.assert_results(net.forward, x)
 
 
+def break_graph_call_generator_function(x):
+    out = 0
+    for i in list(y for y in x):  # noqa: C400
+        out += i
+    return out
+
+
+class TestBreakGraphCallGeneratorFunction(TestCaseBase):
+    def test_break_graph_when_call_generator_function(self):
+        x = paddle.rand([1], dtype=paddle.float32)
+        y = paddle.rand([1], dtype=paddle.float32)
+        self.assert_results(break_graph_call_generator_function, [x, y])
+
+
 if __name__ == "__main__":
     unittest.main()
