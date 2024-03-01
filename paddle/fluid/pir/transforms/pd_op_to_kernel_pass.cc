@@ -186,8 +186,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
     return true;
   }
 
-  copy_key.set_layout(phi::DataLayout::ALL_LAYOUT);
-  return phi::KernelFactory::Instance().HasKernel(kernel, copy_key);
+  return false;
 }
 
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
